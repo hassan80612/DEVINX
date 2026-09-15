@@ -25,7 +25,8 @@ export function DashboardOverview(){
   const[installments,setInstallments]=useState<Installment[]>([]);
   const[loading,setLoading]=useState(true);
 
-  useEffect(()=>{(async()=>{
+  async function load(showLoading=false){
+    if(showLoading)setLoading(true);
     const supabase=createClient();
     const{data:{user}}=await supabase.auth.getUser();
     if(!user){location.replace('/entrar');return}
@@ -42,7 +43,14 @@ export function DashboardOverview(){
       supabase.from('card_installments').select('amount_minor,paid_at').eq('user_id',user.id).eq('billing_month',start)
     ]);
     setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setGoals((g.data||[]) as Goal[]);setBills((b.data||[]) as Bill[]);setPayments((p.data||[]) as Payment[]);setInstallments((i.data||[]) as Installment[]);setLoading(false);
-  })()},[]);
+  }
+
+  useEffect(()=>{
+    load(true);
+    const refresh=()=>load(false);
+    window.addEventListener('devinx:finance-updated',refresh);
+    return()=>window.removeEventListener('devinx:finance-updated',refresh);
+  },[]);
 
   const numbers=useMemo(()=>{
     const manualIncome=tx.filter(x=>x.type==='income').reduce((sum,item)=>sum+Number(item.amount_minor),0);
@@ -68,34 +76,12 @@ export function DashboardOverview(){
   if(loading)return <section className="panel dashboardLoading"><b>{m.dashboard.loading}</b></section>;
 
   return <div className="dashboardStack">
-    <section className="summaryHero premiumSummary">
-      <small>{m.dashboard.projected}</small>
-      <strong>{brl(numbers.projected)}</strong>
-      <span>{m.dashboard.projectedHelp}</span>
-    </section>
-
-    <div className="metricGrid dashboardMetrics">
-      <article><small>{m.dashboard.income}</small><b>{brl(numbers.income)}</b></article>
-      <article><small>{m.dashboard.spent}</small><b>{brl(numbers.expense)}</b></article>
-      <article><small>{m.dashboard.pending}</small><b>{brl(numbers.toPay)}</b></article>
-      <article><small>{m.dashboard.avoidable}</small><b>{brl(numbers.avoidable)}</b></article>
-    </div>
-
-    <section className="panel quickPanel">
-      <div className="sectionTitleRow"><div><small>REGISTRO RÁPIDO</small><h2>{m.dashboard.quick}</h2></div></div>
-      <div className="actionGrid premiumActions">
-        <Link href="/rendas">{m.dashboard.addIncome}</Link>
-        <Link href="/gastos">{m.dashboard.addExpense}</Link>
-        <Link href="/trabalho">{m.dashboard.addWork}</Link>
-      </div>
-    </section>
-
+    <section className="summaryHero premiumSummary"><small>{m.dashboard.projected}</small><strong>{brl(numbers.projected)}</strong><span>{m.dashboard.projectedHelp}</span></section>
+    <div className="metricGrid dashboardMetrics"><article><small>{m.dashboard.income}</small><b>{brl(numbers.income)}</b></article><article><small>{m.dashboard.spent}</small><b>{brl(numbers.expense)}</b></article><article><small>{m.dashboard.pending}</small><b>{brl(numbers.toPay)}</b></article><article><small>{m.dashboard.avoidable}</small><b>{brl(numbers.avoidable)}</b></article></div>
+    <section className="panel quickPanel"><div className="sectionTitleRow"><div><small>ATALHOS</small><h2>Abra a área completa quando precisar</h2></div></div><div className="actionGrid premiumActions"><Link href="/rendas">Rendas</Link><Link href="/gastos">Gastos</Link><Link href="/trabalho">Trabalho</Link></div><p className="lead compactLead">Para lançar algo na hora, use o botão <b>+ Rápido</b> que fica sempre à mão.</p></section>
     {goal&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>META ATIVA</small><h2>{goal.name}</h2></div><strong>{progress}%</strong></div><div className="bar"><i style={{width:`${progress}%`}}/></div><p className="lead">{brl(goalBase)} de {brl(Number(goal.target_minor))}</p></section>}
-
     <section className="panel commitmentsPanel"><div className="sectionTitleRow"><div><small>PRÓXIMOS PASSOS</small><h2>{m.dashboard.commitments}</h2></div></div><div className="commitmentSplit"><article><span>Contas recorrentes</span><b>{brl(numbers.recurringUnpaid)}</b></article><article><span>Faturas já contabilizadas</span><b>{brl(numbers.unpaidCards)}</b></article></div></section>
-
     <PanelLauncher/>
-
     {numbers.income===0&&numbers.expense===0&&<section className="empty premiumEmpty"><b>{m.dashboard.emptyTitle}</b><p>{m.dashboard.emptyText}</p><Link href="/onboarding" className="primary">{m.dashboard.configure}</Link></section>}
   </div>;
 }
