@@ -1,1 +1,2 @@
-import {AppShell} from '@/components/AppShell';import {ReportManager} from '@/components/ReportManager';export default function Relatorios(){return <AppShell title="Relatórios"><p className="lead">Entenda sua evolução sem planilha e sem misturar trabalho com vida pessoal.</p><ReportManager/></AppShell>}
+'use client';
+import {AppShell} from '@/components/AppShell';import {ReportManager} from '@/components/ReportManager';import {useI18n} from '@/i18n/provider';export default function Relatorios(){const{messages:m}=useI18n();return <AppShell titleKey="reportsTitle"><p className="lead">{m.pages.reportsLead}</p><ReportManager/></AppShell>}
