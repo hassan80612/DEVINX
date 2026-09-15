@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {localDateISO} from '@/lib/date';
 
 type Debt={id:string;name:string;original_minor:number;outstanding_minor:number;installment_minor:number|null;installments_remaining:number|null;expected_end:string|null};
 const brl=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v/100);
@@ -19,7 +20,7 @@ export function DebtManager(){
   const[payingId,setPayingId]=useState<string|null>(null);
   const[paymentAmount,setPaymentAmount]=useState('');
   const[paymentMethod,setPaymentMethod]=useState('pix');
-  const[paymentDate,setPaymentDate]=useState(new Date().toISOString().slice(0,10));
+  const[paymentDate,setPaymentDate]=useState(localDateISO());
   const[savingPayment,setSavingPayment]=useState(false);
 
   async function load(){
@@ -47,7 +48,7 @@ export function DebtManager(){
     setPayingId(d.id);
     setPaymentAmount(d.installment_minor?String(Number(d.installment_minor)/100).replace('.',','):'');
     setPaymentMethod('pix');
-    setPaymentDate(new Date().toISOString().slice(0,10));
+    setPaymentDate(localDateISO());
     setNotice('');
   }
 
