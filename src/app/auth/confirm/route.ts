@@ -10,13 +10,18 @@ export async function GET(request:NextRequest){
   const url=new URL(request.url);
   const next=safeNext(url.searchParams.get('next'));
   const code=url.searchParams.get('code');
+  const flowId=url.searchParams.get('sb_flow_id');
   const tokenHash=url.searchParams.get('token_hash');
   const type=url.searchParams.get('type') as EmailOtpType|null;
   const supabase=await createServerSupabaseClient();
 
   let errorMessage='';
+
   if(code){
-    const{error}=await supabase.auth.exchangeCodeForSession(code);
+    const{error}=await supabase.auth.exchangeCodeForSession(
+      code,
+      flowId?{flowId}:undefined
+    );
     errorMessage=error?.message||'';
   }else if(tokenHash&&type){
     const{error}=await supabase.auth.verifyOtp({token_hash:tokenHash,type});
@@ -30,5 +35,6 @@ export async function GET(request:NextRequest){
     target.searchParams.set('erro','link-invalido');
     return NextResponse.redirect(target);
   }
+
   return NextResponse.redirect(new URL(next,url.origin));
 }
