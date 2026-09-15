@@ -1,51 +1,10 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import {FormEvent,useState} from 'react';
+import {createClient} from '@/lib/supabase/client';
 
-export default function EntrarPage() {
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-  const [modo, setModo] = useState<'entrar' | 'criar'>('entrar');
-  const [aviso, setAviso] = useState('');
-  const [carregando, setCarregando] = useState(false);
-
-  async function enviar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setAviso('');
-    setCarregando(true);
-    const supabase = createClient();
-    const resposta = modo === 'entrar'
-      ? await supabase.auth.signInWithPassword({ email, password: senha })
-      : await supabase.auth.signUp({ email, password: senha });
-    setCarregando(false);
-
-    if (resposta.error) {
-      setAviso(resposta.error.message);
-      return;
-    }
-
-    if (modo === 'criar' && !resposta.data.session) {
-      setAviso('Conta criada. Confira seu e-mail para confirmar o cadastro.');
-      return;
-    }
-
-    window.location.href = '/onboarding';
-  }
-
-  return <main className="authPage">
-    <a className="authBrand" href="/"><span className="mark">D</span><b>DEVINX</b></a>
-    <section className="authCard">
-      <small>SEU DINHEIRO, MAIS CLARO</small>
-      <h1>{modo === 'entrar' ? 'Bem-vindo de volta' : 'Crie sua conta'}</h1>
-      <p>{modo === 'entrar' ? 'Entre para continuar organizando sua vida financeira.' : 'Comece em poucos minutos. Sem complicação.'}</p>
-      <form onSubmit={enviar}>
-        <label>E-mail<input type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="voce@email.com" /></label>
-        <label>Senha<input type="password" minLength={6} required value={senha} onChange={e => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" /></label>
-        <button className="primary authSubmit" disabled={carregando}>{carregando ? 'Aguarde...' : modo === 'entrar' ? 'Entrar' : 'Criar conta'}</button>
-      </form>
-      {aviso && <div className="authMessage">{aviso}</div>}
-      <button className="authSwitch" onClick={() => setModo(modo === 'entrar' ? 'criar' : 'entrar')}>{modo === 'entrar' ? 'Ainda não tenho conta' : 'Já tenho uma conta'}</button>
-    </section>
-  </main>;
-}
+export default function EntrarPage(){
+  const[email,setEmail]=useState('');const[senha,setSenha]=useState('');const[modo,setModo]=useState<'entrar'|'criar'>('entrar');const[aviso,setAviso]=useState('');const[carregando,setCarregando]=useState(false);
+  async function destinoAposLogin(userId:string){const supabase=createClient();const{data}=await supabase.from('profiles').select('onboarded_at').eq('id',userId).single();const next=new URLSearchParams(window.location.search).get('next');const safeNext=next&&next.startsWith('/')&&!next.startsWith('//')?next:null;if(!data?.onboarded_at)return'/onboarding';return safeNext||'/painel'}
+  async function enviar(e:FormEvent<HTMLFormElement>){e.preventDefault();setAviso('');setCarregando(true);const supabase=createClient();const resposta=modo==='entrar'?await supabase.auth.signInWithPassword({email,password:senha}):await supabase.auth.signUp({email,password:senha});setCarregando(false);if(resposta.error){setAviso(resposta.error.message);return}if(modo==='criar'&&!resposta.data.session){setAviso('Conta criada. Confira seu e-mail para confirmar o cadastro.');return}const user=resposta.data.user;if(!user){setAviso('Não foi possível concluir o acesso.');return}window.location.href=await destinoAposLogin(user.id)}
+  return <main className="authPage"><a className="authBrand" href="/"><span className="mark">D</span><b>DEVINX</b></a><section className="authCard"><small>SEU DINHEIRO, MAIS CLARO</small><h1>{modo==='entrar'?'Bem-vindo de volta':'Crie sua conta'}</h1><p>{modo==='entrar'?'Entre para continuar organizando sua vida financeira.':'Comece em poucos minutos. Sem complicação.'}</p><form onSubmit={enviar}><label>E-mail<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="voce@email.com" autoComplete="email"/></label><label>Senha<input type="password" minLength={6} required value={senha} onChange={e=>setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" autoComplete={modo==='entrar'?'current-password':'new-password'}/></label><button className="primary authSubmit" disabled={carregando}>{carregando?'Aguarde...':modo==='entrar'?'Entrar':'Criar conta'}</button></form>{aviso&&<div className="authMessage">{aviso}</div>}<button className="authSwitch" onClick={()=>{setModo(modo==='entrar'?'criar':'entrar');setAviso('')}}>{modo==='entrar'?'Ainda não tenho conta':'Já tenho uma conta'}</button></section></main>}
