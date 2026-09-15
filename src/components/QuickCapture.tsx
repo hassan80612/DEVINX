@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {useEffect,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {localDateISO} from '@/lib/date';
 
 type Mode='expense'|'income';
 type Preset={label:string;category:string;description:string;icon:string};
@@ -43,24 +44,10 @@ export function QuickCapture(){
 
   const presets=mode==='expense'?expensePresets:incomePresets;
 
-  useEffect(()=>{
-    if(open)setTimeout(()=>amountRef.current?.focus(),80);
-  },[open]);
+  useEffect(()=>{if(open)setTimeout(()=>amountRef.current?.focus(),80)},[open]);
 
-  function selectPreset(preset:Preset){
-    setCategory(preset.category);
-    setDescription(preset.description);
-    setTimeout(()=>amountRef.current?.focus(),20);
-  }
-
-  function changeMode(next:Mode){
-    setMode(next);
-    const first=next==='expense'?expensePresets[0]:incomePresets[0];
-    setCategory(first.category);
-    setDescription(first.description);
-    setAmount('');
-    setMessage('');
-  }
+  function selectPreset(preset:Preset){setCategory(preset.category);setDescription(preset.description);setTimeout(()=>amountRef.current?.focus(),20)}
+  function changeMode(next:Mode){setMode(next);const first=next==='expense'?expensePresets[0]:incomePresets[0];setCategory(first.category);setDescription(first.description);setAmount('');setMessage('')}
 
   async function save(){
     const value=toMinor(amount);
@@ -69,22 +56,10 @@ export function QuickCapture(){
     const supabase=createClient();
     const{data:{user}}=await supabase.auth.getUser();
     if(!user){setSaving(false);location.href='/entrar';return}
-    const today=new Date().toISOString().slice(0,10);
-    const{error}=await supabase.from('transactions').insert({
-      user_id:user.id,
-      type:mode,
-      category_id:category,
-      description:description.trim()||null,
-      amount_minor:value,
-      occurred_on:today,
-      payment_method:mode==='expense'?payment:null,
-      is_avoidable:false,
-      is_recurring:false
-    });
+    const{error}=await supabase.from('transactions').insert({user_id:user.id,type:mode,category_id:category,description:description.trim()||null,amount_minor:value,occurred_on:localDateISO(),payment_method:mode==='expense'?payment:null,is_avoidable:false,is_recurring:false});
     setSaving(false);
     if(error){setMessage('Não foi possível salvar agora.');return}
-    setAmount('');
-    setMessage(mode==='expense'?'Gasto salvo.':'Entrada salva.');
+    setAmount('');setMessage(mode==='expense'?'Gasto salvo.':'Entrada salva.');
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
     setTimeout(()=>{setOpen(false);setMessage('')},550);
   }
@@ -95,11 +70,7 @@ export function QuickCapture(){
       <section className="quickCaptureSheet" role="dialog" aria-modal="true" aria-label="Registro rápido">
         <div className="quickCaptureHandle"/>
         <div className="quickCaptureHead"><div><small>REGISTRO RÁPIDO</small><h2>Fez agora? Salve agora.</h2></div><button type="button" onClick={()=>setOpen(false)} aria-label="Fechar">×</button></div>
-        <div className="quickCaptureTabs">
-          <button type="button" className={mode==='expense'?'active':''} onClick={()=>changeMode('expense')}>Gasto</button>
-          <button type="button" className={mode==='income'?'active':''} onClick={()=>changeMode('income')}>Entrada</button>
-          <Link href="/trabalho" onClick={()=>setOpen(false)}>Jornada</Link>
-        </div>
+        <div className="quickCaptureTabs"><button type="button" className={mode==='expense'?'active':''} onClick={()=>changeMode('expense')}>Gasto</button><button type="button" className={mode==='income'?'active':''} onClick={()=>changeMode('income')}>Entrada</button><Link href="/trabalho" onClick={()=>setOpen(false)}>Jornada</Link></div>
         <div className="quickPresetGrid">{presets.map(preset=><button type="button" key={preset.label} className={category===preset.category&&description===preset.description?'selected':''} onClick={()=>selectPreset(preset)}><span>{preset.icon}</span><b>{preset.label}</b></button>)}</div>
         <div className="quickAmountRow"><label><span>Valor</span><div className="quickMoney"><b>R$</b><input ref={amountRef} value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal" placeholder="0,00" onKeyDown={e=>{if(e.key==='Enter')save()}}/></div></label></div>
         <label className="quickDescription"><span>Descrição <em>opcional</em></span><input value={description} onChange={e=>setDescription(e.target.value)} placeholder="Ex.: almoço com cliente"/></label>
