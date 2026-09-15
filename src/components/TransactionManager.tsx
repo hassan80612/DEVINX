@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {localDateISO} from '@/lib/date';
 
 type Kind='income'|'expense';
 type Item={id:string;description:string|null;amount_minor:number;occurred_on:string;category_id:string;is_avoidable:boolean};
@@ -22,7 +23,7 @@ export function TransactionManager({kind}:{kind:Kind}){
   const[amount,setAmount]=useState('');
   const[description,setDescription]=useState('');
   const[category,setCategory]=useState(kind==='income'?'salary':'food');
-  const[date,setDate]=useState(new Date().toISOString().slice(0,10));
+  const[date,setDate]=useState(localDateISO());
   const[payment,setPayment]=useState('pix');
   const[avoidable,setAvoidable]=useState(false);
   const[items,setItems]=useState<Item[]>([]);
