@@ -20,7 +20,7 @@ export function AppShell({titleKey,children}:{titleKey:TitleKey;children:React.R
         <span className="month">{month}</span>
       </div>
     </header>
-    <section className="appContent"><div className="pageHeading"><h1>{m.pages[titleKey]}</h1>{pathname!=='/painel'&&<Link href="/painel" className="backToDashboard">← {m.nav.home}</Link>}</div>{children}</section>
+    <section className="appContent"><div className="pageHeading"><h1>{m.pages[titleKey]}</h1></div>{children}</section>
     <nav className="bottomNav">{nav.map(([href,label])=><Link href={href} key={href} className={pathname===href||pathname.startsWith(href+'/')?'active':''}>{label}</Link>)}</nav>
   </main>;
 }
