@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {useI18n} from '@/i18n/provider';
+import {QuickCapture} from '@/components/QuickCapture';
 
 type TitleKey=keyof ReturnType<typeof useI18n>['messages']['pages'];
 
@@ -21,6 +22,7 @@ export function AppShell({titleKey,children}:{titleKey:TitleKey;children:React.R
       </div>
     </header>
     <section className="appContent"><div className="pageHeading"><h1>{m.pages[titleKey]}</h1></div>{children}</section>
+    <QuickCapture/>
     <nav className="bottomNav">{nav.map(([href,label])=><Link href={href} key={href} className={pathname===href||pathname.startsWith(href+'/')?'active':''}>{label}</Link>)}</nav>
   </main>;
 }
