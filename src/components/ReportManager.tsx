@@ -2,6 +2,7 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {localDateISO,localMonthKey} from '@/lib/date';
 
 type Filter='all'|'income'|'work'|'expenses'|'cards'|'debts'|'avoidable';
 type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean;category_id:string};
@@ -28,19 +29,20 @@ export function ReportManager(){
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
     const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(months-1));
-    const from=start.toISOString().slice(0,10);
+    const from=localDateISO(start);
+    const monthFrom=`${localMonthKey(start)}-01`;
     const[t,w,i,r]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable,category_id').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on,minutes_worked').eq('user_id',user.id).gte('worked_on',from),
-      s.from('card_installments').select('amount_minor,billing_month,card_purchases(is_avoidable)').eq('user_id',user.id).gte('billing_month',from.slice(0,7)+'-01'),
-      s.from('recurring_bill_payments').select('amount_minor,due_month,recurring_bills(is_avoidable)').eq('user_id',user.id).gte('due_month',from.slice(0,7)+'-01')
+      s.from('card_installments').select('amount_minor,billing_month,card_purchases(is_avoidable)').eq('user_id',user.id).gte('billing_month',monthFrom),
+      s.from('recurring_bill_payments').select('amount_minor,due_month,recurring_bills(is_avoidable)').eq('user_id',user.id).gte('due_month',monthFrom)
     ]);
     setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setInstallments((i.data||[]) as unknown as Installment[]);setRecurring((r.data||[]) as unknown as RecurringPayment[]);setLoading(false);
   })()},[months]);
 
   const rows=useMemo(()=>{
     const map=new Map<string,{income:number;expense:number;avoidable:number;workCost:number;hours:number;debt:number}>();
-    for(let n=months-1;n>=0;n--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-n);map.set(d.toISOString().slice(0,7),{income:0,expense:0,avoidable:0,workCost:0,hours:0,debt:0})}
+    for(let n=months-1;n>=0;n--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-n);map.set(localMonthKey(d),{income:0,expense:0,avoidable:0,workCost:0,hours:0,debt:0})}
 
     tx.forEach(x=>{
       const r=map.get(key(x.occurred_on));if(!r)return;
