@@ -1,0 +1,5 @@
+revoke all on function public.handle_new_user() from public;revoke all on function public.handle_new_user() from anon;revoke all on function public.handle_new_user() from authenticated;
+create index if not exists card_purchases_card_idx on public.card_purchases(card_id);create index if not exists transactions_income_source_idx on public.transactions(income_source_id);create index if not exists work_sessions_income_source_idx on public.work_sessions(income_source_id);create index if not exists work_sessions_vehicle_idx on public.work_sessions(vehicle_id);
+revoke all on function public.validate_owned_relations() from public,anon,authenticated;
+revoke all on function public.create_card_purchase(uuid,text,text,bigint,date,integer,boolean) from public,anon;grant execute on function public.create_card_purchase(uuid,text,text,bigint,date,integer,boolean) to authenticated;
+revoke all on function public.settle_card_bill(uuid,date,date) from public,anon;grant execute on function public.settle_card_bill(uuid,date,date) to authenticated;
