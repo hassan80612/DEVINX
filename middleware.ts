@@ -1,4 +1,56 @@
-import {createServerClient} from '@supabase/ssr';import {NextResponse,type NextRequest} from 'next/server';
-const protectedPrefixes=['/painel','/onboarding','/rendas','/gastos','/trabalho','/metas','/mais','/cartoes','/dividas','/recorrentes','/relatorios','/posso-gastar','/preferencias'];
-export async function middleware(request:NextRequest){let response=NextResponse.next({request});const supabase=createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{cookies:{getAll(){return request.cookies.getAll()},setAll(cookies){cookies.forEach(({name,value})=>request.cookies.set(name,value));response=NextResponse.next({request});cookies.forEach(({name,value,options})=>response.cookies.set(name,value,options))}}});const{data:{user}}=await supabase.auth.getUser();const isProtected=protectedPrefixes.some(prefix=>request.nextUrl.pathname===prefix||request.nextUrl.pathname.startsWith(prefix+'/'));if(isProtected&&!user){const url=request.nextUrl.clone();url.pathname='/entrar';url.searchParams.set('next',request.nextUrl.pathname);return NextResponse.redirect(url)}return response}
-export const config={matcher:['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)']};
+import {createServerClient} from '@supabase/ssr';
+import {NextResponse,type NextRequest} from 'next/server';
+
+const protectedPrefixes=[
+  '/painel','/onboarding','/rendas','/gastos','/trabalho','/metas','/mais',
+  '/cartoes','/dividas','/recorrentes','/relatorios','/posso-gastar','/preferencias'
+];
+
+function copySessionResponse(source:NextResponse,target:NextResponse){
+  source.cookies.getAll().forEach(cookie=>target.cookies.set(cookie));
+  source.headers.forEach((value,key)=>{
+    if(key.toLowerCase()!=='location')target.headers.set(key,value);
+  });
+  return target;
+}
+
+export async function middleware(request:NextRequest){
+  let response=NextResponse.next({request});
+
+  const supabase=createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies:{
+        getAll(){
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet,headersToSet){
+          cookiesToSet.forEach(({name,value})=>request.cookies.set(name,value));
+          response=NextResponse.next({request});
+          cookiesToSet.forEach(({name,value,options})=>response.cookies.set(name,value,options));
+          Object.entries(headersToSet).forEach(([key,value])=>response.headers.set(key,value));
+        }
+      }
+    }
+  );
+
+  // Keep this immediately after createServerClient. It validates and refreshes the JWT.
+  const{data,error}=await supabase.auth.getClaims();
+  const claims=error?null:data?.claims;
+  const pathname=request.nextUrl.pathname;
+  const isProtected=protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+
+  if(isProtected&&!claims){
+    const url=request.nextUrl.clone();
+    url.pathname='/entrar';
+    url.searchParams.set('next',pathname);
+    return copySessionResponse(response,NextResponse.redirect(url));
+  }
+
+  return response;
+}
+
+export const config={
+  matcher:['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)']
+};
