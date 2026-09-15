@@ -14,11 +14,24 @@ function copySessionCookies(source:NextResponse,target:NextResponse){
 
 export async function middleware(request:NextRequest){
   const host=(request.headers.get('x-forwarded-host')||request.headers.get('host')||'').split(':')[0].toLowerCase();
+  const hasAuthCode=request.nextUrl.searchParams.has('code');
+
   if(host.endsWith('.vercel.app')){
     const canonical=request.nextUrl.clone();
     canonical.protocol='https:';
     canonical.host=CANONICAL_HOST;
+    if(hasAuthCode&&canonical.pathname==='/'){
+      canonical.pathname='/auth/confirm';
+      canonical.searchParams.set('next','auto');
+    }
     return NextResponse.redirect(canonical,308);
+  }
+
+  if(hasAuthCode&&request.nextUrl.pathname==='/'){
+    const callback=request.nextUrl.clone();
+    callback.pathname='/auth/confirm';
+    callback.searchParams.set('next','auto');
+    return NextResponse.redirect(callback,307);
   }
 
   let response=NextResponse.next({request});
