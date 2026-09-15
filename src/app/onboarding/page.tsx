@@ -1,0 +1,3 @@
+import Link from 'next/link';
+const sources=[['🚗','Motorista'],['🛵','Entregador'],['💼','Emprego / Salário'],['🧰','Autônomo'],['＋','Outra profissão']];
+export default function Onboarding(){return <main className="onboarding"><div className="brand"><span className="mark">D</span><b>DEVINX</b></div><section><small>PASSO 1 DE 2</small><h1>De onde vem seu dinheiro?</h1><p>Escolha uma ou mais opções. Você poderá mudar isso quando quiser.</p><div className="sourceGrid">{sources.map(([icon,name])=><button key={name}><span>{icon}</span><b>{name}</b><small>Selecionar</small></button>)}</div><Link href="/painel" className="primary continue">Continuar</Link></section></main>}
