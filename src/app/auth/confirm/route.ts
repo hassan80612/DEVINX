@@ -8,7 +8,7 @@ function safeNext(value:string|null){
 
 export async function GET(request:NextRequest){
   const url=new URL(request.url);
-  const next=safeNext(url.searchParams.get('next'));
+  const requestedNext=url.searchParams.get('next');
   const code=url.searchParams.get('code');
   const flowId=url.searchParams.get('sb_flow_id');
   const tokenHash=url.searchParams.get('token_hash');
@@ -16,12 +16,8 @@ export async function GET(request:NextRequest){
   const supabase=await createServerSupabaseClient();
 
   let errorMessage='';
-
   if(code){
-    const{error}=await supabase.auth.exchangeCodeForSession(
-      code,
-      flowId?{flowId}:undefined
-    );
+    const{error}=await supabase.auth.exchangeCodeForSession(code,flowId?{flowId}:undefined);
     errorMessage=error?.message||'';
   }else if(tokenHash&&type){
     const{error}=await supabase.auth.verifyOtp({token_hash:tokenHash,type});
@@ -36,5 +32,16 @@ export async function GET(request:NextRequest){
     return NextResponse.redirect(target);
   }
 
-  return NextResponse.redirect(new URL(next,url.origin));
+  let destination=safeNext(requestedNext);
+  if(requestedNext==='auto'){
+    const{data:{user}}=await supabase.auth.getUser();
+    if(user){
+      const{data:profile}=await supabase.from('profiles').select('onboarded_at').eq('id',user.id).maybeSingle();
+      destination=profile?.onboarded_at?'/redefinir-senha':'/onboarding';
+    }else{
+      destination='/painel';
+    }
+  }
+
+  return NextResponse.redirect(new URL(destination,url.origin));
 }
