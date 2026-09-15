@@ -1,0 +1,1 @@
+import {AppShell} from '@/components/AppShell';import {SpendCheck} from '@/components/SpendCheck';export default function PossoGastar(){return <AppShell title="Posso gastar?"><p className="lead">Veja o impacto de uma compra no seu mês antes de decidir.</p><SpendCheck/></AppShell>}
