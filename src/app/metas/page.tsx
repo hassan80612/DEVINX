@@ -1,4 +1,2 @@
-import {AppShell} from '@/components/AppShell';
-import {GoalManager} from '@/components/GoalManager';
-
-export default function Metas(){return <AppShell title="Metas"><p className="lead">Transforme seus números em objetivos claros.</p><GoalManager/></AppShell>}
+'use client';
+import {AppShell} from '@/components/AppShell';import {GoalManager} from '@/components/GoalManager';import {useI18n} from '@/i18n/provider';export default function Metas(){const{messages:m}=useI18n();return <AppShell titleKey="goalsTitle"><p className="lead">{m.pages.goalsLead}</p><GoalManager/></AppShell>}
