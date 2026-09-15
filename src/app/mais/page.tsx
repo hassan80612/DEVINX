@@ -12,6 +12,7 @@ export default function Mais(){
     ['📉',m.more.debts,m.more.debtsHelp,'/dividas'],
     ['🧮',m.more.spend,m.more.spendHelp,'/posso-gastar'],
     ['📊',m.more.reports,m.more.reportsHelp,'/relatorios'],
+    ['🏷️',m.more.categories,m.more.categoriesHelp,'/categorias'],
     ['⚙',m.more.preferences,m.more.preferencesHelp,'/preferencias']
   ] as const;
 
