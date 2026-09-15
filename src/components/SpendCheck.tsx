@@ -31,7 +31,8 @@ export function SpendCheck(){
   const[data,setData]=useState({income:0,expense:0,unpaidRecurring:0,unpaidCards:0,debtCommitment:0,next7:0,netPerHour:0,historyReady:false});
   const[loading,setLoading]=useState(true);
 
-  useEffect(()=>{(async()=>{
+  async function load(showLoading=true){
+    if(showLoading)setLoading(true);
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
@@ -87,7 +88,14 @@ export function SpendCheck(){
 
     setData({income,expense,unpaidRecurring,unpaidCards,debtCommitment,next7:recurringNext7+cardsNext7,netPerHour,historyReady});
     setLoading(false);
-  })()},[]);
+  }
+
+  useEffect(()=>{
+    load(true);
+    const refresh=()=>load(false);
+    window.addEventListener('devinx:finance-updated',refresh);
+    return()=>window.removeEventListener('devinx:finance-updated',refresh);
+  },[]);
 
   const proposed=minor(value);
   const accountingBalance=data.income-data.expense;
