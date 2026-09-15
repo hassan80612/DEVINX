@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {spendImpact} from '@/domain/finance';
+import {localDateISO,localMonthEndISO,localMonthStartISO} from '@/lib/date';
 
 type Tx={type:'income'|'expense';amount_minor:number};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;minutes_worked:number;worked_on:string};
@@ -15,7 +16,6 @@ type DebtPayment={debt_id:string;amount_minor:number};
 
 const brl=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v/100);
 const minor=(v:string)=>Math.round((Number(v.replace(/\./g,'').replace(',','.'))||0)*100);
-const iso=(d:Date)=>d.toISOString().slice(0,10);
 
 function isDueWithinSevenDays(day:number){
   const now=new Date();now.setHours(0,0,0,0);
@@ -35,14 +35,12 @@ export function SpendCheck(){
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
-    const n=new Date();
-    const start=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`;
-    const e=new Date(n.getFullYear(),n.getMonth()+1,0);
-    const end=iso(e);
+    const start=localMonthStartISO();
+    const end=localMonthEndISO();
     const historyStart=new Date();historyStart.setDate(historyStart.getDate()-30);
     const[t,w,b,p,i,c,d,dp]=await Promise.all([
       s.from('transactions').select('type,amount_minor').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end),
-      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,minutes_worked,worked_on').eq('user_id',user.id).gte('worked_on',iso(historyStart)),
+      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,minutes_worked,worked_on').eq('user_id',user.id).gte('worked_on',localDateISO(historyStart)),
       s.from('recurring_bills').select('id,amount_minor,due_day').eq('user_id',user.id).eq('is_active',true),
       s.from('recurring_bill_payments').select('recurring_bill_id').eq('user_id',user.id).eq('due_month',start),
       s.from('card_installments').select('amount_minor,paid_at,card_purchases(card_id)').eq('user_id',user.id).eq('billing_month',start),
@@ -103,6 +101,6 @@ export function SpendCheck(){
   return <>
     <section className="summaryHero"><small>SALDO APÓS COMPROMISSOS</small><strong>{brl(projected)}</strong><span>usa somente seus lançamentos e compromissos cadastrados; fatura do cartão não é descontada duas vezes</span></section>
     <div className="metricGrid"><article><small>Saldo contábil</small><b>{brl(accountingBalance)}</b></article><article><small>Contas ainda a pagar</small><b>{brl(data.unpaidRecurring)}</b></article><article><small>Dívidas do mês</small><b>{brl(data.debtCommitment)}</b></article><article><small>Vence nos próximos 7 dias</small><b>{brl(data.next7)}</b></article></div>
-    <section className="panel spendCheck"><h2>Quanto você quer gastar?</h2><label>Valor<input value={value} onChange={e=>setValue(e.target.value)} inputMode="decimal" placeholder="0,00"/></label>{proposed>0&&<div className={after>=0?'impact good':'impact alert'}><small>Depois desse gasto</small><strong>{brl(after)}</strong><p>{status}</p>{proposedHours!==null&&<span>Esse valor equivale a cerca de <b>{proposedHours.toFixed(1)} h</b> do seu líquido/hora dos últimos 30 dias.</span>}{recoveryHours!==null&&<span>Para cobrir o saldo negativo, seriam cerca de <b>{recoveryHours.toFixed(1)} h</b> no seu ritmo recente.</span>}</div>} {!data.historyReady&&<p className="note">A equivalência em horas aparece depois de pelo menos 3 jornadas e 3 horas registradas. O Devinx não inventa média.</p>}<p className="lead">O Devinx mostra o impacto. A decisão continua sendo sua.</p></section>
+    <section className="panel spendCheck"><h2>Quanto você quer gastar?</h2><label>Valor<input value={value} onChange={e=>setValue(e.target.value)} inputMode="decimal" placeholder="0,00"/></label>{proposed>0&&<div className={after>=0?'impact good':'impact alert'}><small>Depois desse gasto</small><strong>{brl(after)}</strong><p>{status}</p>{proposedHours!==null&&<span>Esse valor equivale a cerca de <b>{proposedHours.toFixed(1)} h</b> do seu líquido/hora dos últimos 30 dias.</span>}{recoveryHours!==null&&<span>Para cobrir o saldo negativo, seriam cerca de <b>{recoveryHours.toFixed(1)} h</b> no seu ritmo recente.</span>}</div>}{!data.historyReady&&<p className="note">A equivalência em horas aparece depois de pelo menos 3 jornadas e 3 horas registradas. O Devinx não inventa média.</p>}<p className="lead">O Devinx mostra o impacto. A decisão continua sendo sua.</p></section>
   </>;
 }
