@@ -1,1 +1,10 @@
-import {AppShell} from '@/components/AppShell';import {PreferencesManager} from '@/components/PreferencesManager';export default function Preferencias(){return <AppShell title="Preferências"><p className="lead">Ajustes da sua conta e da forma como o Devinx apresenta seus números.</p><PreferencesManager/></AppShell>}
+import {AppShell} from '@/components/AppShell';
+import {PreferencesManager} from '@/components/PreferencesManager';
+import {PageLead} from '@/components/PageLead';
+
+export default function Preferencias(){
+  return <AppShell titleKey="preferencesTitle">
+    <PageLead textKey="preferencesLead"/>
+    <PreferencesManager/>
+  </AppShell>
+}
