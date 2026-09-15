@@ -1,1 +1,2 @@
-import {AppShell} from '@/components/AppShell';import {CardManager} from '@/components/CardManager';export default function Cartoes(){return <AppShell title="Cartões"><p className="lead">Compras entram uma vez. Pagar a fatura apenas quita o cartão e não duplica a despesa.</p><CardManager/></AppShell>}
+'use client';
+import {AppShell} from '@/components/AppShell';import {CardManager} from '@/components/CardManager';import {useI18n} from '@/i18n/provider';export default function Cartoes(){const{messages:m}=useI18n();return <AppShell titleKey="cardsTitle"><p className="lead">{m.pages.cardsLead}</p><CardManager/></AppShell>}
