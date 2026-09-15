@@ -6,7 +6,6 @@ import {redirect} from 'next/navigation';
 import {createServerSupabaseClient} from '@/lib/supabase/server';
 
 export type AuthState={kind:'idle'|'error'|'success';message:string};
-export const initialAuthState:AuthState={kind:'idle',message:''};
 
 function normalizeEmail(value:FormDataEntryValue|null){
   return typeof value==='string'?value.trim().toLowerCase():'';
