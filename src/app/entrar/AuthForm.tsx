@@ -1,21 +1,44 @@
 'use client';
 
-import {useActionState,useState} from 'react';
+import {useActionState,useEffect,useState} from 'react';
 import Link from 'next/link';
+import {createClient} from '@/lib/supabase/client';
 import {initialAuthState,login,recoverPassword,signup} from './actions';
 
 type Mode='entrar'|'criar'|'recuperar';
+
+function safeNextPath(value:string){
+  return value.startsWith('/')&&!value.startsWith('//')?value:'/painel';
+}
 
 export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initialError?:string}){
   const[mode,setMode]=useState<Mode>(initialError?'recuperar':'entrar');
   const[showPassword,setShowPassword]=useState(false);
   const[localError,setLocalError]=useState(initialError);
+  const[passkeySupported,setPasskeySupported]=useState(false);
+  const[platformAuthenticator,setPlatformAuthenticator]=useState(false);
+  const[passkeyPending,setPasskeyPending]=useState(false);
   const[loginState,loginAction,loginPending]=useActionState(login,initialAuthState);
   const[signupState,signupAction,signupPending]=useActionState(signup,initialAuthState);
   const[recoverState,recoverAction,recoverPending]=useActionState(recoverPassword,initialAuthState);
 
+  useEffect(()=>{
+    let active=true;
+    async function detectPasskey(){
+      if(typeof window==='undefined'||!('PublicKeyCredential' in window))return;
+      if(!active)return;
+      setPasskeySupported(true);
+      try{
+        const available=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        if(active)setPlatformAuthenticator(available);
+      }catch{}
+    }
+    detectPasskey();
+    return()=>{active=false};
+  },[]);
+
   const currentState=mode==='entrar'?loginState:mode==='criar'?signupState:recoverState;
-  const pending=mode==='entrar'?loginPending:mode==='criar'?signupPending:recoverPending;
+  const pending=(mode==='entrar'?loginPending:mode==='criar'?signupPending:recoverPending)||passkeyPending;
   const action=mode==='entrar'?loginAction:mode==='criar'?signupAction:recoverAction;
   const message=localError||currentState.message;
   const messageKind=localError?'error':currentState.kind;
@@ -24,6 +47,24 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
     setMode(next);
     setShowPassword(false);
     setLocalError('');
+  }
+
+  async function signInWithPasskey(){
+    setPasskeyPending(true);
+    setLocalError('');
+    try{
+      const supabase=createClient();
+      const{error}=await supabase.auth.signInWithPasskey();
+      if(error){
+        setLocalError(error.code==='passkey_disabled'?'A entrada com digital ainda precisa ser ativada no servidor.':'Não foi possível entrar com a digital/passkey. Tente novamente ou use sua senha.');
+        return;
+      }
+      window.location.assign(safeNextPath(nextPath));
+    }catch{
+      setLocalError('A autenticação do aparelho foi cancelada ou não pôde ser concluída.');
+    }finally{
+      setPasskeyPending(false);
+    }
   }
 
   return <main className="authPage premiumAuthPage">
@@ -41,10 +82,18 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
         <button type="button" className={mode==='criar'?'active':''} onClick={()=>changeMode('criar')}>Criar conta</button>
       </div>}
 
+      {mode==='entrar'&&passkeySupported&&<>
+        <button type="button" className="passkeyLoginButton" onClick={signInWithPasskey} disabled={passkeyPending}>
+          <span className="passkeyIcon" aria-hidden="true">◉</span>
+          <span><b>{passkeyPending?'Autenticando...':platformAuthenticator?'Entrar com digital / biometria':'Entrar com passkey'}</b><small>{platformAuthenticator?'Use a segurança do seu celular ou computador':'Use uma passkey salva neste aparelho'}</small></span>
+        </button>
+        <div className="authDivider"><span>ou use sua senha</span></div>
+      </>}
+
       <form action={action} className="authFormV2" autoComplete="on">
         <input type="hidden" name="next" value={nextPath}/>
         <label htmlFor="auth-email">E-mail
-          <input id="auth-email" name="email" type="email" required autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="voce@email.com"/>
+          <input id="auth-email" name="email" type="email" required autoComplete="username" inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="voce@email.com"/>
         </label>
 
         {mode!=='recuperar'&&<label htmlFor="auth-password">Senha
@@ -59,9 +108,11 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
         </label>}
 
         <button className="primary authSubmit authSubmitV2" disabled={pending}>
-          {pending?'Aguarde...':mode==='entrar'?'Entrar':mode==='criar'?'Criar conta':'Enviar link de recuperação'}
+          {pending&&!passkeyPending?'Aguarde...':mode==='entrar'?'Entrar':mode==='criar'?'Criar conta':'Enviar link de recuperação'}
         </button>
       </form>
+
+      {mode==='entrar'&&<p className="passwordManagerHint">No computador, o navegador ou gerenciador de senhas pode salvar e preencher sua senha automaticamente. O Devinx não grava sua senha no aparelho.</p>}
 
       {message&&<div className={`authMessage authMessageV2 ${messageKind==='success'?'success':'error'}`} role="status">{message}</div>}
 
