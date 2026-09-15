@@ -12,8 +12,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm install
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-lock
+          path: package-lock.json
       - run: npm run typecheck
       - run: npm run build
         env:
