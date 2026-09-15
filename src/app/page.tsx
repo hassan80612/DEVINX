@@ -16,7 +16,7 @@ export default function Home() {
     </section>
     <section className="phone">
       <div className="phoneHead"><div><small>EXEMPLO</small><h2>Seu mês</h2></div><span className="avatar">D</span></div>
-      <div className="balance"><small>Saldo previsto</small><strong>R$ 2.660,00</strong><span>exemplo de como o painel organiza seus números</span></div>
+      <div className="balance"><small>Saldo previsto</small><strong>R$ 1.880,00</strong><span>exemplo de como o painel organiza seus números</span></div>
       <div className="grid">{cards.map(([a,b,c])=><article key={a}><small>{a}</small><strong>{b}</strong><span>{c}</span></article>)}</div>
       <div className="goal"><div><b>Meta mensal</b><span>R$ 4.850 de R$ 6.000</span></div><div className="bar"><i/></div><small>81% concluída</small></div>
       <div className="quick"><button>+ Entrada</button><button>- Gasto</button></div>
