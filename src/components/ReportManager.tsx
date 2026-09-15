@@ -23,8 +23,8 @@ export function ReportManager(){
   const[recurring,setRecurring]=useState<RecurringPayment[]>([]);
   const[loading,setLoading]=useState(true);
 
-  useEffect(()=>{(async()=>{
-    setLoading(true);
+  async function load(showLoading=true){
+    if(showLoading)setLoading(true);
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
@@ -38,7 +38,14 @@ export function ReportManager(){
       s.from('recurring_bill_payments').select('amount_minor,due_month,recurring_bills(is_avoidable)').eq('user_id',user.id).gte('due_month',monthFrom)
     ]);
     setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setInstallments((i.data||[]) as unknown as Installment[]);setRecurring((r.data||[]) as unknown as RecurringPayment[]);setLoading(false);
-  })()},[months]);
+  }
+
+  useEffect(()=>{
+    load(true);
+    const refresh=()=>load(false);
+    window.addEventListener('devinx:finance-updated',refresh);
+    return()=>window.removeEventListener('devinx:finance-updated',refresh);
+  },[months]);
 
   const rows=useMemo(()=>{
     const map=new Map<string,{income:number;expense:number;avoidable:number;workCost:number;hours:number;debt:number}>();
@@ -48,9 +55,7 @@ export function ReportManager(){
       const r=map.get(key(x.occurred_on));if(!r)return;
       const isDebt=x.type==='expense'&&x.category_id==='debt_payment';
       const includeIncome=x.type==='income'&&(filter==='all'||filter==='income');
-      const includeExpense=x.type==='expense'&&(
-        filter==='all'||filter==='avoidable'&&x.is_avoidable||filter==='debts'&&isDebt||filter==='expenses'&&!isDebt
-      );
+      const includeExpense=x.type==='expense'&&(filter==='all'||filter==='avoidable'&&x.is_avoidable||filter==='debts'&&isDebt||filter==='expenses'&&!isDebt);
       if(includeIncome)r.income+=Number(x.amount_minor);
       if(includeExpense){r.expense+=Number(x.amount_minor);if(x.is_avoidable)r.avoidable+=Number(x.amount_minor);if(isDebt)r.debt+=Number(x.amount_minor)}
     });
