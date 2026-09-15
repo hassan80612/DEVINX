@@ -1,1 +1,4 @@
-import {AppShell} from '@/components/AppShell';export default function Rendas(){return <AppShell title="Rendas"><p className="lead">Tudo o que entra, separado por origem.</p><button className="primary">+ Nova entrada</button><section className="empty"><b>Nenhuma renda registrada</b><p>Salário, corridas, entregas, comissão, renda extra ou qualquer outra fonte.</p></section></AppShell>}
+import {AppShell} from '@/components/AppShell';
+import {TransactionManager} from '@/components/TransactionManager';
+
+export default function Rendas(){return <AppShell title="Rendas"><p className="lead">Tudo o que entra, separado por origem.</p><TransactionManager kind="income"/></AppShell>}
