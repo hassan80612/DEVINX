@@ -4,7 +4,7 @@ import {NextResponse,type NextRequest} from 'next/server';
 const CANONICAL_HOST='devinx.com.br';
 const protectedPrefixes=[
   '/painel','/onboarding','/rendas','/gastos','/trabalho','/metas','/mais',
-  '/cartoes','/dividas','/recorrentes','/relatorios','/posso-gastar','/preferencias'
+  '/cartoes','/dividas','/recorrentes','/relatorios','/posso-gastar','/preferencias','/categorias'
 ];
 
 function copySessionCookies(source:NextResponse,target:NextResponse){
