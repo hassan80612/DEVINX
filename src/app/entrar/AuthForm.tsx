@@ -7,6 +7,8 @@ import {createClient} from '@/lib/supabase/client';
 type Mode='entrar'|'criar'|'recuperar';
 type MessageKind='idle'|'error'|'success';
 
+const CANONICAL_ORIGIN='https://devinx.com.br';
+
 function safeNextPath(value:string){
   return value.startsWith('/')&&!value.startsWith('//')?value:'/painel';
 }
@@ -85,17 +87,30 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
       }
 
       if(mode==='criar'){
-        const{data,error}=await supabase.auth.signUp({email:normalizedEmail,password});
+        const{data,error}=await supabase.auth.signUp({
+          email:normalizedEmail,
+          password,
+          options:{emailRedirectTo:`${CANONICAL_ORIGIN}/auth/confirm?next=/onboarding`}
+        });
         if(error||!data.user){setMessage(friendlyError(error?.message||'signup failed'));setMessageKind('error');return}
-        if(!data.session){setMessage('A confirmação de e-mail ainda está ativa no Supabase.');setMessageKind('error');return}
+        if(data.user.identities?.length===0){
+          setMessage('Este e-mail já possui uma conta. Use Entrar ou Esqueci minha senha.');
+          setMessageKind('error');
+          return;
+        }
+        if(!data.session){
+          setMessage('O Supabase ainda está exigindo confirmação por e-mail. O link enviado agora volta sempre para devinx.com.br.');
+          setMessageKind('error');
+          return;
+        }
         window.location.replace('/onboarding');
         return;
       }
 
-      const callback=`${window.location.origin}/auth/confirm?next=/redefinir-senha`;
+      const callback=`${CANONICAL_ORIGIN}/auth/confirm?next=/redefinir-senha`;
       const{error}=await supabase.auth.resetPasswordForEmail(normalizedEmail,{redirectTo:callback});
       if(error){setMessage(friendlyError(error.message));setMessageKind('error');return}
-      setMessage('Se o e-mail estiver cadastrado, você receberá o link para criar uma nova senha.');
+      setMessage('Se o e-mail estiver cadastrado, você receberá um link para criar uma nova senha. O link abre somente no domínio oficial do Devinx.');
       setMessageKind('success');
     }catch{
       setMessage('A conexão falhou. Tente novamente.');
@@ -129,7 +144,7 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
   return <main className="authPage premiumAuthPage">
     <Link className="authBrand" href="/"><span className="mark">D</span><b>DEVINX</b></Link>
     <section className="authCard premiumAuthCard authCardV2">
-      <div className="authIntro"><small>SEU DINHEIRO, MAIS CLARO</small><h1>{mode==='entrar'?'Acesse sua conta':mode==='criar'?'Crie sua conta':'Recupere sua senha'}</h1><p>{mode==='entrar'?'Entre e continue exatamente de onde parou.':mode==='criar'?'Cadastro simples, sem confirmação desnecessária por e-mail.':'Você receberá um link seguro para definir uma nova senha.'}</p></div>
+      <div className="authIntro"><small>SEU DINHEIRO, MAIS CLARO</small><h1>{mode==='entrar'?'Acesse sua conta':mode==='criar'?'Crie sua conta':'Recupere sua senha'}</h1><p>{mode==='entrar'?'Entre e continue exatamente de onde parou.':mode==='criar'?'Cadastro direto e simples.':'Você receberá um link seguro para definir uma nova senha.'}</p></div>
       {mode!=='recuperar'&&<div className="authTabs" role="tablist"><button type="button" className={mode==='entrar'?'active':''} onClick={()=>changeMode('entrar')}>Entrar</button><button type="button" className={mode==='criar'?'active':''} onClick={()=>changeMode('criar')}>Criar conta</button></div>}
       {mode==='entrar'&&passkeySupported&&<><button type="button" className="passkeyLoginButton" onClick={signInWithPasskey} disabled={pending}><span className="passkeyIcon" aria-hidden="true">◉</span><span><b>{pending?'Autenticando...':platformAuthenticator?'Entrar com digital / biometria':'Entrar com passkey'}</b><small>{platformAuthenticator?'Use a segurança do seu celular ou computador':'Use uma passkey salva neste aparelho'}</small></span></button><div className="authDivider"><span>ou use sua senha</span></div></>}
       <form onSubmit={handleSubmit} className="authFormV2" autoComplete="on">
