@@ -12,6 +12,8 @@ type Goal={name:string;target_minor:number;basis:string};
 type Bill={id:string;amount_minor:number};
 type Payment={recurring_bill_id:string};
 type Installment={amount_minor:number;paid_at:string|null};
+type Debt={id:string;installment_minor:number|null;outstanding_minor:number};
+type DebtPayment={debt_id:string;amount_minor:number};
 
 const brl=(value:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value/100);
 
@@ -23,6 +25,8 @@ export function DashboardOverview(){
   const[bills,setBills]=useState<Bill[]>([]);
   const[payments,setPayments]=useState<Payment[]>([]);
   const[installments,setInstallments]=useState<Installment[]>([]);
+  const[debts,setDebts]=useState<Debt[]>([]);
+  const[debtPayments,setDebtPayments]=useState<DebtPayment[]>([]);
   const[loading,setLoading]=useState(true);
 
   async function load(showLoading=false){
@@ -34,15 +38,17 @@ export function DashboardOverview(){
     const start=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
     const endDate=new Date(now.getFullYear(),now.getMonth()+1,0);
     const end=`${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`;
-    const[t,w,g,b,p,i]=await Promise.all([
+    const[t,w,g,b,p,i,d,dp]=await Promise.all([
       supabase.from('transactions').select('type,amount_minor,is_avoidable').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end),
       supabase.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id).gte('worked_on',start).lte('worked_on',end),
       supabase.from('goals').select('name,target_minor,basis').eq('user_id',user.id).eq('is_active',true).limit(1),
       supabase.from('recurring_bills').select('id,amount_minor').eq('user_id',user.id).eq('is_active',true),
       supabase.from('recurring_bill_payments').select('recurring_bill_id').eq('user_id',user.id).eq('due_month',start),
-      supabase.from('card_installments').select('amount_minor,paid_at').eq('user_id',user.id).eq('billing_month',start)
+      supabase.from('card_installments').select('amount_minor,paid_at').eq('user_id',user.id).eq('billing_month',start),
+      supabase.from('debts').select('id,installment_minor,outstanding_minor').eq('user_id',user.id).eq('is_active',true),
+      supabase.from('debt_payments').select('debt_id,amount_minor').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end)
     ]);
-    setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setGoals((g.data||[]) as Goal[]);setBills((b.data||[]) as Bill[]);setPayments((p.data||[]) as Payment[]);setInstallments((i.data||[]) as Installment[]);setLoading(false);
+    setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setGoals((g.data||[]) as Goal[]);setBills((b.data||[]) as Bill[]);setPayments((p.data||[]) as Payment[]);setInstallments((i.data||[]) as Installment[]);setDebts((d.data||[]) as Debt[]);setDebtPayments((dp.data||[]) as DebtPayment[]);setLoading(false);
   }
 
   useEffect(()=>{
@@ -62,12 +68,15 @@ export function DashboardOverview(){
     const recurringPaid=bills.filter(item=>paidBillIds.has(item.id)).reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const recurringUnpaid=bills.filter(item=>!paidBillIds.has(item.id)).reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const unpaidCards=installments.filter(item=>!item.paid_at).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const paidByDebt=new Map<string,number>();
+    debtPayments.forEach(item=>paidByDebt.set(item.debt_id,(paidByDebt.get(item.debt_id)||0)+Number(item.amount_minor)));
+    const debtCommitment=debts.reduce((sum,debt)=>{const installment=Math.min(Number(debt.installment_minor||0),Number(debt.outstanding_minor));return sum+Math.max(0,installment-(paidByDebt.get(debt.id)||0))},0);
     const income=manualIncome+workGross;
     const expense=manualExpense+workCost+cardExpense+recurringPaid;
     const avoidable=tx.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const balance=income-expense;
-    return{income,expense,balance,toPay:recurringUnpaid+unpaidCards,projected:balance-recurringUnpaid,avoidable,workGross,workCost,recurringUnpaid,unpaidCards};
-  },[tx,work,bills,payments,installments]);
+    return{income,expense,balance,toPay:recurringUnpaid+unpaidCards+debtCommitment,projected:balance-recurringUnpaid-debtCommitment,avoidable,workGross,workCost,recurringUnpaid,unpaidCards,debtCommitment};
+  },[tx,work,bills,payments,installments,debts,debtPayments]);
 
   const goal=goals[0];
   const goalBase=goal?.basis==='operational_net'?numbers.workGross-numbers.workCost:goal?.basis==='savings'?Math.max(0,numbers.balance):numbers.income;
@@ -80,7 +89,7 @@ export function DashboardOverview(){
     <div className="metricGrid dashboardMetrics"><article><small>{m.dashboard.income}</small><b>{brl(numbers.income)}</b></article><article><small>{m.dashboard.spent}</small><b>{brl(numbers.expense)}</b></article><article><small>{m.dashboard.pending}</small><b>{brl(numbers.toPay)}</b></article><article><small>{m.dashboard.avoidable}</small><b>{brl(numbers.avoidable)}</b></article></div>
     <section className="panel quickPanel"><div className="sectionTitleRow"><div><small>ATALHOS</small><h2>Abra a área completa quando precisar</h2></div></div><div className="actionGrid premiumActions"><Link href="/rendas">Rendas</Link><Link href="/gastos">Gastos</Link><Link href="/trabalho">Trabalho</Link></div><p className="lead compactLead">Para lançar algo na hora, use o botão <b>+ Rápido</b> que fica sempre à mão.</p></section>
     {goal&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>META ATIVA</small><h2>{goal.name}</h2></div><strong>{progress}%</strong></div><div className="bar"><i style={{width:`${progress}%`}}/></div><p className="lead">{brl(goalBase)} de {brl(Number(goal.target_minor))}</p></section>}
-    <section className="panel commitmentsPanel"><div className="sectionTitleRow"><div><small>PRÓXIMOS PASSOS</small><h2>{m.dashboard.commitments}</h2></div></div><div className="commitmentSplit"><article><span>Contas recorrentes</span><b>{brl(numbers.recurringUnpaid)}</b></article><article><span>Faturas já contabilizadas</span><b>{brl(numbers.unpaidCards)}</b></article></div></section>
+    <section className="panel commitmentsPanel"><div className="sectionTitleRow"><div><small>COMPROMISSOS</small><h2>{m.dashboard.commitments}</h2></div></div><div className="commitmentSplit commitmentTriple"><article><span>Contas recorrentes</span><b>{brl(numbers.recurringUnpaid)}</b></article><article><span>Dívidas do mês</span><b>{brl(numbers.debtCommitment)}</b></article><article><span>Faturas já contabilizadas</span><b>{brl(numbers.unpaidCards)}</b></article></div></section>
     <PanelLauncher/>
     {numbers.income===0&&numbers.expense===0&&<section className="empty premiumEmpty"><b>{m.dashboard.emptyTitle}</b><p>{m.dashboard.emptyText}</p><Link href="/onboarding" className="primary">{m.dashboard.configure}</Link></section>}
   </div>;
