@@ -1,1 +1,2 @@
-import {AppShell} from '@/components/AppShell';import {DebtManager} from '@/components/DebtManager';export default function Dividas(){return <AppShell title="Dívidas"><p className="lead">Empréstimos, financiamentos, acordos e dinheiro emprestado em um só lugar.</p><DebtManager/></AppShell>}
+'use client';
+import {AppShell} from '@/components/AppShell';import {DebtManager} from '@/components/DebtManager';import {useI18n} from '@/i18n/provider';export default function Dividas(){const{messages:m}=useI18n();return <AppShell titleKey="debtsTitle"><p className="lead">{m.pages.debtsLead}</p><DebtManager/></AppShell>}
