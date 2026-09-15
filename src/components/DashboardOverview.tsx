@@ -10,9 +10,9 @@ import {localMonthEndISO,localMonthStartISO} from '@/lib/date';
 type Tx={type:'income'|'expense';amount_minor:number;is_avoidable:boolean};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number};
 type Goal={name:string;target_minor:number;basis:string};
-type Bill={id:string;amount_minor:number};
+type Bill={id:string;amount_minor:number;is_avoidable:boolean};
 type Payment={recurring_bill_id:string;amount_minor:number};
-type Installment={amount_minor:number;paid_at:string|null};
+type Installment={amount_minor:number;paid_at:string|null;card_purchases:{is_avoidable:boolean}|null};
 type Debt={id:string;installment_minor:number|null;outstanding_minor:number};
 type DebtPayment={debt_id:string;amount_minor:number};
 
@@ -41,13 +41,13 @@ export function DashboardOverview(){
       supabase.from('transactions').select('type,amount_minor,is_avoidable').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end),
       supabase.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id).gte('worked_on',start).lte('worked_on',end),
       supabase.from('goals').select('name,target_minor,basis').eq('user_id',user.id).eq('is_active',true).limit(1),
-      supabase.from('recurring_bills').select('id,amount_minor').eq('user_id',user.id).eq('is_active',true),
+      supabase.from('recurring_bills').select('id,amount_minor,is_avoidable').eq('user_id',user.id).eq('is_active',true),
       supabase.from('recurring_bill_payments').select('recurring_bill_id,amount_minor').eq('user_id',user.id).eq('due_month',start),
-      supabase.from('card_installments').select('amount_minor,paid_at').eq('user_id',user.id).eq('billing_month',start),
+      supabase.from('card_installments').select('amount_minor,paid_at,card_purchases(is_avoidable)').eq('user_id',user.id).eq('billing_month',start),
       supabase.from('debts').select('id,installment_minor,outstanding_minor').eq('user_id',user.id).eq('is_active',true),
       supabase.from('debt_payments').select('debt_id,amount_minor').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end)
     ]);
-    setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setGoals((g.data||[]) as Goal[]);setBills((b.data||[]) as Bill[]);setPayments((p.data||[]) as Payment[]);setInstallments((i.data||[]) as Installment[]);setDebts((d.data||[]) as Debt[]);setDebtPayments((dp.data||[]) as DebtPayment[]);setLoading(false);
+    setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setGoals((g.data||[]) as Goal[]);setBills((b.data||[]) as Bill[]);setPayments((p.data||[]) as Payment[]);setInstallments((i.data||[]) as unknown as Installment[]);setDebts((d.data||[]) as Debt[]);setDebtPayments((dp.data||[]) as DebtPayment[]);setLoading(false);
   }
 
   useEffect(()=>{
@@ -72,7 +72,11 @@ export function DashboardOverview(){
     const debtCommitment=debts.reduce((sum,debt)=>{const installment=Math.min(Number(debt.installment_minor||0),Number(debt.outstanding_minor));return sum+Math.max(0,installment-(paidByDebt.get(debt.id)||0))},0);
     const income=manualIncome+workGross;
     const expense=manualExpense+workCost+cardExpense+recurringPaid;
-    const avoidable=tx.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const directAvoidable=tx.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const cardAvoidable=installments.filter(x=>x.card_purchases?.is_avoidable).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const avoidableBillIds=new Set(bills.filter(x=>x.is_avoidable).map(x=>x.id));
+    const recurringAvoidable=payments.filter(x=>avoidableBillIds.has(x.recurring_bill_id)).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const avoidable=directAvoidable+cardAvoidable+recurringAvoidable;
     const balance=income-expense;
     return{income,expense,balance,toPay:recurringUnpaid+unpaidCards+debtCommitment,projected:balance-recurringUnpaid-debtCommitment,avoidable,workGross,workCost,recurringUnpaid,unpaidCards,debtCommitment};
   },[tx,work,bills,payments,installments,debts,debtPayments]);
