@@ -1,1 +1,2 @@
-import {AppShell} from '@/components/AppShell';import {SpendCheck} from '@/components/SpendCheck';export default function PossoGastar(){return <AppShell title="Posso gastar?"><p className="lead">Veja o impacto de uma compra no seu mês antes de decidir.</p><SpendCheck/></AppShell>}
+'use client';
+import {AppShell} from '@/components/AppShell';import {SpendCheck} from '@/components/SpendCheck';import {useI18n} from '@/i18n/provider';export default function PossoGastar(){const{messages:m}=useI18n();return <AppShell titleKey="spendTitle"><p className="lead">{m.pages.spendLead}</p><SpendCheck/></AppShell>}
