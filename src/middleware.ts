@@ -1,6 +1,7 @@
 import {createServerClient} from '@supabase/ssr';
 import {NextResponse,type NextRequest} from 'next/server';
 
+const CANONICAL_HOST='devinx.com.br';
 const protectedPrefixes=[
   '/painel','/onboarding','/rendas','/gastos','/trabalho','/metas','/mais',
   '/cartoes','/dividas','/recorrentes','/relatorios','/posso-gastar','/preferencias'
@@ -12,6 +13,14 @@ function copySessionCookies(source:NextResponse,target:NextResponse){
 }
 
 export async function middleware(request:NextRequest){
+  const host=(request.headers.get('x-forwarded-host')||request.headers.get('host')||'').split(':')[0].toLowerCase();
+  if(host.endsWith('.vercel.app')){
+    const canonical=request.nextUrl.clone();
+    canonical.protocol='https:';
+    canonical.host=CANONICAL_HOST;
+    return NextResponse.redirect(canonical,308);
+  }
+
   let response=NextResponse.next({request});
   const supabase=createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
