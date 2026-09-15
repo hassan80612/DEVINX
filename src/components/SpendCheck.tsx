@@ -8,7 +8,7 @@ import {localDateISO,localMonthEndISO,localMonthStartISO} from '@/lib/date';
 type Tx={type:'income'|'expense';amount_minor:number};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;minutes_worked:number;worked_on:string};
 type Bill={id:string;amount_minor:number;due_day:number};
-type Payment={recurring_bill_id:string};
+type Payment={recurring_bill_id:string;amount_minor:number};
 type Installment={amount_minor:number;paid_at:string|null;card_purchases:{card_id:string}|null};
 type Card={id:string;due_day:number|null};
 type Debt={id:string;installment_minor:number|null;outstanding_minor:number};
@@ -42,7 +42,7 @@ export function SpendCheck(){
       s.from('transactions').select('type,amount_minor').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,minutes_worked,worked_on').eq('user_id',user.id).gte('worked_on',localDateISO(historyStart)),
       s.from('recurring_bills').select('id,amount_minor,due_day').eq('user_id',user.id).eq('is_active',true),
-      s.from('recurring_bill_payments').select('recurring_bill_id').eq('user_id',user.id).eq('due_month',start),
+      s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor').eq('user_id',user.id).eq('due_month',start),
       s.from('card_installments').select('amount_minor,paid_at,card_purchases(card_id)').eq('user_id',user.id).eq('billing_month',start),
       s.from('credit_cards').select('id,due_day').eq('user_id',user.id).eq('is_active',true),
       s.from('debts').select('id,installment_minor,outstanding_minor').eq('user_id',user.id).eq('is_active',true),
@@ -59,8 +59,9 @@ export function SpendCheck(){
     const debtPayments=(dp.data||[]) as DebtPayment[];
 
     const monthWork=work.filter(x=>x.worked_on>=start&&x.worked_on<=end);
+    const recurringPaid=payments.reduce((a,b)=>a+Number(b.amount_minor),0);
     const income=tx.filter(x=>x.type==='income').reduce((a,b)=>a+Number(b.amount_minor),0)+monthWork.reduce((a,b)=>a+Number(b.gross_income_minor),0);
-    const expense=tx.filter(x=>x.type==='expense').reduce((a,b)=>a+Number(b.amount_minor),0)+monthWork.reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0)+installments.reduce((a,b)=>a+Number(b.amount_minor),0);
+    const expense=tx.filter(x=>x.type==='expense').reduce((a,b)=>a+Number(b.amount_minor),0)+monthWork.reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0)+installments.reduce((a,b)=>a+Number(b.amount_minor),0)+recurringPaid;
 
     const paid=new Set(payments.map(x=>x.recurring_bill_id));
     const unpaidBills=bills.filter(x=>!paid.has(x.id));
