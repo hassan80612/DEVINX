@@ -5,12 +5,13 @@ import {useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
 import {PanelLauncher} from '@/components/PanelLauncher';
+import {localMonthEndISO,localMonthStartISO} from '@/lib/date';
 
 type Tx={type:'income'|'expense';amount_minor:number;is_avoidable:boolean};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number};
 type Goal={name:string;target_minor:number;basis:string};
 type Bill={id:string;amount_minor:number};
-type Payment={recurring_bill_id:string};
+type Payment={recurring_bill_id:string;amount_minor:number};
 type Installment={amount_minor:number;paid_at:string|null};
 type Debt={id:string;installment_minor:number|null;outstanding_minor:number};
 type DebtPayment={debt_id:string;amount_minor:number};
@@ -34,16 +35,14 @@ export function DashboardOverview(){
     const supabase=createClient();
     const{data:{user}}=await supabase.auth.getUser();
     if(!user){location.replace('/entrar');return}
-    const now=new Date();
-    const start=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
-    const endDate=new Date(now.getFullYear(),now.getMonth()+1,0);
-    const end=`${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`;
+    const start=localMonthStartISO();
+    const end=localMonthEndISO();
     const[t,w,g,b,p,i,d,dp]=await Promise.all([
       supabase.from('transactions').select('type,amount_minor,is_avoidable').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end),
       supabase.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id).gte('worked_on',start).lte('worked_on',end),
       supabase.from('goals').select('name,target_minor,basis').eq('user_id',user.id).eq('is_active',true).limit(1),
       supabase.from('recurring_bills').select('id,amount_minor').eq('user_id',user.id).eq('is_active',true),
-      supabase.from('recurring_bill_payments').select('recurring_bill_id').eq('user_id',user.id).eq('due_month',start),
+      supabase.from('recurring_bill_payments').select('recurring_bill_id,amount_minor').eq('user_id',user.id).eq('due_month',start),
       supabase.from('card_installments').select('amount_minor,paid_at').eq('user_id',user.id).eq('billing_month',start),
       supabase.from('debts').select('id,installment_minor,outstanding_minor').eq('user_id',user.id).eq('is_active',true),
       supabase.from('debt_payments').select('debt_id,amount_minor').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end)
@@ -65,7 +64,7 @@ export function DashboardOverview(){
     const workCost=work.reduce((sum,item)=>sum+Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor),0);
     const cardExpense=installments.reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const paidBillIds=new Set(payments.map(item=>item.recurring_bill_id));
-    const recurringPaid=bills.filter(item=>paidBillIds.has(item.id)).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const recurringPaid=payments.reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const recurringUnpaid=bills.filter(item=>!paidBillIds.has(item.id)).reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const unpaidCards=installments.filter(item=>!item.paid_at).reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const paidByDebt=new Map<string,number>();
