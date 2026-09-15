@@ -1,1 +1,4 @@
-import {AppShell} from '@/components/AppShell';export default function Metas(){return <AppShell title="Metas"><p className="lead">Transforme seus números em objetivos claros.</p><button className="primary">+ Criar meta</button><div className="featureGrid compact"><article>🎯<b>Meta de renda</b><span>Diária, semanal ou mensal.</span></article><article>💰<b>Guardar dinheiro</b><span>Acompanhe quanto falta para chegar lá.</span></article><article>✓<b>Quitar uma dívida</b><span>Visualize seu progresso até zerar.</span></article></div></AppShell>}
+import {AppShell} from '@/components/AppShell';
+import {GoalManager} from '@/components/GoalManager';
+
+export default function Metas(){return <AppShell title="Metas"><p className="lead">Transforme seus números em objetivos claros.</p><GoalManager/></AppShell>}
