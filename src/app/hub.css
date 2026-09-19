@@ -468,3 +468,21 @@ linear-gradient(145deg,#021128 0%,#05295e 38%,#073f82 55%,#031a3c 76%,#010914 10
   .pendingGroup .pendingRow{padding:13px!important;gap:8px 10px!important}
   .pendingGroup .pendingRow>strong{font-size:14px}
 }
+
+
+/* Financial history clarity + compact premium pending actions */
+.historyTypeFilter{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:9px;padding:5px;border:1px solid rgba(85,159,225,.18);border-radius:13px;background:rgba(3,22,49,.56)}
+.historyTypeFilter button{min-height:36px;border:1px solid transparent;border-radius:9px;background:transparent;color:#8fa9bc;font-size:9px;font-weight:900}
+.historyTypeFilter button.active{border-color:rgba(109,195,255,.31);background:linear-gradient(180deg,rgba(14,74,137,.9),rgba(6,38,82,.96));color:#eef8ff;box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 8px 20px rgba(0,26,70,.2)}
+.historyTypeFilter button.incomeFilter.active{border-color:rgba(78,222,161,.25);color:#8ef0c2}
+.historyTypeFilter button.expenseFilter.active{border-color:rgba(255,129,119,.25);color:#ffaaa3}
+.pendingGroup{gap:10px!important}
+.pendingGroup>.sectionTitleRow{margin-bottom:1px}
+.pendingRow{padding:13px 14px!important;border:1px solid rgba(84,159,225,.16)!important;border-radius:13px;background:linear-gradient(145deg,rgba(6,35,73,.82),rgba(3,21,48,.94));box-shadow:inset 0 1px 0 rgba(255,255,255,.045)}
+.pendingRow:first-of-type{border-top:1px solid rgba(84,159,225,.16)!important}
+.pendingRow>strong{font-size:12px;white-space:nowrap}
+.pendingRow>.statusBadge{display:inline-flex;align-items:center;justify-content:center;min-height:27px;padding:5px 9px;border:1px solid rgba(105,187,246,.18);border-radius:999px;background:rgba(7,46,91,.64);color:#9ec9e7;font-size:8px;font-weight:900;white-space:nowrap}
+.pendingRow>.statusBadge.overdue{border-color:rgba(255,123,112,.25);background:rgba(83,30,37,.4);color:#ffaaa3}
+.pendingRow>button,.pendingActions button{min-height:30px;padding:6px 9px!important;border:1px solid rgba(102,183,242,.18)!important;border-radius:9px!important;background:linear-gradient(180deg,rgba(11,60,113,.88),rgba(5,31,67,.96))!important;color:#bfe5ff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.pendingActions .dangerText{border-color:rgba(255,123,112,.2)!important;background:linear-gradient(180deg,rgba(82,31,40,.66),rgba(52,20,29,.78))!important;color:#ffaaa3!important}
+@media(max-width:620px){.pendingRow{grid-template-columns:minmax(0,1fr) auto!important}.pendingRow>.statusBadge{grid-column:1/2;justify-self:start}.pendingRow>button,.pendingActions{grid-column:2/3;justify-self:end}.pendingActions{display:flex;flex-wrap:wrap;justify-content:flex-end}.historyTypeFilter{grid-template-columns:1fr 1fr 1fr}}

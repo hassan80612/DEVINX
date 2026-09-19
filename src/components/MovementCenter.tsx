@@ -4,7 +4,7 @@ import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
-import {categoryName,CustomCategory} from '@/domain/categories';
+import {categoryName,categoryOptions,CustomCategory} from '@/domain/categories';
 import {RecurringBillLike,RecurringOverrideLike,billAppliesToMonth,billDueDay,billRemaining,dueDateForMonth,installmentNumber} from '@/domain/recurring';
 
 type View='today'|'history'|'pending';
@@ -37,6 +37,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const{t,currency,date}=useI18n();
   const[view,setView]=useState<View>('today');
   const[range,setRange]=useState<'7'|'30'|'month'|'custom'>('7');
+  const[historyFlow,setHistoryFlow]=useState<'all'|'income'|'expense'>('all');
   const[from,setFrom]=useState(daysAgo(6));
   const[to,setTo]=useState(localDateISO());
   const[tx,setTx]=useState<Tx[]>([]);
@@ -56,6 +57,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const[editAmount,setEditAmount]=useState('');
   const[editDate,setEditDate]=useState('');
   const[editDescription,setEditDescription]=useState('');
+  const[editCategory,setEditCategory]=useState('other');
   const[editHours,setEditHours]=useState('');
   const[editKm,setEditKm]=useState('');
   const[editFuelPercent,setEditFuelPercent]=useState('');
@@ -120,7 +122,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       const isDebt=item.source_type==='debt_payment';
       const kind=item.type==='income'?'income':'expense';
       const label=isDebt?t('nav.debts'):categoryName(kind,item.category_id,customCategories,t);
-      rows.push({id:'tx:'+item.id,kind:'tx',sign:item.type==='income'?1:-1,amount:Number(item.amount_minor),date:item.occurred_on,title:item.description||t(item.type==='income'?'move.directIncome':'move.directExpense'),subtitle:isDebt?t('move.debtPayment'):t(item.type==='income'?'move.directIncome':'move.directExpense'),groupKey:isDebt?'system:debts':kind+':'+item.category_id,groupLabel:label,raw:item});
+      rows.push({id:'tx:'+item.id,kind:'tx',sign:item.type==='income'?1:-1,amount:Number(item.amount_minor),date:item.occurred_on,title:item.description||t(item.type==='income'?'move.directIncome':'move.directExpense'),subtitle:isDebt?t('move.debtPayment'):(t(item.type==='income'?'move.directIncome':'move.directExpense')+(item.payment_method?' · '+item.payment_method.toUpperCase():'')),groupKey:isDebt?'system:debts':kind+':'+item.category_id,groupLabel:label,raw:item});
     });
     work.forEach(item=>{
       const source=item.income_sources?.name||t('move.workIncome');
@@ -149,18 +151,20 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     return rows.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
   },[tx,work,recPays,cardPays,reserveEntries,customCategories,t,date]);
 
-  const totals=useMemo(()=>{const plus=cashRows.filter(r=>r.sign===1).reduce((a,b)=>a+b.amount,0);const minus=cashRows.filter(r=>r.sign===-1).reduce((a,b)=>a+b.amount,0);return{plus,minus,balance:plus-minus}},[cashRows]);
+  const visibleHistoryRows=useMemo(()=>view!=='history'||historyFlow==='all'?cashRows:cashRows.filter(r=>historyFlow==='income'?r.sign===1:r.sign===-1),[cashRows,view,historyFlow]);
+
+  const totals=useMemo(()=>{const plus=visibleHistoryRows.filter(r=>r.sign===1).reduce((a,b)=>a+b.amount,0);const minus=visibleHistoryRows.filter(r=>r.sign===-1).reduce((a,b)=>a+b.amount,0);return{plus,minus,balance:plus-minus}},[visibleHistoryRows]);
 
   const historyGroups=useMemo(()=>{
     const map=new Map<string,{key:string;label:string;rows:CashRow[];plus:number;minus:number}>();
-    for(const row of cashRows){
+    for(const row of visibleHistoryRows){
       const current=map.get(row.groupKey)||{key:row.groupKey,label:row.groupLabel,rows:[],plus:0,minus:0};
       current.rows.push(row);
       if(row.sign>0)current.plus+=row.amount;else current.minus+=row.amount;
       map.set(row.groupKey,current);
     }
     return [...map.values()].sort((a,b)=>(b.plus+b.minus)-(a.plus+a.minus)||a.label.localeCompare(b.label));
-  },[cashRows]);
+  },[visibleHistoryRows]);
 
   const billPending=useMemo(()=>{
     const today=localDateISO();
@@ -224,7 +228,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   function startEdit(row:CashRow){
     setEditing(row);setNotice('');
     setEditDate(row.date);
-    if(row.kind==='tx'){const x=row.raw as Tx;setEditAmount(String(Number(x.amount_minor)/100).replace('.',','));setEditDescription(x.description||'')}
+    if(row.kind==='tx'){const x=row.raw as Tx;setEditAmount(String(Number(x.amount_minor)/100).replace('.',','));setEditDescription(x.description||'');setEditCategory(x.category_id||'other')}
     if(row.kind==='bill-payment'){const x=row.raw as RecPay;setEditAmount(String(Number(x.amount_minor)/100).replace('.',','));setEditDescription(x.recurring_bills?.name||'')}
     if(row.kind==='card-payment'){const x=row.raw as CardPay;setEditAmount(String(Number(x.amount_minor)/100).replace('.',','));setEditDescription(x.credit_cards?.name||'')}
     if(row.kind==='work-income'||row.kind==='work-cost'){
@@ -242,7 +246,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     if(editing.kind==='tx'){
       const x=editing.raw as Tx;const value=minor(editAmount);
       if(x.source_type==='debt_payment'&&x.source_id){({error}=await s.rpc('update_debt_payment',{p_payment_id:x.source_id,p_amount_minor:value,p_paid_on:editDate,p_payment_method:x.payment_method||'pix'}))}
-      else({error}=await s.from('transactions').update({amount_minor:value,occurred_on:editDate,description:editDescription.trim()||null}).eq('id',x.id).eq('user_id',user.id));
+      else({error}=await s.from('transactions').update({amount_minor:value,occurred_on:editDate,description:editDescription.trim()||null,category_id:editCategory}).eq('id',x.id).eq('user_id',user.id));
     }else if(editing.kind==='bill-payment'){
       const x=editing.raw as RecPay;({error}=await s.from('recurring_bill_payments').update({amount_minor:minor(editAmount),paid_on:editDate,paid_at:new Date(editDate+'T12:00:00').toISOString()}).eq('id',x.id).eq('user_id',user.id));
     }else if(editing.kind==='card-payment'){
@@ -297,11 +301,18 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     <p className="sectionLead">{t('move.lead')}</p>
     <div className="movementTabs"><button className={view==='today'?'active':''} onClick={()=>setView('today')}>{t('move.today')}</button><button className={view==='history'?'active':''} onClick={()=>setView('history')}>{t('move.history')}</button><button className={view==='pending'?'active':''} onClick={()=>setView('pending')}>{t('move.pending')}</button></div>
 
-    {view==='history'&&<div className="historyFilters"><div className="filterRow"><button className={range==='7'?'active':''} onClick={()=>setRange('7')}>{t('move.range7')}</button><button className={range==='30'?'active':''} onClick={()=>setRange('30')}>{t('move.range30')}</button><button className={range==='month'?'active':''} onClick={()=>setRange('month')}>{t('move.thisMonth')}</button><button className={range==='custom'?'active':''} onClick={()=>setRange('custom')}>{t('move.custom')}</button></div>{range==='custom'&&<div className="dateRange"><label>{t('common.from')}<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>{t('common.to')}<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>}</div>}
+    {view==='history'&&<div className="historyFilters">
+      <div className="historyTypeFilter">
+        <button className={historyFlow==='all'?'active':''} onClick={()=>setHistoryFlow('all')}>{t('move.allMovements')}</button>
+        <button className={historyFlow==='income'?'active incomeFilter':''} onClick={()=>setHistoryFlow('income')}>{t('move.onlyIncome')}</button>
+        <button className={historyFlow==='expense'?'active expenseFilter':''} onClick={()=>setHistoryFlow('expense')}>{t('move.onlyExpenses')}</button>
+      </div>
+      <div className="filterRow"><button className={range==='7'?'active':''} onClick={()=>setRange('7')}>{t('move.range7')}</button><button className={range==='30'?'active':''} onClick={()=>setRange('30')}>{t('move.range30')}</button><button className={range==='month'?'active':''} onClick={()=>setRange('month')}>{t('move.thisMonth')}</button><button className={range==='custom'?'active':''} onClick={()=>setRange('custom')}>{t('move.custom')}</button></div>{range==='custom'&&<div className="dateRange"><label>{t('common.from')}<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>{t('common.to')}<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>}
+    </div>}
 
     {view!=='pending'&&<>
       <section className="cashSummary"><article><small>{t('move.entered')}</small><strong className="positive">+ {currency(totals.plus)}</strong></article><article><small>{t('move.outflow')}</small><strong className="negative">− {currency(totals.minus)}</strong></article><article className="cashBalance"><small>{t('move.balance')}</small><strong className={totals.balance>=0?'positive':'negative'}>{currency(totals.balance)}</strong></article><p>{t('move.actualCash')}</p></section>
-      {loading?<section className="panel"><span className="loader"/></section>:cashRows.length===0?<section className="empty"><b>{view==='today'?t('move.noToday'):t('move.noHistory')}</b></section>:view==='history'?<div className="historyCategoryStack">{historyGroups.map(group=><section className="panel historyCategoryGroup" key={group.key}><div className="historyCategoryHeader"><div><small>{t('common.category').toUpperCase()}</small><h2>{group.label}</h2></div><div className="historyCategoryTotals">{group.plus>0&&<span className="positive">+ {currency(group.plus)}</span>}{group.minus>0&&<span className="negative">− {currency(group.minus)}</span>}<b className={group.plus-group.minus>=0?'positive':'negative'}>{currency(group.plus-group.minus)}</b></div></div><div className="ledgerList">{group.rows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</div></section>)}</div>:<section className="ledgerList">{cashRows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</section>}
+      {loading?<section className="panel"><span className="loader"/></section>:visibleHistoryRows.length===0?<section className="empty"><b>{view==='today'?t('move.noToday'):t('move.noHistory')}</b></section>:view==='history'?<div className="historyCategoryStack">{historyGroups.map(group=><section className="panel historyCategoryGroup" key={group.key}><div className="historyCategoryHeader"><div><small>{t('common.category').toUpperCase()}</small><h2>{group.label}</h2></div><div className="historyCategoryTotals">{group.plus>0&&<span className="positive">+ {currency(group.plus)}</span>}{group.minus>0&&<span className="negative">− {currency(group.minus)}</span>}<b className={group.plus-group.minus>=0?'positive':'negative'}>{currency(group.plus-group.minus)}</b></div></div><div className="ledgerList">{group.rows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</div></section>)}</div>:<section className="ledgerList">{cashRows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</section>}
     </>}
 
     {view==='pending'&&<>
@@ -314,7 +325,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
     {notice&&<div className="authMessage">{notice}</div>}
 
-    {editing&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}><form className="modalCard" onSubmit={saveEdit}><div className="modalHead"><h2>{t('move.editCash')}</h2><button type="button" onClick={()=>setEditing(null)}>×</button></div><label>{t('common.date')}<input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} required/></label>{editing.kind==='tx'&&<><label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('common.description')}<input value={editDescription} onChange={e=>setEditDescription(e.target.value)}/></label></>}{editing.kind==='bill-payment'&&<label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label>}{(editing.kind==='work-income'||editing.kind==='work-cost')&&(()=>{const wx=editing.raw as Work;const transport=wx.income_sources?.kind==='driver'||wx.income_sources?.kind==='delivery';return <><label>{t('work.gross')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('work.hours')}<input value={editHours} onChange={e=>setEditHours(e.target.value)} inputMode="decimal" required/></label>{transport&&<><label>{t('work.km')} <small>({t('common.optional')})</small><input value={editKm} onChange={e=>setEditKm(e.target.value)} inputMode="decimal"/></label><label>{t('work.percent')} <small>({t('common.optional')})</small><input value={editFuelPercent} onChange={e=>setEditFuelPercent(e.target.value)} inputMode="decimal"/></label></>}<label>{t('work.extra')}<input value={editExtra} onChange={e=>setEditExtra(e.target.value)} inputMode="decimal"/></label></>})()}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditing(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
+    {editing&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}><form className="modalCard" onSubmit={saveEdit}><div className="modalHead"><h2>{t('move.editCash')}</h2><button type="button" onClick={()=>setEditing(null)}>×</button></div><label>{t('common.date')}<input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} required/></label>{editing.kind==='tx'&&(()=>{const txRow=editing.raw as Tx;return <><label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('common.description')}<input value={editDescription} onChange={e=>setEditDescription(e.target.value)}/></label>{txRow.source_type!=='debt_payment'&&<label>{t('common.category')}<select value={editCategory} onChange={e=>setEditCategory(e.target.value)}>{categoryOptions(txRow.type,customCategories,t).map(cat=><option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>)}</select></label>}</>})()}{editing.kind==='bill-payment'&&<label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label>}{(editing.kind==='work-income'||editing.kind==='work-cost')&&(()=>{const wx=editing.raw as Work;const transport=wx.income_sources?.kind==='driver'||wx.income_sources?.kind==='delivery';return <><label>{t('work.gross')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('work.hours')}<input value={editHours} onChange={e=>setEditHours(e.target.value)} inputMode="decimal" required/></label>{transport&&<><label>{t('work.km')} <small>({t('common.optional')})</small><input value={editKm} onChange={e=>setEditKm(e.target.value)} inputMode="decimal"/></label><label>{t('work.percent')} <small>({t('common.optional')})</small><input value={editFuelPercent} onChange={e=>setEditFuelPercent(e.target.value)} inputMode="decimal"/></label></>}<label>{t('work.extra')}<input value={editExtra} onChange={e=>setEditExtra(e.target.value)} inputMode="decimal"/></label></>})()}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditing(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
 
     {purchaseEdit&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPurchaseEdit(null)}}><form className="modalCard" onSubmit={savePurchase}><div className="modalHead"><h2>{t('common.edit')} · {t('move.cardCommitment')}</h2><button type="button" onClick={()=>setPurchaseEdit(null)}>×</button></div><label>{t('common.description')}<input value={purchaseDesc} onChange={e=>setPurchaseDesc(e.target.value)}/></label><label>{t('cards.total')}<input value={purchaseTotal} onChange={e=>setPurchaseTotal(e.target.value)} inputMode="decimal" required/></label><label>{t('cards.installments')}<input type="number" min="1" max="60" value={purchaseCount} onChange={e=>setPurchaseCount(e.target.value)} required/></label><label>{t('cards.purchaseDate')}<input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} required/></label><label>{t('cards.firstDueDate')} <small>({t('common.optional')})</small><input type="date" value={purchaseFirstDueDate} onChange={e=>setPurchaseFirstDueDate(e.target.value)}/><small>{t('cards.firstDueDateHelp')}</small></label><label>{t('common.category')}<input value={purchaseCategory} onChange={e=>setPurchaseCategory(e.target.value)} /></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setPurchaseEdit(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
   </div>;

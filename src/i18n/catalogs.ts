@@ -585,5 +585,55 @@ const arDueDateRelease=replace(arShipRelease,{
 'bills.dueDateThisMonth':'استحقاق هذا الشهر'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptDueDateRelease,en:enDueDateRelease,es:esDueDateRelease,fr:frDueDateRelease,ar:arDueDateRelease,de:deDueDateRelease};
-export type TranslationKey=keyof typeof ptDueDateRelease;
+
+const ptHistoryRelease=replace(ptDueDateRelease,{
+'move.history':'Histórico financeiro',
+'move.allMovements':'Todos',
+'move.onlyIncome':'Entradas',
+'move.onlyExpenses':'Saídas',
+'more.debtsHelp':'Saldo devedor, abatimentos e histórico de pagamentos',
+'more.reportsHelp':'Somente análises e totais, sem editar lançamentos'
+});
+const enHistoryRelease=replace(enDueDateRelease,{
+'move.history':'Financial history',
+'move.allMovements':'All',
+'move.onlyIncome':'Income',
+'move.onlyExpenses':'Outflows',
+'more.debtsHelp':'Outstanding balance, paydowns and payment history',
+'more.reportsHelp':'Analysis and totals only, without editing entries'
+});
+const esHistoryRelease=replace(esDueDateRelease,{
+'move.history':'Historial financiero',
+'move.allMovements':'Todos',
+'move.onlyIncome':'Entradas',
+'move.onlyExpenses':'Salidas',
+'more.debtsHelp':'Saldo de deuda, abonos e historial de pagos',
+'more.reportsHelp':'Solo análisis y totales, sin editar movimientos'
+});
+const frHistoryRelease=replace(frDueDateRelease,{
+'move.history':'Historique financier',
+'move.allMovements':'Tous',
+'move.onlyIncome':'Entrées',
+'move.onlyExpenses':'Sorties',
+'more.debtsHelp':'Solde de dette, remboursements et historique des paiements',
+'more.reportsHelp':'Analyses et totaux uniquement, sans modifier les opérations'
+});
+const deHistoryRelease=replace(deDueDateRelease,{
+'move.history':'Finanzverlauf',
+'move.allMovements':'Alle',
+'move.onlyIncome':'Einnahmen',
+'move.onlyExpenses':'Ausgaben',
+'more.debtsHelp':'Schuldsaldo, Tilgungen und Zahlungsverlauf',
+'more.reportsHelp':'Nur Analysen und Summen, ohne Buchungen zu bearbeiten'
+});
+const arHistoryRelease=replace(arDueDateRelease,{
+'move.history':'السجل المالي',
+'move.allMovements':'الكل',
+'move.onlyIncome':'الإيرادات',
+'move.onlyExpenses':'المصروفات',
+'more.debtsHelp':'رصيد الدين والتسديدات وسجل المدفوعات',
+'more.reportsHelp':'تحليلات وإجماليات فقط من دون تعديل الحركات'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptHistoryRelease,en:enHistoryRelease,es:esHistoryRelease,fr:frHistoryRelease,ar:arHistoryRelease,de:deHistoryRelease};
+export type TranslationKey=keyof typeof ptHistoryRelease;
