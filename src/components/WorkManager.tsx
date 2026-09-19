@@ -17,13 +17,16 @@ function periodStart(period:string){const d=new Date();if(period==='daily')retur
 const vehicleLabel=(type:string)=>type==='motorcycle'?'Moto':type==='bicycle'?'Bicicleta':'Carro';
 const energyLabel=(type:string)=>({gasoline:'Gasolina',ethanol:'Etanol',diesel:'Diesel',hybrid:'Híbrido',electric:'Elétrico',human:'Sem combustível'}[type]||type);
 
-function energyCostFor(vehicle:Vehicle,distanceKm:number,manualMinor:number){
+function energyCostFor(vehicle:Vehicle,distanceKm:number,grossMinor:number,fuelPercent:number){
   if(vehicle.energy_type==='human')return 0;
-  if(manualMinor>0)return manualMinor;
-  const efficiency=Number(vehicle.efficiency)||0;
-  const price=Number(vehicle.unit_price_minor)||0;
-  if(distanceKm<=0||efficiency<=0||price<=0)return 0;
-  return Math.round((distanceKm/efficiency)*price);
+  if(distanceKm>0){
+    const efficiency=Number(vehicle.efficiency)||0;
+    const price=Number(vehicle.unit_price_minor)||0;
+    if(efficiency<=0||price<=0)return 0;
+    return Math.round((distanceKm/efficiency)*price);
+  }
+  if(fuelPercent>0)return Math.round(grossMinor*(fuelPercent/100));
+  return 0;
 }
 
 export function WorkManager(){
@@ -46,7 +49,7 @@ export function WorkManager(){
   const[newSourceKind,setNewSourceKind]=useState<'driver'|'delivery'>('driver');
   const[gross,setGross]=useState('');
   const[km,setKm]=useState('');
-  const[energySpent,setEnergySpent]=useState('');
+  const[fuelPercent,setFuelPercent]=useState('');
   const[hours,setHours]=useState('');
   const[extra,setExtra]=useState('0');
   const[notice,setNotice]=useState('');
@@ -56,7 +59,7 @@ export function WorkManager(){
   const[editVehicleId,setEditVehicleId]=useState('');
   const[editGross,setEditGross]=useState('');
   const[editKm,setEditKm]=useState('');
-  const[editEnergySpent,setEditEnergySpent]=useState('');
+  const[editFuelPercent,setEditFuelPercent]=useState('');
   const[editHours,setEditHours]=useState('');
   const[editExtra,setEditExtra]=useState('');
   const[editDate,setEditDate]=useState('');
@@ -110,26 +113,27 @@ export function WorkManager(){
     const extraCost=sessions.reduce((a,b)=>a+Number(b.extra_work_cost_minor),0);
     const distance=sessions.reduce((a,b)=>a+Number(b.distance_km),0);
     const workedHours=sessions.reduce((a,b)=>a+Number(b.minutes_worked),0)/60;
+    const incomplete=sessions.some(session=>{const v=vehicles.find(item=>item.id===session.vehicle_id);return v?.energy_type!=='human'&&Number(session.distance_km)<=0&&Number(session.energy_cost_minor)<=0});
     const operationalCost=energyCost+extraCost;
     const net=grossIncome-operationalCost;
-    return{gross:grossIncome,energyCost,extraCost,operationalCost,distance,h:workedHours,net,grossPerHour:workedHours>0?grossIncome/workedHours:0,netPerHour:workedHours>0?net/workedHours:0,perKm:distance>0?net/distance:0}
-  },[sessions]);
+    return{gross:grossIncome,energyCost,extraCost,operationalCost,distance,h:workedHours,net,incomplete,grossPerHour:workedHours>0?grossIncome/workedHours:0,netPerHour:workedHours>0?net/workedHours:0,perKm:distance>0?net/distance:0}
+  },[sessions,vehicles]);
 
   const sourceStats=useMemo(()=>sources.map(source=>{
-    const rows=sessions.filter(s=>s.income_source_id===source.id);
+    const rows=sessions.filter(s=>{const v=vehicles.find(item=>item.id===s.vehicle_id);const complete=v?.energy_type==='human'||Number(s.distance_km)>0||Number(s.energy_cost_minor)>0;return s.income_source_id===source.id&&complete});
     const h=rows.reduce((a,b)=>a+Number(b.minutes_worked),0)/60;
     const grossIncome=rows.reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const cost=rows.reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0);
     const net=grossIncome-cost;
     return{id:source.id,name:source.name,h,netPerHour:h>0?net/h:0}
-  }).filter(x=>x.h>0),[sources,sessions]);
+  }).filter(x=>x.h>0),[sources,sessions,vehicles]);
 
   const goalForecast=useMemo(()=>{
     if(!goal)return null;
     const start=periodStart(goal.period);
     const current=sessions.filter(s=>s.worked_on>=start).reduce((sum,s)=>sum+(goal.basis==='gross'?Number(s.gross_income_minor):Number(s.gross_income_minor)-Number(s.energy_cost_minor)-Number(s.extra_work_cost_minor)),0);
     const remaining=Math.max(0,Number(goal.target_minor)-current);
-    const historyReady=sessions.length>=3&&stats.h>=3;
+    const historyReady=sessions.length>=3&&stats.h>=3&&(goal.basis==='gross'||!stats.incomplete);
     const rate=goal.basis==='gross'?stats.grossPerHour:stats.netPerHour;
     return{current,remaining,historyReady,hours:historyReady?hoursToGoal(remaining,rate):null}
   },[goal,sessions,stats]);
@@ -186,17 +190,18 @@ export function WorkManager(){
     if(!vehicle){setNotice('Escolha um veículo primeiro.');return}
     const enteredDistance=decimal(km);
     const workedHours=decimal(hours);
-    const manualEnergy=minor(energySpent);
+    const percent=decimal(fuelPercent);
+    const grossMinor=minor(gross);
     if(workedHours<=0){setNotice('Informe as horas trabalhadas.');return}
-    const fuelBasisMissing=vehicle.energy_type!=='human'&&enteredDistance<=0&&manualEnergy<=0;
-    const energyCost=energyCostFor(vehicle,enteredDistance,manualEnergy);
+    if(vehicle.energy_type!=='human'&&enteredDistance<=0&&(percent<=0||percent>100)){setNotice('Informe os KM rodados ou a % estimada de combustível.');return}
+    const energyCost=energyCostFor(vehicle,enteredDistance,grossMinor,percent);
     setSavingSession(true);setNotice('');
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){setSavingSession(false);location.href='/entrar';return}
-    const{error}=await s.from('work_sessions').insert({user_id:user.id,vehicle_id:vehicle.id,income_source_id:sourceId||null,worked_on:isoDate(new Date()),gross_income_minor:minor(gross),energy_cost_minor:energyCost,extra_work_cost_minor:minor(extra),distance_km:Number(enteredDistance.toFixed(2)),minutes_worked:Math.round(workedHours*60)});
+    const{error}=await s.from('work_sessions').insert({user_id:user.id,vehicle_id:vehicle.id,income_source_id:sourceId||null,worked_on:isoDate(new Date()),gross_income_minor:grossMinor,energy_cost_minor:energyCost,extra_work_cost_minor:minor(extra),distance_km:Number(enteredDistance.toFixed(2)),minutes_worked:Math.round(workedHours*60)});
     if(error){setSavingSession(false);setNotice('Não foi possível salvar a jornada.');return}
-    const net=minor(gross)-energyCost-minor(extra);
-    setGross('');setKm('');setEnergySpent('');setHours('');setExtra('0');
-    setNotice(fuelBasisMissing?'Jornada salva. KM ficou vazio, então o combustível não foi calculado.':'Jornada salva. Combustível '+brl(energyCost)+' · líquido '+brl(net)+'.');
+    const net=grossMinor-energyCost-minor(extra);
+    setGross('');setKm('');setFuelPercent('');setHours('');setExtra('0');
+    setNotice('Jornada salva. Combustível '+brl(energyCost)+' · líquido '+brl(net)+'.');
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();setSavingSession(false);
   }
 
@@ -208,27 +213,28 @@ export function WorkManager(){
     setEditingSessionId(session.id);setEditVehicleId(session.vehicle_id||selectedVehicleId);
     setEditGross(String(Number(session.gross_income_minor)/100).replace('.',','));
     setEditKm(String(Number(session.distance_km)).replace('.',','));
-    setEditEnergySpent('');
+    const inferredPercent=Number(session.distance_km)<=0&&Number(session.gross_income_minor)>0&&Number(session.energy_cost_minor)>0?(Number(session.energy_cost_minor)/Number(session.gross_income_minor))*100:0;
+    setEditFuelPercent(inferredPercent>0?inferredPercent.toFixed(1).replace('.',','):'');
     setEditHours(String(Number(session.minutes_worked)/60).replace('.',','));
     setEditExtra(String(Number(session.extra_work_cost_minor)/100).replace('.',','));
     setEditDate(session.worked_on);setEditSourceId(session.income_source_id||'');setNotice('');
   }
-  function cancelSessionEdit(){setEditingSessionId(null);setEditVehicleId('');setEditGross('');setEditKm('');setEditEnergySpent('');setEditHours('');setEditExtra('');setEditDate('');setEditSourceId('')}
+  function cancelSessionEdit(){setEditingSessionId(null);setEditVehicleId('');setEditGross('');setEditKm('');setEditFuelPercent('');setEditHours('');setEditExtra('');setEditDate('');setEditSourceId('')}
 
   async function updateSession(e:FormEvent,session:Session){
     e.preventDefault();
     const editVehicle=vehicles.find(item=>item.id===editVehicleId)||vehicle;
     if(!editVehicle)return;
-    const workedHours=decimal(editHours);const enteredDistance=decimal(editKm);const manualEnergy=minor(editEnergySpent);
+    const workedHours=decimal(editHours);const enteredDistance=decimal(editKm);const percent=decimal(editFuelPercent);const grossMinor=minor(editGross);
     if(workedHours<=0){setNotice('Informe as horas trabalhadas.');return}
-    const fuelBasisMissing=editVehicle.energy_type!=='human'&&enteredDistance<=0&&manualEnergy<=0;
-    const energyCost=energyCostFor(editVehicle,enteredDistance,manualEnergy);
+    if(editVehicle.energy_type!=='human'&&enteredDistance<=0&&(percent<=0||percent>100)){setNotice('Informe os KM rodados ou a % estimada de combustível.');return}
+    const energyCost=energyCostFor(editVehicle,enteredDistance,grossMinor,percent);
     setEditingSession(true);
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}
-    const{error}=await s.from('work_sessions').update({vehicle_id:editVehicle.id,income_source_id:editSourceId||null,worked_on:editDate,gross_income_minor:minor(editGross),energy_cost_minor:energyCost,extra_work_cost_minor:minor(editExtra),distance_km:Number(enteredDistance.toFixed(2)),minutes_worked:Math.round(workedHours*60)}).eq('id',session.id).eq('user_id',user.id);
+    const{error}=await s.from('work_sessions').update({vehicle_id:editVehicle.id,income_source_id:editSourceId||null,worked_on:editDate,gross_income_minor:grossMinor,energy_cost_minor:energyCost,extra_work_cost_minor:minor(editExtra),distance_km:Number(enteredDistance.toFixed(2)),minutes_worked:Math.round(workedHours*60)}).eq('id',session.id).eq('user_id',user.id);
     setEditingSession(false);
     if(error){setNotice('Não foi possível atualizar a jornada.');return}
-    cancelSessionEdit();setNotice(fuelBasisMissing?'Jornada atualizada. KM ficou vazio, então o combustível não foi calculado.':'Jornada atualizada e combustível recalculado.');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    cancelSessionEdit();setNotice('Jornada atualizada. Combustível '+brl(energyCost)+' · líquido '+brl(grossMinor-energyCost-minor(editExtra))+'.');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
 
   async function deleteSession(session:Session){
@@ -258,41 +264,39 @@ export function WorkManager(){
     </section>}
 
     {vehicle&&!showVehicleForm&&<>
-      <div className="metricGrid"><article><small>Líquido / hora</small><b>{stats.h?brl(Math.round(stats.netPerHour)):'—'}</b></article><article><small>Líquido / km</small><b>{stats.distance?brl(Math.round(stats.perKm)):'—'}</b></article><article><small>Combustível / energia</small><b>{brl(stats.energyCost)}</b></article><article><small>Líquido operacional</small><b>{brl(stats.net)}</b></article></div>
+      <div className="metricGrid"><article><small>Líquido / hora</small><b>{stats.h&&!stats.incomplete?brl(Math.round(stats.netPerHour)):'—'}</b></article><article><small>Líquido / km</small><b>{stats.distance&&!stats.incomplete?brl(Math.round(stats.perKm)):'—'}</b></article><article><small>Combustível / energia</small><b>{brl(stats.energyCost)}</b></article><article><small>Líquido operacional</small><b>{stats.incomplete?'—':brl(stats.net)}</b></article></div>
 
       {goal&&goalForecast&&<section className="panel"><h2>{goal.name}</h2><p className="lead">{brl(goalForecast.current)} de {brl(Number(goal.target_minor))} neste período.</p>{goalForecast.remaining===0?<div className="goalForecast good"><b>Meta alcançada</b><span>Você já atingiu essa meta.</span></div>:goalForecast.historyReady&&goalForecast.hours!==null?<div className="goalForecast"><b>Estimativa: {goalForecast.hours.toFixed(1)} h</b><span>Baseada apenas no seu próprio histórico dos últimos 30 dias.</span></div>:<div className="note">Registre pelo menos 3 jornadas e 3 horas de trabalho para o Devinx estimar quanto falta trabalhar.</div>}</section>}
 
       <section className="panel">
         <h2>Registrar jornada</h2>
-        <p className="lead">Informe o bruto e as horas. KM é opcional; quando informado, o Devinx calcula o combustível automaticamente.</p>
+        <p className="lead">Para calcular o líquido, informe os KM rodados ou uma % estimada de combustível.</p>
         {vehicles.length>1&&<label className="standaloneLabel">Veículo<select value={vehicle.id} onChange={e=>selectVehicle(e.target.value)}>{vehicles.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>}
         {sources.length>0&&<label className="standaloneLabel">Fonte de renda<select value={sourceId} onChange={e=>setSourceId(e.target.value)}>{sources.map(source=><option value={source.id} key={source.id}>{source.name}</option>)}</select></label>}
         <form className="entryForm compactWorkForm" onSubmit={saveSession}>
           <label>Ganhos brutos<input required value={gross} onChange={e=>setGross(e.target.value)} placeholder="0,00" inputMode="decimal"/></label>
           <label>Horas trabalhadas<input required value={hours} onChange={e=>setHours(e.target.value)} placeholder="Ex.: 2" inputMode="decimal"/></label>
-          {vehicle.energy_type!=='human'&&<label>Quilômetros rodados <small>(opcional · calcula combustível)</small><input value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex.: 18,4" inputMode="decimal"/></label>}
-          {vehicle.energy_type!=='human'&&<label>Custo real de combustível desta jornada <small>(opcional)</small><input value={energySpent} onChange={e=>setEnergySpent(e.target.value)} placeholder="Só se souber o custo desta jornada" inputMode="decimal"/></label>}
+          {vehicle.energy_type!=='human'&&<label>Quilômetros rodados <small>(opcional)</small><input value={km} onChange={e=>setKm(e.target.value)} placeholder="Ex.: 18,4" inputMode="decimal"/></label>}
+          {vehicle.energy_type!=='human'&&<label>% estimada de combustível <small>(opcional se informou KM)</small><input value={fuelPercent} onChange={e=>setFuelPercent(e.target.value)} placeholder="Ex.: 18" inputMode="decimal"/></label>}
           <label>Outros custos do trabalho <small>(opcional)</small><input value={extra} onChange={e=>setExtra(e.target.value)} placeholder="0,00" inputMode="decimal"/></label>
           <button className="primary saveJourneyButton" disabled={savingSession}>{savingSession?<><span className="buttonSpinner" aria-hidden="true"/>Salvando...</>:'Salvar jornada'}</button>
         </form>
-        {vehicle.energy_type!=='human'&&<p className="smartHint">Automático: km ÷ {vehicle.efficiency||'consumo'} × {brl(Number(vehicle.unit_price_minor||0))}/{vehicle.energy_type==='electric'?'kWh':'L'}. Abastecer o tanque não é o mesmo que consumir aquele valor nesta jornada.</p>}
         <div className="inlineAdd sourceAdd"><select value={newSourceKind} onChange={e=>setNewSourceKind(e.target.value as 'driver'|'delivery')}><option value="driver">Motorista</option><option value="delivery">Entregador</option></select><input value={newSource} onChange={e=>setNewSource(e.target.value)} placeholder="Adicionar outra fonte"/><button type="button" className="secondary" onClick={addSource}>Adicionar</button></div>
       </section>
 
-      <section className="panel recentWorkPanel"><div className="sectionHeading"><div><small>HISTÓRICO</small><h2>Jornadas recentes</h2></div><span>{history.length} registros</span></div>{history.length===0?<div className="empty"><b>Nenhuma jornada registrada</b><p>Quando salvar a primeira, ela aparecerá aqui.</p></div>:<div className="workSessionList">{history.map(session=>{const net=Number(session.gross_income_minor)-Number(session.energy_cost_minor)-Number(session.extra_work_cost_minor);return <article key={session.id} className={editingSessionId===session.id?'workSessionCard editing':'workSessionCard'}><div className="workSessionMain"><div><b>{sessionSourceName(session.income_source_id)} · {sessionVehicleName(session.vehicle_id)}</b><small>{new Date(session.worked_on+'T12:00:00').toLocaleDateString('pt-BR')} · {(Number(session.minutes_worked)/60).toFixed(1)} h · {Number(session.distance_km).toFixed(1)} km</small><small>Bruto {brl(Number(session.gross_income_minor))} · combustível {brl(Number(session.energy_cost_minor))} · outros {brl(Number(session.extra_work_cost_minor))}</small></div><strong className={net>=0?'positive':'negative'}>{brl(net)}</strong></div><div className="workSessionActions"><button type="button" onClick={()=>editingSessionId===session.id?cancelSessionEdit():startSessionEdit(session)}>{editingSessionId===session.id?'Cancelar':'Editar'}</button><button type="button" className="dangerText" onClick={()=>deleteSession(session)}>Excluir</button></div>{editingSessionId===session.id&&<form className="workSessionEditForm" onSubmit={e=>updateSession(e,session)}>
+      <section className="panel recentWorkPanel"><div className="sectionHeading"><div><small>HISTÓRICO</small><h2>Jornadas recentes</h2></div><span>{history.length} registros</span></div>{history.length===0?<div className="empty"><b>Nenhuma jornada registrada</b><p>Quando salvar a primeira, ela aparecerá aqui.</p></div>:<div className="workSessionList">{history.map(session=>{const net=Number(session.gross_income_minor)-Number(session.energy_cost_minor)-Number(session.extra_work_cost_minor);const sv=sessionVehicle(session.vehicle_id);const complete=sv?.energy_type==='human'||Number(session.distance_km)>0||Number(session.energy_cost_minor)>0;return <article key={session.id} className={editingSessionId===session.id?'workSessionCard editing':'workSessionCard'}><div className="workSessionMain"><div><b>{sessionSourceName(session.income_source_id)} · {sessionVehicleName(session.vehicle_id)}</b><small>{new Date(session.worked_on+'T12:00:00').toLocaleDateString('pt-BR')} · {(Number(session.minutes_worked)/60).toFixed(1)} h · {Number(session.distance_km).toFixed(1)} km</small><small>Bruto {brl(Number(session.gross_income_minor))} · combustível {brl(Number(session.energy_cost_minor))} · outros {brl(Number(session.extra_work_cost_minor))}</small></div><strong className={complete?(net>=0?'positive':'negative'):''}>{complete?brl(net):'—'}</strong></div><div className="workSessionActions"><button type="button" onClick={()=>editingSessionId===session.id?cancelSessionEdit():startSessionEdit(session)}>{editingSessionId===session.id?'Cancelar':'Editar'}</button><button type="button" className="dangerText" onClick={()=>deleteSession(session)}>Excluir</button></div>{editingSessionId===session.id&&<form className="workSessionEditForm" onSubmit={e=>updateSession(e,session)}>
             {vehicles.length>0&&<label>Veículo<select value={editVehicleId} onChange={e=>setEditVehicleId(e.target.value)}>{vehicles.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>}
             {sources.length>0&&<label>Fonte<select value={editSourceId} onChange={e=>setEditSourceId(e.target.value)}><option value="">Trabalho</option>{sources.map(source=><option value={source.id} key={source.id}>{source.name}</option>)}</select></label>}
             <label>Data<input type="date" required value={editDate} onChange={e=>setEditDate(e.target.value)}/></label>
             <label>Ganhos<input required inputMode="decimal" value={editGross} onChange={e=>setEditGross(e.target.value)}/></label>
             <label>Horas<input required inputMode="decimal" value={editHours} onChange={e=>setEditHours(e.target.value)}/></label>
-            <label>Quilômetros<input inputMode="decimal" value={editKm} onChange={e=>setEditKm(e.target.value)}/></label>
-            {(vehicles.find(item=>item.id===editVehicleId)||vehicle).energy_type!=='human'&&<label>Custo real de combustível <small>(opcional)</small><input inputMode="decimal" value={editEnergySpent} onChange={e=>setEditEnergySpent(e.target.value)}/></label>}
+            <label>Quilômetros <small>(opcional)</small><input inputMode="decimal" value={editKm} onChange={e=>setEditKm(e.target.value)}/></label>
+            {(vehicles.find(item=>item.id===editVehicleId)||vehicle).energy_type!=='human'&&<label>% estimada de combustível <small>(opcional se informou KM)</small><input inputMode="decimal" value={editFuelPercent} onChange={e=>setEditFuelPercent(e.target.value)} placeholder="Ex.: 18"/></label>}
             <label>Outros custos<input inputMode="decimal" value={editExtra} onChange={e=>setEditExtra(e.target.value)}/></label>
             <button className="primary" disabled={editingSession}>{editingSession?<><span className="buttonSpinner" aria-hidden="true"/>Salvando...</>:'Salvar alteração'}</button>
           </form>}</article>})}</div>}</section>
 
       {sourceStats.length>=2&&<section className="panel"><h2>Comparação pelas suas fontes</h2><p className="lead">Somente com os seus próprios registros dos últimos 30 dias.</p><div className="sourceComparison">{sourceStats.map(source=><article key={source.id}><b>{source.name}</b><strong>{brl(Math.round(source.netPerHour))}/h</strong><small>{source.h.toFixed(1)} h registradas</small></article>)}</div></section>}
-      <section className="note">O líquido operacional usa apenas combustível/energia calculado pelo veículo e custos que você informou. Não inventamos manutenção, pneus ou depreciação.</section>
     </>}
 
     {notice&&<div className="authMessage">{notice}</div>}
