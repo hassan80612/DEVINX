@@ -1,6 +1,5 @@
--- Prepared only. Apply to production together with the matching frontend release.
--- Monthly installments, partial recurring payments, per-month overrides,
--- daily-goal horizon and isolated financial reserves.
+-- Devinx finance package: recurring installments, partial payments,
+-- isolated reserves, purchase goal and future daily-goal horizon.
 
 alter table public.recurring_bills
   add column if not exists start_month date,
@@ -52,13 +51,11 @@ alter table public.profiles
 create table if not exists public.reserve_entries(
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  kind text not null check(kind in ('deposit','use')),
+  kind text not null check(kind in ('deposit','withdraw')),
   amount_minor bigint not null check(amount_minor>0),
   occurred_on date not null default current_date,
-  target_date date,
   note text,
-  created_at timestamptz not null default now(),
-  check(kind='deposit' or target_date is not null)
+  created_at timestamptz not null default now()
 );
 alter table public.reserve_entries enable row level security;
 drop policy if exists reserve_entries_own on public.reserve_entries;
@@ -68,13 +65,34 @@ create policy reserve_entries_own
   using((select auth.uid())=user_id)
   with check((select auth.uid())=user_id);
 create index if not exists reserve_entries_user_date_idx
-  on public.reserve_entries(user_id,occurred_on desc);
+  on public.reserve_entries(user_id,occurred_on desc,created_at desc);
+
+create table if not exists public.reserve_purchase_goals(
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  description text not null check(length(trim(description)) between 1 and 180),
+  target_minor bigint not null check(target_minor>0),
+  target_date date,
+  is_active boolean not null default true,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table public.reserve_purchase_goals enable row level security;
+drop policy if exists reserve_purchase_goals_own on public.reserve_purchase_goals;
+create policy reserve_purchase_goals_own
+  on public.reserve_purchase_goals
+  for all to authenticated
+  using((select auth.uid())=user_id)
+  with check((select auth.uid())=user_id);
+create unique index if not exists reserve_purchase_goals_one_active_idx
+  on public.reserve_purchase_goals(user_id)
+  where is_active=true;
 
 create or replace function public.record_reserve_entry(
   p_kind text,
   p_amount_minor bigint,
   p_occurred_on date default current_date,
-  p_target_date date default null,
   p_note text default null
 )
 returns uuid
@@ -88,25 +106,67 @@ declare
   new_id uuid;
 begin
   if uid is null then raise exception 'not authenticated'; end if;
-  if p_kind not in ('deposit','use') then raise exception 'invalid reserve kind'; end if;
+  if p_kind not in ('deposit','withdraw') then raise exception 'invalid reserve kind'; end if;
   if p_amount_minor is null or p_amount_minor<=0 then raise exception 'invalid amount'; end if;
-  if p_kind='use' and p_target_date is null then raise exception 'target date required'; end if;
 
   select coalesce(sum(case when kind='deposit' then amount_minor else -amount_minor end),0)
   into current_balance
   from public.reserve_entries
   where user_id=uid;
 
-  if p_kind='use' and p_amount_minor>current_balance then
+  if p_kind='withdraw' and p_amount_minor>current_balance then
     raise exception 'insufficient reserve';
   end if;
 
-  insert into public.reserve_entries(user_id,kind,amount_minor,occurred_on,target_date,note)
-  values(uid,p_kind,p_amount_minor,coalesce(p_occurred_on,current_date),p_target_date,nullif(trim(p_note),''))
+  insert into public.reserve_entries(user_id,kind,amount_minor,occurred_on,note)
+  values(uid,p_kind,p_amount_minor,coalesce(p_occurred_on,current_date),nullif(trim(p_note),''))
   returning id into new_id;
   return new_id;
 end;
 $$;
 
-revoke all on function public.record_reserve_entry(text,bigint,date,date,text) from public,anon;
-grant execute on function public.record_reserve_entry(text,bigint,date,date,text) to authenticated;
+revoke all on function public.record_reserve_entry(text,bigint,date,text) from public,anon;
+grant execute on function public.record_reserve_entry(text,bigint,date,text) to authenticated;
+
+
+create or replace function public.record_quick_income_with_reserve(
+  p_category_id text,
+  p_description text,
+  p_amount_minor bigint,
+  p_occurred_on date default current_date,
+  p_reserve_minor bigint default 0
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path=''
+as $$
+declare
+  uid uuid:=auth.uid();
+  tx_id uuid;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if p_amount_minor is null or p_amount_minor<=0 then raise exception 'invalid amount'; end if;
+  if coalesce(p_reserve_minor,0)<0 or coalesce(p_reserve_minor,0)>p_amount_minor then
+    raise exception 'invalid reserve amount';
+  end if;
+
+  insert into public.transactions(
+    user_id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,is_recurring
+  )
+  values(
+    uid,'income',p_category_id,nullif(trim(p_description),''),p_amount_minor,coalesce(p_occurred_on,current_date),null,false,false
+  )
+  returning id into tx_id;
+
+  if coalesce(p_reserve_minor,0)>0 then
+    insert into public.reserve_entries(user_id,kind,amount_minor,occurred_on,note)
+    values(uid,'deposit',p_reserve_minor,coalesce(p_occurred_on,current_date),null);
+  end if;
+
+  return tx_id;
+end;
+$$;
+
+revoke all on function public.record_quick_income_with_reserve(text,text,bigint,date,bigint) from public,anon;
+grant execute on function public.record_quick_income_with_reserve(text,text,bigint,date,bigint) to authenticated;

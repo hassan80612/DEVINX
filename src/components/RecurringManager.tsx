@@ -131,6 +131,10 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     if(!paying)return;
     const value=minor(paidAmount);
     if(value<=0)return;
+    const expected=billExpectedAmount(paying,selectedMonth,overrides);
+    const paidOther=billPaidAmount(paying.id,selectedMonth,payments)-Number(editingPayment?.amount_minor||0);
+    const maxAllowed=Math.max(0,expected-paidOther);
+    if(value>maxAllowed){setNotice(t('bills.paymentExceeds'));return}
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user)return;

@@ -17,7 +17,8 @@ type BillOverride=RecurringOverrideLike;
 type Purchase={id:string;card_id:string;category_id:string;description:string|null;total_minor:number;purchased_on:string;installment_count:number;is_avoidable:boolean;credit_cards:{name:string;due_day:number|null}|null;card_installments:{id:string;installment_number:number;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null}[]};
 type Debt={id:string;name:string;outstanding_minor:number;installment_minor:number|null;installments_remaining:number|null;due_day:number|null;created_at:string};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
-type CashRow={id:string;kind:'tx'|'work-income'|'work-cost'|'bill-payment'|'card-payment';sign:1|-1;amount:number;date:string;title:string;subtitle:string;groupKey:string;groupLabel:string;raw:Tx|Work|RecPay|CardPay};
+type ReserveEntry={id:string;kind:'deposit'|'withdraw';amount_minor:number;occurred_on:string;note:string|null};
+type CashRow={id:string;kind:'tx'|'work-income'|'work-cost'|'bill-payment'|'card-payment'|'reserve-transfer';sign:1|-1;amount:number;date:string;title:string;subtitle:string;groupKey:string;groupLabel:string;raw:Tx|Work|RecPay|CardPay|ReserveEntry};
 
 const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
 const dec=(raw:string)=>Number(raw.replace(',','.'))||0;
@@ -48,6 +49,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
   const[billOverrides,setBillOverrides]=useState<BillOverride[]>([]);
   const[customCategories,setCustomCategories]=useState<CustomCategory[]>([]);
+  const[reserveEntries,setReserveEntries]=useState<ReserveEntry[]>([]);
   const[loading,setLoading]=useState(true);
   const[notice,setNotice]=useState('');
   const[editing,setEditing]=useState<CashRow|null>(null);
@@ -86,12 +88,13 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
       s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).gte('worked_on',start).lte('worked_on',end).order('worked_on',{ascending:false}),
       s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end).order('paid_on',{ascending:false}),
-      s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end).order('paid_on',{ascending:false})
+      s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end).order('paid_on',{ascending:false}),
+      s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end).order('occurred_on',{ascending:false}).order('created_at',{ascending:false})
     ];
 
     if(view!=='pending'){
-      const[r1,r2,r3,r4,cats]=await Promise.all([...(cashCalls as any),categoriesCall] as any);
-      setTx((r1?.data||[]) as Tx[]);setWork((r2?.data||[]) as unknown as Work[]);setRecPays((r3?.data||[]) as unknown as RecPay[]);setCardPays((r4?.data||[]) as unknown as CardPay[]);setCustomCategories((cats?.data||[]) as CustomCategory[]);
+      const[r1,r2,r3,r4,r5,cats]=await Promise.all([...(cashCalls as any),categoriesCall] as any);
+      setTx((r1?.data||[]) as Tx[]);setWork((r2?.data||[]) as unknown as Work[]);setRecPays((r3?.data||[]) as unknown as RecPay[]);setCardPays((r4?.data||[]) as unknown as CardPay[]);setReserveEntries((r5?.data||[]) as ReserveEntry[]);setCustomCategories((cats?.data||[]) as CustomCategory[]);
     }else{
       const current=localMonthStartISO();
       const oldest=addMonths(current,-12);
@@ -131,8 +134,20 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       rows.push({id:'rp:'+item.id,kind:'bill-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.recurring_bills?.name||t('move.billPayment'),subtitle:t('move.billPayment'),groupKey:'expense:'+cat,groupLabel:categoryName('expense',cat,customCategories,t),raw:item});
     });
     cardPays.forEach(item=>rows.push({id:'cp:'+item.id,kind:'card-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.credit_cards?.name||t('move.cardPayment'),subtitle:t('move.cardPayment')+' · '+date(item.statement_month,{month:'long',year:'numeric'}),groupKey:'system:cards',groupLabel:t('nav.cards'),raw:item}));
+    reserveEntries.forEach(item=>rows.push({
+      id:'rs:'+item.id,
+      kind:'reserve-transfer',
+      sign:item.kind==='deposit'?-1:1,
+      amount:Number(item.amount_minor),
+      date:item.occurred_on,
+      title:item.kind==='deposit'?t('reserves.transferIn'):t('reserves.transferOut'),
+      subtitle:(item.note?item.note+' · ':'')+t('reserves.internalTransfer'),
+      groupKey:'system:reserves',
+      groupLabel:t('nav.reserves'),
+      raw:item
+    }));
     return rows.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-  },[tx,work,recPays,cardPays,customCategories,t,date]);
+  },[tx,work,recPays,cardPays,reserveEntries,customCategories,t,date]);
 
   const totals=useMemo(()=>{const plus=cashRows.filter(r=>r.sign===1).reduce((a,b)=>a+b.amount,0);const minus=cashRows.filter(r=>r.sign===-1).reduce((a,b)=>a+b.amount,0);return{plus,minus,balance:plus-minus}},[cashRows]);
 
@@ -280,7 +295,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
     {view!=='pending'&&<>
       <section className="cashSummary"><article><small>{t('move.entered')}</small><strong className="positive">+ {currency(totals.plus)}</strong></article><article><small>{t('move.outflow')}</small><strong className="negative">− {currency(totals.minus)}</strong></article><article className="cashBalance"><small>{t('move.balance')}</small><strong className={totals.balance>=0?'positive':'negative'}>{currency(totals.balance)}</strong></article><p>{t('move.actualCash')}</p></section>
-      {loading?<section className="panel"><span className="loader"/></section>:cashRows.length===0?<section className="empty"><b>{view==='today'?t('move.noToday'):t('move.noHistory')}</b></section>:view==='history'?<div className="historyCategoryStack">{historyGroups.map(group=><section className="panel historyCategoryGroup" key={group.key}><div className="historyCategoryHeader"><div><small>{t('common.category').toUpperCase()}</small><h2>{group.label}</h2></div><div className="historyCategoryTotals">{group.plus>0&&<span className="positive">+ {currency(group.plus)}</span>}{group.minus>0&&<span className="negative">− {currency(group.minus)}</span>}<b className={group.plus-group.minus>=0?'positive':'negative'}>{currency(group.plus-group.minus)}</b></div></div><div className="ledgerList">{group.rows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions"><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></div></article>)}</div></section>)}</div>:<section className="ledgerList">{cashRows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions"><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></div></article>)}</section>}
+      {loading?<section className="panel"><span className="loader"/></section>:cashRows.length===0?<section className="empty"><b>{view==='today'?t('move.noToday'):t('move.noHistory')}</b></section>:view==='history'?<div className="historyCategoryStack">{historyGroups.map(group=><section className="panel historyCategoryGroup" key={group.key}><div className="historyCategoryHeader"><div><small>{t('common.category').toUpperCase()}</small><h2>{group.label}</h2></div><div className="historyCategoryTotals">{group.plus>0&&<span className="positive">+ {currency(group.plus)}</span>}{group.minus>0&&<span className="negative">− {currency(group.minus)}</span>}<b className={group.plus-group.minus>=0?'positive':'negative'}>{currency(group.plus-group.minus)}</b></div></div><div className="ledgerList">{group.rows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</div></section>)}</div>:<section className="ledgerList">{cashRows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</section>}
     </>}
 
     {view==='pending'&&<>

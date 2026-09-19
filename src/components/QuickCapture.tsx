@@ -12,7 +12,7 @@ const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','
 
 export function QuickCapture({request,onNavigate}:{request?:Request;onNavigate?:(target:string)=>void}){
   const{t,locale,currencyCode}=useI18n();
-  const[open,setOpen]=useState(false);const[mode,setMode]=useState<Mode>('expense');const[amount,setAmount]=useState('');const[description,setDescription]=useState('');const[category,setCategory]=useState('food');const[payment,setPayment]=useState('pix');const[avoidable,setAvoidable]=useState(false);const[saving,setSaving]=useState(false);const[message,setMessage]=useState('');const[custom,setCustom]=useState<CustomCategory[]>([]);const amountRef=useRef<HTMLInputElement>(null);
+  const[open,setOpen]=useState(false);const[mode,setMode]=useState<Mode>('expense');const[amount,setAmount]=useState('');const[reserveAmount,setReserveAmount]=useState('');const[description,setDescription]=useState('');const[category,setCategory]=useState('food');const[payment,setPayment]=useState('pix');const[avoidable,setAvoidable]=useState(false);const[saving,setSaving]=useState(false);const[message,setMessage]=useState('');const[custom,setCustom]=useState<CustomCategory[]>([]);const amountRef=useRef<HTMLInputElement>(null);
   const options=categoryOptions(mode,custom,t).filter(item=>item.showInQuick);
   const currencySymbol=new Intl.NumberFormat(locale,{style:'currency',currency:currencyCode}).formatToParts(0).find(part=>part.type==='currency')?.value||currencyCode;
 
@@ -20,15 +20,28 @@ export function QuickCapture({request,onNavigate}:{request?:Request;onNavigate?:
   useEffect(()=>{if(open){loadCategories();setTimeout(()=>amountRef.current?.focus(),80)}},[open]);
   useEffect(()=>{if(request&&request.id>0){changeMode(request.mode);setOpen(true)}},[request?.id]);
 
-  function changeMode(next:Mode){setMode(next);const first=categoryOptions(next,custom,t)[0];setCategory(first?.id||'other');setDescription('');setAmount('');setAvoidable(false);setMessage('')}
+  function changeMode(next:Mode){setMode(next);const first=categoryOptions(next,custom,t)[0];setCategory(first?.id||'other');setDescription('');setAmount('');setReserveAmount('');setAvoidable(false);setMessage('')}
   function go(target:string){setOpen(false);onNavigate?.(target)}
 
   async function save(){
     const value=minor(amount);if(value<=0){setMessage(t('common.value'));return}
+    const reserve=mode==='income'?minor(reserveAmount):0;
+    if(reserve<0||reserve>value){setMessage(t('quick.reserveTooHigh'));return}
     setSaving(true);setMessage('');const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){setSaving(false);location.href='/entrar';return}
-    const{error}=await s.from('transactions').insert({user_id:user.id,type:mode,category_id:category,description:description.trim()||null,amount_minor:value,occurred_on:localDateISO(),payment_method:mode==='expense'?payment:null,is_avoidable:mode==='expense'?avoidable:false,is_recurring:false});
+    let error:any=null;
+    if(mode==='income'){
+      ({error}=await s.rpc('record_quick_income_with_reserve',{
+        p_category_id:category,
+        p_description:description.trim()||null,
+        p_amount_minor:value,
+        p_occurred_on:localDateISO(),
+        p_reserve_minor:reserve
+      }));
+    }else{
+      ({error}=await s.from('transactions').insert({user_id:user.id,type:'expense',category_id:category,description:description.trim()||null,amount_minor:value,occurred_on:localDateISO(),payment_method:payment,is_avoidable:avoidable,is_recurring:false}));
+    }
     setSaving(false);if(error){setMessage(t('common.errorSave'));return}
-    setAmount('');setDescription('');setAvoidable(false);setMessage(mode==='expense'?t('quick.savedExpense'):t('quick.savedIncome'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));setTimeout(()=>{setOpen(false);setMessage('')},350);
+    setAmount('');setReserveAmount('');setDescription('');setAvoidable(false);setMessage(mode==='expense'?t('quick.savedExpense'):reserve>0?t('quick.savedIncomeReserve'):t('quick.savedIncome'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));setTimeout(()=>{setOpen(false);setMessage('')},450);
   }
 
   return <>
@@ -39,6 +52,7 @@ export function QuickCapture({request,onNavigate}:{request?:Request;onNavigate?:
       <div className="quickPresetGrid">{options.map(item=><button type="button" key={item.id} className={category===item.id?'selected':''} onClick={()=>{setCategory(item.id);if(!description)setDescription(item.name);amountRef.current?.focus()}}><span>{item.icon}</span><b>{item.name}</b></button>)}</div>
       <label className="quickAmountRow">{t('quick.amount')}<div className="quickMoney"><b>{currencySymbol}</b><input ref={amountRef} value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal" placeholder="0,00" onKeyDown={e=>{if(e.key==='Enter')save()}}/></div></label>
       <label>{t('quick.description')} <small>({t('quick.optional')})</small><input value={description} onChange={e=>setDescription(e.target.value)}/></label>
+      {mode==='income'&&<label className="quickReserveField">{t('quick.reservePart')} <small>({t('quick.optional')})</small><input value={reserveAmount} onChange={e=>setReserveAmount(e.target.value)} inputMode="decimal" placeholder="0,00"/><small>{t('quick.reservePartHelp')}</small></label>}
       {mode==='expense'&&<><div className="quickPayment"><button type="button" className={payment==='pix'?'selected':''} onClick={()=>setPayment('pix')}>Pix</button><button type="button" className={payment==='cash'?'selected':''} onClick={()=>setPayment('cash')}>Cash</button><button type="button" className={payment==='debit'?'selected':''} onClick={()=>setPayment('debit')}>Debit</button></div><button type="button" className={'quickAvoidable '+(avoidable?'selected':'')} onClick={()=>setAvoidable(v=>!v)}>{avoidable?t('quick.avoidableOn'):t('quick.avoidable')}</button></>}
       {message&&<div className="authMessage">{message}</div>}<button type="button" className="quickSave" onClick={save} disabled={saving}>{saving?t('common.saving'):t('common.save')}</button>
       {mode==='expense'&&<div className="quickCaptureRoutes"><span>{t('quick.otherCommitment')}</span><button type="button" onClick={()=>go('cards')}>{t('quick.card')}</button><button type="button" onClick={()=>go('bills')}>{t('quick.bill')}</button></div>}
