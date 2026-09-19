@@ -1,0 +1,163 @@
+/* DEVINX Obsidian Gold — unified premium visual system */
+:root{
+  --bg:#05070b;
+  --bg2:#10151d;
+  --card:#0b1018;
+  --card2:#070b11;
+  --border:rgba(224,178,73,.28);
+  --text:#f8f5ed;
+  --muted:#aaa79f;
+  --gold:#e9bf58;
+  --gold2:#b97d24;
+  --blue:#9cb5ca;
+  --shadow:inset 0 1px 0 rgba(255,244,204,.055),0 22px 60px rgba(0,0,0,.42),0 0 32px rgba(196,139,35,.045);
+}
+html,body{
+  background:
+    radial-gradient(ellipse at 10% -15%,rgba(224,171,62,.11),transparent 27%),
+    radial-gradient(ellipse at 90% 8%,rgba(205,153,50,.08),transparent 24%),
+    linear-gradient(125deg,#030507 0%,#090d12 34%,#101721 52%,#070a0f 72%,#020304 100%)!important;
+  color:var(--text);
+}
+body:before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.52;
+  background:
+    repeating-linear-gradient(112deg,rgba(255,255,255,.018) 0 1px,transparent 1px 5px),
+    radial-gradient(90% 32% at -8% 5%,transparent 53%,rgba(233,191,88,.32) 53.3%,rgba(233,191,88,.045) 54.2%,transparent 55%),
+    radial-gradient(78% 34% at 108% 86%,transparent 54%,rgba(233,191,88,.28) 54.3%,rgba(233,191,88,.04) 55.2%,transparent 56%);
+}
+.devinxBrandLogo{display:inline-flex;align-items:center;gap:10px;min-width:0;color:var(--gold)}
+.devinxEmblem{width:44px;height:44px;display:block;filter:drop-shadow(0 4px 11px rgba(226,174,57,.18))}
+.devinxWordmark{font-size:20px;line-height:1;font-weight:800;letter-spacing:.18em;color:#f0c75f;text-shadow:0 0 18px rgba(235,187,74,.15)}
+.devinxBrandLogo.compact .devinxEmblem{width:34px;height:34px}
+.brand{gap:9px!important;color:inherit!important}
+.brandButton{display:inline-flex;align-items:center}
+.financeApp,.landingV2,.authPage{
+  background:
+    radial-gradient(circle at 12% -8%,rgba(219,167,57,.09),transparent 26%),
+    radial-gradient(circle at 88% 18%,rgba(233,191,88,.06),transparent 22%),
+    linear-gradient(145deg,rgba(3,5,7,.98),rgba(10,14,20,.985) 42%,rgba(13,19,27,.99) 58%,rgba(4,6,9,.995) 100%)!important;
+  background-attachment:fixed!important;
+}
+.financeHeader,.landingTop,.authTop{
+  background:linear-gradient(180deg,rgba(9,12,17,.975),rgba(4,6,9,.965))!important;
+  border-bottom-color:rgba(223,177,73,.25)!important;
+  box-shadow:0 12px 38px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,240,196,.045)!important;
+  backdrop-filter:blur(20px);
+}
+.financeContent{width:min(1100px,100%)}
+.panel,.empty,.moduleSummary,.creditCard,.recurringCard,.goalCard,.authCard,.landingPreview,.deepDiveCard,.landingFeatureGrid article{
+  border-color:rgba(218,169,68,.22)!important;
+  background:
+    linear-gradient(120deg,rgba(255,236,183,.026),transparent 24%),
+    linear-gradient(145deg,rgba(13,18,25,.97),rgba(6,9,14,.985))!important;
+  box-shadow:var(--shadow)!important;
+}
+.primary,.goldButton,.quickCaptureFab,.paidButton{
+  background:linear-gradient(180deg,#f8dd83 0%,#e6b84b 43%,#b9771c 100%)!important;
+  border:1px solid rgba(255,231,151,.72)!important;
+  color:#171006!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.52),inset 0 -1px 0 rgba(91,53,5,.24),0 13px 32px rgba(195,128,25,.2),0 0 26px rgba(239,191,78,.08)!important;
+  text-shadow:none!important;
+}
+.primary:hover,.goldButton:hover,.quickCaptureFab:hover{filter:brightness(1.06);transform:translateY(-1px)}
+.secondary,.ghost,.goldOutline,.backButton,.textButton{
+  background:linear-gradient(180deg,rgba(19,23,29,.96),rgba(7,10,15,.98))!important;
+  border-color:rgba(221,174,70,.28)!important;
+  color:#e9c363!important;
+  box-shadow:inset 0 1px 0 rgba(255,241,196,.05)!important;
+}
+input,select,textarea{
+  background:linear-gradient(180deg,#11161d,#080b10)!important;
+  border-color:rgba(209,164,67,.25)!important;
+  color:#f6f1e8!important;
+}
+input:focus,select:focus,textarea:focus{border-color:rgba(236,193,91,.68)!important;box-shadow:0 0 0 3px rgba(233,191,88,.08)!important}
+select option{background:#090c11;color:#f7f2e8}
+.filterRow button,.movementTabs button{
+  background:#0c1016!important;border-color:rgba(207,164,68,.19)!important;color:#aaa9a4!important;
+}
+.filterRow button.active,.movementTabs button.active{
+  background:linear-gradient(180deg,rgba(103,75,26,.76),rgba(42,29,10,.9))!important;
+  border-color:rgba(239,194,88,.54)!important;color:#f4cc68!important;
+}
+.instantPanel{
+  border-color:rgba(225,177,72,.34)!important;
+  background:
+    radial-gradient(circle at 91% 8%,rgba(239,190,77,.13),transparent 26%),
+    linear-gradient(118deg,rgba(255,240,191,.035),transparent 30%),
+    linear-gradient(145deg,#0d1117,#080b10 58%,#030507)!important;
+  box-shadow:0 28px 80px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,239,183,.06)!important;
+}
+.instantPanel:before{background:linear-gradient(90deg,transparent,rgba(239,192,83,.68),rgba(255,231,143,.5),transparent)!important}
+.instantPanel:after{background:radial-gradient(circle,rgba(237,184,65,.11),transparent 60%)!important}
+.instantAction{
+  background:linear-gradient(145deg,rgba(18,22,29,.96),rgba(7,10,15,.99))!important;
+  border-color:rgba(211,165,65,.18)!important;
+  box-shadow:inset 0 1px 0 rgba(255,244,206,.04),0 12px 28px rgba(0,0,0,.24)!important;
+}
+.instantAction:hover{border-color:rgba(239,194,88,.45)!important}
+.instantAction span,.instantAction.income span,.instantAction.expense span,.instantAction.work span,.instantAction.card span{color:var(--gold)!important}
+.dashboardMetrics article{
+  background:linear-gradient(145deg,rgba(16,20,27,.97),rgba(6,9,13,.99))!important;
+  border-color:rgba(207,160,61,.2)!important;
+  box-shadow:inset 0 1px 0 rgba(255,240,197,.04),0 12px 28px rgba(0,0,0,.26)!important;
+}
+.dashboardMetrics article:before{background:linear-gradient(180deg,#f2d273,#aa6e17)!important}
+.financeBottomNav{
+  border-color:rgba(220,171,68,.28)!important;
+  background:rgba(7,9,13,.95)!important;
+  box-shadow:0 18px 52px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,244,205,.04)!important;
+}
+.financeBottomNav button{color:#8e918f!important}
+.financeBottomNav button.active{color:#f0c65e!important;background:linear-gradient(180deg,rgba(97,69,20,.56),rgba(33,23,9,.78))!important;box-shadow:inset 0 0 0 1px rgba(239,193,84,.2)!important}
+.organizeGrid>button,.cashSummary,.ledgerRow,.workSessionCard,.cardNumbers>div,.statementList button,.payBillAmount,.recurringCard,.categoryList article,.categoryChips span,.switchRow,.adminUser,.diagGrid article{
+  background:linear-gradient(145deg,#10151c,#080b10)!important;
+  border-color:rgba(207,160,62,.18)!important;
+}
+.organizeGrid>button>span,.categoryIcon{background:linear-gradient(145deg,#4f3915,#1d1508)!important;color:#f1c65e!important}
+.projectedStrip,.summaryHero{
+  border-color:rgba(235,187,77,.36)!important;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(240,190,75,.12),transparent 27%),
+    linear-gradient(135deg,#15181b,#0b0e13 52%,#05070a)!important;
+}
+.projectedStrip strong,.summaryHero strong,.commitmentMonthTotal strong,.dailyTarget b{color:#f4cc6b!important}
+.goldPill{border-color:rgba(239,193,86,.34)!important;background:rgba(224,174,66,.065)!important;color:#edc665!important}
+.languageMenuButton,.languageMini{background:linear-gradient(180deg,#151a21,#090c11)!important;border-color:rgba(218,170,69,.25)!important;color:#f3cc69!important}
+.quickCaptureSheet,.modalCard{
+  background:linear-gradient(180deg,#151a21,#090c11)!important;border-color:rgba(225,177,72,.3)!important;
+}
+.landingCopy h1 em,.landingSectionHead h2 em,.deepDiveCard small,.miniHeading small,.sectionTopbar small,.financeHeaderMeta small{color:#f0c761!important}
+.landingPlanRibbon{border-color:rgba(229,179,71,.35)!important;background:linear-gradient(145deg,#171a1e,#0a0d11)!important}
+.authSubscription{border-color:rgba(226,177,70,.24)!important;background:linear-gradient(145deg,#11151b,#080b0f)!important}
+.positive{color:#6addaa!important}.negative,.dangerText{color:#ff8178!important}
+
+/* live data visualizations */
+.premiumFlowPanel{overflow:hidden;position:relative;padding:18px 18px 14px!important}
+.premiumFlowPanel:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 82% -10%,rgba(239,191,80,.08),transparent 34%)}
+.premiumFlowHead{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:14px}
+.premiumFlowHead small,.premiumFlowHead h2{display:block}.premiumFlowHead small{color:#9b978c;font-size:9px;letter-spacing:.12em;font-weight:900}.premiumFlowHead h2{margin:4px 0 0;font-size:20px}
+.flowLegend{display:flex;gap:12px;align-items:center;font-size:9px;color:#aaa79d}.flowLegend span{display:flex;align-items:center;gap:5px}.flowLegend i{display:inline-block;width:8px;height:8px;border-radius:2px}.flowLegend .in i{background:linear-gradient(180deg,#f7db7d,#bc7e23)}.flowLegend .out i{background:#646a70}
+.cashFlowChart{position:relative;display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:5px;height:170px;padding:14px 4px 23px;border-top:1px solid rgba(216,169,70,.1);background:repeating-linear-gradient(to top,transparent 0 39px,rgba(255,255,255,.035) 39px 40px)}
+.flowDay{display:grid;grid-template-rows:1fr auto;gap:7px;min-width:0}
+.flowBars{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:126px}
+.flowBars i{width:min(9px,42%);min-height:3px;border-radius:3px 3px 1px 1px;transition:.2s}
+.flowBars .incomeBar{background:linear-gradient(180deg,#ffe690,#c78a29);box-shadow:0 0 12px rgba(231,179,69,.08)}
+.flowBars .outBar{background:linear-gradient(180deg,#8b9096,#454a50)}
+.flowDay small{text-align:center;font-size:7px;color:#737770;white-space:nowrap}
+.goalPanel{position:relative}
+.goalPanel .sectionTitleRow{align-items:center}
+.goalRing{width:86px;height:86px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;position:relative;box-shadow:0 0 25px rgba(230,177,64,.08)}
+.goalRing:after{content:"";position:absolute;inset:7px;border-radius:50%;background:#0a0d12;border:1px solid rgba(223,173,68,.14)}
+.goalRingInner{position:relative;z-index:1;display:grid;place-items:center;line-height:1.05}.goalRingInner small{font-size:7px!important;color:#99958b!important;letter-spacing:.08em!important}.goalRingInner strong{font-size:20px!important;color:#f2c963}
+.goalPanel .bar{background:#080b10!important;border:1px solid rgba(213,165,62,.12)!important}.goalPanel .bar i{background:linear-gradient(90deg,#a96c17,#e7b94e,#ffe58d)!important}
+.commitmentComposition{display:grid;gap:7px;margin-top:12px}
+.commitmentCompositionBar{display:flex;height:8px;border-radius:999px;overflow:hidden;background:#080b10;border:1px solid rgba(212,164,65,.13)}
+.commitmentCompositionBar i:first-child{background:linear-gradient(90deg,#b17720,#edc55e)}.commitmentCompositionBar i:last-child{background:linear-gradient(90deg,#4e545b,#7b8188)}
+.commitmentCompositionLegend{display:flex;justify-content:space-between;gap:12px;font-size:8px;color:#85877f}
+@media(max-width:650px){
+  .devinxEmblem{width:40px;height:40px}.devinxWordmark{font-size:17px}
+  .premiumFlowHead{align-items:flex-start;flex-direction:column}.cashFlowChart{gap:3px;height:155px}.flowBars{height:112px}.flowDay small{font-size:6px}
+  .goalRing{width:74px;height:74px}.goalRingInner strong{font-size:18px!important}
+}

@@ -2,6 +2,7 @@
 
 import {useI18n} from '@/i18n/provider';
 import {LanguageMenu} from '@/components/LanguageMenu';
+import {BrandLogo} from '@/components/BrandLogo';
 
 const CHECKOUT='https://pay.kiwify.com.br/pf2YM64';
 function checkoutForLocale(locale:string){
@@ -12,7 +13,7 @@ export default function Home(){
   const{t,locale,currency}=useI18n();
   return <main className="landingV2">
     <header className="top landingTop">
-      <div className="brand"><span className="mark">D</span><b>DEVINX</b></div>
+      <div className="brand"><BrandLogo/></div>
       <div className="landingTopActions"><LanguageMenu/></div>
     </header>
 
@@ -49,7 +50,7 @@ export default function Home(){
       <div className="landingFeatureGrid">
         <article><span>⌁</span><h3>{t('landing.featureCategories')}</h3><p>{t('landing.featureCategoriesText')}</p></article>
         <article><span>▣</span><h3>{t('landing.featureCards')}</h3><p>{t('landing.featureCardsText')}</p></article>
-        <article><span>↓</span><h3>{t('landing.featureDebts')}</h3><p>{t('landing.featureDebtsText')}</p></article>
+        <article><span>◇</span><h3>{t('nav.reserves')}</h3><p>{t('landing.deepReserveText')}</p></article>
         <article><span>◎</span><h3>{t('landing.featureGoals')}</h3><p>{t('landing.featureGoalsText')}</p></article>
         <article className="driverFeature"><span>◷</span><h3>{t('landing.featureDriver')}</h3><p>{t('landing.featureDriverText')}</p><div className="driverFormula"><b>{t('landing.driverCalc1')}</b><b>{t('landing.driverCalc2')}</b><b>{t('landing.driverCalc3')}</b><b>{t('landing.driverCalc4')}</b></div></article>
         <article><span>▥</span><h3>{t('landing.featureHistory')}</h3><p>{t('landing.featureHistoryText')}</p></article>

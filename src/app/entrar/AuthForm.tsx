@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
 import {LanguageMenu} from '@/components/LanguageMenu';
+import {BrandLogo} from '@/components/BrandLogo';
 
 type Mode='entrar'|'criar'|'recuperar';
 type MessageKind='idle'|'error'|'success';
@@ -37,7 +38,7 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
   }
 
   return <main className="authPage">
-    <header className="authTop"><Link className="brand" href="/"><span className="mark">D</span><b>DEVINX</b></Link><LanguageMenu/></header>
+    <header className="authTop"><Link className="brand" href="/"><BrandLogo/></Link><LanguageMenu/></header>
     {purchaseApproved&&<section className="purchaseReturnNotice"><span>✓</span><div><b>{t('auth.purchaseApprovedTitle')}</b><p>{t('auth.purchaseApprovedText')}</p></div></section>}
     <section className="authCard">
       <div className="authIntro"><span className="goldPill">DEVINX</span><h1>{mode==='entrar'?t('auth.titleLogin'):mode==='criar'?t('auth.titleCreate'):t('auth.titleRecover')}</h1><p>{mode==='entrar'?t('auth.loginDesc'):mode==='criar'?t('auth.createDesc'):t('auth.recoverDesc')}</p></div>

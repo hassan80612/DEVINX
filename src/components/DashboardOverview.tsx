@@ -163,6 +163,22 @@ export function DashboardOverview(){
     return{recurringPending,cardsDue,total:recurringPending+cardsDue};
   },[commitmentMonth,bills,billPays,billOverrides,cardInst]);
 
+  const flowChart=useMemo(()=>{
+    const days=Array.from({length:14},(_,index)=>daysAgo(13-index));
+    const map=new Map(days.map(day=>[day,{day,income:0,out:0}]));
+    tx.forEach(item=>{const row=map.get(item.occurred_on);if(!row)return;if(item.type==='income')row.income+=Number(item.amount_minor);else row.out+=Number(item.amount_minor)});
+    work.forEach(item=>{const row=map.get(item.worked_on);if(!row)return;row.income+=Number(item.gross_income_minor);row.out+=Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor)});
+    billPays.forEach(item=>{const row=map.get(item.paid_on);if(row)row.out+=Number(item.amount_minor)});
+    cardPays.forEach(item=>{const row=map.get(item.paid_on);if(row)row.out+=Number(item.amount_minor)});
+    const rows=[...map.values()];
+    const max=Math.max(1,...rows.flatMap(row=>[row.income,row.out]));
+    return{rows,max};
+  },[tx,work,billPays,cardPays]);
+
+  const commitmentShare=selectedCommitments.total>0
+    ?Math.round(selectedCommitments.recurringPending/selectedCommitments.total*100)
+    :0;
+
   const reserveSuggestion=useMemo(()=>{
     const today=localDateISO();
     const month=localMonthStartISO();
@@ -302,6 +318,22 @@ export function DashboardOverview(){
       <article><small>{t('dashboard.pending')}</small><b>{currency(numbers.toPay)}</b></article>
     </div>
 
+    <section className="panel premiumFlowPanel">
+      <div className="premiumFlowHead">
+        <div><small>14D · {t('nav.reports')}</small><h2>{t('dashboard.entered')} × {t('dashboard.spent')}</h2></div>
+        <div className="flowLegend"><span className="in"><i/>{t('dashboard.entered')}</span><span className="out"><i/>{t('dashboard.spent')}</span></div>
+      </div>
+      <div className="cashFlowChart" aria-label={t('dashboard.entered')+' '+t('dashboard.spent')}>
+        {flowChart.rows.map((row,index)=><div className="flowDay" key={row.day}>
+          <div className="flowBars">
+            <i className="incomeBar" style={{height:Math.max(3,Math.round(row.income/flowChart.max*100))+'%'}} title={currency(row.income)}/>
+            <i className="outBar" style={{height:Math.max(3,Math.round(row.out/flowChart.max*100))+'%'}} title={currency(row.out)}/>
+          </div>
+          <small>{index%2===0?date(row.day,{day:'2-digit',month:'2-digit'}):'·'}</small>
+        </div>)}
+      </div>
+    </section>
+
     <section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')}>
       <div className="dailyReserveTop">
         <div><small>{t('dashboard.dailyReserveEyebrow')}</small><h2>{reserveSuggestion.daily>0?t('dashboard.dailyReserveTitle'):t('dashboard.dailyReserveCovered')}</h2></div>
@@ -334,13 +366,17 @@ export function DashboardOverview(){
 
     {reserveBalance>0&&<section className="reserveHomeNote"><span>◇</span><div><small>{t('nav.reserves')}</small><b>{currency(reserveBalance)}</b></div><p>{t('dashboard.reserveSeparatedHelp')}</p></section>}
 
-    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2>{dailyReserveDeadline&&<span className="goalDeadline">{t('dashboard.untilDate')} {date(dailyReserveDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>}</div><div className="goalPercent"><small>{t('dashboard.todayGoal')}</small><strong>{goalProgress.percent}%</strong></div></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
+    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2>{dailyReserveDeadline&&<span className="goalDeadline">{t('dashboard.untilDate')} {date(dailyReserveDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>}</div><div className="goalRing" style={{background:'conic-gradient(#edc55e '+goalProgress.percent+'%, rgba(255,255,255,.08) 0)'}}><div className="goalRingInner"><small>{t('dashboard.todayGoal')}</small><strong>{goalProgress.percent}%</strong></div></div></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
 
     <section className="panel commitmentsPanel">
       <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
       <div className="commitmentDouble">
         <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
         <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b></article>
+      </div>
+      <div className="commitmentComposition">
+        <div className="commitmentCompositionBar"><i style={{width:commitmentShare+'%'}}/><i style={{width:(100-commitmentShare)+'%'}}/></div>
+        <div className="commitmentCompositionLegend"><span>{t('dashboard.monthlyBills')} · {currency(selectedCommitments.recurringPending)}</span><span>{t('dashboard.cards')} · {currency(selectedCommitments.cardsDue)}</span></div>
       </div>
       <div className="commitmentMonthTotal"><span>{t('dashboard.monthCommitmentTotal')}</span><strong>{currency(selectedCommitments.total)}</strong></div>
     </section>

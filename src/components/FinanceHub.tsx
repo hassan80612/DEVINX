@@ -18,6 +18,7 @@ import {QuickCapture} from './QuickCapture';
 import {LanguageMenu} from './LanguageMenu';
 import {IntegrationBootstrap} from './IntegrationBootstrap';
 import {SubscriptionPanel} from './SubscriptionPanel';
+import {BrandLogo} from './BrandLogo';
 import {useI18n} from '@/i18n/provider';
 
 type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'bills'|'reserves'|'reports'|'spend'|'categories'|'settings'|'master';
@@ -76,7 +77,7 @@ export function FinanceHub(){
   return <main className="financeApp">
     <IntegrationBootstrap enabled={access.is_admin}/>
     <header className="financeHeader">
-      <button className="brand brandButton" onClick={()=>setSection('home')} type="button"><span className="mark">D</span><b>DEVINX</b></button>
+      <button className="brand brandButton" onClick={()=>setSection('home')} type="button"><BrandLogo/></button>
       <div className="financeHeaderTools">
         <div className="financeHeaderMeta"><small>{month}</small><span>{t('header.subtitle')}</span></div>
         <LanguageMenu/>
