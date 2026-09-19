@@ -7,7 +7,7 @@ import {useI18n} from '@/i18n/provider';
 
 type View='today'|'history'|'pending';
 type Tx={id:string;type:'income'|'expense';category_id:string;description:string|null;amount_minor:number;occurred_on:string;payment_method:string|null;is_avoidable:boolean;source_type:string|null;source_id:string|null};
-type Work={id:string;vehicle_id:string|null;income_source_id:string|null;worked_on:string;gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;distance_km:number;minutes_worked:number;income_sources:{name:string}|null;vehicles:{name:string;energy_type:string;efficiency:number|null;unit_price_minor:number|null;default_fuel_percent:number|null}|null};
+type Work={id:string;vehicle_id:string|null;income_source_id:string|null;worked_on:string;gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;distance_km:number;minutes_worked:number;income_sources:{name:string;kind:string}|null;vehicles:{name:string;energy_type:string;efficiency:number|null;unit_price_minor:number|null;default_fuel_percent:number|null}|null};
 type RecPay={id:string;recurring_bill_id:string;amount_minor:number;paid_on:string;due_month:string;recurring_bills:{name:string;category_id:string;payment_method:string|null}|null};
 type CardPay={id:string;card_id:string;statement_month:string;amount_minor:number;paid_on:string;credit_cards:{name:string}|null};
 type Bill={id:string;name:string;amount_minor:number;due_day:number;created_at:string;category_id:string;payment_method:string|null;is_avoidable:boolean};
@@ -78,7 +78,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     const end=view==='today'?localDateISO():history.end;
     const cashCalls=view==='pending'?[]:[
       s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
-      s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).gte('worked_on',start).lte('worked_on',end).order('worked_on',{ascending:false}),
+      s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).gte('worked_on',start).lte('worked_on',end).order('worked_on',{ascending:false}),
       s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end).order('paid_on',{ascending:false}),
       s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end).order('paid_on',{ascending:false})
     ];
@@ -170,9 +170,10 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     if(row.kind==='bill-payment'){const x=row.raw as RecPay;setEditAmount(String(Number(x.amount_minor)/100).replace('.',','));setEditDescription(x.recurring_bills?.name||'')}
     if(row.kind==='card-payment'){const x=row.raw as CardPay;setEditAmount(String(Number(x.amount_minor)/100).replace('.',','));setEditDescription(x.credit_cards?.name||'')}
     if(row.kind==='work-income'||row.kind==='work-cost'){
-      const x=row.raw as Work;setEditAmount(String(Number(x.gross_income_minor)/100).replace('.',','));setEditDescription(x.income_sources?.name||'');
-      setEditHours(String(Number(x.minutes_worked)/60).replace('.',','));setEditKm(String(Number(x.distance_km)||'').replace('.',','));
-      const pct=Number(x.distance_km)<=0&&Number(x.gross_income_minor)>0?Number(x.energy_cost_minor)/Number(x.gross_income_minor)*100:0;
+      const x=row.raw as Work;const transport=x.income_sources?.kind==='driver'||x.income_sources?.kind==='delivery';
+      setEditAmount(String(Number(x.gross_income_minor)/100).replace('.',','));setEditDescription(x.income_sources?.name||'');
+      setEditHours(String(Number(x.minutes_worked)/60).replace('.',','));setEditKm(transport&&Number(x.distance_km)>0?String(Number(x.distance_km)).replace('.',','):'');
+      const pct=transport&&Number(x.distance_km)<=0&&Number(x.gross_income_minor)>0?Number(x.energy_cost_minor)/Number(x.gross_income_minor)*100:0;
       setEditFuelPercent(pct?String(Number(pct.toFixed(2))).replace('.',','):'');setEditExtra(String(Number(x.extra_work_cost_minor)/100).replace('.',','));
     }
   }
@@ -189,14 +190,16 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     }else if(editing.kind==='card-payment'){
       const x=editing.raw as CardPay;({error}=await s.rpc('update_card_bill_payment_date',{p_payment_id:x.id,p_paid_on:editDate}));
     }else{
-      const x=editing.raw as Work;const gross=minor(editAmount);const km=dec(editKm);const pct=dec(editFuelPercent);const vehicle=x.vehicles;
-      let energy=Number(x.energy_cost_minor);
-      if(vehicle?.energy_type==='human')energy=0;
-      else if(km>0&&Number(vehicle?.efficiency)>0&&Number(vehicle?.unit_price_minor)>0)energy=Math.round((km/Number(vehicle!.efficiency))*Number(vehicle!.unit_price_minor));
-      else if(pct>0)energy=Math.round(gross*(pct/100));
-      else if(Number(vehicle?.default_fuel_percent)>0)energy=Math.round(gross*(Number(vehicle!.default_fuel_percent)/100));
-      else{setNotice(t('work.needCalc'));return}
-      ({error}=await s.from('work_sessions').update({worked_on:editDate,gross_income_minor:gross,energy_cost_minor:energy,extra_work_cost_minor:minor(editExtra),distance_km:Number(km.toFixed(2)),minutes_worked:Math.round(dec(editHours)*60)}).eq('id',x.id).eq('user_id',user.id));
+      const x=editing.raw as Work;const gross=minor(editAmount);const transport=x.income_sources?.kind==='driver'||x.income_sources?.kind==='delivery';const km=transport?dec(editKm):0;const pct=transport?dec(editFuelPercent):0;const vehicle=x.vehicles;
+      let energy=0;
+      if(transport){
+        if(vehicle?.energy_type==='human')energy=0;
+        else if(km>0&&Number(vehicle?.efficiency)>0&&Number(vehicle?.unit_price_minor)>0)energy=Math.round((km/Number(vehicle!.efficiency))*Number(vehicle!.unit_price_minor));
+        else if(pct>0)energy=Math.round(gross*(pct/100));
+        else if(Number(vehicle?.default_fuel_percent)>0)energy=Math.round(gross*(Number(vehicle!.default_fuel_percent)/100));
+        else{setNotice(t('work.needCalc'));return}
+      }
+      ({error}=await s.from('work_sessions').update({vehicle_id:transport?x.vehicle_id:null,worked_on:editDate,gross_income_minor:gross,energy_cost_minor:energy,extra_work_cost_minor:minor(editExtra),distance_km:Number(km.toFixed(2)),minutes_worked:Math.round(dec(editHours)*60)}).eq('id',x.id).eq('user_id',user.id));
     }
     if(error){setNotice(t('common.errorSave'));return}
     setEditing(null);setNotice('');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load(false);
@@ -253,7 +256,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
     {notice&&<div className="authMessage">{notice}</div>}
 
-    {editing&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}><form className="modalCard" onSubmit={saveEdit}><div className="modalHead"><h2>{t('move.editCash')}</h2><button type="button" onClick={()=>setEditing(null)}>×</button></div><label>{t('common.date')}<input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} required/></label>{editing.kind==='tx'&&<><label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('common.description')}<input value={editDescription} onChange={e=>setEditDescription(e.target.value)}/></label></>}{editing.kind==='bill-payment'&&<label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label>}{(editing.kind==='work-income'||editing.kind==='work-cost')&&<><label>{t('work.gross')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('work.hours')}<input value={editHours} onChange={e=>setEditHours(e.target.value)} inputMode="decimal" required/></label><label>{t('work.km')} <small>({t('common.optional')})</small><input value={editKm} onChange={e=>setEditKm(e.target.value)} inputMode="decimal"/></label><label>{t('work.percent')} <small>({t('common.optional')})</small><input value={editFuelPercent} onChange={e=>setEditFuelPercent(e.target.value)} inputMode="decimal"/></label><label>{t('work.extra')}<input value={editExtra} onChange={e=>setEditExtra(e.target.value)} inputMode="decimal"/></label></>}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditing(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
+    {editing&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}><form className="modalCard" onSubmit={saveEdit}><div className="modalHead"><h2>{t('move.editCash')}</h2><button type="button" onClick={()=>setEditing(null)}>×</button></div><label>{t('common.date')}<input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} required/></label>{editing.kind==='tx'&&<><label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('common.description')}<input value={editDescription} onChange={e=>setEditDescription(e.target.value)}/></label></>}{editing.kind==='bill-payment'&&<label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label>}{(editing.kind==='work-income'||editing.kind==='work-cost')&&(()=>{const wx=editing.raw as Work;const transport=wx.income_sources?.kind==='driver'||wx.income_sources?.kind==='delivery';return <><label>{t('work.gross')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('work.hours')}<input value={editHours} onChange={e=>setEditHours(e.target.value)} inputMode="decimal" required/></label>{transport&&<><label>{t('work.km')} <small>({t('common.optional')})</small><input value={editKm} onChange={e=>setEditKm(e.target.value)} inputMode="decimal"/></label><label>{t('work.percent')} <small>({t('common.optional')})</small><input value={editFuelPercent} onChange={e=>setEditFuelPercent(e.target.value)} inputMode="decimal"/></label></>}<label>{t('work.extra')}<input value={editExtra} onChange={e=>setEditExtra(e.target.value)} inputMode="decimal"/></label></>})()}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditing(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
 
     {purchaseEdit&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPurchaseEdit(null)}}><form className="modalCard" onSubmit={savePurchase}><div className="modalHead"><h2>{t('common.edit')} · {t('move.cardCommitment')}</h2><button type="button" onClick={()=>setPurchaseEdit(null)}>×</button></div><label>{t('common.description')}<input value={purchaseDesc} onChange={e=>setPurchaseDesc(e.target.value)}/></label><label>{t('cards.total')}<input value={purchaseTotal} onChange={e=>setPurchaseTotal(e.target.value)} inputMode="decimal" required/></label><label>{t('cards.installments')}<input type="number" min="1" max="60" value={purchaseCount} onChange={e=>setPurchaseCount(e.target.value)} required/></label><label>{t('cards.purchaseDate')}<input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} required/></label><label>{t('cards.firstDueDate')} <small>({t('common.optional')})</small><input type="date" value={purchaseFirstDueDate} onChange={e=>setPurchaseFirstDueDate(e.target.value)}/><small>{t('cards.firstDueDateHelp')}</small></label><label>{t('common.category')}<input value={purchaseCategory} onChange={e=>setPurchaseCategory(e.target.value)} /></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setPurchaseEdit(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
   </div>;

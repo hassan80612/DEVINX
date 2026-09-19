@@ -299,5 +299,37 @@ const arCardsRelease=replace(arRelease,{
 'landing.controlEyebrow':'تحكم كامل','landing.controlTitle':'أكثر من مجرد تسجيل المصروفات.','landing.controlText':'ينظم Devinx ما يدخل وما يخرج وما سيستحق وما يتبقى فعلياً، دون خلط الالتزامات المستقبلية بالمال الذي صُرف بالفعل.','landing.featureCategories':'الفئات والتحكم','landing.featureCategoriesText':'أنشئ فئاتك الخاصة ونظّم الدخل والمصروفات وتابع كل شيء في نفس السجل والتقارير.','landing.featureCards':'البطاقات والأقساط','landing.featureCardsText':'أدر البطاقات ويوم الإغلاق والاستحقاق والحد والمشتريات المقسطة وتاريخ استحقاق الفاتورة الأولى الفعلي.','landing.featureDebts':'تحكم كامل بالديون','landing.featureDebtsText':'شاهد القيمة الأصلية والمدفوع والمتبقي والأقساط والاستحقاق القادم وسجل المدفوعات.','landing.featureGoals':'الأهداف والتخطيط','landing.featureGoalsText':'حدد أهدافاً يومية أو أسبوعية أو شهرية وتابع التقدم حسب وضعك المالي الحقيقي.','landing.featureDriver':'أوبر والتوصيل والعمل الحر','landing.featureDriverText':'أعد المركبة مرة واحدة ويحسب Devinx تكلفة العمل عبر الكيلومترات والاستهلاك وسعر اللتر/kWh أو نسبة وقود افتراضية.','landing.driverCalc1':'الإجمالي والساعات','landing.driverCalc2':'الكيلومترات والاستهلاك','landing.driverCalc3':'تكلفة الوقود/الطاقة','landing.driverCalc4':'الصافي لكل ساعة ولكل كم','landing.featureHistory':'السجل والتقارير','landing.featureHistoryText':'صحح الحركات وراجع الفترات السابقة وحوّل نفس البيانات إلى تحليل حسب الفئة والمصدر.'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptCardsRelease,en:enCardsRelease,es:esCardsRelease,fr:frCardsRelease,ar:arCardsRelease,de:deCardsRelease};
-export type TranslationKey=keyof typeof ptCardsRelease;
+
+const ptWorkRelease=replace(ptCardsRelease,{
+'work.generalLead':'Registre o bruto, as horas e, se houver, outros custos do trabalho. Combustível, KM e porcentagem só aparecem para motorista e entrega.',
+'work.needSource':'Escolha a fonte de trabalho.',
+'work.driverSourceHelp':'Fontes de motorista e entrega precisam de um veículo configurado.'
+});
+const enWorkRelease=replace(enCardsRelease,{
+'work.generalLead':'Record gross income, hours and any extra work costs. Fuel, distance and percentage only apply to driving and delivery work.',
+'work.needSource':'Choose a work source.',
+'work.driverSourceHelp':'Driving and delivery sources require a configured vehicle.'
+});
+const esWorkRelease=replace(esCardsRelease,{
+'work.generalLead':'Registra el ingreso bruto, las horas y, si corresponde, otros costos del trabajo. Combustible, km y porcentaje solo aparecen para conductor y reparto.',
+'work.needSource':'Elige una fuente de trabajo.',
+'work.driverSourceHelp':'Las fuentes de conductor y reparto necesitan un vehículo configurado.'
+});
+const frWorkRelease=replace(frCardsRelease,{
+'work.generalLead':'Enregistrez le brut, les heures et, si besoin, les autres coûts du travail. Carburant, kilomètres et pourcentage ne s’appliquent qu’à la conduite et à la livraison.',
+'work.needSource':'Choisissez une source de travail.',
+'work.driverSourceHelp':'Les sources de conduite et de livraison nécessitent un véhicule configuré.'
+});
+const deWorkRelease=replace(deCardsRelease,{
+'work.generalLead':'Brutto, Arbeitsstunden und gegebenenfalls weitere Arbeitskosten erfassen. Kraftstoff, Kilometer und Prozentsatz gelten nur für Fahr- und Lieferarbeit.',
+'work.needSource':'Wähle eine Arbeitsquelle.',
+'work.driverSourceHelp':'Fahr- und Lieferquellen benötigen ein eingerichtetes Fahrzeug.'
+});
+const arWorkRelease=replace(arCardsRelease,{
+'work.generalLead':'سجّل الدخل الإجمالي والساعات وأي تكاليف عمل إضافية. الوقود والكيلومترات والنسبة تظهر فقط لأعمال القيادة والتوصيل.',
+'work.needSource':'اختر مصدر العمل.',
+'work.driverSourceHelp':'مصادر القيادة والتوصيل تحتاج إلى مركبة مُعدّة.'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptWorkRelease,en:enWorkRelease,es:esWorkRelease,fr:frWorkRelease,ar:arWorkRelease,de:deWorkRelease};
+export type TranslationKey=keyof typeof ptWorkRelease;
