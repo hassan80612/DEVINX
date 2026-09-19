@@ -641,5 +641,48 @@ const arHistoryRelease=replace(arDueDateRelease,{
 'more.reportsHelp':'تحليلات وإجماليات فقط من دون تعديل الحركات'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptHistoryRelease,en:enHistoryRelease,es:esHistoryRelease,fr:frHistoryRelease,ar:arHistoryRelease,de:deHistoryRelease};
-export type TranslationKey=keyof typeof ptHistoryRelease;
+const ptPaymentUxRelease=replace(ptHistoryRelease,{
+'bills.paySettle':'PAGAR / DAR BAIXA',
+'bills.completePayment':'Completar pagamento',
+'bills.paidThisMonthBadge':'PAGO ESTE MÊS',
+'bills.partialStatus':'Pagamento parcial',
+'bills.remainingLabel':'Falta'
+});
+const enPaymentUxRelease=replace(enHistoryRelease,{
+'bills.paySettle':'PAY / SETTLE',
+'bills.completePayment':'Complete payment',
+'bills.paidThisMonthBadge':'PAID THIS MONTH',
+'bills.partialStatus':'Partial payment',
+'bills.remainingLabel':'Remaining'
+});
+const esPaymentUxRelease=replace(esHistoryRelease,{
+'bills.paySettle':'PAGAR / SALDAR',
+'bills.completePayment':'Completar pago',
+'bills.paidThisMonthBadge':'PAGADO ESTE MES',
+'bills.partialStatus':'Pago parcial',
+'bills.remainingLabel':'Falta'
+});
+const frPaymentUxRelease=replace(frHistoryRelease,{
+'bills.paySettle':'PAYER / SOLDÉ',
+'bills.completePayment':'Compléter le paiement',
+'bills.paidThisMonthBadge':'PAYÉ CE MOIS',
+'bills.partialStatus':'Paiement partiel',
+'bills.remainingLabel':'Reste'
+});
+const dePaymentUxRelease=replace(deHistoryRelease,{
+'bills.paySettle':'ZAHLEN / AUSGLEICHEN',
+'bills.completePayment':'Zahlung vervollständigen',
+'bills.paidThisMonthBadge':'DIESEN MONAT BEZAHLT',
+'bills.partialStatus':'Teilzahlung',
+'bills.remainingLabel':'Offen'
+});
+const arPaymentUxRelease=replace(arHistoryRelease,{
+'bills.paySettle':'دفع / تسوية',
+'bills.completePayment':'إكمال الدفع',
+'bills.paidThisMonthBadge':'مدفوع هذا الشهر',
+'bills.partialStatus':'دفعة جزئية',
+'bills.remainingLabel':'المتبقي'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptPaymentUxRelease,en:enPaymentUxRelease,es:esPaymentUxRelease,fr:frPaymentUxRelease,ar:arPaymentUxRelease,de:dePaymentUxRelease};
+export type TranslationKey=keyof typeof ptPaymentUxRelease;

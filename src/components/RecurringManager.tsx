@@ -307,8 +307,9 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
             <span><small>{t('bills.remainingThisMonth')}</small><b className={remaining>0?'negative':'positive'}>{currency(remaining)}</b></span>
           </div>
           {billPayments.length>0&&<div className="billPaymentTrail">{billPayments.map(p=><div key={p.id}><span>{date(p.paid_on,{day:'2-digit',month:'short'})} · {currency(Number(p.amount_minor))}</span><button type="button" onClick={()=>openPay(b,p)}>{t('common.edit')}</button><button type="button" className="dangerText" onClick={()=>removePayment(p)}>{t('common.delete')}</button></div>)}</div>}
+          {paid>0&&remaining>0&&<div className="billPaymentState"><small>{t('bills.partialStatus')}</small><b>{currency(paid)} · {t('bills.remainingLabel')} {currency(remaining)}</b></div>}
           <div className="recurringActions">
-            {remaining>0?<button className="secondary" onClick={()=>openPay(b)}>{paid>0?t('bills.addPartial'):t('bills.markPaid')}</button>:<span className="paidBadge">{t('bills.monthSettled')}</span>}
+            {remaining>0?<button className="primary billPayPrimary" onClick={()=>openPay(b)}>{paid>0?t('bills.completePayment'):t('bills.paySettle')}</button>:<span className="paidBadge">✓ {t('bills.paidThisMonthBadge')}</span>}
             <button className="textButton" onClick={()=>startMonthEdit(b)}>{t('bills.editThisMonth')}</button>
             <button className="textButton" onClick={()=>startBillEdit(b)}>{t('bills.editRule')}</button>
             <button className="dangerText textButton" onClick={()=>disable(b)}>{t('bills.disable')}</button>

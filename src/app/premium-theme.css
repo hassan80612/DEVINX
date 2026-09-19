@@ -229,3 +229,67 @@ select option{background:#090c10;color:#f5f1e8}
   .cashFlowChart{gap:3px;height:155px}.flowBars{height:112px}.flowDay small{font-size:6px}
   .goalRing{width:74px;height:74px}.goalRingInner strong{font-size:18px!important}
 }
+
+
+/* Metallic life + selective gold sweep */
+.financeApp,.landingV2,.authPage{position:relative;isolation:isolate}
+.financeApp:before,.landingV2:before,.authPage:before{
+  content:"";position:fixed;inset:-18% -10%;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(42% 30% at 18% 16%,rgba(255,255,255,.045),transparent 72%),
+    radial-gradient(36% 26% at 76% 72%,rgba(232,188,88,.045),transparent 74%),
+    linear-gradient(112deg,transparent 18%,rgba(255,255,255,.018) 40%,rgba(229,184,81,.025) 50%,transparent 68%);
+  mix-blend-mode:screen;opacity:.52;
+  animation:devinxObsidianSheen 13s ease-in-out infinite alternate;
+}
+@keyframes devinxObsidianSheen{
+  0%{transform:translate3d(-2.5%,0,0) scale(1.01);opacity:.35}
+  50%{transform:translate3d(1.5%,-1%,0) scale(1.025);opacity:.58}
+  100%{transform:translate3d(3%,1%,0) scale(1.01);opacity:.4}
+}
+
+.authSubmit,.landingAccessCta,.planRibbonButton,.quickSave,.dailyGoalButton,.quickCaptureFab,.billPayPrimary{
+  position:relative!important;overflow:hidden!important;isolation:isolate;
+  background:
+    linear-gradient(180deg,#fff0a5 0%,#efcc67 18%,#d9a13a 50%,#b87822 76%,#865316 100%)!important;
+  border-color:rgba(255,234,156,.7)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.58),
+    inset 0 -1px 0 rgba(83,48,5,.28),
+    0 9px 24px rgba(156,100,20,.18)!important;
+}
+.authSubmit:after,.landingAccessCta:after,.planRibbonButton:after,.quickSave:after,.dailyGoalButton:after,.quickCaptureFab:after,.billPayPrimary:after{
+  content:"";position:absolute;top:-30%;bottom:-30%;left:-42%;width:30%;z-index:1;pointer-events:none;
+  transform:skewX(-22deg);
+  background:linear-gradient(90deg,transparent,rgba(255,249,217,.12) 22%,rgba(255,255,255,.62) 50%,rgba(255,239,174,.18) 72%,transparent);
+  filter:blur(.4px);
+  animation:devinxGoldSweep 3.9s linear infinite;
+}
+.authSubmit>*,.landingAccessCta>*,.planRibbonButton>*,.quickSave>*,.dailyGoalButton>*,.quickCaptureFab>*,.billPayPrimary>*{position:relative;z-index:2}
+@keyframes devinxGoldSweep{
+  0%{left:-42%;opacity:0}
+  7%{opacity:.78}
+  52%{opacity:.88}
+  68%{opacity:.2}
+  100%{left:120%;opacity:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .financeApp:before,.landingV2:before,.authPage:before,
+  .authSubmit:after,.landingAccessCta:after,.planRibbonButton:after,.quickSave:after,.dailyGoalButton:after,.quickCaptureFab:after,.billPayPrimary:after{animation:none!important}
+}
+
+.billPayPrimary{
+  min-height:42px;padding:10px 16px;border-radius:12px;font-weight:950;letter-spacing:.015em;
+}
+.billPaymentState{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:4px;padding:10px 12px;border-radius:11px;
+  background:rgba(215,173,74,.045);border:1px solid rgba(215,173,74,.12);
+}
+.billPaymentState small{color:#9e9a91;font-size:9px}
+.billPaymentState b{color:#e8c76e;font-size:11px}
+.paidBadge{
+  display:inline-flex!important;align-items:center;justify-content:center;min-height:40px;padding:9px 14px!important;
+  border:1px solid rgba(85,207,152,.26)!important;border-radius:12px!important;
+  background:rgba(85,207,152,.075)!important;color:#6fdaa9!important;font-weight:900!important;
+}
