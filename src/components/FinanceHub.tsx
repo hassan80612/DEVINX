@@ -67,11 +67,12 @@ export function FinanceHub(){
   function backTarget(){return ['cards','debts','bills','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
 
   if(accessError)return <main className="financeApp">
-    <IntegrationBootstrap enabled={access.is_admin}/><section className="centerState"><b>DEVINX</b><p>Não foi possível validar o acesso agora.</p><button className="primary" onClick={()=>location.reload()}>Tentar novamente</button></section></main>;
+    <section className="centerState"><b>DEVINX</b><p>Não foi possível validar o acesso agora.</p><button className="primary" onClick={()=>location.reload()}>Tentar novamente</button></section></main>;
   if(!access)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
   if(!access.allowed)return <main className="financeApp"><section className="paywallCard"><span className="goldPill">DEVINX</span><h1>{t('access.title')}</h1><p>{t('access.desc')}</p>{access.checkout_url&&<a className="primary goldButton" href={checkoutForLocale(access.checkout_url,locale)}>{t('access.checkout')}</a>}<button className="secondary" onClick={async()=>{await createClient().auth.signOut();location.href='/'}}>{t('access.signOut')}</button></section></main>;
 
   return <main className="financeApp">
+    <IntegrationBootstrap enabled={access.is_admin}/>
     <header className="financeHeader">
       <button className="brand brandButton" onClick={()=>setSection('home')} type="button"><span className="mark">D</span><b>DEVINX</b></button>
       <div className="financeHeaderTools">
