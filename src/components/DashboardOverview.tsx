@@ -146,7 +146,6 @@ export function DashboardOverview(){
     const cardsDueNow=cardInst
       .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===month)
       .reduce((a,b)=>a+Number(b.amount_minor),0);
-    const cardTotalOpen=cardInst.reduce((a,b)=>a+Number(b.amount_minor),0);
     const debtPaidMap=new Map<string,number>();
     debtPays.filter(p=>p.paid_on>=month).forEach(p=>debtPaidMap.set(p.debt_id,(debtPaidMap.get(p.debt_id)||0)+Number(p.amount_minor)));
     const debtPending=debts.reduce((sum,d)=>{
@@ -159,7 +158,7 @@ export function DashboardOverview(){
     const projected=balance-toPay;
     const avoidable=txMonth.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((a,b)=>a+Number(b.amount_minor),0);
 
-    return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent-reserveTodayNet,recurringPending,cardsDueNow,cardTotalOpen,debtPending,toPay,projected,avoidable};
+    return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent-reserveTodayNet,recurringPending,cardsDueNow,debtPending,toPay,projected,avoidable};
   },[tx,work,bills,billPays,billOverrides,cardInst,cardPays,debts,debtPays,reserveEntries]);
 
   const selectedCommitments=useMemo(()=>{
@@ -400,8 +399,9 @@ export function DashboardOverview(){
       <div className="commitmentTriple">
         <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
         <article><span>{t('dashboard.otherDebts')}</span><b>{currency(selectedCommitments.debtPending)}</b></article>
-        <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b><small>{t('cards.totalOpen')}: {currency(numbers.cardTotalOpen)}</small></article>
+        <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b></article>
       </div>
+      <div className="commitmentMonthTotal"><span>{t('dashboard.monthCommitmentTotal')}</span><strong>{currency(selectedCommitments.total)}</strong></div>
     </section>
 
     {numbers.income===0&&numbers.spent===0&&<section className="empty premiumEmpty"><b>{t('dashboard.emptyTitle')}</b><p>{t('dashboard.emptyText')}</p></section>}
