@@ -4,13 +4,13 @@
   --bg2:#10151d;
   --card:#0b1018;
   --card2:#070b11;
-  --border:rgba(224,178,73,.28);
+  --border:rgba(224,178,73,.18);
   --text:#f8f5ed;
   --muted:#aaa79f;
   --gold:#e9bf58;
   --gold2:#b97d24;
   --blue:#9cb5ca;
-  --shadow:inset 0 1px 0 rgba(255,244,204,.055),0 22px 60px rgba(0,0,0,.42),0 0 32px rgba(196,139,35,.045);
+  --shadow:inset 0 1px 0 rgba(255,244,204,.035),0 16px 38px rgba(0,0,0,.32);
 }
 html,body{
   background:
@@ -20,7 +20,7 @@ html,body{
   color:var(--text);
 }
 body:before{
-  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.52;
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.26;
   background:
     repeating-linear-gradient(112deg,rgba(255,255,255,.018) 0 1px,transparent 1px 5px),
     radial-gradient(90% 32% at -8% 5%,transparent 53%,rgba(233,191,88,.32) 53.3%,rgba(233,191,88,.045) 54.2%,transparent 55%),
@@ -34,8 +34,8 @@ body:before{
 .brandButton{display:inline-flex;align-items:center}
 .financeApp,.landingV2,.authPage{
   background:
-    radial-gradient(circle at 12% -8%,rgba(219,167,57,.09),transparent 26%),
-    radial-gradient(circle at 88% 18%,rgba(233,191,88,.06),transparent 22%),
+    radial-gradient(circle at 12% -8%,rgba(219,167,57,.05),transparent 28%),
+    radial-gradient(circle at 88% 18%,rgba(233,191,88,.035),transparent 24%),
     linear-gradient(145deg,rgba(3,5,7,.98),rgba(10,14,20,.985) 42%,rgba(13,19,27,.99) 58%,rgba(4,6,9,.995) 100%)!important;
   background-attachment:fixed!important;
 }
@@ -47,7 +47,7 @@ body:before{
 }
 .financeContent{width:min(1100px,100%)}
 .panel,.empty,.moduleSummary,.creditCard,.recurringCard,.goalCard,.authCard,.landingPreview,.deepDiveCard,.landingFeatureGrid article{
-  border-color:rgba(218,169,68,.22)!important;
+  border-color:rgba(218,169,68,.14)!important;
   background:
     linear-gradient(120deg,rgba(255,236,183,.026),transparent 24%),
     linear-gradient(145deg,rgba(13,18,25,.97),rgba(6,9,14,.985))!important;
@@ -82,12 +82,12 @@ select option{background:#090c11;color:#f7f2e8}
   border-color:rgba(239,194,88,.54)!important;color:#f4cc68!important;
 }
 .instantPanel{
-  border-color:rgba(225,177,72,.34)!important;
+  border-color:rgba(225,177,72,.22)!important;
   background:
     radial-gradient(circle at 91% 8%,rgba(239,190,77,.13),transparent 26%),
     linear-gradient(118deg,rgba(255,240,191,.035),transparent 30%),
     linear-gradient(145deg,#0d1117,#080b10 58%,#030507)!important;
-  box-shadow:0 28px 80px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,239,183,.06)!important;
+  box-shadow:0 18px 46px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,239,183,.035)!important;
 }
 .instantPanel:before{background:linear-gradient(90deg,transparent,rgba(239,192,83,.68),rgba(255,231,143,.5),transparent)!important}
 .instantPanel:after{background:radial-gradient(circle,rgba(237,184,65,.11),transparent 60%)!important}
@@ -100,14 +100,14 @@ select option{background:#090c11;color:#f7f2e8}
 .instantAction span,.instantAction.income span,.instantAction.expense span,.instantAction.work span,.instantAction.card span{color:var(--gold)!important}
 .dashboardMetrics article{
   background:linear-gradient(145deg,rgba(16,20,27,.97),rgba(6,9,13,.99))!important;
-  border-color:rgba(207,160,61,.2)!important;
-  box-shadow:inset 0 1px 0 rgba(255,240,197,.04),0 12px 28px rgba(0,0,0,.26)!important;
+  border-color:rgba(207,160,61,.13)!important;
+  box-shadow:inset 0 1px 0 rgba(255,240,197,.025),0 8px 20px rgba(0,0,0,.22)!important;
 }
 .dashboardMetrics article:before{background:linear-gradient(180deg,#f2d273,#aa6e17)!important}
 .financeBottomNav{
-  border-color:rgba(220,171,68,.28)!important;
+  border-color:rgba(220,171,68,.18)!important;
   background:rgba(7,9,13,.95)!important;
-  box-shadow:0 18px 52px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,244,205,.04)!important;
+  box-shadow:0 12px 34px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,244,205,.025)!important;
 }
 .financeBottomNav button{color:#8e918f!important}
 .financeBottomNav button.active{color:#f0c65e!important;background:linear-gradient(180deg,rgba(97,69,20,.56),rgba(33,23,9,.78))!important;box-shadow:inset 0 0 0 1px rgba(239,193,84,.2)!important}
@@ -161,3 +161,141 @@ select option{background:#090c11;color:#f7f2e8}
   .premiumFlowHead{align-items:flex-start;flex-direction:column}.cashFlowChart{gap:3px;height:155px}.flowBars{height:112px}.flowDay small{font-size:6px}
   .goalRing{width:74px;height:74px}.goalRingInner strong{font-size:18px!important}
 }
+
+
+/* DEVINX Obsidian Gold refinement — quieter, cleaner, no inherited electric blue */
+.financeApp .textButton,
+.financeApp .ledgerActions button,
+.financeApp .pendingActions button,
+.financeApp .pendingRow>button,
+.financeApp .workSessionActions button,
+.financeApp .categoryActions button,
+.financeApp .flowGuard button,
+.financeApp .quickCaptureRoutes button,
+.financeApp .authLinkButton{
+  color:#d9b85f!important;
+  background:transparent!important;
+  border-color:rgba(219,174,73,.16)!important;
+  box-shadow:none!important;
+}
+
+.financeApp .pendingActions button,
+.financeApp .pendingRow>button,
+.financeApp .adminActions button{
+  background:linear-gradient(180deg,#17140e,#0c0b08)!important;
+  border:1px solid rgba(219,174,73,.2)!important;
+  color:#e2c16a!important;
+  box-shadow:inset 0 1px 0 rgba(255,241,194,.025)!important;
+}
+
+.financeApp .movementTabs,
+.financeApp .quickCaptureTabs{
+  background:#080a0d!important;
+  border-color:rgba(211,164,65,.12)!important;
+}
+.financeApp .historyTypeFilter button,
+.financeApp .quickCaptureTabs button,
+.financeApp .quickPayment button,
+.financeApp .quickAvoidable,
+.financeApp .tagRow button{
+  background:#0c0f13!important;
+  border-color:rgba(206,161,67,.14)!important;
+  color:#9f9d96!important;
+}
+.financeApp .historyTypeFilter button.active,
+.financeApp .quickCaptureTabs button.active,
+.financeApp .quickPayment button.selected,
+.financeApp .quickAvoidable.selected,
+.financeApp .tagRow button.selected{
+  background:linear-gradient(180deg,rgba(91,65,21,.66),rgba(34,24,9,.88))!important;
+  border-color:rgba(232,187,80,.34)!important;
+  color:#e9c66d!important;
+  box-shadow:none!important;
+}
+
+.financeApp .reserveRule small,
+.financeApp .reserveRow>span,
+.financeApp .deepDiveCard>small,
+.financeApp .deepDiveIcon{
+  color:#d8b45b!important;
+}
+.financeApp .reserveRow>span,
+.financeApp .deepDiveIcon{
+  background:linear-gradient(145deg,#3f3014,#171108)!important;
+  border-color:rgba(222,176,72,.18)!important;
+  box-shadow:none!important;
+}
+
+.financeApp .cashSummary,
+.financeApp .pendingRow,
+.financeApp .vehicleHero,
+.financeApp .masterHero,
+.financeApp .reserveHero,
+.financeApp .reserveBalance,
+.financeApp .reserveRow,
+.financeApp .commitmentDouble article{
+  background:linear-gradient(145deg,#10141a,#080a0e)!important;
+  border-color:rgba(212,165,65,.12)!important;
+  box-shadow:inset 0 1px 0 rgba(255,244,201,.025)!important;
+}
+
+.financeApp .statusBadge,
+.financeApp .pendingRow>.statusBadge{
+  background:rgba(216,168,66,.055)!important;
+  border-color:rgba(216,168,66,.14)!important;
+  color:#bca971!important;
+}
+
+.financeApp .quickCaptureSheet,
+.financeApp .modalCard{
+  box-shadow:0 -18px 48px rgba(0,0,0,.42)!important;
+}
+
+.financeApp .goldPill,
+.landingV2 .goldPill{
+  text-shadow:none!important;
+}
+.financeApp .devinxEmblem,
+.landingV2 .devinxEmblem,
+.authPage .devinxEmblem{
+  filter:drop-shadow(0 3px 7px rgba(226,174,57,.11));
+}
+
+/* Public pages: keep the same premium language but lighter and calmer */
+.landingV2 .landingPreview,
+.landingV2 .previewBalance,
+.landingV2 .previewQuick button,
+.landingV2 .landingFeatureGrid article,
+.landingV2 .deepDiveCard,
+.landingV2 .deepDiveIcon,
+.landingV2 .landingPlanRibbon{
+  border-color:rgba(217,170,70,.15)!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,244,204,.025)!important;
+}
+.landingV2 .previewBalance,
+.landingV2 .previewQuick button,
+.landingV2 .deepDiveIcon{
+  background:linear-gradient(145deg,#15181d,#090b0e)!important;
+}
+.landingV2 .deepDiveCard:before,
+.landingV2 .dailyDive:before,
+.landingV2 .landingPlanRibbon:before{
+  background:linear-gradient(180deg,#e0b44e,rgba(224,180,78,.12),transparent)!important;
+}
+.landingV2 .landingFeatureGrid article:nth-child(1),
+.landingV2 .landingFeatureGrid article:nth-child(2),
+.landingV2 .landingFeatureGrid article:nth-child(3),
+.landingV2 .deepDiveGrid .deepDiveCard:nth-child(1),
+.landingV2 .deepDiveGrid .deepDiveCard:nth-child(2){
+  background:linear-gradient(145deg,#11151b,#080a0e)!important;
+}
+
+/* subtle gold, not neon */
+.premiumFlowPanel,
+.goalPanel,
+.commitmentsPanel,
+.dailyReserveCard{
+  box-shadow:0 12px 32px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,244,202,.025)!important;
+}
+.flowBars .incomeBar{box-shadow:none!important}
+.goalRing{box-shadow:none!important}
