@@ -1,122 +1,122 @@
 'use client';
 
-import {useMemo,useState} from 'react';
-import {DashboardOverview} from '@/components/DashboardOverview';
-import {TransactionManager} from '@/components/TransactionManager';
-import {WorkManager} from '@/components/WorkManager';
-import {GoalManager} from '@/components/GoalManager';
-import {CardManager} from '@/components/CardManager';
-import {DebtManager} from '@/components/DebtManager';
-import {RecurringManager} from '@/components/RecurringManager';
-import {ReportManager} from '@/components/ReportManager';
-import {SpendCheck} from '@/components/SpendCheck';
-import {CategoryManager} from '@/components/CategoryManager';
-import {PreferencesManager} from '@/components/PreferencesManager';
-import {QuickCapture} from '@/components/QuickCapture';
+import {useEffect,useMemo,useState} from 'react';
+import {createClient} from '@/lib/supabase/client';
+import {DashboardOverview} from './DashboardOverview';
+import {MovementCenter} from './MovementCenter';
+import {WorkManager} from './WorkManager';
+import {GoalManager} from './GoalManager';
+import {CardManager} from './CardManager';
+import {DebtManager} from './DebtManager';
+import {RecurringManager} from './RecurringManager';
+import {ReportManager} from './ReportManager';
+import {SpendCheck} from './SpendCheck';
+import {CategoryManager} from './CategoryManager';
+import {PreferencesManager} from './PreferencesManager';
+import {AdminMaster} from './AdminMaster';
+import {QuickCapture} from './QuickCapture';
+import {useI18n} from '@/i18n/provider';
 
-type Section='home'|'money'|'work'|'plan'|'more'|'cards'|'debts'|'recurring'|'reports'|'spend'|'categories'|'preferences';
-type MoneyKind='income'|'expense';
-type CaptureRequest={id:number;mode:MoneyKind};
-
-const sectionTitles:Record<Section,string>={
-  home:'Visão geral',
-  money:'Entradas e gastos',
-  work:'Trabalho',
-  plan:'Planejamento',
-  more:'Organizar',
-  cards:'Cartões e parcelas',
-  debts:'Outras dívidas',
-  recurring:'Contas mensais',
-  reports:'Relatórios',
-  spend:'Posso gastar?',
-  categories:'Categorias',
-  preferences:'Preferências'
-};
+type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'debts'|'bills'|'reports'|'spend'|'categories'|'settings'|'master';
+type CaptureMode='income'|'expense';
+type CaptureRequest={id:number;mode:CaptureMode};
+type Access={is_admin:boolean;allowed:boolean;status:string;source:string;expires_at:string|null;subscription_required:boolean;checkout_url:string|null};
 
 export function FinanceHub(){
+  const{locale,setLocale,t,locales,languageNames}=useI18n();
   const[section,setSection]=useState<Section>('home');
-  const[moneyKind,setMoneyKind]=useState<MoneyKind>('expense');
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
-  const month=useMemo(()=>new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date()),[]);
+  const[access,setAccess]=useState<Access|null>(null);
+  const[accessError,setAccessError]=useState('');
 
-  function openCapture(mode:MoneyKind){
-    setCapture(current=>({id:current.id+1,mode}));
-  }
+  useEffect(()=>{(async()=>{
+    const s=createClient();
+    const{data:{user}}=await s.auth.getUser();
+    if(!user){location.replace('/entrar');return}
+    const{data,error}=await s.rpc('get_devinx_access_status');
+    if(error){setAccessError('access');return}
+    const row=Array.isArray(data)?data[0]:data;
+    setAccess(row as Access);
+  })()},[]);
 
+  const month=useMemo(()=>new Intl.DateTimeFormat(locale,{month:'long',year:'numeric'}).format(new Date()),[locale]);
+  const titles:Record<Section,string>={
+    home:t('nav.home'),movements:t('nav.movements'),work:t('nav.work'),plan:t('nav.plan'),more:t('nav.more'),
+    cards:t('nav.cards'),debts:t('nav.debts'),bills:t('nav.bills'),reports:t('nav.reports'),spend:'Posso gastar?',
+    categories:t('nav.categories'),settings:t('nav.settings'),master:t('nav.master')
+  };
+
+  function openCapture(mode:CaptureMode){setCapture(current=>({id:current.id+1,mode}))}
   function navigate(target:string){
-    if(target==='income'||target==='expense'){
-      setMoneyKind(target);
-      setSection('money');
-      return;
-    }
-    const allowed:Section[]=['home','money','work','plan','more','cards','debts','recurring','reports','spend','categories','preferences'];
+    if(target==='income'||target==='expense'){openCapture(target);return}
+    const allowed:Section[]=['home','movements','work','plan','more','cards','debts','bills','reports','spend','categories','settings','master'];
     if(allowed.includes(target as Section))setSection(target as Section);
   }
+  function backTarget(){return ['cards','debts','bills','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
 
-  function backTarget(){
-    if(['cards','debts','recurring','reports','spend','categories','preferences'].includes(section))return 'more';
-    return 'home';
-  }
+  if(accessError)return <main className="financeApp"><section className="centerState"><b>DEVINX</b><p>Não foi possível validar o acesso agora.</p><button className="primary" onClick={()=>location.reload()}>Tentar novamente</button></section></main>;
+  if(!access)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
+  if(!access.allowed)return <main className="financeApp"><section className="paywallCard"><span className="goldPill">DEVINX</span><h1>{t('access.title')}</h1><p>{t('access.desc')}</p>{access.checkout_url&&<a className="primary goldButton" href={access.checkout_url}>{t('access.checkout')}</a>}<button className="secondary" onClick={async()=>{await createClient().auth.signOut();location.href='/'}}>{t('access.signOut')}</button></section></main>;
 
   return <main className="financeApp">
     <header className="financeHeader">
       <button className="brand brandButton" onClick={()=>setSection('home')} type="button"><span className="mark">D</span><b>DEVINX</b></button>
-      <div className="financeHeaderMeta"><small>{month}</small><span>Seu dinheiro, sem enrolação.</span></div>
+      <div className="financeHeaderTools">
+        <div className="financeHeaderMeta"><small>{month}</small><span>{t('header.subtitle')}</span></div>
+        <select className="languageMini" value={locale} onChange={e=>setLocale(e.target.value as typeof locale)} aria-label={t('settings.language')}>
+          {locales.map(item=><option key={item} value={item}>{languageNames[item]}</option>)}
+        </select>
+      </div>
     </header>
 
     <section className="financeContent">
-      {section!=='home'&&<div className="sectionTopbar"><button type="button" className="backButton" onClick={()=>setSection(backTarget())}>‹</button><div><small>DEVINX</small><h1>{sectionTitles[section]}</h1></div></div>}
+      {section!=='home'&&<div className="sectionTopbar"><button type="button" className="backButton" onClick={()=>setSection(backTarget())}>‹</button><div><small>DEVINX</small><h1>{titles[section]}</h1></div></div>}
 
       {section==='home'&&<>
         <section className="instantPanel">
-          <div><small>REGISTRO EM SEGUNDOS</small><h1>O que aconteceu agora?</h1><p>Abra, toque e registre. Sem procurar menu.</p></div>
+          <div><small>{t('home.eyebrow')}</small><h1>{t('home.title')}</h1><p>{t('home.desc')}</p></div>
           <div className="instantActions">
-            <button type="button" className="instantAction income" onClick={()=>openCapture('income')}><span>＋</span><b>Entrada</b><small>dinheiro que entrou</small></button>
-            <button type="button" className="instantAction expense" onClick={()=>openCapture('expense')}><span>−</span><b>Gasto</b><small>dinheiro que saiu</small></button>
-            <button type="button" className="instantAction work" onClick={()=>setSection('work')}><span>◷</span><b>Jornada</b><small>Uber, 99, entrega...</small></button>
-            <button type="button" className="instantAction card" onClick={()=>setSection('cards')}><span>▣</span><b>Cartão</b><small>parcelas e fatura</small></button>
+            <button type="button" className="instantAction income" onClick={()=>openCapture('income')}><span>＋</span><b>{t('common.income')}</b><small>{t('home.incomeDesc')}</small></button>
+            <button type="button" className="instantAction expense" onClick={()=>openCapture('expense')}><span>−</span><b>{t('quick.expense')}</b><small>{t('home.expenseDesc')}</small></button>
+            <button type="button" className="instantAction work" onClick={()=>setSection('work')}><span>◷</span><b>{t('home.work')}</b><small>{t('home.workDesc')}</small></button>
+            <button type="button" className="instantAction card" onClick={()=>setSection('cards')}><span>▣</span><b>{t('home.card')}</b><small>{t('home.cardDesc')}</small></button>
           </div>
         </section>
         <DashboardOverview/>
       </>}
 
-      {section==='money'&&<>
-        <div className="segmentControl">
-          <button type="button" className={moneyKind==='expense'?'active':''} onClick={()=>setMoneyKind('expense')}>Gastos</button>
-          <button type="button" className={moneyKind==='income'?'active':''} onClick={()=>setMoneyKind('income')}>Entradas</button>
-        </div>
-        <TransactionManager kind={moneyKind} onNavigate={navigate}/>
-      </>}
-
-      {section==='work'&&<><p className="sectionLead">Registre ganhos, horas e quilômetros. O Devinx calcula o que realmente sobrou do trabalho.</p><WorkManager/></>}
-      {section==='plan'&&<div className="stackSections"><section><div className="miniHeading"><small>OBJETIVOS</small><h2>Metas</h2></div><GoalManager/></section><section><div className="miniHeading"><small>ANTES DE COMPRAR</small><h2>Posso gastar?</h2></div><SpendCheck/></section></div>}
+      {section==='movements'&&<MovementCenter onNavigate={navigate}/>}
+      {section==='work'&&<WorkManager/>}
+      {section==='plan'&&<div className="stackSections"><section><div className="miniHeading"><small>{t('goals.title').toUpperCase()}</small><h2>{t('goals.title')}</h2></div><GoalManager/></section><section><div className="miniHeading"><small>ANTES DE COMPRAR</small><h2>Posso gastar?</h2></div><SpendCheck/></section></div>}
 
       {section==='more'&&<section className="organizeGrid">
-        <button onClick={()=>setSection('cards')} type="button"><span>▣</span><div><b>Cartões e parcelas</b><small>Veja o que vence agora e o que ainda vem pela frente.</small></div><em>›</em></button>
-        <button onClick={()=>setSection('debts')} type="button"><span>↓</span><div><b>Outras dívidas</b><small>Financiamentos, empréstimos e acordos.</small></div><em>›</em></button>
-        <button onClick={()=>setSection('recurring')} type="button"><span>↻</span><div><b>Contas mensais</b><small>Aluguel, internet, escola e outras recorrências.</small></div><em>›</em></button>
-        <button onClick={()=>setSection('reports')} type="button"><span>▥</span><div><b>Relatórios</b><small>Entenda para onde o dinheiro está indo.</small></div><em>›</em></button>
-        <button onClick={()=>setSection('categories')} type="button"><span>⌁</span><div><b>Categorias</b><small>Organize sem complicar o registro rápido.</small></div><em>›</em></button>
-        <button onClick={()=>setSection('preferences')} type="button"><span>⚙</span><div><b>Preferências</b><small>Conta, moeda e configurações essenciais.</small></div><em>›</em></button>
+        <button onClick={()=>setSection('cards')} type="button"><span>▣</span><div><b>{t('nav.cards')}</b><small>{t('more.cardsHelp')}</small></div><em>›</em></button>
+        <button onClick={()=>setSection('debts')} type="button"><span>↓</span><div><b>{t('nav.debts')}</b><small>{t('more.debtsHelp')}</small></div><em>›</em></button>
+        <button onClick={()=>setSection('bills')} type="button"><span>↻</span><div><b>{t('nav.bills')}</b><small>{t('more.billsHelp')}</small></div><em>›</em></button>
+        <button onClick={()=>setSection('reports')} type="button"><span>▥</span><div><b>{t('nav.reports')}</b><small>{t('more.reportsHelp')}</small></div><em>›</em></button>
+        <button onClick={()=>setSection('categories')} type="button"><span>⌁</span><div><b>{t('nav.categories')}</b><small>{t('more.categoriesHelp')}</small></div><em>›</em></button>
+        <button onClick={()=>setSection('settings')} type="button"><span>⚙</span><div><b>{t('nav.settings')}</b><small>{t('more.settingsHelp')}</small></div><em>›</em></button>
+        {access.is_admin&&<button className="masterLauncher" onClick={()=>setSection('master')} type="button"><span>✦</span><div><b>{t('nav.master')}</b><small>{t('more.masterHelp')}</small></div><em>›</em></button>}
       </section>}
 
       {section==='cards'&&<CardManager onNavigate={navigate}/>}
       {section==='debts'&&<DebtManager/>}
-      {section==='recurring'&&<RecurringManager onNavigate={navigate}/>}
+      {section==='bills'&&<RecurringManager onNavigate={navigate}/>}
       {section==='reports'&&<ReportManager/>}
       {section==='spend'&&<SpendCheck/>}
       {section==='categories'&&<CategoryManager/>}
-      {section==='preferences'&&<PreferencesManager/>}
+      {section==='settings'&&<PreferencesManager/>}
+      {section==='master'&&access.is_admin&&<AdminMaster/>}
     </section>
 
     <QuickCapture request={capture} onNavigate={navigate}/>
 
-    <nav className="financeBottomNav" aria-label="Navegação principal">
-      <button type="button" className={section==='home'?'active':''} onClick={()=>setSection('home')}><span>⌂</span><b>Início</b></button>
-      <button type="button" className={section==='money'?'active':''} onClick={()=>setSection('money')}><span>↕</span><b>Movimentos</b></button>
-      <button type="button" className={section==='work'?'active':''} onClick={()=>setSection('work')}><span>◷</span><b>Trabalho</b></button>
-      <button type="button" className={section==='plan'?'active':''} onClick={()=>setSection('plan')}><span>◎</span><b>Planejar</b></button>
-      <button type="button" className={section==='more'||['cards','debts','recurring','reports','spend','categories','preferences'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>Mais</b></button>
+    <nav className="financeBottomNav" aria-label="Main navigation">
+      <button type="button" className={section==='home'?'active':''} onClick={()=>setSection('home')}><span>⌂</span><b>{t('nav.home')}</b></button>
+      <button type="button" className={section==='movements'?'active':''} onClick={()=>setSection('movements')}><span>↕</span><b>{t('nav.movements')}</b></button>
+      <button type="button" className={section==='work'?'active':''} onClick={()=>setSection('work')}><span>◷</span><b>{t('nav.work')}</b></button>
+      <button type="button" className={section==='plan'?'active':''} onClick={()=>setSection('plan')}><span>◎</span><b>{t('nav.plan')}</b></button>
+      <button type="button" className={section==='more'||['cards','debts','bills','reports','spend','categories','settings','master'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>{t('nav.more')}</b></button>
     </nav>
   </main>;
 }

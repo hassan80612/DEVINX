@@ -3,78 +3,61 @@
 import {useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {localDateISO,localMonthKey} from '@/lib/date';
+import {categoryName,CustomCategory} from '@/domain/categories';
+import {useI18n} from '@/i18n/provider';
 
-type Filter='all'|'income'|'work'|'expenses'|'cards'|'debts'|'avoidable';
 type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean;category_id:string};
-type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string;minutes_worked:number};
-type Installment={amount_minor:number;billing_month:string;card_purchases:{is_avoidable:boolean}|null};
-type RecurringPayment={amount_minor:number;due_month:string;recurring_bills:{is_avoidable:boolean}|null};
+type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string;minutes_worked:number;income_source_id:string|null;income_sources:{name:string}|null};
+type BillPay={amount_minor:number;paid_on:string;recurring_bills:{category_id:string;is_avoidable:boolean}|null};
+type CardPay={card_id:string;statement_month:string;amount_minor:number;paid_on:string};
+type Inst={amount_minor:number;billing_month:string;card_purchases:{card_id:string;category_id:string;is_avoidable:boolean}|null};
 
-const brl=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v/100);
-const key=(date:string)=>date.slice(0,7);
-const filterLabels:Record<Filter,string>={all:'Tudo',income:'Rendas',work:'Trabalho',expenses:'Gastos',cards:'Cartões',debts:'Dívidas',avoidable:'Evitáveis'};
+function monthKey(value:string){return value.slice(0,7)}
 
 export function ReportManager(){
-  const[months,setMonths]=useState(6);
-  const[filter,setFilter]=useState<Filter>('all');
-  const[tx,setTx]=useState<Tx[]>([]);
-  const[work,setWork]=useState<Work[]>([]);
-  const[installments,setInstallments]=useState<Installment[]>([]);
-  const[recurring,setRecurring]=useState<RecurringPayment[]>([]);
-  const[loading,setLoading]=useState(true);
+  const{t,currency,date}=useI18n();
+  const[months,setMonths]=useState(6);const[tx,setTx]=useState<Tx[]>([]);const[work,setWork]=useState<Work[]>([]);const[billPays,setBillPays]=useState<BillPay[]>([]);const[cardPays,setCardPays]=useState<CardPay[]>([]);const[inst,setInst]=useState<Inst[]>([]);const[custom,setCustom]=useState<CustomCategory[]>([]);const[loading,setLoading]=useState(true);
 
-  async function load(showLoading=true){
-    if(showLoading)setLoading(true);
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user){location.href='/entrar';return}
-    const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(months-1));
-    const from=localDateISO(start);
-    const monthFrom=`${localMonthKey(start)}-01`;
-    const[t,w,i,r]=await Promise.all([
+  async function load(show=true){
+    if(show)setLoading(true);const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}
+    const start=new Date();start.setDate(1);start.setMonth(start.getMonth()-(months-1));const from=localDateISO(start);const monthFrom=localMonthKey(start)+'-01';
+    const[a,b,c,d,e,f]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable,category_id').eq('user_id',user.id).gte('occurred_on',from),
-      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on,minutes_worked').eq('user_id',user.id).gte('worked_on',from),
-      s.from('card_installments').select('amount_minor,billing_month,card_purchases(is_avoidable)').eq('user_id',user.id).gte('billing_month',monthFrom),
-      s.from('recurring_bill_payments').select('amount_minor,due_month,recurring_bills(is_avoidable)').eq('user_id',user.id).gte('due_month',monthFrom)
+      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on,minutes_worked,income_source_id,income_sources(name)').eq('user_id',user.id).gte('worked_on',from),
+      s.from('recurring_bill_payments').select('amount_minor,paid_on,recurring_bills(category_id,is_avoidable)').eq('user_id',user.id).gte('paid_on',from),
+      s.from('card_bill_payments').select('card_id,statement_month,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
+      s.from('card_installments').select('amount_minor,billing_month,card_purchases(card_id,category_id,is_avoidable)').eq('user_id',user.id).gte('billing_month',monthFrom),
+      s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id)
     ]);
-    setTx((t.data||[]) as Tx[]);setWork((w.data||[]) as Work[]);setInstallments((i.data||[]) as unknown as Installment[]);setRecurring((r.data||[]) as unknown as RecurringPayment[]);setLoading(false);
+    setTx((a.data||[]) as Tx[]);setWork((b.data||[]) as unknown as Work[]);setBillPays((c.data||[]) as unknown as BillPay[]);setCardPays((d.data||[]) as CardPay[]);setInst((e.data||[]) as unknown as Inst[]);setCustom((f.data||[]) as CustomCategory[]);setLoading(false);
   }
+  useEffect(()=>{load(true);const refresh=()=>load(false);window.addEventListener('devinx:finance-updated',refresh);return()=>window.removeEventListener('devinx:finance-updated',refresh)},[months]);
 
-  useEffect(()=>{
-    load(true);
-    const refresh=()=>load(false);
-    window.addEventListener('devinx:finance-updated',refresh);
-    return()=>window.removeEventListener('devinx:finance-updated',refresh);
-  },[months]);
+  const report=useMemo(()=>{
+    const byMonth=new Map<string,{income:number;out:number;avoidable:number;hours:number;workCost:number}>();
+    for(let n=months-1;n>=0;n--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-n);byMonth.set(localMonthKey(d),{income:0,out:0,avoidable:0,hours:0,workCost:0})}
+    const categories=new Map<string,{kind:'income'|'expense';amount:number}>();
+    const sources=new Map<string,{gross:number;cost:number;hours:number}>();
+    const addCat=(kind:'income'|'expense',id:string,amount:number)=>{const k=kind+'|'+id;const prev=categories.get(k)||{kind,amount:0};prev.amount+=amount;categories.set(k,prev)};
 
-  const rows=useMemo(()=>{
-    const map=new Map<string,{income:number;expense:number;avoidable:number;workCost:number;hours:number;debt:number}>();
-    for(let n=months-1;n>=0;n--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-n);map.set(localMonthKey(d),{income:0,expense:0,avoidable:0,workCost:0,hours:0,debt:0})}
+    tx.forEach(x=>{const row=byMonth.get(monthKey(x.occurred_on));if(!row)return;if(x.type==='income'){row.income+=Number(x.amount_minor);addCat('income',x.category_id,Number(x.amount_minor))}else{row.out+=Number(x.amount_minor);if(x.is_avoidable)row.avoidable+=Number(x.amount_minor);addCat('expense',x.category_id,Number(x.amount_minor))}});
+    work.forEach(x=>{const row=byMonth.get(monthKey(x.worked_on));if(!row)return;const gross=Number(x.gross_income_minor),cost=Number(x.energy_cost_minor)+Number(x.extra_work_cost_minor),hours=Number(x.minutes_worked)/60;row.income+=gross;row.out+=cost;row.workCost+=cost;row.hours+=hours;addCat('income','work_income',gross);if(cost>0)addCat('expense','work_cost',cost);const name=x.income_sources?.name||t('move.workIncome');const src=sources.get(name)||{gross:0,cost:0,hours:0};src.gross+=gross;src.cost+=cost;src.hours+=hours;sources.set(name,src)});
+    billPays.forEach(x=>{const row=byMonth.get(monthKey(x.paid_on));if(!row)return;const amount=Number(x.amount_minor);row.out+=amount;if(x.recurring_bills?.is_avoidable)row.avoidable+=amount;addCat('expense',x.recurring_bills?.category_id||'other',amount)});
+    cardPays.forEach(x=>{const row=byMonth.get(monthKey(x.paid_on));if(!row)return;const amount=Number(x.amount_minor);row.out+=amount;const related=inst.filter(i=>i.billing_month===x.statement_month&&i.card_purchases?.card_id===x.card_id);const sum=related.reduce((a,b)=>a+Number(b.amount_minor),0);if(sum>0){related.forEach(i=>{const allocated=Math.round(amount*(Number(i.amount_minor)/sum));addCat('expense',i.card_purchases?.category_id||'other',allocated);if(i.card_purchases?.is_avoidable)row.avoidable+=allocated})}else addCat('expense','card_payment',amount)});
 
-    tx.forEach(x=>{
-      const r=map.get(key(x.occurred_on));if(!r)return;
-      const isDebt=x.type==='expense'&&x.category_id==='debt_payment';
-      const includeIncome=x.type==='income'&&(filter==='all'||filter==='income');
-      const includeExpense=x.type==='expense'&&(filter==='all'||filter==='avoidable'&&x.is_avoidable||filter==='debts'&&isDebt||filter==='expenses'&&!isDebt);
-      if(includeIncome)r.income+=Number(x.amount_minor);
-      if(includeExpense){r.expense+=Number(x.amount_minor);if(x.is_avoidable)r.avoidable+=Number(x.amount_minor);if(isDebt)r.debt+=Number(x.amount_minor)}
-    });
+    const rows=[...byMonth.entries()].map(([month,v])=>({month,...v,result:v.income-v.out}));
+    const totals=rows.reduce((a,r)=>({income:a.income+r.income,out:a.out+r.out,result:a.result+r.result,avoidable:a.avoidable+r.avoidable,hours:a.hours+r.hours,workCost:a.workCost+r.workCost}),{income:0,out:0,result:0,avoidable:0,hours:0,workCost:0});
+    const categoryRows=[...categories.entries()].map(([key,v])=>{const id=key.split('|')[1];let label=id==='work_income'?t('move.workIncome'):id==='work_cost'?t('move.workCost'):id==='card_payment'?t('move.cardPayment'):categoryName(v.kind,id,custom,t);return{...v,id,label}}).sort((a,b)=>b.amount-a.amount);
+    const sourceRows=[...sources.entries()].map(([name,v])=>({name,...v,net:v.gross-v.cost})).sort((a,b)=>b.net-a.net);
+    return{rows,totals,categoryRows,sourceRows};
+  },[tx,work,billPays,cardPays,inst,custom,months,t]);
 
-    if(filter==='all'||filter==='work')work.forEach(x=>{const r=map.get(key(x.worked_on));if(!r)return;const cost=Number(x.energy_cost_minor)+Number(x.extra_work_cost_minor);r.income+=Number(x.gross_income_minor);r.expense+=cost;r.workCost+=cost;r.hours+=Number(x.minutes_worked)/60});
-    if(filter==='all'||filter==='cards'||filter==='avoidable')installments.forEach(x=>{if(filter==='avoidable'&&!x.card_purchases?.is_avoidable)return;const r=map.get(key(x.billing_month));if(!r)return;r.expense+=Number(x.amount_minor);if(x.card_purchases?.is_avoidable)r.avoidable+=Number(x.amount_minor)});
-    if(filter==='all'||filter==='expenses'||filter==='avoidable')recurring.forEach(x=>{if(filter==='avoidable'&&!x.recurring_bills?.is_avoidable)return;const r=map.get(key(x.due_month));if(!r)return;r.expense+=Number(x.amount_minor);if(x.recurring_bills?.is_avoidable)r.avoidable+=Number(x.amount_minor)});
-
-    return [...map.entries()].map(([month,v])=>({month,...v,balance:v.income-v.expense}));
-  },[tx,work,installments,recurring,months,filter]);
-
-  const totals=rows.reduce((a,r)=>({income:a.income+r.income,expense:a.expense+r.expense,balance:a.balance+r.balance,avoidable:a.avoidable+r.avoidable,workCost:a.workCost+r.workCost,hours:a.hours+r.hours,debt:a.debt+r.debt}),{income:0,expense:0,balance:0,avoidable:0,workCost:0,hours:0,debt:0});
-
-  return <>
-    <div className="reportControls"><div className="filterRow reportPeriods"><button className={months===1?'active':''} onClick={()=>setMonths(1)}>Mês</button><button className={months===3?'active':''} onClick={()=>setMonths(3)}>3 meses</button><button className={months===6?'active':''} onClick={()=>setMonths(6)}>6 meses</button><button className={months===12?'active':''} onClick={()=>setMonths(12)}>12 meses</button></div><div className="filterRow reportFilters">{(Object.keys(filterLabels) as Filter[]).map(value=><button key={value} className={filter===value?'active':''} onClick={()=>setFilter(value)}>{filterLabels[value]}</button>)}</div></div>
-    {loading?<section className="panel"><b>Carregando relatório...</b></section>:<>
-      <div className="metricGrid reportMetrics"><article><small>Entradas</small><b>{brl(totals.income)}</b></article><article><small>Saídas</small><b>{brl(totals.expense)}</b></article><article><small>Resultado</small><b>{brl(totals.balance)}</b></article><article><small>{filter==='work'?'Horas trabalhadas':'Evitáveis'}</small><b>{filter==='work'?`${totals.hours.toFixed(1)} h`:brl(totals.avoidable)}</b></article></div>
-      {filter==='all'&&<section className="reportClosing"><article><span>Custos do trabalho</span><b>{brl(totals.workCost)}</b></article><article><span>Pagamentos de dívidas</span><b>{brl(totals.debt)}</b></article><article><span>Horas de trabalho</span><b>{totals.hours.toFixed(1)} h</b></article></section>}
-      <section className="reportTable">{rows.map(r=><article key={r.month}><div><b>{new Date(r.month+'-02T12:00:00').toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</b><small>Resultado {brl(r.balance)}{r.hours>0?` · ${r.hours.toFixed(1)} h`:''}</small></div><span className="positive">+ {brl(r.income)}</span><span className="negative">- {brl(r.expense)}</span></article>)}</section>
-    </>}
-  </>;
+  if(loading)return <section className="panel"><span className="loader"/></section>;
+  return <div className="reportsPage">
+    <p className="sectionLead">{t('reports.lead')}</p>
+    <div className="filterRow reportPeriods"><button className={months===1?'active':''} onClick={()=>setMonths(1)}>{t('reports.month')}</button><button className={months===3?'active':''} onClick={()=>setMonths(3)}>{t('reports.3m')}</button><button className={months===6?'active':''} onClick={()=>setMonths(6)}>{t('reports.6m')}</button><button className={months===12?'active':''} onClick={()=>setMonths(12)}>{t('reports.12m')}</button></div>
+    <div className="metricGrid reportMetrics"><article><small>{t('reports.income')}</small><b>{currency(report.totals.income)}</b></article><article><small>{t('reports.outflow')}</small><b>{currency(report.totals.out)}</b></article><article><small>{t('reports.result')}</small><b className={report.totals.result>=0?'positive':'negative'}>{currency(report.totals.result)}</b></article><article><small>{t('reports.avoidable')}</small><b>{currency(report.totals.avoidable)}</b></article></div>
+    <section className="panel reportTable"><div className="sectionTitleRow"><h2>{t('reports.title')}</h2></div>{report.rows.map(r=><article key={r.month}><div><b>{date(r.month+'-01',{month:'long',year:'numeric'})}</b><small>{t('reports.workHours')}: {r.hours.toFixed(1)}h</small></div><span className="positive">+ {currency(r.income)}</span><span className="negative">− {currency(r.out)}</span><strong className={r.result>=0?'positive':'negative'}>{currency(r.result)}</strong></article>)}</section>
+    <div className="reportColumns"><section className="panel"><div className="sectionTitleRow"><h2>{t('reports.byCategory')}</h2></div>{report.categoryRows.length===0?<p>{t('reports.noData')}</p>:<div className="analysisList">{report.categoryRows.map(c=><article key={c.kind+'-'+c.id}><span>{c.label}</span><b className={c.kind==='income'?'positive':'negative'}>{c.kind==='income'?'+ ':'− '}{currency(c.amount)}</b></article>)}</div>}</section><section className="panel"><div className="sectionTitleRow"><h2>{t('reports.bySource')}</h2></div>{report.sourceRows.length===0?<p>{t('reports.noData')}</p>:<div className="analysisList">{report.sourceRows.map(s=><article key={s.name}><div><span>{s.name}</span><small>{s.hours.toFixed(1)}h · {t('reports.workCosts')} {currency(s.cost)}</small></div><b className={s.net>=0?'positive':'negative'}>{currency(s.net)}</b></article>)}</div>}</section></div>
+  </div>;
 }

@@ -3,58 +3,44 @@
 import {useEffect,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {localDateISO} from '@/lib/date';
-import {CustomCategory} from '@/domain/categories';
+import {categoryOptions,CustomCategory} from '@/domain/categories';
+import {useI18n} from '@/i18n/provider';
 
 type Mode='expense'|'income';
-type Preset={label:string;category:string;description:string;icon:string};
 type Request={id:number;mode:Mode};
-
-const expensePresets:Preset[]=[
-  {label:'Almoço',category:'food',description:'Almoço',icon:'🍽️'},
-  {label:'Mercado',category:'groceries',description:'Mercado',icon:'🛒'},
-  {label:'Café / lanche',category:'food',description:'Café / lanche',icon:'☕'},
-  {label:'Saúde',category:'health',description:'Saúde',icon:'✚'},
-  {label:'Lazer',category:'leisure',description:'Lazer',icon:'◉'},
-  {label:'Outro',category:'other',description:'',icon:'+'},
-];
-const incomePresets:Preset[]=[
-  {label:'Salário',category:'salary',description:'Salário',icon:'▣'},
-  {label:'Comissão',category:'commission',description:'Comissão',icon:'%'},
-  {label:'Hora extra',category:'overtime',description:'Hora extra',icon:'◷'},
-  {label:'Bônus',category:'bonus',description:'Bônus',icon:'★'},
-  {label:'Renda extra',category:'extra',description:'Renda extra',icon:'+'},
-  {label:'Outro',category:'other',description:'',icon:'…'},
-];
-
-function toMinor(raw:string){const normalized=raw.replace(/\./g,'').replace(',','.').replace(/[^0-9.]/g,'');return Math.round((Number(normalized)||0)*100)}
+const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
 
 export function QuickCapture({request,onNavigate}:{request?:Request;onNavigate?:(target:string)=>void}){
-  const[open,setOpen]=useState(false);const[mode,setMode]=useState<Mode>('expense');const[category,setCategory]=useState('food');const[description,setDescription]=useState('Almoço');const[amount,setAmount]=useState('');const[payment,setPayment]=useState('pix');const[avoidable,setAvoidable]=useState(false);const[saving,setSaving]=useState(false);const[message,setMessage]=useState('');const[custom,setCustom]=useState<CustomCategory[]>([]);const amountRef=useRef<HTMLInputElement>(null);
-  const basePresets=mode==='expense'?expensePresets:incomePresets;
-  const customPresets:Preset[]=custom.filter(c=>c.kind===mode&&c.is_active&&c.show_in_quick).map(c=>({label:c.name,category:c.id,description:c.name,icon:c.icon||'•'}));
-  const presets=[...basePresets,...customPresets];
+  const{t}=useI18n();
+  const[open,setOpen]=useState(false);const[mode,setMode]=useState<Mode>('expense');const[amount,setAmount]=useState('');const[description,setDescription]=useState('');const[category,setCategory]=useState('food');const[payment,setPayment]=useState('pix');const[avoidable,setAvoidable]=useState(false);const[saving,setSaving]=useState(false);const[message,setMessage]=useState('');const[custom,setCustom]=useState<CustomCategory[]>([]);const amountRef=useRef<HTMLInputElement>(null);
+  const options=categoryOptions(mode,custom,t).filter(item=>item.showInQuick);
 
   async function loadCategories(){const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{data}=await s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id).eq('is_active',true).order('created_at');setCustom((data||[]) as CustomCategory[])}
   useEffect(()=>{if(open){loadCategories();setTimeout(()=>amountRef.current?.focus(),80)}},[open]);
   useEffect(()=>{if(request&&request.id>0){changeMode(request.mode);setOpen(true)}},[request?.id]);
 
-  function selectPreset(preset:Preset){setCategory(preset.category);setDescription(preset.description);setTimeout(()=>amountRef.current?.focus(),20)}
-  function changeMode(next:Mode){setMode(next);const first=next==='expense'?expensePresets[0]:incomePresets[0];setCategory(first.category);setDescription(first.description);setAmount('');setAvoidable(false);setMessage('')}
+  function changeMode(next:Mode){setMode(next);const first=categoryOptions(next,custom,t)[0];setCategory(first?.id||'other');setDescription('');setAmount('');setAvoidable(false);setMessage('')}
   function go(target:string){setOpen(false);onNavigate?.(target)}
 
-  async function save(){const value=toMinor(amount);if(value<=0){setMessage('Informe o valor.');amountRef.current?.focus();return}setSaving(true);setMessage('');const supabase=createClient();const{data:{user}}=await supabase.auth.getUser();if(!user){setSaving(false);location.href='/entrar';return}const{error}=await supabase.from('transactions').insert({user_id:user.id,type:mode,category_id:category,description:description.trim()||null,amount_minor:value,occurred_on:localDateISO(),payment_method:mode==='expense'?payment:null,is_avoidable:mode==='expense'?avoidable:false,is_recurring:false});setSaving(false);if(error){setMessage('Não foi possível salvar agora.');return}setAmount('');setAvoidable(false);setMessage(mode==='expense'?'Gasto salvo.':'Entrada salva.');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));setTimeout(()=>{setOpen(false);setMessage('')},420)}
+  async function save(){
+    const value=minor(amount);if(value<=0){setMessage(t('common.value'));return}
+    setSaving(true);setMessage('');const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){setSaving(false);location.href='/entrar';return}
+    const{error}=await s.from('transactions').insert({user_id:user.id,type:mode,category_id:category,description:description.trim()||null,amount_minor:value,occurred_on:localDateISO(),payment_method:mode==='expense'?payment:null,is_avoidable:mode==='expense'?avoidable:false,is_recurring:false});
+    setSaving(false);if(error){setMessage('Não foi possível salvar.');return}
+    setAmount('');setDescription('');setAvoidable(false);setMessage(mode==='expense'?t('quick.savedExpense'):t('quick.savedIncome'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));setTimeout(()=>{setOpen(false);setMessage('')},350);
+  }
 
   return <>
-    <button type="button" className="quickCaptureFab" onClick={()=>{setOpen(true);setMessage('')}} aria-label="Registro rápido"><span>+</span><b>Rápido</b></button>
-    {open&&<div className="quickCaptureBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><section className="quickCaptureSheet" role="dialog" aria-modal="true" aria-label="Registro rápido">
-      <div className="quickCaptureHandle"/><div className="quickCaptureHead"><div><small>REGISTRO RÁPIDO</small><h2>Fez agora? Salve agora.</h2></div><button type="button" onClick={()=>setOpen(false)} aria-label="Fechar">×</button></div>
-      <div className="quickCaptureTabs"><button type="button" className={mode==='expense'?'active':''} onClick={()=>changeMode('expense')}>Gasto</button><button type="button" className={mode==='income'?'active':''} onClick={()=>changeMode('income')}>Entrada</button><button type="button" onClick={()=>go('work')}>Jornada</button></div>
-      <div className="quickPresetGrid">{presets.map(preset=><button type="button" key={preset.category+'-'+preset.label} className={category===preset.category&&description===preset.description?'selected':''} onClick={()=>selectPreset(preset)}><span>{preset.icon}</span><b>{preset.label}</b></button>)}</div>
-      <div className="quickAmountRow"><label><span>Valor</span><div className="quickMoney"><b>R$</b><input ref={amountRef} value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal" placeholder="0,00" onKeyDown={e=>{if(e.key==='Enter')save()}}/></div></label></div>
-      <label className="quickDescription"><span>Descrição <em>opcional</em></span><input value={description} onChange={e=>setDescription(e.target.value)} placeholder="Ex.: almoço com cliente"/></label>
-      {mode==='expense'&&<><div className="quickPayment"><button type="button" className={payment==='pix'?'selected':''} onClick={()=>setPayment('pix')}>Pix</button><button type="button" className={payment==='cash'?'selected':''} onClick={()=>setPayment('cash')}>Dinheiro</button><button type="button" className={payment==='debit'?'selected':''} onClick={()=>setPayment('debit')}>Débito</button></div><button type="button" className={'quickAvoidable '+(avoidable?'selected':'')} onClick={()=>setAvoidable(v=>!v)}>{avoidable?'✓ Evitável':'Marcar como evitável'}</button></>}
-      {message&&<div className="quickCaptureMessage">{message}</div>}<button type="button" className="quickSave" onClick={save} disabled={saving}>{saving?'Salvando...':mode==='expense'?'Salvar gasto':'Salvar entrada'}</button>
-      {mode==='expense'&&<div className="quickCaptureRoutes"><span>Outro tipo de compromisso?</span><button type="button" onClick={()=>go('cards')}>Cartão</button><button type="button" onClick={()=>go('recurring')}>Conta mensal</button></div>}
+    <button type="button" className="quickCaptureFab" onClick={()=>{setOpen(true);setMessage('')}} aria-label={t('quick.title')}><span>+</span><b>{t('common.add')}</b></button>
+    {open&&<div className="quickCaptureBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false)}}><section className="quickCaptureSheet" role="dialog" aria-modal="true">
+      <div className="quickCaptureHead"><div><small>{t('quick.title').toUpperCase()}</small><h2>{t('quick.subtitle')}</h2></div><button type="button" onClick={()=>setOpen(false)}>×</button></div>
+      <div className="quickCaptureTabs"><button type="button" className={mode==='expense'?'active':''} onClick={()=>changeMode('expense')}>{t('quick.expense')}</button><button type="button" className={mode==='income'?'active':''} onClick={()=>changeMode('income')}>{t('quick.income')}</button><button type="button" onClick={()=>go('work')}>{t('quick.journey')}</button></div>
+      <div className="quickPresetGrid">{options.map(item=><button type="button" key={item.id} className={category===item.id?'selected':''} onClick={()=>{setCategory(item.id);if(!description)setDescription(item.name);amountRef.current?.focus()}}><span>{item.icon}</span><b>{item.name}</b></button>)}</div>
+      <label className="quickAmountRow">{t('quick.amount')}<div className="quickMoney"><b>R$</b><input ref={amountRef} value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal" placeholder="0,00" onKeyDown={e=>{if(e.key==='Enter')save()}}/></div></label>
+      <label>{t('quick.description')} <small>({t('quick.optional')})</small><input value={description} onChange={e=>setDescription(e.target.value)}/></label>
+      {mode==='expense'&&<><div className="quickPayment"><button type="button" className={payment==='pix'?'selected':''} onClick={()=>setPayment('pix')}>Pix</button><button type="button" className={payment==='cash'?'selected':''} onClick={()=>setPayment('cash')}>Cash</button><button type="button" className={payment==='debit'?'selected':''} onClick={()=>setPayment('debit')}>Debit</button></div><button type="button" className={'quickAvoidable '+(avoidable?'selected':'')} onClick={()=>setAvoidable(v=>!v)}>{avoidable?t('quick.avoidableOn'):t('quick.avoidable')}</button></>}
+      {message&&<div className="authMessage">{message}</div>}<button type="button" className="quickSave" onClick={save} disabled={saving}>{saving?t('common.saving'):t('common.save')}</button>
+      {mode==='expense'&&<div className="quickCaptureRoutes"><span>{t('quick.otherCommitment')}</span><button type="button" onClick={()=>go('cards')}>{t('quick.card')}</button><button type="button" onClick={()=>go('bills')}>{t('quick.bill')}</button></div>}
     </section></div>}
   </>;
 }

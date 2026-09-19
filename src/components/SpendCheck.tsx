@@ -2,114 +2,37 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
-import {spendImpact} from '@/domain/finance';
-import {localDateISO,localMonthEndISO,localMonthStartISO} from '@/lib/date';
+import {localMonthStartISO} from '@/lib/date';
+import {useI18n} from '@/i18n/provider';
 
-type Tx={type:'income'|'expense';amount_minor:number};
-type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;minutes_worked:number;worked_on:string};
-type Bill={id:string;amount_minor:number;due_day:number};
-type Payment={recurring_bill_id:string;amount_minor:number};
-type Installment={amount_minor:number;paid_at:string|null;card_purchases:{card_id:string}|null};
-type Card={id:string;due_day:number|null};
-type Debt={id:string;installment_minor:number|null;outstanding_minor:number};
-type DebtPayment={debt_id:string;amount_minor:number};
-
-const brl=(v:number)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v/100);
-const minor=(v:string)=>Math.round((Number(v.replace(/\./g,'').replace(',','.'))||0)*100);
-
-function isDueWithinSevenDays(day:number){
-  const now=new Date();now.setHours(0,0,0,0);
-  for(let offset=0;offset<=7;offset++){
-    const d=new Date(now);d.setDate(now.getDate()+offset);
-    if(d.getDate()===day)return true;
-  }
-  return false;
-}
+const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
 
 export function SpendCheck(){
-  const[value,setValue]=useState('');
-  const[data,setData]=useState({income:0,expense:0,unpaidRecurring:0,unpaidCards:0,debtCommitment:0,next7:0,netPerHour:0,historyReady:false});
-  const[loading,setLoading]=useState(true);
+  const{t,currency}=useI18n();
+  const[balance,setBalance]=useState(0);const[pending,setPending]=useState(0);const[value,setValue]=useState('');const[loading,setLoading]=useState(true);
 
-  async function load(showLoading=true){
-    if(showLoading)setLoading(true);
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user){location.href='/entrar';return}
-    const start=localMonthStartISO();
-    const end=localMonthEndISO();
-    const historyStart=new Date();historyStart.setDate(historyStart.getDate()-30);
-    const[t,w,b,p,i,c,d,dp]=await Promise.all([
-      s.from('transactions').select('type,amount_minor').eq('user_id',user.id).gte('occurred_on',start).lte('occurred_on',end),
-      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,minutes_worked,worked_on').eq('user_id',user.id).gte('worked_on',localDateISO(historyStart)),
-      s.from('recurring_bills').select('id,amount_minor,due_day').eq('user_id',user.id).eq('is_active',true),
-      s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor').eq('user_id',user.id).eq('due_month',start),
-      s.from('card_installments').select('amount_minor,paid_at,card_purchases(card_id)').eq('user_id',user.id).eq('billing_month',start),
-      s.from('credit_cards').select('id,due_day').eq('user_id',user.id).eq('is_active',true),
+  async function load(){
+    const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}const month=localMonthStartISO();
+    const[a,b,c,d,e,f,g,h]=await Promise.all([
+      s.from('transactions').select('type,amount_minor').eq('user_id',user.id).gte('occurred_on',month),
+      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id).gte('worked_on',month),
+      s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',user.id).gte('paid_on',month),
+      s.from('card_bill_payments').select('amount_minor').eq('user_id',user.id).gte('paid_on',month),
+      s.from('recurring_bills').select('id,amount_minor').eq('user_id',user.id).eq('is_active',true),
+      s.from('card_installments').select('amount_minor,billing_month,paid_at').eq('user_id',user.id).is('paid_at',null).lte('billing_month',month),
       s.from('debts').select('id,installment_minor,outstanding_minor').eq('user_id',user.id).eq('is_active',true),
-      s.from('debt_payments').select('debt_id,amount_minor').eq('user_id',user.id).gte('paid_on',start).lte('paid_on',end)
+      s.from('debt_payments').select('debt_id,amount_minor').eq('user_id',user.id).gte('paid_on',month)
     ]);
-
-    const tx=(t.data||[]) as Tx[];
-    const work=(w.data||[]) as Work[];
-    const bills=(b.data||[]) as Bill[];
-    const payments=(p.data||[]) as Payment[];
-    const installments=(i.data||[]) as unknown as Installment[];
-    const cards=(c.data||[]) as Card[];
-    const debts=(d.data||[]) as Debt[];
-    const debtPayments=(dp.data||[]) as DebtPayment[];
-
-    const monthWork=work.filter(x=>x.worked_on>=start&&x.worked_on<=end);
-    const recurringPaid=payments.reduce((a,b)=>a+Number(b.amount_minor),0);
-    const income=tx.filter(x=>x.type==='income').reduce((a,b)=>a+Number(b.amount_minor),0)+monthWork.reduce((a,b)=>a+Number(b.gross_income_minor),0);
-    const expense=tx.filter(x=>x.type==='expense').reduce((a,b)=>a+Number(b.amount_minor),0)+monthWork.reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0)+installments.reduce((a,b)=>a+Number(b.amount_minor),0)+recurringPaid;
-
-    const paid=new Set(payments.map(x=>x.recurring_bill_id));
-    const unpaidBills=bills.filter(x=>!paid.has(x.id));
-    const unpaidRecurring=unpaidBills.reduce((a,b)=>a+Number(b.amount_minor),0);
-    const unpaidCards=installments.filter(x=>!x.paid_at).reduce((a,b)=>a+Number(b.amount_minor),0);
-
-    const paidByDebt=new Map<string,number>();
-    debtPayments.forEach(pmt=>paidByDebt.set(pmt.debt_id,(paidByDebt.get(pmt.debt_id)||0)+Number(pmt.amount_minor)));
-    const debtCommitment=debts.reduce((sum,debt)=>{
-      const installment=Math.min(Number(debt.installment_minor||0),Number(debt.outstanding_minor));
-      return sum+Math.max(0,installment-(paidByDebt.get(debt.id)||0));
-    },0);
-
-    const recurringNext7=unpaidBills.filter(x=>isDueWithinSevenDays(x.due_day)).reduce((a,b)=>a+Number(b.amount_minor),0);
-    const cardDueSoon=new Set(cards.filter(card=>card.due_day&&isDueWithinSevenDays(card.due_day)).map(card=>card.id));
-    const cardsNext7=installments.filter(x=>!x.paid_at&&x.card_purchases?.card_id&&cardDueSoon.has(x.card_purchases.card_id)).reduce((a,b)=>a+Number(b.amount_minor),0);
-
-    const historyGross=work.reduce((a,b)=>a+Number(b.gross_income_minor),0);
-    const historyCost=work.reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0);
-    const historyHours=work.reduce((a,b)=>a+Number(b.minutes_worked),0)/60;
-    const historyReady=work.length>=3&&historyHours>=3;
-    const netPerHour=historyReady&&historyHours>0?(historyGross-historyCost)/historyHours:0;
-
-    setData({income,expense,unpaidRecurring,unpaidCards,debtCommitment,next7:recurringNext7+cardsNext7,netPerHour,historyReady});
-    setLoading(false);
+    const tx=(a.data||[]) as any[],work=(b.data||[]) as any[],billPay=(c.data||[]) as any[],cardPay=(d.data||[]) as any[],bills=(e.data||[]) as any[],cards=(f.data||[]) as any[],debts=(g.data||[]) as any[],debtPay=(h.data||[]) as any[];
+    const income=tx.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount_minor),0)+work.reduce((s,x)=>s+Number(x.gross_income_minor),0);
+    const out=tx.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount_minor),0)+work.reduce((s,x)=>s+Number(x.energy_cost_minor)+Number(x.extra_work_cost_minor),0)+billPay.reduce((s,x)=>s+Number(x.amount_minor),0)+cardPay.reduce((s,x)=>s+Number(x.amount_minor),0);
+    const paidBills=new Set(billPay.filter(x=>x.due_month===month).map(x=>x.recurring_bill_id));const billPending=bills.filter(x=>!paidBills.has(x.id)).reduce((s,x)=>s+Number(x.amount_minor),0);
+    const cardPending=cards.reduce((s,x)=>s+Number(x.amount_minor),0);
+    const paidDebt=new Map<string,number>();debtPay.forEach(x=>paidDebt.set(x.debt_id,(paidDebt.get(x.debt_id)||0)+Number(x.amount_minor)));const debtPending=debts.reduce((s,x)=>s+Math.max(0,Math.min(Number(x.installment_minor||x.outstanding_minor),Number(x.outstanding_minor))-(paidDebt.get(x.id)||0)),0);
+    setBalance(income-out);setPending(billPending+cardPending+debtPending);setLoading(false);
   }
-
-  useEffect(()=>{
-    load(true);
-    const refresh=()=>load(false);
-    window.addEventListener('devinx:finance-updated',refresh);
-    return()=>window.removeEventListener('devinx:finance-updated',refresh);
-  },[]);
-
-  const proposed=minor(value);
-  const accountingBalance=data.income-data.expense;
-  const projected=accountingBalance-data.unpaidRecurring-data.debtCommitment;
-  const after=spendImpact(projected,proposed);
-  const status=useMemo(()=>after>=0?'Esse gasto cabe na projeção registrada.':'Esse gasto deixaria sua projeção negativa.',[after]);
-  const proposedHours=data.historyReady&&data.netPerHour>0&&proposed>0?proposed/data.netPerHour:null;
-  const recoveryHours=data.historyReady&&data.netPerHour>0&&after<0?Math.abs(after)/data.netPerHour:null;
-
-  if(loading)return <section className="panel"><b>Calculando seu cenário...</b></section>;
-
-  return <>
-    <section className="summaryHero"><small>SALDO APÓS COMPROMISSOS</small><strong>{brl(projected)}</strong><span>usa somente seus lançamentos e compromissos cadastrados; fatura do cartão não é descontada duas vezes</span></section>
-    <div className="metricGrid"><article><small>Saldo contábil</small><b>{brl(accountingBalance)}</b></article><article><small>Contas ainda a pagar</small><b>{brl(data.unpaidRecurring)}</b></article><article><small>Dívidas do mês</small><b>{brl(data.debtCommitment)}</b></article><article><small>Vence nos próximos 7 dias</small><b>{brl(data.next7)}</b></article></div>
-    <section className="panel spendCheck"><h2>Quanto você quer gastar?</h2><label>Valor<input value={value} onChange={e=>setValue(e.target.value)} inputMode="decimal" placeholder="0,00"/></label>{proposed>0&&<div className={after>=0?'impact good':'impact alert'}><small>Depois desse gasto</small><strong>{brl(after)}</strong><p>{status}</p>{proposedHours!==null&&<span>Esse valor equivale a cerca de <b>{proposedHours.toFixed(1)} h</b> do seu líquido/hora dos últimos 30 dias.</span>}{recoveryHours!==null&&<span>Para cobrir o saldo negativo, seriam cerca de <b>{recoveryHours.toFixed(1)} h</b> no seu ritmo recente.</span>}</div>}{!data.historyReady&&<p className="note">A equivalência em horas aparece depois de pelo menos 3 jornadas e 3 horas registradas. O Devinx não inventa média.</p>}<p className="lead">O Devinx mostra o impacto. A decisão continua sendo sua.</p></section>
-  </>;
+  useEffect(()=>{load();const refresh=()=>load();window.addEventListener('devinx:finance-updated',refresh);return()=>window.removeEventListener('devinx:finance-updated',refresh)},[]);
+  const after=useMemo(()=>balance-pending-minor(value),[balance,pending,value]);
+  if(loading)return <section className="panel"><span className="loader"/></section>;
+  return <section className="panel spendCheck"><div className="sectionTitleRow"><div><small>{t('spend.afterCommitments')}</small><h2>{currency(balance-pending)}</h2></div></div><div className="commitmentSplit"><article><span>{t('move.balance')}</span><b>{currency(balance)}</b></article><article><span>{t('common.pending')}</span><b>{currency(pending)}</b></article></div><label>{t('spend.question')}<input value={value} onChange={e=>setValue(e.target.value)} inputMode="decimal" placeholder="0,00"/></label>{value&&<div className={'impact '+(after>=0?'good':'alert')}><span>{t('spend.after')}</span><strong>{currency(after)}</strong><span>{after>=0?t('spend.fits'):t('spend.negative')}</span></div>}</section>;
 }
