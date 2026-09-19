@@ -4,6 +4,7 @@ import {FormEvent,useState} from 'react';
 import Link from 'next/link';
 import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
+import {LanguageMenu} from '@/components/LanguageMenu';
 
 type Mode='entrar'|'criar'|'recuperar';
 type MessageKind='idle'|'error'|'success';
@@ -12,7 +13,7 @@ const CANONICAL_ORIGIN='https://devinx.com.br';
 function safeNextPath(value:string){return value.startsWith('/')&&!value.startsWith('//')?value:'/painel'}
 
 export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initialError?:string}){
-  const{t,locale,setLocale,locales,languageNames}=useI18n();
+  const{t}=useI18n();
   const[mode,setMode]=useState<Mode>(initialError?'recuperar':'entrar');const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[showPassword,setShowPassword]=useState(false);const[message,setMessage]=useState(initialError? t('auth.errorExpired'):'');const[messageKind,setMessageKind]=useState<MessageKind>(initialError?'error':'idle');const[pending,setPending]=useState(false);
 
   function changeMode(next:Mode){setMode(next);setPassword('');setConfirmPassword('');setShowPassword(false);setMessage('');setMessageKind('idle')}
@@ -33,7 +34,7 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
   }
 
   return <main className="authPage">
-    <header className="authTop"><Link className="brand" href="/"><span className="mark">D</span><b>DEVINX</b></Link><select className="languageMini" value={locale} onChange={e=>setLocale(e.target.value as any)}>{locales.map(item=><option key={item} value={item}>{languageNames[item]}</option>)}</select></header>
+    <header className="authTop"><Link className="brand" href="/"><span className="mark">D</span><b>DEVINX</b></Link><LanguageMenu/></header>
     <section className="authCard">
       <div className="authIntro"><span className="goldPill">DEVINX</span><h1>{mode==='entrar'?t('auth.titleLogin'):mode==='criar'?t('auth.titleCreate'):t('auth.titleRecover')}</h1><p>{mode==='entrar'?t('auth.loginDesc'):mode==='criar'?t('auth.createDesc'):t('auth.recoverDesc')}</p></div>
       {mode!=='recuperar'&&<div className="authTabs"><button type="button" className={mode==='entrar'?'active':''} onClick={()=>changeMode('entrar')}>{t('auth.login')}</button><button type="button" className={mode==='criar'?'active':''} onClick={()=>changeMode('criar')}>{t('auth.create')}</button></div>}

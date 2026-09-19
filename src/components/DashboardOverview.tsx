@@ -70,10 +70,11 @@ export function DashboardOverview(){
     const paidMonths=new Set(billPays.map(p=>p.recurring_bill_id+'|'+p.due_month.slice(0,7)));
     let recurringPending=0;
     for(const bill of bills){
-      let cursor=bill.created_at.slice(0,7)+'-01';const oldest=addMonths(month,-12);if(cursor<oldest)cursor=oldest;
-      while(cursor<=month){const key=bill.id+'|'+cursor.slice(0,7);if(!paidMonths.has(key))recurringPending+=Number(bill.amount_minor);cursor=addMonths(cursor,1)}
+      const createdMonth=bill.created_at.slice(0,7)+'-01';
+      const key=bill.id+'|'+month.slice(0,7);
+      if(createdMonth<=month&&!paidMonths.has(key))recurringPending+=Number(bill.amount_minor);
     }
-    const cardsDueNow=cardInst.filter(i=>i.billing_month<=month).reduce((a,b)=>a+Number(b.amount_minor),0);
+    const cardsDueNow=cardInst.filter(i=>i.billing_month===month).reduce((a,b)=>a+Number(b.amount_minor),0);
     const cardTotalOpen=cardInst.reduce((a,b)=>a+Number(b.amount_minor),0);
     const debtPaidMap=new Map<string,number>();debtPays.filter(p=>p.paid_on>=month).forEach(p=>debtPaidMap.set(p.debt_id,(debtPaidMap.get(p.debt_id)||0)+Number(p.amount_minor)));
     const debtPending=debts.reduce((sum,d)=>sum+Math.max(0,Math.min(Number(d.installment_minor||d.outstanding_minor),Number(d.outstanding_minor))-(debtPaidMap.get(d.id)||0)),0);
@@ -105,7 +106,7 @@ export function DashboardOverview(){
     <section className="summaryHero premiumSummary"><small>{t('dashboard.projected')}</small><strong>{currency(numbers.projected)}</strong><span>{t('dashboard.projectedHelp')}</span></section>
     <div className="metricGrid dashboardMetrics"><article><small>{t('dashboard.entered')}</small><b>{currency(numbers.income)}</b></article><article><small>{t('dashboard.spent')}</small><b>{currency(numbers.spent)}</b></article><article className="dayResult"><small>{t('dashboard.dayBalance')}</small><b className={numbers.todayBalance>=0?'positive':'negative'}>{currency(numbers.todayBalance)}</b><span>+{currency(numbers.todayIncome)} · −{currency(numbers.todaySpent)}</span></article><article><small>{t('dashboard.pending')}</small><b>{currency(numbers.toPay)}</b></article></div>
     {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goal.name}</h2></div><strong>{goalProgress.percent}%</strong></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
-    <section className="panel commitmentsPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><span className="statusBadge">{t('dashboard.overdueIncluded')}</span></div><div className="commitmentTriple"><article><span>{t('dashboard.monthlyBills')}</span><b>{currency(numbers.recurringPending)}</b></article><article><span>{t('dashboard.otherDebts')}</span><b>{currency(numbers.debtPending)}</b></article><article><span>{t('dashboard.cards')}</span><b>{currency(numbers.cardsDueNow)}</b><small>{t('cards.totalOpen')}: {currency(numbers.cardTotalOpen)}</small></article></div></section>
+    <section className="panel commitmentsPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><span className="statusBadge">{t('dashboard.currentMonthOnly')}</span></div><div className="commitmentTriple"><article><span>{t('dashboard.monthlyBills')}</span><b>{currency(numbers.recurringPending)}</b></article><article><span>{t('dashboard.otherDebts')}</span><b>{currency(numbers.debtPending)}</b></article><article><span>{t('dashboard.cards')}</span><b>{currency(numbers.cardsDueNow)}</b><small>{t('cards.totalOpen')}: {currency(numbers.cardTotalOpen)}</small></article></div></section>
     {numbers.income===0&&numbers.spent===0&&<section className="empty premiumEmpty"><b>{t('dashboard.emptyTitle')}</b><p>{t('dashboard.emptyText')}</p></section>}
   </div>;
 }

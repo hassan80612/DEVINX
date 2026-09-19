@@ -18,15 +18,15 @@ export function SpendCheck(){
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id).gte('worked_on',month),
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',user.id).gte('paid_on',month),
       s.from('card_bill_payments').select('amount_minor').eq('user_id',user.id).gte('paid_on',month),
-      s.from('recurring_bills').select('id,amount_minor').eq('user_id',user.id).eq('is_active',true),
-      s.from('card_installments').select('amount_minor,billing_month,paid_at').eq('user_id',user.id).is('paid_at',null).lte('billing_month',month),
+      s.from('recurring_bills').select('id,amount_minor,created_at').eq('user_id',user.id).eq('is_active',true),
+      s.from('card_installments').select('amount_minor,billing_month,paid_at').eq('user_id',user.id).is('paid_at',null).eq('billing_month',month),
       s.from('debts').select('id,installment_minor,outstanding_minor').eq('user_id',user.id).eq('is_active',true),
       s.from('debt_payments').select('debt_id,amount_minor').eq('user_id',user.id).gte('paid_on',month)
     ]);
     const tx=(a.data||[]) as any[],work=(b.data||[]) as any[],billPay=(c.data||[]) as any[],cardPay=(d.data||[]) as any[],bills=(e.data||[]) as any[],cards=(f.data||[]) as any[],debts=(g.data||[]) as any[],debtPay=(h.data||[]) as any[];
     const income=tx.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount_minor),0)+work.reduce((s,x)=>s+Number(x.gross_income_minor),0);
-    const out=tx.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount_minor),0)+work.reduce((s,x)=>s+Number(x.energy_cost_minor)+Number(x.extra_work_cost_minor),0)+billPay.reduce((s,x)=>s+Number(x.amount_minor),0)+cardPay.reduce((s,x)=>s+Number(x.amount_minor),0);
-    const paidBills=new Set(billPay.filter(x=>x.due_month===month).map(x=>x.recurring_bill_id));const billPending=bills.filter(x=>!paidBills.has(x.id)).reduce((s,x)=>s+Number(x.amount_minor),0);
+    const out=tx.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount_minor),0)+billPay.reduce((s,x)=>s+Number(x.amount_minor),0)+cardPay.reduce((s,x)=>s+Number(x.amount_minor),0);
+    const paidBills=new Set(billPay.filter(x=>x.due_month===month).map(x=>x.recurring_bill_id));const billPending=bills.filter(x=>String(x.created_at).slice(0,7)+'-01'<=month&&!paidBills.has(x.id)).reduce((s,x)=>s+Number(x.amount_minor),0);
     const cardPending=cards.reduce((s,x)=>s+Number(x.amount_minor),0);
     const paidDebt=new Map<string,number>();debtPay.forEach(x=>paidDebt.set(x.debt_id,(paidDebt.get(x.debt_id)||0)+Number(x.amount_minor)));const debtPending=debts.reduce((s,x)=>s+Math.max(0,Math.min(Number(x.installment_minor||x.outstanding_minor),Number(x.outstanding_minor))-(paidDebt.get(x.id)||0)),0);
     setBalance(income-out);setPending(billPending+cardPending+debtPending);setLoading(false);

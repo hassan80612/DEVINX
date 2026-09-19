@@ -15,6 +15,8 @@ import {CategoryManager} from './CategoryManager';
 import {PreferencesManager} from './PreferencesManager';
 import {AdminMaster} from './AdminMaster';
 import {QuickCapture} from './QuickCapture';
+import {LanguageMenu} from './LanguageMenu';
+import {IntegrationBootstrap} from './IntegrationBootstrap';
 import {useI18n} from '@/i18n/provider';
 
 type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'debts'|'bills'|'reports'|'spend'|'categories'|'settings'|'master';
@@ -22,8 +24,13 @@ type CaptureMode='income'|'expense';
 type CaptureRequest={id:number;mode:CaptureMode};
 type Access={is_admin:boolean;allowed:boolean;status:string;source:string;expires_at:string|null;subscription_required:boolean;checkout_url:string|null};
 
+function checkoutForLocale(url:string,locale:string){
+  if(locale==='pt-BR'||/([?&])region=intl(?:&|$)/.test(url))return url;
+  return url+(url.includes('?')?'&':'?')+'region=intl';
+}
+
 export function FinanceHub(){
-  const{locale,setLocale,t,locales,languageNames}=useI18n();
+  const{locale,setLocale,setCurrencyCode,t}=useI18n();
   const[section,setSection]=useState<Section>('home');
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
   const[access,setAccess]=useState<Access|null>(null);
@@ -33,7 +40,12 @@ export function FinanceHub(){
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.replace('/entrar');return}
-    const{data,error}=await s.rpc('get_devinx_access_status');
+    const[{data,error},{data:profile}]=await Promise.all([
+      s.rpc('get_devinx_access_status'),
+      s.from('profiles').select('locale,currency_code').eq('id',user.id).maybeSingle()
+    ]);
+    if(profile?.locale)setLocale(profile.locale as any);
+    if(profile?.currency_code==='BRL'||profile?.currency_code==='USD'||profile?.currency_code==='EUR')setCurrencyCode(profile.currency_code);
     if(error){setAccessError('access');return}
     const row=Array.isArray(data)?data[0]:data;
     setAccess(row as Access);
@@ -54,18 +66,17 @@ export function FinanceHub(){
   }
   function backTarget(){return ['cards','debts','bills','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
 
-  if(accessError)return <main className="financeApp"><section className="centerState"><b>DEVINX</b><p>Não foi possível validar o acesso agora.</p><button className="primary" onClick={()=>location.reload()}>Tentar novamente</button></section></main>;
+  if(accessError)return <main className="financeApp">
+    <IntegrationBootstrap enabled={access.is_admin}/><section className="centerState"><b>DEVINX</b><p>Não foi possível validar o acesso agora.</p><button className="primary" onClick={()=>location.reload()}>Tentar novamente</button></section></main>;
   if(!access)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
-  if(!access.allowed)return <main className="financeApp"><section className="paywallCard"><span className="goldPill">DEVINX</span><h1>{t('access.title')}</h1><p>{t('access.desc')}</p>{access.checkout_url&&<a className="primary goldButton" href={access.checkout_url}>{t('access.checkout')}</a>}<button className="secondary" onClick={async()=>{await createClient().auth.signOut();location.href='/'}}>{t('access.signOut')}</button></section></main>;
+  if(!access.allowed)return <main className="financeApp"><section className="paywallCard"><span className="goldPill">DEVINX</span><h1>{t('access.title')}</h1><p>{t('access.desc')}</p>{access.checkout_url&&<a className="primary goldButton" href={checkoutForLocale(access.checkout_url,locale)}>{t('access.checkout')}</a>}<button className="secondary" onClick={async()=>{await createClient().auth.signOut();location.href='/'}}>{t('access.signOut')}</button></section></main>;
 
   return <main className="financeApp">
     <header className="financeHeader">
       <button className="brand brandButton" onClick={()=>setSection('home')} type="button"><span className="mark">D</span><b>DEVINX</b></button>
       <div className="financeHeaderTools">
         <div className="financeHeaderMeta"><small>{month}</small><span>{t('header.subtitle')}</span></div>
-        <select className="languageMini" value={locale} onChange={e=>setLocale(e.target.value as typeof locale)} aria-label={t('settings.language')}>
-          {locales.map(item=><option key={item} value={item}>{languageNames[item]}</option>)}
-        </select>
+        <LanguageMenu/>
       </div>
     </header>
 
