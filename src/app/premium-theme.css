@@ -248,7 +248,7 @@ select option{background:#090c10;color:#f5f1e8}
   100%{transform:translate3d(3%,1%,0) scale(1.01);opacity:.4}
 }
 
-.authSubmit,.landingAccessCta,.planRibbonButton,.quickSave,.dailyGoalButton,.quickCaptureFab,.billPayPrimary{
+.authSubmit,.landingAccessCta,.planRibbonButton,.quickSave,.dailyGoalButton,.billPayPrimary{
   position:relative!important;overflow:hidden!important;isolation:isolate;
   background:
     linear-gradient(180deg,#fff0a5 0%,#efcc67 18%,#d9a13a 50%,#b87822 76%,#865316 100%)!important;
@@ -258,14 +258,14 @@ select option{background:#090c10;color:#f5f1e8}
     inset 0 -1px 0 rgba(83,48,5,.28),
     0 9px 24px rgba(156,100,20,.18)!important;
 }
-.authSubmit:after,.landingAccessCta:after,.planRibbonButton:after,.quickSave:after,.dailyGoalButton:after,.quickCaptureFab:after,.billPayPrimary:after{
+.authSubmit:after,.landingAccessCta:after,.planRibbonButton:after,.quickSave:after,.dailyGoalButton:after,.billPayPrimary:after{
   content:"";position:absolute;top:-30%;bottom:-30%;left:-42%;width:30%;z-index:1;pointer-events:none;
   transform:skewX(-22deg);
   background:linear-gradient(90deg,transparent,rgba(255,249,217,.12) 22%,rgba(255,255,255,.62) 50%,rgba(255,239,174,.18) 72%,transparent);
   filter:blur(.4px);
   animation:devinxGoldSweep 3.9s linear infinite;
 }
-.authSubmit>*,.landingAccessCta>*,.planRibbonButton>*,.quickSave>*,.dailyGoalButton>*,.quickCaptureFab>*,.billPayPrimary>*{position:relative;z-index:2}
+.authSubmit>*,.landingAccessCta>*,.planRibbonButton>*,.quickSave>*,.dailyGoalButton>*,.billPayPrimary>*{position:relative;z-index:2}
 @keyframes devinxGoldSweep{
   0%{left:-42%;opacity:0}
   7%{opacity:.78}
@@ -275,7 +275,7 @@ select option{background:#090c10;color:#f5f1e8}
 }
 @media(prefers-reduced-motion:reduce){
   .financeApp:before,.landingV2:before,.authPage:before,
-  .authSubmit:after,.landingAccessCta:after,.planRibbonButton:after,.quickSave:after,.dailyGoalButton:after,.quickCaptureFab:after,.billPayPrimary:after{animation:none!important}
+  .authSubmit:after,.landingAccessCta:after,.planRibbonButton:after,.quickSave:after,.dailyGoalButton:after,.billPayPrimary:after{animation:none!important}
 }
 
 .billPayPrimary{
@@ -293,3 +293,8 @@ select option{background:#090c10;color:#f5f1e8}
   border:1px solid rgba(85,207,152,.26)!important;border-radius:12px!important;
   background:rgba(85,207,152,.075)!important;color:#6fdaa9!important;font-weight:900!important;
 }
+
+
+/* CTA readability fixes */
+.dailyGoalButton{color:#171006!important;text-shadow:none!important}
+.quickCaptureFab:after{content:none!important}
