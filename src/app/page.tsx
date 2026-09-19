@@ -44,6 +44,13 @@ export default function Home(){
       </div>
     </section>
 
+    <section className="landingSubscription">
+      <span className="goldPill">{t('subscription.label')}</span>
+      <h2>{t('subscription.ctaTitle')}</h2>
+      <p>{t('subscription.ctaText')}</p>
+      <div><strong>{t('subscription.price')}<small>/{t('subscription.month')}</small></strong><a className="primary goldButton" href={checkoutForLocale(locale)}>{t('subscription.subscribe')}</a></div>
+    </section>
+
     <section className="landingSteps" id="como">
       <div><small>01</small><h2>{t('landing.step1')}</h2><p>{t('landing.step1Text')}</p></div>
       <div><small>02</small><h2>{t('landing.step2')}</h2><p>{t('landing.step2Text')}</p></div>
@@ -60,13 +67,6 @@ export default function Home(){
         <article className="driverFeature"><span>◷</span><h3>{t('landing.featureDriver')}</h3><p>{t('landing.featureDriverText')}</p><div className="driverFormula"><b>{t('landing.driverCalc1')}</b><b>{t('landing.driverCalc2')}</b><b>{t('landing.driverCalc3')}</b><b>{t('landing.driverCalc4')}</b></div></article>
         <article><span>▥</span><h3>{t('landing.featureHistory')}</h3><p>{t('landing.featureHistoryText')}</p></article>
       </div>
-    </section>
-
-    <section className="landingSubscription">
-      <span className="goldPill">{t('subscription.label')}</span>
-      <h2>{t('subscription.ctaTitle')}</h2>
-      <p>{t('subscription.ctaText')}</p>
-      <div><strong>{t('subscription.price')}<small>/{t('subscription.month')}</small></strong><a className="primary goldButton" href={checkoutForLocale(locale)}>{t('subscription.subscribe')}</a></div>
     </section>
 
     <footer>DEVINX <span>{t('brand.tagline')}</span></footer>

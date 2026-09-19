@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {createClient} from '@/lib/supabase/client';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
@@ -22,12 +23,12 @@ function weekStart(){
 function addMonths(iso:string,count:number){const d=new Date(iso+'T12:00:00');d.setMonth(d.getMonth()+count);return localDateISO(new Date(d.getFullYear(),d.getMonth(),1))}
 
 export function DashboardOverview(){
-  const{t,currency}=useI18n();
+  const{t,currency,date}=useI18n();
   const[tx,setTx]=useState<Tx[]>([]);const[work,setWork]=useState<Work[]>([]);const[goal,setGoal]=useState<Goal|null>(null);
   const[bills,setBills]=useState<Bill[]>([]);const[billPays,setBillPays]=useState<BillPay[]>([]);
   const[cardInst,setCardInst]=useState<CardInst[]>([]);const[cardPays,setCardPays]=useState<CardPay[]>([]);
   const[debts,setDebts]=useState<Debt[]>([]);const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
-  const[loading,setLoading]=useState(true);
+  const[loading,setLoading]=useState(true);const[projectedHost,setProjectedHost]=useState<HTMLElement|null>(null);const[goalNotice,setGoalNotice]=useState('');
 
   async function load(show=false){
     if(show)setLoading(true);
@@ -49,7 +50,7 @@ export function DashboardOverview(){
     setCardPays((rCardPay.data||[]) as CardPay[]);setDebts((rDebt.data||[]) as Debt[]);setDebtPays((rDebtPay.data||[]) as DebtPay[]);
     setLoading(false);
   }
-  useEffect(()=>{load(true);const refresh=()=>load(false);window.addEventListener('devinx:finance-updated',refresh);return()=>window.removeEventListener('devinx:finance-updated',refresh)},[]);
+  useEffect(()=>{load(true);setProjectedHost(document.getElementById('home-projected-slot'));const refresh=()=>load(false);window.addEventListener('devinx:finance-updated',refresh);return()=>window.removeEventListener('devinx:finance-updated',refresh)},[]);
 
   const numbers=useMemo(()=>{
     const today=localDateISO();const month=localMonthStartISO();
@@ -84,6 +85,70 @@ export function DashboardOverview(){
     return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent,recurringPending,cardsDueNow,cardTotalOpen,debtPending,toPay:recurringPending+cardsDueNow+debtPending,projected,avoidable};
   },[tx,work,bills,billPays,cardInst,cardPays,debts,debtPays]);
 
+  const reserveSuggestion=useMemo(()=>{
+    const today=localDateISO();
+    const month=localMonthStartISO();
+    const monthEnd=(()=>{const d=new Date(month+'T12:00:00');return localDateISO(new Date(d.getFullYear(),d.getMonth()+1,0))})();
+    const dueInMonth=(day:number|null)=>{
+      if(!day)return monthEnd;
+      const d=new Date(month+'T12:00:00');const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+      return localDateISO(new Date(d.getFullYear(),d.getMonth(),Math.min(Math.max(day,1),last)));
+    };
+    const paidMonths=new Set(billPays.map(p=>p.recurring_bill_id+'|'+p.due_month.slice(0,7)));
+    const obligations:{due:string;amount:number}[]=[];
+    for(const bill of bills){
+      const createdMonth=bill.created_at.slice(0,7)+'-01';
+      const key=bill.id+'|'+month.slice(0,7);
+      if(createdMonth<=month&&!paidMonths.has(key))obligations.push({due:dueInMonth(bill.due_day),amount:Number(bill.amount_minor)});
+    }
+    for(const inst of cardInst){
+      const due=inst.due_date||inst.billing_month;
+      if(due.slice(0,7)+'-01'<=month)obligations.push({due:due<today?today:due,amount:Number(inst.amount_minor)});
+    }
+    const debtPaidMap=new Map<string,number>();
+    debtPays.filter(p=>p.paid_on>=month).forEach(p=>debtPaidMap.set(p.debt_id,(debtPaidMap.get(p.debt_id)||0)+Number(p.amount_minor)));
+    for(const debt of debts){
+      const pending=Math.max(0,Math.min(Number(debt.installment_minor||debt.outstanding_minor),Number(debt.outstanding_minor))-(debtPaidMap.get(debt.id)||0));
+      if(pending>0)obligations.push({due:dueInMonth(debt.due_day),amount:pending});
+    }
+    if(obligations.length===0)return null;
+    obligations.sort((a,b)=>a.due.localeCompare(b.due));
+    const grouped=new Map<string,number>();
+    for(const item of obligations)grouped.set(item.due,(grouped.get(item.due)||0)+item.amount);
+    let cumulative=0;
+    let chosen:{deadline:string;due:number;gap:number}|null=null;
+    for(const [due,amount] of [...grouped.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){
+      cumulative+=amount;
+      const gap=Math.max(0,cumulative-numbers.balance);
+      if(gap>0){chosen={deadline:due<today?today:due,due:cumulative,gap};break}
+    }
+    if(!chosen){
+      const last=[...grouped.entries()].sort((a,b)=>a[0].localeCompare(b[0])).at(-1)!;
+      cumulative=[...grouped.values()].reduce((a,b)=>a+b,0);
+      chosen={deadline:last[0],due:cumulative,gap:0};
+    }
+    const start=new Date(today+'T12:00:00');const end=new Date(chosen.deadline+'T12:00:00');
+    const days=Math.max(1,Math.floor((end.getTime()-start.getTime())/86400000)+1);
+    const daily=chosen.gap>0?Math.ceil(chosen.gap/days):0;
+    return{...chosen,days,daily,monthTotal:obligations.reduce((a,b)=>a+b.amount,0)};
+  },[bills,billPays,cardInst,debts,debtPays,numbers.balance]);
+
+  async function useDailyGoal(){
+    if(!reserveSuggestion||reserveSuggestion.daily<=0)return;
+    if(goal&&!confirm(t('dashboard.dailyGoalConfirm')))return;
+    const s=createClient();
+    const{error}=await s.rpc('replace_active_goal',{
+      p_name:'__devinx_daily_reserve__:'+reserveSuggestion.deadline,
+      p_period:'daily',
+      p_basis:'savings',
+      p_target_minor:reserveSuggestion.daily
+    });
+    if(error){setGoalNotice(t('common.errorSave'));return}
+    setGoalNotice(t('dashboard.dailyGoalSaved'));
+    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    await load(false);
+  }
+
   const goalProgress=useMemo(()=>{
     if(!goal)return null;
     const today=localDateISO();const start=goal.period==='daily'?today:goal.period==='weekly'?weekStart():localMonthStartISO();
@@ -102,10 +167,28 @@ export function DashboardOverview(){
 
   if(loading)return <section className="panel dashboardLoading"><span className="loader"/></section>;
 
+  const projectedStrip=<section className="projectedStrip"><div><small>{t('dashboard.projected')}</small><strong>{currency(numbers.projected)}</strong></div><span>{t('dashboard.projectedHelp')}</span></section>;
+
+  const goalTitle=goal?.name?.startsWith('__devinx_daily_reserve__:')
+    ?t('dashboard.dailyGoalName')+' · '+date(goal.name.split(':').slice(1).join(':'),{day:'2-digit',month:'2-digit'})
+    :goal?.name==='__devinx_default_goal__'?t('goals.defaultName'):goal?.name;
+
   return <div className="dashboardStack">
-    <section className="summaryHero premiumSummary"><small>{t('dashboard.projected')}</small><strong>{currency(numbers.projected)}</strong><span>{t('dashboard.projectedHelp')}</span></section>
+    {projectedHost&&createPortal(projectedStrip,projectedHost)}
     <div className="metricGrid dashboardMetrics"><article><small>{t('dashboard.entered')}</small><b>{currency(numbers.income)}</b></article><article><small>{t('dashboard.spent')}</small><b>{currency(numbers.spent)}</b></article><article className="dayResult"><small>{t('dashboard.dayBalance')}</small><b className={numbers.todayBalance>=0?'positive':'negative'}>{currency(numbers.todayBalance)}</b><span>+{currency(numbers.todayIncome)} · −{currency(numbers.todaySpent)}</span></article><article><small>{t('dashboard.pending')}</small><b>{currency(numbers.toPay)}</b></article></div>
-    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goal.name==='__devinx_default_goal__'?t('goals.defaultName'):goal.name}</h2></div><strong>{goalProgress.percent}%</strong></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
+    {reserveSuggestion&&<section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')}>
+      <div className="dailyReserveTop"><div><small>{t('dashboard.dailyReserveEyebrow')}</small><h2>{reserveSuggestion.daily>0?t('dashboard.dailyReserveTitle'):t('dashboard.dailyReserveCovered')}</h2></div><span>{date(reserveSuggestion.deadline,{day:'2-digit',month:'2-digit'})}</span></div>
+      <div className="dailyReserveGrid">
+        <span><small>{t('dashboard.monthCommitments')}</small><b>{currency(reserveSuggestion.monthTotal)}</b></span>
+        <span><small>{t('dashboard.cashAvailable')}</small><b className={numbers.balance>=0?'positive':'negative'}>{currency(numbers.balance)}</b></span>
+        <span><small>{t('dashboard.needUntilDate')}</small><b>{currency(reserveSuggestion.gap)}</b></span>
+        <span className="dailyTarget"><small>{t('dashboard.perDay')}</small><b>{currency(reserveSuggestion.daily)}</b></span>
+      </div>
+      <p>{reserveSuggestion.daily>0?t('dashboard.dailyReserveExplain'):t('dashboard.dailyReserveCoveredHelp')}</p>
+      {reserveSuggestion.daily>0&&<button className="goldOutline dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
+      {goalNotice&&<div className="authMessage">{goalNotice}</div>}
+    </section>}
+    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2></div><strong>{goalProgress.percent}%</strong></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
     <section className="panel commitmentsPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><span className="statusBadge">{t('dashboard.currentMonthOnly')}</span></div><div className="commitmentTriple"><article><span>{t('dashboard.monthlyBills')}</span><b>{currency(numbers.recurringPending)}</b></article><article><span>{t('dashboard.otherDebts')}</span><b>{currency(numbers.debtPending)}</b></article><article><span>{t('dashboard.cards')}</span><b>{currency(numbers.cardsDueNow)}</b><small>{t('cards.totalOpen')}: {currency(numbers.cardTotalOpen)}</small></article></div></section>
     {numbers.income===0&&numbers.spent===0&&<section className="empty premiumEmpty"><b>{t('dashboard.emptyTitle')}</b><p>{t('dashboard.emptyText')}</p></section>}
   </div>;

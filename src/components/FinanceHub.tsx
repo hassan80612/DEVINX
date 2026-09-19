@@ -95,6 +95,7 @@ export function FinanceHub(){
             <button type="button" className="instantAction work" onClick={()=>setSection('work')}><span>◷</span><b>{t('home.work')}</b><small>{t('home.workDesc')}</small></button>
             <button type="button" className="instantAction card" onClick={()=>setSection('cards')}><span>▣</span><b>{t('home.card')}</b><small>{t('home.cardDesc')}</small></button>
           </div>
+          <div id="home-projected-slot" className="homeProjectedSlot"/>
         </section>
         <DashboardOverview/>
       </>}

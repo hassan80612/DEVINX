@@ -331,5 +331,97 @@ const arWorkRelease=replace(arCardsRelease,{
 'work.driverSourceHelp':'مصادر القيادة والتوصيل تحتاج إلى مركبة مُعدّة.'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptWorkRelease,en:enWorkRelease,es:esWorkRelease,fr:frWorkRelease,ar:arWorkRelease,de:deWorkRelease};
-export type TranslationKey=keyof typeof ptWorkRelease;
+
+const ptDashboardRelease=replace(ptWorkRelease,{
+'dashboard.dailyReserveEyebrow':'META DIÁRIA SUGERIDA',
+'dashboard.dailyReserveTitle':'Quanto precisa separar por dia',
+'dashboard.dailyReserveCovered':'Próximo vencimento já está coberto',
+'dashboard.monthCommitments':'Compromissos do mês',
+'dashboard.cashAvailable':'Caixa atual',
+'dashboard.needUntilDate':'Falta cobrir até a data',
+'dashboard.perDay':'Por dia',
+'dashboard.dailyReserveExplain':'O cálculo usa seu caixa real atual e os compromissos que vencem até essa data. Conforme os dias passam ou seu caixa muda, a sugestão é recalculada.',
+'dashboard.dailyReserveCoveredHelp':'Pelo caixa atual, os compromissos até essa data já estão cobertos.',
+'dashboard.useDailyGoal':'Usar como meta diária',
+'dashboard.dailyGoalConfirm':'Já existe uma meta ativa. Substituir pela meta diária sugerida?',
+'dashboard.dailyGoalSaved':'Meta diária criada.',
+'dashboard.dailyGoalName':'Reserva diária'
+});
+const enDashboardRelease=replace(enWorkRelease,{
+'dashboard.dailyReserveEyebrow':'SUGGESTED DAILY TARGET',
+'dashboard.dailyReserveTitle':'How much to set aside per day',
+'dashboard.dailyReserveCovered':'Next due date is already covered',
+'dashboard.monthCommitments':'Month commitments',
+'dashboard.cashAvailable':'Current cash',
+'dashboard.needUntilDate':'Still needed by due date',
+'dashboard.perDay':'Per day',
+'dashboard.dailyReserveExplain':'This uses your real current cash and the commitments due by that date. As days pass or cash changes, the suggestion is recalculated.',
+'dashboard.dailyReserveCoveredHelp':'Based on your current cash, commitments through this date are already covered.',
+'dashboard.useDailyGoal':'Use as daily goal',
+'dashboard.dailyGoalConfirm':'There is already an active goal. Replace it with the suggested daily goal?',
+'dashboard.dailyGoalSaved':'Daily goal created.',
+'dashboard.dailyGoalName':'Daily reserve'
+});
+const esDashboardRelease=replace(esWorkRelease,{
+'dashboard.dailyReserveEyebrow':'META DIARIA SUGERIDA',
+'dashboard.dailyReserveTitle':'Cuánto necesitas separar por día',
+'dashboard.dailyReserveCovered':'El próximo vencimiento ya está cubierto',
+'dashboard.monthCommitments':'Compromisos del mes',
+'dashboard.cashAvailable':'Caja actual',
+'dashboard.needUntilDate':'Falta cubrir hasta la fecha',
+'dashboard.perDay':'Por día',
+'dashboard.dailyReserveExplain':'El cálculo usa tu caja real actual y los compromisos que vencen hasta esa fecha. A medida que pasan los días o cambia tu caja, la sugerencia se recalcula.',
+'dashboard.dailyReserveCoveredHelp':'Con tu caja actual, los compromisos hasta esa fecha ya están cubiertos.',
+'dashboard.useDailyGoal':'Usar como meta diaria',
+'dashboard.dailyGoalConfirm':'Ya existe una meta activa. ¿Reemplazarla por la meta diaria sugerida?',
+'dashboard.dailyGoalSaved':'Meta diaria creada.',
+'dashboard.dailyGoalName':'Reserva diaria'
+});
+const frDashboardRelease=replace(frWorkRelease,{
+'dashboard.dailyReserveEyebrow':'OBJECTIF QUOTIDIEN SUGGÉRÉ',
+'dashboard.dailyReserveTitle':'Montant à mettre de côté par jour',
+'dashboard.dailyReserveCovered':'La prochaine échéance est déjà couverte',
+'dashboard.monthCommitments':'Engagements du mois',
+'dashboard.cashAvailable':'Trésorerie actuelle',
+'dashboard.needUntilDate':'Reste à couvrir avant la date',
+'dashboard.perDay':'Par jour',
+'dashboard.dailyReserveExplain':'Le calcul utilise votre trésorerie réelle actuelle et les engagements à payer avant cette date. Il se recalcule au fil des jours et des mouvements.',
+'dashboard.dailyReserveCoveredHelp':'Avec votre trésorerie actuelle, les engagements jusqu’à cette date sont déjà couverts.',
+'dashboard.useDailyGoal':'Utiliser comme objectif quotidien',
+'dashboard.dailyGoalConfirm':'Un objectif est déjà actif. Le remplacer par cet objectif quotidien ?',
+'dashboard.dailyGoalSaved':'Objectif quotidien créé.',
+'dashboard.dailyGoalName':'Réserve quotidienne'
+});
+const deDashboardRelease=replace(deWorkRelease,{
+'dashboard.dailyReserveEyebrow':'VORGESCHLAGENES TAGESZIEL',
+'dashboard.dailyReserveTitle':'So viel solltest du pro Tag zurücklegen',
+'dashboard.dailyReserveCovered':'Die nächste Fälligkeit ist bereits gedeckt',
+'dashboard.monthCommitments':'Verpflichtungen des Monats',
+'dashboard.cashAvailable':'Aktueller Kassenstand',
+'dashboard.needUntilDate':'Bis zum Termin noch nötig',
+'dashboard.perDay':'Pro Tag',
+'dashboard.dailyReserveExplain':'Die Berechnung nutzt deinen aktuellen realen Kassenstand und alle Verpflichtungen bis zu diesem Termin. Sie wird mit jedem Tag und jeder Änderung neu berechnet.',
+'dashboard.dailyReserveCoveredHelp':'Mit deinem aktuellen Kassenstand sind die Verpflichtungen bis zu diesem Termin bereits gedeckt.',
+'dashboard.useDailyGoal':'Als Tagesziel verwenden',
+'dashboard.dailyGoalConfirm':'Es gibt bereits ein aktives Ziel. Durch das vorgeschlagene Tagesziel ersetzen?',
+'dashboard.dailyGoalSaved':'Tagesziel erstellt.',
+'dashboard.dailyGoalName':'Tägliche Reserve'
+});
+const arDashboardRelease=replace(arWorkRelease,{
+'dashboard.dailyReserveEyebrow':'هدف يومي مقترح',
+'dashboard.dailyReserveTitle':'كم تحتاج أن تخصص يومياً',
+'dashboard.dailyReserveCovered':'الاستحقاق القادم مغطى بالفعل',
+'dashboard.monthCommitments':'التزامات الشهر',
+'dashboard.cashAvailable':'الرصيد الحالي',
+'dashboard.needUntilDate':'المبلغ المطلوب حتى الموعد',
+'dashboard.perDay':'يومياً',
+'dashboard.dailyReserveExplain':'يعتمد الحساب على رصيدك الحقيقي الحالي والالتزامات المستحقة حتى ذلك التاريخ، ويُعاد حسابه مع مرور الأيام أو تغير الرصيد.',
+'dashboard.dailyReserveCoveredHelp':'حسب رصيدك الحالي، الالتزامات حتى هذا التاريخ مغطاة بالفعل.',
+'dashboard.useDailyGoal':'استخدامه كهدف يومي',
+'dashboard.dailyGoalConfirm':'يوجد هدف نشط بالفعل. هل تريد استبداله بالهدف اليومي المقترح؟',
+'dashboard.dailyGoalSaved':'تم إنشاء الهدف اليومي.',
+'dashboard.dailyGoalName':'احتياطي يومي'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptDashboardRelease,en:enDashboardRelease,es:esDashboardRelease,fr:frDashboardRelease,ar:arDashboardRelease,de:deDashboardRelease};
+export type TranslationKey=keyof typeof ptDashboardRelease;
