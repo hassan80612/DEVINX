@@ -13,7 +13,7 @@ export default function Home(){
   return <main className="landingV2">
     <header className="top landingTop">
       <div className="brand"><span className="mark">D</span><b>DEVINX</b></div>
-      <div className="landingTopActions"><LanguageMenu/><a className="ghost" href="/entrar">{t('landing.login')}</a></div>
+      <div className="landingTopActions"><LanguageMenu/></div>
     </header>
 
     <section className="landingHero">
@@ -42,13 +42,6 @@ export default function Home(){
         <div className="previewQuick"><button>＋ {t('common.income')}</button><button>− {t('quick.expense')}</button><button>◷ {t('home.work')}</button><button>▣ {t('home.card')}</button></div>
         <div className="previewRows"><div><span>{t('dashboard.entered')}</span><b>{currency(485000)}</b></div><div><span>{t('dashboard.spent')}</span><b>{currency(219000)}</b></div><div><span>{t('dashboard.pending')}</span><b>{currency(78000)}</b></div></div>
       </div>
-    </section>
-
-    <section className="landingSubscription">
-      <span className="goldPill">{t('subscription.label')}</span>
-      <h2>{t('subscription.ctaTitle')}</h2>
-      <p>{t('subscription.ctaText')}</p>
-      <div><strong>{t('subscription.price')}<small>/{t('subscription.month')}</small></strong><a className="primary goldButton" href={checkoutForLocale(locale)}>{t('subscription.subscribe')}</a></div>
     </section>
 
     <section className="landingSteps" id="como">
