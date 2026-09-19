@@ -486,3 +486,106 @@ linear-gradient(145deg,#021128 0%,#05295e 38%,#073f82 55%,#031a3c 76%,#010914 10
 .pendingRow>button,.pendingActions button{min-height:30px;padding:6px 9px!important;border:1px solid rgba(102,183,242,.18)!important;border-radius:9px!important;background:linear-gradient(180deg,rgba(11,60,113,.88),rgba(5,31,67,.96))!important;color:#bfe5ff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
 .pendingActions .dangerText{border-color:rgba(255,123,112,.2)!important;background:linear-gradient(180deg,rgba(82,31,40,.66),rgba(52,20,29,.78))!important;color:#ffaaa3!important}
 @media(max-width:620px){.pendingRow{grid-template-columns:minmax(0,1fr) auto!important}.pendingRow>.statusBadge{grid-column:1/2;justify-self:start}.pendingRow>button,.pendingActions{grid-column:2/3;justify-self:end}.pendingActions{display:flex;flex-wrap:wrap;justify-content:flex-end}.historyTypeFilter{grid-template-columns:1fr 1fr 1fr}}
+
+
+/* Refined pending cards */
+.pendingGroup{gap:12px!important}
+.pendingGroup>.sectionTitleRow{margin-bottom:3px}
+.premiumPendingRow{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-areas:
+    "copy amount"
+    "footer footer"!important;
+  gap:10px 14px!important;
+  padding:15px 16px!important;
+  border:1px solid rgba(91,173,241,.18)!important;
+  border-radius:16px!important;
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.035),transparent 23%),
+    radial-gradient(circle at 92% 0%,rgba(66,168,255,.08),transparent 25%),
+    linear-gradient(145deg,rgba(6,37,78,.92),rgba(3,21,48,.98))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 26px rgba(0,13,42,.16)!important;
+}
+.premiumPendingRow:first-of-type{border-top:1px solid rgba(91,173,241,.18)!important}
+.premiumPendingRow .pendingCopy{grid-area:copy;min-width:0}
+.premiumPendingRow .pendingCopy b{font-size:15px;line-height:1.15;color:#f5fbff}
+.premiumPendingRow .pendingCopy small{margin-top:5px!important;font-size:9px!important;color:#88a8bd!important}
+.premiumPendingRow>strong{
+  grid-area:amount;
+  align-self:start;
+  justify-self:end;
+  font-size:16px!important;
+  color:#f6fbff;
+  letter-spacing:-.02em;
+}
+.pendingFooter{
+  grid-area:footer;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:9px;
+  padding-top:10px;
+  border-top:1px solid rgba(83,153,216,.12);
+}
+.pendingFooter .statusBadge{
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  min-height:24px!important;
+  padding:4px 9px!important;
+  border:1px solid rgba(104,187,246,.17)!important;
+  border-radius:999px!important;
+  background:rgba(6,43,84,.52)!important;
+  color:#9fc8e4!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  white-space:nowrap;
+}
+.pendingFooter .statusBadge.overdue{
+  border-color:rgba(255,118,109,.24)!important;
+  background:rgba(78,28,35,.32)!important;
+  color:#ff9f98!important;
+}
+.pendingOpenButton{
+  display:inline-flex!important;
+  align-items:center;
+  gap:6px;
+  min-height:28px!important;
+  padding:5px 9px!important;
+  border:1px solid rgba(101,186,247,.2)!important;
+  border-radius:9px!important;
+  background:linear-gradient(180deg,rgba(13,69,127,.76),rgba(5,35,75,.92))!important;
+  color:#c4e8ff!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important;
+}
+.pendingOpenButton i{font-style:normal;font-size:13px;line-height:1}
+.pendingFooter .pendingActions{
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px!important;
+}
+.pendingFooter .pendingActions button{
+  min-height:28px!important;
+  padding:5px 9px!important;
+  border:1px solid rgba(99,181,242,.17)!important;
+  border-radius:9px!important;
+  background:rgba(6,41,82,.62)!important;
+  color:#b8dfff!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  box-shadow:none!important;
+}
+.pendingFooter .pendingActions .dangerText{
+  border-color:rgba(255,119,111,.17)!important;
+  background:rgba(72,27,35,.24)!important;
+  color:#ff9f98!important;
+}
+@media(max-width:620px){
+  .premiumPendingRow{padding:14px!important;gap:8px 12px!important}
+  .premiumPendingRow>strong{font-size:15px!important}
+  .pendingFooter{padding-top:9px}
+}
