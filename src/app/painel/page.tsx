@@ -1,1 +1,5 @@
-import {AppShell} from '@/components/AppShell';import {DashboardOverview} from '@/components/DashboardOverview';export default function Painel(){return <AppShell titleKey="dashboardTitle"><DashboardOverview/></AppShell>}
+import {FinanceHub} from '@/components/FinanceHub';
+
+export default function Painel(){
+  return <FinanceHub/>;
+}

@@ -1,28 +1,11 @@
-const cards = [
-  ['Entrou', 'R$ 4.850,00', 'renda do mês'],
-  ['Gastou', 'R$ 2.190,00', 'inclui contas e dia a dia'],
-  ['Ainda a pagar', 'R$ 780,00', 'próximos compromissos'],
-  ['Saldo previsto', 'R$ 1.880,00', 'até o fim do mês'],
-];
-
-export default function Home() {
-  return <main>
-    <header className="top"><div className="brand"><span className="mark">D</span><b>DEVINX</b></div><a className="ghost" href="/entrar">Entrar</a></header>
-    <section className="hero">
-      <span className="pill">FINANÇAS SEM COMPLICAÇÃO</span>
-      <h1>Toda a sua vida financeira<br/><em>na palma da mão.</em></h1>
-      <p>Rendas, gastos, trabalho, metas, cartões e dívidas organizados em um só lugar.</p>
-      <div className="heroActions"><a className="primary" href="/entrar">Começar agora</a><a className="secondary" href="#recursos">Ver como funciona</a></div>
+export default function Home(){
+  return <main className="landingV2">
+    <header className="top landingTop"><div className="brand"><span className="mark">D</span><b>DEVINX</b></div><a className="ghost" href="/entrar">Entrar</a></header>
+    <section className="landingHero">
+      <div className="landingCopy"><span className="pill">FINANÇAS SEM PLANILHA</span><h1>Abra. Registre.<br/><em>Entenda o que sobrou.</em></h1><p>Para quem não tem tempo de procurar menu. Entradas, gastos, trabalho, cartões, parcelas e contas mensais em um só lugar.</p><div className="heroActions"><a className="primary" href="/entrar">Começar agora</a><a className="secondary" href="#como">Ver como funciona</a></div><div className="landingProof"><span>Sem planilha</span><span>Sem anúncios</span><span>Feito para celular</span></div></div>
+      <div className="landingPreview" aria-label="Exemplo do painel"><div className="previewTop"><small>SETEMBRO</small><b>Seu mês</b></div><div className="previewBalance"><span>Saldo previsto</span><strong>R$ 1.880,00</strong><small>depois dos compromissos cadastrados</small></div><div className="previewQuick"><button>＋ Entrada</button><button>− Gasto</button><button>◷ Jornada</button><button>▣ Cartão</button></div><div className="previewRows"><div><span>Entrou</span><b>R$ 4.850</b></div><div><span>Gastou</span><b>R$ 2.190</b></div><div><span>A pagar</span><b>R$ 780</b></div></div></div>
     </section>
-    <section className="phone">
-      <div className="phoneHead"><div><small>EXEMPLO</small><h2>Seu mês</h2></div><span className="avatar">D</span></div>
-      <div className="balance"><small>Saldo previsto</small><strong>R$ 1.880,00</strong><span>exemplo de como o painel organiza seus números</span></div>
-      <div className="grid">{cards.map(([a,b,c])=><article key={a}><small>{a}</small><strong>{b}</strong><span>{c}</span></article>)}</div>
-      <div className="goal"><div><b>Meta mensal</b><span>R$ 4.850 de R$ 6.000</span></div><div className="bar"><i/></div><small>81% concluída</small></div>
-      <div className="quick"><button>+ Entrada</button><button>- Gasto</button></div>
-      <nav><b>⌂<span>Início</span></b><b>↗<span>Rendas</span></b><b>↘<span>Gastos</span></b><b>◎<span>Metas</span></b><b>•••<span>Mais</span></b></nav>
-    </section>
-    <section className="features" id="recursos"><h2>Feito para a sua realidade.</h2><p>Você pode ter uma ou várias fontes de renda. O Devinx organiza tudo sem misturar o que não deve.</p><div className="featureGrid"><article>🚗<b>Motorista e entregador</b><span>Veja R$/hora, R$/km, combustível e quanto falta trabalhar para sua meta.</span></article><article>💼<b>Salário e renda extra</b><span>Organize salário, comissões, extras e outras fontes de renda.</span></article><article>🎯<b>Metas que fazem sentido</b><span>Acompanhe metas diárias, semanais e mensais usando seus próprios números.</span></article><article>💳<b>Contas, cartões e dívidas</b><span>Saiba o que já saiu, o que ainda vence e evite contar a mesma despesa duas vezes.</span></article></div></section>
+    <section className="landingSteps" id="como"><div><small>01</small><h2>Registre em segundos</h2><p>O que entrou, o que saiu ou uma jornada de trabalho.</p></div><div><small>02</small><h2>Veja o mês real</h2><p>Cartões, parcelas, contas e dívidas entram no cálculo sem duplicar.</p></div><div><small>03</small><h2>Decida com seus números</h2><p>Saldo previsto, metas e custo real do trabalho sempre à vista.</p></div></section>
     <footer>DEVINX <span>Seu dinheiro. Mais claro.</span></footer>
   </main>;
 }

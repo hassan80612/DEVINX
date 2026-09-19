@@ -3,6 +3,7 @@ import './modules.css';
 import './auth.css';
 import './quick-capture.css';
 import './security.css';
+import './hub.css';
 import type {Metadata} from 'next';
 import {I18nProvider} from '@/i18n/provider';
 
