@@ -346,8 +346,10 @@ export function DashboardOverview(){
 
   const projectedStrip=<section className="projectedStrip"><div><small>{t('dashboard.projected')}</small><strong>{currency(numbers.projected)}</strong></div><span>{t('dashboard.projectedHelp')}</span></section>;
 
-  const goalTitle=goal?.name?.startsWith('__devinx_daily_reserve__:')
-    ?t('dashboard.dailyGoalName')+' · '+date(goal.name.split(':').slice(1).join(':'),{day:'2-digit',month:'2-digit'})
+  const isDailyReserveGoal=!!goal?.name?.startsWith('__devinx_daily_reserve__:');
+  const dailyReserveDeadline=isDailyReserveGoal?goal!.name.split(':').slice(1).join(':'):'';
+  const goalTitle=isDailyReserveGoal
+    ?t('dashboard.dailyGoalName')
     :goal?.name==='__devinx_default_goal__'?t('goals.defaultName'):goal?.name;
 
   return <div className="dashboardStack">
@@ -392,7 +394,7 @@ export function DashboardOverview(){
 
     {reserveBalance>0&&<section className="reserveHomeNote"><span>◇</span><div><small>{t('nav.reserves')}</small><b>{currency(reserveBalance)}</b></div><p>{t('dashboard.reserveSeparatedHelp')}</p></section>}
 
-    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2></div><strong>{goalProgress.percent}%</strong></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
+    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2>{dailyReserveDeadline&&<span className="goalDeadline">{t('dashboard.untilDate')} {date(dailyReserveDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>}</div><strong>{goalProgress.percent}%</strong></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
 
     <section className="panel commitmentsPanel">
       <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
