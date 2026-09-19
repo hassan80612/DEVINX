@@ -33,8 +33,9 @@ export async function POST(request:NextRequest){
     return NextResponse.json({ok:false,error:'invalid_signature'},{status:401});
   }
 
-  const productId=payload?.Product?.product_id||payload?.product_id||'';
-  if(productId!==PRODUCT_ID)return NextResponse.json({ok:true,ignored:'product'});
+  const productId=payload?.Product?.product_id||payload?.product_id||payload?.product?.product_id||payload?.product?.id||payload?.order?.product_id||'';
+  const eventType=String(payload?.webhook_event_type||payload?.event_type||payload?.event||'');
+  const tokenHash=createHash('sha256').update(secret).digest('hex');
 
   const supabase=createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -42,11 +43,23 @@ export async function POST(request:NextRequest){
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
 
-  const tokenHash=createHash('sha256').update(secret).digest('hex');
+  if(productId!==PRODUCT_ID){
+    await supabase.rpc('record_kiwify_webhook_attempt',{
+      p_token_hash:tokenHash,p_outcome:'ignored',p_event_type:eventType,p_product_id:productId,p_note:'product_id_mismatch'
+    });
+    return NextResponse.json({ok:true,ignored:'product'});
+  }
+
   const{data,error}=await supabase.rpc('process_kiwify_webhook',{p_payload:payload,p_token_hash:tokenHash});
   if(error){
+    await supabase.rpc('record_kiwify_webhook_attempt',{
+      p_token_hash:tokenHash,p_outcome:'error',p_event_type:eventType,p_product_id:productId,p_note:error.code||'processing_failed'
+    });
     console.error('kiwify webhook processing failed',error.code);
     return NextResponse.json({ok:false,error:'processing_failed'},{status:500});
   }
+  await supabase.rpc('record_kiwify_webhook_attempt',{
+    p_token_hash:tokenHash,p_outcome:'accepted',p_event_type:eventType,p_product_id:productId,p_note:null
+  });
   return NextResponse.json(data||{ok:true});
 }

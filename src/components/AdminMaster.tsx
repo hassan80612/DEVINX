@@ -8,6 +8,7 @@ type Funnel={total_customers:number;total_accounts:number;onboarded:number;signe
 type Customer={email:string;user_id:string|null;account_exists:boolean;created_at:string|null;last_sign_in_at:string|null;onboarded_at:string|null;access_status:string;access_source:string;expires_at:string|null;is_admin:boolean;manual_grant:boolean;kiwify_customer:boolean;kiwify_status:string|null;plan_name:string|null;amount_minor:number|null;currency_code:string|null;last_event_at:string|null};
 type Diagnostic={email:string;user_id:string|null;account_exists:boolean;onboarded_at:string|null;last_sign_in_at:string|null;access_status:string;access_source:string;expires_at:string|null;manual_grant:boolean;kiwify_customer:boolean;kiwify_status:string|null;plan_name:string|null;transactions_count:number;work_sessions_count:number;cards_count:number;recurring_bills_count:number;debts_count:number;last_financial_activity:string|null};
 type KiwifyEvent={event_type:string|null;subscription_status:string|null;has_access:boolean;access_until:string|null;plan_name:string|null;amount_minor:number|null;currency_code:string|null;subscription_id:string|null;order_id:string|null;received_at:string};
+type WebhookAttempt={outcome:'received'|'accepted'|'ignored'|'error';event_type:string|null;product_id:string|null;note:string|null;received_at:string};
 type Settings={subscription_required:boolean;checkout_url:string|null};
 
 function statusKey(status:string){
@@ -35,6 +36,7 @@ export function AdminMaster(){
   const[openPanels,setOpenPanels]=useState<Set<string>>(new Set(['customers']));
   const[eventMap,setEventMap]=useState<Record<string,KiwifyEvent[]>>({});
   const[eventLoading,setEventLoading]=useState<Record<string,boolean>>({});
+  const[webhookAttempts,setWebhookAttempts]=useState<WebhookAttempt[]>([]);
 
   function money(minor:number|null,code:string|null){
     if(minor==null)return '—';
@@ -52,16 +54,18 @@ export function AdminMaster(){
   async function load(){
     setLoading(true);
     const s=createClient();
-    const[f,cfg,list]=await Promise.all([
+    const[f,cfg,list,attempts]=await Promise.all([
       s.rpc('admin_get_devinx_customer_funnel'),
       s.rpc('admin_get_devinx_settings'),
-      s.rpc('admin_list_devinx_customers')
+      s.rpc('admin_list_devinx_customers'),
+      s.rpc('admin_list_kiwify_webhook_attempts')
     ]);
     if(f.error||cfg.error||list.error){setNotice(t('master.unauthorized'));setLoading(false);return}
     const fr=Array.isArray(f.data)?f.data[0]:f.data;
     const cr=Array.isArray(cfg.data)?cfg.data[0]:cfg.data;
     setFunnel(fr as Funnel);
     setCustomers((list.data||[]) as Customer[]);
+    setWebhookAttempts((attempts.data||[]) as WebhookAttempt[]);
     setSubscriptionRequired(!!cr?.subscription_required);
     setCheckout(cr?.checkout_url||'');
     setLoading(false);
@@ -191,6 +195,20 @@ export function AdminMaster(){
         <label>{t('master.checkout')}<input value={checkout} onChange={e=>setCheckout(e.target.value)} placeholder="https://pay.kiwify.com.br/..."/></label>
         <button className="primary goldButton" onClick={saveSettings}>{t('master.saveSettings')}</button>
         <p className="securityNote">{t('master.security')}</p>
+      </div>}
+    </section>
+
+    <section className={'panel masterSectionCard '+(openPanels.has('webhook')?'expanded':'collapsed')}>
+      <button className="collapseHeader masterSectionHeader" type="button" onClick={()=>togglePanel('webhook')}><div><small>KIWIFY WEBHOOK</small><h2>{t('master.webhookDiagnostics')}</h2></div><em>{openPanels.has('webhook')?'−':'＋'}</em></button>
+      {openPanels.has('webhook')&&<div className="collapsibleBody">
+        <p className="sectionLead">{t('master.webhookDiagnosticsHelp')}</p>
+        <div className="webhookAttemptList">
+          {webhookAttempts.length===0?<div className="empty"><b>{t('master.webhookNoAttempts')}</b></div>:webhookAttempts.map((w,index)=><article className={'webhookAttempt '+w.outcome} key={w.received_at+'-'+index}>
+            <span className="webhookDot"/>
+            <div><b>{w.outcome==='accepted'?t('master.webhookAccepted'):w.outcome==='ignored'?t('master.webhookIgnored'):w.outcome==='error'?t('master.webhookError'):t('master.webhookReceived')}</b><small>{date(w.received_at,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'})}</small></div>
+            <div className="webhookMeta"><span>{t('master.webhookEvent')}: {w.event_type||'—'}</span><span>{t('master.webhookProduct')}: {w.product_id||'—'}</span>{w.note&&<span>{w.note}</span>}</div>
+          </article>)}
+        </div>
       </div>}
     </section>
 
