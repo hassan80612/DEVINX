@@ -17,6 +17,7 @@ import {AdminMaster} from './AdminMaster';
 import {QuickCapture} from './QuickCapture';
 import {LanguageMenu} from './LanguageMenu';
 import {IntegrationBootstrap} from './IntegrationBootstrap';
+import {SubscriptionPanel} from './SubscriptionPanel';
 import {useI18n} from '@/i18n/provider';
 
 type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'debts'|'bills'|'reports'|'spend'|'categories'|'settings'|'master';
@@ -54,7 +55,7 @@ export function FinanceHub(){
   const month=useMemo(()=>new Intl.DateTimeFormat(locale,{month:'long',year:'numeric'}).format(new Date()),[locale]);
   const titles:Record<Section,string>={
     home:t('nav.home'),movements:t('nav.movements'),work:t('nav.work'),plan:t('nav.plan'),more:t('nav.more'),
-    cards:t('nav.cards'),debts:t('nav.debts'),bills:t('nav.bills'),reports:t('nav.reports'),spend:'Posso gastar?',
+    cards:t('nav.cards'),debts:t('nav.debts'),bills:t('nav.bills'),reports:t('nav.reports'),spend:t('spend.title'),
     categories:t('nav.categories'),settings:t('nav.settings'),master:t('nav.master')
   };
 
@@ -65,11 +66,12 @@ export function FinanceHub(){
     if(allowed.includes(target as Section))setSection(target as Section);
   }
   function backTarget(){return ['cards','debts','bills','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
+  async function signOut(){await createClient().auth.signOut();location.href='/'}
 
   if(accessError)return <main className="financeApp">
-    <section className="centerState"><b>DEVINX</b><p>Não foi possível validar o acesso agora.</p><button className="primary" onClick={()=>location.reload()}>Tentar novamente</button></section></main>;
+    <section className="centerState"><b>DEVINX</b><p>{t('common.errorAccess')}</p><button className="primary" onClick={()=>location.reload()}>{t('common.tryAgain')}</button></section></main>;
   if(!access)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
-  if(!access.allowed)return <main className="financeApp"><section className="paywallCard"><span className="goldPill">DEVINX</span><h1>{t('access.title')}</h1><p>{t('access.desc')}</p>{access.checkout_url&&<a className="primary goldButton" href={checkoutForLocale(access.checkout_url,locale)}>{t('access.checkout')}</a>}<button className="secondary" onClick={async()=>{await createClient().auth.signOut();location.href='/'}}>{t('access.signOut')}</button></section></main>;
+  if(!access.allowed)return <main className="financeApp"><section className="paywallCard"><span className="goldPill">DEVINX</span><h1>{t('access.title')}</h1><p>{t('access.desc')}</p><SubscriptionPanel/><button className="secondary" onClick={signOut}>{t('access.signOut')}</button></section></main>;
 
   return <main className="financeApp">
     <IntegrationBootstrap enabled={access.is_admin}/>
@@ -99,17 +101,21 @@ export function FinanceHub(){
 
       {section==='movements'&&<MovementCenter onNavigate={navigate}/>}
       {section==='work'&&<WorkManager/>}
-      {section==='plan'&&<div className="stackSections"><section><div className="miniHeading"><small>{t('goals.title').toUpperCase()}</small><h2>{t('goals.title')}</h2></div><GoalManager/></section><section><div className="miniHeading"><small>ANTES DE COMPRAR</small><h2>Posso gastar?</h2></div><SpendCheck/></section></div>}
+      {section==='plan'&&<div className="stackSections"><section><div className="miniHeading"><small>{t('goals.title').toUpperCase()}</small><h2>{t('goals.title')}</h2></div><GoalManager/></section><section><div className="miniHeading"><small>{t('spend.beforeBuy')}</small><h2>{t('spend.title')}</h2></div><SpendCheck/></section></div>}
 
-      {section==='more'&&<section className="organizeGrid">
-        <button onClick={()=>setSection('cards')} type="button"><span>▣</span><div><b>{t('nav.cards')}</b><small>{t('more.cardsHelp')}</small></div><em>›</em></button>
-        <button onClick={()=>setSection('debts')} type="button"><span>↓</span><div><b>{t('nav.debts')}</b><small>{t('more.debtsHelp')}</small></div><em>›</em></button>
-        <button onClick={()=>setSection('bills')} type="button"><span>↻</span><div><b>{t('nav.bills')}</b><small>{t('more.billsHelp')}</small></div><em>›</em></button>
-        <button onClick={()=>setSection('reports')} type="button"><span>▥</span><div><b>{t('nav.reports')}</b><small>{t('more.reportsHelp')}</small></div><em>›</em></button>
-        <button onClick={()=>setSection('categories')} type="button"><span>⌁</span><div><b>{t('nav.categories')}</b><small>{t('more.categoriesHelp')}</small></div><em>›</em></button>
-        <button onClick={()=>setSection('settings')} type="button"><span>⚙</span><div><b>{t('nav.settings')}</b><small>{t('more.settingsHelp')}</small></div><em>›</em></button>
-        {access.is_admin&&<button className="masterLauncher" onClick={()=>setSection('master')} type="button"><span>✦</span><div><b>{t('nav.master')}</b><small>{t('more.masterHelp')}</small></div><em>›</em></button>}
-      </section>}
+      {section==='more'&&<div className="moreStack">
+        <SubscriptionPanel isAdmin={access.is_admin}/>
+        <section className="organizeGrid">
+          <button onClick={()=>setSection('cards')} type="button"><span>▣</span><div><b>{t('nav.cards')}</b><small>{t('more.cardsHelp')}</small></div><em>›</em></button>
+          <button onClick={()=>setSection('debts')} type="button"><span>↓</span><div><b>{t('nav.debts')}</b><small>{t('more.debtsHelp')}</small></div><em>›</em></button>
+          <button onClick={()=>setSection('bills')} type="button"><span>↻</span><div><b>{t('nav.bills')}</b><small>{t('more.billsHelp')}</small></div><em>›</em></button>
+          <button onClick={()=>setSection('reports')} type="button"><span>▥</span><div><b>{t('nav.reports')}</b><small>{t('more.reportsHelp')}</small></div><em>›</em></button>
+          <button onClick={()=>setSection('categories')} type="button"><span>⌁</span><div><b>{t('nav.categories')}</b><small>{t('more.categoriesHelp')}</small></div><em>›</em></button>
+          <button onClick={()=>setSection('settings')} type="button"><span>⚙</span><div><b>{t('nav.settings')}</b><small>{t('more.settingsHelp')}</small></div><em>›</em></button>
+          {access.is_admin&&<button className="masterLauncher" onClick={()=>setSection('master')} type="button"><span>✦</span><div><b>{t('nav.master')}</b><small>{t('more.masterHelp')}</small></div><em>›</em></button>}
+          <button className="signOutLauncher" onClick={signOut} type="button"><span>↗</span><div><b>{t('settings.signOut')}</b><small>{t('more.signOutHelp')}</small></div><em>›</em></button>
+        </section>
+      </div>}
 
       {section==='cards'&&<CardManager onNavigate={navigate}/>}
       {section==='debts'&&<DebtManager/>}

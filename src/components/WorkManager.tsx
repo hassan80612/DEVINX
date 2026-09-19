@@ -80,13 +80,13 @@ export function WorkManager(){
   async function saveVehicle(e:FormEvent){
     e.preventDefault();const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
     const actualEnergy=vType==='bicycle'?'human':vEnergy;const efficiency=actualEnergy==='human'?null:dec(vEfficiency);const price=actualEnergy==='human'?0:minor(vPrice);const defaultPct=actualEnergy==='human'?null:(vDefaultPct?dec(vDefaultPct):null);
-    if(actualEnergy!=='human'&&(Number(efficiency)<=0||price<=0)){setNotice('Informe consumo e preço.');return}if(defaultPct!=null&&(defaultPct<=0||defaultPct>100)){setNotice('A % padrão deve ficar entre 0 e 100.');return}
+    if(actualEnergy!=='human'&&(Number(efficiency)<=0||price<=0)){setNotice(t('work.needVehicleNumbers'));return}if(defaultPct!=null&&(defaultPct<=0||defaultPct>100)){setNotice(t('work.defaultFuelPercentInvalid'));return}
     let error:any=null;
     if(vehicleMode==='edit'&&vehicle)({error}=await s.from('vehicles').update({name:vName.trim()||vehicle.name,vehicle_type:vType,energy_type:actualEnergy,efficiency,unit_price_minor:price,default_fuel_percent:defaultPct}).eq('id',vehicle.id).eq('user_id',user.id));
     else{
       const{data,error:e2}=await s.from('vehicles').insert({user_id:user.id,name:vName.trim()||t('work.vehicleName'),vehicle_type:vType,energy_type:actualEnergy,efficiency,unit_price_minor:price,default_fuel_percent:defaultPct,is_default:vehicles.length===0}).select('id').single();error=e2;if(data?.id)setSelectedVehicleId(data.id);
     }
-    if(error){setNotice('Não foi possível salvar o veículo.');return}
+    if(error){setNotice(t('work.vehicleSaveError'));return}
     setVehicleMode(null);setNotice(t('work.vehicleSaved'));await load();
   }
 
@@ -98,18 +98,18 @@ export function WorkManager(){
   async function addSource(){
     const value=newSource.trim();if(!value)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
     const{data,error}=await s.from('income_sources').insert({user_id:user.id,kind:'other',name:value}).select('id,name,kind').single();
-    if(error){setNotice('Não foi possível adicionar a fonte.');return}
+    if(error){setNotice(t('work.sourceSaveError'));return}
     setNewSource('');if(data){setSourceId(data.id);setSources(current=>[...current,data as Source])}
   }
 
   async function saveSession(e:FormEvent){
-    e.preventDefault();if(!vehicle){setNotice('Configure um veículo.');return}
+    e.preventDefault();if(!vehicle){setNotice(t('work.configureVehicle'));return}
     const worked=dec(hours);const distance=dec(km);const pct=dec(fuelPercent);const grossMinor=minor(gross);
     if(worked<=0){setNotice(t('work.needHours'));return}
     if(vehicle.energy_type!=='human'&&distance<=0&&(pct<=0||pct>100)&&!Number(vehicle.default_fuel_percent)){setNotice(t('work.needCalc'));return}
     setSaving(true);const cost=energyCost(vehicle,grossMinor,distance,pct);const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){setSaving(false);return}
     const{error}=await s.from('work_sessions').insert({user_id:user.id,vehicle_id:vehicle.id,income_source_id:sourceId||null,worked_on:localDateISO(),gross_income_minor:grossMinor,energy_cost_minor:cost,extra_work_cost_minor:minor(extra),distance_km:Number(distance.toFixed(2)),minutes_worked:Math.round(worked*60)});
-    setSaving(false);if(error){setNotice('Não foi possível salvar a jornada.');return}
+    setSaving(false);if(error){setNotice(t('work.sessionSaveError'));return}
     const net=grossMinor-cost-minor(extra);setGross('');setHours('');setKm('');setFuelPercent('');setExtra('0');setNotice(t('work.saved')+' '+t('work.net')+': '+currency(net));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
 
@@ -120,9 +120,9 @@ export function WorkManager(){
     e.preventDefault();if(!editing)return;const v=vehicles.find(x=>x.id===eVehicle);if(!v)return;const worked=dec(eHours),distance=dec(eKm),pct=dec(ePct),grossMinor=minor(eGross);
     if(worked<=0){setNotice(t('work.needHours'));return}if(v.energy_type!=='human'&&distance<=0&&(pct<=0||pct>100)&&!Number(v.default_fuel_percent)){setNotice(t('work.needCalc'));return}
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{error}=await s.from('work_sessions').update({vehicle_id:v.id,income_source_id:eSource||null,worked_on:eDate,gross_income_minor:grossMinor,energy_cost_minor:energyCost(v,grossMinor,distance,pct),extra_work_cost_minor:minor(eExtra),distance_km:Number(distance.toFixed(2)),minutes_worked:Math.round(worked*60)}).eq('id',editing.id).eq('user_id',user.id);
-    if(error){setNotice('Não foi possível atualizar.');return}setEditing(null);setNotice(t('work.sessionUpdated'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorUpdate'));return}setEditing(null);setNotice(t('work.sessionUpdated'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
-  async function deleteSession(ses:Session){if(!confirm(t('work.deleteConfirm')))return;const s=createClient();const{error}=await s.from('work_sessions').delete().eq('id',ses.id);if(error){setNotice('Não foi possível excluir.');return}window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
+  async function deleteSession(ses:Session){if(!confirm(t('work.deleteConfirm')))return;const s=createClient();const{error}=await s.from('work_sessions').delete().eq('id',ses.id);if(error){setNotice(t('common.errorDelete'));return}window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
 
   return <div className="workPage">
     <p className="sectionLead">{t('work.lead')}</p>

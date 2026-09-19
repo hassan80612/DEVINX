@@ -17,7 +17,7 @@ export function GoalManager(){
   function startNew(){setName(goal?.name||'');setTarget(goal?String(Number(goal.target_minor)/100).replace('.',','):'');setPeriod(goal?.period||'monthly');setBasis(goal?.basis||'gross');setOpen(true);setNotice('')}
   async function save(e:FormEvent){
     e.preventDefault();const value=minor(target);if(value<=0)return;setSaving(true);const s=createClient();const{error}=await s.rpc('replace_active_goal',{p_name:name.trim()||t('goals.title'),p_period:period,p_basis:basis,p_target_minor:value});setSaving(false);
-    if(error){setNotice('Não foi possível salvar a meta.');return}setOpen(false);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setOpen(false);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
   async function endGoal(){if(!goal)return;const s=createClient();await s.from('goals').update({is_active:false}).eq('id',goal.id);setGoal(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'))}
   const periodLabel=goal?.period==='daily'?t('goals.daily'):goal?.period==='weekly'?t('goals.weekly'):t('goals.monthly');

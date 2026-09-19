@@ -15,10 +15,10 @@ export function CategoryManager(){
   useEffect(()=>{load()},[]);
 
   async function add(e:FormEvent){
-    e.preventDefault();const value=name.trim();if(!value)return;setSaving(true);const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{error}=await s.from('finance_categories').insert({user_id:user.id,kind,name:value,icon,show_in_quick:showQuick});setSaving(false);if(error){setNotice('Não foi possível criar.');return}setName('');setIcon('•');setShowQuick(true);window.dispatchEvent(new CustomEvent('devinx:categories-updated'));await load();
+    e.preventDefault();const value=name.trim();if(!value)return;setSaving(true);const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{error}=await s.from('finance_categories').insert({user_id:user.id,kind,name:value,icon,show_in_quick:showQuick});setSaving(false);if(error){setNotice(t('common.errorSave'));return}setName('');setIcon('•');setShowQuick(true);window.dispatchEvent(new CustomEvent('devinx:categories-updated'));await load();
   }
-  async function toggle(c:CustomCategory,field:'is_active'|'show_in_quick'){const s=createClient();const{error}=await s.from('finance_categories').update({[field]:!c[field]}).eq('id',c.id);if(error){setNotice('Não foi possível atualizar.');return}window.dispatchEvent(new CustomEvent('devinx:categories-updated'));await load()}
-  async function rename(c:CustomCategory){const value=editingName.trim();if(!value)return;const s=createClient();const{error}=await s.from('finance_categories').update({name:value}).eq('id',c.id);if(error){setNotice('Não foi possível renomear.');return}setEditingId(null);window.dispatchEvent(new CustomEvent('devinx:categories-updated'));await load()}
+  async function toggle(c:CustomCategory,field:'is_active'|'show_in_quick'){const s=createClient();const{error}=await s.from('finance_categories').update({[field]:!c[field]}).eq('id',c.id);if(error){setNotice(t('common.errorUpdate'));return}window.dispatchEvent(new CustomEvent('devinx:categories-updated'));await load()}
+  async function rename(c:CustomCategory){const value=editingName.trim();if(!value)return;const s=createClient();const{error}=await s.from('finance_categories').update({name:value}).eq('id',c.id);if(error){setNotice(t('common.errorUpdate'));return}setEditingId(null);window.dispatchEvent(new CustomEvent('devinx:categories-updated'));await load()}
 
   const custom=categories.filter(c=>c.kind===kind);const system=systemCategories(kind);
 

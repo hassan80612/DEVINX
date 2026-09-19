@@ -20,18 +20,18 @@ export function DebtManager(){
   async function add(e:FormEvent){
     e.preventDefault();const value=minor(original);if(value<=0)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
     const{error}=await s.from('debts').insert({user_id:user.id,name:name.trim(),original_minor:value,outstanding_minor:value,installment_minor:installment?minor(installment):null,installments_remaining:remaining?Number(remaining):null,expected_end:end||null,due_day:dueDay?Number(dueDay):null});
-    if(error){setNotice('Não foi possível salvar.');return}setName('');setOriginal('');setInstallment('');setRemaining('');setEnd('');setDueDay('');setOpen(false);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setName('');setOriginal('');setInstallment('');setRemaining('');setEnd('');setDueDay('');setOpen(false);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
   function openPay(d:Debt){setPaying(d);setPaymentAmount(d.installment_minor?String(Number(d.installment_minor)/100).replace('.',','):'');setPaymentMethod('pix');setPaymentDate(localDateISO());setNotice('')}
   async function pay(e:FormEvent){
     e.preventDefault();if(!paying)return;const value=minor(paymentAmount);if(value<=0||value>Number(paying.outstanding_minor))return;setSaving(true);const s=createClient();const{error}=await s.rpc('register_debt_payment',{p_debt_id:paying.id,p_amount_minor:value,p_paid_on:paymentDate,p_payment_method:paymentMethod});setSaving(false);
-    if(error){setNotice('Não foi possível registrar o pagamento.');return}setPaying(null);setNotice('Pagamento registrado.');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setPaying(null);setNotice(t('debts.paymentSaved'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
   function startEdit(d:Debt){setEditing(d);setEName(d.name);setEInstallment(d.installment_minor?String(Number(d.installment_minor)/100).replace('.',','):'');setERemaining(d.installments_remaining==null?'':String(d.installments_remaining));setEEnd(d.expected_end||'');setEDue(d.due_day==null?'':String(d.due_day))}
   async function saveEdit(e:FormEvent){
-    e.preventDefault();if(!editing)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{error}=await s.from('debts').update({name:eName.trim(),installment_minor:eInstallment?minor(eInstallment):null,installments_remaining:eRemaining?Number(eRemaining):null,expected_end:eEnd||null,due_day:eDue?Number(eDue):null}).eq('id',editing.id).eq('user_id',user.id);if(error){setNotice('Não foi possível atualizar.');return}setEditing(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    e.preventDefault();if(!editing)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{error}=await s.from('debts').update({name:eName.trim(),installment_minor:eInstallment?minor(eInstallment):null,installments_remaining:eRemaining?Number(eRemaining):null,expected_end:eEnd||null,due_day:eDue?Number(eDue):null}).eq('id',editing.id).eq('user_id',user.id);if(error){setNotice(t('common.errorUpdate'));return}setEditing(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
-  async function disable(d:Debt){if(!confirm(t('common.confirm')+'?'))return;const s=createClient();const{error}=await s.from('debts').update({is_active:false}).eq('id',d.id);if(error){setNotice('Não foi possível desativar.');return}window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
+  async function disable(d:Debt){if(!confirm(t('common.confirm')+'?'))return;const s=createClient();const{error}=await s.from('debts').update({is_active:false}).eq('id',d.id);if(error){setNotice(t('common.errorUpdate'));return}window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
 
   return <div className="debtsPage">
     <button className="primary" onClick={()=>setOpen(v=>!v)}>{t('debts.new')}</button>

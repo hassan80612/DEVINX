@@ -32,7 +32,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   async function add(e:FormEvent){
     e.preventDefault();const value=minor(amount);if(value<=0)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
     const{error}=await s.from('recurring_bills').insert({user_id:user.id,name:name.trim(),category_id:category,amount_minor:value,due_day:Number(dueDay),payment_method:paymentMethod,is_avoidable:avoidable});
-    if(error){setNotice('Não foi possível salvar.');return}setName('');setAmount('');setOpen(false);setNotice(t('bills.saved'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setName('');setAmount('');setOpen(false);setNotice(t('bills.saved'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
 
   function openPay(b:Bill,p?:Payment){setPaying(b);setEditingPayment(p||null);setPaidAmount(String(Number(p?.amount_minor??b.amount_minor)/100).replace('.',','));setPaidOn(p?.paid_on||localDateISO());setNotice('')}
@@ -40,14 +40,14 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     e.preventDefault();if(!paying)return;const value=minor(paidAmount);if(value<=0)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;let error:any=null;
     if(editingPayment)({error}=await s.from('recurring_bill_payments').update({amount_minor:value,paid_on:paidOn,paid_at:new Date(paidOn+'T12:00:00').toISOString()}).eq('id',editingPayment.id).eq('user_id',user.id));
     else({error}=await s.from('recurring_bill_payments').insert({user_id:user.id,recurring_bill_id:paying.id,due_month:localMonthStartISO(),amount_minor:value,paid_on:paidOn,paid_at:new Date(paidOn+'T12:00:00').toISOString()}));
-    if(error){setNotice('Não foi possível registrar o pagamento.');return}setPaying(null);setEditingPayment(null);setNotice(t('bills.paymentSaved'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setPaying(null);setEditingPayment(null);setNotice(t('bills.paymentSaved'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
 
   function startBillEdit(b:Bill){setEditBill(b);setEName(b.name);setEAmount(String(Number(b.amount_minor)/100).replace('.',','));setEDue(String(b.due_day));setECategory(b.category_id);setEMethod(b.payment_method||'pix');setEAvoidable(b.is_avoidable)}
   async function saveBillEdit(e:FormEvent){
-    e.preventDefault();if(!editBill)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{error}=await s.from('recurring_bills').update({name:eName.trim(),amount_minor:minor(eAmount),due_day:Number(eDue),category_id:eCategory,payment_method:eMethod,is_avoidable:eAvoidable}).eq('id',editBill.id).eq('user_id',user.id);if(error){setNotice('Não foi possível atualizar.');return}setEditBill(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    e.preventDefault();if(!editBill)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;const{error}=await s.from('recurring_bills').update({name:eName.trim(),amount_minor:minor(eAmount),due_day:Number(eDue),category_id:eCategory,payment_method:eMethod,is_avoidable:eAvoidable}).eq('id',editBill.id).eq('user_id',user.id);if(error){setNotice(t('common.errorUpdate'));return}setEditBill(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
   }
-  async function disable(b:Bill){if(!confirm(t('common.confirm')+'?'))return;const s=createClient();const{error}=await s.from('recurring_bills').update({is_active:false}).eq('id',b.id);if(error){setNotice('Não foi possível desativar.');return}window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
+  async function disable(b:Bill){if(!confirm(t('common.confirm')+'?'))return;const s=createClient();const{error}=await s.from('recurring_bills').update({is_active:false}).eq('id',b.id);if(error){setNotice(t('common.errorUpdate'));return}window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
 
   return <div className="billsPage">
     <div className="toolbar"><button className="primary" onClick={()=>setOpen(v=>!v)}>{t('bills.new')}</button>{onNavigate&&<button className="goldOutline" onClick={()=>onNavigate('categories')}>{t('nav.categories')}</button>}</div>
