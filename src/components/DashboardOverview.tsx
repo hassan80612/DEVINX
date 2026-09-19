@@ -360,7 +360,7 @@ export function DashboardOverview(){
       </div>
 
       <p>{reserveSuggestion.daily>0?t('dashboard.dailyReserveExplainAdvanced'):t('dashboard.dailyReserveCoveredHelp')}</p>
-      {reserveSuggestion.daily>0&&<button className="goldOutline dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
+      {reserveSuggestion.daily>0&&<button className="primary dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
       {goalNotice&&<div className="authMessage">{goalNotice}</div>}
     </section>
 

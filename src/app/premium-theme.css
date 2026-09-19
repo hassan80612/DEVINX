@@ -298,3 +298,18 @@ select option{background:#090c10;color:#f5f1e8}
 /* CTA readability fixes */
 .dailyGoalButton{color:#171006!important;text-shadow:none!important}
 .quickCaptureFab:after{content:none!important}
+
+
+/* Final CTA positioning / contrast fix */
+.dailyGoalButton{
+  color:#171006!important;
+  -webkit-text-fill-color:#171006!important;
+  text-shadow:none!important;
+}
+.quickCaptureFab{
+  left:auto!important;
+  right:18px!important;
+}
+@media(max-width:700px){
+  .quickCaptureFab{left:auto!important;right:12px!important}
+}
