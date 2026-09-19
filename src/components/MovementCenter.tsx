@@ -5,13 +5,15 @@ import {createClient} from '@/lib/supabase/client';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
 import {categoryName,CustomCategory} from '@/domain/categories';
+import {RecurringBillLike,RecurringOverrideLike,billAppliesToMonth,billDueDay,billRemaining,dueDateForMonth,installmentNumber} from '@/domain/recurring';
 
 type View='today'|'history'|'pending';
 type Tx={id:string;type:'income'|'expense';category_id:string;description:string|null;amount_minor:number;occurred_on:string;payment_method:string|null;is_avoidable:boolean;source_type:string|null;source_id:string|null};
 type Work={id:string;vehicle_id:string|null;income_source_id:string|null;worked_on:string;gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;distance_km:number;minutes_worked:number;income_sources:{name:string;kind:string}|null;vehicles:{name:string;energy_type:string;efficiency:number|null;unit_price_minor:number|null;default_fuel_percent:number|null}|null};
 type RecPay={id:string;recurring_bill_id:string;amount_minor:number;paid_on:string;due_month:string;recurring_bills:{name:string;category_id:string;payment_method:string|null}|null};
 type CardPay={id:string;card_id:string;statement_month:string;amount_minor:number;paid_on:string;credit_cards:{name:string}|null};
-type Bill={id:string;name:string;amount_minor:number;due_day:number;created_at:string;category_id:string;payment_method:string|null;is_avoidable:boolean};
+type Bill=RecurringBillLike&{name:string;created_at:string;category_id:string;payment_method:string|null;is_avoidable:boolean};
+type BillOverride=RecurringOverrideLike;
 type Purchase={id:string;card_id:string;category_id:string;description:string|null;total_minor:number;purchased_on:string;installment_count:number;is_avoidable:boolean;credit_cards:{name:string;due_day:number|null}|null;card_installments:{id:string;installment_number:number;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null}[]};
 type Debt={id:string;name:string;outstanding_minor:number;installment_minor:number|null;installments_remaining:number|null;due_day:number|null;created_at:string};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
@@ -44,6 +46,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const[purchases,setPurchases]=useState<Purchase[]>([]);
   const[debts,setDebts]=useState<Debt[]>([]);
   const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
+  const[billOverrides,setBillOverrides]=useState<BillOverride[]>([]);
   const[customCategories,setCustomCategories]=useState<CustomCategory[]>([]);
   const[loading,setLoading]=useState(true);
   const[notice,setNotice]=useState('');
@@ -92,15 +95,16 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     }else{
       const current=localMonthStartISO();
       const oldest=addMonths(current,-12);
-      const[r1,r2,r3,r4,cats]=await Promise.all([
-        s.from('recurring_bills').select('id,name,amount_minor,due_day,created_at,category_id,payment_method,is_avoidable').eq('user_id',user.id).eq('is_active',true).order('due_day'),
+      const[r1,r2,r3,r4,r5,cats]=await Promise.all([
+        s.from('recurring_bills').select('id,name,amount_minor,due_day,start_month,installment_count,created_at,category_id,payment_method,is_avoidable').eq('user_id',user.id).eq('is_active',true).order('due_day'),
         s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).gte('due_month',oldest),
+        s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id).gte('due_month',oldest),
         s.from('card_purchases').select('id,card_id,category_id,description,total_minor,purchased_on,installment_count,is_avoidable,credit_cards(name,due_day),card_installments(id,installment_number,amount_minor,billing_month,due_date,paid_at)').eq('user_id',user.id).order('purchased_on',{ascending:false}),
         s.from('debts').select('id,name,outstanding_minor,installment_minor,installments_remaining,due_day,created_at').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}),
         categoriesCall
       ]);
       const{data:dp}=await s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',current);
-      setBills((r1.data||[]) as Bill[]);setRecPays((r2.data||[]) as unknown as RecPay[]);setPurchases((r3.data||[]) as unknown as Purchase[]);setDebts((r4.data||[]) as Debt[]);setDebtPays((dp||[]) as DebtPay[]);setCustomCategories((cats.data||[]) as CustomCategory[]);
+      setBills((r1.data||[]) as Bill[]);setRecPays((r2.data||[]) as unknown as RecPay[]);setBillOverrides((r3.data||[]) as BillOverride[]);setPurchases((r4.data||[]) as unknown as Purchase[]);setDebts((r5.data||[]) as Debt[]);setDebtPays((dp||[]) as DebtPay[]);setCustomCategories((cats.data||[]) as CustomCategory[]);
     }
     setLoading(false);
   }
@@ -144,24 +148,33 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   },[cashRows]);
 
   const billPending=useMemo(()=>{
-    const paid=new Set(recPays.map(p=>p.recurring_bill_id+'|'+p.due_month.slice(0,7)));
-    const today=localDateISO();const current=currentMonth();
-    const rows:{key:string;bill:Bill;month:string;overdue:boolean}[]=[];
+    const today=localDateISO();
+    const current=currentMonth();
+    const rows:{key:string;bill:Bill;month:string;remaining:number;overdue:boolean;installment:number|null}[]=[];
     for(const bill of bills){
-      let cursor=monthStart(bill.created_at);
+      let cursor=bill.start_month;
       const oldest=addMonths(current,-12);
       if(cursor<oldest)cursor=oldest;
       while(cursor<=current){
-        const key=bill.id+'|'+cursor.slice(0,7);
-        if(!paid.has(key)){
-          const due=cursor.slice(0,8)+String(Math.min(bill.due_day,new Date(Number(cursor.slice(0,4)),Number(cursor.slice(5,7)),0).getDate())).padStart(2,'0');
-          rows.push({key,bill,month:cursor,overdue:due<today});
+        if(billAppliesToMonth(bill,cursor)){
+          const remaining=billRemaining(bill,cursor,recPays,billOverrides);
+          if(remaining>0){
+            const due=dueDateForMonth(cursor,billDueDay(bill,cursor,billOverrides));
+            rows.push({
+              key:bill.id+'|'+cursor.slice(0,7),
+              bill,
+              month:cursor,
+              remaining,
+              overdue:due<today,
+              installment:installmentNumber(bill,cursor)
+            });
+          }
         }
         cursor=addMonths(cursor,1);
       }
     }
     return rows.sort((a,b)=>(b.overdue?1:0)-(a.overdue?1:0)||a.bill.due_day-b.bill.due_day);
-  },[bills,recPays]);
+  },[bills,recPays,billOverrides]);
 
   function currentMonth(){return localMonthStartISO()}
 
@@ -272,7 +285,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
     {view==='pending'&&<>
       {loading?<section className="panel"><span className="loader"/></section>:billPending.length+purchasePending.length+debtPending.length===0?<section className="empty"><b>{t('move.noPending')}</b></section>:<div className="pendingStack">
-        {billPending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.bills').toUpperCase()}</small><h2>{t('nav.bills')}</h2></div></div>{billPending.map(item=><article className="pendingRow" key={item.key}><div><b>{item.bill.name}</b><small>{date(item.month,{month:'long',year:'numeric'})} · {t('move.due')} {item.bill.due_day}</small></div><strong>{currency(Number(item.bill.amount_minor))}</strong><span className={item.overdue?'statusBadge overdue':'statusBadge'}>{item.overdue?t('common.overdue'):t('common.pending')}</span><button onClick={()=>onNavigate?.('bills')}>{t('move.openModule')}</button></article>)}</section>}
+        {billPending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.bills').toUpperCase()}</small><h2>{t('nav.bills')}</h2></div></div>{billPending.map(item=><article className="pendingRow" key={item.key}><div><b>{item.bill.name}</b><small>{date(item.month,{month:'long',year:'numeric'})} · {t('move.due')} {billDueDay(item.bill,item.month,billOverrides)}{item.bill.installment_count&&item.installment?' · '+t('bills.installment')+' '+item.installment+'/'+item.bill.installment_count:''}</small></div><strong>{currency(item.remaining)}</strong><span className={item.overdue?'statusBadge overdue':'statusBadge'}>{item.overdue?t('common.overdue'):t('common.pending')}</span><button onClick={()=>onNavigate?.('bills')}>{t('move.openModule')}</button></article>)}</section>}
         {purchasePending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.cards').toUpperCase()}</small><h2>{t('cards.totalOpen')}</h2></div></div>{purchasePending.map(item=><article className="pendingRow purchasePending" key={item.installment.id}><div><b>{item.purchase.description||item.purchase.credit_cards?.name||t('move.cardCommitment')}</b><small>{item.purchase.credit_cards?.name} · {item.installment.installment_number}/{item.purchase.installment_count} · {t('move.dueOn')} {date(item.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small></div><strong>{currency(Number(item.installment.amount_minor))}</strong><span className={item.status==='overdue'?'statusBadge overdue':'statusBadge'}>{item.status==='overdue'?t('common.overdue'):item.status==='current'?t('move.current'):t('move.future')}</span><div className="pendingActions"><button onClick={()=>startPurchaseEdit(item.purchase)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>deletePurchase(item.purchase)}>{t('common.delete')}</button></div></article>)}</section>}
         {debtPending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.debts').toUpperCase()}</small><h2>{t('nav.debts')}</h2></div></div>{debtPending.map(item=><article className="pendingRow" key={item.debt.id}><div><b>{item.debt.name}</b><small>{item.debt.due_day?t('move.due')+' '+item.debt.due_day:''}</small></div><strong>{currency(item.remaining)}</strong><span className={item.overdue?'statusBadge overdue':'statusBadge'}>{item.overdue?t('common.overdue'):t('common.pending')}</span><button onClick={()=>onNavigate?.('debts')}>{t('move.openModule')}</button></article>)}</section>}
       </div>}

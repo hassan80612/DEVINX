@@ -9,6 +9,7 @@ import {GoalManager} from './GoalManager';
 import {CardManager} from './CardManager';
 import {DebtManager} from './DebtManager';
 import {RecurringManager} from './RecurringManager';
+import {ReserveManager} from './ReserveManager';
 import {ReportManager} from './ReportManager';
 import {SpendCheck} from './SpendCheck';
 import {CategoryManager} from './CategoryManager';
@@ -20,7 +21,7 @@ import {IntegrationBootstrap} from './IntegrationBootstrap';
 import {SubscriptionPanel} from './SubscriptionPanel';
 import {useI18n} from '@/i18n/provider';
 
-type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'debts'|'bills'|'reports'|'spend'|'categories'|'settings'|'master';
+type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'debts'|'bills'|'reserves'|'reports'|'spend'|'categories'|'settings'|'master';
 type CaptureMode='income'|'expense';
 type CaptureRequest={id:number;mode:CaptureMode};
 type Access={is_admin:boolean;allowed:boolean;status:string;source:string;expires_at:string|null;subscription_required:boolean;checkout_url:string|null};
@@ -55,17 +56,17 @@ export function FinanceHub(){
   const month=useMemo(()=>new Intl.DateTimeFormat(locale,{month:'long',year:'numeric'}).format(new Date()),[locale]);
   const titles:Record<Section,string>={
     home:t('nav.home'),movements:t('nav.movements'),work:t('nav.work'),plan:t('nav.plan'),more:t('nav.more'),
-    cards:t('nav.cards'),debts:t('nav.debts'),bills:t('nav.bills'),reports:t('nav.reports'),spend:t('spend.title'),
+    cards:t('nav.cards'),debts:t('nav.debts'),bills:t('nav.bills'),reserves:t('nav.reserves'),reports:t('nav.reports'),spend:t('spend.title'),
     categories:t('nav.categories'),settings:t('nav.settings'),master:t('nav.master')
   };
 
   function openCapture(mode:CaptureMode){setCapture(current=>({id:current.id+1,mode}))}
   function navigate(target:string){
     if(target==='income'||target==='expense'){openCapture(target);return}
-    const allowed:Section[]=['home','movements','work','plan','more','cards','debts','bills','reports','spend','categories','settings','master'];
+    const allowed:Section[]=['home','movements','work','plan','more','cards','debts','bills','reserves','reports','spend','categories','settings','master'];
     if(allowed.includes(target as Section))setSection(target as Section);
   }
-  function backTarget(){return ['cards','debts','bills','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
+  function backTarget(){return ['cards','debts','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
   async function signOut(){await createClient().auth.signOut();location.href='/'}
 
   if(accessError)return <main className="financeApp">
@@ -110,6 +111,7 @@ export function FinanceHub(){
           <button onClick={()=>setSection('cards')} type="button"><span>▣</span><div><b>{t('nav.cards')}</b><small>{t('more.cardsHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('debts')} type="button"><span>↓</span><div><b>{t('nav.debts')}</b><small>{t('more.debtsHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('bills')} type="button"><span>↻</span><div><b>{t('nav.bills')}</b><small>{t('more.billsHelp')}</small></div><em>›</em></button>
+          <button onClick={()=>setSection('reserves')} type="button"><span>◇</span><div><b>{t('nav.reserves')}</b><small>{t('more.reservesHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('reports')} type="button"><span>▥</span><div><b>{t('nav.reports')}</b><small>{t('more.reportsHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('categories')} type="button"><span>⌁</span><div><b>{t('nav.categories')}</b><small>{t('more.categoriesHelp')}</small></div><em>›</em></button>
           <button onClick={()=>setSection('settings')} type="button"><span>⚙</span><div><b>{t('nav.settings')}</b><small>{t('more.settingsHelp')}</small></div><em>›</em></button>
@@ -120,7 +122,8 @@ export function FinanceHub(){
 
       {section==='cards'&&<CardManager onNavigate={navigate}/>}
       {section==='debts'&&<DebtManager/>}
-      {section==='bills'&&<RecurringManager onNavigate={navigate}/>}
+      {section==='bills'&&<RecurringManager onNavigate={navigate}/>} 
+      {section==='reserves'&&<ReserveManager/>}
       {section==='reports'&&<ReportManager/>}
       {section==='spend'&&<SpendCheck/>}
       {section==='categories'&&<CategoryManager/>}
@@ -135,7 +138,7 @@ export function FinanceHub(){
       <button type="button" className={section==='movements'?'active':''} onClick={()=>setSection('movements')}><span>↕</span><b>{t('nav.movements')}</b></button>
       <button type="button" className={section==='work'?'active':''} onClick={()=>setSection('work')}><span>◷</span><b>{t('nav.work')}</b></button>
       <button type="button" className={section==='plan'?'active':''} onClick={()=>setSection('plan')}><span>◎</span><b>{t('nav.plan')}</b></button>
-      <button type="button" className={section==='more'||['cards','debts','bills','reports','spend','categories','settings','master'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>{t('nav.more')}</b></button>
+      <button type="button" className={section==='more'||['cards','debts','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>{t('nav.more')}</b></button>
     </nav>
   </main>;
 }

@@ -22,14 +22,8 @@ export default function Home(){
         <h1>{t('landing.title')}<br/><em>{t('landing.accent')}</em></h1>
         <p>{t('landing.desc')}</p>
 
-        <div className="planBadge">
-          <div><small>{t('subscription.monthly')}</small><strong>{t('subscription.price')}<em>/{t('subscription.month')}</em></strong></div>
-          <span>{t('subscription.cancelAnytime')}</span>
-        </div>
-
-        <div className="heroActions">
-          <a className="primary goldButton subscribeHero" href={checkoutForLocale(locale)}>{t('subscription.subscribe')}</a>
-          <a className="secondary" href="/entrar">{t('landing.loginCreate')}</a>
+        <div className="heroActions heroAccessOnly">
+          <a className="primary landingAccessCta" href="/entrar">{t('landing.loginCreate')}</a>
         </div>
         <a className="howLink" href="#como">{t('landing.how')}</a>
         <div className="landingProof"><span>{t('landing.noSheet')}</span><span>{t('landing.noAds')}</span><span>{t('landing.mobile')}</span></div>
@@ -48,6 +42,11 @@ export default function Home(){
       <div><small>01</small><h2>{t('landing.step1')}</h2><p>{t('landing.step1Text')}</p></div>
       <div><small>02</small><h2>{t('landing.step2')}</h2><p>{t('landing.step2Text')}</p></div>
       <div><small>03</small><h2>{t('landing.step3')}</h2><p>{t('landing.step3Text')}</p></div>
+    </section>
+
+    <section className="landingPlanRibbon">
+      <div><small>{t('subscription.monthly')}</small><strong>{t('subscription.price')}<em>/{t('subscription.month')}</em></strong><span>{t('subscription.cancelAnytime')}</span></div>
+      <a className="goldButton planRibbonButton" href={checkoutForLocale(locale)}>{t('subscription.subscribe')}</a>
     </section>
 
     <section className="landingExplainer">
