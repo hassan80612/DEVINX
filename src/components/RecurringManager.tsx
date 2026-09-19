@@ -6,7 +6,7 @@ import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
 import {
   RecurringBillLike,RecurringOverrideLike,RecurringPaymentLike,
-  billAppliesToMonth,billDueDay,billExpectedAmount,billPaidAmount,billRemaining,installmentNumber
+  billAppliesToMonth,billDueDay,billExpectedAmount,billPaidAmount,billRemaining,installmentNumber,dueDateForMonth
 } from '@/domain/recurring';
 import {useI18n} from '@/i18n/provider';
 
