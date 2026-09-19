@@ -26,7 +26,7 @@ export function SpendCheck(){
       s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id).eq('due_month',month),
       s.from('reserve_entries').select('kind,amount_minor,occurred_on').eq('user_id',user.id)
     ]);
-    const tx=(a.data||[]) as any[],work=(b.data||[]) as any[],billPay=(c.data||[]) as any[],cardPay=(d.data||[]) as any[],bills=(e.data||[]) as RecurringBillLike[],cards=(f.data||[]) as any[],debts=(g.data||[]) as any[],overrides=(i.data||[]) as RecurringOverrideLike[],reserves=(j.data||[]) as any[];
+    const tx=(a.data||[]) as any[],work=(b.data||[]) as any[],billPay=(c.data||[]) as any[],cardPay=(d.data||[]) as any[],bills=(e.data||[]) as RecurringBillLike[],cards=(f.data||[]) as any[],debts=(g.data||[]) as any[],debtPay=(h.data||[]) as any[],overrides=(i.data||[]) as RecurringOverrideLike[],reserves=(j.data||[]) as any[];
     const income=tx.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount_minor),0)+work.reduce((s,x)=>s+Number(x.gross_income_minor),0);
     const out=tx.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount_minor),0)+billPay.reduce((s,x)=>s+Number(x.amount_minor),0)+cardPay.reduce((s,x)=>s+Number(x.amount_minor),0);
     const billPending=bills.reduce((s,bill)=>s+(billAppliesToMonth(bill,month)?billRemaining(bill,month,billPay,overrides):0),0);
