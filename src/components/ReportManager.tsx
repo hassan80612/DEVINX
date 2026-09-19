@@ -123,9 +123,9 @@ export function ReportManager(){
     const label=(kind:'income'|'expense',id:string)=>id==='work_income'?t('move.workIncome'):id==='work_cost'?t('move.workCost'):id==='card_payment'?t('move.cardPayment'):categoryName(kind,id,custom,t);
     tx.forEach(x=>{
       const kind=x.type;
-      const cat=label(kind,x.category_id);
       const isDebt=x.source_type==='debt_payment';
-      rows.push({id:'tx:'+x.id,sign:kind==='income'?1:-1,amount:Number(x.amount_minor),date:x.occurred_on,title:x.description||t(kind==='income'?'move.directIncome':'move.directExpense'),subtitle:cat,kind,categoryId:x.category_id,categoryKey:kind+'|'+x.category_id,categoryLabel:cat,sourceKey:isDebt?'debts':'transactions',sourceLabel:isDebt?t('nav.debts'):t('nav.movements'),origin:'transactions',avoidable:kind==='expense'&&x.is_avoidable,rawId:x.id,raw:x});
+      const cat=isDebt?t('move.debtPayment'):label(kind,x.category_id);
+      rows.push({id:'tx:'+x.id,sign:kind==='income'?1:-1,amount:Number(x.amount_minor),date:x.occurred_on,title:x.description||t(kind==='income'?'move.directIncome':'move.directExpense'),subtitle:cat,kind,categoryId:x.category_id,categoryKey:kind+'|'+x.category_id,categoryLabel:cat,sourceKey:'transactions',sourceLabel:t('nav.movements'),origin:'transactions',avoidable:kind==='expense'&&x.is_avoidable,rawId:x.id,raw:x});
     });
     work.forEach(x=>{
       const source=x.income_sources?.name||t('move.workIncome');

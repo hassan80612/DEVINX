@@ -18,7 +18,6 @@ type BillPay=RecurringPaymentLike&{paid_on:string};
 type BillOverride=RecurringOverrideLike;
 type CardInst={amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null};
 type CardPay={amount_minor:number;paid_on:string};
-type Debt={id:string;installment_minor:number|null;outstanding_minor:number;due_day:number|null;installments_remaining:number|null};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
 type ReserveEntry={kind:'deposit'|'withdraw';amount_minor:number;occurred_on:string};
 
@@ -51,7 +50,6 @@ export function DashboardOverview(){
   const[billOverrides,setBillOverrides]=useState<BillOverride[]>([]);
   const[cardInst,setCardInst]=useState<CardInst[]>([]);
   const[cardPays,setCardPays]=useState<CardPay[]>([]);
-  const[debts,setDebts]=useState<Debt[]>([]);
   const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
   const[reserveEntries,setReserveEntries]=useState<ReserveEntry[]>([]);
   const[goalTargetDate,setGoalTargetDate]=useState('');
@@ -67,7 +65,7 @@ export function DashboardOverview(){
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.replace('/entrar');return}
     const from=daysAgo(45);
-    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebt,rDebtPay,rReserve,rProfile]=await Promise.all([
+    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rProfile]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',user.id).gte('worked_on',from),
       s.from('goals').select('name,target_minor,basis,period').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
@@ -76,7 +74,6 @@ export function DashboardOverview(){
       s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id),
       s.from('card_installments').select('amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id).is('paid_at',null),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
-      s.from('debts').select('id,installment_minor,outstanding_minor,due_day,installments_remaining').eq('user_id',user.id).eq('is_active',true),
       s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
       s.from('reserve_entries').select('kind,amount_minor,occurred_on').eq('user_id',user.id),
       s.from('profiles').select('daily_goal_target_date').eq('id',user.id).maybeSingle()
@@ -89,7 +86,6 @@ export function DashboardOverview(){
     setBillOverrides((rBillOverrides.data||[]) as BillOverride[]);
     setCardInst((rInst.data||[]) as CardInst[]);
     setCardPays((rCardPay.data||[]) as CardPay[]);
-    setDebts((rDebt.data||[]) as Debt[]);
     setDebtPays((rDebtPay.data||[]) as DebtPay[]);
     setReserveEntries((rReserve.data||[]) as ReserveEntry[]);
     const saved=(rProfile.data as any)?.daily_goal_target_date||'';
@@ -146,20 +142,12 @@ export function DashboardOverview(){
     const cardsDueNow=cardInst
       .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===month)
       .reduce((a,b)=>a+Number(b.amount_minor),0);
-    const debtPaidMap=new Map<string,number>();
-    debtPays.filter(p=>p.paid_on>=month).forEach(p=>debtPaidMap.set(p.debt_id,(debtPaidMap.get(p.debt_id)||0)+Number(p.amount_minor)));
-    const debtPending=debts.reduce((sum,d)=>{
-      const paid=debtPaidMap.get(d.id)||0;
-      const beforePayments=Number(d.outstanding_minor)+paid;
-      const installment=Math.min(Number(d.installment_minor||beforePayments),beforePayments);
-      return sum+Math.max(0,installment-paid);
-    },0);
-    const toPay=recurringPending+cardsDueNow+debtPending;
+    const toPay=recurringPending+cardsDueNow;
     const projected=balance-toPay;
     const avoidable=txMonth.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((a,b)=>a+Number(b.amount_minor),0);
 
-    return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent-reserveTodayNet,recurringPending,cardsDueNow,debtPending,toPay,projected,avoidable};
-  },[tx,work,bills,billPays,billOverrides,cardInst,cardPays,debts,debtPays,reserveEntries]);
+    return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent-reserveTodayNet,recurringPending,cardsDueNow,toPay,projected,avoidable};
+  },[tx,work,bills,billPays,billOverrides,cardInst,cardPays,debtPays,reserveEntries]);
 
   const selectedCommitments=useMemo(()=>{
     const currentMonth=localMonthStartISO();
@@ -172,33 +160,8 @@ export function DashboardOverview(){
       .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===selected)
       .reduce((a,b)=>a+Number(b.amount_minor),0);
 
-    const paidCurrent=new Map<string,number>();
-    debtPays.filter(p=>p.paid_on>=currentMonth).forEach(p=>paidCurrent.set(p.debt_id,(paidCurrent.get(p.debt_id)||0)+Number(p.amount_minor)));
-    const monthsAhead=Math.max(0,monthDistance(currentMonth,selected));
-    const debtPending=debts.reduce((sum,d)=>{
-      const paid=paidCurrent.get(d.id)||0;
-      const beforePayments=Number(d.outstanding_minor)+paid;
-      const installment=Math.max(1,Number(d.installment_minor||beforePayments));
-      const currentRemaining=Math.max(0,Math.min(installment,beforePayments)-paid);
-      let outstanding=Number(d.outstanding_minor);
-      let remainingCount=d.installments_remaining==null?600:Number(d.installments_remaining);
-
-      if(monthsAhead===0)return sum+Math.min(currentRemaining,outstanding);
-      if(currentRemaining>0){
-        outstanding=Math.max(0,outstanding-currentRemaining);
-        remainingCount=Math.max(0,remainingCount-1);
-      }
-      for(let i=1;i<monthsAhead&&outstanding>0&&remainingCount>0;i+=1){
-        const amount=Math.min(installment,outstanding);
-        outstanding-=amount;
-        remainingCount-=1;
-      }
-      if(outstanding<=0||remainingCount<=0)return sum;
-      return sum+Math.min(installment,outstanding);
-    },0);
-
-    return{recurringPending,cardsDue,debtPending,total:recurringPending+cardsDue+debtPending};
-  },[commitmentMonth,bills,billPays,billOverrides,cardInst,debts,debtPays]);
+    return{recurringPending,cardsDue,total:recurringPending+cardsDue};
+  },[commitmentMonth,bills,billPays,billOverrides,cardInst]);
 
   const reserveSuggestion=useMemo(()=>{
     const today=localDateISO();
@@ -206,7 +169,7 @@ export function DashboardOverview(){
     const fallbackHorizon=monthEnd(month);
     const horizon=goalTargetDate&&goalTargetDate>=today?goalTargetDate:fallbackHorizon;
     const horizonMonth=horizon.slice(0,7)+'-01';
-    const obligations:{due:string;amount:number;kind:'bill'|'card'|'debt'}[]=[];
+    const obligations:{due:string;amount:number;kind:'bill'|'card'}[]=[];
 
     for(const bill of bills){
       for(const dueMonth of monthsBetween(month,horizonMonth)){
@@ -221,29 +184,6 @@ export function DashboardOverview(){
     for(const inst of cardInst){
       const due=inst.due_date||dueDateForMonth(inst.billing_month,1);
       if(due<=horizon)obligations.push({due:due<today?today:due,amount:Number(inst.amount_minor),kind:'card'});
-    }
-
-    const paidDebtThisMonth=new Map<string,number>();
-    debtPays.filter(p=>p.paid_on>=month).forEach(p=>paidDebtThisMonth.set(p.debt_id,(paidDebtThisMonth.get(p.debt_id)||0)+Number(p.amount_minor)));
-    for(const debt of debts){
-      const paidCurrent=paidDebtThisMonth.get(debt.id)||0;
-      const beforePayments=Number(debt.outstanding_minor)+paidCurrent;
-      const installment=Math.max(1,Number(debt.installment_minor||beforePayments));
-      const currentRemaining=Math.max(0,Math.min(installment,beforePayments)-paidCurrent);
-      let outstanding=Number(debt.outstanding_minor);
-      let remainingCount=debt.installments_remaining==null?600:Number(debt.installments_remaining);
-      let index=0;
-      for(const dueMonth of monthsBetween(month,horizonMonth)){
-        if(outstanding<=0||remainingCount<=0)break;
-        const day=debt.due_day||Number(monthEnd(dueMonth).slice(8,10));
-        const due=dueDateForMonth(dueMonth,day);
-        if(due>horizon){index+=1;continue}
-        const amount=index===0?Math.min(currentRemaining,outstanding):Math.min(installment,outstanding);
-        if(amount>0)obligations.push({due:due<today?today:due,amount,kind:'debt'});
-        outstanding-=amount;
-        if(amount>0)remainingCount-=1;
-        index+=1;
-      }
     }
 
     obligations.sort((a,b)=>a.due.localeCompare(b.due));
@@ -277,7 +217,7 @@ export function DashboardOverview(){
       days:daysInclusive(today,horizon),
       hasCustomHorizon:!!goalTargetDate&&goalTargetDate>=today
     };
-  },[goalTargetDate,bills,billPays,billOverrides,cardInst,debts,debtPays,numbers.balance]);
+  },[goalTargetDate,bills,billPays,billOverrides,cardInst,numbers.balance]);
 
   async function saveHorizon(){
     if(targetDraft&&targetDraft<localDateISO()){setGoalNotice(t('dashboard.futureDateError'));return}
@@ -398,9 +338,8 @@ export function DashboardOverview(){
 
     <section className="panel commitmentsPanel">
       <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
-      <div className="commitmentTriple">
+      <div className="commitmentDouble">
         <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
-        <article><span>{t('dashboard.otherDebts')}</span><b>{currency(selectedCommitments.debtPending)}</b></article>
         <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b></article>
       </div>
       <div className="commitmentMonthTotal"><span>{t('dashboard.monthCommitmentTotal')}</span><strong>{currency(selectedCommitments.total)}</strong></div>
