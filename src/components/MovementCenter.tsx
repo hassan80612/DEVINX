@@ -11,7 +11,7 @@ type Work={id:string;vehicle_id:string|null;income_source_id:string|null;worked_
 type RecPay={id:string;recurring_bill_id:string;amount_minor:number;paid_on:string;due_month:string;recurring_bills:{name:string;category_id:string;payment_method:string|null}|null};
 type CardPay={id:string;card_id:string;statement_month:string;amount_minor:number;paid_on:string;credit_cards:{name:string}|null};
 type Bill={id:string;name:string;amount_minor:number;due_day:number;created_at:string;category_id:string;payment_method:string|null;is_avoidable:boolean};
-type Purchase={id:string;card_id:string;category_id:string;description:string|null;total_minor:number;purchased_on:string;installment_count:number;is_avoidable:boolean;credit_cards:{name:string;due_day:number|null}|null;card_installments:{id:string;installment_number:number;amount_minor:number;billing_month:string;paid_at:string|null}[]};
+type Purchase={id:string;card_id:string;category_id:string;description:string|null;total_minor:number;purchased_on:string;installment_count:number;is_avoidable:boolean;credit_cards:{name:string;due_day:number|null}|null;card_installments:{id:string;installment_number:number;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null}[]};
 type Debt={id:string;name:string;outstanding_minor:number;installment_minor:number|null;installments_remaining:number|null;due_day:number|null;created_at:string};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
 type CashRow={id:string;kind:'tx'|'work-income'|'work-cost'|'bill-payment'|'card-payment';sign:1|-1;amount:number;date:string;title:string;subtitle:string;raw:Tx|Work|RecPay|CardPay};
@@ -58,6 +58,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const[purchaseTotal,setPurchaseTotal]=useState('');
   const[purchaseCount,setPurchaseCount]=useState('1');
   const[purchaseDate,setPurchaseDate]=useState('');
+  const[purchaseFirstDueDate,setPurchaseFirstDueDate]=useState('');
   const[purchaseCategory,setPurchaseCategory]=useState('other');
 
   function historyBounds(){
@@ -91,7 +92,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       const[r1,r2,r3,r4]=await Promise.all([
         s.from('recurring_bills').select('id,name,amount_minor,due_day,created_at,category_id,payment_method,is_avoidable').eq('user_id',user.id).eq('is_active',true).order('due_day'),
         s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).gte('due_month',oldest),
-        s.from('card_purchases').select('id,card_id,category_id,description,total_minor,purchased_on,installment_count,is_avoidable,credit_cards(name,due_day),card_installments(id,installment_number,amount_minor,billing_month,paid_at)').eq('user_id',user.id).order('purchased_on',{ascending:false}),
+        s.from('card_purchases').select('id,card_id,category_id,description,total_minor,purchased_on,installment_count,is_avoidable,credit_cards(name,due_day),card_installments(id,installment_number,amount_minor,billing_month,due_date,paid_at)').eq('user_id',user.id).order('purchased_on',{ascending:false}),
         s.from('debts').select('id,name,outstanding_minor,installment_minor,installments_remaining,due_day,created_at').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false})
       ]);
       const{data:dp}=await s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',current);
@@ -146,8 +147,9 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     return purchases.flatMap(p=>(p.card_installments||[])
       .filter(i=>!i.paid_at)
       .map(i=>{
-        const dueDate=cardDueDate(i.billing_month,p.credit_cards?.due_day??null);
-        const status=dueDate<today?'overdue':i.billing_month>current?'future':'current';
+        const dueDate=i.due_date||cardDueDate(i.billing_month,p.credit_cards?.due_day??null);
+        const dueMonth=dueDate.slice(0,7)+'-01';
+        const status=dueDate<today?'overdue':dueMonth>current?'future':'current';
         return{purchase:p,installment:i,status,dueDate};
       }))
       .sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.purchase.purchased_on.localeCompare(b.purchase.purchased_on));
@@ -218,9 +220,9 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load(false);
   }
 
-  function startPurchaseEdit(p:Purchase){setPurchaseEdit(p);setPurchaseDesc(p.description||'');setPurchaseTotal(String(Number(p.total_minor)/100).replace('.',','));setPurchaseCount(String(p.installment_count));setPurchaseDate(p.purchased_on);setPurchaseCategory(p.category_id)}
+  function startPurchaseEdit(p:Purchase){const first=[...(p.card_installments||[])].sort((a,b)=>a.installment_number-b.installment_number)[0];setPurchaseEdit(p);setPurchaseDesc(p.description||'');setPurchaseTotal(String(Number(p.total_minor)/100).replace('.',','));setPurchaseCount(String(p.installment_count));setPurchaseDate(p.purchased_on);setPurchaseFirstDueDate(first?.due_date||'');setPurchaseCategory(p.category_id)}
   async function savePurchase(e:FormEvent){
-    e.preventDefault();if(!purchaseEdit)return;const s=createClient();const{error}=await s.rpc('update_card_purchase',{p_purchase_id:purchaseEdit.id,p_category_id:purchaseCategory,p_description:purchaseDesc,p_total_minor:minor(purchaseTotal),p_purchased_on:purchaseDate,p_installment_count:Number(purchaseCount),p_is_avoidable:purchaseEdit.is_avoidable});
+    e.preventDefault();if(!purchaseEdit)return;const s=createClient();const{error}=await s.rpc('update_card_purchase_v2',{p_purchase_id:purchaseEdit.id,p_category_id:purchaseCategory,p_description:purchaseDesc,p_total_minor:minor(purchaseTotal),p_purchased_on:purchaseDate,p_installment_count:Number(purchaseCount),p_is_avoidable:purchaseEdit.is_avoidable,p_first_due_date:purchaseFirstDueDate||null});
     if(error){setNotice(t('move.paidPurchaseLocked'));return}
     setPurchaseEdit(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load(false);
   }
@@ -253,6 +255,6 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
     {editing&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditing(null)}}><form className="modalCard" onSubmit={saveEdit}><div className="modalHead"><h2>{t('move.editCash')}</h2><button type="button" onClick={()=>setEditing(null)}>×</button></div><label>{t('common.date')}<input type="date" value={editDate} onChange={e=>setEditDate(e.target.value)} required/></label>{editing.kind==='tx'&&<><label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('common.description')}<input value={editDescription} onChange={e=>setEditDescription(e.target.value)}/></label></>}{editing.kind==='bill-payment'&&<label>{t('common.value')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label>}{(editing.kind==='work-income'||editing.kind==='work-cost')&&<><label>{t('work.gross')}<input value={editAmount} onChange={e=>setEditAmount(e.target.value)} inputMode="decimal" required/></label><label>{t('work.hours')}<input value={editHours} onChange={e=>setEditHours(e.target.value)} inputMode="decimal" required/></label><label>{t('work.km')} <small>({t('common.optional')})</small><input value={editKm} onChange={e=>setEditKm(e.target.value)} inputMode="decimal"/></label><label>{t('work.percent')} <small>({t('common.optional')})</small><input value={editFuelPercent} onChange={e=>setEditFuelPercent(e.target.value)} inputMode="decimal"/></label><label>{t('work.extra')}<input value={editExtra} onChange={e=>setEditExtra(e.target.value)} inputMode="decimal"/></label></>}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditing(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
 
-    {purchaseEdit&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPurchaseEdit(null)}}><form className="modalCard" onSubmit={savePurchase}><div className="modalHead"><h2>{t('common.edit')} · {t('move.cardCommitment')}</h2><button type="button" onClick={()=>setPurchaseEdit(null)}>×</button></div><label>{t('common.description')}<input value={purchaseDesc} onChange={e=>setPurchaseDesc(e.target.value)}/></label><label>{t('cards.total')}<input value={purchaseTotal} onChange={e=>setPurchaseTotal(e.target.value)} inputMode="decimal" required/></label><label>{t('cards.installments')}<input type="number" min="1" max="60" value={purchaseCount} onChange={e=>setPurchaseCount(e.target.value)} required/></label><label>{t('cards.purchaseDate')}<input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} required/></label><label>{t('common.category')}<input value={purchaseCategory} onChange={e=>setPurchaseCategory(e.target.value)} /></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setPurchaseEdit(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
+    {purchaseEdit&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPurchaseEdit(null)}}><form className="modalCard" onSubmit={savePurchase}><div className="modalHead"><h2>{t('common.edit')} · {t('move.cardCommitment')}</h2><button type="button" onClick={()=>setPurchaseEdit(null)}>×</button></div><label>{t('common.description')}<input value={purchaseDesc} onChange={e=>setPurchaseDesc(e.target.value)}/></label><label>{t('cards.total')}<input value={purchaseTotal} onChange={e=>setPurchaseTotal(e.target.value)} inputMode="decimal" required/></label><label>{t('cards.installments')}<input type="number" min="1" max="60" value={purchaseCount} onChange={e=>setPurchaseCount(e.target.value)} required/></label><label>{t('cards.purchaseDate')}<input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} required/></label><label>{t('cards.firstDueDate')} <small>({t('common.optional')})</small><input type="date" value={purchaseFirstDueDate} onChange={e=>setPurchaseFirstDueDate(e.target.value)}/><small>{t('cards.firstDueDateHelp')}</small></label><label>{t('common.category')}<input value={purchaseCategory} onChange={e=>setPurchaseCategory(e.target.value)} /></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setPurchaseEdit(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
   </div>;
 }

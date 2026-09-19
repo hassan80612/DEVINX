@@ -46,7 +46,7 @@ export function FinanceHub(){
       s.from('profiles').select('locale,currency_code').eq('id',user.id).maybeSingle()
     ]);
     if(profile?.locale)setLocale(profile.locale as any);
-    if(profile?.currency_code==='BRL'||profile?.currency_code==='USD'||profile?.currency_code==='EUR')setCurrencyCode(profile.currency_code);
+    if(profile?.currency_code==='BRL'||profile?.currency_code==='USD'||profile?.currency_code==='EUR'||profile?.currency_code==='PYG')setCurrencyCode(profile.currency_code);
     if(error){setAccessError('access');return}
     const row=Array.isArray(data)?data[0]:data;
     setAccess(row as Access);

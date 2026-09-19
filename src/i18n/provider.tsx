@@ -3,7 +3,7 @@
 import {createContext,useContext,useEffect,useMemo,useState} from 'react';
 import {catalogs,defaultLocale,direction,languageNames,locales,type Locale} from './catalogs';
 
-type CurrencyCode='BRL'|'USD'|'EUR';
+type CurrencyCode='BRL'|'USD'|'EUR'|'PYG';
 
 type I18nContextValue={
   locale:Locale;
@@ -47,7 +47,7 @@ export function I18nProvider({children}:{children:React.ReactNode}){
   const[locale,setLocaleState]=useState<Locale>(defaultLocale);
   const[currencyCode,setCurrencyCodeState]=useState<CurrencyCode>('BRL');
 
-  useEffect(()=>{setLocaleState(detectLocale());try{const saved=localStorage.getItem('devinx_currency');if(saved==='BRL'||saved==='USD'||saved==='EUR')setCurrencyCodeState(saved)}catch{}},[]);
+  useEffect(()=>{setLocaleState(detectLocale());try{const saved=localStorage.getItem('devinx_currency');if(saved==='BRL'||saved==='USD'||saved==='EUR'||saved==='PYG')setCurrencyCodeState(saved)}catch{}},[]);
   useEffect(()=>{
     document.documentElement.lang=locale;
     document.documentElement.dir=direction(locale);

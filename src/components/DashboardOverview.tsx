@@ -10,7 +10,7 @@ type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_mi
 type Goal={name:string;target_minor:number;basis:string;period:string};
 type Bill={id:string;amount_minor:number;due_day:number;created_at:string;is_avoidable:boolean};
 type BillPay={recurring_bill_id:string;amount_minor:number;due_month:string;paid_on:string};
-type CardInst={amount_minor:number;billing_month:string;paid_at:string|null};
+type CardInst={amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null};
 type CardPay={amount_minor:number;paid_on:string};
 type Debt={id:string;installment_minor:number|null;outstanding_minor:number;due_day:number|null};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
@@ -39,7 +39,7 @@ export function DashboardOverview(){
       s.from('goals').select('name,target_minor,basis,period').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
       s.from('recurring_bills').select('id,amount_minor,due_day,created_at,is_avoidable').eq('user_id',user.id).eq('is_active',true),
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',user.id).gte('due_month',recurringFrom),
-      s.from('card_installments').select('amount_minor,billing_month,paid_at').eq('user_id',user.id).is('paid_at',null),
+      s.from('card_installments').select('amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id).is('paid_at',null),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
       s.from('debts').select('id,installment_minor,outstanding_minor,due_day').eq('user_id',user.id).eq('is_active',true),
       s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from)
@@ -74,7 +74,7 @@ export function DashboardOverview(){
       const key=bill.id+'|'+month.slice(0,7);
       if(createdMonth<=month&&!paidMonths.has(key))recurringPending+=Number(bill.amount_minor);
     }
-    const cardsDueNow=cardInst.filter(i=>i.billing_month===month).reduce((a,b)=>a+Number(b.amount_minor),0);
+    const cardsDueNow=cardInst.filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===month).reduce((a,b)=>a+Number(b.amount_minor),0);
     const cardTotalOpen=cardInst.reduce((a,b)=>a+Number(b.amount_minor),0);
     const debtPaidMap=new Map<string,number>();debtPays.filter(p=>p.paid_on>=month).forEach(p=>debtPaidMap.set(p.debt_id,(debtPaidMap.get(p.debt_id)||0)+Number(p.amount_minor)));
     const debtPending=debts.reduce((sum,d)=>sum+Math.max(0,Math.min(Number(d.installment_minor||d.outstanding_minor),Number(d.outstanding_minor))-(debtPaidMap.get(d.id)||0)),0);

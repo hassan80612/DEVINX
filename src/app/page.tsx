@@ -50,6 +50,18 @@ export default function Home(){
       <div><small>03</small><h2>{t('landing.step3')}</h2><p>{t('landing.step3Text')}</p></div>
     </section>
 
+    <section className="landingExplainer">
+      <div className="landingSectionHead"><span className="goldPill">{t('landing.controlEyebrow')}</span><h2>{t('landing.controlTitle')}</h2><p>{t('landing.controlText')}</p></div>
+      <div className="landingFeatureGrid">
+        <article><span>⌁</span><h3>{t('landing.featureCategories')}</h3><p>{t('landing.featureCategoriesText')}</p></article>
+        <article><span>▣</span><h3>{t('landing.featureCards')}</h3><p>{t('landing.featureCardsText')}</p></article>
+        <article><span>↓</span><h3>{t('landing.featureDebts')}</h3><p>{t('landing.featureDebtsText')}</p></article>
+        <article><span>◎</span><h3>{t('landing.featureGoals')}</h3><p>{t('landing.featureGoalsText')}</p></article>
+        <article className="driverFeature"><span>◷</span><h3>{t('landing.featureDriver')}</h3><p>{t('landing.featureDriverText')}</p><div className="driverFormula"><b>{t('landing.driverCalc1')}</b><b>{t('landing.driverCalc2')}</b><b>{t('landing.driverCalc3')}</b><b>{t('landing.driverCalc4')}</b></div></article>
+        <article><span>▥</span><h3>{t('landing.featureHistory')}</h3><p>{t('landing.featureHistoryText')}</p></article>
+      </div>
+    </section>
+
     <section className="landingSubscription">
       <span className="goldPill">{t('subscription.label')}</span>
       <h2>{t('subscription.ctaTitle')}</h2>
