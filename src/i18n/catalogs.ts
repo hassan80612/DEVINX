@@ -423,5 +423,13 @@ const arDashboardRelease=replace(arWorkRelease,{
 'dashboard.dailyGoalName':'احتياطي يومي'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptDashboardRelease,en:enDashboardRelease,es:esDashboardRelease,fr:frDashboardRelease,ar:arDashboardRelease,de:deDashboardRelease};
-export type TranslationKey=keyof typeof ptDashboardRelease;
+
+const ptOnboardRelease=replace(ptDashboardRelease,{'onboard.skip':'Pular por enquanto','onboard.moneyHelpOptional':'Opcional. Escolha se quiser personalizar agora, ou toque no X e entre direto no Devinx.'});
+const enOnboardRelease=replace(enDashboardRelease,{'onboard.skip':'Skip for now','onboard.moneyHelpOptional':'Optional. Choose now if you want to personalize it, or tap X to go straight into Devinx.'});
+const esOnboardRelease=replace(esDashboardRelease,{'onboard.skip':'Omitir por ahora','onboard.moneyHelpOptional':'Opcional. Elige ahora si quieres personalizarlo, o toca la X para entrar directamente a Devinx.'});
+const frOnboardRelease=replace(frDashboardRelease,{'onboard.skip':'Passer pour l’instant','onboard.moneyHelpOptional':'Facultatif. Choisissez maintenant si vous souhaitez personnaliser, ou touchez X pour entrer directement dans Devinx.'});
+const deOnboardRelease=replace(deDashboardRelease,{'onboard.skip':'Vorerst überspringen','onboard.moneyHelpOptional':'Optional. Wähle jetzt etwas aus, wenn du personalisieren möchtest, oder tippe auf X und gehe direkt zu Devinx.'});
+const arOnboardRelease=replace(arDashboardRelease,{'onboard.skip':'تخطي الآن','onboard.moneyHelpOptional':'اختياري. اختر الآن إذا أردت التخصيص، أو اضغط × للدخول مباشرة إلى Devinx.'});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptOnboardRelease,en:enOnboardRelease,es:esOnboardRelease,fr:frOnboardRelease,ar:arOnboardRelease,de:deOnboardRelease};
+export type TranslationKey=keyof typeof ptOnboardRelease;
