@@ -35,6 +35,11 @@ function daysInclusive(from:string,to:string){
   const b=new Date(to+'T12:00:00').getTime();
   return Math.max(1,Math.floor((b-a)/86400000)+1);
 }
+function monthDistance(from:string,to:string){
+  const fy=Number(from.slice(0,4)),fm=Number(from.slice(5,7));
+  const ty=Number(to.slice(0,4)),tm=Number(to.slice(5,7));
+  return (ty-fy)*12+(tm-fm);
+}
 
 export function DashboardOverview(){
   const{t,currency,date}=useI18n();
@@ -54,6 +59,7 @@ export function DashboardOverview(){
   const[loading,setLoading]=useState(true);
   const[projectedHost,setProjectedHost]=useState<HTMLElement|null>(null);
   const[goalNotice,setGoalNotice]=useState('');
+  const[commitmentMonth,setCommitmentMonth]=useState(localMonthStartISO());
 
   async function load(show=false){
     if(show)setLoading(true);
@@ -155,6 +161,45 @@ export function DashboardOverview(){
 
     return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent-reserveTodayNet,recurringPending,cardsDueNow,cardTotalOpen,debtPending,toPay,projected,avoidable};
   },[tx,work,bills,billPays,billOverrides,cardInst,cardPays,debts,debtPays,reserveEntries]);
+
+  const selectedCommitments=useMemo(()=>{
+    const currentMonth=localMonthStartISO();
+    const selected=commitmentMonth<currentMonth?currentMonth:commitmentMonth;
+    const recurringPending=bills.reduce((sum,bill)=>{
+      if(!billAppliesToMonth(bill,selected))return sum;
+      return sum+billRemaining(bill,selected,billPays,billOverrides);
+    },0);
+    const cardsDue=cardInst
+      .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===selected)
+      .reduce((a,b)=>a+Number(b.amount_minor),0);
+
+    const paidCurrent=new Map<string,number>();
+    debtPays.filter(p=>p.paid_on>=currentMonth).forEach(p=>paidCurrent.set(p.debt_id,(paidCurrent.get(p.debt_id)||0)+Number(p.amount_minor)));
+    const monthsAhead=Math.max(0,monthDistance(currentMonth,selected));
+    const debtPending=debts.reduce((sum,d)=>{
+      const paid=paidCurrent.get(d.id)||0;
+      const beforePayments=Number(d.outstanding_minor)+paid;
+      const installment=Math.max(1,Number(d.installment_minor||beforePayments));
+      const currentRemaining=Math.max(0,Math.min(installment,beforePayments)-paid);
+      let outstanding=Number(d.outstanding_minor);
+      let remainingCount=d.installments_remaining==null?600:Number(d.installments_remaining);
+
+      if(monthsAhead===0)return sum+Math.min(currentRemaining,outstanding);
+      if(currentRemaining>0){
+        outstanding=Math.max(0,outstanding-currentRemaining);
+        remainingCount=Math.max(0,remainingCount-1);
+      }
+      for(let i=1;i<monthsAhead&&outstanding>0&&remainingCount>0;i+=1){
+        const amount=Math.min(installment,outstanding);
+        outstanding-=amount;
+        remainingCount-=1;
+      }
+      if(outstanding<=0||remainingCount<=0)return sum;
+      return sum+Math.min(installment,outstanding);
+    },0);
+
+    return{recurringPending,cardsDue,debtPending,total:recurringPending+cardsDue+debtPending};
+  },[commitmentMonth,bills,billPays,billOverrides,cardInst,debts,debtPays]);
 
   const reserveSuggestion=useMemo(()=>{
     const today=localDateISO();
@@ -351,11 +396,11 @@ export function DashboardOverview(){
     {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2></div><strong>{goalProgress.percent}%</strong></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
 
     <section className="panel commitmentsPanel">
-      <div className="sectionTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><span className="statusBadge">{t('dashboard.currentMonthOnly')}</span></div>
+      <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
       <div className="commitmentTriple">
-        <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(numbers.recurringPending)}</b></article>
-        <article><span>{t('dashboard.otherDebts')}</span><b>{currency(numbers.debtPending)}</b></article>
-        <article><span>{t('dashboard.cards')}</span><b>{currency(numbers.cardsDueNow)}</b><small>{t('cards.totalOpen')}: {currency(numbers.cardTotalOpen)}</small></article>
+        <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
+        <article><span>{t('dashboard.otherDebts')}</span><b>{currency(selectedCommitments.debtPending)}</b></article>
+        <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b><small>{t('cards.totalOpen')}: {currency(numbers.cardTotalOpen)}</small></article>
       </div>
     </section>
 

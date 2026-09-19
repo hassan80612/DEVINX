@@ -589,3 +589,13 @@ linear-gradient(145deg,#021128 0%,#05295e 38%,#073f82 55%,#031a3c 76%,#010914 10
   .premiumPendingRow>strong{font-size:15px!important}
   .pendingFooter{padding-top:9px}
 }
+
+/* Selectable budget month */
+.commitmentsTitleRow{align-items:end}
+.commitmentMonthPicker{display:grid;gap:4px;min-width:150px}
+.commitmentMonthPicker span{font-size:8px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#7897ad}
+.commitmentMonthPicker input{min-height:38px;margin:0}
+@media(max-width:520px){
+  .commitmentsTitleRow{align-items:stretch;gap:10px}
+  .commitmentMonthPicker{width:100%;min-width:0}
+}
