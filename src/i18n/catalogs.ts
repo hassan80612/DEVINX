@@ -587,7 +587,7 @@ const arDueDateRelease=replace(arShipRelease,{
 
 
 const ptHistoryRelease=replace(ptDueDateRelease,{
-'dashboard.untilDate':'Até',
+'dashboard.untilDate':'Até','dashboard.todayGoal':'Meta de hoje',
 'move.history':'Histórico financeiro',
 'move.allMovements':'Todos',
 'move.onlyIncome':'Entradas',
@@ -596,7 +596,7 @@ const ptHistoryRelease=replace(ptDueDateRelease,{
 'more.reportsHelp':'Somente análises e totais, sem editar lançamentos'
 });
 const enHistoryRelease=replace(enDueDateRelease,{
-'dashboard.untilDate':'Until',
+'dashboard.untilDate':'Until','dashboard.todayGoal':'Today’s goal',
 'move.history':'Financial history',
 'move.allMovements':'All',
 'move.onlyIncome':'Income',
@@ -605,7 +605,7 @@ const enHistoryRelease=replace(enDueDateRelease,{
 'more.reportsHelp':'Analysis and totals only, without editing entries'
 });
 const esHistoryRelease=replace(esDueDateRelease,{
-'dashboard.untilDate':'Hasta',
+'dashboard.untilDate':'Hasta','dashboard.todayGoal':'Meta de hoy',
 'move.history':'Historial financiero',
 'move.allMovements':'Todos',
 'move.onlyIncome':'Entradas',
@@ -614,7 +614,7 @@ const esHistoryRelease=replace(esDueDateRelease,{
 'more.reportsHelp':'Solo análisis y totales, sin editar movimientos'
 });
 const frHistoryRelease=replace(frDueDateRelease,{
-'dashboard.untilDate':'Jusqu’au',
+'dashboard.untilDate':'Jusqu’au','dashboard.todayGoal':'Objectif du jour',
 'move.history':'Historique financier',
 'move.allMovements':'Tous',
 'move.onlyIncome':'Entrées',
@@ -623,7 +623,7 @@ const frHistoryRelease=replace(frDueDateRelease,{
 'more.reportsHelp':'Analyses et totaux uniquement, sans modifier les opérations'
 });
 const deHistoryRelease=replace(deDueDateRelease,{
-'dashboard.untilDate':'Bis',
+'dashboard.untilDate':'Bis','dashboard.todayGoal':'Heutiges Ziel',
 'move.history':'Finanzverlauf',
 'move.allMovements':'Alle',
 'move.onlyIncome':'Einnahmen',
@@ -632,7 +632,7 @@ const deHistoryRelease=replace(deDueDateRelease,{
 'more.reportsHelp':'Nur Analysen und Summen, ohne Buchungen zu bearbeiten'
 });
 const arHistoryRelease=replace(arDueDateRelease,{
-'dashboard.untilDate':'حتى',
+'dashboard.untilDate':'حتى','dashboard.todayGoal':'هدف اليوم',
 'move.history':'السجل المالي',
 'move.allMovements':'الكل',
 'move.onlyIncome':'الإيرادات',
