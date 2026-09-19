@@ -19,6 +19,11 @@ type Bill=RecurringBillLike&{
 type Payment=RecurringPaymentLike&{id:string;paid_on:string};
 type Override=RecurringOverrideLike&{id:string};
 const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
+function monthEnd(month:string){
+  const d=new Date(month.slice(0,7)+'-01T12:00:00');
+  const last=new Date(d.getFullYear(),d.getMonth()+1,0);
+  return last.getFullYear()+'-'+String(last.getMonth()+1).padStart(2,'0')+'-'+String(last.getDate()).padStart(2,'0');
+}
 
 export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   const{t,currency,date}=useI18n();
@@ -31,12 +36,11 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   const[open,setOpen]=useState(false);
   const[name,setName]=useState('');
   const[amount,setAmount]=useState('');
-  const[dueDay,setDueDay]=useState('10');
+  const[firstDueDate,setFirstDueDate]=useState(localDateISO());
   const[category,setCategory]=useState('housing');
   const[paymentMethod,setPaymentMethod]=useState('pix');
   const[avoidable,setAvoidable]=useState(false);
   const[installmentCount,setInstallmentCount]=useState('');
-  const[startMonth,setStartMonth]=useState(localMonthStartISO().slice(0,7));
 
   const[notice,setNotice]=useState('');
   const[paying,setPaying]=useState<Bill|null>(null);
@@ -47,7 +51,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   const[editBill,setEditBill]=useState<Bill|null>(null);
   const[eName,setEName]=useState('');
   const[eAmount,setEAmount]=useState('');
-  const[eDue,setEDue]=useState('');
+  const[eFirstDueDate,setEFirstDueDate]=useState('');
   const[eCategory,setECategory]=useState('');
   const[eMethod,setEMethod]=useState('pix');
   const[eAvoidable,setEAvoidable]=useState(false);
@@ -105,14 +109,14 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       name:name.trim(),
       category_id:category,
       amount_minor:value,
-      due_day:Number(dueDay),
+      due_day:Number(firstDueDate.slice(8,10)),
       payment_method:paymentMethod,
       is_avoidable:avoidable,
-      start_month:(startMonth||localMonthStartISO().slice(0,7))+'-01',
+      start_month:firstDueDate.slice(0,7)+'-01',
       installment_count:count
     });
     if(error){setNotice(t('common.errorSave'));return}
-    setName('');setAmount('');setInstallmentCount('');setStartMonth(localMonthStartISO().slice(0,7));setOpen(false);setNotice(t('bills.saved'));
+    setName('');setAmount('');setInstallmentCount('');setFirstDueDate(localDateISO());setOpen(false);setNotice(t('bills.saved'));
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
     await load();
   }
@@ -172,7 +176,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
 
   function startBillEdit(b:Bill){
     setEditBill(b);setEName(b.name);setEAmount(String(Number(b.amount_minor)/100).replace('.',','));
-    setEDue(String(b.due_day));setECategory(b.category_id);setEMethod(b.payment_method||'pix');
+    setEFirstDueDate(dueDateForMonth(b.start_month,b.due_day));setECategory(b.category_id);setEMethod(b.payment_method||'pix');
     setEAvoidable(b.is_avoidable);setEInstallmentCount(b.installment_count==null?'':String(b.installment_count));
   }
 
@@ -187,7 +191,8 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     const{error}=await s.from('recurring_bills').update({
       name:eName.trim(),
       amount_minor:minor(eAmount),
-      due_day:Number(eDue),
+      due_day:Number(eFirstDueDate.slice(8,10)),
+      start_month:eFirstDueDate.slice(0,7)+'-01',
       category_id:eCategory,
       payment_method:eMethod,
       is_avoidable:eAvoidable,
@@ -261,9 +266,8 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <label>{t('bills.name')}<input required value={name} onChange={e=>setName(e.target.value)}/></label>
       <label>{t('bills.base')}<input required value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal"/></label>
       <label>{t('bills.installmentsOptional')}<input type="number" min="1" max="600" value={installmentCount} onChange={e=>setInstallmentCount(e.target.value)} placeholder={t('bills.continuous')}/><small>{t('bills.installmentsHelp')}</small></label>
-      <label>{t('bills.firstMonth')}<input type="month" value={startMonth} onChange={e=>setStartMonth(e.target.value)}/></label>
+      <label>{t('bills.firstDueDate')}<input type="date" value={firstDueDate} onChange={e=>setFirstDueDate(e.target.value)} required/><small>{t('bills.firstDueDateHelp')}</small></label>
       <label>{t('common.category')}<select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></label>
-      <label>{t('bills.dueDay')}<input type="number" min="1" max="31" value={dueDay} onChange={e=>setDueDay(e.target.value)}/></label>
       <label>{t('bills.payment')}<select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}><option value="pix">Pix</option><option value="cash">Cash</option><option value="debit">Debit</option></select></label>
       <label className="checkOnly"><input type="checkbox" checked={avoidable} onChange={e=>setAvoidable(e.target.checked)}/>{t('bills.avoidable')}</label>
       <button className="primary">{t('bills.save')}</button>
@@ -281,7 +285,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
         const billPayments=payments.filter(p=>p.recurring_bill_id===b.id);
         return <article className="recurringCard recurringInstallmentCard" key={b.id}>
           <div className="recurringMain">
-            <div><b>{b.name}</b><small>{t('move.due')} {billDueDay(b,selectedMonth,overrides)}{b.installment_count&&number?' · '+t('bills.installment')+' '+number+'/'+b.installment_count:''}{b.is_avoidable?' · '+t('dashboard.avoidable'):''}</small></div>
+            <div><b>{b.name}</b><small>{t('move.due')} {date(dueDateForMonth(selectedMonth,billDueDay(b,selectedMonth,overrides)),{day:'2-digit',month:'2-digit',year:'numeric'})}{b.installment_count&&number?' · '+t('bills.installment')+' '+number+'/'+b.installment_count:''}{b.is_avoidable?' · '+t('dashboard.avoidable'):''}</small></div>
             <strong>{currency(expected)}</strong>
           </div>
           <div className="billProgress">
@@ -311,7 +315,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <div className="modalHead"><h2>{t('bills.editThisMonth')} · {monthBill.name}</h2><button type="button" onClick={()=>setMonthBill(null)}>×</button></div>
       <p className="formHint">{t('bills.monthOverrideHelp')}</p>
       <label>{t('bills.monthValue')}<input value={mAmount} onChange={e=>setMAmount(e.target.value)} inputMode="decimal" required/></label>
-      <label>{t('bills.dueDay')}<input type="number" min="1" max="31" value={mDue} onChange={e=>setMDue(e.target.value)} required/></label>
+      <label>{t('bills.dueDateThisMonth')}<input type="date" min={selectedMonth} max={monthEnd(selectedMonth)} value={dueDateForMonth(selectedMonth,Number(mDue||1))} onChange={e=>setMDue(e.target.value.slice(8,10))} required/></label>
       <div className="modalActions"><button type="button" className="dangerText secondary" onClick={clearMonthEdit}>{t('bills.restoreRule')}</button><button className="primary">{t('common.save')}</button></div>
     </form></div>}
 
@@ -321,7 +325,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <label>{t('bills.name')}<input value={eName} onChange={e=>setEName(e.target.value)} required/></label>
       <label>{t('bills.base')}<input value={eAmount} onChange={e=>setEAmount(e.target.value)} inputMode="decimal" required/></label>
       <label>{t('bills.installmentsOptional')}<input type="number" min="1" max="600" value={eInstallmentCount} onChange={e=>setEInstallmentCount(e.target.value)} placeholder={t('bills.continuous')}/></label>
-      <label>{t('bills.dueDay')}<input type="number" min="1" max="31" value={eDue} onChange={e=>setEDue(e.target.value)} required/></label>
+      <label>{t('bills.firstDueDate')}<input type="date" value={eFirstDueDate} onChange={e=>setEFirstDueDate(e.target.value)} required/><small>{t('bills.firstDueDateEditHelp')}</small></label>
       <label>{t('common.category')}<select value={eCategory} onChange={e=>setECategory(e.target.value)}>{categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></label>
       <label>{t('bills.payment')}<select value={eMethod} onChange={e=>setEMethod(e.target.value)}><option value="pix">Pix</option><option value="cash">Cash</option><option value="debit">Debit</option></select></label>
       <label className="checkOnly"><input type="checkbox" checked={eAvoidable} onChange={e=>setEAvoidable(e.target.checked)}/>{t('bills.avoidable')}</label>

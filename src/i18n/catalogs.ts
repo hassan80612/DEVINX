@@ -547,5 +547,43 @@ const frShipRelease=replace(frLaunchRelease,{'reserves.cancelGoal':'Annuler l’
 const deShipRelease=replace(deLaunchRelease,{'reserves.cancelGoal':'Ziel abbrechen','reserves.cancelGoalConfirm':'Dieses Kaufziel abbrechen? Der Rücklagenstand bleibt unverändert.','reserves.goalCancelled':'Kaufziel abgebrochen.'});
 const arShipRelease=replace(arLaunchRelease,{'reserves.cancelGoal':'إلغاء الهدف','reserves.cancelGoalConfirm':'هل تريد إلغاء هدف الشراء؟ سيبقى رصيد الاحتياطي كما هو.','reserves.goalCancelled':'تم إلغاء هدف الشراء.'});
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptShipRelease,en:enShipRelease,es:esShipRelease,fr:frShipRelease,ar:arShipRelease,de:deShipRelease};
-export type TranslationKey=keyof typeof ptShipRelease;
+
+const ptDueDateRelease=replace(ptShipRelease,{
+'bills.firstDueDate':'Primeiro vencimento',
+'bills.firstDueDateHelp':'Escolha a data completa do primeiro vencimento. O Devinx só começa a contar a partir dela.',
+'bills.firstDueDateEditHelp':'Mudar esta data reposiciona o primeiro vencimento e a numeração dos próximos.',
+'bills.dueDateThisMonth':'Vencimento deste mês'
+});
+const enDueDateRelease=replace(enShipRelease,{
+'bills.firstDueDate':'First due date',
+'bills.firstDueDateHelp':'Choose the full date of the first due date. Devinx only starts counting from this date.',
+'bills.firstDueDateEditHelp':'Changing this date moves the first due date and the numbering of the following ones.',
+'bills.dueDateThisMonth':'This month due date'
+});
+const esDueDateRelease=replace(esShipRelease,{
+'bills.firstDueDate':'Primer vencimiento',
+'bills.firstDueDateHelp':'Elige la fecha completa del primer vencimiento. Devinx empieza a contar solo desde esa fecha.',
+'bills.firstDueDateEditHelp':'Cambiar esta fecha mueve el primer vencimiento y la numeración de los siguientes.',
+'bills.dueDateThisMonth':'Vencimiento de este mes'
+});
+const frDueDateRelease=replace(frShipRelease,{
+'bills.firstDueDate':'Première échéance',
+'bills.firstDueDateHelp':'Choisissez la date complète de la première échéance. Devinx ne commence à compter qu’à partir de cette date.',
+'bills.firstDueDateEditHelp':'Modifier cette date déplace la première échéance et la numérotation des suivantes.',
+'bills.dueDateThisMonth':'Échéance de ce mois'
+});
+const deDueDateRelease=replace(deShipRelease,{
+'bills.firstDueDate':'Erstes Fälligkeitsdatum',
+'bills.firstDueDateHelp':'Wähle das vollständige Datum der ersten Fälligkeit. Devinx zählt erst ab diesem Datum.',
+'bills.firstDueDateEditHelp':'Eine Änderung dieses Datums verschiebt die erste Fälligkeit und die Nummerierung der folgenden.',
+'bills.dueDateThisMonth':'Fälligkeit dieses Monats'
+});
+const arDueDateRelease=replace(arShipRelease,{
+'bills.firstDueDate':'تاريخ أول استحقاق',
+'bills.firstDueDateHelp':'اختر التاريخ الكامل لأول استحقاق. يبدأ Devinx العد من هذا التاريخ فقط.',
+'bills.firstDueDateEditHelp':'تغيير هذا التاريخ ينقل أول استحقاق ويعيد ترتيب أرقام الاستحقاقات التالية.',
+'bills.dueDateThisMonth':'استحقاق هذا الشهر'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptDueDateRelease,en:enDueDateRelease,es:esDueDateRelease,fr:frDueDateRelease,ar:arDueDateRelease,de:deDueDateRelease};
+export type TranslationKey=keyof typeof ptDueDateRelease;
