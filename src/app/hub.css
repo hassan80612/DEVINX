@@ -394,3 +394,77 @@ linear-gradient(145deg,#021128 0%,#05295e 38%,#073f82 55%,#031a3c 76%,#010914 10
 @media(max-width:620px){.deepDiveGrid{grid-template-columns:1fr}.wideDive{grid-column:auto}.reserveRow{grid-template-columns:auto 1fr auto}.reserveRowActions{grid-column:2/-1;justify-content:flex-end}.reserveGoalStats{grid-template-columns:1fr 1fr}.reserveActions{display:grid;grid-template-columns:1fr 1fr}.reserveActions .secondary{grid-column:1/-1}}
 
 .quickReserveField{padding:10px 11px;border:1px solid rgba(255,215,91,.18);border-radius:11px;background:linear-gradient(145deg,rgba(65,47,11,.16),rgba(4,27,59,.5))}.quickReserveField>small:last-child{display:block;margin-top:5px;color:#8da8ba;font-size:8px;line-height:1.45}
+
+
+/* Pending commitments — compact premium cards */
+.pendingGroup{padding:16px!important;gap:10px!important}
+.pendingGroup .sectionTitleRow{margin-bottom:1px}
+.pendingGroup .pendingRow{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  grid-template-areas:"info amount" "status actions"!important;
+  align-items:center!important;
+  gap:9px 13px!important;
+  margin:0!important;
+  padding:14px!important;
+  border:1px solid rgba(93,177,246,.22)!important;
+  border-radius:14px!important;
+  background:
+    linear-gradient(115deg,rgba(255,255,255,.045),transparent 22%),
+    radial-gradient(circle at 92% 0%,rgba(66,164,255,.10),transparent 30%),
+    linear-gradient(145deg,rgba(7,45,91,.92),rgba(3,23,51,.98))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.065),0 10px 26px rgba(0,15,45,.18)!important
+}
+.pendingGroup .pendingRow:first-of-type{border-top:1px solid rgba(93,177,246,.22)!important}
+.pendingGroup .pendingRow>div:first-child{grid-area:info;min-width:0}
+.pendingGroup .pendingRow>div:first-child b{font-size:14px;line-height:1.2;color:#f4f9ff}
+.pendingGroup .pendingRow>div:first-child small{margin-top:5px;font-size:9px;color:#819fb5}
+.pendingGroup .pendingRow>strong{grid-area:amount;justify-self:end;font-size:15px;white-space:nowrap;color:#f8fbff}
+.pendingGroup .pendingRow>.statusBadge{
+  grid-area:status;
+  justify-self:start;
+  width:auto!important;
+  min-width:0!important;
+  display:inline-flex!important;
+  align-items:center;
+  padding:5px 9px!important;
+  border:1px solid rgba(105,184,242,.21)!important;
+  border-radius:999px!important;
+  background:rgba(8,47,91,.55)!important;
+  color:#9cc9e8!important;
+  font-size:8px!important;
+  font-weight:900!important
+}
+.pendingGroup .pendingRow>.statusBadge.overdue{
+  border-color:rgba(255,116,107,.25)!important;
+  background:rgba(92,28,30,.27)!important;
+  color:#ff9e97!important
+}
+.pendingGroup .pendingRow>button,
+.pendingGroup .pendingRow>.pendingActions{
+  grid-area:actions;
+  justify-self:end
+}
+.pendingGroup .pendingRow>button,
+.pendingGroup .pendingActions button{
+  min-height:29px!important;
+  padding:6px 10px!important;
+  border:1px solid rgba(104,190,251,.23)!important;
+  border-radius:9px!important;
+  background:linear-gradient(180deg,rgba(14,78,139,.82),rgba(6,43,84,.94))!important;
+  color:#bfe6ff!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08)!important
+}
+.pendingGroup .pendingActions{display:flex!important;gap:6px!important}
+.pendingGroup .pendingActions .dangerText{
+  border-color:rgba(255,116,107,.20)!important;
+  background:rgba(92,28,30,.20)!important;
+  color:#ffaaa4!important
+}
+@media(max-width:620px){
+  .pendingGroup{padding:14px!important}
+  .pendingGroup .pendingRow{padding:13px!important;gap:8px 10px!important}
+  .pendingGroup .pendingRow>strong{font-size:14px}
+}

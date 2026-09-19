@@ -104,17 +104,31 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user)return;
-    const{error}=await s.from('recurring_bills').insert({
-      user_id:user.id,
+    const start=firstDueDate.slice(0,7)+'-01';
+    const due=Number(firstDueDate.slice(8,10));
+    const{data:existing}=await s.from('recurring_bills')
+      .select('id')
+      .eq('user_id',user.id)
+      .eq('is_active',true)
+      .ilike('name',name.trim())
+      .eq('amount_minor',value)
+      .eq('due_day',due)
+      .eq('start_month',start)
+      .limit(1)
+      .maybeSingle();
+    const payload={
       name:name.trim(),
       category_id:category,
       amount_minor:value,
-      due_day:Number(firstDueDate.slice(8,10)),
+      due_day:due,
       payment_method:paymentMethod,
       is_avoidable:avoidable,
-      start_month:firstDueDate.slice(0,7)+'-01',
+      start_month:start,
       installment_count:count
-    });
+    };
+    const{error}=existing
+      ?await s.from('recurring_bills').update(payload).eq('id',existing.id).eq('user_id',user.id)
+      :await s.from('recurring_bills').insert({user_id:user.id,...payload});
     if(error){setNotice(t('common.errorSave'));return}
     setName('');setAmount('');setInstallmentCount('');setFirstDueDate(localDateISO());setOpen(false);setNotice(t('bills.saved'));
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
