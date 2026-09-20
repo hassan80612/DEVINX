@@ -174,7 +174,7 @@ export function planningEvents(
         amount-=covered;committed-=covered;
       }
       if(amount<=0)continue;
-      events.push({date,amount,kind:'expense',planId:plan.id});
+      events.push({date:due,amount,kind:'expense',planId:plan.id});
       grossOut+=amount;
     }
   }
