@@ -12,7 +12,16 @@ export function GoalManager(){
   const[goal,setGoal]=useState<Goal|null>(null);const[open,setOpen]=useState(false);const[name,setName]=useState('');const[target,setTarget]=useState('');const[period,setPeriod]=useState<Goal['period']>('monthly');const[basis,setBasis]=useState<Goal['basis']>('gross');const[notice,setNotice]=useState('');const[saving,setSaving]=useState(false);
 
   async function load(){const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}const{data}=await s.from('goals').select('id,name,period,basis,target_minor,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1);setGoal(((data||[])[0]||null) as Goal|null)}
-  useEffect(()=>{load()},[]);
+  useEffect(()=>{
+    load();
+    const refresh=()=>load();
+    window.addEventListener('devinx:finance-updated',refresh);
+    window.addEventListener('devinx:goal-updated',refresh);
+    return()=>{
+      window.removeEventListener('devinx:finance-updated',refresh);
+      window.removeEventListener('devinx:goal-updated',refresh);
+    };
+  },[]);
 
   function startNew(){setName(goal?.name==='__devinx_default_goal__'||goal?.goal_source==='daily_reserve_auto'||goal?.goal_source==='daily_reserve_manual'||goal?.name?.startsWith('__devinx_daily_reserve__:')?'':goal?.name||'');setTarget(goal?String(Number(goal.target_minor)/100).replace('.',','):'');setPeriod(goal?.period||'monthly');setBasis(goal?.basis||'gross');setOpen(true);setNotice('')}
   async function save(e:FormEvent){

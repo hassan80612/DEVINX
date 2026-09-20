@@ -467,6 +467,7 @@ export function DashboardOverview(){
       }).eq('id',goal.id);
       if(!error&&!cancelled){
         setGoal(current=>current?.id===goal.id?{...current,name:'__devinx_daily_reserve__',period:'daily',basis:'savings',target_minor:nextTarget,goal_source:'daily_reserve_auto',target_date:nextDate}:current);
+        window.dispatchEvent(new CustomEvent('devinx:goal-updated'));
       }
     })();
     return()=>{cancelled=true};
@@ -490,10 +491,11 @@ export function DashboardOverview(){
     const workNet=periodWork.reduce((a,b)=>a+Number(b.gross_income_minor)-Number(b.energy_cost_minor)-Number(b.extra_work_cost_minor),0);
     const payoff=periodDebt.reduce((a,b)=>a+Number(b.amount_minor),0);
     const reservePeriodNet=reserveEntries.filter(e=>e.occurred_on>=start&&e.occurred_on<=today).reduce((sum,e)=>sum+(e.kind==='deposit'?Number(e.amount_minor):-Number(e.amount_minor)),0);
+    const availableNet=Math.max(0,income-out-reservePeriodNet);
     const isDailyManaged=goal.goal_source==='daily_reserve_auto'||goal.goal_source==='daily_reserve_manual';
     const base=isDailyManaged
-      ?Math.max(0,income-out)
-      :goal.basis==='operational_net'?workNet:goal.basis==='savings'?Math.max(0,income-out-reservePeriodNet):goal.basis==='payoff'?payoff:income;
+      ?availableNet
+      :goal.basis==='operational_net'?workNet:goal.basis==='savings'?availableNet:goal.basis==='payoff'?payoff:income;
     const target=goal.goal_source==='daily_reserve_auto'?reserveSuggestion.daily:Number(goal.target_minor);
     if(target<=0)return null;
     return{base,target,percent:Math.min(100,Math.max(0,Math.round(base/Math.max(1,target)*100)))};
