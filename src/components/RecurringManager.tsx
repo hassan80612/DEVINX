@@ -43,6 +43,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   const[installmentCount,setInstallmentCount]=useState('');
 
   const[notice,setNotice]=useState('');
+  const[savingAction,setSavingAction]=useState<'add'|'payment'|'month'|'rule'|''>('');
   const[paying,setPaying]=useState<Bill|null>(null);
   const[editingPayment,setEditingPayment]=useState<Payment|null>(null);
   const[paidAmount,setPaidAmount]=useState('');
@@ -101,38 +102,32 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     if(value<=0)return;
     const count=installmentCount?Number(installmentCount):null;
     if(count!==null&&(count<1||count>600))return;
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    const start=firstDueDate.slice(0,7)+'-01';
-    const due=Number(firstDueDate.slice(8,10));
-    const{data:existing}=await s.from('recurring_bills')
-      .select('id')
-      .eq('user_id',user.id)
-      .eq('is_active',true)
-      .ilike('name',name.trim())
-      .eq('amount_minor',value)
-      .eq('due_day',due)
-      .eq('start_month',start)
-      .limit(1)
-      .maybeSingle();
-    const payload={
-      name:name.trim(),
-      category_id:category,
-      amount_minor:value,
-      due_day:due,
-      payment_method:paymentMethod,
-      is_avoidable:avoidable,
-      start_month:start,
-      installment_count:count
-    };
-    const{error}=existing
-      ?await s.from('recurring_bills').update(payload).eq('id',existing.id).eq('user_id',user.id)
-      :await s.from('recurring_bills').insert({user_id:user.id,...payload});
-    if(error){setNotice(t('common.errorSave'));return}
-    setName('');setAmount('');setInstallmentCount('');setFirstDueDate(localDateISO());setOpen(false);setNotice(t('bills.saved'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
-    await load();
+    setSavingAction('add');
+    try{
+      const s=createClient();
+      const{data:{user}}=await s.auth.getUser();
+      if(!user)return;
+      const start=firstDueDate.slice(0,7)+'-01';
+      const due=Number(firstDueDate.slice(8,10));
+      const{data:existing}=await s.from('recurring_bills')
+        .select('id')
+        .eq('user_id',user.id)
+        .eq('is_active',true)
+        .ilike('name',name.trim())
+        .eq('amount_minor',value)
+        .eq('due_day',due)
+        .eq('start_month',start)
+        .limit(1)
+        .maybeSingle();
+      const payload={name:name.trim(),category_id:category,amount_minor:value,due_day:due,payment_method:paymentMethod,is_avoidable:avoidable,start_month:start,installment_count:count};
+      const{error}=existing
+        ?await s.from('recurring_bills').update(payload).eq('id',existing.id).eq('user_id',user.id)
+        :await s.from('recurring_bills').insert({user_id:user.id,...payload});
+      if(error){setNotice(t('common.errorSave'));return}
+      setName('');setAmount('');setInstallmentCount('');setFirstDueDate(localDateISO());setOpen(false);setNotice(t('bills.saved'));
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      await load();
+    }finally{setSavingAction('')}
   }
 
   function openPay(b:Bill,p?:Payment){
@@ -153,30 +148,27 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     const paidOther=billPaidAmount(paying.id,selectedMonth,payments)-Number(editingPayment?.amount_minor||0);
     const maxAllowed=Math.max(0,expected-paidOther);
     if(value>maxAllowed){setNotice(t('bills.paymentExceeds'));return}
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    let error:any=null;
-    if(editingPayment){
-      ({error}=await s.from('recurring_bill_payments').update({
-        amount_minor:value,
-        paid_on:paidOn,
-        paid_at:new Date(paidOn+'T12:00:00').toISOString()
-      }).eq('id',editingPayment.id).eq('user_id',user.id));
-    }else{
-      ({error}=await s.from('recurring_bill_payments').insert({
-        user_id:user.id,
-        recurring_bill_id:paying.id,
-        due_month:selectedMonth,
-        amount_minor:value,
-        paid_on:paidOn,
-        paid_at:new Date(paidOn+'T12:00:00').toISOString()
-      }));
-    }
-    if(error){setNotice(t('common.errorSave'));return}
-    setPaying(null);setEditingPayment(null);setNotice(t('bills.paymentSaved'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
-    await load();
+    setSavingAction('payment');
+    try{
+      const s=createClient();
+      const{data:{user}}=await s.auth.getUser();
+      if(!user)return;
+      let error:any=null;
+      if(editingPayment){
+        ({error}=await s.from('recurring_bill_payments').update({
+          amount_minor:value,paid_on:paidOn,paid_at:new Date(paidOn+'T12:00:00').toISOString()
+        }).eq('id',editingPayment.id).eq('user_id',user.id));
+      }else{
+        ({error}=await s.from('recurring_bill_payments').insert({
+          user_id:user.id,recurring_bill_id:paying.id,due_month:selectedMonth,amount_minor:value,
+          paid_on:paidOn,paid_at:new Date(paidOn+'T12:00:00').toISOString()
+        }));
+      }
+      if(error){setNotice(t('common.errorSave'));return}
+      setPaying(null);setEditingPayment(null);setNotice(t('bills.paymentSaved'));
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      await load();
+    }finally{setSavingAction('')}
   }
 
   async function removePayment(p:Payment){
@@ -199,23 +191,21 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     if(!editBill)return;
     const count=eInstallmentCount?Number(eInstallmentCount):null;
     if(count!==null&&(count<1||count>600))return;
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    const{error}=await s.from('recurring_bills').update({
-      name:eName.trim(),
-      amount_minor:minor(eAmount),
-      due_day:Number(eFirstDueDate.slice(8,10)),
-      start_month:eFirstDueDate.slice(0,7)+'-01',
-      category_id:eCategory,
-      payment_method:eMethod,
-      is_avoidable:eAvoidable,
-      installment_count:count
-    }).eq('id',editBill.id).eq('user_id',user.id);
-    if(error){setNotice(t('common.errorUpdate'));return}
-    setEditBill(null);
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
-    await load();
+    setSavingAction('rule');
+    try{
+      const s=createClient();
+      const{data:{user}}=await s.auth.getUser();
+      if(!user)return;
+      const{error}=await s.from('recurring_bills').update({
+        name:eName.trim(),amount_minor:minor(eAmount),due_day:Number(eFirstDueDate.slice(8,10)),
+        start_month:eFirstDueDate.slice(0,7)+'-01',category_id:eCategory,payment_method:eMethod,
+        is_avoidable:eAvoidable,installment_count:count
+      }).eq('id',editBill.id).eq('user_id',user.id);
+      if(error){setNotice(t('common.errorUpdate'));return}
+      setEditBill(null);
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      await load();
+    }finally{setSavingAction('')}
   }
 
   function startMonthEdit(b:Bill){
@@ -229,30 +219,32 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     if(!monthBill)return;
     const value=minor(mAmount);
     if(value<=0)return;
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    const{error}=await s.from('recurring_bill_month_overrides').upsert({
-      user_id:user.id,
-      recurring_bill_id:monthBill.id,
-      due_month:selectedMonth,
-      amount_minor:value,
-      due_day:Number(mDue)
-    },{onConflict:'recurring_bill_id,due_month'});
-    if(error){setNotice(t('common.errorUpdate'));return}
-    setMonthBill(null);
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
-    await load();
+    setSavingAction('month');
+    try{
+      const s=createClient();
+      const{data:{user}}=await s.auth.getUser();
+      if(!user)return;
+      const{error}=await s.from('recurring_bill_month_overrides').upsert({
+        user_id:user.id,recurring_bill_id:monthBill.id,due_month:selectedMonth,amount_minor:value,due_day:Number(mDue)
+      },{onConflict:'recurring_bill_id,due_month'});
+      if(error){setNotice(t('common.errorUpdate'));return}
+      setMonthBill(null);
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      await load();
+    }finally{setSavingAction('')}
   }
 
   async function clearMonthEdit(){
     if(!monthBill)return;
-    const s=createClient();
-    const{error}=await s.from('recurring_bill_month_overrides').delete().eq('recurring_bill_id',monthBill.id).eq('due_month',selectedMonth);
-    if(error){setNotice(t('common.errorUpdate'));return}
-    setMonthBill(null);
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
-    await load();
+    setSavingAction('month');
+    try{
+      const s=createClient();
+      const{error}=await s.from('recurring_bill_month_overrides').delete().eq('recurring_bill_id',monthBill.id).eq('due_month',selectedMonth);
+      if(error){setNotice(t('common.errorUpdate'));return}
+      setMonthBill(null);
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      await load();
+    }finally{setSavingAction('')}
   }
 
   async function disable(b:Bill){
@@ -284,7 +276,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <label>{t('common.category')}<select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></label>
       <label>{t('bills.payment')}<select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}><option value="pix">Pix</option><option value="cash">Cash</option><option value="debit">Debit</option></select></label>
       <label className="checkOnly"><input type="checkbox" checked={avoidable} onChange={e=>setAvoidable(e.target.checked)}/>{t('bills.avoidable')}</label>
-      <button className="primary">{t('bills.save')}</button>
+      <button className="primary" disabled={savingAction==='add'} aria-busy={savingAction==='add'}>{savingAction==='add'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('bills.save')}</button>
     </form>}
 
     {onNavigate&&<div className="flowGuard"><span>{t('bills.cardQuestion')}</span><button onClick={()=>onNavigate('cards')}>{t('bills.goCards')}</button></div>}
@@ -323,7 +315,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <p className="formHint">{date(selectedMonth,{month:'long',year:'numeric'})} · {t('bills.partialHelp')}</p>
       <label>{t('bills.valuePaid')}<input value={paidAmount} onChange={e=>setPaidAmount(e.target.value)} inputMode="decimal" required/></label>
       <label>{t('bills.paidDate')}<input type="date" value={paidOn} onChange={e=>setPaidOn(e.target.value)} required/></label>
-      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setPaying(null)}>{t('common.cancel')}</button><button className="primary">{t('common.confirm')}</button></div>
+      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setPaying(null)}>{t('common.cancel')}</button><button className="primary" disabled={savingAction==='payment'} aria-busy={savingAction==='payment'}>{savingAction==='payment'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div>
     </form></div>}
 
     {monthBill&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setMonthBill(null)}}><form className="modalCard" onSubmit={saveMonthEdit}>
@@ -331,7 +323,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <p className="formHint">{t('bills.monthOverrideHelp')}</p>
       <label>{t('bills.monthValue')}<input value={mAmount} onChange={e=>setMAmount(e.target.value)} inputMode="decimal" required/></label>
       <label>{t('bills.dueDateThisMonth')}<input type="date" min={selectedMonth} max={monthEnd(selectedMonth)} value={dueDateForMonth(selectedMonth,Number(mDue||1))} onChange={e=>setMDue(e.target.value.slice(8,10))} required/></label>
-      <div className="modalActions"><button type="button" className="dangerText secondary" onClick={clearMonthEdit}>{t('bills.restoreRule')}</button><button className="primary">{t('common.save')}</button></div>
+      <div className="modalActions"><button type="button" className="dangerText secondary" onClick={clearMonthEdit} disabled={savingAction==='month'}>{t('bills.restoreRule')}</button><button className="primary" disabled={savingAction==='month'} aria-busy={savingAction==='month'}>{savingAction==='month'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.save')}</button></div>
     </form></div>}
 
     {editBill&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditBill(null)}}><form className="modalCard" onSubmit={saveBillEdit}>
@@ -344,7 +336,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <label>{t('common.category')}<select value={eCategory} onChange={e=>setECategory(e.target.value)}>{categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></label>
       <label>{t('bills.payment')}<select value={eMethod} onChange={e=>setEMethod(e.target.value)}><option value="pix">Pix</option><option value="cash">Cash</option><option value="debit">Debit</option></select></label>
       <label className="checkOnly"><input type="checkbox" checked={eAvoidable} onChange={e=>setEAvoidable(e.target.checked)}/>{t('bills.avoidable')}</label>
-      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditBill(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div>
+      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditBill(null)}>{t('common.cancel')}</button><button className="primary" disabled={savingAction==='rule'} aria-busy={savingAction==='rule'}>{savingAction==='rule'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.save')}</button></div>
     </form></div>}
   </div>;
 }
