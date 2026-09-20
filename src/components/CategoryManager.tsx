@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated} from '@/lib/finance-events';
 import {CategoryKind,CustomCategory,systemCategories} from '@/domain/categories';
 import {useI18n} from '@/i18n/provider';
 
@@ -33,7 +34,7 @@ export function CategoryManager(){
     const{error}=await s.from('finance_categories').delete().eq('id',c.id).eq('user_id',user.id);
     if(error){setNotice(t('common.errorDelete'));return}
     if(editingId===c.id)setEditingId(null);
-    window.dispatchEvent(new CustomEvent('devinx:categories-updated'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    window.dispatchEvent(new CustomEvent('devinx:categories-updated'));notifyFinanceUpdated();await load();
   }
 
   const custom=categories.filter(c=>c.kind===kind);const system=systemCategories(kind);

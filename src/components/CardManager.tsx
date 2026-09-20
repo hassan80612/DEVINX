@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
 import {useI18n} from '@/i18n/provider';
@@ -35,7 +36,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
     ]);
     const cc=(c.data||[]) as Card[];setCards(cc);setInst((i.data||[]) as unknown as Inst[]);setCustom((ct.data||[]) as CustomCategory[]);if(cc[0]&&!cc.some(card=>card.id===cardId))setCardId(cc[0].id);if(cc.length===0)setCardId('');
   }
-  useEffect(()=>{load();const refresh=()=>load();window.addEventListener('devinx:finance-updated',refresh);window.addEventListener('devinx:categories-updated',refresh);return()=>{window.removeEventListener('devinx:finance-updated',refresh);window.removeEventListener('devinx:categories-updated',refresh)}},[]);
+  useEffect(()=>{load();const refresh=()=>load();window.addEventListener(FINANCE_UPDATED_EVENT,refresh);window.addEventListener('devinx:categories-updated',refresh);return()=>{window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);window.removeEventListener('devinx:categories-updated',refresh)}},[]);
 
   const current=localMonthStartISO();
   const stats=useMemo(()=>Object.fromEntries(cards.map(card=>{
@@ -60,7 +61,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   }
   async function addPurchase(e:FormEvent){
     e.preventDefault();const value=minor(total);if(value<=0)return;setSaving(true);const s=createClient();const{error}=await s.rpc('create_card_purchase_v2',{p_card_id:cardId,p_category_id:category,p_description:desc.trim()||null,p_total_minor:value,p_purchased_on:purchaseDate,p_installment_count:Number(count),p_is_avoidable:avoidable,p_first_due_date:firstDueDate||null});setSaving(false);
-    if(error){setNotice(t('common.errorSave'));return}setDesc('');setTotal('');setCount('1');setCategory('other');setAvoidable(false);setPurchaseDate(localDateISO());setFirstDueDate('');setOpenPurchase(false);setNotice(t('cards.saved'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setDesc('');setTotal('');setCount('1');setCategory('other');setAvoidable(false);setPurchaseDate(localDateISO());setFirstDueDate('');setOpenPurchase(false);setNotice(t('cards.saved'));notifyFinanceUpdated();await load();
   }
   function startCardEdit(card:Card){
     setEditingCard(card);setECardName(card.name);setECardLimit(card.limit_minor==null?'':String(Number(card.limit_minor)/100).replace('.',','));setECardClosing(card.closing_day==null?'':String(card.closing_day));setECardDue(card.due_day==null?'':String(card.due_day));setNotice('');
@@ -69,17 +70,17 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
     e.preventDefault();if(!editingCard)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
     const{error}=await s.from('credit_cards').update({name:eCardName.trim(),limit_minor:eCardLimit?minor(eCardLimit):null,closing_day:eCardClosing?Number(eCardClosing):null,due_day:eCardDue?Number(eCardDue):null}).eq('id',editingCard.id).eq('user_id',user.id);
     if(error){setNotice(t('common.errorUpdate'));return}
-    setEditingCard(null);setNotice(t('cards.cardUpdated'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    setEditingCard(null);setNotice(t('cards.cardUpdated'));notifyFinanceUpdated();await load();
   }
   async function archiveCard(card:Card){
     if(!confirm(t('cards.deleteConfirm')))return;const s=createClient();const{error}=await s.rpc('archive_credit_card',{p_card_id:card.id});
     if(error){setNotice(t('cards.deleteOpenError'));return}
-    setNotice(t('cards.cardDeleted'));if(cardId===card.id)setCardId('');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    setNotice(t('cards.cardDeleted'));if(cardId===card.id)setCardId('');notifyFinanceUpdated();await load();
   }
 
   async function pay(e:FormEvent){
     e.preventDefault();if(!payTarget)return;setSaving(true);const s=createClient();const{error}=await s.rpc('settle_card_bill',{p_card_id:payTarget.card.id,p_statement_month:payTarget.month,p_paid_on:payDate});setSaving(false);
-    if(error){setNotice(t('common.errorSave'));return}setNotice(t('cards.billPaid'));setPayTarget(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setNotice(t('cards.billPaid'));setPayTarget(null);notifyFinanceUpdated();await load();
   }
 
   return <div className="cardsPage">

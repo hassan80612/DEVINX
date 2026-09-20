@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated} from '@/lib/finance-events';
 import {localDateISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
 
@@ -122,7 +123,7 @@ export function WorkManager(){
     setSaving(true);const cost=usesVehicle&&vehicle?energyCost(vehicle,grossMinor,distance,pct):0;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){setSaving(false);return}
     const{error}=await s.from('work_sessions').insert({user_id:user.id,vehicle_id:usesVehicle?vehicle?.id||null:null,income_source_id:sourceId||null,worked_on:localDateISO(),gross_income_minor:grossMinor,energy_cost_minor:cost,extra_work_cost_minor:minor(extra),distance_km:Number(distance.toFixed(2)),minutes_worked:Math.round(worked*60)});
     setSaving(false);if(error){setNotice(t('work.sessionSaveError'));return}
-    const net=grossMinor-cost-minor(extra);setGross('');setHours('');setKm('');setFuelPercent('');setExtra('0');setNotice(t('work.saved')+' '+t('work.net')+': '+currency(net));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    const net=grossMinor-cost-minor(extra);setGross('');setHours('');setKm('');setFuelPercent('');setExtra('0');setNotice(t('work.saved')+' '+t('work.net')+': '+currency(net));notifyFinanceUpdated();await load();
   }
 
   function startEdit(s:Session){
@@ -137,9 +138,9 @@ export function WorkManager(){
     if(editUsesVehicle&&v&&v.energy_type!=='human'&&distance<=0&&(pct<=0||pct>100)&&!Number(v.default_fuel_percent)){setNotice(t('work.needCalc'));return}
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
     const{error}=await s.from('work_sessions').update({vehicle_id:editUsesVehicle?v?.id||null:null,income_source_id:eSource||null,worked_on:eDate,gross_income_minor:grossMinor,energy_cost_minor:editUsesVehicle&&v?energyCost(v,grossMinor,distance,pct):0,extra_work_cost_minor:minor(eExtra),distance_km:Number(distance.toFixed(2)),minutes_worked:Math.round(worked*60)}).eq('id',editing.id).eq('user_id',user.id);
-    if(error){setNotice(t('common.errorUpdate'));return}setEditing(null);setNotice(t('work.sessionUpdated'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorUpdate'));return}setEditing(null);setNotice(t('work.sessionUpdated'));notifyFinanceUpdated();await load();
   }
-  async function deleteSession(ses:Session){if(!confirm(t('work.deleteConfirm')))return;const s=createClient();const{error}=await s.from('work_sessions').delete().eq('id',ses.id);if(error){setNotice(t('common.errorDelete'));return}window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
+  async function deleteSession(ses:Session){if(!confirm(t('work.deleteConfirm')))return;const s=createClient();const{error}=await s.from('work_sessions').delete().eq('id',ses.id);if(error){setNotice(t('common.errorDelete'));return}notifyFinanceUpdated();await load()}
 
   return <div className="workPage">
     <p className="sectionLead">{usesVehicle?t('work.lead'):t('work.generalLead')}</p>

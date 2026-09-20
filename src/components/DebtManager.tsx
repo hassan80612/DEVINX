@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
 
@@ -84,8 +85,8 @@ export function DebtManager(){
   useEffect(()=>{
     load();
     const refresh=()=>load();
-    window.addEventListener('devinx:finance-updated',refresh);
-    return()=>window.removeEventListener('devinx:finance-updated',refresh);
+    window.addEventListener(FINANCE_UPDATED_EVENT,refresh);
+    return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);
   },[]);
 
   const totals=useMemo(()=>({
@@ -116,7 +117,7 @@ export function DebtManager(){
     });
     if(error){setNotice(t('common.errorSave'));return}
     setName('');setOriginal('');setInstallment('');setRemaining('');setEnd('');setDueDay('');setOpen(false);
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -145,7 +146,7 @@ export function DebtManager(){
     if(error){setNotice(t('common.errorSave'));return}
     setPaying(null);
     setNotice(t('debts.paymentSaved'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -175,7 +176,7 @@ export function DebtManager(){
     }).eq('id',editing.id).eq('user_id',user.id);
     if(error){setNotice(t('common.errorUpdate'));return}
     setEditing(null);
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -184,7 +185,7 @@ export function DebtManager(){
     const s=createClient();
     const{error}=await s.from('debts').update({is_active:active}).eq('id',d.id);
     if(error){setNotice(t('common.errorUpdate'));return}
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 

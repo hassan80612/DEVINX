@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
 import {
@@ -61,7 +62,7 @@ export function FuturePlanningManager(){
     setCustom((c.data||[]) as CustomCategory[]);
   }
 
-  useEffect(()=>{load();const refresh=()=>load();window.addEventListener('devinx:finance-updated',refresh);return()=>window.removeEventListener('devinx:finance-updated',refresh)},[]);
+  useEffect(()=>{load();const refresh=()=>load();window.addEventListener(FINANCE_UPDATED_EVENT,refresh);return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh)},[]);
 
   const active=plans.filter(p=>p.is_active);
   const today=localDateISO();
@@ -102,7 +103,7 @@ export function FuturePlanningManager(){
         :await s.from('future_plans').insert({user_id:user.id,...payload});
       if(error){setNotice(t('common.errorSave'));return}
       setFormOpen(false);setEditing(null);setNotice(t('future.saved'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+      notifyFinanceUpdated();await load();
     }finally{setSaving('')}
   }
   async function pause(plan:FuturePlan){
@@ -111,7 +112,7 @@ export function FuturePlanningManager(){
     try{
       const s=createClient();const{error}=await s.from('future_plans').update({is_active:false,updated_at:new Date().toISOString()}).eq('id',plan.id);
       if(error){setNotice(t('common.errorUpdate'));return}
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+      notifyFinanceUpdated();await load();
     }finally{setSaving('')}
   }
   async function reactivate(plan:FuturePlan){
@@ -119,7 +120,7 @@ export function FuturePlanningManager(){
     try{
       const s=createClient();const{error}=await s.from('future_plans').update({is_active:true,updated_at:new Date().toISOString()}).eq('id',plan.id);
       if(error){setNotice(t('common.errorUpdate'));return}
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+      notifyFinanceUpdated();await load();
     }finally{setSaving('')}
   }
   function openSettlement(plan:FuturePlan){
@@ -135,7 +136,7 @@ export function FuturePlanningManager(){
       const{error}=await s.rpc('settle_future_plan',{p_plan_id:settling.plan.id,p_due_date:settling.due,p_amount_minor:value,p_settled_on:settledOn});
       if(error){setNotice(t('common.errorSave'));return}
       setSettling(null);setNotice(t(settling.plan.kind==='income'?'future.receivedSaved':'future.paidSaved'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+      notifyFinanceUpdated();await load();
     }finally{setSaving('')}
   }
   async function reserveInstallment(plan:FuturePlan){
@@ -145,7 +146,7 @@ export function FuturePlanningManager(){
     try{
       const s=createClient();const{error}=await s.rpc('record_future_plan_reserve',{p_plan_id:plan.id,p_amount_minor:value,p_occurred_on:today});
       if(error){setNotice(t('common.errorSave'));return}
-      setNotice(t('future.reserveSaved'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+      setNotice(t('future.reserveSaved'));notifyFinanceUpdated();await load();
     }finally{setSaving('')}
   }
   async function reopen(item:Settlement){
@@ -154,7 +155,7 @@ export function FuturePlanningManager(){
     try{
       const s=createClient();const{error}=await s.rpc('reopen_future_plan_settlement',{p_settlement_id:item.id});
       if(error){setNotice(t('common.errorUpdate'));return}
-      setNotice(t('future.reopened'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+      setNotice(t('future.reopened'));notifyFinanceUpdated();await load();
     }finally{setSaving('')}
   }
 

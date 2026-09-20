@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
 import {categoryName,categoryOptions,CustomCategory} from '@/domain/categories';
@@ -108,7 +109,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     setLoading(false);
   }
 
-  useEffect(()=>{load(true);const refresh=()=>load(false);window.addEventListener('devinx:finance-updated',refresh);return()=>window.removeEventListener('devinx:finance-updated',refresh)},[view,range,from,to]);
+  useEffect(()=>{load(true);const refresh=()=>load(false);window.addEventListener(FINANCE_UPDATED_EVENT,refresh);return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh)},[view,range,from,to]);
 
   const cashRows=useMemo<CashRow[]>(()=>{
     const rows:CashRow[]=[];
@@ -252,7 +253,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       ({error}=await s.from('work_sessions').update({vehicle_id:transport?x.vehicle_id:null,worked_on:editDate,gross_income_minor:gross,energy_cost_minor:energy,extra_work_cost_minor:minor(editExtra),distance_km:Number(km.toFixed(2)),minutes_worked:Math.round(dec(editHours)*60)}).eq('id',x.id).eq('user_id',user.id));
     }
     if(error){setNotice(t('common.errorSave'));return}
-    setEditing(null);setNotice('');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load(false);
+    setEditing(null);setNotice('');notifyFinanceUpdated();await load(false);
   }
 
   async function removeRow(row:CashRow){
@@ -270,19 +271,19 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       const x=row.raw as Work;({error}=await s.from('work_sessions').delete().eq('id',x.id));
     }
     if(error){setNotice(t('common.errorDelete'));return}
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load(false);
+    notifyFinanceUpdated();await load(false);
   }
 
   function startPurchaseEdit(p:Purchase){const first=[...(p.card_installments||[])].sort((a,b)=>a.installment_number-b.installment_number)[0];setPurchaseEdit(p);setPurchaseDesc(p.description||'');setPurchaseTotal(String(Number(p.total_minor)/100).replace('.',','));setPurchaseCount(String(p.installment_count));setPurchaseDate(p.purchased_on);setPurchaseFirstDueDate(first?.due_date||'');setPurchaseCategory(p.category_id)}
   async function savePurchase(e:FormEvent){
     e.preventDefault();if(!purchaseEdit)return;const s=createClient();const{error}=await s.rpc('update_card_purchase_v2',{p_purchase_id:purchaseEdit.id,p_category_id:purchaseCategory,p_description:purchaseDesc,p_total_minor:minor(purchaseTotal),p_purchased_on:purchaseDate,p_installment_count:Number(purchaseCount),p_is_avoidable:purchaseEdit.is_avoidable,p_first_due_date:purchaseFirstDueDate||null});
     if(error){setNotice(t('move.paidPurchaseLocked'));return}
-    setPurchaseEdit(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load(false);
+    setPurchaseEdit(null);notifyFinanceUpdated();await load(false);
   }
   async function deletePurchase(p:Purchase){
     if(!confirm(t('move.purchaseDeleteConfirm')))return;const s=createClient();const{error}=await s.rpc('delete_card_purchase',{p_purchase_id:p.id});
     if(error){setNotice(t('move.paidPurchaseLocked'));return}
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load(false);
+    notifyFinanceUpdated();await load(false);
   }
 
   return <div className="movementCenter">

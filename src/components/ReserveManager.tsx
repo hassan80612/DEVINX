@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO} from '@/lib/date';
 import {useI18n} from '@/i18n/provider';
 
@@ -72,8 +73,8 @@ export function ReserveManager(){
   useEffect(()=>{
     load();
     const refresh=()=>load();
-    window.addEventListener('devinx:finance-updated',refresh);
-    return()=>window.removeEventListener('devinx:finance-updated',refresh);
+    window.addEventListener(FINANCE_UPDATED_EVENT,refresh);
+    return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);
   },[]);
 
   const balance=useMemo(
@@ -122,7 +123,7 @@ export function ReserveManager(){
     if(error){setNotice(t('common.errorSave'));return}
     setMode('none');setAmount('');setNote('');
     setNotice(mode==='deposit'?t('reserves.saved'):t('reserves.withdrawn'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -161,7 +162,7 @@ export function ReserveManager(){
     if(error){setNotice(t('common.errorSave'));return}
     setGoalOpen(false);
     setNotice(t('reserves.goalSaved'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -176,7 +177,7 @@ export function ReserveManager(){
     }).eq('id',goal.id);
     if(error){setNotice(t('common.errorUpdate'));return}
     setNotice(t('reserves.goalCancelled'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -191,7 +192,7 @@ export function ReserveManager(){
     }).eq('id',goal.id);
     if(error){setNotice(t('common.errorUpdate'));return}
     setNotice(t('reserves.goalCompleted'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -222,7 +223,7 @@ export function ReserveManager(){
     }).eq('id',editingEntry.id).eq('user_id',user.id);
     if(error){setNotice(t('common.errorUpdate'));return}
     setEditingEntry(null);
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -233,7 +234,7 @@ export function ReserveManager(){
     const s=createClient();
     const{error}=await s.from('reserve_entries').delete().eq('id',entry.id);
     if(error){setNotice(t('common.errorDelete'));return}
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 

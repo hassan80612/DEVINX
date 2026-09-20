@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO} from '@/lib/date';
 import {categoryName,categoryOptions,CustomCategory} from '@/domain/categories';
 
@@ -18,9 +19,9 @@ export function TransactionManager({kind,onNavigate}:{kind:Kind;onNavigate?:(tar
   const categories=categoryOptions(kind,customCategories);const total=useMemo(()=>items.reduce((sum,item)=>sum+Number(item.amount_minor),0),[items]);
 
   async function load(){const supabase=createClient();const{data:{user}}=await supabase.auth.getUser();if(!user)return;const[{data:rows},{data:custom}]=await Promise.all([supabase.from('transactions').select('id,description,amount_minor,occurred_on,category_id,is_avoidable,payment_method').eq('user_id',user.id).eq('type',kind).order('occurred_on',{ascending:false}).limit(30),supabase.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id).eq('kind',kind).order('created_at')]);setItems((rows||[]) as Item[]);setCustomCategories((custom||[]) as CustomCategory[])}
-  useEffect(()=>{setEditingId(null);load();const refresh=()=>load();window.addEventListener('devinx:finance-updated',refresh);window.addEventListener('devinx:categories-updated',refresh);return()=>{window.removeEventListener('devinx:finance-updated',refresh);window.removeEventListener('devinx:categories-updated',refresh)}},[kind]);
+  useEffect(()=>{setEditingId(null);load();const refresh=()=>load();window.addEventListener(FINANCE_UPDATED_EVENT,refresh);window.addEventListener('devinx:categories-updated',refresh);return()=>{window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);window.removeEventListener('devinx:categories-updated',refresh)}},[kind]);
 
-  async function submit(e:FormEvent){e.preventDefault();const amountMinor=toMinor(amount);if(amountMinor<=0){setNotice('Informe um valor maior que zero.');return}setSaving(true);setNotice('');const supabase=createClient();const{data:{user}}=await supabase.auth.getUser();if(!user){window.location.href='/entrar';return}const{error}=await supabase.from('transactions').insert({user_id:user.id,type:kind,category_id:category,description:description.trim()||null,amount_minor:amountMinor,occurred_on:date,payment_method:kind==='expense'?payment:null,is_avoidable:kind==='expense'?avoidable:false,is_recurring:false});setSaving(false);if(error){setNotice('Não foi possível salvar. Tente novamente.');return}setAmount('');setDescription('');setAvoidable(false);setOpen(false);setNotice('');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()}
+  async function submit(e:FormEvent){e.preventDefault();const amountMinor=toMinor(amount);if(amountMinor<=0){setNotice('Informe um valor maior que zero.');return}setSaving(true);setNotice('');const supabase=createClient();const{data:{user}}=await supabase.auth.getUser();if(!user){window.location.href='/entrar';return}const{error}=await supabase.from('transactions').insert({user_id:user.id,type:kind,category_id:category,description:description.trim()||null,amount_minor:amountMinor,occurred_on:date,payment_method:kind==='expense'?payment:null,is_avoidable:kind==='expense'?avoidable:false,is_recurring:false});setSaving(false);if(error){setNotice('Não foi possível salvar. Tente novamente.');return}setAmount('');setDescription('');setAvoidable(false);setOpen(false);setNotice('');notifyFinanceUpdated();await load()}
 
   function startEdit(item:Item){setEditingId(item.id);setEditAmount(fromMinor(item.amount_minor));setEditDescription(item.description||'');setEditCategory(item.category_id);setEditDate(item.occurred_on);setEditPayment(item.payment_method||'pix');setEditAvoidable(item.is_avoidable);setNotice('')}
   function cancelEdit(){setEditingId(null);setEditAmount('');setEditDescription('');setEditCategory('');setEditDate('');setEditPayment('pix');setEditAvoidable(false)}
@@ -30,7 +31,7 @@ export function TransactionManager({kind,onNavigate}:{kind:Kind;onNavigate?:(tar
     setEditing(true);setNotice('');const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}
     const{error}=await s.from('transactions').update({amount_minor:value,description:editDescription.trim()||null,category_id:editCategory,occurred_on:editDate,payment_method:kind==='expense'?editPayment:null,is_avoidable:kind==='expense'?editAvoidable:false}).eq('id',item.id).eq('user_id',user.id);
     setEditing(false);if(error){setNotice('Não foi possível atualizar o lançamento.');return}
-    cancelEdit();setNotice('Lançamento atualizado.');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()
+    cancelEdit();setNotice('Lançamento atualizado.');notifyFinanceUpdated();await load()
   }
 
   async function remove(item:Item){
@@ -39,7 +40,7 @@ export function TransactionManager({kind,onNavigate}:{kind:Kind;onNavigate?:(tar
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}
     const{error}=await s.from('transactions').delete().eq('id',item.id).eq('user_id',user.id);
     if(error){setNotice('Não foi possível excluir o lançamento.');return}
-    if(editingId===item.id)cancelEdit();setNotice('Lançamento excluído.');window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load()
+    if(editingId===item.id)cancelEdit();setNotice('Lançamento excluído.');notifyFinanceUpdated();await load()
   }
 
   return <>

@@ -3,6 +3,7 @@
 import {useEffect,useLayoutEffect,useMemo,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT,notifyGoalUpdated} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {
   RecurringBillLike,RecurringOverrideLike,RecurringPaymentLike,
@@ -144,8 +145,8 @@ export function DashboardOverview(){
     load(true);
     setProjectedHost(document.getElementById('home-projected-slot'));
     const refresh=()=>load(false);
-    window.addEventListener('devinx:finance-updated',refresh);
-    return()=>window.removeEventListener('devinx:finance-updated',refresh);
+    window.addEventListener(FINANCE_UPDATED_EVENT,refresh);
+    return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);
   },[]);
 
   const reserveBalance=useMemo(
@@ -357,7 +358,7 @@ export function DashboardOverview(){
       }
       setGoalTargetDate(value||'');
       setGoalNotice(value?t('dashboard.targetDateSaved'):t('dashboard.targetDateCleared'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
     }finally{setGoalSaving(false)}
   }
 
@@ -378,7 +379,7 @@ export function DashboardOverview(){
       }
       setGoalTargetDate('');
       setGoalNotice(t('dashboard.targetDateCleared'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
     }finally{setGoalSaving(false)}
   }
 
@@ -399,7 +400,7 @@ export function DashboardOverview(){
       if(error){setGoalNotice(t('common.errorSave'));return}
       setGoalMode('automatic');
       setGoalNotice(t('dashboard.dailyGoalSaved'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
       await load(false);
     }finally{setGoalSaving(false)}
   }
@@ -432,7 +433,7 @@ export function DashboardOverview(){
       if(error){setGoalNotice(t('common.errorSave'));return}
       setGoalMode('manual');
       setGoalNotice(t('dashboard.manualDailyGoalSaved'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
       await load(false);
     }finally{setGoalSaving(false)}
   }
@@ -467,7 +468,7 @@ export function DashboardOverview(){
       }).eq('id',goal.id);
       if(!error&&!cancelled){
         setGoal(current=>current?.id===goal.id?{...current,name:'__devinx_daily_reserve__',period:'daily',basis:'savings',target_minor:nextTarget,goal_source:'daily_reserve_auto',target_date:nextDate}:current);
-        window.dispatchEvent(new CustomEvent('devinx:goal-updated'));
+        notifyGoalUpdated();
       }
     })();
     return()=>{cancelled=true};

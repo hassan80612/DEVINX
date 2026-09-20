@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT,GOAL_UPDATED_EVENT} from '@/lib/finance-events';
 import {useI18n} from '@/i18n/provider';
 
 type Goal={id:string;name:string;period:'daily'|'weekly'|'monthly';basis:'gross'|'operational_net'|'savings'|'payoff';target_minor:number;goal_source:'manual'|'daily_reserve_auto'|'daily_reserve_manual';target_date:string|null};
@@ -15,20 +16,20 @@ export function GoalManager(){
   useEffect(()=>{
     load();
     const refresh=()=>load();
-    window.addEventListener('devinx:finance-updated',refresh);
-    window.addEventListener('devinx:goal-updated',refresh);
+    window.addEventListener(FINANCE_UPDATED_EVENT,refresh);
+    window.addEventListener(GOAL_UPDATED_EVENT,refresh);
     return()=>{
-      window.removeEventListener('devinx:finance-updated',refresh);
-      window.removeEventListener('devinx:goal-updated',refresh);
+      window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);
+      window.removeEventListener(GOAL_UPDATED_EVENT,refresh);
     };
   },[]);
 
   function startNew(){setName(goal?.name==='__devinx_default_goal__'||goal?.goal_source==='daily_reserve_auto'||goal?.goal_source==='daily_reserve_manual'||goal?.name?.startsWith('__devinx_daily_reserve__:')?'':goal?.name||'');setTarget(goal?String(Number(goal.target_minor)/100).replace('.',','):'');setPeriod(goal?.period||'monthly');setBasis(goal?.basis||'gross');setOpen(true);setNotice('')}
   async function save(e:FormEvent){
     e.preventDefault();const value=minor(target);if(value<=0)return;setSaving(true);const s=createClient();const{error}=await s.rpc('replace_active_goal',{p_name:name.trim(),p_period:period,p_basis:basis,p_target_minor:value});setSaving(false);
-    if(error){setNotice(t('common.errorSave'));return}setOpen(false);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
+    if(error){setNotice(t('common.errorSave'));return}setOpen(false);notifyFinanceUpdated();await load();
   }
-  async function endGoal(){if(!goal)return;const s=createClient();await s.from('goals').update({is_active:false}).eq('id',goal.id);setGoal(null);window.dispatchEvent(new CustomEvent('devinx:finance-updated'))}
+  async function endGoal(){if(!goal)return;const s=createClient();await s.from('goals').update({is_active:false}).eq('id',goal.id);setGoal(null);notifyFinanceUpdated()}
   const periodLabel=goal?.period==='daily'?t('goals.daily'):goal?.period==='weekly'?t('goals.weekly'):t('goals.monthly');
   const basisLabel=goal?.basis==='operational_net'?t('goals.net'):goal?.basis==='savings'?t('goals.savings'):goal?.basis==='payoff'?t('goals.payoff'):t('goals.gross');
 

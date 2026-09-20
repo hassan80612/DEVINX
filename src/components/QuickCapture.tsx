@@ -2,6 +2,7 @@
 
 import {useEffect,useRef,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated} from '@/lib/finance-events';
 import {localDateISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
 import {useI18n} from '@/i18n/provider';
@@ -41,7 +42,7 @@ export function QuickCapture({request,onNavigate}:{request?:Request;onNavigate?:
       ({error}=await s.from('transactions').insert({user_id:user.id,type:'expense',category_id:category,description:description.trim()||null,amount_minor:value,occurred_on:localDateISO(),payment_method:payment,is_avoidable:avoidable,is_recurring:false}));
     }
     setSaving(false);if(error){setMessage(t('common.errorSave'));return}
-    setAmount('');setReserveAmount('');setDescription('');setAvoidable(false);setMessage(mode==='expense'?t('quick.savedExpense'):reserve>0?t('quick.savedIncomeReserve'):t('quick.savedIncome'));window.dispatchEvent(new CustomEvent('devinx:finance-updated'));setTimeout(()=>{setOpen(false);setMessage('')},450);
+    setAmount('');setReserveAmount('');setDescription('');setAvoidable(false);setMessage(mode==='expense'?t('quick.savedExpense'):reserve>0?t('quick.savedIncomeReserve'):t('quick.savedIncome'));notifyFinanceUpdated();setTimeout(()=>{setOpen(false);setMessage('')},450);
   }
 
   return <>

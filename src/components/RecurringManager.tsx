@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
 import {
@@ -83,10 +84,10 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   useEffect(()=>{
     load();
     const refresh=()=>load();
-    window.addEventListener('devinx:finance-updated',refresh);
+    window.addEventListener(FINANCE_UPDATED_EVENT,refresh);
     window.addEventListener('devinx:categories-updated',refresh);
     return()=>{
-      window.removeEventListener('devinx:finance-updated',refresh);
+      window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);
       window.removeEventListener('devinx:categories-updated',refresh);
     };
   },[selectedMonth]);
@@ -125,7 +126,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
         :await s.from('recurring_bills').insert({user_id:user.id,...payload});
       if(error){setNotice(t('common.errorSave'));return}
       setName('');setAmount('');setInstallmentCount('');setFirstDueDate(localDateISO());setOpen(false);setNotice(t('bills.saved'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
       await load();
     }finally{setSavingAction('')}
   }
@@ -166,7 +167,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       }
       if(error){setNotice(t('common.errorSave'));return}
       setPaying(null);setEditingPayment(null);setNotice(t('bills.paymentSaved'));
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
       await load();
     }finally{setSavingAction('')}
   }
@@ -176,7 +177,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     const s=createClient();
     const{error}=await s.from('recurring_bill_payments').delete().eq('id',p.id);
     if(error){setNotice(t('common.errorDelete'));return}
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
@@ -203,7 +204,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       }).eq('id',editBill.id).eq('user_id',user.id);
       if(error){setNotice(t('common.errorUpdate'));return}
       setEditBill(null);
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
       await load();
     }finally{setSavingAction('')}
   }
@@ -229,7 +230,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       },{onConflict:'recurring_bill_id,due_month'});
       if(error){setNotice(t('common.errorUpdate'));return}
       setMonthBill(null);
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
       await load();
     }finally{setSavingAction('')}
   }
@@ -242,7 +243,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       const{error}=await s.from('recurring_bill_month_overrides').delete().eq('recurring_bill_id',monthBill.id).eq('due_month',selectedMonth);
       if(error){setNotice(t('common.errorUpdate'));return}
       setMonthBill(null);
-      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      notifyFinanceUpdated();
       await load();
     }finally{setSavingAction('')}
   }
@@ -252,7 +253,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     const s=createClient();
     const{error}=await s.from('recurring_bills').update({is_active:false}).eq('id',b.id);
     if(error){setNotice(t('common.errorUpdate'));return}
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    notifyFinanceUpdated();
     await load();
   }
 
