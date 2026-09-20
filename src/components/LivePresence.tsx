@@ -88,9 +88,9 @@ export function PresenceProvider({children}:{children:ReactNode}){
 
   useEffect(()=>{
     let active=true;
-    const client=createClient();
+    const client:any=createClient();
     const sessionId=createSessionId();
-    const channel=client.channel(CHANNEL_NAME,{config:{presence:{key:sessionId}}});
+    const channel:any=client.channel(CHANNEL_NAME,{config:{presence:{key:sessionId}}});
 
     async function track(){
       if(!active||document.visibilityState!=='visible')return;
@@ -117,7 +117,7 @@ export function PresenceProvider({children}:{children:ReactNode}){
         if(!active)return;
         setRows(normalizePresence(channel.presenceState() as Record<string,unknown>));
       })
-      .subscribe(status=>{
+      .subscribe((status:string)=>{
         if(!active)return;
         if(status==='SUBSCRIBED'){
           setConnected(true);
@@ -127,7 +127,7 @@ export function PresenceProvider({children}:{children:ReactNode}){
         }
       });
 
-    const{data:authSubscription}=client.auth.onAuthStateChange(()=>{void track()});
+    const{data:authSubscription}:any=client.auth.onAuthStateChange(()=>{void track()});
     const onVisibility=()=>{
       if(document.visibilityState==='visible')void track();
       else void channel.untrack();
