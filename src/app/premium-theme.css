@@ -313,3 +313,69 @@ select option{background:#090c10;color:#f5f1e8}
 @media(max-width:700px){
   .quickCaptureFab{left:auto!important;right:12px!important}
 }
+
+
+/* DevinX Pro Calculator + persistent collapsible work areas */
+.calculatorFab{
+  position:fixed;right:18px;bottom:148px;z-index:45;display:flex;align-items:center;gap:7px;
+  min-height:42px;padding:9px 13px;border:1px solid rgba(215,177,90,.34);border-radius:999px;
+  background:linear-gradient(155deg,rgba(17,21,26,.98),rgba(9,11,15,.98));color:#f4f8fb;
+  box-shadow:0 13px 34px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.1),0 0 22px rgba(215,177,90,.08);
+  backdrop-filter:blur(14px)
+}
+.calculatorFab:hover{transform:translateY(-1px);border-color:rgba(255,219,107,.55)}
+.calculatorFab span{display:grid;place-items:center;min-width:24px;height:24px;padding:0 4px;border-radius:8px;background:linear-gradient(135deg,#f4c652,#d99e26);color:#171007;font-size:12px;font-weight:950}
+.calculatorFab b{font-size:9px;letter-spacing:.03em}
+.calculatorBackdrop{position:fixed;inset:0;z-index:79;display:flex;align-items:flex-end;justify-content:center;padding:18px;background:rgba(0,0,0,.72);backdrop-filter:blur(7px)}
+.calculatorSheet{width:min(560px,100%);max-height:92vh;overflow:auto;border:1px solid rgba(215,177,90,.38);border-radius:24px;background:linear-gradient(180deg,#11151a,#090b0f 28%,#090b0f);box-shadow:0 28px 90px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.1)}
+.proCalculator{padding:18px}
+.proCalculatorEmbedded{padding:0!important;overflow:hidden;margin-top:14px}
+.proCalculatorEmbedded>.proCalculator{padding:18px}
+.calculatorHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:13px}
+.calculatorHeader small{color:var(--gold);font-size:8px;font-weight:950;letter-spacing:.12em}
+.calculatorHeader h2{margin:4px 0 4px;font-size:20px;letter-spacing:-.025em}
+.calculatorHeader p{max-width:420px;margin:0;color:#aaa69c;font-size:9px;line-height:1.45}
+.calculatorHeaderActions{display:flex;align-items:center;gap:6px}
+.calculatorReset,.calculatorClose{min-height:32px;border:1px solid rgba(215,177,90,.2);border-radius:10px;background:#090b0f;color:#d7b15a;font-size:8px;font-weight:900}
+.calculatorReset{padding:6px 9px}.calculatorClose{width:32px;padding:0;color:#eef7ff;font-size:18px}
+.calculatorModeTabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;margin-bottom:13px;border:1px solid rgba(215,177,90,.17);border-radius:14px;background:rgba(9,11,15,.72)}
+.calculatorModeTabs button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid transparent;border-radius:10px;background:transparent;color:#969691;font-size:10px;font-weight:900}
+.calculatorModeTabs button span{font-size:13px}
+.calculatorModeTabs button.active{border-color:rgba(215,177,90,.29);background:linear-gradient(180deg,rgba(30,31,30,.9),rgba(17,21,26,.94));color:#ffe17b;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.scientificDisplay{padding:14px 15px;margin-bottom:8px;border:1px solid rgba(215,177,90,.22);border-radius:15px;background:radial-gradient(circle at 90% 0%,rgba(215,177,90,.1),transparent 28%),#07090c;box-shadow:inset 0 1px 10px rgba(0,0,0,.38)}
+.scientificDisplay>div{display:flex;align-items:center;justify-content:space-between;color:#b6b3aa;font-size:8px}
+.scientificDisplay>div span{min-width:14px;color:#ffe17b;font-weight:950}
+.scientificDisplay strong{display:block;min-height:44px;margin-top:4px;overflow:hidden;text-align:right;color:#f6fbff;font-size:30px;font-weight:760;letter-spacing:-.04em;white-space:nowrap;text-overflow:ellipsis}
+.scientificDisplay>small{display:block;min-height:13px;text-align:right;color:#777872;font-size:8px}
+.angleSwitch{display:flex;justify-content:flex-end;gap:4px;margin-bottom:8px}
+.angleSwitch button{padding:5px 7px;border:1px solid rgba(215,177,90,.15);border-radius:7px;background:#090b0f;color:#777872;font-size:7px;font-weight:900}
+.angleSwitch button.active{color:#ffe17b;border-color:rgba(215,177,90,.32)}
+.scientificKeys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.scientificKeys button{min-height:42px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:linear-gradient(180deg,#171b20,#11151a);color:#f1f5f7;font-size:12px;font-weight:850;box-shadow:inset 0 1px 0 rgba(255,255,255,.055)}
+.scientificKeys button:active{transform:translateY(1px);filter:brightness(.92)}
+.scientificKeys .fn,.scientificKeys .memory{border-color:rgba(215,177,90,.16);color:#d7b15a;background:linear-gradient(180deg,#12161a,#090b0f)}
+.scientificKeys .memory{font-size:9px}.scientificKeys .operator{color:#ffe17b;border-color:rgba(215,177,90,.25);background:linear-gradient(180deg,#252117,#11151a)}
+.scientificKeys .equals{border-color:rgba(255,218,93,.5);background:linear-gradient(135deg,#f4c652,#d99e26);color:#171007;font-size:16px}
+.scientificKeys .clear{color:#ffaaa3;border-color:rgba(255,122,112,.2);background:rgba(74,27,34,.36)}
+.calculatorHistory{margin-top:12px;padding:11px;border:1px solid rgba(215,177,90,.13);border-radius:12px;background:rgba(9,11,15,.6)}
+.calculatorSubhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.calculatorSubhead b{font-size:9px;color:#d7b15a}.calculatorSubhead span{font-size:8px;color:#777872}
+.calculatorHistory p{margin:0;color:#777872;font-size:8px}.calculatorHistory>div:not(.calculatorSubhead){padding:6px 0;border-top:1px solid rgba(255,255,255,.05);color:#aaa69c;font-size:8px;text-align:right}
+.financeToolTabs{display:flex;gap:5px;overflow:auto;padding-bottom:3px;scrollbar-width:none}.financeToolTabs::-webkit-scrollbar{display:none}
+.financeToolTabs button{flex:0 0 auto;min-height:32px;padding:6px 9px;border:1px solid rgba(215,177,90,.15);border-radius:9px;background:#090b0f;color:#aaa69c;font-size:8px;font-weight:900;white-space:nowrap}
+.financeToolTabs button.active{border-color:rgba(255,217,106,.38);background:rgba(74,53,12,.24);color:#ffe17b}
+.financeFormulaHint{margin:10px 0;padding:8px 10px;border-left:2px solid #d7b15a;border-radius:0 8px 8px 0;background:rgba(215,177,90,.06);color:#aaa69c;font-size:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.financeFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.financeFields label{display:grid;color:#aaa69c;font-size:8px;font-weight:850}.financeFields input{margin-top:5px}
+.financeCalculate{width:100%;margin-top:10px}
+.financeResult{margin-top:12px;padding:13px;border:1px solid rgba(255,217,106,.27);border-radius:15px;background:radial-gradient(circle at 92% 0%,rgba(255,216,91,.12),transparent 30%),linear-gradient(145deg,#11151a,#090b0f)}
+.financeResultHero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:10px}.financeResultHero small{color:#aaa69c;font-size:8px;font-weight:900}.financeResultHero strong{color:#ffe17b;font-size:22px;letter-spacing:-.03em}
+.financeResultGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.financeResultGrid span{padding:8px;border:1px solid rgba(215,177,90,.12);border-radius:9px;background:rgba(9,11,15,.58)}.financeResultGrid small,.financeResultGrid b{display:block}.financeResultGrid small{font-size:7px;color:#777872}.financeResultGrid b{margin-top:3px;font-size:10px;color:#eef7ff}
+.useResultButton{width:100%;margin-top:9px}
+.calculatorPreference{margin-top:14px}.calculatorModeBadge{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(215,177,90,.27);border-radius:10px;background:#090b0f;color:#ffe17b;font-weight:950}
+.calculatorPreferenceChoices{display:grid;grid-template-columns:1fr 1fr;gap:8px}.calculatorPreferenceChoices button{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid rgba(215,177,90,.16);border-radius:12px;background:#090b0f;color:#aaa69c;text-align:left}.calculatorPreferenceChoices button span{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:#11151a;color:#d7b15a;font-weight:950}.calculatorPreferenceChoices button b{font-size:10px}.calculatorPreferenceChoices button.active{border-color:rgba(255,217,106,.39);background:linear-gradient(145deg,rgba(74,53,12,.2),#090b0f);color:#f6fbff}
+.collapsibleTitleRow{align-items:center}.collapseToggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:31px;padding:6px 9px;border:1px solid rgba(215,177,90,.19);border-radius:9px;background:#090b0f;color:#d7b15a;font-size:8px;font-weight:900;white-space:nowrap}.collapseToggle span,.collapseToggle i{font-style:normal;font-size:11px}.collapsiblePanel.isCollapsed{padding-bottom:14px!important}.collapsibleBody{animation:devinxCalcReveal .16s ease-out}
+.collapsibleHeaderTools{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.collapsibleHeaderTools>span{padding:6px 9px;border:1px solid rgba(255,213,95,.25);border-radius:999px;color:#ffe07d;background:rgba(74,53,12,.2);font-size:9px;font-weight:900}
+.dailyReserveTop>.collapsibleHeaderTools{margin-left:auto}.dailyReserveCard.isCollapsed{padding-bottom:14px!important}.dailyReserveCard.isCollapsed .dailyReserveTop{align-items:center}.collapsedGoalSummary{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px;margin-top:11px;padding:10px;border:1px solid rgba(215,177,90,.13);border-radius:11px;background:rgba(9,11,15,.46)}.collapsedGoalSummary span{font-size:8px;color:#aaa69c}.collapsedGoalSummary b{font-size:14px;color:#ffe17b}.collapsedGoalSummary small{text-align:right;color:#777872;font-size:8px}
+@keyframes devinxCalcReveal{from{opacity:.2;transform:translateY(-3px)}to{opacity:1;transform:none}}
+[dir="rtl"] .calculatorHeader,[dir="rtl"] .financeResultHero,[dir="rtl"] .calculatorSubhead,[dir="rtl"] .dailyReserveTop{direction:rtl}[dir="rtl"] .scientificDisplay strong,[dir="rtl"] .scientificDisplay>small{text-align:left}[dir="rtl"] .calculatorHistory>div:not(.calculatorSubhead){text-align:left}[dir="rtl"] .financeFormulaHint{border-left:0;border-right:2px solid #d7b15a;border-radius:8px 0 0 8px}
+@media(max-width:700px){.calculatorFab{right:12px;bottom:137px}.calculatorBackdrop{padding:0;align-items:flex-end}.calculatorSheet{max-height:94vh;border-left:0;border-right:0;border-bottom:0;border-radius:22px 22px 0 0}.proCalculator{padding:15px}.scientificKeys{gap:5px}.scientificKeys button{min-height:40px}.financeFields{grid-template-columns:1fr 1fr}.collapsedGoalSummary{grid-template-columns:auto auto}.collapsedGoalSummary small{grid-column:1/-1;text-align:left}.dailyReserveTop{gap:8px}.collapsibleHeaderTools{max-width:54%}}
+@media(max-width:420px){.calculatorFab b{display:none}.calculatorFab{width:42px;height:42px;padding:7px;justify-content:center}.calculatorFab span{min-width:27px}.financeFields{grid-template-columns:1fr}.financeResultGrid{grid-template-columns:1fr 1fr}.calculatorHeader p{font-size:8px}.calculatorReset{padding:6px 7px}.scientificDisplay strong{font-size:27px}.collapseToggle{padding:6px 8px}.collapseToggle{font-size:0}.collapseToggle span,.collapseToggle i{font-size:13px}}
