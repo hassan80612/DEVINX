@@ -765,5 +765,60 @@ const arDailyGoalRelease=replace(arCalculatorRelease,{
 'dashboard.autoGoalCovered':'تم إنهاء الهدف التلقائي لأن الالتزامات حتى التاريخ المختار مغطاة بالفعل.'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptDailyGoalRelease,en:enDailyGoalRelease,es:esDailyGoalRelease,fr:frDailyGoalRelease,ar:arDailyGoalRelease,de:deDailyGoalRelease};
-export type TranslationKey=keyof typeof ptDailyGoalRelease;
+const ptPreferencesRelease=replace(ptDailyGoalRelease,{
+'settings.currencyHelp':'Muda a moeda e a formatação dos valores. Não converte valores antigos por cotação.',
+'settings.timezoneAuto':'Automático · usar o dispositivo',
+'settings.timezoneHelp':'O fuso define o que o DevinX considera hoje e o mês atual. No automático, acompanha o dispositivo.',
+'settings.historyDefault':'Período padrão do histórico',
+'settings.historyHelp':'Define como Histórico e Relatórios abrem. Seus dados não são apagados.',
+'settings.calculatorTools':'Ferramentas da calculadora',
+'reports.1m':'1 mês','reports.24m':'24 meses'
+});
+const enPreferencesRelease=replace(enDailyGoalRelease,{
+'settings.currencyHelp':'Changes the currency and number formatting. Existing values are not converted using exchange rates.',
+'settings.timezoneAuto':'Automatic · use device',
+'settings.timezoneHelp':'The time zone defines what DevinX considers today and the current month. Automatic follows the device.',
+'settings.historyDefault':'Default history period',
+'settings.historyHelp':'Defines how History and Reports open. Your data is not deleted.',
+'settings.calculatorTools':'Calculator tools',
+'reports.1m':'1 month','reports.24m':'24 months'
+});
+const esPreferencesRelease=replace(esDailyGoalRelease,{
+'settings.currencyHelp':'Cambia la moneda y el formato de los valores. No convierte valores anteriores por tipo de cambio.',
+'settings.timezoneAuto':'Automático · usar dispositivo',
+'settings.timezoneHelp':'La zona horaria define qué considera DevinX como hoy y mes actual. En automático, sigue el dispositivo.',
+'settings.historyDefault':'Período predeterminado del historial',
+'settings.historyHelp':'Define cómo se abren Historial e Informes. Tus datos no se eliminan.',
+'settings.calculatorTools':'Herramientas de la calculadora',
+'reports.1m':'1 mes','reports.24m':'24 meses'
+});
+const frPreferencesRelease=replace(frDailyGoalRelease,{
+'settings.currencyHelp':'Modifie la devise et le format des montants. Les anciennes valeurs ne sont pas converties selon un taux de change.',
+'settings.timezoneAuto':'Automatique · utiliser l’appareil',
+'settings.timezoneHelp':'Le fuseau horaire définit ce que DevinX considère comme aujourd’hui et le mois en cours. Le mode automatique suit l’appareil.',
+'settings.historyDefault':'Période par défaut de l’historique',
+'settings.historyHelp':'Définit l’ouverture de l’Historique et des Rapports. Vos données ne sont pas supprimées.',
+'settings.calculatorTools':'Outils de calcul',
+'reports.1m':'1 mois','reports.24m':'24 mois'
+});
+const dePreferencesRelease=replace(deDailyGoalRelease,{
+'settings.currencyHelp':'Ändert Währung und Zahlenformat. Vorhandene Werte werden nicht anhand von Wechselkursen umgerechnet.',
+'settings.timezoneAuto':'Automatisch · Gerät verwenden',
+'settings.timezoneHelp':'Die Zeitzone bestimmt, was DevinX als heute und aktuellen Monat betrachtet. Automatisch folgt dem Gerät.',
+'settings.historyDefault':'Standardzeitraum des Verlaufs',
+'settings.historyHelp':'Legt fest, wie Verlauf und Berichte geöffnet werden. Deine Daten werden nicht gelöscht.',
+'settings.calculatorTools':'Rechner-Werkzeuge',
+'reports.1m':'1 Monat','reports.24m':'24 Monate'
+});
+const arPreferencesRelease=replace(arDailyGoalRelease,{
+'settings.currencyHelp':'يغيّر العملة وتنسيق الأرقام. لا يتم تحويل القيم السابقة وفق سعر الصرف.',
+'settings.timezoneAuto':'تلقائي · استخدام الجهاز',
+'settings.timezoneHelp':'تحدد المنطقة الزمنية ما يعتبره Devinx اليوم والشهر الحالي. الوضع التلقائي يتبع الجهاز.',
+'settings.historyDefault':'الفترة الافتراضية للسجل',
+'settings.historyHelp':'تحدد طريقة فتح السجل والتقارير. لا يتم حذف بياناتك.',
+'settings.calculatorTools':'أدوات الحاسبة',
+'reports.1m':'شهر واحد','reports.24m':'24 شهراً'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptPreferencesRelease,en:enPreferencesRelease,es:esPreferencesRelease,fr:frPreferencesRelease,ar:arPreferencesRelease,de:dePreferencesRelease};
+export type TranslationKey=keyof typeof ptPreferencesRelease;

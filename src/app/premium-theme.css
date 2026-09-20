@@ -441,3 +441,29 @@ select option{background:#090c10;color:#f5f1e8}
   .manualDailyGoal{grid-template-columns:1fr}
   .collapseToggle{padding:6px 8px}.collapseToggle{font-size:0}.collapseToggle span,.collapseToggle i{font-size:13px}
 }
+
+
+/* Preferences — collapsible premium cards */
+.settingsPage{display:grid;gap:12px}
+.settingsFoldCard{position:relative;overflow:hidden;margin:0!important;border-color:rgba(218,178,84,.18)!important;background:linear-gradient(145deg,#0f1318,#080b0f)!important;box-shadow:0 13px 32px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.028)!important}
+.settingsFoldCard:before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(218,178,84,.48),transparent)}
+.settingsFoldCard.isCollapsed{padding-bottom:14px!important}
+.settingsFoldHead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.settingsFoldHead>div small{display:block;color:#b9994d;font-size:8px;font-weight:900;letter-spacing:.13em}
+.settingsFoldHead>div h2{margin:4px 0 0;color:#f2efe8;font-size:18px;letter-spacing:-.02em}
+.settingsFoldSummary{margin-top:10px;padding:9px 10px;border:1px solid rgba(218,178,84,.10);border-radius:10px;background:#080b0f;color:#8e8f8b;font-size:8px;line-height:1.45}
+.settingsFoldBody{margin-top:14px;animation:devinxCalcReveal .16s ease-out}
+.settingsFoldBody>.calculatorPreference{margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.settingsFoldBody>.calculatorPreference>.sectionTitleRow{display:none}
+.settingsFoldBody>.calculatorPreference>.lead{margin-top:0}
+.settingsFoldBody>.proCalculatorEmbedded{margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+.settingsFoldBody>.proCalculatorEmbedded:before{display:none}
+.settingsFormInner{gap:14px}
+.settingsFormInner label>small{margin-top:5px;color:#777b77;font-size:8px;line-height:1.45}
+.settingsFormInner select{min-height:44px}
+.settingsFormInner>.primary{margin-top:2px}
+@media(max-width:520px){
+  .settingsFoldHead{align-items:flex-start}
+  .settingsFoldHead .collapseToggle{flex:0 0 auto}
+  .settingsFoldHead>div h2{font-size:17px}
+}

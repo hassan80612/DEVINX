@@ -6,7 +6,7 @@ import {localDateISO,localMonthKey} from '@/lib/date';
 import {categoryName,categoryOptions,CustomCategory} from '@/domain/categories';
 import {useI18n} from '@/i18n/provider';
 
-type Period='7'|'30'|'month'|'3'|'6'|'12'|'custom';
+type Period='7'|'30'|'month'|'1'|'3'|'6'|'12'|'24'|'custom';
 type Flow='all'|'income'|'expense';
 type Origin='transactions'|'work'|'bills'|'cards';
 
@@ -44,10 +44,11 @@ function periodBounds(period:Period,from:string,to:string){
   const today=localDateISO();
   if(period==='7')return{start:daysAgo(6),end:today};
   if(period==='30')return{start:daysAgo(29),end:today};
-  if(period==='month')return{start:localMonthKey()+'-01',end:today};
+  if(period==='month'||period==='1')return{start:localMonthKey()+'-01',end:today};
   if(period==='3')return{start:monthRangeStart(3),end:today};
   if(period==='6')return{start:monthRangeStart(6),end:today};
   if(period==='12')return{start:monthRangeStart(12),end:today};
+  if(period==='24')return{start:monthRangeStart(24),end:today};
   return from<=to?{start:from,end:to}:{start:to,end:from};
 }
 function monthKeysBetween(start:string,end:string){
@@ -87,6 +88,17 @@ export function ReportManager(){
   const[editExtra,setEditExtra]=useState('');
 
   const bounds=useMemo(()=>periodBounds(period,from,to),[period,from,to]);
+
+  useEffect(()=>{(async()=>{
+    const s=createClient();
+    const{data:{user}}=await s.auth.getUser();
+    if(!user)return;
+    const{data}=await s.from('profiles').select('retention_months').eq('id',user.id).maybeSingle();
+    const months=Number((data as any)?.retention_months);
+    const preferred=(months===1||months===3||months===6||months===12||months===24?String(months):'6') as Period;
+    setPeriod(preferred);
+    try{localStorage.setItem('devinx_history_period',String(months||6))}catch{}
+  })()},[]);
 
   async function load(show=true){
     if(show)setLoading(true);
@@ -279,9 +291,11 @@ export function ReportManager(){
         <button className={period==='7'?'active':''} onClick={()=>setPeriod('7')}>{t('move.range7')}</button>
         <button className={period==='30'?'active':''} onClick={()=>setPeriod('30')}>{t('move.range30')}</button>
         <button className={period==='month'?'active':''} onClick={()=>setPeriod('month')}>{t('move.thisMonth')}</button>
+        <button className={period==='1'?'active':''} onClick={()=>setPeriod('1')}>{t('reports.1m')}</button>
         <button className={period==='3'?'active':''} onClick={()=>setPeriod('3')}>{t('reports.3m')}</button>
         <button className={period==='6'?'active':''} onClick={()=>setPeriod('6')}>{t('reports.6m')}</button>
         <button className={period==='12'?'active':''} onClick={()=>setPeriod('12')}>{t('reports.12m')}</button>
+        <button className={period==='24'?'active':''} onClick={()=>setPeriod('24')}>{t('reports.24m')}</button>
         <button className={period==='custom'?'active':''} onClick={()=>setPeriod('custom')}>{t('move.custom')}</button>
       </div>
       {period==='custom'&&<div className="dateRange"><label>{t('common.from')}<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>{t('common.to')}<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>}
