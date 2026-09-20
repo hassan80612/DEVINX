@@ -1,7 +1,7 @@
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import {NextRequest,NextResponse} from 'next/server';
-import {DEVINX_KIWIFY_DEVINX_KIWIFY_PRODUCT_ID} from '@/lib/subscription-plans';
+import {DEVINX_KIWIFY_PRODUCT_ID} from '@/lib/subscription-plans';
 
 export const runtime='nodejs';
 
