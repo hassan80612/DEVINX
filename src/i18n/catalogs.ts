@@ -820,5 +820,48 @@ const arPreferencesRelease=replace(arDailyGoalRelease,{
 'reports.1m':'شهر واحد','reports.24m':'24 شهراً'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptPreferencesRelease,en:enPreferencesRelease,es:esPreferencesRelease,fr:frPreferencesRelease,ar:arPreferencesRelease,de:dePreferencesRelease};
-export type TranslationKey=keyof typeof ptPreferencesRelease;
+const ptInteractionRelease=replace(ptPreferencesRelease,{
+'settings.chartDefault':'Período padrão do gráfico',
+'settings.chartHelp':'Define o período inicial do gráfico Entrou × Gastou. Você também pode trocar direto na Home.',
+'dashboard.chartPeriod':'Período',
+'dashboard.chart3d':'3 dias','dashboard.chart7d':'7 dias','dashboard.chart1m':'1 mês','dashboard.chart3m':'3 meses','dashboard.chart6m':'6 meses','dashboard.chart12m':'12 meses',
+'dashboard.chartTap':'Toque em uma coluna para ver os valores.'
+});
+const enInteractionRelease=replace(enPreferencesRelease,{
+'settings.chartDefault':'Default chart period',
+'settings.chartHelp':'Sets the initial period for the Money in × Money out chart. You can also change it directly on Home.',
+'dashboard.chartPeriod':'Period',
+'dashboard.chart3d':'3 days','dashboard.chart7d':'7 days','dashboard.chart1m':'1 month','dashboard.chart3m':'3 months','dashboard.chart6m':'6 months','dashboard.chart12m':'12 months',
+'dashboard.chartTap':'Tap a bar to see the values.'
+});
+const esInteractionRelease=replace(esPreferencesRelease,{
+'settings.chartDefault':'Período predeterminado del gráfico',
+'settings.chartHelp':'Define el período inicial del gráfico Entró × Gastó. También puedes cambiarlo directamente en Inicio.',
+'dashboard.chartPeriod':'Período',
+'dashboard.chart3d':'3 días','dashboard.chart7d':'7 días','dashboard.chart1m':'1 mes','dashboard.chart3m':'3 meses','dashboard.chart6m':'6 meses','dashboard.chart12m':'12 meses',
+'dashboard.chartTap':'Toca una barra para ver los valores.'
+});
+const frInteractionRelease=replace(frPreferencesRelease,{
+'settings.chartDefault':'Période par défaut du graphique',
+'settings.chartHelp':'Définit la période initiale du graphique Entrées × Dépenses. Vous pouvez aussi la changer depuis l’accueil.',
+'dashboard.chartPeriod':'Période',
+'dashboard.chart3d':'3 jours','dashboard.chart7d':'7 jours','dashboard.chart1m':'1 mois','dashboard.chart3m':'3 mois','dashboard.chart6m':'6 mois','dashboard.chart12m':'12 mois',
+'dashboard.chartTap':'Touchez une barre pour voir les montants.'
+});
+const deInteractionRelease=replace(dePreferencesRelease,{
+'settings.chartDefault':'Standardzeitraum des Diagramms',
+'settings.chartHelp':'Legt den Startzeitraum für das Einnahmen-×-Ausgaben-Diagramm fest. Er kann auch auf der Startseite geändert werden.',
+'dashboard.chartPeriod':'Zeitraum',
+'dashboard.chart3d':'3 Tage','dashboard.chart7d':'7 Tage','dashboard.chart1m':'1 Monat','dashboard.chart3m':'3 Monate','dashboard.chart6m':'6 Monate','dashboard.chart12m':'12 Monate',
+'dashboard.chartTap':'Tippe auf einen Balken, um die Werte zu sehen.'
+});
+const arInteractionRelease=replace(arPreferencesRelease,{
+'settings.chartDefault':'الفترة الافتراضية للرسم البياني',
+'settings.chartHelp':'تحدد الفترة الأولية لمخطط الداخل × المصروف. ويمكن تغييرها أيضاً مباشرة من الصفحة الرئيسية.',
+'dashboard.chartPeriod':'الفترة',
+'dashboard.chart3d':'3 أيام','dashboard.chart7d':'7 أيام','dashboard.chart1m':'شهر واحد','dashboard.chart3m':'3 أشهر','dashboard.chart6m':'6 أشهر','dashboard.chart12m':'12 شهراً',
+'dashboard.chartTap':'اضغط على عمود لرؤية القيم.'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptInteractionRelease,en:enInteractionRelease,es:esInteractionRelease,fr:frInteractionRelease,ar:arInteractionRelease,de:deInteractionRelease};
+export type TranslationKey=keyof typeof ptInteractionRelease;

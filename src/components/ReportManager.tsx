@@ -38,8 +38,8 @@ type ReportRow={
 const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
 const dec=(raw:string)=>Number(raw.replace(',','.'))||0;
 function monthKey(value:string){return value.slice(0,7)}
-function daysAgo(days:number){const d=new Date();d.setDate(d.getDate()-days);return localDateISO(d)}
-function monthRangeStart(months:number){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(months-1));return localDateISO(d)}
+function daysAgo(days:number){const today=localDateISO();const d=new Date(today+'T12:00:00');d.setDate(d.getDate()-days);return localDateISO(d)}
+function monthRangeStart(months:number){const today=new Date(localDateISO()+'T12:00:00');today.setDate(1);today.setMonth(today.getMonth()-(months-1));return localDateISO(today)}
 function periodBounds(period:Period,from:string,to:string){
   const today=localDateISO();
   if(period==='7')return{start:daysAgo(6),end:today};

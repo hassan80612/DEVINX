@@ -467,3 +467,78 @@ select option{background:#090c10;color:#f5f1e8}
   .settingsFoldHead .collapseToggle{flex:0 0 auto}
   .settingsFoldHead>div h2{font-size:17px}
 }
+
+
+/* Interactive premium pass — chart, tactile controls, metallic action borders */
+.flowHeadTools{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+.flowPeriodControl{display:grid;gap:3px;min-width:116px}
+.flowPeriodControl span{font-size:7px;color:#777a75;text-transform:uppercase;letter-spacing:.09em;font-weight:900}
+.flowPeriodControl select{min-height:32px;padding:5px 28px 5px 9px;border-radius:9px;font-size:9px;font-weight:850;color:#e5c46d!important}
+.cashFlowViewport{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:rgba(214,172,75,.22) transparent;padding-bottom:2px}
+.cashFlowViewport::-webkit-scrollbar{height:4px}.cashFlowViewport::-webkit-scrollbar-thumb{background:rgba(214,172,75,.22);border-radius:999px}
+.cashFlowViewport.period-1m .cashFlowChart{min-width:760px}
+.cashFlowChart{grid-template-columns:repeat(auto-fit,minmax(18px,1fr));gap:5px}
+.flowDay{appearance:none;-webkit-appearance:none;border:0!important;background:transparent!important;color:inherit;padding:0!important;cursor:pointer;border-radius:7px!important;transition:transform .12s ease,background .16s ease!important}
+.flowDay:hover,.flowDay:focus-visible{background:rgba(225,181,79,.035)!important;outline:none}
+.flowDay:active{transform:translateY(2px) scale(.97)!important}
+.flowDay.selected{background:linear-gradient(180deg,rgba(224,180,78,.08),rgba(224,180,78,.018))!important;box-shadow:inset 0 0 0 1px rgba(229,188,89,.16)!important}
+.flowBars i{transform-origin:bottom;animation:devinxBarRise .46s cubic-bezier(.2,.8,.2,1) both}
+.flowBars .incomeBar{box-shadow:0 0 12px rgba(231,190,90,.08)}
+.flowDay.selected .incomeBar{box-shadow:0 0 14px rgba(238,201,108,.28)}.flowDay.selected .outBar{box-shadow:0 0 10px rgba(180,186,180,.16)}
+.flowSelection{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;margin-top:8px;padding:9px 10px;border:1px solid rgba(218,176,79,.12);border-radius:10px;background:#080b0f;font-size:9px}
+.flowSelection span{color:#8c8e89}.flowSelection b{font-variant-numeric:tabular-nums;color:#aaaead}
+.flowTapHint{display:block;margin-top:7px;color:#666a66;font-size:8px}
+@keyframes devinxBarRise{from{transform:scaleY(.08);opacity:.28}to{transform:scaleY(1);opacity:1}}
+
+.financeApp button,.authPage button,.landingV2 button,.financeApp a.primary,.landingV2 a.primary{
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .12s ease,filter .16s ease,border-color .16s ease,box-shadow .16s ease!important;
+}
+.financeApp button:active:not(:disabled),.authPage button:active:not(:disabled),.landingV2 button:active:not(:disabled),
+.financeApp a.primary:active,.landingV2 a.primary:active{
+  transform:translateY(2px) scale(.985)!important;
+  box-shadow:inset 0 4px 10px rgba(0,0,0,.25),0 3px 10px rgba(0,0,0,.18)!important;
+}
+.filterRow button.active,.movementTabs button.active,.historyTypeFilter button.active,.quickCaptureTabs button.active,
+.quickPayment button.selected,.quickAvoidable.selected,.tagRow button.selected,.calculatorModeTabs button.active,
+.dailyGoalModeTabs button.active,.financeBottomNav button.active{
+  transform:translateY(1px)!important;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.28),inset 0 0 0 1px rgba(232,190,89,.08)!important;
+}
+
+.instantAction{border-color:rgba(221,178,78,.27)!important}
+.instantAction:after{content:""!important;position:absolute!important;inset:-40% auto -40% -38%!important;width:24%!important;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,244,200,.05),rgba(244,209,125,.24),transparent)!important;transform:skewX(-20deg)!important;animation:devinxActionSweep 6.2s ease-in-out infinite!important}
+.instantAction:nth-child(2):after{animation-delay:1.1s!important}.instantAction:nth-child(3):after{animation-delay:2.2s!important}.instantAction:nth-child(4):after{animation-delay:3.3s!important}
+.instantAction span{filter:drop-shadow(0 0 8px rgba(229,185,83,.12))}
+@keyframes devinxActionSweep{0%,68%{left:-38%;opacity:0}74%{opacity:.75}92%{left:118%;opacity:.25}100%{left:118%;opacity:0}}
+
+.financeApp .primary,.financeApp .goldButton,.financeApp .quickSave,.financeApp .paidButton,.financeApp .quickCaptureFab{
+  position:relative;isolation:isolate;overflow:hidden;
+}
+.financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;z-index:3;
+  background:conic-gradient(from 0deg,transparent 0 18%,rgba(255,240,169,.92) 27%,rgba(197,132,31,.38) 36%,transparent 46% 76%,rgba(255,225,128,.64) 88%,transparent 96%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:devinxBorderOrbit 5.8s linear infinite;
+}
+@keyframes devinxBorderOrbit{to{transform:rotate(360deg)}}
+
+.buttonSpinner{
+  display:inline-block!important;width:13px!important;height:13px!important;flex:0 0 13px;margin:0 7px 0 0!important;
+  border:2px solid rgba(88,55,7,.28)!important;border-top-color:#6c430b!important;border-right-color:#f8df91!important;border-radius:50%!important;
+  animation:spin .65s linear infinite!important;vertical-align:-2px
+}
+button[aria-busy="true"]{cursor:progress!important;pointer-events:none}
+.primary[aria-busy="true"],.quickSave[aria-busy="true"]{display:inline-flex;align-items:center;justify-content:center}
+.textButton[aria-busy="true"]{display:inline-flex;align-items:center;gap:4px}
+@media(max-width:650px){
+  .flowHeadTools{width:100%;align-items:center;justify-content:space-between}
+  .flowLegend{margin-left:auto}.flowPeriodControl{min-width:128px}
+  .cashFlowViewport.period-3m .cashFlowChart{min-width:520px}
+  .cashFlowViewport.period-12m .cashFlowChart{min-width:480px}
+  .flowSelection{grid-template-columns:1fr 1fr}.flowSelection span{grid-column:1/-1}
+}
+@media(prefers-reduced-motion:reduce){
+  .flowBars i,.instantAction:after,.financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{animation:none!important}
+}

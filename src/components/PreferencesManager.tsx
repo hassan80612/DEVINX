@@ -7,6 +7,8 @@ import {LanguageMenu} from './LanguageMenu';
 import {CalculatorModePreference,ProCalculator} from './CalculatorPro';
 
 const HISTORY_PERIODS=[1,3,6,12,24] as const;
+type ChartPeriod='3d'|'7d'|'1m'|'3m'|'6m'|'12m';
+const CHART_PERIODS:ChartPeriod[]=['3d','7d','1m','3m','6m','12m'];
 const TIMEZONES=[
   'auto',
   'America/Sao_Paulo','America/Argentina/Buenos_Aires','America/Asuncion','America/Montevideo',
@@ -60,8 +62,10 @@ function SettingsFoldCard({id,eyebrow,title,summary,children}:{id:string;eyebrow
 export function PreferencesManager(){
   const{t,locale,setLocale,currencyCode,setCurrencyCode,timezone,setTimezone,locales}=useI18n();
   const[retention,setRetention]=useState(12);
+  const[chartPeriod,setChartPeriod]=useState<ChartPeriod>('1m');
   const[notice,setNotice]=useState('');
   const[loading,setLoading]=useState(true);
+  const[saving,setSaving]=useState(false);
 
   const currencyDisplay=useMemo(()=>{
     let names:Intl.DisplayNames|null=null;
@@ -77,30 +81,34 @@ export function PreferencesManager(){
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
-    const{data}=await s.from('profiles').select('locale,currency_code,timezone,retention_months').eq('id',user.id).single();
+    const{data}=await s.from('profiles').select('locale,currency_code,timezone,retention_months,dashboard_chart_period').eq('id',user.id).single();
     if(data){
       if(SUPPORTED_CURRENCIES.includes(data.currency_code as CurrencyCode))setCurrencyCode(data.currency_code as CurrencyCode);
       setTimezone(data.timezone||'auto');
       const months=Number(data.retention_months);
       setRetention(HISTORY_PERIODS.includes(months as any)?months:12);
+      if(CHART_PERIODS.includes(data.dashboard_chart_period as ChartPeriod))setChartPeriod(data.dashboard_chart_period as ChartPeriod);
       if(data.locale&&locales.includes(data.locale as any))setLocale(data.locale as any);
     }
     setLoading(false);
   })()},[]);
 
   async function save(){
+    setSaving(true);
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    const{error}=await s.from('profiles').update({locale,currency_code:currencyCode,timezone,retention_months:retention}).eq('id',user.id);
+    if(!user){setSaving(false);return}
+    const{error}=await s.from('profiles').update({locale,currency_code:currencyCode,timezone,retention_months:retention,dashboard_chart_period:chartPeriod}).eq('id',user.id);
     if(!error){
       try{
         localStorage.setItem('devinx_timezone',timezone);
         localStorage.setItem('devinx_history_period',String(retention));
+        localStorage.setItem('devinx_dashboard_chart_period',chartPeriod);
       }catch{}
       window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
       window.dispatchEvent(new CustomEvent('devinx:preferences-updated'));
     }
+    setSaving(false);
     setNotice(error?t('common.errorSave'):t('settings.saved'));
   }
 
@@ -134,7 +142,18 @@ export function PreferencesManager(){
           </select>
           <small>{t('settings.historyHelp')}</small>
         </label>
-        <button className="primary" onClick={save}>{t('settings.save')}</button>
+        <label>{t('settings.chartDefault')}
+          <select value={chartPeriod} onChange={e=>setChartPeriod(e.target.value as ChartPeriod)}>
+            <option value="3d">{t('dashboard.chart3d')}</option>
+            <option value="7d">{t('dashboard.chart7d')}</option>
+            <option value="1m">{t('dashboard.chart1m')}</option>
+            <option value="3m">{t('dashboard.chart3m')}</option>
+            <option value="6m">{t('dashboard.chart6m')}</option>
+            <option value="12m">{t('dashboard.chart12m')}</option>
+          </select>
+          <small>{t('settings.chartHelp')}</small>
+        </label>
+        <button className="primary" onClick={save} disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('settings.save')}</button>
         {notice&&<div className="authMessage">{notice}</div>}
       </div>
     </SettingsFoldCard>

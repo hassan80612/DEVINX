@@ -20,11 +20,25 @@ type CardInst={amount_minor:number;billing_month:string;due_date:string|null;pai
 type CardPay={amount_minor:number;paid_on:string};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
 type ReserveEntry={kind:'deposit'|'withdraw';amount_minor:number;occurred_on:string};
+type ChartPeriod='3d'|'7d'|'1m'|'3m'|'6m'|'12m';
+const CHART_PERIODS:ChartPeriod[]=['3d','7d','1m','3m','6m','12m'];
 
-function daysAgo(days:number){const d=new Date();d.setDate(d.getDate()-days);return localDateISO(d)}
+function shiftISO(value:string,days:number){const d=new Date(value+'T12:00:00');d.setDate(d.getDate()+days);return localDateISO(d)}
+function daysAgo(days:number){return shiftISO(localDateISO(),-days)}
 function weekStart(){
-  const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return localDateISO(d);
+  const today=localDateISO();const d=new Date(today+'T12:00:00');const day=(d.getDay()+6)%7;return shiftISO(today,-day);
 }
+function validChartPeriod(value:unknown):value is ChartPeriod{return CHART_PERIODS.includes(value as ChartPeriod)}
+function chartStart(period:ChartPeriod){
+  if(period==='3d')return daysAgo(2);
+  if(period==='7d')return daysAgo(6);
+  if(period==='1m')return daysAgo(29);
+  if(period==='3m')return daysAgo(89);
+  const today=new Date(localDateISO()+'T12:00:00');
+  const months=period==='6m'?5:11;
+  return localDateISO(new Date(today.getFullYear(),today.getMonth()-months,1));
+}
+function dayDiff(from:string,to:string){return Math.max(0,Math.floor((new Date(to+'T12:00:00').getTime()-new Date(from+'T12:00:00').getTime())/86400000))}
 function monthEnd(month:string){
   const d=new Date(month+'T12:00:00');
   return localDateISO(new Date(d.getFullYear(),d.getMonth()+1,0));
@@ -62,14 +76,23 @@ export function DashboardOverview(){
   const[dailyGoalExpanded,setDailyGoalExpanded]=useState(true);
   const[goalMode,setGoalMode]=useState<'automatic'|'manual'>('automatic');
   const[manualDailyTarget,setManualDailyTarget]=useState('');
+  const[chartPeriod,setChartPeriod]=useState<ChartPeriod>('1m');
+  const[selectedFlowKey,setSelectedFlowKey]=useState('');
+  const[goalSaving,setGoalSaving]=useState(false);
 
-  async function load(show=false){
+  async function load(show=false,periodOverride?:ChartPeriod){
     if(show)setLoading(true);
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.replace('/entrar');return}
-    const from=daysAgo(45);
-    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rProfile]=await Promise.all([
+    const{data:profile}=await s.from('profiles').select('daily_goal_target_date,dashboard_chart_period').eq('id',user.id).maybeSingle();
+    const profilePeriod=validChartPeriod((profile as any)?.dashboard_chart_period)?(profile as any).dashboard_chart_period as ChartPeriod:chartPeriod;
+    const activePeriod=periodOverride||profilePeriod||'1m';
+    setChartPeriod(activePeriod);
+    const chartFrom=chartStart(activePeriod);
+    const monthFrom=localMonthStartISO();
+    const from=chartFrom<monthFrom?chartFrom:monthFrom;
+    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',user.id).gte('worked_on',from),
       s.from('goals').select('id,name,target_minor,basis,period,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
@@ -79,8 +102,7 @@ export function DashboardOverview(){
       s.from('card_installments').select('amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id).is('paid_at',null),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
       s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
-      s.from('reserve_entries').select('kind,amount_minor,occurred_on').eq('user_id',user.id),
-      s.from('profiles').select('daily_goal_target_date').eq('id',user.id).maybeSingle()
+      s.from('reserve_entries').select('kind,amount_minor,occurred_on').eq('user_id',user.id)
     ]);
     setTx((rTx.data||[]) as Tx[]);
     setWork((rWork.data||[]) as Work[]);
@@ -99,7 +121,7 @@ export function DashboardOverview(){
     setCardPays((rCardPay.data||[]) as CardPay[]);
     setDebtPays((rDebtPay.data||[]) as DebtPay[]);
     setReserveEntries((rReserve.data||[]) as ReserveEntry[]);
-    const saved=(rProfile.data as any)?.daily_goal_target_date||'';
+    const saved=(profile as any)?.daily_goal_target_date||'';
     setGoalTargetDate(saved);
     setTargetDraft(saved);
     setLoading(false);
@@ -178,16 +200,62 @@ export function DashboardOverview(){
   },[commitmentMonth,bills,billPays,billOverrides,cardInst]);
 
   const flowChart=useMemo(()=>{
-    const days=Array.from({length:14},(_,index)=>daysAgo(13-index));
-    const map=new Map(days.map(day=>[day,{day,income:0,out:0}]));
-    tx.forEach(item=>{const row=map.get(item.occurred_on);if(!row)return;if(item.type==='income')row.income+=Number(item.amount_minor);else row.out+=Number(item.amount_minor)});
-    work.forEach(item=>{const row=map.get(item.worked_on);if(!row)return;row.income+=Number(item.gross_income_minor);row.out+=Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor)});
-    billPays.forEach(item=>{const row=map.get(item.paid_on);if(row)row.out+=Number(item.amount_minor)});
-    cardPays.forEach(item=>{const row=map.get(item.paid_on);if(row)row.out+=Number(item.amount_minor)});
-    const rows=[...map.values()];
+    type FlowRow={key:string;start:string;income:number;out:number};
+    const today=localDateISO();
+    const start=chartStart(chartPeriod);
+    let rows:FlowRow[]=[];
+    let bucket=(value:string)=>value;
+    let labelEvery=1;
+
+    if(chartPeriod==='3d'||chartPeriod==='7d'||chartPeriod==='1m'){
+      const count=chartPeriod==='3d'?3:chartPeriod==='7d'?7:30;
+      const days=Array.from({length:count},(_,index)=>shiftISO(today,-(count-1-index)));
+      rows=days.map(day=>({key:day,start:day,income:0,out:0}));
+      bucket=value=>value;
+      labelEvery=chartPeriod==='1m'?5:1;
+    }else if(chartPeriod==='3m'){
+      const count=13;
+      rows=Array.from({length:count},(_,index)=>{
+        const startOfWeek=shiftISO(start,index*7);
+        return{key:'w'+index,start:startOfWeek,income:0,out:0};
+      });
+      bucket=value=>'w'+Math.min(count-1,Math.max(0,Math.floor(dayDiff(start,value)/7)));
+    }else{
+      const count=chartPeriod==='6m'?6:12;
+      const startDate=new Date(start+'T12:00:00');
+      rows=Array.from({length:count},(_,index)=>{
+        const month=localDateISO(new Date(startDate.getFullYear(),startDate.getMonth()+index,1));
+        return{key:month.slice(0,7),start:month,income:0,out:0};
+      });
+      bucket=value=>value.slice(0,7);
+    }
+
+    const map=new Map(rows.map(row=>[row.key,row]));
+    const add=(value:string,income:number,out:number)=>{
+      if(value<start||value>today)return;
+      const row=map.get(bucket(value));if(!row)return;
+      row.income+=income;row.out+=out;
+    };
+    tx.forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
+    work.forEach(item=>add(item.worked_on,Number(item.gross_income_minor),Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor)));
+    billPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
+    cardPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
+
     const max=Math.max(1,...rows.flatMap(row=>[row.income,row.out]));
-    return{rows,max};
-  },[tx,work,billPays,cardPays]);
+    return{rows,max,labelEvery};
+  },[tx,work,billPays,cardPays,chartPeriod]);
+
+  const selectedFlowRow=flowChart.rows.find(row=>row.key===selectedFlowKey)||null;
+
+  async function changeChartPeriod(next:ChartPeriod){
+    setChartPeriod(next);
+    setSelectedFlowKey('');
+    try{localStorage.setItem('devinx_dashboard_chart_period',next)}catch{}
+    const s=createClient();
+    const{data:{user}}=await s.auth.getUser();
+    if(user)await s.from('profiles').update({dashboard_chart_period:next}).eq('id',user.id);
+    await load(false,next);
+  }
 
   const commitmentShare=selectedCommitments.total>0
     ?Math.round(selectedCommitments.recurringPending/selectedCommitments.total*100)
@@ -251,58 +319,67 @@ export function DashboardOverview(){
 
   async function saveHorizon(){
     if(targetDraft&&targetDraft<localDateISO()){setGoalNotice(t('dashboard.futureDateError'));return}
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    const value=targetDraft||null;
-    const{error}=await s.from('profiles').update({daily_goal_target_date:value}).eq('id',user.id);
-    if(error){setGoalNotice(t('common.errorSave'));return}
-    const effectiveHorizon=value||monthEnd(localMonthStartISO());
-    if(goal?.goal_source==='daily_reserve_manual'){
-      const{error:goalError}=await s.from('goals').update({target_date:effectiveHorizon}).eq('id',goal.id);
-      if(goalError){setGoalNotice(t('common.errorSave'));return}
-      setGoal(current=>current?{...current,target_date:effectiveHorizon}:current);
-    }
-    setGoalTargetDate(value||'');
-    setGoalNotice(value?t('dashboard.targetDateSaved'):t('dashboard.targetDateCleared'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    setGoalSaving(true);
+    try{
+      const s=createClient();
+      const{data:{user}}=await s.auth.getUser();
+      if(!user)return;
+      const value=targetDraft||null;
+      const{error}=await s.from('profiles').update({daily_goal_target_date:value}).eq('id',user.id);
+      if(error){setGoalNotice(t('common.errorSave'));return}
+      const effectiveHorizon=value||monthEnd(localMonthStartISO());
+      if(goal?.goal_source==='daily_reserve_manual'){
+        const{error:goalError}=await s.from('goals').update({target_date:effectiveHorizon}).eq('id',goal.id);
+        if(goalError){setGoalNotice(t('common.errorSave'));return}
+        setGoal(current=>current?{...current,target_date:effectiveHorizon}:current);
+      }
+      setGoalTargetDate(value||'');
+      setGoalNotice(value?t('dashboard.targetDateSaved'):t('dashboard.targetDateCleared'));
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    }finally{setGoalSaving(false)}
   }
 
   async function clearHorizon(){
-    setTargetDraft('');
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    const{error}=await s.from('profiles').update({daily_goal_target_date:null}).eq('id',user.id);
-    if(error){setGoalNotice(t('common.errorSave'));return}
-    const effectiveHorizon=monthEnd(localMonthStartISO());
-    if(goal?.goal_source==='daily_reserve_manual'){
-      const{error:goalError}=await s.from('goals').update({target_date:effectiveHorizon}).eq('id',goal.id);
-      if(goalError){setGoalNotice(t('common.errorSave'));return}
-      setGoal(current=>current?{...current,target_date:effectiveHorizon}:current);
-    }
-    setGoalTargetDate('');
-    setGoalNotice(t('dashboard.targetDateCleared'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    setGoalSaving(true);
+    try{
+      setTargetDraft('');
+      const s=createClient();
+      const{data:{user}}=await s.auth.getUser();
+      if(!user)return;
+      const{error}=await s.from('profiles').update({daily_goal_target_date:null}).eq('id',user.id);
+      if(error){setGoalNotice(t('common.errorSave'));return}
+      const effectiveHorizon=monthEnd(localMonthStartISO());
+      if(goal?.goal_source==='daily_reserve_manual'){
+        const{error:goalError}=await s.from('goals').update({target_date:effectiveHorizon}).eq('id',goal.id);
+        if(goalError){setGoalNotice(t('common.errorSave'));return}
+        setGoal(current=>current?{...current,target_date:effectiveHorizon}:current);
+      }
+      setGoalTargetDate('');
+      setGoalNotice(t('dashboard.targetDateCleared'));
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    }finally{setGoalSaving(false)}
   }
 
   async function useDailyGoal(){
     if(reserveSuggestion.daily<=0)return;
     if(goal&&!confirm(t('dashboard.dailyGoalConfirm')))return;
-    const s=createClient();
-    const{error}=await s.rpc('replace_active_goal_v2',{
-      p_name:'__devinx_daily_reserve__',
-      p_period:'daily',
-      p_basis:'savings',
-      p_target_minor:reserveSuggestion.daily,
-      p_source:'daily_reserve_auto',
-      p_target_date:reserveSuggestion.horizon
-    });
-    if(error){setGoalNotice(t('common.errorSave'));return}
-    setGoalMode('automatic');
-    setGoalNotice(t('dashboard.dailyGoalSaved'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
-    await load(false);
+    setGoalSaving(true);
+    try{
+      const s=createClient();
+      const{error}=await s.rpc('replace_active_goal_v2',{
+        p_name:'__devinx_daily_reserve__',
+        p_period:'daily',
+        p_basis:'savings',
+        p_target_minor:reserveSuggestion.daily,
+        p_source:'daily_reserve_auto',
+        p_target_date:reserveSuggestion.horizon
+      });
+      if(error){setGoalNotice(t('common.errorSave'));return}
+      setGoalMode('automatic');
+      setGoalNotice(t('dashboard.dailyGoalSaved'));
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      await load(false);
+    }finally{setGoalSaving(false)}
   }
 
   async function useManualDailyGoal(){
@@ -311,28 +388,31 @@ export function DashboardOverview(){
     const today=localDateISO();
     if(targetDraft&&targetDraft<today){setGoalNotice(t('dashboard.futureDateError'));return}
     if(goal&&!confirm(t('dashboard.dailyGoalConfirm')))return;
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user)return;
-    const effectiveHorizon=(targetDraft&&targetDraft>=today?targetDraft:'')||reserveSuggestion.horizon;
-    if(targetDraft!==goalTargetDate){
-      const{error:horizonError}=await s.from('profiles').update({daily_goal_target_date:targetDraft||null}).eq('id',user.id);
-      if(horizonError){setGoalNotice(t('common.errorSave'));return}
-      setGoalTargetDate(targetDraft||'');
-    }
-    const{error}=await s.rpc('replace_active_goal_v2',{
-      p_name:'__devinx_daily_manual__',
-      p_period:'daily',
-      p_basis:'savings',
-      p_target_minor:value,
-      p_source:'daily_reserve_manual',
-      p_target_date:effectiveHorizon
-    });
-    if(error){setGoalNotice(t('common.errorSave'));return}
-    setGoalMode('manual');
-    setGoalNotice(t('dashboard.manualDailyGoalSaved'));
-    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
-    await load(false);
+    setGoalSaving(true);
+    try{
+      const s=createClient();
+      const{data:{user}}=await s.auth.getUser();
+      if(!user)return;
+      const effectiveHorizon=(targetDraft&&targetDraft>=today?targetDraft:'')||reserveSuggestion.horizon;
+      if(targetDraft!==goalTargetDate){
+        const{error:horizonError}=await s.from('profiles').update({daily_goal_target_date:targetDraft||null}).eq('id',user.id);
+        if(horizonError){setGoalNotice(t('common.errorSave'));return}
+        setGoalTargetDate(targetDraft||'');
+      }
+      const{error}=await s.rpc('replace_active_goal_v2',{
+        p_name:'__devinx_daily_manual__',
+        p_period:'daily',
+        p_basis:'savings',
+        p_target_minor:value,
+        p_source:'daily_reserve_manual',
+        p_target_date:effectiveHorizon
+      });
+      if(error){setGoalNotice(t('common.errorSave'));return}
+      setGoalMode('manual');
+      setGoalNotice(t('dashboard.manualDailyGoalSaved'));
+      window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+      await load(false);
+    }finally{setGoalSaving(false)}
   }
 
   useEffect(()=>{
@@ -422,18 +502,26 @@ export function DashboardOverview(){
 
     <section className="panel premiumFlowPanel">
       <div className="premiumFlowHead">
-        <div><small>14D · {t('nav.reports')}</small><h2>{t('dashboard.entered')} × {t('dashboard.spent')}</h2></div>
-        <div className="flowLegend"><span className="in"><i/>{t('dashboard.entered')}</span><span className="out"><i/>{t('dashboard.spent')}</span></div>
+        <div><small>{t('nav.reports')}</small><h2>{t('dashboard.entered')} × {t('dashboard.spent')}</h2></div>
+        <div className="flowHeadTools">
+          <label className="flowPeriodControl"><span>{t('dashboard.chartPeriod')}</span><select value={chartPeriod} onChange={e=>changeChartPeriod(e.target.value as ChartPeriod)}>
+            <option value="3d">{t('dashboard.chart3d')}</option><option value="7d">{t('dashboard.chart7d')}</option><option value="1m">{t('dashboard.chart1m')}</option><option value="3m">{t('dashboard.chart3m')}</option><option value="6m">{t('dashboard.chart6m')}</option><option value="12m">{t('dashboard.chart12m')}</option>
+          </select></label>
+          <div className="flowLegend"><span className="in"><i/>{t('dashboard.entered')}</span><span className="out"><i/>{t('dashboard.spent')}</span></div>
+        </div>
       </div>
-      <div className="cashFlowChart" aria-label={t('dashboard.entered')+' '+t('dashboard.spent')}>
-        {flowChart.rows.map((row,index)=><div className="flowDay" key={row.day}>
-          <div className="flowBars">
-            <i className="incomeBar" style={{height:Math.max(3,Math.round(row.income/flowChart.max*100))+'%'}} title={currency(row.income)}/>
-            <i className="outBar" style={{height:Math.max(3,Math.round(row.out/flowChart.max*100))+'%'}} title={currency(row.out)}/>
-          </div>
-          <small>{index%2===0?date(row.day,{day:'2-digit',month:'2-digit'}):'·'}</small>
-        </div>)}
+      <div className={'cashFlowViewport period-'+chartPeriod}>
+        <div className="cashFlowChart" aria-label={t('dashboard.entered')+' '+t('dashboard.spent')}>
+          {flowChart.rows.map((row,index)=><button type="button" className={'flowDay '+(selectedFlowKey===row.key?'selected':'')} key={row.key} onClick={()=>setSelectedFlowKey(current=>current===row.key?'':row.key)} aria-pressed={selectedFlowKey===row.key}>
+            <div className="flowBars">
+              <i className="incomeBar" style={{height:(row.income>0?Math.max(3,Math.round(row.income/flowChart.max*100)):0)+'%'}} title={currency(row.income)}/>
+              <i className="outBar" style={{height:(row.out>0?Math.max(3,Math.round(row.out/flowChart.max*100)):0)+'%'}} title={currency(row.out)}/>
+            </div>
+            <small>{index%flowChart.labelEvery===0||index===flowChart.rows.length-1?date(row.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'short'}:{day:'2-digit',month:'2-digit'}):'·'}</small>
+          </button>)}
+        </div>
       </div>
+      {selectedFlowRow?<div className="flowSelection"><span>{date(selectedFlowRow.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'long',year:'numeric'}:{day:'2-digit',month:'short',year:'numeric'})}</span><b className="positive">+ {currency(selectedFlowRow.income)}</b><b>− {currency(selectedFlowRow.out)}</b></div>:<small className="flowTapHint">{t('dashboard.chartTap')}</small>}
     </section>
 
     <section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')+(!dailyGoalExpanded?' isCollapsed':'')}>
@@ -452,8 +540,8 @@ export function DashboardOverview(){
 
         <div className="goalHorizonControl">
           <label><span>{t('dashboard.targetDateOptional')}</span><input type="date" min={localDateISO()} value={targetDraft} onChange={e=>setTargetDraft(e.target.value)}/></label>
-          <button className="textButton" type="button" onClick={saveHorizon}>{t('dashboard.applyDate')}</button>
-          {goalTargetDate&&<button className="textButton dangerText" type="button" onClick={clearHorizon}>{t('dashboard.endOfMonth')}</button>}
+          <button className="textButton" type="button" onClick={saveHorizon} disabled={goalSaving} aria-busy={goalSaving}>{goalSaving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('dashboard.applyDate')}</button>
+          {goalTargetDate&&<button className="textButton dangerText" type="button" onClick={clearHorizon} disabled={goalSaving}>{t('dashboard.endOfMonth')}</button>}
         </div>
 
         {goalMode==='automatic'?<>
@@ -471,14 +559,14 @@ export function DashboardOverview(){
           </div>
 
           <p>{reserveSuggestion.daily>0?t('dashboard.dailyReserveExplainAdvanced'):t('dashboard.dailyReserveCoveredHelp')}</p>
-          {reserveSuggestion.daily>0&&<button className="primary dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
+          {reserveSuggestion.daily>0&&<button className="primary dailyGoalButton" onClick={useDailyGoal} disabled={goalSaving} aria-busy={goalSaving}>{goalSaving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('dashboard.useDailyGoal')}</button>}
         </>:<>
           <div className="manualDailyGoal">
             <label><span>{t('dashboard.manualDailyValue')}</span><input value={manualDailyTarget} onChange={e=>setManualDailyTarget(e.target.value)} inputMode="decimal" placeholder="0,00"/></label>
             <div><small>{t('dashboard.autoReference')}</small><b>{currency(reserveSuggestion.daily)}</b></div>
           </div>
           <p>{t('dashboard.manualDailyHelp')}</p>
-          <button className="primary dailyGoalButton" onClick={useManualDailyGoal} disabled={moneyMinor(manualDailyTarget)<=0}>{t('dashboard.useManualDailyGoal')}</button>
+          <button className="primary dailyGoalButton" onClick={useManualDailyGoal} disabled={moneyMinor(manualDailyTarget)<=0||goalSaving} aria-busy={goalSaving}>{goalSaving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('dashboard.useManualDailyGoal')}</button>
         </>}
 
         {goalNotice&&<div className="authMessage">{goalNotice}</div>}

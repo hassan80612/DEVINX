@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {DashboardOverview} from './DashboardOverview';
 import {MovementCenter} from './MovementCenter';
@@ -20,7 +20,7 @@ import {IntegrationBootstrap} from './IntegrationBootstrap';
 import {SubscriptionPanel} from './SubscriptionPanel';
 import {BrandLogo} from './BrandLogo';
 import {ProCalculator} from './CalculatorPro';
-import {useI18n} from '@/i18n/provider';
+import {SUPPORTED_CURRENCIES,type CurrencyCode,useI18n} from '@/i18n/provider';
 
 type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'bills'|'reserves'|'reports'|'spend'|'categories'|'settings'|'master';
 type CaptureMode='income'|'expense';
@@ -33,7 +33,7 @@ function checkoutForLocale(url:string,locale:string){
 }
 
 export function FinanceHub(){
-  const{locale,setLocale,setCurrencyCode,t}=useI18n();
+  const{locale,setLocale,setCurrencyCode,setTimezone,date,t}=useI18n();
   const[section,setSection]=useState<Section>('home');
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
   const[access,setAccess]=useState<Access|null>(null);
@@ -45,16 +45,17 @@ export function FinanceHub(){
     if(!user){location.replace('/entrar');return}
     const[{data,error},{data:profile}]=await Promise.all([
       s.rpc('get_devinx_access_status'),
-      s.from('profiles').select('locale,currency_code').eq('id',user.id).maybeSingle()
+      s.from('profiles').select('locale,currency_code,timezone').eq('id',user.id).maybeSingle()
     ]);
     if(profile?.locale)setLocale(profile.locale as any);
-    if(profile?.currency_code==='BRL'||profile?.currency_code==='USD'||profile?.currency_code==='EUR'||profile?.currency_code==='PYG')setCurrencyCode(profile.currency_code);
+    if(SUPPORTED_CURRENCIES.includes(profile?.currency_code as CurrencyCode))setCurrencyCode(profile!.currency_code as CurrencyCode);
+    if(profile?.timezone)setTimezone(profile.timezone);
     if(error){setAccessError('access');return}
     const row=Array.isArray(data)?data[0]:data;
     setAccess(row as Access);
   })()},[]);
 
-  const month=useMemo(()=>new Intl.DateTimeFormat(locale,{month:'long',year:'numeric'}).format(new Date()),[locale]);
+  const month=date(new Date(),{month:'long',year:'numeric'});
   const titles:Record<Section,string>={
     home:t('nav.home'),movements:t('nav.movements'),work:t('nav.work'),plan:t('nav.plan'),more:t('nav.more'),
     cards:t('nav.cards'),bills:t('nav.bills'),reserves:t('nav.reserves'),reports:t('nav.reports'),spend:t('spend.title'),

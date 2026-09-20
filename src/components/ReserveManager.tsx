@@ -276,7 +276,7 @@ export function ReserveManager(){
       <label>{t('common.date')}<input type="date" value={occurredOn} onChange={e=>setOccurredOn(e.target.value)} required/></label>
       <label>{t('reserves.note')} <small>({t('common.optional')})</small><input value={note} onChange={e=>setNote(e.target.value)}/></label>
       {mode==='withdraw'&&<div className="settingsNote"><b>{t('reserves.available')}: {currency(balance)}</b><span>{t('reserves.withdrawAffectsGoal')}</span></div>}
-      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setMode('none')}>{t('common.cancel')}</button><button className="primary" disabled={saving}>{saving?t('common.saving'):t('common.confirm')}</button></div>
+      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setMode('none')}>{t('common.cancel')}</button><button className="primary" disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div>
     </form></div>}
 
     {goalOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setGoalOpen(false)}}><form className="modalCard" onSubmit={saveGoal}>
