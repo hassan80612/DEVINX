@@ -692,5 +692,78 @@ const frCalculatorRelease=replace(frPaymentUxRelease,{"common.expandSection":"D�
 const deCalculatorRelease=replace(dePaymentUxRelease,{"common.expandSection":"Ausklappen","common.collapseSection":"Einklappen","calculator.title":"Pro-Rechner","calculator.subtitle":"Wissenschaftliche und finanzielle Berechnungen direkt in DevinX. Der Arbeitsstand bleibt bis zum Zurücksetzen gespeichert.","calculator.financial":"Finanzen","calculator.scientific":"Wissenschaftlich","calculator.defaultMode":"Schwebender Rechner","calculator.defaultModeHelp":"Wähle, welcher Modus über die schwebende Schaltfläche geöffnet wird. Im Rechner kannst du jederzeit wechseln.","calculator.preferenceEyebrow":"SCHNELLZUGRIFF","calculator.floatingLabel":"Rechner","calculator.reset":"Zurücksetzen","calculator.history":"Verlauf","calculator.noHistory":"Noch keine Berechnungen.","calculator.degree":"Grad","calculator.radian":"Radiant","calculator.error":"Fehler","calculator.useResult":"Ergebnis wissenschaftlich verwenden","calculator.calculate":"Berechnen","calculator.compound":"Zinseszins","calculator.simple":"Einfache Zinsen","calculator.loan":"PRICE / SAC","calculator.margin":"Marge / Markup","calculator.percent":"Prozent","calculator.principal":"Anfangskapital","calculator.rate":"Satz pro Periode (%)","calculator.periods":"Anzahl Perioden","calculator.futureValue":"Endwert","calculator.interest":"Zinsen","calculator.financedAmount":"Finanzierungsbetrag","calculator.pricePayment":"PRICE-Rate","calculator.priceTotal":"PRICE-Gesamt","calculator.totalInterest":"PRICE-Zinsen","calculator.sacFirst":"1. SAC-Rate","calculator.sacLast":"Letzte SAC-Rate","calculator.sacInterest":"SAC-Zinsen","calculator.cost":"Kosten","calculator.sale":"Verkaufspreis","calculator.profit":"Gewinn","calculator.marginPct":"Marge","calculator.markupPct":"Markup","calculator.baseValue":"Basiswert","calculator.percentValue":"Prozentwert","calculator.addedValue":"Mit Aufschlag","calculator.discountedValue":"Mit Rabatt"});
 const arCalculatorRelease=replace(arPaymentUxRelease,{"common.expandSection":"توسيع","common.collapseSection":"طي","calculator.title":"الآلة الحاسبة الاحترافية","calculator.subtitle":"حسابات علمية ومالية من داخل Devinx. يبقى العمل محفوظاً حتى تقوم بإعادة الضبط.","calculator.financial":"مالية","calculator.scientific":"علمية","calculator.defaultMode":"الآلة الحاسبة العائمة","calculator.defaultModeHelp":"اختر الوضع الذي يفتح من الزر العائم. ويمكنك التبديل بين الوضعين داخل الآلة الحاسبة.","calculator.preferenceEyebrow":"وصول سريع","calculator.floatingLabel":"حاسبة","calculator.reset":"إعادة الضبط","calculator.history":"السجل","calculator.noHistory":"لا توجد حسابات بعد.","calculator.degree":"درجات","calculator.radian":"راديان","calculator.error":"خطأ","calculator.useResult":"استخدام النتيجة في العلمية","calculator.calculate":"احسب","calculator.compound":"فائدة مركبة","calculator.simple":"فائدة بسيطة","calculator.loan":"PRICE / SAC","calculator.margin":"الهامش / Markup","calculator.percent":"النسبة المئوية","calculator.principal":"رأس المال الابتدائي","calculator.rate":"النسبة لكل فترة (%)","calculator.periods":"عدد الفترات","calculator.futureValue":"القيمة النهائية","calculator.interest":"الفائدة","calculator.financedAmount":"المبلغ المموّل","calculator.pricePayment":"قسط PRICE","calculator.priceTotal":"إجمالي PRICE","calculator.totalInterest":"فائدة PRICE","calculator.sacFirst":"أول قسط SAC","calculator.sacLast":"آخر قسط SAC","calculator.sacInterest":"فائدة SAC","calculator.cost":"التكلفة","calculator.sale":"سعر البيع","calculator.profit":"الربح","calculator.marginPct":"الهامش","calculator.markupPct":"Markup","calculator.baseValue":"القيمة الأساسية","calculator.percentValue":"قيمة النسبة","calculator.addedValue":"بعد الزيادة","calculator.discountedValue":"بعد الخصم"});
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptCalculatorRelease,en:enCalculatorRelease,es:esCalculatorRelease,fr:frCalculatorRelease,ar:arCalculatorRelease,de:deCalculatorRelease};
-export type TranslationKey=keyof typeof ptCalculatorRelease;
+const ptDailyGoalRelease=replace(ptCalculatorRelease,{
+'dashboard.dailyGoalMode':'Modo da meta',
+'dashboard.goalModeAuto':'Automático',
+'dashboard.goalModeManual':'Manual',
+'dashboard.manualDailyValue':'Valor manual por dia',
+'dashboard.autoReference':'Sugestão automática',
+'dashboard.manualDailyHelp':'Defina quanto você quer atingir por dia. O DevinX mantém a data escolhida, mas não altera esse valor automaticamente.',
+'dashboard.useManualDailyGoal':'Usar valor manual',
+'dashboard.manualDailyGoalSaved':'Meta diária manual criada.',
+'dashboard.manualDailyGoalName':'Meta diária manual',
+'dashboard.autoGoalCovered':'A meta automática foi encerrada porque os compromissos até a data já estão cobertos.'
+});
+const enDailyGoalRelease=replace(enCalculatorRelease,{
+'dashboard.dailyGoalMode':'Target mode',
+'dashboard.goalModeAuto':'Automatic',
+'dashboard.goalModeManual':'Manual',
+'dashboard.manualDailyValue':'Manual amount per day',
+'dashboard.autoReference':'Automatic suggestion',
+'dashboard.manualDailyHelp':'Set the amount you want to reach each day. DevinX keeps the selected date but will not change this amount automatically.',
+'dashboard.useManualDailyGoal':'Use manual amount',
+'dashboard.manualDailyGoalSaved':'Manual daily target created.',
+'dashboard.manualDailyGoalName':'Manual daily target',
+'dashboard.autoGoalCovered':'The automatic target was closed because commitments through the selected date are already covered.'
+});
+const esDailyGoalRelease=replace(esCalculatorRelease,{
+'dashboard.dailyGoalMode':'Modo de meta',
+'dashboard.goalModeAuto':'Automático',
+'dashboard.goalModeManual':'Manual',
+'dashboard.manualDailyValue':'Valor manual por día',
+'dashboard.autoReference':'Sugerencia automática',
+'dashboard.manualDailyHelp':'Define cuánto quieres alcanzar por día. DevinX mantiene la fecha elegida, pero no cambia este valor automáticamente.',
+'dashboard.useManualDailyGoal':'Usar valor manual',
+'dashboard.manualDailyGoalSaved':'Meta diaria manual creada.',
+'dashboard.manualDailyGoalName':'Meta diaria manual',
+'dashboard.autoGoalCovered':'La meta automática se cerró porque los compromisos hasta la fecha elegida ya están cubiertos.'
+});
+const frDailyGoalRelease=replace(frCalculatorRelease,{
+'dashboard.dailyGoalMode':'Mode de l’objectif',
+'dashboard.goalModeAuto':'Automatique',
+'dashboard.goalModeManual':'Manuel',
+'dashboard.manualDailyValue':'Montant manuel par jour',
+'dashboard.autoReference':'Suggestion automatique',
+'dashboard.manualDailyHelp':'Définissez le montant à atteindre chaque jour. DevinX conserve la date choisie mais ne modifie pas automatiquement ce montant.',
+'dashboard.useManualDailyGoal':'Utiliser le montant manuel',
+'dashboard.manualDailyGoalSaved':'Objectif quotidien manuel créé.',
+'dashboard.manualDailyGoalName':'Objectif quotidien manuel',
+'dashboard.autoGoalCovered':'L’objectif automatique a été clôturé car les engagements jusqu’à la date choisie sont déjà couverts.'
+});
+const deDailyGoalRelease=replace(deCalculatorRelease,{
+'dashboard.dailyGoalMode':'Zielmodus',
+'dashboard.goalModeAuto':'Automatisch',
+'dashboard.goalModeManual':'Manuell',
+'dashboard.manualDailyValue':'Manueller Betrag pro Tag',
+'dashboard.autoReference':'Automatischer Vorschlag',
+'dashboard.manualDailyHelp':'Lege fest, wie viel du pro Tag erreichen möchtest. DevinX behält das gewählte Datum bei, ändert diesen Betrag aber nicht automatisch.',
+'dashboard.useManualDailyGoal':'Manuellen Betrag verwenden',
+'dashboard.manualDailyGoalSaved':'Manuelles Tagesziel erstellt.',
+'dashboard.manualDailyGoalName':'Manuelles Tagesziel',
+'dashboard.autoGoalCovered':'Das automatische Ziel wurde beendet, weil die Verpflichtungen bis zum gewählten Datum bereits gedeckt sind.'
+});
+const arDailyGoalRelease=replace(arCalculatorRelease,{
+'dashboard.dailyGoalMode':'وضع الهدف',
+'dashboard.goalModeAuto':'تلقائي',
+'dashboard.goalModeManual':'يدوي',
+'dashboard.manualDailyValue':'المبلغ اليدوي يومياً',
+'dashboard.autoReference':'الاقتراح التلقائي',
+'dashboard.manualDailyHelp':'حدد المبلغ الذي تريد الوصول إليه يومياً. يحتفظ Devinx بالتاريخ المختار لكنه لا يغيّر هذا المبلغ تلقائياً.',
+'dashboard.useManualDailyGoal':'استخدام المبلغ اليدوي',
+'dashboard.manualDailyGoalSaved':'تم إنشاء هدف يومي يدوي.',
+'dashboard.manualDailyGoalName':'هدف يومي يدوي',
+'dashboard.autoGoalCovered':'تم إنهاء الهدف التلقائي لأن الالتزامات حتى التاريخ المختار مغطاة بالفعل.'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptDailyGoalRelease,en:enDailyGoalRelease,es:esDailyGoalRelease,fr:frDailyGoalRelease,ar:arDailyGoalRelease,de:deDailyGoalRelease};
+export type TranslationKey=keyof typeof ptDailyGoalRelease;

@@ -12,7 +12,7 @@ import {useI18n} from '@/i18n/provider';
 
 type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string};
-type Goal={name:string;target_minor:number;basis:string;period:string};
+type Goal={id:string;name:string;target_minor:number;basis:string;period:string;goal_source:'manual'|'daily_reserve_auto'|'daily_reserve_manual';target_date:string|null};
 type Bill=RecurringBillLike&{created_at:string;is_avoidable:boolean};
 type BillPay=RecurringPaymentLike&{paid_on:string};
 type BillOverride=RecurringOverrideLike;
@@ -39,6 +39,7 @@ function monthDistance(from:string,to:string){
   const ty=Number(to.slice(0,4)),tm=Number(to.slice(5,7));
   return (ty-fy)*12+(tm-fm);
 }
+function moneyMinor(raw:string){return Math.round((Number(String(raw||'').replace(/\./g,'').replace(',','.'))||0)*100)}
 
 export function DashboardOverview(){
   const{t,currency,date}=useI18n();
@@ -59,6 +60,8 @@ export function DashboardOverview(){
   const[goalNotice,setGoalNotice]=useState('');
   const[commitmentMonth,setCommitmentMonth]=useState(localMonthStartISO());
   const[dailyGoalExpanded,setDailyGoalExpanded]=useState(true);
+  const[goalMode,setGoalMode]=useState<'automatic'|'manual'>('automatic');
+  const[manualDailyTarget,setManualDailyTarget]=useState('');
 
   async function load(show=false){
     if(show)setLoading(true);
@@ -69,7 +72,7 @@ export function DashboardOverview(){
     const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rProfile]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',user.id).gte('worked_on',from),
-      s.from('goals').select('name,target_minor,basis,period').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
+      s.from('goals').select('id,name,target_minor,basis,period,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
       s.from('recurring_bills').select('id,amount_minor,due_day,start_month,installment_count,created_at,is_avoidable').eq('user_id',user.id).eq('is_active',true),
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',user.id),
       s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id),
@@ -81,7 +84,14 @@ export function DashboardOverview(){
     ]);
     setTx((rTx.data||[]) as Tx[]);
     setWork((rWork.data||[]) as Work[]);
-    setGoal(((rGoal.data||[])[0]||null) as Goal|null);
+    const loadedGoal=((rGoal.data||[])[0]||null) as Goal|null;
+    setGoal(loadedGoal);
+    if(loadedGoal?.goal_source==='daily_reserve_manual'){
+      setGoalMode('manual');
+      setManualDailyTarget(String(Number(loadedGoal.target_minor)/100).replace('.',','));
+    }else{
+      setGoalMode('automatic');
+    }
     setBills((rBills.data||[]) as Bill[]);
     setBillPays((rBillPay.data||[]) as BillPay[]);
     setBillOverrides((rBillOverrides.data||[]) as BillOverride[]);
@@ -247,6 +257,12 @@ export function DashboardOverview(){
     const value=targetDraft||null;
     const{error}=await s.from('profiles').update({daily_goal_target_date:value}).eq('id',user.id);
     if(error){setGoalNotice(t('common.errorSave'));return}
+    const effectiveHorizon=value||monthEnd(localMonthStartISO());
+    if(goal?.goal_source==='daily_reserve_manual'){
+      const{error:goalError}=await s.from('goals').update({target_date:effectiveHorizon}).eq('id',goal.id);
+      if(goalError){setGoalNotice(t('common.errorSave'));return}
+      setGoal(current=>current?{...current,target_date:effectiveHorizon}:current);
+    }
     setGoalTargetDate(value||'');
     setGoalNotice(value?t('dashboard.targetDateSaved'):t('dashboard.targetDateCleared'));
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
@@ -259,6 +275,12 @@ export function DashboardOverview(){
     if(!user)return;
     const{error}=await s.from('profiles').update({daily_goal_target_date:null}).eq('id',user.id);
     if(error){setGoalNotice(t('common.errorSave'));return}
+    const effectiveHorizon=monthEnd(localMonthStartISO());
+    if(goal?.goal_source==='daily_reserve_manual'){
+      const{error:goalError}=await s.from('goals').update({target_date:effectiveHorizon}).eq('id',goal.id);
+      if(goalError){setGoalNotice(t('common.errorSave'));return}
+      setGoal(current=>current?{...current,target_date:effectiveHorizon}:current);
+    }
     setGoalTargetDate('');
     setGoalNotice(t('dashboard.targetDateCleared'));
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
@@ -268,17 +290,85 @@ export function DashboardOverview(){
     if(reserveSuggestion.daily<=0)return;
     if(goal&&!confirm(t('dashboard.dailyGoalConfirm')))return;
     const s=createClient();
-    const{error}=await s.rpc('replace_active_goal',{
-      p_name:'__devinx_daily_reserve__:'+reserveSuggestion.horizon,
+    const{error}=await s.rpc('replace_active_goal_v2',{
+      p_name:'__devinx_daily_reserve__',
       p_period:'daily',
       p_basis:'savings',
-      p_target_minor:reserveSuggestion.daily
+      p_target_minor:reserveSuggestion.daily,
+      p_source:'daily_reserve_auto',
+      p_target_date:reserveSuggestion.horizon
     });
     if(error){setGoalNotice(t('common.errorSave'));return}
+    setGoalMode('automatic');
     setGoalNotice(t('dashboard.dailyGoalSaved'));
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
     await load(false);
   }
+
+  async function useManualDailyGoal(){
+    const value=moneyMinor(manualDailyTarget);
+    if(value<=0)return;
+    const today=localDateISO();
+    if(targetDraft&&targetDraft<today){setGoalNotice(t('dashboard.futureDateError'));return}
+    if(goal&&!confirm(t('dashboard.dailyGoalConfirm')))return;
+    const s=createClient();
+    const{data:{user}}=await s.auth.getUser();
+    if(!user)return;
+    const effectiveHorizon=(targetDraft&&targetDraft>=today?targetDraft:'')||reserveSuggestion.horizon;
+    if(targetDraft!==goalTargetDate){
+      const{error:horizonError}=await s.from('profiles').update({daily_goal_target_date:targetDraft||null}).eq('id',user.id);
+      if(horizonError){setGoalNotice(t('common.errorSave'));return}
+      setGoalTargetDate(targetDraft||'');
+    }
+    const{error}=await s.rpc('replace_active_goal_v2',{
+      p_name:'__devinx_daily_manual__',
+      p_period:'daily',
+      p_basis:'savings',
+      p_target_minor:value,
+      p_source:'daily_reserve_manual',
+      p_target_date:effectiveHorizon
+    });
+    if(error){setGoalNotice(t('common.errorSave'));return}
+    setGoalMode('manual');
+    setGoalNotice(t('dashboard.manualDailyGoalSaved'));
+    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    await load(false);
+  }
+
+  useEffect(()=>{
+    if(loading||!goal||goal.goal_source!=='daily_reserve_auto')return;
+    const nextTarget=reserveSuggestion.daily;
+    const nextDate=reserveSuggestion.horizon;
+    if(nextTarget<=0){
+      let cancelled=false;
+      (async()=>{
+        const s=createClient();
+        const{error}=await s.from('goals').update({is_active:false}).eq('id',goal.id);
+        if(!error&&!cancelled){
+          setGoal(current=>current?.id===goal.id?null:current);
+          setGoalNotice(t('dashboard.autoGoalCovered'));
+        }
+      })();
+      return()=>{cancelled=true};
+    }
+    if(Number(goal.target_minor)===nextTarget&&goal.target_date===nextDate)return;
+    let cancelled=false;
+    (async()=>{
+      const s=createClient();
+      const{error}=await s.from('goals').update({
+        name:'__devinx_daily_reserve__',
+        period:'daily',
+        basis:'savings',
+        target_minor:nextTarget,
+        goal_source:'daily_reserve_auto',
+        target_date:nextDate
+      }).eq('id',goal.id);
+      if(!error&&!cancelled){
+        setGoal(current=>current?.id===goal.id?{...current,name:'__devinx_daily_reserve__',period:'daily',basis:'savings',target_minor:nextTarget,goal_source:'daily_reserve_auto',target_date:nextDate}:current);
+      }
+    })();
+    return()=>{cancelled=true};
+  },[loading,goal?.id,goal?.goal_source,goal?.target_minor,goal?.target_date,reserveSuggestion.daily,reserveSuggestion.horizon,t]);
 
   const goalProgress=useMemo(()=>{
     if(!goal)return null;
@@ -298,18 +388,26 @@ export function DashboardOverview(){
     const workNet=periodWork.reduce((a,b)=>a+Number(b.gross_income_minor)-Number(b.energy_cost_minor)-Number(b.extra_work_cost_minor),0);
     const payoff=periodDebt.reduce((a,b)=>a+Number(b.amount_minor),0);
     const reservePeriodNet=reserveEntries.filter(e=>e.occurred_on>=start&&e.occurred_on<=today).reduce((sum,e)=>sum+(e.kind==='deposit'?Number(e.amount_minor):-Number(e.amount_minor)),0);
-    const base=goal.basis==='operational_net'?workNet:goal.basis==='savings'?Math.max(0,income-out-reservePeriodNet):goal.basis==='payoff'?payoff:income;
-    return{base,percent:Math.min(100,Math.max(0,Math.round(base/Math.max(1,Number(goal.target_minor))*100)))};
-  },[goal,tx,work,billPays,cardPays,debtPays,reserveEntries]);
+    const isDailyManaged=goal.goal_source==='daily_reserve_auto'||goal.goal_source==='daily_reserve_manual';
+    const base=isDailyManaged
+      ?Math.max(0,income-out)
+      :goal.basis==='operational_net'?workNet:goal.basis==='savings'?Math.max(0,income-out-reservePeriodNet):goal.basis==='payoff'?payoff:income;
+    const target=goal.goal_source==='daily_reserve_auto'?reserveSuggestion.daily:Number(goal.target_minor);
+    if(target<=0)return null;
+    return{base,target,percent:Math.min(100,Math.max(0,Math.round(base/Math.max(1,target)*100)))};
+  },[goal,tx,work,billPays,cardPays,debtPays,reserveEntries,reserveSuggestion.daily]);
 
   if(loading)return <section className="panel dashboardLoading"><span className="loader"/></section>;
 
   const projectedStrip=<section className="projectedStrip"><div><small>{t('dashboard.projected')}</small><strong>{currency(numbers.projected)}</strong></div><span>{t('dashboard.projectedHelp')}</span></section>;
 
-  const isDailyReserveGoal=!!goal?.name?.startsWith('__devinx_daily_reserve__:');
-  const dailyReserveDeadline=isDailyReserveGoal?goal!.name.split(':').slice(1).join(':'):'';
-  const goalTitle=isDailyReserveGoal
+  const isDailyAutoGoal=goal?.goal_source==='daily_reserve_auto';
+  const isDailyManualGoal=goal?.goal_source==='daily_reserve_manual';
+  const legacyDailyDeadline=goal?.name?.startsWith('__devinx_daily_reserve__:')?goal.name.split(':').slice(1).join(':'):'';
+  const dailyReserveDeadline=(isDailyAutoGoal||isDailyManualGoal)?(goal?.target_date||legacyDailyDeadline):'';
+  const goalTitle=isDailyAutoGoal
     ?t('dashboard.dailyGoalName')
+    :isDailyManualGoal?t('dashboard.manualDailyGoalName')
     :goal?.name==='__devinx_default_goal__'?t('goals.defaultName'):goal?.name;
 
   return <div className="dashboardStack">
@@ -347,34 +445,49 @@ export function DashboardOverview(){
       {!dailyGoalExpanded&&<div className="collapsedGoalSummary"><span>{t('dashboard.perDay')}</span><b>{currency(reserveSuggestion.daily)}</b><small>{t('dashboard.criticalCheckpoint')} · {date(reserveSuggestion.criticalDeadline,{day:'2-digit',month:'2-digit'})}</small></div>}
 
       {dailyGoalExpanded&&<div className="collapsibleBody">
+        <div className="dailyGoalModeTabs" role="tablist" aria-label={t('dashboard.dailyGoalMode')}>
+          <button type="button" className={goalMode==='automatic'?'active':''} onClick={()=>setGoalMode('automatic')}>{t('dashboard.goalModeAuto')}</button>
+          <button type="button" className={goalMode==='manual'?'active':''} onClick={()=>setGoalMode('manual')}>{t('dashboard.goalModeManual')}</button>
+        </div>
+
         <div className="goalHorizonControl">
           <label><span>{t('dashboard.targetDateOptional')}</span><input type="date" min={localDateISO()} value={targetDraft} onChange={e=>setTargetDraft(e.target.value)}/></label>
           <button className="textButton" type="button" onClick={saveHorizon}>{t('dashboard.applyDate')}</button>
           {goalTargetDate&&<button className="textButton dangerText" type="button" onClick={clearHorizon}>{t('dashboard.endOfMonth')}</button>}
         </div>
 
-        <div className="dailyReserveGrid">
-          <span><small>{t('dashboard.commitmentsUntilDate')}</small><b>{currency(reserveSuggestion.total)}</b></span>
-          <span><small>{t('dashboard.cashAvailable')}</small><b className={numbers.balance>=0?'positive':'negative'}>{currency(numbers.balance)}</b></span>
-          <span><small>{t('dashboard.reserveSeparated')}</small><b>{currency(reserveBalance)}</b></span>
-          <span className="dailyTarget"><small>{t('dashboard.perDay')}</small><b>{currency(reserveSuggestion.daily)}</b></span>
-        </div>
+        {goalMode==='automatic'?<>
+          <div className="dailyReserveGrid">
+            <span><small>{t('dashboard.commitmentsUntilDate')}</small><b>{currency(reserveSuggestion.total)}</b></span>
+            <span><small>{t('dashboard.cashAvailable')}</small><b className={numbers.balance>=0?'positive':'negative'}>{currency(numbers.balance)}</b></span>
+            <span><small>{t('dashboard.reserveSeparated')}</small><b>{currency(reserveBalance)}</b></span>
+            <span className="dailyTarget"><small>{t('dashboard.perDay')}</small><b>{currency(reserveSuggestion.daily)}</b></span>
+          </div>
 
-        <div className="dailyCheckpoint">
-          <span>{t('dashboard.criticalCheckpoint')}</span>
-          <b>{date(reserveSuggestion.criticalDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</b>
-          <small>{t('dashboard.criticalCheckpointHelp')}</small>
-        </div>
+          <div className="dailyCheckpoint">
+            <span>{t('dashboard.criticalCheckpoint')}</span>
+            <b>{date(reserveSuggestion.criticalDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</b>
+            <small>{t('dashboard.criticalCheckpointHelp')}</small>
+          </div>
 
-        <p>{reserveSuggestion.daily>0?t('dashboard.dailyReserveExplainAdvanced'):t('dashboard.dailyReserveCoveredHelp')}</p>
-        {reserveSuggestion.daily>0&&<button className="primary dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
+          <p>{reserveSuggestion.daily>0?t('dashboard.dailyReserveExplainAdvanced'):t('dashboard.dailyReserveCoveredHelp')}</p>
+          {reserveSuggestion.daily>0&&<button className="primary dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
+        </>:<>
+          <div className="manualDailyGoal">
+            <label><span>{t('dashboard.manualDailyValue')}</span><input value={manualDailyTarget} onChange={e=>setManualDailyTarget(e.target.value)} inputMode="decimal" placeholder="0,00"/></label>
+            <div><small>{t('dashboard.autoReference')}</small><b>{currency(reserveSuggestion.daily)}</b></div>
+          </div>
+          <p>{t('dashboard.manualDailyHelp')}</p>
+          <button className="primary dailyGoalButton" onClick={useManualDailyGoal} disabled={moneyMinor(manualDailyTarget)<=0}>{t('dashboard.useManualDailyGoal')}</button>
+        </>}
+
         {goalNotice&&<div className="authMessage">{goalNotice}</div>}
       </div>}
     </section>
 
     {reserveBalance>0&&<section className="reserveHomeNote"><span>◇</span><div><small>{t('nav.reserves')}</small><b>{currency(reserveBalance)}</b></div><p>{t('dashboard.reserveSeparatedHelp')}</p></section>}
 
-    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2>{dailyReserveDeadline&&<span className="goalDeadline">{t('dashboard.untilDate')} {date(dailyReserveDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>}</div><div className="goalRing" style={{background:'conic-gradient(#edc55e '+goalProgress.percent+'%, rgba(255,255,255,.08) 0)'}}><div className="goalRingInner"><small>{t('dashboard.todayGoal')}</small><strong>{goalProgress.percent}%</strong></div></div></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(Number(goal.target_minor))}</p></section>}
+    {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2>{dailyReserveDeadline&&<span className="goalDeadline">{t('dashboard.untilDate')} {date(dailyReserveDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>}</div><div className="goalRing" style={{background:'conic-gradient(#edc55e '+goalProgress.percent+'%, rgba(255,255,255,.08) 0)'}}><div className="goalRingInner"><small>{t('dashboard.todayGoal')}</small><strong>{goalProgress.percent}%</strong></div></div></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(goalProgress.target)}</p></section>}
 
     <section className="panel commitmentsPanel">
       <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>

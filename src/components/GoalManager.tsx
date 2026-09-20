@@ -4,17 +4,17 @@ import {FormEvent,useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
 
-type Goal={id:string;name:string;period:'daily'|'weekly'|'monthly';basis:'gross'|'operational_net'|'savings'|'payoff';target_minor:number};
+type Goal={id:string;name:string;period:'daily'|'weekly'|'monthly';basis:'gross'|'operational_net'|'savings'|'payoff';target_minor:number;goal_source:'manual'|'daily_reserve_auto'|'daily_reserve_manual';target_date:string|null};
 const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
 
 export function GoalManager(){
   const{t,currency}=useI18n();
   const[goal,setGoal]=useState<Goal|null>(null);const[open,setOpen]=useState(false);const[name,setName]=useState('');const[target,setTarget]=useState('');const[period,setPeriod]=useState<Goal['period']>('monthly');const[basis,setBasis]=useState<Goal['basis']>('gross');const[notice,setNotice]=useState('');const[saving,setSaving]=useState(false);
 
-  async function load(){const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}const{data}=await s.from('goals').select('id,name,period,basis,target_minor').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1);setGoal(((data||[])[0]||null) as Goal|null)}
+  async function load(){const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}const{data}=await s.from('goals').select('id,name,period,basis,target_minor,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1);setGoal(((data||[])[0]||null) as Goal|null)}
   useEffect(()=>{load()},[]);
 
-  function startNew(){setName(goal?.name==='__devinx_default_goal__'||goal?.name?.startsWith('__devinx_daily_reserve__:')?'':goal?.name||'');setTarget(goal?String(Number(goal.target_minor)/100).replace('.',','):'');setPeriod(goal?.period||'monthly');setBasis(goal?.basis||'gross');setOpen(true);setNotice('')}
+  function startNew(){setName(goal?.name==='__devinx_default_goal__'||goal?.goal_source==='daily_reserve_auto'||goal?.goal_source==='daily_reserve_manual'||goal?.name?.startsWith('__devinx_daily_reserve__:')?'':goal?.name||'');setTarget(goal?String(Number(goal.target_minor)/100).replace('.',','):'');setPeriod(goal?.period||'monthly');setBasis(goal?.basis||'gross');setOpen(true);setNotice('')}
   async function save(e:FormEvent){
     e.preventDefault();const value=minor(target);if(value<=0)return;setSaving(true);const s=createClient();const{error}=await s.rpc('replace_active_goal',{p_name:name.trim(),p_period:period,p_basis:basis,p_target_minor:value});setSaving(false);
     if(error){setNotice(t('common.errorSave'));return}setOpen(false);window.dispatchEvent(new CustomEvent('devinx:finance-updated'));await load();
@@ -23,8 +23,9 @@ export function GoalManager(){
   const periodLabel=goal?.period==='daily'?t('goals.daily'):goal?.period==='weekly'?t('goals.weekly'):t('goals.monthly');
   const basisLabel=goal?.basis==='operational_net'?t('goals.net'):goal?.basis==='savings'?t('goals.savings'):goal?.basis==='payoff'?t('goals.payoff'):t('goals.gross');
 
-  const goalName=goal?.name?.startsWith('__devinx_daily_reserve__:')
+  const goalName=goal?.goal_source==='daily_reserve_auto'||goal?.name?.startsWith('__devinx_daily_reserve__:')
     ?t('dashboard.dailyGoalName')
+    :goal?.goal_source==='daily_reserve_manual'?t('dashboard.manualDailyGoalName')
     :goal?.name==='__devinx_default_goal__'?t('goals.defaultName'):goal?.name;
 
   return <div className="goalManager">
