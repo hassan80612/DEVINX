@@ -19,6 +19,7 @@ import {LanguageMenu} from './LanguageMenu';
 import {IntegrationBootstrap} from './IntegrationBootstrap';
 import {SubscriptionPanel} from './SubscriptionPanel';
 import {BrandLogo} from './BrandLogo';
+import {ProCalculator} from './CalculatorPro';
 import {useI18n} from '@/i18n/provider';
 
 type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'bills'|'reserves'|'reports'|'spend'|'categories'|'settings'|'master';
@@ -129,6 +130,7 @@ export function FinanceHub(){
       {section==='master'&&access.is_admin&&<AdminMaster/>}
     </section>
 
+    <ProCalculator variant="floating"/>
     <QuickCapture request={capture} onNavigate={navigate}/>
 
     <nav className="financeBottomNav" aria-label="Main navigation">

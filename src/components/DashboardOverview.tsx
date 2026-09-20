@@ -58,6 +58,7 @@ export function DashboardOverview(){
   const[projectedHost,setProjectedHost]=useState<HTMLElement|null>(null);
   const[goalNotice,setGoalNotice]=useState('');
   const[commitmentMonth,setCommitmentMonth]=useState(localMonthStartISO());
+  const[dailyGoalExpanded,setDailyGoalExpanded]=useState(true);
 
   async function load(show=false){
     if(show)setLoading(true);
@@ -93,6 +94,9 @@ export function DashboardOverview(){
     setTargetDraft(saved);
     setLoading(false);
   }
+
+  useEffect(()=>{try{const saved=localStorage.getItem('devinx_daily_goal_expanded');if(saved!==null)setDailyGoalExpanded(saved==='1')}catch{}},[]);
+  function toggleDailyGoal(){setDailyGoalExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_daily_goal_expanded',next?'1':'0')}catch{}return next})}
 
   useEffect(()=>{
     load(true);
@@ -334,34 +338,38 @@ export function DashboardOverview(){
       </div>
     </section>
 
-    <section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')}>
+    <section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')+(!dailyGoalExpanded?' isCollapsed':'')}>
       <div className="dailyReserveTop">
         <div><small>{t('dashboard.dailyReserveEyebrow')}</small><h2>{reserveSuggestion.daily>0?t('dashboard.dailyReserveTitle'):t('dashboard.dailyReserveCovered')}</h2></div>
-        <span>{date(reserveSuggestion.horizon,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>
+        <div className="collapsibleHeaderTools"><span>{date(reserveSuggestion.horizon,{day:'2-digit',month:'2-digit',year:'numeric'})}</span><button type="button" className="collapseToggle" onClick={toggleDailyGoal} aria-expanded={dailyGoalExpanded}>{dailyGoalExpanded?t('common.collapseSection'):t('common.expandSection')} <i>{dailyGoalExpanded?'⌃':'⌄'}</i></button></div>
       </div>
 
-      <div className="goalHorizonControl">
-        <label><span>{t('dashboard.targetDateOptional')}</span><input type="date" min={localDateISO()} value={targetDraft} onChange={e=>setTargetDraft(e.target.value)}/></label>
-        <button className="textButton" type="button" onClick={saveHorizon}>{t('dashboard.applyDate')}</button>
-        {goalTargetDate&&<button className="textButton dangerText" type="button" onClick={clearHorizon}>{t('dashboard.endOfMonth')}</button>}
-      </div>
+      {!dailyGoalExpanded&&<div className="collapsedGoalSummary"><span>{t('dashboard.perDay')}</span><b>{currency(reserveSuggestion.daily)}</b><small>{t('dashboard.criticalCheckpoint')} · {date(reserveSuggestion.criticalDeadline,{day:'2-digit',month:'2-digit'})}</small></div>}
 
-      <div className="dailyReserveGrid">
-        <span><small>{t('dashboard.commitmentsUntilDate')}</small><b>{currency(reserveSuggestion.total)}</b></span>
-        <span><small>{t('dashboard.cashAvailable')}</small><b className={numbers.balance>=0?'positive':'negative'}>{currency(numbers.balance)}</b></span>
-        <span><small>{t('dashboard.reserveSeparated')}</small><b>{currency(reserveBalance)}</b></span>
-        <span className="dailyTarget"><small>{t('dashboard.perDay')}</small><b>{currency(reserveSuggestion.daily)}</b></span>
-      </div>
+      {dailyGoalExpanded&&<div className="collapsibleBody">
+        <div className="goalHorizonControl">
+          <label><span>{t('dashboard.targetDateOptional')}</span><input type="date" min={localDateISO()} value={targetDraft} onChange={e=>setTargetDraft(e.target.value)}/></label>
+          <button className="textButton" type="button" onClick={saveHorizon}>{t('dashboard.applyDate')}</button>
+          {goalTargetDate&&<button className="textButton dangerText" type="button" onClick={clearHorizon}>{t('dashboard.endOfMonth')}</button>}
+        </div>
 
-      <div className="dailyCheckpoint">
-        <span>{t('dashboard.criticalCheckpoint')}</span>
-        <b>{date(reserveSuggestion.criticalDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</b>
-        <small>{t('dashboard.criticalCheckpointHelp')}</small>
-      </div>
+        <div className="dailyReserveGrid">
+          <span><small>{t('dashboard.commitmentsUntilDate')}</small><b>{currency(reserveSuggestion.total)}</b></span>
+          <span><small>{t('dashboard.cashAvailable')}</small><b className={numbers.balance>=0?'positive':'negative'}>{currency(numbers.balance)}</b></span>
+          <span><small>{t('dashboard.reserveSeparated')}</small><b>{currency(reserveBalance)}</b></span>
+          <span className="dailyTarget"><small>{t('dashboard.perDay')}</small><b>{currency(reserveSuggestion.daily)}</b></span>
+        </div>
 
-      <p>{reserveSuggestion.daily>0?t('dashboard.dailyReserveExplainAdvanced'):t('dashboard.dailyReserveCoveredHelp')}</p>
-      {reserveSuggestion.daily>0&&<button className="primary dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
-      {goalNotice&&<div className="authMessage">{goalNotice}</div>}
+        <div className="dailyCheckpoint">
+          <span>{t('dashboard.criticalCheckpoint')}</span>
+          <b>{date(reserveSuggestion.criticalDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</b>
+          <small>{t('dashboard.criticalCheckpointHelp')}</small>
+        </div>
+
+        <p>{reserveSuggestion.daily>0?t('dashboard.dailyReserveExplainAdvanced'):t('dashboard.dailyReserveCoveredHelp')}</p>
+        {reserveSuggestion.daily>0&&<button className="primary dailyGoalButton" onClick={useDailyGoal}>{t('dashboard.useDailyGoal')}</button>}
+        {goalNotice&&<div className="authMessage">{goalNotice}</div>}
+      </div>}
     </section>
 
     {reserveBalance>0&&<section className="reserveHomeNote"><span>◇</span><div><small>{t('nav.reserves')}</small><b>{currency(reserveBalance)}</b></div><p>{t('dashboard.reserveSeparatedHelp')}</p></section>}
