@@ -8,29 +8,13 @@ import {CalculatorModePreference,ProCalculator} from './CalculatorPro';
 
 const HISTORY_PERIODS=[1,3,6,12,24] as const;
 const TIMEZONES=[
-  {value:'auto',label:'Automático'},
-  {value:'America/Sao_Paulo',label:'São Paulo / Brasília'},
-  {value:'America/Argentina/Buenos_Aires',label:'Buenos Aires'},
-  {value:'America/Asuncion',label:'Asunción'},
-  {value:'America/Montevideo',label:'Montevideo'},
-  {value:'America/Santiago',label:'Santiago'},
-  {value:'America/Bogota',label:'Bogotá'},
-  {value:'America/Lima',label:'Lima'},
-  {value:'America/Mexico_City',label:'Cidade do México'},
-  {value:'America/New_York',label:'Nova York'},
-  {value:'America/Chicago',label:'Chicago'},
-  {value:'America/Denver',label:'Denver'},
-  {value:'America/Los_Angeles',label:'Los Angeles'},
-  {value:'Europe/London',label:'Londres'},
-  {value:'Europe/Madrid',label:'Madri'},
-  {value:'Europe/Paris',label:'Paris'},
-  {value:'Europe/Berlin',label:'Berlim'},
-  {value:'Asia/Dubai',label:'Dubai'},
-  {value:'Asia/Riyadh',label:'Riad'},
-  {value:'Asia/Kolkata',label:'Índia'},
-  {value:'Asia/Shanghai',label:'Xangai'},
-  {value:'Asia/Tokyo',label:'Tóquio'},
-  {value:'Australia/Sydney',label:'Sydney'}
+  'auto',
+  'America/Sao_Paulo','America/Argentina/Buenos_Aires','America/Asuncion','America/Montevideo',
+  'America/Santiago','America/Bogota','America/Lima','America/Mexico_City',
+  'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+  'Europe/London','Europe/Madrid','Europe/Paris','Europe/Berlin',
+  'Asia/Dubai','Asia/Riyadh','Asia/Kolkata','Asia/Shanghai','Asia/Tokyo',
+  'Australia/Sydney'
 ] as const;
 
 function deviceTimezone(){
@@ -42,6 +26,14 @@ function timezoneOffset(zone:string){
     return new Intl.DateTimeFormat('en',{timeZone:resolved,timeZoneName:'shortOffset',hour:'2-digit'})
       .formatToParts(new Date()).find(part=>part.type==='timeZoneName')?.value||'';
   }catch{return ''}
+}
+function timezoneName(zone:string,locale:string){
+  try{
+    return new Intl.DateTimeFormat(locale,{timeZone:zone,timeZoneName:'longGeneric',hour:'2-digit'})
+      .formatToParts(new Date()).find(part=>part.type==='timeZoneName')?.value
+      ||zone.split('/').pop()?.replace(/_/g,' ')
+      ||zone;
+  }catch{return zone.split('/').pop()?.replace(/_/g,' ')||zone}
 }
 
 function SettingsFoldCard({id,eyebrow,title,summary,children}:{id:string;eyebrow:string;title:string;summary?:string;children:ReactNode}){
@@ -77,10 +69,9 @@ export function PreferencesManager(){
     return Object.fromEntries(SUPPORTED_CURRENCIES.map(code=>[code,(names?.of(code)||code)+' ('+code+')'])) as Record<CurrencyCode,string>;
   },[locale]);
 
-  const selectedTimezone=TIMEZONES.find(item=>item.value===timezone);
   const timezoneSummary=timezone==='auto'
-    ?t('settings.timezoneAuto')+' · '+deviceTimezone().replace(/_/g,' ')
-    :(selectedTimezone?.label||timezone.replace(/_/g,' '))+(timezoneOffset(timezone)?' · '+timezoneOffset(timezone):'');
+    ?t('settings.timezoneAuto')+' · '+timezoneName(deviceTimezone(),locale)
+    :timezoneName(timezone,locale)+(timezoneOffset(timezone)?' · '+timezoneOffset(timezone):'');
 
   useEffect(()=>{(async()=>{
     const s=createClient();
@@ -129,7 +120,7 @@ export function PreferencesManager(){
         </label>
         <label>{t('settings.timezone')}
           <select value={timezone} onChange={e=>setTimezone(e.target.value)}>
-            {TIMEZONES.map(item=><option key={item.value} value={item.value}>{item.value==='auto'?t('settings.timezoneAuto')+' · '+deviceTimezone().replace(/_/g,' '):item.label+(timezoneOffset(item.value)?' · '+timezoneOffset(item.value):'')}</option>)}
+            {TIMEZONES.map(zone=><option key={zone} value={zone}>{zone==='auto'?t('settings.timezoneAuto')+' · '+timezoneName(deviceTimezone(),locale):timezoneName(zone,locale)+(timezoneOffset(zone)?' · '+timezoneOffset(zone):'')}</option>)}
           </select>
           <small>{t('settings.timezoneHelp')}</small>
         </label>
