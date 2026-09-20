@@ -2,10 +2,11 @@
 
 import {createContext,useContext,useEffect,useMemo,useRef,useState,type ReactNode} from 'react';
 import {usePathname} from 'next/navigation';
+import {createClient as createSupabaseJsClient} from '@supabase/supabase-js';
 import {createClient} from '@/lib/supabase/client';
 
-const CHANNEL_NAME='devinx-live-presence-v1';
-const SESSION_KEY='devinx-live-session-v1';
+const CHANNEL_NAME='devinx:live:presence';
+const SESSION_KEY='devinx-live-session-v2';
 
 export type LivePresenceRow={
   session_id:string;
@@ -15,9 +16,11 @@ export type LivePresenceRow={
   last_seen_at:string;
 };
 
+type PresenceStatus='connecting'|'online'|'retrying'|'error';
+
 type PresenceContextValue={
   rows:LivePresenceRow[];
-  connected:boolean;
+  status:PresenceStatus;
 };
 
 type PresenceCustomer={
@@ -26,7 +29,7 @@ type PresenceCustomer={
   is_admin:boolean;
 };
 
-const PresenceContext=createContext<PresenceContextValue>({rows:[],connected:false});
+const PresenceContext=createContext<PresenceContextValue>({rows:[],status:'connecting'});
 
 function createSessionId(){
   try{
@@ -51,7 +54,6 @@ async function hashIdentifier(value:string){
 
 function normalizePresence(state:Record<string,unknown>){
   const bySession=new Map<string,LivePresenceRow>();
-
   for(const[key,value]of Object.entries(state)){
     const items=Array.isArray(value)?value:[];
     for(const raw of items){
@@ -70,32 +72,34 @@ function normalizePresence(state:Record<string,unknown>){
       if(!previous||Date.parse(next.last_seen_at)>=Date.parse(previous.last_seen_at))bySession.set(sessionId,next);
     }
   }
-
   return Array.from(bySession.values()).sort((a,b)=>Date.parse(b.last_seen_at)-Date.parse(a.last_seen_at));
 }
 
 export function PresenceProvider({children}:{children:ReactNode}){
   const pathname=usePathname();
   const pathRef=useRef(pathname||'/');
-  const trackRef=useRef<()=>void>(()=>{});
+  const channelRef=useRef<any>(null);
+  const retryRef=useRef<number|null>(null);
+  const activeRef=useRef(true);
   const[rows,setRows]=useState<LivePresenceRow[]>([]);
-  const[connected,setConnected]=useState(false);
+  const[status,setStatus]=useState<PresenceStatus>('connecting');
+
+  useEffect(()=>{pathRef.current=pathname||'/';void trackNow()},[pathname]);
 
   useEffect(()=>{
-    pathRef.current=pathname||'/';
-    trackRef.current();
-  },[pathname]);
-
-  useEffect(()=>{
-    let active=true;
-    const client:any=createClient();
+    activeRef.current=true;
+    const authClient=createClient();
+    const realtimeClient:any=createSupabaseJsClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
+    );
     const sessionId=createSessionId();
-    const channel:any=client.channel(CHANNEL_NAME,{config:{presence:{key:sessionId}}});
 
-    async function track(){
-      if(!active||document.visibilityState!=='visible')return;
+    async function track(channel=channelRef.current){
+      if(!activeRef.current||!channel||document.visibilityState!=='visible')return;
       try{
-        const{data}=await client.auth.getSession();
+        const{data}=await authClient.auth.getSession();
         const userId=data.session?.user?.id||'';
         const userHash=userId?await hashIdentifier(userId):'';
         await channel.track({
@@ -106,51 +110,114 @@ export function PresenceProvider({children}:{children:ReactNode}){
           last_seen_at:new Date().toISOString()
         });
       }catch{
-        // Presence is best-effort and must never interfere with the product.
+        // Telemetria de presença nunca deve interromper o produto.
       }
     }
 
-    trackRef.current=()=>{void track()};
+    function clearRetry(){
+      if(retryRef.current!==null){
+        window.clearTimeout(retryRef.current);
+        retryRef.current=null;
+      }
+    }
 
-    channel
-      .on('presence',{event:'sync'},()=>{
-        if(!active)return;
-        setRows(normalizePresence(channel.presenceState() as Record<string,unknown>));
-      })
-      .subscribe((status:string)=>{
-        if(!active)return;
-        if(status==='SUBSCRIBED'){
-          setConnected(true);
-          void track();
-        }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){
-          setConnected(false);
-        }
+    async function disposeChannel(){
+      const channel=channelRef.current;
+      channelRef.current=null;
+      if(!channel)return;
+      try{await channel.untrack()}catch{}
+      try{await realtimeClient.removeChannel(channel)}catch{}
+    }
+
+    function scheduleRetry(){
+      if(!activeRef.current||retryRef.current!==null)return;
+      setStatus('retrying');
+      retryRef.current=window.setTimeout(async()=>{
+        retryRef.current=null;
+        await disposeChannel();
+        connect();
+      },3000);
+    }
+
+    function connect(){
+      if(!activeRef.current)return;
+      clearRetry();
+      setStatus('connecting');
+      try{realtimeClient.realtime?.connect?.()}catch{}
+      const channel:any=realtimeClient.channel(CHANNEL_NAME,{
+        config:{private:false,presence:{key:sessionId}}
       });
+      channelRef.current=channel;
 
-    const{data:authSubscription}:any=client.auth.onAuthStateChange(()=>{void track()});
+      channel
+        .on('presence',{event:'sync'},()=>{
+          if(!activeRef.current)return;
+          setRows(normalizePresence(channel.presenceState() as Record<string,unknown>));
+        })
+        .subscribe((nextStatus:string)=>{
+          if(!activeRef.current)return;
+          if(nextStatus==='SUBSCRIBED'){
+            setStatus('online');
+            void track(channel);
+            return;
+          }
+          if(nextStatus==='CHANNEL_ERROR'||nextStatus==='TIMED_OUT'||nextStatus==='CLOSED'){
+            setStatus('error');
+            scheduleRetry();
+          }
+        });
+    }
+
+    const{data:authSubscription}=authClient.auth.onAuthStateChange(()=>{void track()});
     const onVisibility=()=>{
-      if(document.visibilityState==='visible')void track();
-      else void channel.untrack();
+      const channel=channelRef.current;
+      if(document.visibilityState==='visible'){
+        if(!channel)connect();
+        else void track(channel);
+      }else if(channel){
+        void channel.untrack();
+      }
     };
     const onFocus=()=>{void track()};
     const timer=window.setInterval(()=>{void track()},45000);
 
+    connect();
     document.addEventListener('visibilitychange',onVisibility);
     window.addEventListener('focus',onFocus);
 
     return()=>{
-      active=false;
-      trackRef.current=()=>{};
+      activeRef.current=false;
+      clearRetry();
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange',onVisibility);
       window.removeEventListener('focus',onFocus);
       authSubscription.subscription.unsubscribe();
-      void channel.untrack();
-      void client.removeChannel(channel);
+      void disposeChannel();
     };
   },[]);
 
-  return <PresenceContext.Provider value={{rows,connected}}>{children}</PresenceContext.Provider>;
+  async function trackNow(){
+    const channel=channelRef.current;
+    if(!channel||document.visibilityState!=='visible')return;
+    try{
+      const authClient=createClient();
+      const{data}=await authClient.auth.getSession();
+      const userId=data.session?.user?.id||'';
+      const userHash=userId?await hashIdentifier(userId):'';
+      await channel.track({
+        session_id:createSessionId(),
+        user_hash:userHash||null,
+        authenticated:Boolean(userId),
+        path:pathRef.current||'/',
+        last_seen_at:new Date().toISOString()
+      });
+    }catch{}
+  }
+
+  return <PresenceContext.Provider value={{rows,status}}>
+    {children}
+    <span hidden data-devinx-presence-status={status}/>
+  </PresenceContext.Provider>;
 }
 
 export function useLivePresence(){
@@ -158,7 +225,7 @@ export function useLivePresence(){
 }
 
 export function MasterLivePresence({customers}:{customers:PresenceCustomer[]}){
-  const{rows,connected}=useLivePresence();
+  const{rows,status}=useLivePresence();
   const[identityByHash,setIdentityByHash]=useState<Record<string,{email:string;is_admin:boolean}>>({});
 
   useEffect(()=>{
@@ -182,11 +249,12 @@ export function MasterLivePresence({customers}:{customers:PresenceCustomer[]}){
   );
   const anonymous=visibleRows.filter(row=>!row.authenticated).length;
   const logged=visibleRows.length-anonymous;
+  const statusLabel=status==='online'?'ONLINE':status==='retrying'?'RECONECTANDO':status==='error'?'ERRO':'CONECTANDO';
 
   return <section className="panel masterSectionCard expanded">
     <div className="sectionTitleRow">
       <div><small>AO VIVO</small><h2>Quem está no site agora</h2></div>
-      <div className="sectionActions"><span>{connected?'ONLINE':'CONECTANDO'}</span></div>
+      <div className="sectionActions"><span>{statusLabel}</span></div>
     </div>
 
     <div className="masterMetrics">
@@ -195,11 +263,11 @@ export function MasterLivePresence({customers}:{customers:PresenceCustomer[]}){
       <article><small>Logados</small><b>{logged}</b></article>
     </div>
 
-    <p className="sectionLead">Atualização em tempo real. E-mails são resolvidos somente dentro da conta master; nenhum e-mail é transmitido no canal público.</p>
+    <p className="sectionLead">Presença em tempo real. A conta master não entra na contagem; visitantes sem login aparecem como anônimos.</p>
 
     <div className="adminUserList">
       {visibleRows.length===0
-        ?<div className="empty"><b>{connected?'Nenhuma sessão ativa agora.':'Conectando ao monitor ao vivo...'}</b></div>
+        ?<div className="empty"><b>{status==='online'?'Nenhuma sessão ativa agora.':'Conectando ao monitor ao vivo...'}</b></div>
         :visibleRows.map(row=>{
           const identity=row.user_hash?identityByHash[row.user_hash]:null;
           const label=row.authenticated?(identity?.email||'Conta logada'):'ANÔNIMO';

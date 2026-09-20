@@ -39,9 +39,24 @@ function checkoutForLocale(url:string,locale:string){
 export function FinanceHub(){
   const{locale,setLocale,setCurrencyCode,setTimezone,date,t}=useI18n();
   const[section,setSection]=useState<Section>('home');
+  const[sectionReady,setSectionReady]=useState(false);
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
   const[access,setAccess]=useState<Access|null>(null);
   const[accessError,setAccessError]=useState('');
+
+  useEffect(()=>{
+    try{
+      const saved=sessionStorage.getItem('devinx-active-section');
+      const allowed:Section[]=['home','movements','work','plan','more','cards','bills','reserves','reports','spend','categories','settings','master'];
+      if(saved&&allowed.includes(saved as Section))setSection(saved as Section);
+    }catch{}
+    setSectionReady(true);
+  },[]);
+
+  useEffect(()=>{
+    if(!sectionReady)return;
+    try{sessionStorage.setItem('devinx-active-section',section)}catch{}
+  },[section,sectionReady]);
 
   useEffect(()=>{(async()=>{
     const s=createClient();
@@ -73,8 +88,9 @@ export function FinanceHub(){
     if(allowed.includes(target as Section))setSection(target as Section);
   }
   function backTarget(){return ['cards','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
-  async function signOut(){await createClient().auth.signOut();location.href='/'}
+  async function signOut(){try{sessionStorage.removeItem('devinx-active-section')}catch{}await createClient().auth.signOut();location.href='/'}
 
+  if(!sectionReady)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
   if(accessError)return <main className="financeApp">
     <section className="centerState"><b>DEVINX</b><p>{t('common.errorAccess')}</p><button className="primary" onClick={()=>location.reload()}>{t('common.tryAgain')}</button></section></main>;
   if(!access)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
