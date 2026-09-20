@@ -596,3 +596,129 @@ button[aria-busy="true"]{cursor:progress!important;pointer-events:none}
 }
 
 .calculatorFabPending{visibility:hidden!important}
+
+
+/* Home quick actions — richer premium hierarchy */
+.instantActions{gap:10px!important}
+.instantAction{
+  min-height:102px!important;
+  padding:15px!important;
+  text-align:left!important;
+  border-width:1px!important;
+  border-style:solid!important;
+  border-radius:18px!important;
+  background:
+    linear-gradient(150deg,rgba(255,255,255,.035),transparent 34%),
+    linear-gradient(145deg,#171b20 0%,#0b0e12 62%,#07090c 100%)!important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    inset 0 -1px 0 rgba(0,0,0,.22),
+    0 12px 25px rgba(0,0,0,.28)!important;
+}
+.instantActionTop{
+  display:flex!important;
+  align-items:center!important;
+  gap:11px!important;
+  width:100%!important;
+  height:auto!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+.instantActionTop i{
+  display:grid;
+  place-items:center;
+  flex:0 0 39px;
+  width:39px;
+  height:39px;
+  border-radius:12px;
+  border:1px solid rgba(230,187,86,.26);
+  background:linear-gradient(145deg,#20252b,#0d1014);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 7px 16px rgba(0,0,0,.24);
+  font-style:normal;
+  font-size:23px;
+  font-weight:800;
+  line-height:1;
+}
+.instantActionTop b{
+  margin:0!important;
+  color:#fffaf0!important;
+  font-size:16px!important;
+  font-weight:920!important;
+  letter-spacing:-.02em!important;
+  line-height:1.05!important;
+  text-shadow:0 1px 0 rgba(0,0,0,.2);
+}
+.instantAction>small{
+  display:block!important;
+  margin:10px 0 0!important;
+  color:#a7aaa5!important;
+  font-size:10.5px!important;
+  font-weight:650!important;
+  line-height:1.35!important;
+  letter-spacing:0!important;
+}
+.instantAction.income{
+  border-color:rgba(71,207,149,.28)!important;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(69,217,156,.12),transparent 38%),
+    linear-gradient(145deg,#141d1a 0%,#0b1110 58%,#070b09 100%)!important;
+}
+.instantAction.income .instantActionTop i{
+  color:#70e0ac!important;
+  border-color:rgba(83,218,158,.32)!important;
+  background:linear-gradient(145deg,#173126,#0b1511)!important;
+  box-shadow:inset 0 1px 0 rgba(173,255,215,.08),0 0 20px rgba(69,217,156,.08)!important;
+}
+.instantAction.expense{
+  border-color:rgba(232,166,80,.30)!important;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(226,151,62,.12),transparent 38%),
+    linear-gradient(145deg,#20180f 0%,#130f0b 58%,#0a0807 100%)!important;
+}
+.instantAction.expense .instantActionTop i{
+  color:#f0b76a!important;
+  border-color:rgba(239,174,86,.34)!important;
+  background:linear-gradient(145deg,#372411,#171007)!important;
+  box-shadow:inset 0 1px 0 rgba(255,224,173,.08),0 0 20px rgba(230,153,61,.08)!important;
+}
+.instantAction.work{
+  border-color:rgba(218,178,78,.32)!important;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(218,178,78,.12),transparent 38%),
+    linear-gradient(145deg,#1d1a12 0%,#11100b 58%,#090806 100%)!important;
+}
+.instantAction.work .instantActionTop i{
+  color:#efd16f!important;
+  border-color:rgba(231,192,98,.34)!important;
+  background:linear-gradient(145deg,#302818,#151109)!important;
+}
+.instantAction.card{
+  border-color:rgba(196,161,92,.30)!important;
+  background:
+    radial-gradient(circle at 12% 18%,rgba(199,164,95,.11),transparent 38%),
+    linear-gradient(145deg,#1b1915 0%,#11100d 58%,#090806 100%)!important;
+}
+.instantAction.card .instantActionTop i{
+  color:#e1bd6e!important;
+  border-color:rgba(215,177,102,.34)!important;
+  background:linear-gradient(145deg,#2c2518,#14110a)!important;
+}
+.instantAction:hover{
+  filter:brightness(1.045)!important;
+  border-color:rgba(239,200,107,.46)!important;
+}
+.instantAction:active{
+  transform:translateY(2px) scale(.985)!important;
+  box-shadow:inset 0 5px 12px rgba(0,0,0,.32),0 4px 10px rgba(0,0,0,.18)!important;
+}
+@media(max-width:520px){
+  .instantAction{min-height:98px!important;padding:14px!important}
+  .instantActionTop{gap:10px!important}
+  .instantActionTop i{width:37px;height:37px;flex-basis:37px;font-size:22px}
+  .instantActionTop b{font-size:15px!important}
+  .instantAction>small{font-size:10px!important}
+}
