@@ -170,7 +170,7 @@ export function AdminMaster(){
       <div className="masterHeroActions"><button className="secondary compactButton" onClick={load}>{t('master.refresh')}</button><span className="masterLock">◆</span></div>
     </section>
 
-    <MasterLivePresence customers={customers}/>
+    <MasterLivePresence/>
 
     {funnel&&<div className="masterMetrics">
       <article><small>{t('master.customersKnown')}</small><b>{funnel.total_customers}</b></article>
