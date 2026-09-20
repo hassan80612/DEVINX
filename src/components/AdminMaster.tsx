@@ -3,6 +3,7 @@
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
+import {MasterLivePresence} from './LivePresence';
 
 type Funnel={total_customers:number;total_accounts:number;onboarded:number;signed_in_7d:number;active_access:number;blocked_access:number;pending_signup:number;kiwify_customers:number;manual_grants:number;no_access:number};
 type Customer={email:string;user_id:string|null;account_exists:boolean;created_at:string|null;last_sign_in_at:string|null;onboarded_at:string|null;access_status:string;access_source:string;expires_at:string|null;is_admin:boolean;manual_grant:boolean;kiwify_customer:boolean;kiwify_status:string|null;plan_name:string|null;amount_minor:number|null;currency_code:string|null;last_event_at:string|null};
@@ -168,6 +169,8 @@ export function AdminMaster(){
       <div><span className="goldPill">{t('master.admin')}</span><h2>{t('master.title')}</h2><p>{t('master.lead')}</p></div>
       <div className="masterHeroActions"><button className="secondary compactButton" onClick={load}>{t('master.refresh')}</button><span className="masterLock">◆</span></div>
     </section>
+
+    <MasterLivePresence customers={customers}/>
 
     {funnel&&<div className="masterMetrics">
       <article><small>{t('master.customersKnown')}</small><b>{funnel.total_customers}</b></article>
