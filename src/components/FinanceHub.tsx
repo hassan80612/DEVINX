@@ -6,6 +6,7 @@ import {DashboardOverview} from './DashboardOverview';
 import {MovementCenter} from './MovementCenter';
 import {WorkManager} from './WorkManager';
 import {GoalManager} from './GoalManager';
+import {FuturePlanningManager} from './FuturePlanningManager';
 import {CardManager} from './CardManager';
 import {RecurringManager} from './RecurringManager';
 import {ReserveManager} from './ReserveManager';
@@ -105,7 +106,7 @@ export function FinanceHub(){
 
       {section==='movements'&&<MovementCenter onNavigate={navigate}/>}
       {section==='work'&&<WorkManager/>}
-      {section==='plan'&&<div className="stackSections"><section><div className="miniHeading"><small>{t('goals.title').toUpperCase()}</small><h2>{t('goals.title')}</h2></div><GoalManager/></section><section><div className="miniHeading"><small>{t('spend.beforeBuy')}</small><h2>{t('spend.title')}</h2></div><SpendCheck/></section></div>}
+      {section==='plan'&&<div className="stackSections"><FuturePlanningManager/><section><div className="miniHeading"><small>{t('goals.title').toUpperCase()}</small><h2>{t('goals.title')}</h2></div><GoalManager/></section><section><div className="miniHeading"><small>{t('spend.beforeBuy')}</small><h2>{t('spend.title')}</h2></div><SpendCheck/></section></div>}
 
       {section==='more'&&<div className="moreStack">
         <SubscriptionPanel isAdmin={access.is_admin}/>

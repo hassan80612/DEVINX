@@ -9,6 +9,10 @@ import {
   billAppliesToMonth,billRemaining,billDueDay,dueDateForMonth,monthsBetween
 } from '@/domain/recurring';
 import {useI18n} from '@/i18n/provider';
+import {
+  FuturePlanLike,FutureReserveEntryLike,FutureSettlementLike,
+  committedReserveTotal,monthPlanningImpact,planningEvents
+} from '@/domain/future-planning';
 
 type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string};
@@ -19,7 +23,7 @@ type BillOverride=RecurringOverrideLike;
 type CardInst={amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null};
 type CardPay={amount_minor:number;paid_on:string};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
-type ReserveEntry={kind:'deposit'|'withdraw';amount_minor:number;occurred_on:string};
+type ReserveEntry=FutureReserveEntryLike&{occurred_on:string};
 type ChartPeriod='3d'|'7d'|'1m'|'3m'|'6m'|'12m';
 const CHART_PERIODS:ChartPeriod[]=['3d','7d','1m','3m','6m','12m'];
 
@@ -67,6 +71,8 @@ export function DashboardOverview(){
   const[cardPays,setCardPays]=useState<CardPay[]>([]);
   const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
   const[reserveEntries,setReserveEntries]=useState<ReserveEntry[]>([]);
+  const[futurePlans,setFuturePlans]=useState<FuturePlanLike[]>([]);
+  const[futureSettlements,setFutureSettlements]=useState<FutureSettlementLike[]>([]);
   const[goalTargetDate,setGoalTargetDate]=useState('');
   const[targetDraft,setTargetDraft]=useState('');
   const[loading,setLoading]=useState(true);
@@ -92,7 +98,7 @@ export function DashboardOverview(){
     const chartFrom=chartStart(activePeriod);
     const monthFrom=localMonthStartISO();
     const from=chartFrom<monthFrom?chartFrom:monthFrom;
-    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve]=await Promise.all([
+    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rFuturePlans,rFutureSettlements]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',user.id).gte('worked_on',from),
       s.from('goals').select('id,name,target_minor,basis,period,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
@@ -102,7 +108,9 @@ export function DashboardOverview(){
       s.from('card_installments').select('amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id).is('paid_at',null),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
       s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
-      s.from('reserve_entries').select('kind,amount_minor,occurred_on').eq('user_id',user.id)
+      s.from('reserve_entries').select('kind,amount_minor,occurred_on,future_plan_id').eq('user_id',user.id),
+      s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id),
+      s.from('future_plan_settlements').select('plan_id,due_date,amount_minor,settled_on').eq('user_id',user.id)
     ]);
     setTx((rTx.data||[]) as Tx[]);
     setWork((rWork.data||[]) as Work[]);
@@ -121,6 +129,8 @@ export function DashboardOverview(){
     setCardPays((rCardPay.data||[]) as CardPay[]);
     setDebtPays((rDebtPay.data||[]) as DebtPay[]);
     setReserveEntries((rReserve.data||[]) as ReserveEntry[]);
+    setFuturePlans((rFuturePlans.data||[]) as FuturePlanLike[]);
+    setFutureSettlements((rFutureSettlements.data||[]) as FutureSettlementLike[]);
     const saved=(profile as any)?.daily_goal_target_date||'';
     setGoalTargetDate(saved);
     setTargetDraft(saved);
@@ -185,6 +195,13 @@ export function DashboardOverview(){
     return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent-reserveTodayNet,recurringPending,cardsDueNow,toPay,projected,avoidable};
   },[tx,work,bills,billPays,billOverrides,cardInst,cardPays,debtPays,reserveEntries]);
 
+  const currentFutureImpact=useMemo(
+    ()=>monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,localMonthStartISO(),localDateISO()),
+    [futurePlans,futureSettlements,reserveEntries]
+  );
+  const projectedWithFuture=numbers.projected+currentFutureImpact.expectedIncome-currentFutureImpact.totalNeed;
+  const pendingWithFuture=numbers.toPay+currentFutureImpact.totalNeed;
+
   const selectedCommitments=useMemo(()=>{
     const currentMonth=localMonthStartISO();
     const selected=commitmentMonth<currentMonth?currentMonth:commitmentMonth;
@@ -195,9 +212,10 @@ export function DashboardOverview(){
     const cardsDue=cardInst
       .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===selected)
       .reduce((a,b)=>a+Number(b.amount_minor),0);
-
-    return{recurringPending,cardsDue,total:recurringPending+cardsDue};
-  },[commitmentMonth,bills,billPays,billOverrides,cardInst]);
+    const future=monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,selected,localDateISO());
+    const gross=recurringPending+cardsDue+future.totalNeed;
+    return{recurringPending,cardsDue,futureNeed:future.totalNeed,expectedIncome:future.expectedIncome,gross,total:Math.max(0,gross-future.expectedIncome)};
+  },[commitmentMonth,bills,billPays,billOverrides,cardInst,futurePlans,futureSettlements,reserveEntries]);
 
   const flowChart=useMemo(()=>{
     type FlowRow={key:string;start:string;income:number;out:number};
@@ -257,9 +275,7 @@ export function DashboardOverview(){
     await load(false,next);
   }
 
-  const commitmentShare=selectedCommitments.total>0
-    ?Math.round(selectedCommitments.recurringPending/selectedCommitments.total*100)
-    :0;
+  const futureCommittedReserve=useMemo(()=>committedReserveTotal(futurePlans,reserveEntries),[futurePlans,reserveEntries]);
 
   const reserveSuggestion=useMemo(()=>{
     const today=localDateISO();
@@ -267,7 +283,7 @@ export function DashboardOverview(){
     const fallbackHorizon=monthEnd(month);
     const horizon=goalTargetDate&&goalTargetDate>=today?goalTargetDate:fallbackHorizon;
     const horizonMonth=horizon.slice(0,7)+'-01';
-    const obligations:{due:string;amount:number;kind:'bill'|'card'}[]=[];
+    const obligations:{due:string;amount:number;kind:'bill'|'card'|'future'}[]=[];
 
     for(const bill of bills){
       for(const dueMonth of monthsBetween(month,horizonMonth)){
@@ -284,9 +300,13 @@ export function DashboardOverview(){
       if(due<=horizon)obligations.push({due:due<today?today:due,amount:Number(inst.amount_minor),kind:'card'});
     }
 
+    const future=planningEvents(futurePlans,futureSettlements,reserveEntries,today,horizon);
     obligations.sort((a,b)=>a.due.localeCompare(b.due));
     const grouped=new Map<string,number>();
     for(const item of obligations)grouped.set(item.due,(grouped.get(item.due)||0)+item.amount);
+    for(const item of future.events){
+      grouped.set(item.date,(grouped.get(item.date)||0)+(item.kind==='expense'?item.amount:-item.amount));
+    }
 
     const planningCash=numbers.balance;
     let cumulative=0;
@@ -303,19 +323,21 @@ export function DashboardOverview(){
         criticalGap=gap;
       }
     }
-    const total=obligations.reduce((sum,o)=>sum+o.amount,0);
-    const gap=Math.max(0,total-planningCash);
+    const total=obligations.reduce((sum,o)=>sum+o.amount,0)+future.grossOut;
+    const netTotal=Math.max(0,total-future.expectedIncome);
+    const gap=Math.max(0,netTotal-planningCash);
     return{
       horizon,
       criticalDeadline,
       criticalGap,
       daily,
       total,
+      expectedIncome:future.expectedIncome,
       gap,
       days:daysInclusive(today,horizon),
       hasCustomHorizon:!!goalTargetDate&&goalTargetDate>=today
     };
-  },[goalTargetDate,bills,billPays,billOverrides,cardInst,numbers.balance]);
+  },[goalTargetDate,bills,billPays,billOverrides,cardInst,numbers.balance,futurePlans,futureSettlements,reserveEntries]);
 
   async function saveHorizon(){
     if(targetDraft&&targetDraft<localDateISO()){setGoalNotice(t('dashboard.futureDateError'));return}
@@ -479,7 +501,7 @@ export function DashboardOverview(){
 
   if(loading)return <section className="panel dashboardLoading"><span className="loader"/></section>;
 
-  const projectedStrip=<section className="projectedStrip"><div><small>{t('dashboard.projected')}</small><strong>{currency(numbers.projected)}</strong></div><span>{t('dashboard.projectedHelp')}</span></section>;
+  const projectedStrip=<section className="projectedStrip"><div><small>{t('dashboard.projected')}</small><strong>{currency(projectedWithFuture)}</strong></div><span>{t('future.projectedHelp')}</span></section>;
 
   const isDailyAutoGoal=goal?.goal_source==='daily_reserve_auto';
   const isDailyManualGoal=goal?.goal_source==='daily_reserve_manual';
@@ -497,7 +519,7 @@ export function DashboardOverview(){
       <article><small>{t('dashboard.entered')}</small><b>{currency(numbers.income)}</b></article>
       <article><small>{t('dashboard.spent')}</small><b>{currency(numbers.spent)}</b></article>
       <article className="dayResult"><small>{t('dashboard.dayBalance')}</small><b className={numbers.todayBalance>=0?'positive':'negative'}>{currency(numbers.todayBalance)}</b><span>+{currency(numbers.todayIncome)} · −{currency(numbers.todaySpent)}</span></article>
-      <article><small>{t('dashboard.pending')}</small><b>{currency(numbers.toPay)}</b></article>
+      <article><small>{t('dashboard.pending')}</small><b>{currency(pendingWithFuture)}</b><span>{currentFutureImpact.expectedIncome>0?t('future.expectedIncomeShort')+' +'+currency(currentFutureImpact.expectedIncome):t('future.includesPlanning')}</span></article>
     </div>
 
     <section className="panel premiumFlowPanel">
@@ -549,6 +571,7 @@ export function DashboardOverview(){
             <span><small>{t('dashboard.commitmentsUntilDate')}</small><b>{currency(reserveSuggestion.total)}</b></span>
             <span><small>{t('dashboard.cashAvailable')}</small><b className={numbers.balance>=0?'positive':'negative'}>{currency(numbers.balance)}</b></span>
             <span><small>{t('dashboard.reserveSeparated')}</small><b>{currency(reserveBalance)}</b></span>
+            <span><small>{t('future.expectedIncome')}</small><b className="positive">{currency(reserveSuggestion.expectedIncome)}</b></span>
             <span className="dailyTarget"><small>{t('dashboard.perDay')}</small><b>{currency(reserveSuggestion.daily)}</b></span>
           </div>
 
@@ -573,21 +596,19 @@ export function DashboardOverview(){
       </div>}
     </section>
 
-    {reserveBalance>0&&<section className="reserveHomeNote"><span>◇</span><div><small>{t('nav.reserves')}</small><b>{currency(reserveBalance)}</b></div><p>{t('dashboard.reserveSeparatedHelp')}</p></section>}
+    {reserveBalance>0&&<section className="reserveHomeNote"><span>◇</span><div><small>{t('nav.reserves')}</small><b>{currency(reserveBalance)}</b></div><p>{futureCommittedReserve>0?t('future.reserveHomeCommitted')+' '+currency(futureCommittedReserve):t('dashboard.reserveSeparatedHelp')}</p></section>}
 
     {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2>{dailyReserveDeadline&&<span className="goalDeadline">{t('dashboard.untilDate')} {date(dailyReserveDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>}</div><div className="goalRing" style={{background:'conic-gradient(#edc55e '+goalProgress.percent+'%, rgba(255,255,255,.08) 0)'}}><div className="goalRingInner"><small>{t('dashboard.todayGoal')}</small><strong>{goalProgress.percent}%</strong></div></div></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(goalProgress.target)}</p></section>}
 
     <section className="panel commitmentsPanel">
       <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
-      <div className="commitmentDouble">
+      <div className="commitmentDouble futureCommitmentGrid">
         <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
         <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b></article>
+        <article><span>{t('future.planningNeed')}</span><b>{currency(selectedCommitments.futureNeed)}</b></article>
+        <article className="futureIncomeCommitment"><span>{t('future.expectedIncome')}</span><b className="positive">+ {currency(selectedCommitments.expectedIncome)}</b></article>
       </div>
-      <div className="commitmentComposition">
-        <div className="commitmentCompositionBar"><i style={{width:commitmentShare+'%'}}/><i style={{width:(100-commitmentShare)+'%'}}/></div>
-        <div className="commitmentCompositionLegend"><span>{t('dashboard.monthlyBills')} · {currency(selectedCommitments.recurringPending)}</span><span>{t('dashboard.cards')} · {currency(selectedCommitments.cardsDue)}</span></div>
-      </div>
-      <div className="commitmentMonthTotal"><span>{t('dashboard.monthCommitmentTotal')}</span><strong>{currency(selectedCommitments.total)}</strong></div>
+      <div className="commitmentMonthTotal"><span>{t('future.netMonthlyNeed')}</span><strong>{currency(selectedCommitments.total)}</strong><small>{t('future.grossCommitments')} {currency(selectedCommitments.gross)}</small></div>
     </section>
 
     {numbers.income===0&&numbers.spent===0&&<section className="empty premiumEmpty"><b>{t('dashboard.emptyTitle')}</b><p>{t('dashboard.emptyText')}</p></section>}

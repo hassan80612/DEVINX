@@ -11,6 +11,7 @@ type ReserveEntry={
   amount_minor:number;
   occurred_on:string;
   note:string|null;
+  future_plan_id:string|null;
   created_at:string;
 };
 type PurchaseGoal={
@@ -48,6 +49,7 @@ export function ReserveManager(){
   const[goalTarget,setGoalTarget]=useState('');
   const[goalDate,setGoalDate]=useState('');
 
+  const[futurePlans,setFuturePlans]=useState<{id:string;name:string;is_active:boolean;reserve_enabled:boolean}[]>([]);
   const[editingEntry,setEditingEntry]=useState<ReserveEntry|null>(null);
   const[eAmount,setEAmount]=useState('');
   const[eDate,setEDate]=useState('');
@@ -57,12 +59,14 @@ export function ReserveManager(){
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
-    const[e,g]=await Promise.all([
-      s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note,created_at').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
-      s.from('reserve_purchase_goals').select('id,description,target_minor,target_date,is_active,completed_at,created_at').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1)
+    const[e,g,fp]=await Promise.all([
+      s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note,future_plan_id,created_at').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
+      s.from('reserve_purchase_goals').select('id,description,target_minor,target_date,is_active,completed_at,created_at').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
+      s.from('future_plans').select('id,name,is_active,reserve_enabled').eq('user_id',user.id)
     ]);
     setEntries((e.data||[]) as ReserveEntry[]);
     setGoal(((g.data||[])[0]||null) as PurchaseGoal|null);
+    setFuturePlans((fp.data||[]) as {id:string;name:string;is_active:boolean;reserve_enabled:boolean}[]);
   }
 
   useEffect(()=>{
@@ -76,6 +80,12 @@ export function ReserveManager(){
     ()=>entries.reduce((sum,e)=>sum+(e.kind==='deposit'?Number(e.amount_minor):-Number(e.amount_minor)),0),
     [entries]
   );
+
+  const committedBalance=useMemo(()=>{
+    const activeIds=new Set(futurePlans.filter(p=>p.is_active&&p.reserve_enabled).map(p=>p.id));
+    return Math.max(0,entries.filter(e=>e.future_plan_id&&activeIds.has(e.future_plan_id)).reduce((sum,e)=>sum+(e.kind==='deposit'?Number(e.amount_minor):-Number(e.amount_minor)),0));
+  },[entries,futurePlans]);
+  const freeBalance=Math.max(0,balance-committedBalance);
 
   const goalProgress=useMemo(()=>{
     if(!goal)return null;
@@ -99,7 +109,7 @@ export function ReserveManager(){
     e.preventDefault();
     const value=minor(amount);
     if(value<=0||mode==='none')return;
-    if(mode==='withdraw'&&value>balance){setNotice(t('reserves.insufficient'));return}
+    if(mode==='withdraw'&&value>freeBalance){setNotice(t('future.reserveProtected'));return}
     setSaving(true);
     const s=createClient();
     const{error}=await s.rpc('record_reserve_entry',{
@@ -230,7 +240,7 @@ export function ReserveManager(){
   return <div className="reservePage">
     <section className="reserveHero panel">
       <div><small>{t('reserves.eyebrow')}</small><h1>{t('reserves.title')}</h1><p>{t('reserves.lead')}</p></div>
-      <div className="reserveBalance"><small>{t('reserves.available')}</small><strong>{currency(balance)}</strong><span>{t('reserves.ignored')}</span></div>
+      <div className="reserveBalance futureReserveBalance"><small>{t('reserves.available')}</small><strong>{currency(balance)}</strong><div><span><b>{currency(committedBalance)}</b>{t('future.committedReserve')}</span><span><b>{currency(freeBalance)}</b>{t('future.freeReserve')}</span></div></div>
     </section>
 
     <div className="reserveActions">
@@ -263,9 +273,9 @@ export function ReserveManager(){
       <div className="sectionTitleRow"><div><small>{t('common.history').toUpperCase()}</small><h2>{t('reserves.history')}</h2></div><span>{entries.length}</span></div>
       {entries.length===0?<div className="empty"><b>{t('reserves.empty')}</b><p>{t('reserves.emptyText')}</p></div>:entries.map(entry=><article className={'reserveRow '+entry.kind} key={entry.id}>
         <span>{entry.kind==='deposit'?'＋':'↗'}</span>
-        <div><b>{entry.kind==='deposit'?t('reserves.transferIn'):t('reserves.transferOut')}</b><small>{date(entry.occurred_on,{day:'2-digit',month:'short',year:'numeric'})}{entry.note?' · '+entry.note:''}</small></div>
+        <div><b>{entry.kind==='deposit'?t('reserves.transferIn'):t('reserves.transferOut')}</b><small>{date(entry.occurred_on,{day:'2-digit',month:'short',year:'numeric'})}{entry.note?' · '+entry.note:''}{entry.future_plan_id?' · '+t('future.committed'):''}</small></div>
         <strong className={entry.kind==='deposit'?'reserveDeposit':'reserveWithdraw'}>{entry.kind==='deposit'?'− ':'+ '}{currency(Number(entry.amount_minor))}</strong>
-        <div className="reserveRowActions"><button onClick={()=>startEntryEdit(entry)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeEntry(entry)}>{t('common.delete')}</button></div>
+        <div className="reserveRowActions">{entry.future_plan_id?<span className="statusBadge">{t('future.managedByPlanning')}</span>:<><button onClick={()=>startEntryEdit(entry)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeEntry(entry)}>{t('common.delete')}</button></>}</div>
       </article>)}
     </section>
 
@@ -275,7 +285,7 @@ export function ReserveManager(){
       <label>{t('common.value')}<input value={amount} onChange={e=>setAmount(e.target.value)} inputMode="decimal" required/></label>
       <label>{t('common.date')}<input type="date" value={occurredOn} onChange={e=>setOccurredOn(e.target.value)} required/></label>
       <label>{t('reserves.note')} <small>({t('common.optional')})</small><input value={note} onChange={e=>setNote(e.target.value)}/></label>
-      {mode==='withdraw'&&<div className="settingsNote"><b>{t('reserves.available')}: {currency(balance)}</b><span>{t('reserves.withdrawAffectsGoal')}</span></div>}
+      {mode==='withdraw'&&<div className="settingsNote"><b>{t('future.freeReserve')}: {currency(freeBalance)}</b><span>{committedBalance>0?t('future.reserveProtectedHelp'):t('reserves.withdrawAffectsGoal')}</span></div>}
       <div className="modalActions"><button type="button" className="secondary" onClick={()=>setMode('none')}>{t('common.cancel')}</button><button className="primary" disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div>
     </form></div>}
 

@@ -6,16 +6,16 @@ import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
 import {LanguageMenu} from '@/components/LanguageMenu';
 import {BrandLogo} from '@/components/BrandLogo';
+import {SubscriptionPlans} from '@/components/SubscriptionPlans';
 
 type Mode='entrar'|'criar'|'recuperar';
 type MessageKind='idle'|'error'|'success';
 const CANONICAL_ORIGIN='https://devinx.com.br';
-const CHECKOUT='https://pay.kiwify.com.br/pf2YM64';
 
 function safeNextPath(value:string){return value.startsWith('/')&&!value.startsWith('//')?value:'/painel'}
 
 export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initialError?:string}){
-  const{t,locale}=useI18n();
+  const{t}=useI18n();
   const[mode,setMode]=useState<Mode>(initialError?'recuperar':'entrar');const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[showPassword,setShowPassword]=useState(false);const[message,setMessage]=useState(initialError? t('auth.errorExpired'):'');const[messageKind,setMessageKind]=useState<MessageKind>(initialError?'error':'idle');const[pending,setPending]=useState(false);const[purchaseApproved,setPurchaseApproved]=useState(false);
 
   useEffect(()=>{try{setPurchaseApproved(new URLSearchParams(window.location.search).get('compra')==='aprovada')}catch{}},[]);
@@ -53,9 +53,8 @@ export function AuthForm({nextPath='',initialError=''}:{nextPath?:string;initial
       {mode==='entrar'&&<button className="authLinkButton" type="button" onClick={()=>changeMode('recuperar')}>{t('auth.forgot')}</button>}
       {mode==='recuperar'&&<button className="authLinkButton" type="button" onClick={()=>changeMode('entrar')}>{t('auth.backLogin')}</button>}
     </section>
-    <aside className="authSubscription">
-      <div><small>{t('subscription.label')}</small><b>{t('subscription.price')} / {t('subscription.month')}</b><span>{t('subscription.authHelp')}</span></div>
-      <a className="goldOutline" href={locale==='pt-BR'?CHECKOUT:CHECKOUT+'?region=intl'}>{t('subscription.subscribe')}</a>
+    <aside className="authSubscription authSubscriptionPlans">
+      <SubscriptionPlans variant="compact"/>
     </aside>
   </main>;
 }
