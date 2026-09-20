@@ -132,9 +132,13 @@ export function monthPlanningImpact(
       }
       continue;
     }
-    directExpense+=occurrenceDates(plan,monthStart,monthEnd,settlements).reduce(sum=>sum+Number(plan.amount_minor),0);
-    const overdue=nextPendingOccurrence(plan,settlements,today);
-    if(monthStart===currentMonth&&overdue&&overdue<today)directExpense+=Number(plan.amount_minor);
+    if(monthStart===currentMonth){
+      const overdueDates=occurrenceDates(plan,plan.due_date,today,settlements).filter(d=>d<today);
+      const currentAndFuture=occurrenceDates(plan,today,monthEnd,settlements);
+      directExpense+=(overdueDates.length+currentAndFuture.length)*Number(plan.amount_minor);
+    }else{
+      directExpense+=occurrenceDates(plan,monthStart,monthEnd,settlements).reduce(sum=>sum+Number(plan.amount_minor),0);
+    }
   }
   return{expectedIncome,directExpense,reserveContribution,totalNeed:directExpense+reserveContribution,netNeed:Math.max(0,directExpense+reserveContribution-expectedIncome)};
 }
@@ -150,8 +154,10 @@ export function planningEvents(
   let grossOut=0,expectedIncome=0;
   for(const plan of plans.filter(p=>p.is_active)){
     let dates=occurrenceDates(plan,today,horizon,settlements);
-    const next=nextPendingOccurrence(plan,settlements,today);
-    if(plan.kind==='expense'&&next&&next<today)dates=[next,...dates.filter(d=>d!==next)];
+    if(plan.kind==='expense'){
+      const overdueDates=occurrenceDates(plan,plan.due_date,today,settlements).filter(d=>d<today);
+      dates=[...overdueDates,...dates];
+    }
     if(plan.kind==='income'){
       for(const due of dates.filter(d=>d>=today)){
         events.push({date:due,amount:Number(plan.amount_minor),kind:'income',planId:plan.id});
