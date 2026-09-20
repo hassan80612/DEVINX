@@ -300,18 +300,20 @@ select option{background:#090c10;color:#f5f1e8}
 .quickCaptureFab:after{content:none!important}
 
 
-/* Final CTA positioning / contrast fix */
+/* Stable action anchors */
 .dailyGoalButton{
   color:#171006!important;
   -webkit-text-fill-color:#171006!important;
   text-shadow:none!important;
 }
-.quickCaptureFab{
-  left:auto!important;
-  right:18px!important;
+.financeApp > .quickCaptureFab{
+  position:fixed!important;
+  inset:auto 18px 92px auto!important;
+  z-index:46!important;
+  margin:0!important;
 }
-@media(max-width:700px){
-  .quickCaptureFab{left:auto!important;right:12px!important}
+@media(max-width:520px){
+  .financeApp > .quickCaptureFab{inset:auto 12px 84px auto!important}
 }
 
 
@@ -506,14 +508,48 @@ select option{background:#090c10;color:#f5f1e8}
   box-shadow:inset 0 3px 8px rgba(0,0,0,.28),inset 0 0 0 1px rgba(232,190,89,.08)!important;
 }
 
-.instantAction{border-color:rgba(221,178,78,.27)!important}
-.instantAction:after{content:""!important;position:absolute!important;inset:-40% auto -40% -38%!important;width:24%!important;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,244,200,.05),rgba(244,209,125,.24),transparent)!important;transform:skewX(-20deg)!important;animation:devinxActionSweep 6.2s ease-in-out infinite!important}
-.instantAction:nth-child(2):after{animation-delay:1.1s!important}.instantAction:nth-child(3):after{animation-delay:2.2s!important}.instantAction:nth-child(4):after{animation-delay:3.3s!important}
-.instantAction span{filter:drop-shadow(0 0 8px rgba(229,185,83,.12))}
-@keyframes devinxActionSweep{0%,68%{left:-38%;opacity:0}74%{opacity:.75}92%{left:118%;opacity:.25}100%{left:118%;opacity:0}}
-
-.financeApp .primary,.financeApp .goldButton,.financeApp .quickSave,.financeApp .paidButton,.financeApp .quickCaptureFab{
+.instantActions{perspective:700px}
+.instantAction{
   position:relative;isolation:isolate;overflow:hidden;
+  min-height:94px!important;padding:13px 14px!important;
+  border:1px solid rgba(225,181,79,.30)!important;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(232,190,91,.075),transparent 31%),
+    linear-gradient(145deg,#151a20 0%,#0b0e12 62%,#07090c 100%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 9px 22px rgba(0,0,0,.24)!important;
+}
+.instantAction:before{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.025),transparent 42%,rgba(222,178,77,.035));
+}
+.instantAction:after{
+  content:""!important;position:absolute!important;top:-35%!important;bottom:-35%!important;left:-42%!important;width:22%!important;
+  pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,247,215,.03),rgba(244,209,125,.22),transparent)!important;
+  transform:skewX(-18deg)!important;animation:devinxActionSweep 7s ease-in-out infinite!important;
+}
+.instantAction:nth-child(2):after{animation-delay:1.15s!important}.instantAction:nth-child(3):after{animation-delay:2.3s!important}.instantAction:nth-child(4):after{animation-delay:3.45s!important}
+.instantAction span{
+  display:grid!important;place-items:center;width:34px;height:34px;margin:0 0 9px!important;
+  border:1px solid rgba(229,187,88,.28);border-radius:11px;
+  background:linear-gradient(145deg,#1a1e22,#0b0e11);color:#e8c76e!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 5px 14px rgba(0,0,0,.22);
+  filter:drop-shadow(0 0 8px rgba(229,185,83,.10));font-size:20px!important;font-weight:900;
+}
+.instantAction b{font-size:13px!important;font-weight:900!important;color:#f7f4ed!important;letter-spacing:-.01em}
+.instantAction small{margin-top:4px!important;color:#8f918d!important;line-height:1.35}
+.instantAction.income span{color:#70dca8!important;border-color:rgba(81,205,147,.25);background:linear-gradient(145deg,rgba(36,91,68,.34),#0b1110)}
+.instantAction.expense span{color:#efb86c!important;border-color:rgba(229,163,78,.25);background:linear-gradient(145deg,rgba(91,58,28,.34),#110e0a)}
+.instantAction.work span{color:#e5c469!important}
+.instantAction.card span{color:#d7b16a!important}
+.instantAction:hover{border-color:rgba(238,199,105,.48)!important;transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 13px 28px rgba(0,0,0,.30),0 0 18px rgba(215,173,73,.055)!important}
+.instantAction:active{transform:translateY(2px) scale(.985)!important;box-shadow:inset 0 5px 12px rgba(0,0,0,.32),0 4px 10px rgba(0,0,0,.18)!important}
+@keyframes devinxActionSweep{0%,72%{left:-42%;opacity:0}78%{opacity:.70}93%{left:122%;opacity:.18}100%{left:122%;opacity:0}}
+
+.financeApp .primary,.financeApp .goldButton,.financeApp .quickSave,.financeApp .paidButton{
+  position:relative;isolation:isolate;overflow:hidden;
+}
+.financeApp .quickCaptureFab{
+  isolation:isolate;overflow:hidden;
 }
 .financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{
   content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;z-index:3;
@@ -542,3 +578,21 @@ button[aria-busy="true"]{cursor:progress!important;pointer-events:none}
 @media(prefers-reduced-motion:reduce){
   .flowBars i,.instantAction:after,.financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{animation:none!important}
 }
+
+/* Quick capture action tabs */
+.quickCaptureTabs{
+  gap:7px!important;padding:5px!important;border:1px solid rgba(219,177,78,.13)!important;border-radius:14px!important;
+  background:#080b0f!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important
+}
+.quickCaptureTabs button{
+  min-height:40px!important;border:1px solid rgba(255,255,255,.055)!important;border-radius:10px!important;
+  background:linear-gradient(180deg,#12161b,#0a0d11)!important;color:#979992!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important
+}
+.quickCaptureTabs button:hover{border-color:rgba(218,177,80,.22)!important;color:#d7b960!important}
+.quickCaptureTabs button.active{
+  border-color:rgba(232,190,89,.34)!important;background:linear-gradient(180deg,#292116,#151109)!important;
+  color:#e8c76e!important;box-shadow:inset 0 3px 8px rgba(0,0,0,.30),0 0 15px rgba(218,177,78,.055)!important
+}
+
+.calculatorFabPending{visibility:hidden!important}

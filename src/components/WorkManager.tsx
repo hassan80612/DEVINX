@@ -44,7 +44,10 @@ export function WorkManager(){
   const[saving,setSaving]=useState(false);
   const[editing,setEditing]=useState<Session|null>(null);
   const[eVehicle,setEVehicle]=useState('');const[eSource,setESource]=useState('');const[eDate,setEDate]=useState('');const[eGross,setEGross]=useState('');const[eHours,setEHours]=useState('');const[eKm,setEKm]=useState('');const[ePct,setEPct]=useState('');const[eExtra,setEExtra]=useState('');
-  const[journeyExpanded,setJourneyExpanded]=useState(true);
+  const[journeyExpanded,setJourneyExpanded]=useState(()=>{
+    if(typeof window==='undefined')return true;
+    try{const saved=localStorage.getItem('devinx_work_journey_expanded');return saved===null?true:saved==='1'}catch{return true}
+  });
 
   const vehicle=vehicles.find(v=>v.id===selectedVehicleId)||vehicles[0]||null;
   const selectedSource=sources.find(s=>s.id===sourceId)||null;
@@ -66,7 +69,6 @@ export function WorkManager(){
     if(vv.length===0&&(activeSource?.kind==='driver'||activeSource?.kind==='delivery'))setVehicleMode('new');
   }
   useEffect(()=>{load()},[]);
-  useEffect(()=>{try{const saved=localStorage.getItem('devinx_work_journey_expanded');if(saved!==null)setJourneyExpanded(saved==='1')}catch{}},[]);
   function toggleJourney(){setJourneyExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_work_journey_expanded',next?'1':'0')}catch{}return next})}
 
   const stats=useMemo(()=>{

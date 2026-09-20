@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useLayoutEffect,useMemo,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {createClient} from '@/lib/supabase/client';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
@@ -127,7 +127,7 @@ export function DashboardOverview(){
     setLoading(false);
   }
 
-  useEffect(()=>{try{const saved=localStorage.getItem('devinx_daily_goal_expanded');if(saved!==null)setDailyGoalExpanded(saved==='1')}catch{}},[]);
+  useLayoutEffect(()=>{try{const saved=localStorage.getItem('devinx_daily_goal_expanded');if(saved!==null)setDailyGoalExpanded(saved==='1')}catch{}},[]);
   function toggleDailyGoal(){setDailyGoalExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_daily_goal_expanded',next?'1':'0')}catch{}return next})}
 
   useEffect(()=>{

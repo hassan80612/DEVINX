@@ -40,8 +40,10 @@ function timezoneName(zone:string,locale:string){
 
 function SettingsFoldCard({id,eyebrow,title,summary,children}:{id:string;eyebrow:string;title:string;summary?:string;children:ReactNode}){
   const{t}=useI18n();
-  const[expanded,setExpanded]=useState(true);
-  useEffect(()=>{try{const saved=localStorage.getItem('devinx_settings_fold_'+id);if(saved!==null)setExpanded(saved==='1')}catch{}},[id]);
+  const[expanded,setExpanded]=useState(()=>{
+    if(typeof window==='undefined')return true;
+    try{const saved=localStorage.getItem('devinx_settings_fold_'+id);return saved===null?true:saved==='1'}catch{return true}
+  });
   function toggle(){
     setExpanded(current=>{
       const next=!current;

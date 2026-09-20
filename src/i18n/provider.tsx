@@ -1,6 +1,6 @@
 'use client';
 
-import {createContext,useContext,useEffect,useMemo,useState} from 'react';
+import {createContext,useContext,useEffect,useLayoutEffect,useMemo,useState} from 'react';
 import {catalogs,defaultLocale,direction,languageNames,locales,type Locale} from './catalogs';
 
 export const SUPPORTED_CURRENCIES=[
@@ -66,7 +66,7 @@ export function I18nProvider({children}:{children:React.ReactNode}){
   const[currencyCode,setCurrencyCodeState]=useState<CurrencyCode>('BRL');
   const[timezone,setTimezoneState]=useState('auto');
 
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     setLocaleState(detectLocale());
     try{
       const savedCurrency=localStorage.getItem('devinx_currency');

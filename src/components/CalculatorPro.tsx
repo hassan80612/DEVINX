@@ -92,8 +92,7 @@ function preference():CalculatorMode{
 
 export function CalculatorModePreference(){
   const{t}=useI18n();
-  const[mode,setMode]=useState<CalculatorMode>('financial');
-  useEffect(()=>setMode(preference()),[]);
+  const[mode,setMode]=useState<CalculatorMode>(()=>preference());
   function choose(next:CalculatorMode){
     setMode(next);
     try{localStorage.setItem(MODE_KEY,next)}catch{}
@@ -474,7 +473,7 @@ export function ProCalculator({variant='floating'}:{variant?:'floating'|'embedde
   if(variant==='embedded')return <section className="panel proCalculatorEmbedded">{body}</section>;
 
   return <>
-    <button type="button" className="calculatorFab" onClick={openFloating} aria-label={t('calculator.title')}>
+    <button type="button" className={'calculatorFab '+(!hydrated?'calculatorFabPending':'')} onClick={openFloating} aria-label={t('calculator.title')}>
       <span>{preferredMode==='financial'?'$':'ƒx'}</span><b>{t('calculator.floatingLabel')}</b>
     </button>
     {open&&<div className="calculatorBackdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setOpen(false)}}>
