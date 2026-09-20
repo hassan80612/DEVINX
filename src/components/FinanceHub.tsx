@@ -1,20 +1,9 @@
 'use client';
 
 import {useEffect,useState} from 'react';
+import dynamic from 'next/dynamic';
 import {createClient} from '@/lib/supabase/client';
 import {DashboardOverview} from './DashboardOverview';
-import {MovementCenter} from './MovementCenter';
-import {WorkManager} from './WorkManager';
-import {GoalManager} from './GoalManager';
-import {FuturePlanningManager} from './FuturePlanningManager';
-import {CardManager} from './CardManager';
-import {RecurringManager} from './RecurringManager';
-import {ReserveManager} from './ReserveManager';
-import {ReportManager} from './ReportManager';
-import {SpendCheck} from './SpendCheck';
-import {CategoryManager} from './CategoryManager';
-import {PreferencesManager} from './PreferencesManager';
-import {AdminMaster} from './AdminMaster';
 import {QuickCapture} from './QuickCapture';
 import {LanguageMenu} from './LanguageMenu';
 import {IntegrationBootstrap} from './IntegrationBootstrap';
@@ -22,6 +11,20 @@ import {SubscriptionPanel} from './SubscriptionPanel';
 import {BrandLogo} from './BrandLogo';
 import {ProCalculator} from './CalculatorPro';
 import {SUPPORTED_CURRENCIES,type CurrencyCode,useI18n} from '@/i18n/provider';
+
+function LazySectionFallback(){return <section className="panel dashboardLoading"><span className="loader"/></section>}
+const MovementCenter=dynamic(()=>import('./MovementCenter').then(module=>module.MovementCenter),{loading:LazySectionFallback});
+const WorkManager=dynamic(()=>import('./WorkManager').then(module=>module.WorkManager),{loading:LazySectionFallback});
+const GoalManager=dynamic(()=>import('./GoalManager').then(module=>module.GoalManager),{loading:LazySectionFallback});
+const FuturePlanningManager=dynamic(()=>import('./FuturePlanningManager').then(module=>module.FuturePlanningManager),{loading:LazySectionFallback});
+const CardManager=dynamic(()=>import('./CardManager').then(module=>module.CardManager),{loading:LazySectionFallback});
+const RecurringManager=dynamic(()=>import('./RecurringManager').then(module=>module.RecurringManager),{loading:LazySectionFallback});
+const ReserveManager=dynamic(()=>import('./ReserveManager').then(module=>module.ReserveManager),{loading:LazySectionFallback});
+const ReportManager=dynamic(()=>import('./ReportManager').then(module=>module.ReportManager),{loading:LazySectionFallback});
+const SpendCheck=dynamic(()=>import('./SpendCheck').then(module=>module.SpendCheck),{loading:LazySectionFallback});
+const CategoryManager=dynamic(()=>import('./CategoryManager').then(module=>module.CategoryManager),{loading:LazySectionFallback});
+const PreferencesManager=dynamic(()=>import('./PreferencesManager').then(module=>module.PreferencesManager),{loading:LazySectionFallback});
+const AdminMaster=dynamic(()=>import('./AdminMaster').then(module=>module.AdminMaster),{loading:LazySectionFallback});
 
 type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'bills'|'reserves'|'reports'|'spend'|'categories'|'settings'|'master';
 type CaptureMode='income'|'expense';
