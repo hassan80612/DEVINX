@@ -1,10 +1,9 @@
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import {NextRequest,NextResponse} from 'next/server';
+import {DEVINX_KIWIFY_DEVINX_KIWIFY_PRODUCT_ID} from '@/lib/subscription-plans';
 
 export const runtime='nodejs';
-
-const PRODUCT_ID='42a1cde0-b411-11f1-b998-436a8b692e83';
 
 function safeHexEqual(a:string,b:string){
   try{
@@ -43,7 +42,7 @@ export async function POST(request:NextRequest){
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
 
-  if(productId!==PRODUCT_ID){
+  if(productId!==DEVINX_KIWIFY_PRODUCT_ID){
     await supabase.rpc('record_kiwify_webhook_attempt',{
       p_token_hash:tokenHash,p_outcome:'ignored',p_event_type:eventType,p_product_id:productId,p_note:'product_id_mismatch'
     });

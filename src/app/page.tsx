@@ -3,11 +3,7 @@
 import {useI18n} from '@/i18n/provider';
 import {LanguageMenu} from '@/components/LanguageMenu';
 import {BrandLogo} from '@/components/BrandLogo';
-
-const CHECKOUT='https://pay.kiwify.com.br/pf2YM64';
-function checkoutForLocale(locale:string){
-  return locale==='pt-BR'?CHECKOUT:CHECKOUT+'?region=intl';
-}
+import {SubscriptionPlans} from '@/components/SubscriptionPlans';
 
 export default function Home(){
   const{t,locale,currency}=useI18n();
@@ -75,9 +71,8 @@ export default function Home(){
       </div>
     </section>
 
-    <section className="landingPlanRibbon">
-      <div><small>{t('subscription.monthly')}</small><strong>{t('subscription.price')}<em>/{t('subscription.month')}</em></strong><span>{t('subscription.cancelAnytime')}</span></div>
-      <a className="goldButton planRibbonButton" href={checkoutForLocale(locale)}>{t('subscription.subscribe')}</a>
+    <section className="landingPlansSection" id="planos">
+      <SubscriptionPlans/>
     </section>
 
     <footer>DEVINX <span>{t('brand.tagline')}</span></footer>

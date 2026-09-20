@@ -863,5 +863,114 @@ const arInteractionRelease=replace(arPreferencesRelease,{
 'dashboard.chartTap':'اضغط على عمود لرؤية القيم.'
 });
 
-export const catalogs:Record<Locale,Catalog>={'pt-BR':ptInteractionRelease,en:enInteractionRelease,es:esInteractionRelease,fr:frInteractionRelease,ar:arInteractionRelease,de:deInteractionRelease};
-export type TranslationKey=keyof typeof ptInteractionRelease;
+const ptPlansRelease=replace(ptInteractionRelease,{
+'subscription.plansEyebrow':'PLANOS DEVINX',
+'subscription.plansTitle':'Escolha o plano que combina com seu ritmo',
+'subscription.plansText':'O DevinX completo em todos os planos. Quanto maior o período, menor o custo mensal equivalente.',
+'subscription.quarterly':'Trimestral',
+'subscription.semiannual':'Semestral',
+'subscription.annual':'Anual',
+'subscription.flexible':'Mais flexível',
+'subscription.bestValue':'Maior economia',
+'subscription.fullAccess':'Acesso completo',
+'subscription.save':'Economize',
+'subscription.totalPeriod':'pelo período',
+'subscription.equivalent':'Equivale a',
+'subscription.perMonth':'/mês',
+'subscription.sameAccess':'Todos os recursos do DevinX',
+'subscription.choosePlan':'Escolha seu plano',
+'subscription.choose':'Escolher plano'
+});
+const enPlansRelease=replace(enInteractionRelease,{
+'subscription.plansEyebrow':'DEVINX PLANS',
+'subscription.plansTitle':'Choose the plan that fits your rhythm',
+'subscription.plansText':'Full DevinX access on every plan. Longer periods lower the equivalent monthly cost.',
+'subscription.quarterly':'Quarterly',
+'subscription.semiannual':'6 months',
+'subscription.annual':'Annual',
+'subscription.flexible':'Most flexible',
+'subscription.bestValue':'Best savings',
+'subscription.fullAccess':'Full access',
+'subscription.save':'Save',
+'subscription.totalPeriod':'for the period',
+'subscription.equivalent':'Equivalent to',
+'subscription.perMonth':'/month',
+'subscription.sameAccess':'All DevinX features',
+'subscription.choosePlan':'Choose your plan',
+'subscription.choose':'Choose plan'
+});
+const esPlansRelease=replace(esInteractionRelease,{
+'subscription.plansEyebrow':'PLANES DEVINX',
+'subscription.plansTitle':'Elige el plan que se adapta a tu ritmo',
+'subscription.plansText':'DevinX completo en todos los planes. Cuanto mayor sea el período, menor será el costo mensual equivalente.',
+'subscription.quarterly':'Trimestral',
+'subscription.semiannual':'Semestral',
+'subscription.annual':'Anual',
+'subscription.flexible':'Más flexible',
+'subscription.bestValue':'Mayor ahorro',
+'subscription.fullAccess':'Acceso completo',
+'subscription.save':'Ahorra',
+'subscription.totalPeriod':'por el período',
+'subscription.equivalent':'Equivale a',
+'subscription.perMonth':'/mes',
+'subscription.sameAccess':'Todas las funciones de DevinX',
+'subscription.choosePlan':'Elige tu plan',
+'subscription.choose':'Elegir plan'
+});
+const frPlansRelease=replace(frInteractionRelease,{
+'subscription.plansEyebrow':'OFFRES DEVINX',
+'subscription.plansTitle':'Choisissez la formule adaptée à votre rythme',
+'subscription.plansText':'DevinX complet avec chaque formule. Plus la durée est longue, plus le coût mensuel équivalent diminue.',
+'subscription.quarterly':'Trimestriel',
+'subscription.semiannual':'Semestriel',
+'subscription.annual':'Annuel',
+'subscription.flexible':'Le plus flexible',
+'subscription.bestValue':'Meilleure économie',
+'subscription.fullAccess':'Accès complet',
+'subscription.save':'Économisez',
+'subscription.totalPeriod':'pour la période',
+'subscription.equivalent':'Équivaut à',
+'subscription.perMonth':'/mois',
+'subscription.sameAccess':'Toutes les fonctions DevinX',
+'subscription.choosePlan':'Choisissez votre formule',
+'subscription.choose':'Choisir'
+});
+const dePlansRelease=replace(deInteractionRelease,{
+'subscription.plansEyebrow':'DEVINX TARIFE',
+'subscription.plansTitle':'Wähle den Tarif, der zu deinem Rhythmus passt',
+'subscription.plansText':'Voller DevinX-Zugang in jedem Tarif. Längere Laufzeiten senken den entsprechenden Monatspreis.',
+'subscription.quarterly':'Vierteljährlich',
+'subscription.semiannual':'Halbjährlich',
+'subscription.annual':'Jährlich',
+'subscription.flexible':'Am flexibelsten',
+'subscription.bestValue':'Größte Ersparnis',
+'subscription.fullAccess':'Voller Zugriff',
+'subscription.save':'Spare',
+'subscription.totalPeriod':'für den Zeitraum',
+'subscription.equivalent':'Entspricht',
+'subscription.perMonth':'/Monat',
+'subscription.sameAccess':'Alle DevinX-Funktionen',
+'subscription.choosePlan':'Wähle deinen Tarif',
+'subscription.choose':'Tarif wählen'
+});
+const arPlansRelease=replace(arInteractionRelease,{
+'subscription.plansEyebrow':'خطط DEVINX',
+'subscription.plansTitle':'اختر الخطة المناسبة لإيقاعك',
+'subscription.plansText':'جميع مزايا Devinx متاحة في كل الخطط. كلما طالت المدة انخفضت التكلفة الشهرية المكافئة.',
+'subscription.quarterly':'ربع سنوي',
+'subscription.semiannual':'نصف سنوي',
+'subscription.annual':'سنوي',
+'subscription.flexible':'الأكثر مرونة',
+'subscription.bestValue':'أكبر توفير',
+'subscription.fullAccess':'وصول كامل',
+'subscription.save':'وفّر',
+'subscription.totalPeriod':'للفترة',
+'subscription.equivalent':'يعادل',
+'subscription.perMonth':'/شهرياً',
+'subscription.sameAccess':'جميع مزايا Devinx',
+'subscription.choosePlan':'اختر خطتك',
+'subscription.choose':'اختيار الخطة'
+});
+
+export const catalogs:Record<Locale,Catalog>={'pt-BR':ptPlansRelease,en:enPlansRelease,es:esPlansRelease,fr:frPlansRelease,ar:arPlansRelease,de:dePlansRelease};
+export type TranslationKey=keyof typeof ptPlansRelease;

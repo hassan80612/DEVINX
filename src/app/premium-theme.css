@@ -722,3 +722,61 @@ button[aria-busy="true"]{cursor:progress!important;pointer-events:none}
   .instantActionTop b{font-size:15px!important}
   .instantAction>small{font-size:10px!important}
 }
+
+
+/* Subscription plans — one reusable visual system for landing and paywall */
+.landingPlansSection{width:min(1120px,calc(100% - 36px));margin:18px auto 42px}
+.subscriptionPlansIntro{text-align:center;max-width:700px;margin:0 auto 22px}
+.subscriptionPlansIntro h2{margin:12px 0 7px;font-size:30px;letter-spacing:-.035em;color:#f6f2e9}
+.subscriptionPlansIntro p{margin:0;color:#8f918c;line-height:1.55;font-size:12px}
+.subscriptionPlanGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:stretch}
+.subscriptionPlanCard{
+  position:relative;display:flex;flex-direction:column;min-height:286px;padding:18px;border:1px solid rgba(215,174,77,.20);border-radius:19px;
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.035),transparent 30%),
+    radial-gradient(circle at 88% 5%,rgba(224,179,76,.075),transparent 31%),
+    linear-gradient(145deg,#14181d,#090c10 66%,#07090c);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)
+}
+.subscriptionPlanCard:before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(226,185,88,.45),transparent)}
+.subscriptionPlanCard.featured{
+  border-color:rgba(235,194,96,.48);
+  background:
+    radial-gradient(circle at 88% 4%,rgba(235,191,86,.17),transparent 34%),
+    linear-gradient(145deg,#1d1a12,#0f0d09 60%,#080806);
+  box-shadow:inset 0 1px 0 rgba(255,246,205,.08),0 20px 42px rgba(0,0,0,.31),0 0 28px rgba(218,175,78,.07)
+}
+.subscriptionPlanTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.subscriptionPlanTop small{display:block;color:#a99561;font-size:8px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.subscriptionPlanTop h3{margin:5px 0 0;font-size:18px;color:#f7f4ed;letter-spacing:-.02em}
+.subscriptionSaving{flex:0 0 auto;padding:5px 8px;border:1px solid rgba(89,213,156,.22);border-radius:999px;background:rgba(57,171,121,.07);color:#70dca8;font-size:8px;font-weight:900;white-space:nowrap}
+.subscriptionPlanPrice{display:flex;align-items:baseline;gap:7px;margin-top:20px}
+.subscriptionPlanPrice strong{font-size:27px;line-height:1;color:#efd071;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+.subscriptionPlanPrice span{font-size:8px;color:#858781}
+.subscriptionPlanMeta{display:grid;gap:7px;margin:15px 0 18px}
+.subscriptionPlanMeta span{color:#93968f;font-size:9px;line-height:1.35}
+.subscriptionPlanMeta b{color:#d9ba64;font-weight:900}
+.subscriptionPlanCta{width:100%;margin-top:auto;text-decoration:none;min-height:43px!important;font-size:10px!important}
+.subscriptionPlanCard.featured .subscriptionPlanCta{box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 8px 20px rgba(150,96,18,.16)!important}
+.subscriptionPlans.compact{display:grid;gap:11px}
+.subscriptionPlansCompactTitle{display:flex;justify-content:space-between;align-items:end;gap:10px;padding-top:3px}
+.subscriptionPlansCompactTitle b{color:#f2efe8;font-size:12px}
+.subscriptionPlansCompactTitle small{color:#7f827d;font-size:8px}
+.subscriptionPlans.compact .subscriptionPlanGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.subscriptionPlans.compact .subscriptionPlanCard{min-height:215px;padding:14px;border-radius:15px}
+.subscriptionPlans.compact .subscriptionPlanTop h3{font-size:15px}
+.subscriptionPlans.compact .subscriptionPlanPrice{margin-top:14px}
+.subscriptionPlans.compact .subscriptionPlanPrice strong{font-size:22px}
+.subscriptionPlans.compact .subscriptionPlanMeta{margin:11px 0 13px}
+.subscriptionCard.inactive{width:100%}
+.paywallCard{width:min(980px,calc(100% - 24px))!important;margin:7vh auto!important}
+.paywallCard>.subscriptionCard{width:100%;text-align:left}
+[dir="rtl"] .subscriptionPlanTop,[dir="rtl"] .subscriptionPlansCompactTitle{direction:rtl}
+@media(max-width:900px){.subscriptionPlanGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){
+  .landingPlansSection{width:min(100% - 22px,1120px);margin-top:12px}
+  .subscriptionPlansIntro h2{font-size:24px}
+  .subscriptionPlanGrid,.subscriptionPlans.compact .subscriptionPlanGrid{grid-template-columns:1fr}
+  .subscriptionPlanCard,.subscriptionPlans.compact .subscriptionPlanCard{min-height:0}
+  .paywallCard{width:calc(100% - 14px)!important;padding:20px 12px!important;margin:3vh auto!important}
+}

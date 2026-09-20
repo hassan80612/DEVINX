@@ -3,6 +3,7 @@
 import {useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
+import {SubscriptionPlans} from './SubscriptionPlans';
 
 type SubscriptionDetails={
   status:string;
@@ -61,7 +62,7 @@ export function SubscriptionPanel({isAdmin=false}:{isAdmin?:boolean}){
       {!manual&&active&&!data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {t('subscription.managedByKiwify')}</span>}
       {data?.subscription_status&&<span><b>{t('subscription.status')}:</b> {data.subscription_status}</span>}
     </div>
-    {!active&&checkout&&<a className="primary goldButton subscriptionCta" href={checkout}>{t('subscription.subscribe')}</a>}
+    {!active&&<SubscriptionPlans variant="compact"/>}
     {active&&!manual&&checkout&&<a className="secondary subscriptionCta" href={checkout}>{t('subscription.checkout')}</a>}
   </section>;
 }
