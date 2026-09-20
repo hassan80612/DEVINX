@@ -4,6 +4,7 @@ import {useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
 import {SubscriptionPlans} from './SubscriptionPlans';
+import {checkoutForLocale} from '@/lib/subscription-plans';
 
 type SubscriptionDetails={
   status:string;
@@ -18,10 +19,6 @@ type SubscriptionDetails={
   checkout_url:string|null;
 };
 
-function checkoutForLocale(url:string,locale:string){
-  if(locale==='pt-BR'||/([?&])region=intl(?:&|$)/.test(url))return url;
-  return url+(url.includes('?')?'&':'?')+'region=intl';
-}
 
 export function SubscriptionPanel({isAdmin=false}:{isAdmin?:boolean}){
   const{t,locale,date}=useI18n();

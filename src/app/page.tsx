@@ -6,7 +6,7 @@ import {BrandLogo} from '@/components/BrandLogo';
 import {SubscriptionPlans} from '@/components/SubscriptionPlans';
 
 export default function Home(){
-  const{t,locale,currency}=useI18n();
+  const{t,currency}=useI18n();
   return <main className="landingV2">
     <header className="top landingTop">
       <div className="brand"><BrandLogo/></div>
