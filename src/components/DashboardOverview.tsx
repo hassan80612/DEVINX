@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useLayoutEffect,useMemo,useState} from 'react';
+import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {createClient} from '@/lib/supabase/client';
 import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT,notifyGoalUpdated} from '@/lib/finance-events';
@@ -42,6 +42,9 @@ function chartStart(period:ChartPeriod){
   const today=new Date(localDateISO()+'T12:00:00');
   const months=period==='6m'?5:11;
   return localDateISO(new Date(today.getFullYear(),today.getMonth()-months,1));
+}
+function dashboardDataFrom(period:ChartPeriod){
+  return [chartStart(period),localMonthStartISO(),weekStart()].sort()[0];
 }
 function dayDiff(from:string,to:string){return Math.max(0,Math.floor((new Date(to+'T12:00:00').getTime()-new Date(from+'T12:00:00').getTime())/86400000))}
 function monthEnd(month:string){
@@ -86,6 +89,9 @@ export function DashboardOverview(){
   const[chartPeriod,setChartPeriod]=useState<ChartPeriod>('1m');
   const[selectedFlowKey,setSelectedFlowKey]=useState('');
   const[goalSaving,setGoalSaving]=useState(false);
+  const refreshTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const refreshRunning=useRef(false);
+  const refreshQueued=useRef(false);
 
   async function load(show=false,periodOverride?:ChartPeriod){
     if(show)setLoading(true);
@@ -96,9 +102,7 @@ export function DashboardOverview(){
     const profilePeriod=validChartPeriod((profile as any)?.dashboard_chart_period)?(profile as any).dashboard_chart_period as ChartPeriod:chartPeriod;
     const activePeriod=periodOverride||profilePeriod||'1m';
     setChartPeriod(activePeriod);
-    const chartFrom=chartStart(activePeriod);
-    const monthFrom=localMonthStartISO();
-    const from=chartFrom<monthFrom?chartFrom:monthFrom;
+    const from=dashboardDataFrom(activePeriod);
     const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rFuturePlans,rFutureSettlements]=await Promise.all([
       s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',user.id).gte('worked_on',from),
@@ -138,15 +142,44 @@ export function DashboardOverview(){
     setLoading(false);
   }
 
+  async function loadFlowData(s:ReturnType<typeof createClient>,userId:string,period:ChartPeriod){
+    const from=dashboardDataFrom(period);
+    const[rTx,rWork,rBillPay,rCardPay]=await Promise.all([
+      s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',userId).gte('occurred_on',from),
+      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',userId).gte('worked_on',from),
+      s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',userId).gte('paid_on',from),
+      s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',userId).gte('paid_on',from)
+    ]);
+    setTx((rTx.data||[]) as Tx[]);
+    setWork((rWork.data||[]) as Work[]);
+    setBillPays((rBillPay.data||[]) as BillPay[]);
+    setCardPays((rCardPay.data||[]) as CardPay[]);
+  }
+
   useLayoutEffect(()=>{try{const saved=localStorage.getItem('devinx_daily_goal_expanded');if(saved!==null)setDailyGoalExpanded(saved==='1')}catch{}},[]);
   function toggleDailyGoal(){setDailyGoalExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_daily_goal_expanded',next?'1':'0')}catch{}return next})}
 
   useEffect(()=>{
     load(true);
     setProjectedHost(document.getElementById('home-projected-slot'));
-    const refresh=()=>load(false);
-    window.addEventListener(FINANCE_UPDATED_EVENT,refresh);
-    return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);
+    const runRefresh=async()=>{
+      if(refreshRunning.current){refreshQueued.current=true;return}
+      refreshRunning.current=true;
+      try{await load(false)}
+      finally{
+        refreshRunning.current=false;
+        if(refreshQueued.current){refreshQueued.current=false;scheduleRefresh()}
+      }
+    };
+    const scheduleRefresh=()=>{
+      if(refreshTimer.current)clearTimeout(refreshTimer.current);
+      refreshTimer.current=setTimeout(()=>{refreshTimer.current=null;void runRefresh()},90);
+    };
+    window.addEventListener(FINANCE_UPDATED_EVENT,scheduleRefresh);
+    return()=>{
+      window.removeEventListener(FINANCE_UPDATED_EVENT,scheduleRefresh);
+      if(refreshTimer.current)clearTimeout(refreshTimer.current);
+    };
   },[]);
 
   const reserveBalance=useMemo(
@@ -272,8 +305,11 @@ export function DashboardOverview(){
     try{localStorage.setItem('devinx_dashboard_chart_period',next)}catch{}
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
-    if(user)await s.from('profiles').update({dashboard_chart_period:next}).eq('id',user.id);
-    await load(false,next);
+    if(!user)return;
+    await Promise.all([
+      s.from('profiles').update({dashboard_chart_period:next}).eq('id',user.id),
+      loadFlowData(s,user.id,next)
+    ]);
   }
 
   const futureCommittedReserve=useMemo(()=>committedReserveTotal(futurePlans,reserveEntries),[futurePlans,reserveEntries]);
@@ -525,30 +561,6 @@ export function DashboardOverview(){
       <article><small>{t('dashboard.pending')}</small><b>{currency(pendingWithFuture)}</b><span>{currentFutureImpact.expectedIncome>0?t('future.expectedIncomeShort')+' +'+currency(currentFutureImpact.expectedIncome):t('future.includesPlanning')}</span></article>
     </div>
 
-    <section className="panel premiumFlowPanel">
-      <div className="premiumFlowHead">
-        <div><small>{t('nav.reports')}</small><h2>{t('dashboard.entered')} × {t('dashboard.spent')}</h2></div>
-        <div className="flowHeadTools">
-          <label className="flowPeriodControl"><span>{t('dashboard.chartPeriod')}</span><select value={chartPeriod} onChange={e=>changeChartPeriod(e.target.value as ChartPeriod)}>
-            <option value="3d">{t('dashboard.chart3d')}</option><option value="7d">{t('dashboard.chart7d')}</option><option value="1m">{t('dashboard.chart1m')}</option><option value="3m">{t('dashboard.chart3m')}</option><option value="6m">{t('dashboard.chart6m')}</option><option value="12m">{t('dashboard.chart12m')}</option>
-          </select></label>
-          <div className="flowLegend"><span className="in"><i/>{t('dashboard.entered')}</span><span className="out"><i/>{t('dashboard.spent')}</span></div>
-        </div>
-      </div>
-      <div className={'cashFlowViewport period-'+chartPeriod}>
-        <div className="cashFlowChart" aria-label={t('dashboard.entered')+' '+t('dashboard.spent')}>
-          {flowChart.rows.map((row,index)=><button type="button" className={'flowDay '+(selectedFlowKey===row.key?'selected':'')} key={row.key} onClick={()=>setSelectedFlowKey(current=>current===row.key?'':row.key)} aria-pressed={selectedFlowKey===row.key}>
-            <div className="flowBars">
-              <i className="incomeBar" style={{height:(row.income>0?Math.max(3,Math.round(row.income/flowChart.max*100)):0)+'%'}} title={currency(row.income)}/>
-              <i className="outBar" style={{height:(row.out>0?Math.max(3,Math.round(row.out/flowChart.max*100)):0)+'%'}} title={currency(row.out)}/>
-            </div>
-            <small>{index%flowChart.labelEvery===0||index===flowChart.rows.length-1?date(row.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'short'}:{day:'2-digit',month:'2-digit'}):'·'}</small>
-          </button>)}
-        </div>
-      </div>
-      {selectedFlowRow?<div className="flowSelection"><span>{date(selectedFlowRow.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'long',year:'numeric'}:{day:'2-digit',month:'short',year:'numeric'})}</span><b className="positive">+ {currency(selectedFlowRow.income)}</b><b>− {currency(selectedFlowRow.out)}</b></div>:<small className="flowTapHint">{t('dashboard.chartTap')}</small>}
-    </section>
-
     <section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')+(!dailyGoalExpanded?' isCollapsed':'')}>
       <div className="dailyReserveTop">
         <div><small>{t('dashboard.dailyReserveEyebrow')}</small><h2>{reserveSuggestion.daily>0?t('dashboard.dailyReserveTitle'):t('dashboard.dailyReserveCovered')}</h2></div>
@@ -615,5 +627,29 @@ export function DashboardOverview(){
     </section>
 
     {numbers.income===0&&numbers.spent===0&&<section className="empty premiumEmpty"><b>{t('dashboard.emptyTitle')}</b><p>{t('dashboard.emptyText')}</p></section>}
+
+    <section className="panel premiumFlowPanel">
+      <div className="premiumFlowHead">
+        <div><small>{t('nav.reports')}</small><h2>{t('dashboard.entered')} × {t('dashboard.spent')}</h2></div>
+        <div className="flowHeadTools">
+          <label className="flowPeriodControl"><span>{t('dashboard.chartPeriod')}</span><select value={chartPeriod} onChange={e=>changeChartPeriod(e.target.value as ChartPeriod)}>
+            <option value="3d">{t('dashboard.chart3d')}</option><option value="7d">{t('dashboard.chart7d')}</option><option value="1m">{t('dashboard.chart1m')}</option><option value="3m">{t('dashboard.chart3m')}</option><option value="6m">{t('dashboard.chart6m')}</option><option value="12m">{t('dashboard.chart12m')}</option>
+          </select></label>
+          <div className="flowLegend"><span className="in"><i/>{t('dashboard.entered')}</span><span className="out"><i/>{t('dashboard.spent')}</span></div>
+        </div>
+      </div>
+      <div className={'cashFlowViewport period-'+chartPeriod}>
+        <div className="cashFlowChart" aria-label={t('dashboard.entered')+' '+t('dashboard.spent')}>
+          {flowChart.rows.map((row,index)=><button type="button" className={'flowDay '+(selectedFlowKey===row.key?'selected':'')} key={row.key} onClick={()=>setSelectedFlowKey(current=>current===row.key?'':row.key)} aria-pressed={selectedFlowKey===row.key}>
+            <div className="flowBars">
+              <i className="incomeBar" style={{height:(row.income>0?Math.max(3,Math.round(row.income/flowChart.max*100)):0)+'%'}} title={currency(row.income)}/>
+              <i className="outBar" style={{height:(row.out>0?Math.max(3,Math.round(row.out/flowChart.max*100)):0)+'%'}} title={currency(row.out)}/>
+            </div>
+            <small>{index%flowChart.labelEvery===0||index===flowChart.rows.length-1?date(row.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'short'}:{day:'2-digit',month:'2-digit'}):'·'}</small>
+          </button>)}
+        </div>
+      </div>
+      {selectedFlowRow?<div className="flowSelection"><span>{date(selectedFlowRow.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'long',year:'numeric'}:{day:'2-digit',month:'short',year:'numeric'})}</span><b className="positive">+ {currency(selectedFlowRow.income)}</b><b>− {currency(selectedFlowRow.out)}</b></div>:<small className="flowTapHint">{t('dashboard.chartTap')}</small>}
+    </section>
   </div>;
 }
