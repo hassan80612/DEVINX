@@ -514,6 +514,11 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
 .futurePlanFacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding-top:11px}.futurePlanFacts span{padding:8px;border-radius:9px;background:var(--surface-0);border:1px solid rgba(214,172,75,.09)}.futurePlanFacts small,.futurePlanFacts b{display:block}.futurePlanFacts small{color:#757872;font-size:7px}.futurePlanFacts b{margin-top:3px;font-size:9px;color:#dbd8d0}
 .futureReserveProgress{display:grid;gap:6px}.futureReserveProgress>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:8px;color:#8b8e87}.futureReserveProgress>div:first-child b{color:#dec064}.futureReserveProgress .bar{height:5px;margin:0;background:var(--surface-0)}.futureReserveProgress .bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#a16b1d,#e9c96a)}.futureReserveProgress>small{color:#777b75;font-size:7px}
 .futurePlanActions{display:flex;gap:6px;flex-wrap:wrap}.futurePlanActions .primary,.futurePlanActions .goldOutline{min-height:34px;padding:7px 10px;font-size:8px}
+.futureReceiptStatus{display:inline-flex;align-items:center;width:max-content;margin-top:5px;padding:3px 7px;border:1px solid rgb(var(--accent-rgb) / .22);border-radius:999px;background:rgb(var(--accent-rgb) / .07);color:var(--accent-strong);font-size:7px;font-weight:900;letter-spacing:.04em}
+.futureReceiptStatus.late{border-color:rgb(var(--negative-rgb) / .24);background:rgb(var(--negative-rgb) / .08);color:var(--negative)}
+.futureReceiptNotice{display:grid;gap:3px;padding:9px 10px;border:1px solid rgb(var(--accent-rgb) / .18);border-radius:10px;background:rgb(var(--accent-rgb) / .055)}
+.futureReceiptNotice b{font-size:9px;color:var(--accent-strong)}.futureReceiptNotice span{font-size:8px;line-height:1.45;color:var(--text-muted)}
+.futureReceiptNotice.late{border-color:rgb(var(--negative-rgb) / .2);background:rgb(var(--negative-rgb) / .055)}.futureReceiptNotice.late b{color:var(--negative)}
 .futureEmpty{padding:16px;border:1px dashed rgba(214,172,75,.13);border-radius:12px;color:#737671;text-align:center;font-size:9px}
 .futurePaused{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px;border-top:1px solid rgba(214,172,75,.10);border-bottom:1px solid rgba(214,172,75,.10)}.futurePaused>small{margin-right:4px;color:#81847e;font-size:8px}.futurePaused button{display:flex;gap:8px;border:1px solid rgba(214,172,75,.14);border-radius:999px;background:var(--surface-0);color:#ddd7ca;padding:6px 9px;font-size:8px}.futurePaused button b{color:#d9b85f}
 .futureHistory{display:grid;gap:7px}.futureHistory .sectionTitleRow h3{margin:3px 0 0}.futureHistory>article{display:grid;grid-template-columns:auto 1fr auto auto;gap:9px;align-items:center;padding:9px 10px;border:1px solid rgba(214,172,75,.11);border-radius:11px;background:var(--surface-0)}.futureHistory>article>span{font-size:16px}.futureHistory b,.futureHistory small{display:block}.futureHistory b{font-size:9px}.futureHistory small{margin-top:2px;color:#777b75;font-size:7px}.futureHistory strong{font-size:9px;color:#d8ba64}
@@ -574,14 +579,9 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   border-color:var(--border-strong);
   box-shadow:var(--shadow-md);
 }
-.instantPanel h1,.sectionTopbar h1,.dailyReserveTop h2,.commitmentsPanel h2,.goalPanel h2{color:var(--text)}
+.instantPanel h1,.sectionTopbar h1,.commitmentsPanel h2,.goalPanel h2{color:var(--text)}
 .instantPanel p,.sectionLead,.dailyReserveCard p,.goalPanel .lead,.futurePlanningHead p{color:var(--text-muted)}
-.instantPanel small,.sectionTitleRow small,.premiumFlowHead small,.dailyReserveTop small{color:var(--accent-strong)}
-
-.projectedStrip{min-height:78px;padding:17px 19px}
-.projectedStrip small{color:var(--text-muted);font-size:10px;letter-spacing:.08em}
-.projectedStrip strong{color:var(--accent-strong);font-size:28px;line-height:1.05}
-.projectedStrip span{color:var(--text-muted);font-size:10px}
+.instantPanel small,.sectionTitleRow small,.premiumFlowHead small{color:var(--accent-strong)}
 
 .dashboardMetrics article,.cardNumbers>div,.commitmentDouble article,.futureSummaryGrid article,
 .statementList button,.workSessionCard,.categoryList article,.adminUser,.diagGrid article,
@@ -732,7 +732,6 @@ select option{background:var(--surface-1);color:var(--text)}
 @media(max-width:650px){
   .financeContent{padding-left:12px;padding-right:12px}
   .instantPanel{padding:18px}
-  .projectedStrip strong{font-size:25px}
   .dashboardMetrics article{min-height:84px;padding:13px}
   .ledgerText b,.movementGlobalTitle b{font-size:12.5px}
   .ledgerText small,.movementGlobalMain small{font-size:10px}
