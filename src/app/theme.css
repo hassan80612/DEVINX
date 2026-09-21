@@ -295,9 +295,6 @@ select option{background:var(--surface-0);color:var(--text)}
 .collapsibleTitleRow{align-items:center}
 .collapseToggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:31px;padding:6px 9px;border:1px solid rgb(var(--accent-rgb) / .19);border-radius:9px;background:var(--surface-0);color:var(--accent);font-size:8px;font-weight:900;white-space:nowrap}
 .collapseToggle span,.collapseToggle i{font-style:normal;font-size:11px}.collapsiblePanel.isCollapsed{padding-bottom:14px}.collapsibleBody{animation:devinxCalcReveal .16s ease-out}
-.collapsibleHeaderTools{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.collapsibleHeaderTools>span{padding:6px 9px;border:1px solid rgba(255,213,95,.25);border-radius:999px;color:#ffe07d;background:rgba(74,53,12,.2);font-size:9px;font-weight:900}
-.dailyReserveTop>.collapsibleHeaderTools{margin-left:auto}.dailyReserveCard.isCollapsed{padding-bottom:14px}.dailyReserveCard.isCollapsed .dailyReserveTop{align-items:center}
-.collapsedGoalSummary{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px;margin-top:11px;padding:10px;border:1px solid rgb(var(--accent-rgb) / .13);border-radius:11px;background:rgba(9,11,15,.46)}.collapsedGoalSummary span{font-size:8px;color:var(--text-muted)}.collapsedGoalSummary b{font-size:14px;color:#ffe17b}.collapsedGoalSummary small{text-align:right;color:var(--text-faint);font-size:8px}
 .dailyGoalModeTabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:12px;padding:4px;border:1px solid rgb(var(--accent-rgb) / .13);border-radius:11px;background:rgba(7,9,12,.68)}
 .dailyGoalModeTabs button{min-height:34px;border:1px solid transparent;border-radius:8px;background:transparent;color:#858681;font-size:9px;font-weight:900}
 .dailyGoalModeTabs button.active{border-color:rgb(var(--accent-rgb) / .22);background:#17150f;color:#e1c164}
@@ -306,12 +303,8 @@ select option{background:var(--surface-0);color:var(--text)}
 .manualDailyGoal label span,.manualDailyGoal small{display:block;margin-bottom:5px;color:#96948c;font-size:8px}
 .manualDailyGoal input{width:100%;min-height:42px;font-size:15px;font-weight:800}
 .manualDailyGoal>div{display:flex;flex-direction:column;justify-content:center}.manualDailyGoal>div b{color:#d9ba62;font-size:17px;font-variant-numeric:tabular-nums}
-@keyframes devinxCalcReveal{from{opacity:.2;transform:translateY(-3px)}to{opacity:1;transform:none}}[dir="rtl"] .dailyReserveTop{direction:rtl}
+@keyframes devinxCalcReveal{from{opacity:.2;transform:translateY(-3px)}to{opacity:1;transform:none}}
 
-@media(max-width:700px){
-  .collapsedGoalSummary{grid-template-columns:auto auto}.collapsedGoalSummary small{grid-column:1/-1;text-align:left}
-  .dailyReserveTop{gap:8px}.collapsibleHeaderTools{max-width:54%}
-}
 @media(max-width:420px){
   .manualDailyGoal{grid-template-columns:1fr}
   .collapseToggle{padding:6px 8px}.collapseToggle{font-size:0}.collapseToggle span,.collapseToggle i{font-size:13px}
