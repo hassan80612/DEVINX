@@ -173,7 +173,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   function composeCashRows(txItems:Tx[],workItems:Work[],recItems:RecPay[],cardItems:CardPay[],reserveItems:ReserveEntry[],cats:CustomCategory[]){
     const rows:CashRow[]=[];
     txItems.forEach(item=>{
-      if(item.source_type==='cash_adjustment')return;
+      if(item.source_type==='cash_adjustment'||item.source_type==='work_cash_model_migration')return;
       const isDebt=item.source_type==='debt_payment';
       const isFuture=item.source_type==='future_plan';
       const isCardItem=item.source_type==='card_installment_payment';
