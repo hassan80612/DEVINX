@@ -219,6 +219,10 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       const haystack=normalizeSearch([row.title,row.subtitle,row.keywords,row.date,amount,amount.replace('.',',')].filter(Boolean).join(' '));
       if(tokens.every(token=>haystack.includes(token)))rows.push(row);
     };
+    const searchCardPaidMap=new Map<string,number>();
+    searchData.tx.filter(item=>item.source_type==='card_installment_payment'&&item.source_id).forEach(item=>{
+      searchCardPaidMap.set(item.source_id!, (searchCardPaidMap.get(item.source_id!)||0)+Number(item.amount_minor));
+    });
 
     composeCashRows(searchData.tx,searchData.work,searchData.recPays,searchData.cardPays,searchData.reserveEntries,searchData.categories).forEach(row=>{
       const raw=row.raw as any;
@@ -241,10 +245,15 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     });
 
     searchData.purchases.forEach(p=>{
-      const open=(p.card_installments||[]).some(i=>!i.paid_at);
+      const remaining=(p.card_installments||[]).reduce((sum,i)=>{
+        const linked=searchCardPaidMap.get(i.id)||0;
+        const paid=i.paid_at&&linked===0?Number(i.amount_minor):Math.min(Number(i.amount_minor),linked);
+        return sum+Math.max(0,Number(i.amount_minor)-paid);
+      },0);
+      const open=remaining>0;
       const card=p.credit_cards?.name||t('nav.cards');
       const category=categoryName('expense',p.category_id,searchData.categories,t);
-      add({id:'purchase:'+p.id,status:open?'pending':'realized',sign:-1,amount:Number(p.total_minor),date:p.purchased_on,title:p.description||card,subtitle:card+' · '+p.installment_count+'x · '+category,keywords:[p.description,card,category,p.category_id,t('move.cardCommitment'),open?t('common.pending'):t('common.history')].filter(Boolean).join(' '),target:'cards'});
+      add({id:'purchase:'+p.id,status:open?'pending':'realized',sign:-1,amount:open?remaining:Number(p.total_minor),date:p.purchased_on,title:p.description||card,subtitle:card+' · '+p.installment_count+'x · '+category,keywords:[p.description,card,category,p.category_id,t('move.cardCommitment'),open?t('common.pending'):t('common.history')].filter(Boolean).join(' '),target:'cards'});
     });
 
     searchData.debts.filter(d=>d.is_active&&Number(d.outstanding_minor)>0).forEach(d=>{
@@ -430,12 +439,24 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
   function startPurchaseEdit(p:Purchase){const first=[...(p.card_installments||[])].sort((a,b)=>a.installment_number-b.installment_number)[0];setPurchaseEdit(p);setPurchaseDesc(p.description||'');setPurchaseTotal(String(Number(p.total_minor)/100).replace('.',','));setPurchaseCount(String(p.installment_count));setPurchaseDate(p.purchased_on);setPurchaseFirstDueDate(first?.due_date||'');setPurchaseCategory(p.category_id)}
   async function savePurchase(e:FormEvent){
-    e.preventDefault();if(!purchaseEdit)return;const s=createClient();const{error}=await s.rpc('update_card_purchase_v2',{p_purchase_id:purchaseEdit.id,p_category_id:purchaseCategory,p_description:purchaseDesc,p_total_minor:minor(purchaseTotal),p_purchased_on:purchaseDate,p_installment_count:Number(purchaseCount),p_is_avoidable:purchaseEdit.is_avoidable,p_first_due_date:purchaseFirstDueDate||null});
+    e.preventDefault();if(!purchaseEdit)return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
+    const installmentIds=(purchaseEdit.card_installments||[]).map(item=>item.id);
+    if(installmentIds.length){
+      const{data:linked,error:linkedError}=await s.from('transactions').select('id').eq('user_id',user.id).eq('source_type','card_installment_payment').in('source_id',installmentIds).limit(1);
+      if(linkedError||linked?.length){setNotice(t('move.paidPurchaseLocked'));return}
+    }
+    const{error}=await s.rpc('update_card_purchase_v2',{p_purchase_id:purchaseEdit.id,p_category_id:purchaseCategory,p_description:purchaseDesc,p_total_minor:minor(purchaseTotal),p_purchased_on:purchaseDate,p_installment_count:Number(purchaseCount),p_is_avoidable:purchaseEdit.is_avoidable,p_first_due_date:purchaseFirstDueDate||null});
     if(error){setNotice(t('move.paidPurchaseLocked'));return}
     setPurchaseEdit(null);notifyFinanceUpdated();await load(false);
   }
   async function deletePurchase(p:Purchase){
-    if(!confirm(t('move.purchaseDeleteConfirm')))return;const s=createClient();const{error}=await s.rpc('delete_card_purchase',{p_purchase_id:p.id});
+    if(!confirm(t('move.purchaseDeleteConfirm')))return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
+    const installmentIds=(p.card_installments||[]).map(item=>item.id);
+    if(installmentIds.length){
+      const{data:linked,error:linkedError}=await s.from('transactions').select('id').eq('user_id',user.id).eq('source_type','card_installment_payment').in('source_id',installmentIds).limit(1);
+      if(linkedError||linked?.length){setNotice(t('move.paidPurchaseLocked'));return}
+    }
+    const{error}=await s.rpc('delete_card_purchase',{p_purchase_id:p.id});
     if(error){setNotice(t('move.paidPurchaseLocked'));return}
     notifyFinanceUpdated();await load(false);
   }
