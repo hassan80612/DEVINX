@@ -392,7 +392,7 @@ export function DashboardOverview(){
       grouped.set(item.date,(grouped.get(item.date)||0)+(item.kind==='expense'?item.amount:-item.amount));
     }
 
-    const planningCash=cashPosition.current;
+    const planningCash=Math.max(0,cashPosition.current-futureCommittedReserve);
     let cumulative=0;
     let daily=0;
     let criticalDeadline=horizon;
@@ -421,7 +421,7 @@ export function DashboardOverview(){
       days:daysInclusive(today,horizon),
       hasCustomHorizon:!!goalTargetDate&&goalTargetDate>=today
     };
-  },[goalTargetDate,bills,billPays,billOverrides,cardInst,cashPosition.current,futurePlans,futureSettlements,reserveEntries]);
+  },[goalTargetDate,bills,billPays,billOverrides,cardInst,cashPosition.current,futureCommittedReserve,futurePlans,futureSettlements,reserveEntries]);
 
   async function saveHorizon(){
     if(targetDraft&&targetDraft<localDateISO()){setGoalNotice(t('dashboard.futureDateError'));return}
