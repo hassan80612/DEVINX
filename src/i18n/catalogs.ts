@@ -822,42 +822,42 @@ const arPreferencesRelease=replace(arDailyGoalRelease,{
 
 const ptInteractionRelease=replace(ptPreferencesRelease,{
 'settings.chartDefault':'Período padrão do gráfico',
-'settings.chartHelp':'Define o período inicial do gráfico Entrou × Gastou. Você também pode trocar direto na Home.',
+'settings.chartHelp':'Define o período inicial do gráfico Entrou × Gastou. Você também pode trocar direto na Home.','settings.autoFutureIncome':'Confirmar recebimentos futuros automaticamente','settings.autoFutureIncomeHelp':'Quando ativado, entradas previstas que vencerem a partir de hoje entram automaticamente no Saldo atual na data prevista. Se não tiver recebido, desfaça a baixa no histórico do planejamento; aquela ocorrência não será confirmada novamente.',
 'dashboard.chartPeriod':'Período',
 'dashboard.chart3d':'3 dias','dashboard.chart7d':'7 dias','dashboard.chart1m':'1 mês','dashboard.chart3m':'3 meses','dashboard.chart6m':'6 meses','dashboard.chart12m':'12 meses',
 'dashboard.chartTap':'Toque em uma coluna para ver os valores.'
 });
 const enInteractionRelease=replace(enPreferencesRelease,{
 'settings.chartDefault':'Default chart period',
-'settings.chartHelp':'Sets the initial period for the Money in × Money out chart. You can also change it directly on Home.',
+'settings.chartHelp':'Sets the initial period for the Money in × Money out chart. You can also change it directly on Home.','settings.autoFutureIncome':'Automatically confirm future income','settings.autoFutureIncomeHelp':'When enabled, expected income due from today onward is automatically added to Current balance on its planned date. If it was not received, undo the settlement in planning history; that occurrence will not be confirmed again.',
 'dashboard.chartPeriod':'Period',
 'dashboard.chart3d':'3 days','dashboard.chart7d':'7 days','dashboard.chart1m':'1 month','dashboard.chart3m':'3 months','dashboard.chart6m':'6 months','dashboard.chart12m':'12 months',
 'dashboard.chartTap':'Tap a bar to see the values.'
 });
 const esInteractionRelease=replace(esPreferencesRelease,{
 'settings.chartDefault':'Período predeterminado del gráfico',
-'settings.chartHelp':'Define el período inicial del gráfico Entró × Gastó. También puedes cambiarlo directamente en Inicio.',
+'settings.chartHelp':'Define el período inicial del gráfico Entró × Gastó. También puedes cambiarlo directamente en Inicio.','settings.autoFutureIncome':'Confirmar ingresos futuros automáticamente','settings.autoFutureIncomeHelp':'Al activarlo, los ingresos previstos con vencimiento desde hoy entran automáticamente en el Saldo actual en la fecha prevista. Si no se recibió, deshaz la baja en el historial; esa ocurrencia no volverá a confirmarse automáticamente.',
 'dashboard.chartPeriod':'Período',
 'dashboard.chart3d':'3 días','dashboard.chart7d':'7 días','dashboard.chart1m':'1 mes','dashboard.chart3m':'3 meses','dashboard.chart6m':'6 meses','dashboard.chart12m':'12 meses',
 'dashboard.chartTap':'Toca una barra para ver los valores.'
 });
 const frInteractionRelease=replace(frPreferencesRelease,{
 'settings.chartDefault':'Période par défaut du graphique',
-'settings.chartHelp':'Définit la période initiale du graphique Entrées × Dépenses. Vous pouvez aussi la changer depuis l’accueil.',
+'settings.chartHelp':'Définit la période initiale du graphique Entrées × Dépenses. Vous pouvez aussi la changer depuis l’accueil.','settings.autoFutureIncome':'Confirmer automatiquement les revenus futurs','settings.autoFutureIncomeHelp':'Une fois activé, tout revenu prévu à partir d’aujourd’hui est ajouté automatiquement au Solde actuel à la date prévue. S’il n’a pas été reçu, annulez le règlement dans l’historique ; cette occurrence ne sera pas reconfirmée.',
 'dashboard.chartPeriod':'Période',
 'dashboard.chart3d':'3 jours','dashboard.chart7d':'7 jours','dashboard.chart1m':'1 mois','dashboard.chart3m':'3 mois','dashboard.chart6m':'6 mois','dashboard.chart12m':'12 mois',
 'dashboard.chartTap':'Touchez une barre pour voir les montants.'
 });
 const deInteractionRelease=replace(dePreferencesRelease,{
 'settings.chartDefault':'Standardzeitraum des Diagramms',
-'settings.chartHelp':'Legt den Startzeitraum für das Einnahmen-×-Ausgaben-Diagramm fest. Er kann auch auf der Startseite geändert werden.',
+'settings.chartHelp':'Legt den Startzeitraum für das Einnahmen-×-Ausgaben-Diagramm fest. Er kann auch auf der Startseite geändert werden.','settings.autoFutureIncome':'Zukünftige Einnahmen automatisch bestätigen','settings.autoFutureIncomeHelp':'Wenn aktiviert, werden ab heute fällige erwartete Einnahmen am geplanten Datum automatisch dem aktuellen Saldo hinzugefügt. Falls das Geld nicht eingegangen ist, mache die Buchung im Planungsverlauf rückgängig; dieser Termin wird nicht erneut automatisch bestätigt.',
 'dashboard.chartPeriod':'Zeitraum',
 'dashboard.chart3d':'3 Tage','dashboard.chart7d':'7 Tage','dashboard.chart1m':'1 Monat','dashboard.chart3m':'3 Monate','dashboard.chart6m':'6 Monate','dashboard.chart12m':'12 Monate',
 'dashboard.chartTap':'Tippe auf einen Balken, um die Werte zu sehen.'
 });
 const arInteractionRelease=replace(arPreferencesRelease,{
 'settings.chartDefault':'الفترة الافتراضية للرسم البياني',
-'settings.chartHelp':'تحدد الفترة الأولية لمخطط الداخل × المصروف. ويمكن تغييرها أيضاً مباشرة من الصفحة الرئيسية.',
+'settings.chartHelp':'تحدد الفترة الأولية لمخطط الداخل × المصروف. ويمكن تغييرها أيضاً مباشرة من الصفحة الرئيسية.','settings.autoFutureIncome':'تأكيد الإيرادات المستقبلية تلقائياً','settings.autoFutureIncomeHelp':'عند التفعيل، تُضاف الإيرادات المتوقعة المستحقة ابتداءً من اليوم تلقائياً إلى الرصيد الحالي في تاريخها المتوقع. إذا لم يتم الاستلام، تراجع عن التسوية من سجل التخطيط ولن يتم تأكيد تلك الواقعة تلقائياً مرة أخرى.',
 'dashboard.chartPeriod':'الفترة',
 'dashboard.chart3d':'3 أيام','dashboard.chart7d':'7 أيام','dashboard.chart1m':'شهر واحد','dashboard.chart3m':'3 أشهر','dashboard.chart6m':'6 أشهر','dashboard.chart12m':'12 شهراً',
 'dashboard.chartTap':'اضغط على عمود لرؤية القيم.'
