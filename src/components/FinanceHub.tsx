@@ -11,6 +11,8 @@ import {SubscriptionPanel} from './SubscriptionPanel';
 import {BrandLogo} from './BrandLogo';
 import {ProCalculator} from './CalculatorPro';
 import {SUPPORTED_CURRENCIES,type CurrencyCode,useI18n} from '@/i18n/provider';
+import {settleAutomaticFutureIncome} from '@/lib/auto-future-income';
+import {notifyFinanceUpdated} from '@/lib/finance-events';
 
 function LazySectionFallback(){return <section className="panel dashboardLoading"><span className="loader"/></section>}
 const MovementCenter=dynamic(()=>import('./MovementCenter').then(module=>module.MovementCenter),{loading:LazySectionFallback});
@@ -73,6 +75,20 @@ export function FinanceHub(){
     const row=Array.isArray(data)?data[0]:data;
     setAccess(row as Access);
   })()},[]);
+
+  useEffect(()=>{
+    if(!access?.allowed)return;
+    let mounted=true;
+    const run=async()=>{
+      const count=await settleAutomaticFutureIncome();
+      if(mounted&&count>0)notifyFinanceUpdated();
+    };
+    run();
+    const timer=window.setInterval(run,60*60*1000);
+    const onPreferences=()=>run();
+    window.addEventListener('devinx:preferences-updated',onPreferences);
+    return()=>{mounted=false;window.clearInterval(timer);window.removeEventListener('devinx:preferences-updated',onPreferences)};
+  },[access?.allowed]);
 
   const month=date(new Date(),{month:'long',year:'numeric'});
   const titles:Record<Section,string>={
