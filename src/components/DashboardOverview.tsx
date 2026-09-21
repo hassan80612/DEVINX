@@ -172,7 +172,14 @@ export function DashboardOverview(){
     setCardPays((rCardPay.data||[]) as CardPay[]);
   }
 
-  useLayoutEffect(()=>{try{const saved=localStorage.getItem('devinx_daily_goal_expanded');if(saved!==null)setDailyGoalExpanded(saved==='1')}catch{}},[]);
+  useLayoutEffect(()=>{
+    try{
+      const savedGoal=localStorage.getItem('devinx_daily_goal_expanded');
+      if(savedGoal!==null)setDailyGoalExpanded(savedGoal==='1');
+      const savedProjection=localStorage.getItem('devinx_projection_date');
+      if(savedProjection&&/^\d{4}-\d{2}-\d{2}$/.test(savedProjection))setProjectionDate(savedProjection);
+    }catch{}
+  },[]);
   function toggleDailyGoal(){setDailyGoalExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_daily_goal_expanded',next?'1':'0')}catch{}return next})}
 
   useEffect(()=>{
@@ -619,7 +626,7 @@ export function DashboardOverview(){
     </div>
     <div className="cashPositionProjection">
       <div><small>{t('dashboard.projected')}</small><strong className={projectedWithFuture>=0?'positive':'negative'}>{currency(projectedWithFuture)}</strong></div>
-      <label><span>{t('dashboard.projectUntil')}</span><input type="date" min={localDateISO()} value={projectionDate} onChange={e=>setProjectionDate(e.target.value||monthEnd(localMonthStartISO()))}/></label>
+      <label><span>{t('dashboard.projectUntil')}</span><input type="date" min={localDateISO()} value={projectionDate} onChange={e=>{const next=e.target.value||monthEnd(localMonthStartISO());setProjectionDate(next);try{localStorage.setItem('devinx_projection_date',next)}catch{}}}/></label>
     </div>
     <span>{t('dashboard.currentBalanceHelp')} · {t('dashboard.projectedDateHelp')}</span>
   </section>;
