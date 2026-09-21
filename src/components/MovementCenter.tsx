@@ -350,7 +350,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     ]);
     if(instResult.error||!instResult.data)return instResult.error||new Error('installment not found');
     if(paymentsResult.error)return paymentsResult.error;
-    const payments=paymentsResult.data||[];
+    const payments=(paymentsResult.data||[]) as {amount_minor:number;occurred_on:string}[];
     const total=payments.reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const latest=[...payments].sort((a,b)=>String(b.occurred_on).localeCompare(String(a.occurred_on)))[0]?.occurred_on;
     const paidAt=total>=Number(instResult.data.amount_minor)&&latest?new Date(latest+'T12:00:00').toISOString():null;
@@ -364,7 +364,8 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       s.from('transactions').select('id,amount_minor').eq('user_id',userId).eq('source_type','card_installment_payment').eq('source_id',installmentId)
     ]);
     if(instResult.error||!instResult.data||paymentsResult.error)return{ok:false,error:instResult.error||paymentsResult.error};
-    const other=(paymentsResult.data||[]).filter(item=>item.id!==transactionId).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const payments=(paymentsResult.data||[]) as {id:string;amount_minor:number}[];
+    const other=payments.filter(item=>item.id!==transactionId).reduce((sum,item)=>sum+Number(item.amount_minor),0);
     return{ok:value>0&&other+value<=Number(instResult.data.amount_minor),error:null};
   }
 
