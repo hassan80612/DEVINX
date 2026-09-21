@@ -1,24 +1,71 @@
 :root{
-  /* DEVINX visual contract: change these tokens instead of patching components. */
+  /* DEVINX visual contract: base palette and surfaces live here. */
   --font-ui:Inter,"Segoe UI Variable","Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
-  --canvas-deep:#070809;--canvas:#0b0d10;
-  --surface-0:#111419;--surface-1:#171b20;--surface-2:#1d2228;--surface-3:#252b32;--surface-hover:#2c333b;
-  --text:#f5f2eb;--text-soft:#d8d5ce;--text-muted:#aaa8a1;--text-faint:#7e817d;
-  --accent:#d6ad52;--accent-strong:#f0d17a;--accent-dark:#9d6c1d;--accent-rgb:214 173 82;--accent-ink:#171006;
-  --positive:#5fd6a0;--positive-rgb:95 214 160;--negative:#ff8b82;--negative-rgb:255 139 130;
-  --border:rgba(255,255,255,.085);--border-strong:rgba(255,255,255,.14);--border-accent:rgb(var(--accent-rgb) / .3);
-  --radius-sm:10px;--radius-md:14px;--radius-lg:18px;--radius-xl:24px;
-  --shadow-sm:0 7px 18px rgba(0,0,0,.18);--shadow-md:0 14px 34px rgba(0,0,0,.25);--shadow-lg:0 24px 64px rgba(0,0,0,.34);
-  --app-background:radial-gradient(circle at 14% -10%,rgb(var(--accent-rgb) / .08),transparent 30%),radial-gradient(circle at 92% 16%,rgba(255,255,255,.035),transparent 26%),linear-gradient(145deg,var(--canvas-deep) 0%,#0d1014 42%,#14181d 58%,var(--canvas) 100%);
+
+  --canvas-deep:#061013;
+  --canvas:#091417;
+  --surface-0:#101b1f;
+  --surface-1:#16252a;
+  --surface-2:#1e3036;
+  --surface-3:#294149;
+  --surface-hover:#33515a;
+
+  --text:#f7faf8;
+  --text-soft:#dce7e3;
+  --text-muted:#a8b7b3;
+  --text-faint:#748784;
+
+  --accent:#d9b85c;
+  --accent-strong:#ffe29a;
+  --accent-dark:#a16f22;
+  --accent-rgb:217 184 92;
+  --accent-ink:#181106;
+
+  --positive:#62d6a4;
+  --positive-rgb:98 214 164;
+  --negative:#ff8a82;
+  --negative-rgb:255 138 130;
+  --info:#63c7dc;
+  --info-rgb:99 199 220;
+
+  --border:rgba(255,255,255,.09);
+  --border-strong:rgba(255,255,255,.16);
+  --border-accent:rgb(var(--accent-rgb) / .32);
+
+  --radius-sm:10px;
+  --radius-md:14px;
+  --radius-lg:18px;
+  --radius-xl:24px;
+
+  --shadow-sm:0 7px 18px rgba(0,0,0,.18);
+  --shadow-md:0 16px 38px rgba(0,0,0,.25);
+  --shadow-lg:0 28px 72px rgba(0,0,0,.34);
+
+  --app-background:
+    radial-gradient(circle at 12% -12%,rgb(var(--info-rgb) / .08),transparent 31%),
+    radial-gradient(circle at 88% 4%,rgb(var(--accent-rgb) / .055),transparent 25%),
+    linear-gradient(145deg,var(--canvas-deep) 0%,var(--canvas) 32%,#102027 58%,#0b181d 78%,var(--canvas-deep) 100%);
   --panel-background:linear-gradient(145deg,var(--surface-2),var(--surface-1));
   --panel-background-soft:linear-gradient(145deg,var(--surface-1),var(--surface-0));
   --control-background:linear-gradient(180deg,var(--surface-3),var(--surface-1));
   --button-primary-background:linear-gradient(180deg,var(--accent-strong) 0%,var(--accent) 48%,var(--accent-dark) 100%);
   --button-secondary-background:linear-gradient(180deg,var(--surface-3),var(--surface-1));
-  --bg:var(--canvas);--bg2:var(--surface-1);--card:var(--surface-2);--card2:var(--surface-0);--surface:var(--surface-2);--surface-soft:var(--surface-3);
-  --gold:var(--accent);--gold2:var(--accent-dark);--green:var(--positive);--red:var(--negative);--muted:var(--text-muted);--muted-2:var(--text-faint);--shadow:var(--shadow-md);
-}
-*{box-sizing:border-box}html,body{margin:0;min-width:320px;min-height:100%;background:var(--bg);color:var(--text)}body{min-height:100vh}a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer}
+
+  /* Compatibility aliases used by structural CSS. */
+  --bg:var(--canvas);
+  --bg2:var(--surface-1);
+  --card:var(--surface-2);
+  --card2:var(--surface-0);
+  --surface:var(--surface-2);
+  --surface-soft:var(--surface-3);
+  --gold:var(--accent);
+  --gold2:var(--accent-dark);
+  --green:var(--positive);
+  --red:var(--negative);
+  --muted:var(--text-muted);
+  --muted-2:var(--text-faint);
+  --shadow:var(--shadow-md);
+}*{box-sizing:border-box}html,body{margin:0;min-width:320px;min-height:100%;background:var(--bg);color:var(--text)}body{min-height:100vh}a{text-decoration:none;color:inherit}button,input,select,textarea{font:inherit}button,a{-webkit-tap-highlight-color:transparent}button{cursor:pointer}
 .brand{display:inline-flex;align-items:center;gap:10px;letter-spacing:.08em;color:#fff}.mark{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:linear-gradient(145deg,var(--surface-1),var(--surface-0));border:1px solid rgb(var(--accent-rgb) / .42);color:var(--gold);font-weight:950;box-shadow:0 9px 24px rgb(var(--accent-rgb) / .2),inset 0 1px 0 rgba(255,255,255,.08);text-shadow:0 0 10px rgb(var(--accent-rgb) / .45)}
 .primary,.secondary,.ghost,.goldOutline,.goldButton{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border-radius:12px;padding:10px 16px;font-weight:850;transition:.16s ease}
 .primary{border:1px solid rgb(var(--accent-rgb) / .5);background:linear-gradient(180deg,var(--surface-1),var(--surface-1));color:#fff;box-shadow:0 9px 24px rgb(var(--accent-rgb) / .18),inset 0 1px 0 rgba(255,255,255,.08)}.primary:hover{transform:translateY(-1px);border-color:rgb(var(--accent-rgb) / .75)}

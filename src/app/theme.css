@@ -105,15 +105,11 @@ select option{background:var(--surface-0);color:var(--text)}
 .instantPanel:before,.dailyReserveCard:before,.reserveHero:before,.reserveGoalCard:before,.landingPlanRibbon:before{
   background:linear-gradient(90deg,transparent,rgba(230,187,87,.4),transparent);
 }
-.instantPanel:after{background:radial-gradient(circle,rgba(227,180,75,.055),transparent 62%)}
-
-.instantAction,.organizeGrid>button,.quickCaptureSheet,.modalCard{
+.instantPanel:after{background:radial-gradient(circle,rgba(227,180,75,.055),transparent 62%)}.organizeGrid>button,.quickCaptureSheet,.modalCard{
   background:linear-gradient(145deg,var(--surface-2),var(--surface-0));
   border-color:rgba(207,165,69,.14);
   box-shadow:inset 0 1px 0 rgba(255,244,206,.02),0 8px 18px rgba(0,0,0,.2);
-}
-.instantAction span,.instantAction.income span,.instantAction.expense span,
-.instantAction.work span,.instantAction.card span,.organizeGrid>button>span,.categoryIcon{
+}.organizeGrid>button>span,.categoryIcon{
   color:var(--gold);
 }
 .organizeGrid>button>span,.categoryIcon,.reserveRow>span,.deepDiveIcon{
@@ -484,43 +480,6 @@ select option{background:var(--surface-0);color:var(--text)}
   box-shadow:inset 0 3px 8px rgba(0,0,0,.28),inset 0 0 0 1px rgba(232,190,89,.08);
 }
 
-.instantActions{perspective:700px}
-.instantAction{
-  position:relative;isolation:isolate;overflow:hidden;
-  min-height:94px;padding:13px 14px;
-  border:1px solid rgba(225,181,79,.30);
-  background:
-    radial-gradient(circle at 88% 12%,rgb(var(--accent-rgb) / .075),transparent 31%),
-    linear-gradient(145deg,#151a20 0%,var(--surface-0) 62%,var(--surface-0) 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 9px 22px rgba(0,0,0,.24);
-}
-.instantAction:before{
-  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(135deg,rgba(255,255,255,.025),transparent 42%,rgba(222,178,77,.035));
-}
-.instantAction:after{
-  content:"";position:absolute;top:-35%;bottom:-35%;left:-42%;width:22%;
-  pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,247,215,.03),rgba(244,209,125,.22),transparent);
-  transform:skewX(-18deg);animation:devinxActionSweep 7s ease-in-out infinite;
-}
-.instantAction:nth-child(2):after{animation-delay:1.15s}.instantAction:nth-child(3):after{animation-delay:2.3s}.instantAction:nth-child(4):after{animation-delay:3.45s}
-.instantAction span{
-  display:grid;place-items:center;width:34px;height:34px;margin:0 0 9px;
-  border:1px solid rgba(229,187,88,.28);border-radius:11px;
-  background:linear-gradient(145deg,#1a1e22,#0b0e11);color:#e8c76e;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 5px 14px rgba(0,0,0,.22);
-  filter:drop-shadow(0 0 8px rgba(229,185,83,.10));font-size:20px;font-weight:900;
-}
-.instantAction b{font-size:13px;font-weight:900;color:#f7f4ed;letter-spacing:-.01em}
-.instantAction small{margin-top:4px;color:#8f918d;line-height:1.35}
-.instantAction.income span{color:#70dca8;border-color:rgba(81,205,147,.25);background:linear-gradient(145deg,rgba(36,91,68,.34),#0b1110)}
-.instantAction.expense span{color:#efb86c;border-color:rgba(229,163,78,.25);background:linear-gradient(145deg,rgba(91,58,28,.34),#110e0a)}
-.instantAction.work span{color:#e5c469}
-.instantAction.card span{color:#d7b16a}
-.instantAction:hover{border-color:rgba(238,199,105,.48);transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 13px 28px rgba(0,0,0,.30),0 0 18px rgba(215,173,73,.055)}
-.instantAction:active{transform:translateY(2px) scale(.985);box-shadow:inset 0 5px 12px rgba(0,0,0,.32),0 4px 10px rgba(0,0,0,.18)}
-@keyframes devinxActionSweep{0%,72%{left:-42%;opacity:0}78%{opacity:.70}93%{left:122%;opacity:.18}100%{left:122%;opacity:0}}
-
 .financeApp .primary,.financeApp .goldButton,.financeApp .quickSave,.financeApp .paidButton{
   position:relative;isolation:isolate;overflow:hidden;
 }
@@ -552,7 +511,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   .flowSelection{grid-template-columns:1fr 1fr}.flowSelection span{grid-column:1/-1}
 }
 @media(prefers-reduced-motion:reduce){
-  .flowBars i,.instantAction:after,.financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{animation:none}
+  .flowBars i,.financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{animation:none}
 }
 
 /* Quick capture action tabs */
@@ -575,128 +534,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
 
 
 /* Home quick actions — richer premium hierarchy */
-.instantActions{gap:10px}
-.instantAction{
-  min-height:102px;
-  padding:15px;
-  text-align:left;
-  border-width:1px;
-  border-style:solid;
-  border-radius:18px;
-  background:
-    linear-gradient(150deg,rgba(255,255,255,.035),transparent 34%),
-    linear-gradient(145deg,var(--surface-2) 0%,var(--surface-0) 62%,var(--surface-0) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.055),
-    inset 0 -1px 0 rgba(0,0,0,.22),
-    0 12px 25px rgba(0,0,0,.28);
-}
-.instantActionTop{
-  display:flex;
-  align-items:center;
-  gap:11px;
-  width:100%;
-  height:auto;
-  margin:0;
-  border:0;
-  border-radius:0;
-  background:none;
-  box-shadow:none;
-  filter:none;
-}
-.instantActionTop i{
-  display:grid;
-  place-items:center;
-  flex:0 0 39px;
-  width:39px;
-  height:39px;
-  border-radius:12px;
-  border:1px solid rgba(230,187,86,.26);
-  background:linear-gradient(145deg,#20252b,var(--surface-1));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 7px 16px rgba(0,0,0,.24);
-  font-style:normal;
-  font-size:23px;
-  font-weight:800;
-  line-height:1;
-}
-.instantActionTop b{
-  margin:0;
-  color:var(--text);
-  font-size:16px;
-  font-weight:920;
-  letter-spacing:-.02em;
-  line-height:1.05;
-  text-shadow:0 1px 0 rgba(0,0,0,.2);
-}
-.instantAction>small{
-  display:block;
-  margin:10px 0 0;
-  color:#a7aaa5;
-  font-size:10.5px;
-  font-weight:650;
-  line-height:1.35;
-  letter-spacing:0;
-}
-.instantAction.income{
-  border-color:rgba(71,207,149,.28);
-  background:
-    radial-gradient(circle at 12% 18%,rgb(var(--positive-rgb) / .12),transparent 38%),
-    linear-gradient(145deg,#141d1a 0%,#0b1110 58%,#070b09 100%);
-}
-.instantAction.income .instantActionTop i{
-  color:#70e0ac;
-  border-color:rgb(var(--positive-rgb) / .32);
-  background:linear-gradient(145deg,#173126,#0b1511);
-  box-shadow:inset 0 1px 0 rgba(173,255,215,.08),0 0 20px rgb(var(--positive-rgb) / .08);
-}
-.instantAction.expense{
-  border-color:rgba(232,166,80,.30);
-  background:
-    radial-gradient(circle at 12% 18%,rgba(226,151,62,.12),transparent 38%),
-    linear-gradient(145deg,#20180f 0%,#130f0b 58%,#0a0807 100%);
-}
-.instantAction.expense .instantActionTop i{
-  color:#f0b76a;
-  border-color:rgba(239,174,86,.34);
-  background:linear-gradient(145deg,#372411,#171007);
-  box-shadow:inset 0 1px 0 rgba(255,224,173,.08),0 0 20px rgba(230,153,61,.08);
-}
-.instantAction.work{
-  border-color:rgba(218,178,78,.32);
-  background:
-    radial-gradient(circle at 12% 18%,rgba(218,178,78,.12),transparent 38%),
-    linear-gradient(145deg,#1d1a12 0%,#11100b 58%,#090806 100%);
-}
-.instantAction.work .instantActionTop i{
-  color:#efd16f;
-  border-color:rgba(231,192,98,.34);
-  background:linear-gradient(145deg,#302818,#151109);
-}
-.instantAction.card{
-  border-color:rgba(196,161,92,.30);
-  background:
-    radial-gradient(circle at 12% 18%,rgba(199,164,95,.11),transparent 38%),
-    linear-gradient(145deg,#1b1915 0%,#11100d 58%,#090806 100%);
-}
-.instantAction.card .instantActionTop i{
-  color:#e1bd6e;
-  border-color:rgba(215,177,102,.34);
-  background:linear-gradient(145deg,#2c2518,#14110a);
-}
-.instantAction:hover{
-  filter:brightness(1.045);
-  border-color:rgba(239,200,107,.46);
-}
-.instantAction:active{
-  transform:translateY(2px) scale(.985);
-  box-shadow:inset 0 5px 12px rgba(0,0,0,.32),0 4px 10px rgba(0,0,0,.18);
-}
 @media(max-width:520px){
-  .instantAction{min-height:98px;padding:14px}
-  .instantActionTop{gap:10px}
-  .instantActionTop i{width:37px;height:37px;flex-basis:37px;font-size:22px}
-  .instantActionTop b{font-size:15px}
-  .instantAction>small{font-size:10px}
 }
 
 
@@ -810,21 +648,42 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   .authSubscriptionPlans .subscriptionPlanCard{min-height:0}
 }
 
+
 /* === Visual contract: clarity first === */
-.financeApp,.landingV2,.authPage{background:var(--app-background);color:var(--text);font-family:var(--font-ui)}
-.financeHeader,.landingTop,.authTop{background:rgba(11,13,16,.94);border-bottom:1px solid var(--border);box-shadow:0 10px 30px rgba(0,0,0,.22)}
+.financeApp,.landingV2,.authPage{
+  background:var(--app-background);
+  color:var(--text);
+  font-family:var(--font-ui);
+}
+.financeHeader,.landingTop,.authTop{
+  background:rgba(7,16,19,.94);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 10px 30px rgba(0,0,0,.24);
+  backdrop-filter:blur(18px);
+}
 .financeContent{width:min(1100px,100%)}
 
 .panel,.empty,.moduleSummary,.creditCard,.recurringCard,.debtCard,.goalCard,
 .reserveHero,.vehicleHero,.futurePlanningPanel,.authCard,.landingPreview,
-.deepDiveCard,.landingFeatureGrid article,.commitmentsPanel,.goalPanel{
-  background:var(--panel-background);border-color:var(--border);box-shadow:var(--shadow-sm)
+.deepDiveCard,.landingFeatureGrid article,.commitmentsPanel,.goalPanel,
+.subscriptionPlanCard,.settingsFoldCard,.pendingGroup,.cashSummary{
+  background:var(--panel-background);
+  border-color:var(--border);
+  box-shadow:var(--shadow-sm);
 }
 
 .instantPanel,.summaryHero,.projectedStrip,.masterHero{
-  background:radial-gradient(circle at 92% 0%,rgb(var(--accent-rgb) / .10),transparent 32%),linear-gradient(145deg,var(--surface-3),var(--surface-1));
-  border-color:var(--border-accent);box-shadow:var(--shadow-md)
+  background:
+    radial-gradient(circle at 92% 0%,rgb(var(--info-rgb) / .10),transparent 34%),
+    radial-gradient(circle at 10% 100%,rgb(var(--accent-rgb) / .06),transparent 28%),
+    linear-gradient(145deg,var(--surface-3),var(--surface-1));
+  border-color:var(--border-strong);
+  box-shadow:var(--shadow-md);
 }
+.instantPanel h1,.sectionTopbar h1,.dailyReserveTop h2,.commitmentsPanel h2,.goalPanel h2{color:var(--text)}
+.instantPanel p,.sectionLead,.dailyReserveCard p,.goalPanel .lead,.futurePlanningHead p{color:var(--text-muted)}
+.instantPanel small,.sectionTitleRow small,.premiumFlowHead small,.dailyReserveTop small{color:var(--accent-strong)}
+
 .projectedStrip{min-height:78px;padding:17px 19px}
 .projectedStrip small{color:var(--text-muted);font-size:10px;letter-spacing:.08em}
 .projectedStrip strong{color:var(--accent-strong);font-size:28px;line-height:1.05}
@@ -832,49 +691,94 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
 
 .dashboardMetrics article,.cardNumbers>div,.commitmentDouble article,.futureSummaryGrid article,
 .statementList button,.workSessionCard,.categoryList article,.adminUser,.diagGrid article,
-.dailyReserveGrid>span,.futurePlanFacts>span,.reserveRow,.subscriptionPlanCard{
-  background:var(--surface-2);border-color:var(--border);box-shadow:none
+.dailyReserveGrid>span,.futurePlanFacts>span,.reserveRow{
+  background:var(--surface-2);
+  border-color:var(--border);
+  box-shadow:none;
 }
 .dashboardMetrics article{min-height:92px;padding:15px 16px}
 .dashboardMetrics small{font-size:10px;color:var(--text-muted)}
 .dashboardMetrics b{font-size:20px;color:var(--text)}
 .dashboardMetrics span{font-size:10px;color:var(--text-muted)}
 .dashboardMetrics .dayResult{background:linear-gradient(145deg,var(--surface-3),var(--surface-2));border-color:var(--border-strong)}
+.dashboardMetrics article:nth-child(1):before{background:var(--positive)}
+.dashboardMetrics article:nth-child(2):before{background:var(--negative)}
+.dashboardMetrics article:nth-child(3):before{background:var(--info)}
+.dashboardMetrics article:nth-child(4):before{background:var(--accent)}
 
-.instantAction,.organizeGrid>button,.quickCaptureSheet,.modalCard{
-  background:linear-gradient(145deg,var(--surface-3),var(--surface-1));border-color:var(--border);box-shadow:var(--shadow-sm)
+.homeActionCard{
+  position:relative;
+  overflow:hidden;
+  border:1px solid var(--border-strong);
+  background:linear-gradient(145deg,var(--surface-2),var(--surface-1));
+  color:var(--text);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),var(--shadow-sm);
 }
-.instantAction:hover,.organizeGrid>button:hover{background:linear-gradient(145deg,var(--surface-hover),var(--surface-2));border-color:var(--border-strong)}
-.instantAction.income{background:linear-gradient(145deg,rgb(var(--positive-rgb) / .11),var(--surface-2))}
-.instantAction.expense{background:linear-gradient(145deg,rgb(var(--negative-rgb) / .08),var(--surface-2))}
-.instantAction.work,.instantAction.card{background:linear-gradient(145deg,rgb(var(--accent-rgb) / .09),var(--surface-2))}
-.instantActionTop b{color:var(--text);font-size:16px}
-.instantAction>small{color:var(--text-muted);font-size:11px}
+.homeActionCard:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.homeActionCard:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.035),transparent 38%)}
+.homeActionCard>*{position:relative;z-index:1}
+.homeActionCardTop i{color:var(--accent-strong);text-shadow:0 0 18px rgb(var(--accent-rgb) / .18)}
+.homeActionCardTop b{color:var(--text);font-weight:900;letter-spacing:-.015em}
+.homeActionCard>small{color:var(--text-muted);font-weight:650}
+.homeActionCard.income:before{background:var(--positive)}
+.homeActionCard.income .homeActionCardTop i{color:var(--positive)}
+.homeActionCard.expense:before{background:var(--negative)}
+.homeActionCard.expense .homeActionCardTop i{color:#f1b36e}
+.homeActionCard.work:before{background:var(--info)}
+.homeActionCard.work .homeActionCardTop i{color:var(--info)}
+.homeActionCard.card:before{background:var(--accent)}
+.homeActionCard:hover{background:linear-gradient(145deg,var(--surface-3),var(--surface-2));border-color:var(--border-accent)}
+
+.organizeGrid>button,.quickCaptureSheet,.modalCard{
+  background:linear-gradient(145deg,var(--surface-3),var(--surface-1));
+  border-color:var(--border);
+  box-shadow:var(--shadow-sm);
+}
+.organizeGrid>button:hover{background:linear-gradient(145deg,var(--surface-hover),var(--surface-2));border-color:var(--border-strong)}
 
 .primary,.goldButton,.quickSave,.paidButton,.dailyGoalButton,.billPayPrimary,.subscriptionPlanCta{
-  background:var(--button-primary-background);border-color:rgb(var(--accent-rgb) / .55);color:var(--accent-ink)
+  background:var(--button-primary-background);
+  border-color:rgb(var(--accent-rgb) / .58);
+  color:var(--accent-ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),var(--shadow-sm);
 }
 .secondary,.ghost,.goldOutline,.backButton,.calculatorFab{
-  background:var(--button-secondary-background);border-color:var(--border);color:var(--text-soft)
+  background:var(--button-secondary-background);
+  border-color:var(--border);
+  color:var(--text-soft);
+  box-shadow:none;
 }
-.goldOutline,.textButton,.ledgerActions button,.pendingActions button,.workSessionActions button{color:var(--accent)}
+.goldOutline,.textButton,.ledgerActions button,.pendingActions button,.workSessionActions button,.movementGlobalActions button{color:var(--accent)}
 
-input,select,textarea{background:var(--control-background);border-color:var(--border-strong);color:var(--text)}
-select option{background:var(--surface-1);color:var(--text)}
+input,select,textarea{
+  background:var(--control-background);
+  border-color:var(--border-strong);
+  color:var(--text);
+}
 input::placeholder,textarea::placeholder{color:var(--text-faint)}
+input:focus,select:focus,textarea:focus{border-color:var(--border-accent);box-shadow:0 0 0 3px rgb(var(--info-rgb) / .08)}
+select option{background:var(--surface-1);color:var(--text)}
 
-.financeBottomNav{background:rgba(17,20,25,.94);border-color:var(--border);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+.financeBottomNav{
+  background:rgba(16,27,31,.94);
+  border-color:var(--border-strong);
+  box-shadow:0 14px 36px rgba(0,0,0,.30);
+}
 .financeBottomNav button{color:var(--text-faint)}
 .financeBottomNav button.active{background:rgb(var(--accent-rgb) / .12);color:var(--accent-strong);box-shadow:inset 0 0 0 1px rgb(var(--accent-rgb) / .16)}
 
 .movementTabs,.quickCaptureTabs,.calculatorModeTabs{background:var(--surface-0);border-color:var(--border)}
 .filterRow button,.movementTabs button,.historyTypeFilter button,.quickCaptureTabs button,
 .quickPayment button,.quickAvoidable,.tagRow button{
-  background:var(--surface-2);border-color:var(--border);color:var(--text-muted)
+  background:var(--surface-2);
+  border-color:var(--border);
+  color:var(--text-muted);
 }
 .filterRow button.active,.movementTabs button.active,.historyTypeFilter button.active,
 .quickCaptureTabs button.active,.quickPayment button.selected,.quickAvoidable.selected,.tagRow button.selected{
-  background:rgb(var(--accent-rgb) / .14);border-color:var(--border-accent);color:var(--accent-strong)
+  background:rgb(var(--accent-rgb) / .14);
+  border-color:var(--border-accent);
+  color:var(--accent-strong);
 }
 
 .cashSummary{background:var(--panel-background);border-color:var(--border);box-shadow:var(--shadow-sm)}
@@ -884,48 +788,50 @@ input::placeholder,textarea::placeholder{color:var(--text-faint)}
 .cashSummary p{color:var(--text-muted);font-size:10px}
 
 .movementSearchBar{background:var(--surface-2);border-color:var(--border-strong);box-shadow:none}
-.movementSearchBar>span{background:rgb(var(--accent-rgb) / .10);color:var(--accent)}
+.movementSearchBar>span{background:rgb(var(--info-rgb) / .10);color:var(--info)}
 .movementSearchBar>button{background:var(--surface-3);color:var(--text-muted)}
 .movementSearchMeta{color:var(--text-muted)}
 .movementSearchMeta b{color:var(--accent-strong)}
 
-.ledgerRow{
-  background:var(--surface-2);border-color:var(--border);box-shadow:none;border-left:3px solid var(--border-strong);
-  transition:background .15s ease,border-color .15s ease
+.ledgerRow,.movementGlobalRow{
+  background:var(--surface-2);
+  border-color:var(--border);
+  box-shadow:none;
+  border-left:3px solid var(--border-strong);
 }
-.ledgerRow:hover{background:var(--surface-3)}
-.ledgerRow.incomeRow{border-left-color:rgb(var(--positive-rgb) / .55)}
-.ledgerRow.expenseRow{border-left-color:rgb(var(--negative-rgb) / .50)}
-.ledgerText b{font-size:13px;color:var(--text)}
-.ledgerText small{font-size:10.5px;color:var(--text-muted)}
+.ledgerRow:hover,.movementGlobalRow:hover{background:var(--surface-3)}
+.ledgerRow.incomeRow,.movementGlobalRow.incomeRow{border-left-color:rgb(var(--positive-rgb) / .68)}
+.ledgerRow.expenseRow,.movementGlobalRow.expenseRow{border-left-color:rgb(var(--negative-rgb) / .58)}
+.ledgerText b,.movementGlobalTitle b{color:var(--text)}
+.ledgerText small,.movementGlobalMain small{color:var(--text-muted)}
 .ledgerSign.plus{background:rgb(var(--positive-rgb) / .12);color:var(--positive)}
 .ledgerSign.minus{background:rgb(var(--negative-rgb) / .10);color:var(--negative)}
 
-.pendingGroup{background:var(--panel-background)}
-.pendingRow,.premiumPendingRow{background:var(--surface-2);border-color:var(--border);box-shadow:none}
-.pendingRow small,.premiumPendingRow small{font-size:10px;color:var(--text-muted)}
+.searchStatus.realized{background:rgb(var(--info-rgb) / .11);color:var(--info);border:1px solid rgb(var(--info-rgb) / .18)}
+.searchStatus.pending{background:rgb(var(--negative-rgb) / .09);color:#ffaaa3;border:1px solid rgb(var(--negative-rgb) / .18)}
+.searchStatus.planned{background:rgb(var(--accent-rgb) / .11);color:var(--accent-strong);border:1px solid rgb(var(--accent-rgb) / .18)}
+.movementGlobalActions button{background:var(--surface-3);border:1px solid var(--border)}
 
-.dailyReserveCard,.commitmentsPanel,.goalPanel,.premiumFlowPanel{background:var(--panel-background);border-color:var(--border)}
+.pendingRow,.premiumPendingRow,.futurePlanCard{
+  background:var(--surface-2);
+  border-color:var(--border);
+  box-shadow:none;
+}
+.pendingRow small,.premiumPendingRow small,.futurePlanFacts small,.futureHistory small{color:var(--text-muted)}
+.statusBadge{background:var(--surface-3);border-color:var(--border);color:var(--text-muted)}
+.statusBadge.overdue{background:rgb(var(--negative-rgb) / .08);border-color:rgb(var(--negative-rgb) / .24);color:var(--negative)}
+
+.dailyReserveCard,.commitmentsPanel,.goalPanel,.premiumFlowPanel{
+  background:var(--panel-background);
+  border-color:var(--border);
+}
 .dailyReserveGrid>span,.futurePlanFacts>span,.commitmentDouble article{background:var(--surface-2);border-color:var(--border)}
-.dailyReserveTop h2,.commitmentsPanel h2,.goalPanel h2,.premiumFlowPanel h2{color:var(--text)}
-.dailyReserveTop small,.sectionTitleRow small,.premiumFlowHead small{color:var(--accent);font-size:9.5px}
-.dailyReserveCard p,.goalPanel .lead,.futurePlanningHead p{color:var(--text-muted);font-size:11px}
 .dailyTarget,.commitmentMonthTotal{background:linear-gradient(145deg,rgb(var(--accent-rgb) / .10),var(--surface-2));border-color:var(--border-accent)}
-
-.futurePlanCard{background:var(--surface-2);border-color:var(--border);box-shadow:none}
-.futurePlanCard.income{border-color:rgb(var(--positive-rgb) / .22)}
-.futurePlanHead h3{font-size:13px;color:var(--text)}
-.futurePlanHead small,.futurePlanFacts small,.futureHistory small{font-size:9px;color:var(--text-muted)}
-.futurePlanFacts b,.futureHistory b{font-size:10.5px;color:var(--text-soft)}
-.futurePlanningHead p{font-size:11px}
 
 .sectionLead{font-size:13px;color:var(--text-muted)}
 .sectionTopbar h1{font-size:29px;color:var(--text)}
 .moduleSummary strong{color:var(--text);font-size:23px}
 .moduleSummary span{color:var(--text-muted);font-size:11px}
-
-.statusBadge{background:var(--surface-3);border-color:var(--border);color:var(--text-muted)}
-.statusBadge.overdue{background:rgb(var(--negative-rgb) / .08);border-color:rgb(var(--negative-rgb) / .24);color:var(--negative)}
 .positive{color:var(--positive)}
 .negative,.dangerText{color:var(--negative)}
 
@@ -934,6 +840,6 @@ input::placeholder,textarea::placeholder{color:var(--text-faint)}
   .instantPanel{padding:18px}
   .projectedStrip strong{font-size:25px}
   .dashboardMetrics article{min-height:84px;padding:13px}
-  .ledgerText b{font-size:12.5px}
-  .ledgerText small{font-size:10px}
+  .ledgerText b,.movementGlobalTitle b{font-size:12.5px}
+  .ledgerText small,.movementGlobalMain small{font-size:10px}
 }

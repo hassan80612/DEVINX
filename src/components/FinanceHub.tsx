@@ -112,11 +112,11 @@ export function FinanceHub(){
       {section==='home'&&<>
         <section className="instantPanel">
           <div><small>{t('home.eyebrow')}</small><h1>{t('home.title')}</h1><p>{t('home.desc')}</p></div>
-          <div className="instantActions">
-            <button type="button" className="instantAction income" onClick={()=>openCapture('income')}><span className="instantActionTop"><i>＋</i><b>{t('common.income')}</b></span><small>{t('home.incomeDesc')}</small></button>
-            <button type="button" className="instantAction expense" onClick={()=>openCapture('expense')}><span className="instantActionTop"><i>−</i><b>{t('quick.expense')}</b></span><small>{t('home.expenseDesc')}</small></button>
-            <button type="button" className="instantAction work" onClick={()=>setSection('work')}><span className="instantActionTop"><i>◷</i><b>{t('home.work')}</b></span><small>{t('home.workDesc')}</small></button>
-            <button type="button" className="instantAction card" onClick={()=>setSection('cards')}><span className="instantActionTop"><i>▣</i><b>{t('home.card')}</b></span><small>{t('home.cardDesc')}</small></button>
+          <div className="homeActionGrid">
+            <button type="button" className="homeActionCard income" onClick={()=>openCapture('income')}><span className="homeActionCardTop"><i>＋</i><b>{t('common.income')}</b></span><small>{t('home.incomeDesc')}</small></button>
+            <button type="button" className="homeActionCard expense" onClick={()=>openCapture('expense')}><span className="homeActionCardTop"><i>−</i><b>{t('quick.expense')}</b></span><small>{t('home.expenseDesc')}</small></button>
+            <button type="button" className="homeActionCard work" onClick={()=>setSection('work')}><span className="homeActionCardTop"><i>◷</i><b>{t('home.work')}</b></span><small>{t('home.workDesc')}</small></button>
+            <button type="button" className="homeActionCard card" onClick={()=>setSection('cards')}><span className="homeActionCardTop"><i>▣</i><b>{t('home.card')}</b></span><small>{t('home.cardDesc')}</small></button>
           </div>
           <div id="home-projected-slot" className="homeProjectedSlot"/>
         </section>
