@@ -21,7 +21,8 @@ type Goal={id:string;name:string;target_minor:number;basis:string;period:string;
 type Bill=RecurringBillLike&{created_at:string;is_avoidable:boolean};
 type BillPay=RecurringPaymentLike&{paid_on:string};
 type BillOverride=RecurringOverrideLike;
-type CardInst={amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null};
+type CardInst={id:string;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null};
+type CardItemPay={source_id:string|null;amount_minor:number};
 type CardPay={amount_minor:number;paid_on:string};
 type DebtPay={debt_id:string;amount_minor:number;paid_on:string};
 type ReserveEntry=FutureReserveEntryLike&{occurred_on:string};
@@ -72,6 +73,7 @@ export function DashboardOverview(){
   const[billPays,setBillPays]=useState<BillPay[]>([]);
   const[billOverrides,setBillOverrides]=useState<BillOverride[]>([]);
   const[cardInst,setCardInst]=useState<CardInst[]>([]);
+  const[cardItemPays,setCardItemPays]=useState<CardItemPay[]>([]);
   const[cardPays,setCardPays]=useState<CardPay[]>([]);
   const[debtPays,setDebtPays]=useState<DebtPay[]>([]);
   const[reserveEntries,setReserveEntries]=useState<ReserveEntry[]>([]);
@@ -118,13 +120,13 @@ export function DashboardOverview(){
       s.from('recurring_bills').select('id,amount_minor,due_day,start_month,installment_count,created_at,is_avoidable').eq('user_id',user.id).eq('is_active',true),
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',user.id),
       s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id),
-      s.from('card_installments').select('amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id).is('paid_at',null),
+      s.from('card_installments').select('id,amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
       s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
       s.from('reserve_entries').select('kind,amount_minor,occurred_on,future_plan_id').eq('user_id',user.id),
       s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id),
       s.from('future_plan_settlements').select('plan_id,due_date,amount_minor,settled_on').eq('user_id',user.id),
-      s.from('transactions').select('type,amount_minor,source_type').eq('user_id',user.id),
+      s.from('transactions').select('type,amount_minor,source_type,source_id').eq('user_id',user.id),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id),
       s.from('recurring_bill_payments').select('amount_minor').eq('user_id',user.id),
       s.from('card_bill_payments').select('amount_minor').eq('user_id',user.id)
@@ -148,7 +150,8 @@ export function DashboardOverview(){
     setReserveEntries((rReserve.data||[]) as ReserveEntry[]);
     setFuturePlans((rFuturePlans.data||[]) as FuturePlanLike[]);
     setFutureSettlements((rFutureSettlements.data||[]) as FutureSettlementLike[]);
-    const cashTx=(rCashTx.data||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null}[];
+    const cashTx=(rCashTx.data||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null}[];
+    setCardItemPays(cashTx.filter(item=>item.source_type==='card_installment_payment').map(item=>({source_id:item.source_id,amount_minor:Number(item.amount_minor)})));
     const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0);
     const cashWork=(rCashWork.data||[]).reduce((sum:any,item:any)=>sum+Number(item.gross_income_minor)-Number(item.energy_cost_minor)-Number(item.extra_work_cost_minor),0);
     const cashBills=(rCashBills.data||[]).reduce((sum:any,item:any)=>sum+Number(item.amount_minor),0);
@@ -218,6 +221,16 @@ export function DashboardOverview(){
     [reserveEntries]
   );
 
+  const cardRemainingById=useMemo(()=>{
+    const paid=new Map<string,number>();
+    cardItemPays.forEach(item=>{if(item.source_id)paid.set(item.source_id,(paid.get(item.source_id)||0)+Number(item.amount_minor))});
+    return new Map(cardInst.map(item=>{
+      const linked=paid.get(item.id)||0;
+      const remaining=item.paid_at&&linked===0?0:Math.max(0,Number(item.amount_minor)-linked);
+      return[item.id,remaining] as const;
+    }));
+  },[cardInst,cardItemPays]);
+
   const numbers=useMemo(()=>{
     const today=localDateISO();
     const month=localMonthStartISO();
@@ -250,13 +263,13 @@ export function DashboardOverview(){
     },0);
     const cardsDueNow=cardInst
       .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===month)
-      .reduce((a,b)=>a+Number(b.amount_minor),0);
+      .reduce((a,b)=>a+(cardRemainingById.get(b.id)||0),0);
     const toPay=recurringPending+cardsDueNow;
     const projected=balance-toPay;
     const avoidable=txMonth.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((a,b)=>a+Number(b.amount_minor),0);
 
     return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent,recurringPending,cardsDueNow,toPay,projected,avoidable};
-  },[tx,work,bills,billPays,billOverrides,cardInst,cardPays,debtPays,reserveEntries]);
+  },[tx,work,bills,billPays,billOverrides,cardInst,cardRemainingById,cardPays,debtPays,reserveEntries]);
 
   const currentFutureImpact=useMemo(
     ()=>monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,localMonthStartISO(),localDateISO()),
@@ -278,7 +291,7 @@ export function DashboardOverview(){
     }
     const cards=cardInst
       .filter(item=>(item.due_date||dueDateForMonth(item.billing_month,1))<=horizon)
-      .reduce((sum,item)=>sum+Number(item.amount_minor),0);
+      .reduce((sum,item)=>sum+(cardRemainingById.get(item.id)||0),0);
     let expectedIncome=0;
     let plannedExpense=0;
     for(const plan of futurePlans.filter(plan=>plan.is_active)){
@@ -293,7 +306,7 @@ export function DashboardOverview(){
     }
     const out=recurring+cards+plannedExpense;
     return{horizon,recurring,cards,plannedExpense,expectedIncome,out,projected:cashPosition.current+expectedIncome-out};
-  },[projectionDate,bills,billPays,billOverrides,cardInst,futurePlans,futureSettlements,cashPosition.current]);
+  },[projectionDate,bills,billPays,billOverrides,cardInst,cardRemainingById,futurePlans,futureSettlements,cashPosition.current]);
 
   const projectedWithFuture=dateProjection.projected;
   const pendingWithFuture=numbers.toPay+currentFutureImpact.totalNeed;
@@ -307,11 +320,11 @@ export function DashboardOverview(){
     },0);
     const cardsDue=cardInst
       .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===selected)
-      .reduce((a,b)=>a+Number(b.amount_minor),0);
+      .reduce((a,b)=>a+(cardRemainingById.get(b.id)||0),0);
     const future=monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,selected,localDateISO());
     const gross=recurringPending+cardsDue+future.totalNeed;
     return{recurringPending,cardsDue,futureNeed:future.totalNeed,expectedIncome:future.expectedIncome,gross,total:Math.max(0,gross-future.expectedIncome)};
-  },[commitmentMonth,bills,billPays,billOverrides,cardInst,futurePlans,futureSettlements,reserveEntries]);
+  },[commitmentMonth,bills,billPays,billOverrides,cardInst,cardRemainingById,futurePlans,futureSettlements,reserveEntries]);
 
   const flowChart=useMemo(()=>{
     type FlowRow={key:string;start:string;income:number;out:number};
@@ -396,7 +409,8 @@ export function DashboardOverview(){
 
     for(const inst of cardInst){
       const due=inst.due_date||dueDateForMonth(inst.billing_month,1);
-      if(due<=horizon)obligations.push({due:due<today?today:due,amount:Number(inst.amount_minor),kind:'card'});
+      const remaining=cardRemainingById.get(inst.id)||0;
+      if(due<=horizon&&remaining>0)obligations.push({due:due<today?today:due,amount:remaining,kind:'card'});
     }
 
     const future=planningEvents(futurePlans,futureSettlements,reserveEntries,today,horizon);
@@ -436,7 +450,7 @@ export function DashboardOverview(){
       days:daysInclusive(today,horizon),
       hasCustomHorizon:!!goalTargetDate&&goalTargetDate>=today
     };
-  },[goalTargetDate,bills,billPays,billOverrides,cardInst,cashPosition.current,futureCommittedReserve,futurePlans,futureSettlements,reserveEntries]);
+  },[goalTargetDate,bills,billPays,billOverrides,cardInst,cardRemainingById,cashPosition.current,futureCommittedReserve,futurePlans,futureSettlements,reserveEntries]);
 
   async function saveHorizon(){
     if(targetDraft&&targetDraft<localDateISO()){setGoalNotice(t('dashboard.futureDateError'));return}
