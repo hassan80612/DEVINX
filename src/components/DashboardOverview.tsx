@@ -247,8 +247,6 @@ export function DashboardOverview(){
     const cardSpent=cardPayMonth.reduce((a,b)=>a+Number(b.amount_minor),0);
     const income=manualIncome+workGross;
     const spent=manualExpense+workCost+recurringSpent+cardSpent;
-    const balance=income-spent;
-
     const todayIncome=
       tx.filter(x=>x.occurred_on===today&&x.type==='income'&&x.source_type!=='cash_adjustment').reduce((a,b)=>a+Number(b.amount_minor),0)+
       work.filter(x=>x.worked_on===today).reduce((a,b)=>a+Number(b.gross_income_minor),0);
@@ -266,11 +264,8 @@ export function DashboardOverview(){
       .filter(i=>(i.due_date||i.billing_month).slice(0,7)+'-01'===month)
       .reduce((a,b)=>a+(cardRemainingById.get(b.id)||0),0);
     const toPay=recurringPending+cardsDueNow;
-    const projected=balance-toPay;
-    const avoidable=txMonth.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((a,b)=>a+Number(b.amount_minor),0);
-
-    return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent,recurringPending,cardsDueNow,toPay,projected,avoidable};
-  },[tx,work,bills,billPays,billOverrides,cardInst,cardRemainingById,cardPays,debtPays,reserveEntries]);
+    return{income,spent,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent,toPay};
+  },[tx,work,bills,billPays,billOverrides,cardInst,cardRemainingById,cardPays]);
 
   const currentFutureImpact=useMemo(
     ()=>monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,localMonthStartISO(),localDateISO()),
