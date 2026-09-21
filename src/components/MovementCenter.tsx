@@ -17,6 +17,7 @@ type Bill=RecurringBillLike&{name:string;created_at:string;category_id:string;pa
 type BillOverride=RecurringOverrideLike;
 type Purchase={id:string;card_id:string;category_id:string;description:string|null;total_minor:number;purchased_on:string;installment_count:number;is_avoidable:boolean;credit_cards:{name:string;due_day:number|null}|null;card_installments:{id:string;installment_number:number;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null}[]};
 type ReserveEntry={id:string;kind:'deposit'|'withdraw';amount_minor:number;occurred_on:string;note:string|null};
+type SearchData={tx:Tx[];work:Work[];recPays:RecPay[];cardPays:CardPay[];reserveEntries:ReserveEntry[];categories:CustomCategory[]};
 type CashRow={id:string;kind:'tx'|'work-income'|'work-cost'|'bill-payment'|'card-payment'|'reserve-transfer';sign:1|-1;amount:number;date:string;title:string;subtitle:string;groupKey:string;groupLabel:string;raw:Tx|Work|RecPay|CardPay|ReserveEntry};
 
 const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
@@ -25,6 +26,7 @@ function monthKey(date:string){return date.slice(0,7)}
 function monthStart(date:string){return date.slice(0,7)+'-01'}
 function addMonths(iso:string,count:number){const d=new Date(iso+'T12:00:00');d.setMonth(d.getMonth()+count);return localDateISO(new Date(d.getFullYear(),d.getMonth(),1))}
 function daysAgo(days:number){const d=new Date();d.setDate(d.getDate()-days);return localDateISO(d)}
+function normalizeSearch(value:string){return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()}
 function cardDueDate(month:string,dueDay:number|null){
   const y=Number(month.slice(0,4)),m=Number(month.slice(5,7));
   const max=new Date(y,m,0).getDate();
@@ -66,6 +68,9 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const[purchaseDate,setPurchaseDate]=useState('');
   const[purchaseFirstDueDate,setPurchaseFirstDueDate]=useState('');
   const[purchaseCategory,setPurchaseCategory]=useState('other');
+  const[search,setSearch]=useState('');
+  const[searchData,setSearchData]=useState<SearchData|null>(null);
+  const[searching,setSearching]=useState(false);
 
   function historyBounds(){
     if(range==='7')return{start:daysAgo(6),end:localDateISO()};
@@ -109,30 +114,53 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     setLoading(false);
   }
 
-  useEffect(()=>{load(true);const refresh=()=>load(false);window.addEventListener(FINANCE_UPDATED_EVENT,refresh);return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh)},[view,range,from,to]);
+  useEffect(()=>{load(true);const refresh=()=>{setSearchData(null);load(false)};window.addEventListener(FINANCE_UPDATED_EVENT,refresh);return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh)},[view,range,from,to]);
 
-  const cashRows=useMemo<CashRow[]>(()=>{
+  useEffect(()=>{
+    if(!search.trim()||searchData)return;
+    let cancelled=false;
+    const timer=setTimeout(async()=>{
+      setSearching(true);
+      try{
+        const s=createClient();
+        const{data:{user}}=await s.auth.getUser();
+        if(!user)return;
+        const[r1,r2,r3,r4,r5,cats]=await Promise.all([
+          s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
+          s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).order('worked_on',{ascending:false}),
+          s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).order('paid_on',{ascending:false}),
+          s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).order('paid_on',{ascending:false}),
+          s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
+          s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id)
+        ]);
+        if(!cancelled)setSearchData({tx:(r1.data||[]) as Tx[],work:(r2.data||[]) as unknown as Work[],recPays:(r3.data||[]) as unknown as RecPay[],cardPays:(r4.data||[]) as unknown as CardPay[],reserveEntries:(r5.data||[]) as ReserveEntry[],categories:(cats.data||[]) as CustomCategory[]});
+      }finally{if(!cancelled)setSearching(false)}
+    },180);
+    return()=>{cancelled=true;clearTimeout(timer)};
+  },[search,searchData]);
+
+  function composeCashRows(txItems:Tx[],workItems:Work[],recItems:RecPay[],cardItems:CardPay[],reserveItems:ReserveEntry[],cats:CustomCategory[]){
     const rows:CashRow[]=[];
-    tx.forEach(item=>{
+    txItems.forEach(item=>{
       const isDebt=item.source_type==='debt_payment';
       const isFuture=item.source_type==='future_plan';
       const kind=item.type==='income'?'income':'expense';
-      const label=isDebt?t('move.debtPayment'):categoryName(kind,item.category_id,customCategories,t);
+      const label=isDebt?t('move.debtPayment'):categoryName(kind,item.category_id,cats,t);
       rows.push({id:'tx:'+item.id,kind:'tx',sign:item.type==='income'?1:-1,amount:Number(item.amount_minor),date:item.occurred_on,title:item.description||t(item.type==='income'?'move.directIncome':'move.directExpense'),subtitle:isDebt?t('move.debtPayment'):isFuture?t('future.historySource'):(t(item.type==='income'?'move.directIncome':'move.directExpense')+(item.payment_method?' · '+item.payment_method.toUpperCase():'')),groupKey:isDebt?'system:debt-payment':isFuture?'system:future':kind+':'+item.category_id,groupLabel:isFuture?t('future.title'):label,raw:item});
     });
-    work.forEach(item=>{
+    workItems.forEach(item=>{
       const source=item.income_sources?.name||t('move.workIncome');
       const key='work:'+(item.income_source_id||item.income_sources?.kind||'general');
       rows.push({id:'wi:'+item.id,kind:'work-income',sign:1,amount:Number(item.gross_income_minor),date:item.worked_on,title:source,subtitle:t('move.workIncome'),groupKey:key,groupLabel:t('nav.work')+' · '+source,raw:item});
       const cost=Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor);
       if(cost>0)rows.push({id:'wc:'+item.id,kind:'work-cost',sign:-1,amount:cost,date:item.worked_on,title:source,subtitle:t('move.workCost'),groupKey:key,groupLabel:t('nav.work')+' · '+source,raw:item});
     });
-    recPays.forEach(item=>{
+    recItems.forEach(item=>{
       const cat=item.recurring_bills?.category_id||'other';
-      rows.push({id:'rp:'+item.id,kind:'bill-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.recurring_bills?.name||t('move.billPayment'),subtitle:t('move.billPayment'),groupKey:'expense:'+cat,groupLabel:categoryName('expense',cat,customCategories,t),raw:item});
+      rows.push({id:'rp:'+item.id,kind:'bill-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.recurring_bills?.name||t('move.billPayment'),subtitle:t('move.billPayment'),groupKey:'expense:'+cat,groupLabel:categoryName('expense',cat,cats,t),raw:item});
     });
-    cardPays.forEach(item=>rows.push({id:'cp:'+item.id,kind:'card-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.credit_cards?.name||t('move.cardPayment'),subtitle:t('move.cardPayment')+' · '+date(item.statement_month,{month:'long',year:'numeric'}),groupKey:'system:cards',groupLabel:t('nav.cards'),raw:item}));
-    reserveEntries.forEach(item=>rows.push({
+    cardItems.forEach(item=>rows.push({id:'cp:'+item.id,kind:'card-payment',sign:-1,amount:Number(item.amount_minor),date:item.paid_on,title:item.credit_cards?.name||t('move.cardPayment'),subtitle:t('move.cardPayment')+' · '+date(item.statement_month,{month:'long',year:'numeric'}),groupKey:'system:cards',groupLabel:t('nav.cards'),raw:item}));
+    reserveItems.forEach(item=>rows.push({
       id:'rs:'+item.id,
       kind:'reserve-transfer',
       sign:item.kind==='deposit'?-1:1,
@@ -145,22 +173,32 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       raw:item
     }));
     return rows.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-  },[tx,work,recPays,cardPays,reserveEntries,customCategories,t,date]);
+  }
+
+  const cashRows=useMemo<CashRow[]>(()=>composeCashRows(tx,work,recPays,cardPays,reserveEntries,customCategories),[tx,work,recPays,cardPays,reserveEntries,customCategories,t,date]);
+
+  const searchRows=useMemo<CashRow[]>(()=>{
+    const q=normalizeSearch(search);
+    if(!q||!searchData)return[];
+    return composeCashRows(searchData.tx,searchData.work,searchData.recPays,searchData.cardPays,searchData.reserveEntries,searchData.categories).filter(row=>normalizeSearch([row.title,row.subtitle,row.groupLabel,row.date,row.sign>0?t('common.income'):t('common.expense'),String(Number(row.amount)/100).replace('.',',')].join(' ')).includes(q));
+  },[search,searchData,t,date]);
+  const searchActive=search.trim().length>0;
 
   const visibleHistoryRows=useMemo(()=>view!=='history'||historyFlow==='all'?cashRows:cashRows.filter(r=>historyFlow==='income'?r.sign===1:r.sign===-1),[cashRows,view,historyFlow]);
 
-  const totals=useMemo(()=>{const plus=visibleHistoryRows.filter(r=>r.sign===1).reduce((a,b)=>a+b.amount,0);const minus=visibleHistoryRows.filter(r=>r.sign===-1).reduce((a,b)=>a+b.amount,0);return{plus,minus,balance:plus-minus}},[visibleHistoryRows]);
+  const displayRows=searchActive?searchRows:visibleHistoryRows;
+  const totals=useMemo(()=>{const plus=displayRows.filter(r=>r.sign===1).reduce((a,b)=>a+b.amount,0);const minus=displayRows.filter(r=>r.sign===-1).reduce((a,b)=>a+b.amount,0);return{plus,minus,balance:plus-minus}},[displayRows]);
 
   const historyGroups=useMemo(()=>{
     const map=new Map<string,{key:string;label:string;rows:CashRow[];plus:number;minus:number}>();
-    for(const row of visibleHistoryRows){
+    for(const row of displayRows){
       const current=map.get(row.groupKey)||{key:row.groupKey,label:row.groupLabel,rows:[],plus:0,minus:0};
       current.rows.push(row);
       if(row.sign>0)current.plus+=row.amount;else current.minus+=row.amount;
       map.set(row.groupKey,current);
     }
     return [...map.values()].sort((a,b)=>(b.plus+b.minus)-(a.plus+a.minus)||a.label.localeCompare(b.label));
-  },[visibleHistoryRows]);
+  },[displayRows]);
 
   const billPending=useMemo(()=>{
     const today=localDateISO();
@@ -288,9 +326,11 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
 
   return <div className="movementCenter">
     <p className="sectionLead">{t('move.lead')}</p>
-    <div className="movementTabs"><button className={view==='today'?'active':''} onClick={()=>setView('today')}>{t('move.today')}</button><button className={view==='history'?'active':''} onClick={()=>setView('history')}>{t('move.history')}</button><button className={view==='pending'?'active':''} onClick={()=>setView('pending')}>{t('move.pending')}</button></div>
+    <div className="movementSearchBar"><span aria-hidden="true">⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('common.search')+'...'} aria-label={t('common.search')}/>{search&&<button type="button" onClick={()=>setSearch('')} aria-label={t('common.cancel')}>×</button>}</div>
+    {searchActive&&<div className="movementSearchMeta"><small>{t('common.result')}</small><b>{searching?'…':searchRows.length}</b></div>}
+    {!searchActive&&<div className="movementTabs"><button className={view==='today'?'active':''} onClick={()=>setView('today')}>{t('move.today')}</button><button className={view==='history'?'active':''} onClick={()=>setView('history')}>{t('move.history')}</button><button className={view==='pending'?'active':''} onClick={()=>setView('pending')}>{t('move.pending')}</button></div>}
 
-    {view==='history'&&<div className="historyFilters">
+    {!searchActive&&view==='history'&&<div className="historyFilters">
       <div className="historyTypeFilter">
         <button className={historyFlow==='all'?'active':''} onClick={()=>setHistoryFlow('all')}>{t('move.allMovements')}</button>
         <button className={historyFlow==='income'?'active incomeFilter':''} onClick={()=>setHistoryFlow('income')}>{t('move.onlyIncome')}</button>
@@ -299,12 +339,12 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
       <div className="filterRow"><button className={range==='7'?'active':''} onClick={()=>setRange('7')}>{t('move.range7')}</button><button className={range==='30'?'active':''} onClick={()=>setRange('30')}>{t('move.range30')}</button><button className={range==='month'?'active':''} onClick={()=>setRange('month')}>{t('move.thisMonth')}</button><button className={range==='custom'?'active':''} onClick={()=>setRange('custom')}>{t('move.custom')}</button></div>{range==='custom'&&<div className="dateRange"><label>{t('common.from')}<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>{t('common.to')}<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>}
     </div>}
 
-    {view!=='pending'&&<>
+    {(searchActive||view!=='pending')&&<>
       <section className="cashSummary"><article><small>{t('move.entered')}</small><strong className="positive">+ {currency(totals.plus)}</strong></article><article><small>{t('move.outflow')}</small><strong className="negative">− {currency(totals.minus)}</strong></article><article className="cashBalance"><small>{t('move.balance')}</small><strong className={totals.balance>=0?'positive':'negative'}>{currency(totals.balance)}</strong></article><p>{t('move.actualCash')}</p></section>
-      {loading?<section className="panel"><span className="loader"/></section>:visibleHistoryRows.length===0?<section className="empty"><b>{view==='today'?t('move.noToday'):t('move.noHistory')}</b></section>:view==='history'?<div className="historyCategoryStack">{historyGroups.map(group=><section className="panel historyCategoryGroup" key={group.key}><div className="historyCategoryHeader"><div><small>{t('common.category').toUpperCase()}</small><h2>{group.label}</h2></div><div className="historyCategoryTotals">{group.plus>0&&<span className="positive">+ {currency(group.plus)}</span>}{group.minus>0&&<span className="negative">− {currency(group.minus)}</span>}<b className={group.plus-group.minus>=0?'positive':'negative'}>{currency(group.plus-group.minus)}</b></div></div><div className="ledgerList">{group.rows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:row.kind==='tx'&&(row.raw as Tx).source_type==='future_plan'?<button onClick={()=>onNavigate?.('plan')}>{t('future.openPlanning')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</div></section>)}</div>:<section className="ledgerList">{cashRows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:row.kind==='tx'&&(row.raw as Tx).source_type==='future_plan'?<button onClick={()=>onNavigate?.('plan')}>{t('future.openPlanning')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</section>}
+      {(loading||searching)?<section className="panel"><span className="loader"/></section>:displayRows.length===0?<section className="empty"><b>{searchActive?t('common.result'):view==='today'?t('move.noToday'):t('move.noHistory')}</b></section>:!searchActive&&view==='history'?<div className="historyCategoryStack">{historyGroups.map(group=><section className="panel historyCategoryGroup" key={group.key}><div className="historyCategoryHeader"><div><small>{t('common.category').toUpperCase()}</small><h2>{group.label}</h2></div><div className="historyCategoryTotals">{group.plus>0&&<span className="positive">+ {currency(group.plus)}</span>}{group.minus>0&&<span className="negative">− {currency(group.minus)}</span>}<b className={group.plus-group.minus>=0?'positive':'negative'}>{currency(group.plus-group.minus)}</b></div></div><div className="ledgerList">{group.rows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:row.kind==='tx'&&(row.raw as Tx).source_type==='future_plan'?<button onClick={()=>onNavigate?.('plan')}>{t('future.openPlanning')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</div></section>)}</div>:<section className="ledgerList">{displayRows.map(row=><article key={row.id} className="ledgerRow"><div className={'ledgerSign '+(row.sign>0?'plus':'minus')}>{row.sign>0?'+':'−'}</div><div className="ledgerText"><b>{row.title}</b><small>{row.subtitle} · {date(row.date,{day:'2-digit',month:'short',year:'numeric'})}</small></div><strong className={row.sign>0?'positive':'negative'}>{row.sign>0?'+ ':'− '}{currency(row.amount)}</strong><div className="ledgerActions">{row.kind==='reserve-transfer'?<button onClick={()=>onNavigate?.('reserves')}>{t('move.openModule')}</button>:row.kind==='tx'&&(row.raw as Tx).source_type==='future_plan'?<button onClick={()=>onNavigate?.('plan')}>{t('future.openPlanning')}</button>:<><button onClick={()=>startEdit(row)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>removeRow(row)}>{row.kind==='card-payment'?t('move.reopen'):t('common.delete')}</button></>}</div></article>)}</section>}
     </>}
 
-    {view==='pending'&&<>
+    {!searchActive&&view==='pending'&&<>
       {loading?<section className="panel"><span className="loader"/></section>:billPending.length+purchasePending.length===0?<section className="empty"><b>{t('move.noPending')}</b></section>:<div className="pendingStack">
         {billPending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.bills').toUpperCase()}</small><h2>{t('nav.bills')}</h2></div></div>{billPending.map(item=><article className="pendingRow premiumPendingRow" key={item.key}><div className="pendingCopy"><b>{item.bill.name}</b><small>{item.bill.installment_count&&item.installment?t('bills.installment')+' '+item.installment+'/'+item.bill.installment_count+' · ':''}{t('move.dueOn')} {date(item.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small></div><strong>{currency(item.remaining)}</strong><div className="pendingFooter"><span className={item.overdue?'statusBadge overdue':'statusBadge'}>{item.overdue?t('common.overdue'):item.month>currentMonth()?t('move.future'):t('common.pending')}</span><button className="pendingOpenButton" onClick={()=>onNavigate?.('bills')}>{t('move.openModule')} <i>›</i></button></div></article>)}</section>}
         {purchasePending.length>0&&<section className="panel pendingGroup"><div className="sectionTitleRow"><div><small>{t('nav.cards').toUpperCase()}</small><h2>{t('cards.totalOpen')}</h2></div></div>{purchasePending.map(item=><article className="pendingRow premiumPendingRow purchasePending" key={item.installment.id}><div className="pendingCopy"><b>{item.purchase.description||item.purchase.credit_cards?.name||t('move.cardCommitment')}</b><small>{item.purchase.credit_cards?.name} · {item.installment.installment_number}/{item.purchase.installment_count} · {t('move.dueOn')} {date(item.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small></div><strong>{currency(Number(item.installment.amount_minor))}</strong><div className="pendingFooter"><span className={item.status==='overdue'?'statusBadge overdue':'statusBadge'}>{item.status==='overdue'?t('common.overdue'):item.status==='current'?t('move.current'):t('move.future')}</span><div className="pendingActions"><button onClick={()=>startPurchaseEdit(item.purchase)}>{t('common.edit')}</button><button className="dangerText" onClick={()=>deletePurchase(item.purchase)}>{t('common.delete')}</button></div></div></article>)}</section>}
