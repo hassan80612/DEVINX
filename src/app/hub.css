@@ -189,15 +189,20 @@ linear-gradient(145deg,var(--surface-0) 0%,var(--surface-1) 38%,var(--surface-1)
 /* Premium pass — compact projection, dynamic reserve goal, stronger metallic storefront */
 .homeProjectedSlot{grid-column:1/-1;margin-top:2px}
 .projectedStrip{
-  display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:stretch;gap:9px 12px;
-  width:100%;min-height:78px;padding:10px;border:1px solid rgb(var(--accent-rgb) / .38);border-radius:15px;
+  display:block;width:100%;padding:0;border:1px solid rgb(var(--accent-rgb) / .38);border-radius:15px;overflow:hidden;
   background:
     linear-gradient(115deg,rgba(255,255,255,.07),transparent 19%),
     radial-gradient(circle at 80% 0%,rgb(var(--accent-rgb) / .2),transparent 28%),
     linear-gradient(135deg,var(--surface-1) 0%,var(--text-faint) 44%,var(--surface-1) 68%,var(--surface-0) 100%);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 28px rgba(17,21,26,.22),0 0 22px rgb(var(--accent-rgb) / .08);
 }
-.projectedStrip small{color:var(--text-soft);font-size:8px;letter-spacing:.1em}.projectedStrip strong{font-size:23px;line-height:1;color:#fff8df;text-shadow:0 0 16px rgba(255,223,112,.16);letter-spacing:-.035em}.cashPositionPrimary,.cashPositionProjection{min-width:0;padding:9px 10px;border:1px solid rgb(var(--accent-rgb) / .14);border-radius:11px;background:rgba(9,11,15,.42)}.cashPositionPrimary{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label action" "value action";align-items:center;gap:5px 10px}.cashPositionPrimary small{grid-area:label}.cashPositionPrimary strong{grid-area:value}.cashPositionPrimary button{grid-area:action;align-self:center;border:1px solid rgba(255,215,93,.28);border-radius:9px;background:linear-gradient(180deg,rgba(90,63,13,.28),rgba(9,11,15,.36));color:#ffe183;padding:7px 9px;font-size:8px;font-weight:900}.cashPositionProjection{display:flex;align-items:center;justify-content:space-between;gap:12px}.cashPositionProjection>div{display:flex;flex-direction:column;gap:5px}.cashPositionProjection label{display:grid;gap:4px;min-width:145px}.cashPositionProjection label span{font-size:8px;color:var(--text-muted)}.cashPositionProjection input{width:100%;min-height:34px;padding:7px 8px}.projectedStrip>span{grid-column:1/-1;justify-self:start;color:var(--text-muted);font-size:8px;line-height:1.4;text-align:left;padding:0 3px}
+.projectedStrip small{color:var(--text-soft);font-size:8px;letter-spacing:.1em}.projectedStrip strong{font-size:23px;line-height:1;color:#fff8df;text-shadow:0 0 16px rgba(255,223,112,.16);letter-spacing:-.035em}
+.cashPositionCollapseHeader{width:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:12px;padding:11px 13px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.cashPositionCollapseHeader>span{display:flex;flex-direction:column;gap:4px;min-width:0}.cashPositionCollapseHeader>span:nth-child(2){text-align:right}.cashPositionCollapseHeader>i{font-style:normal;color:#ffe17a;font-size:18px}
+.cashPositionStrip.isCollapsed .cashPositionCollapseHeader{min-height:64px}.cashPositionStrip.expanded .cashPositionCollapseHeader{border-bottom:1px solid rgb(var(--accent-rgb) / .14)}
+.cashPositionExpanded{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:9px 12px;padding:10px}
+.cashPositionPrimary,.cashPositionProjection{min-width:0;padding:9px 10px;border:1px solid rgb(var(--accent-rgb) / .14);border-radius:11px;background:rgba(9,11,15,.42)}.cashPositionPrimary{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"label action" "value action";align-items:center;gap:5px 10px}.cashPositionPrimary small{grid-area:label}.cashPositionPrimary strong{grid-area:value}.cashPositionPrimary button{grid-area:action;align-self:center;border:1px solid rgba(255,215,93,.28);border-radius:9px;background:linear-gradient(180deg,rgba(90,63,13,.28),rgba(9,11,15,.36));color:#ffe183;padding:7px 9px;font-size:8px;font-weight:900}.cashPositionProjection{display:flex;align-items:center;justify-content:space-between;gap:12px}.cashPositionProjection>div{display:flex;flex-direction:column;gap:5px}.cashPositionProjection label{display:grid;gap:4px;min-width:145px}.cashPositionProjection label span{font-size:8px;color:var(--text-muted)}.cashPositionProjection input{width:100%;min-height:34px;padding:7px 8px}.cashPositionHelp{grid-column:1/-1;color:var(--text-muted);font-size:8px;line-height:1.4;text-align:left;padding:0 3px}
+.homeSummaryCard{border:1px solid rgb(var(--accent-rgb) / .28);border-radius:18px;overflow:hidden;background:linear-gradient(145deg,rgba(9,11,15,.94),rgba(9,11,15,.98));box-shadow:inset 0 1px 0 rgba(255,255,255,.065),0 12px 26px rgba(9,11,15,.2)}.homeSummaryHeader{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}.homeSummaryHeader span,.homeSummaryHeader small,.homeSummaryHeader b{display:block}.homeSummaryHeader small{font-size:8px;color:var(--gold);font-weight:900;letter-spacing:.11em}.homeSummaryHeader b{margin-top:4px;font-size:11px;color:var(--text-soft)}.homeSummaryHeader i{font-style:normal;color:#ffe17a;font-size:18px}.homeSummaryCard.expanded .homeSummaryHeader{border-bottom:1px solid rgb(var(--accent-rgb) / .14)}.homeSummaryCard .dashboardMetrics{padding:10px;margin:0}
 .instantPanel{grid-template-columns:1fr 1.35fr;align-items:center;padding-bottom:18px}
 
 .dailyReserveCard{
@@ -303,9 +308,8 @@ linear-gradient(145deg,var(--surface-0) 0%,var(--surface-1) 38%,var(--surface-1)
 @media(max-width:620px){
   .instantPanel{grid-template-columns:1fr;gap:15px;padding:18px}
   .homeProjectedSlot{grid-column:auto}
-  .projectedStrip{grid-template-columns:1fr;gap:7px;min-height:58px}
-  .cashPositionProjection{align-items:stretch;flex-direction:column}.cashPositionProjection label{min-width:0}
-  .projectedStrip>span{justify-self:start;text-align:left}
+  .cashPositionCollapseHeader{grid-template-columns:minmax(0,1fr) auto;gap:8px}.cashPositionCollapseHeader>span:nth-child(2){grid-column:1;text-align:left}.cashPositionCollapseHeader>i{grid-column:2;grid-row:1/3}
+  .cashPositionExpanded{grid-template-columns:1fr;gap:7px}.cashPositionProjection{align-items:stretch;flex-direction:column}.cashPositionProjection label{min-width:0}
   .statementItems button{grid-template-columns:minmax(0,1fr) auto}.statementItems button>em{grid-column:2;justify-self:end}
 }
 @media(max-width:520px){
