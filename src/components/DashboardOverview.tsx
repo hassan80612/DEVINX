@@ -151,11 +151,23 @@ export function DashboardOverview(){
     setFutureSettlements((rFutureSettlements.data||[]) as FutureSettlementLike[]);
     const cashTx=(rCashTx.data||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null}[];
     setCardItemPays(cashTx.filter(item=>item.source_type==='card_installment_payment').map(item=>({source_id:item.source_id,amount_minor:Number(item.amount_minor)})));
-    const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0);
+    const historicalWorkEstimate=(rCashWork.data||[]).reduce((sum:any,item:any)=>sum+Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor),0);
+    const hasCashBaseline=cashTx.some(item=>item.source_type==='cash_adjustment');
+    const hasWorkCashMigration=cashTx.some(item=>item.source_type==='work_cash_model_migration');
+    let workCashMigrationOffset=0;
+    if(hasCashBaseline&&!hasWorkCashMigration&&historicalWorkEstimate>0){
+      const{error:migrationError}=await s.from('transactions').insert({
+        user_id:user.id,type:'expense',category_id:'balance_adjustment',description:'Work cash model baseline',
+        amount_minor:historicalWorkEstimate,occurred_on:localDateISO(),payment_method:null,is_avoidable:false,is_recurring:false,
+        source_type:'work_cash_model_migration',source_id:null
+      });
+      if(!migrationError)workCashMigrationOffset=historicalWorkEstimate;
+    }
+    const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0)-workCashMigrationOffset;
     const cashWork=(rCashWork.data||[]).reduce((sum:any,item:any)=>sum+Number(item.gross_income_minor),0);
     const cashBills=(rCashBills.data||[]).reduce((sum:any,item:any)=>sum+Number(item.amount_minor),0);
     const cashCards=(rCashCards.data||[]).reduce((sum:any,item:any)=>sum+Number(item.amount_minor),0);
-    setCashPosition({current:cashTransactions+cashWork-cashBills-cashCards,hasAdjustment:cashTx.some(item=>item.source_type==='cash_adjustment')});
+    setCashPosition({current:cashTransactions+cashWork-cashBills-cashCards,hasAdjustment:hasCashBaseline});
     const saved=(profile as any)?.daily_goal_target_date||'';
     setGoalTargetDate(saved);
     setTargetDraft(saved);
@@ -235,7 +247,7 @@ export function DashboardOverview(){
   const numbers=useMemo(()=>{
     const today=localDateISO();
     const month=localMonthStartISO();
-    const txMonth=tx.filter(x=>x.occurred_on>=month&&x.source_type!=='cash_adjustment');
+    const txMonth=tx.filter(x=>x.occurred_on>=month&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration');
     const workMonth=work.filter(x=>x.worked_on>=month);
     const billPayMonth=billPays.filter(x=>x.paid_on>=month);
     const cardPayMonth=cardPays.filter(x=>x.paid_on>=month);
@@ -247,10 +259,10 @@ export function DashboardOverview(){
     const income=manualIncome+workGross;
     const spent=manualExpense+recurringSpent+cardSpent;
     const todayIncome=
-      tx.filter(x=>x.occurred_on===today&&x.type==='income'&&x.source_type!=='cash_adjustment').reduce((a,b)=>a+Number(b.amount_minor),0)+
+      tx.filter(x=>x.occurred_on===today&&x.type==='income'&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
       work.filter(x=>x.worked_on===today).reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const todaySpent=
-      tx.filter(x=>x.occurred_on===today&&x.type==='expense'&&x.source_type!=='cash_adjustment').reduce((a,b)=>a+Number(b.amount_minor),0)+
+      tx.filter(x=>x.occurred_on===today&&x.type==='expense'&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
       billPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0)+
       cardPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0);
 
@@ -355,7 +367,7 @@ export function DashboardOverview(){
       const row=map.get(bucket(value));if(!row)return;
       row.income+=income;row.out+=out;
     };
-    tx.filter(item=>item.source_type!=='cash_adjustment').forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
+    tx.filter(item=>item.source_type!=='cash_adjustment'&&item.source_type!=='work_cash_model_migration').forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
     work.forEach(item=>add(item.worked_on,Number(item.gross_income_minor),0));
     billPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
     cardPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
@@ -582,7 +594,7 @@ export function DashboardOverview(){
     if(!goal)return null;
     const today=localDateISO();
     const start=goal.period==='daily'?today:goal.period==='weekly'?weekStart():localMonthStartISO();
-    const periodTx=tx.filter(x=>x.occurred_on>=start&&x.occurred_on<=today&&x.source_type!=='cash_adjustment');
+    const periodTx=tx.filter(x=>x.occurred_on>=start&&x.occurred_on<=today&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration');
     const periodWork=work.filter(x=>x.worked_on>=start&&x.worked_on<=today);
     const periodBill=billPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
     const periodCard=cardPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
