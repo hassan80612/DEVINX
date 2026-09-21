@@ -118,7 +118,6 @@ export function FinanceHub(){
             <button type="button" className="homeActionCard work" onClick={()=>setSection('work')}><span className="homeActionCardTop"><i>◷</i><b>{t('home.work')}</b></span><small>{t('home.workDesc')}</small></button>
             <button type="button" className="homeActionCard card" onClick={()=>setSection('cards')}><span className="homeActionCardTop"><i>▣</i><b>{t('home.card')}</b></span><small>{t('home.cardDesc')}</small></button>
           </div>
-          <div id="home-projected-slot" className="homeProjectedSlot"/>
         </section>
         <DashboardOverview/>
       </>}
