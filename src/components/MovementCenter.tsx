@@ -71,12 +71,44 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const[search,setSearch]=useState('');
   const[searchData,setSearchData]=useState<SearchData|null>(null);
   const[searching,setSearching]=useState(false);
+  const[searchError,setSearchError]=useState('');
 
   function historyBounds(){
     if(range==='7')return{start:daysAgo(6),end:localDateISO()};
     if(range==='30')return{start:daysAgo(29),end:localDateISO()};
     if(range==='month')return{start:localMonthStartISO(),end:localDateISO()};
     return{start:from,end:to};
+  }
+
+  async function loadSearchIndex(show=false){
+    if(show)setSearching(true);
+    const s=createClient();
+    const{data:{user}}=await s.auth.getUser();
+    if(!user){if(show)setSearching(false);return}
+    try{
+      const[r1,r2,r3,r4,r5,cats]=await Promise.all([
+        s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
+        s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).order('worked_on',{ascending:false}),
+        s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).order('paid_on',{ascending:false}),
+        s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).order('paid_on',{ascending:false}),
+        s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
+        s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id)
+      ]);
+      const failed=[r1,r2,r3,r4,r5,cats].some(result=>result.error);
+      setSearchData({
+        tx:(r1.data||[]) as Tx[],
+        work:(r2.data||[]) as unknown as Work[],
+        recPays:(r3.data||[]) as unknown as RecPay[],
+        cardPays:(r4.data||[]) as unknown as CardPay[],
+        reserveEntries:(r5.data||[]) as ReserveEntry[],
+        categories:(cats.data||[]) as CustomCategory[]
+      });
+      setSearchError(failed?t('common.errorAccess'):'');
+    }catch{
+      setSearchError(t('common.errorAccess'));
+    }finally{
+      if(show)setSearching(false);
+    }
   }
 
   async function load(show=true){
@@ -114,30 +146,14 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     setLoading(false);
   }
 
-  useEffect(()=>{load(true);const refresh=()=>{setSearchData(null);load(false)};window.addEventListener(FINANCE_UPDATED_EVENT,refresh);return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh)},[view,range,from,to]);
+  useEffect(()=>{loadSearchIndex(true)},[]);
 
   useEffect(()=>{
-    if(!search.trim()||searchData)return;
-    let cancelled=false;
-    const timer=setTimeout(async()=>{
-      setSearching(true);
-      try{
-        const s=createClient();
-        const{data:{user}}=await s.auth.getUser();
-        if(!user)return;
-        const[r1,r2,r3,r4,r5,cats]=await Promise.all([
-          s.from('transactions').select('id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,source_type,source_id').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
-          s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked,income_sources(name,kind),vehicles(name,energy_type,efficiency,unit_price_minor,default_fuel_percent)').eq('user_id',user.id).order('worked_on',{ascending:false}),
-          s.from('recurring_bill_payments').select('id,recurring_bill_id,amount_minor,paid_on,due_month,recurring_bills(name,category_id,payment_method)').eq('user_id',user.id).order('paid_on',{ascending:false}),
-          s.from('card_bill_payments').select('id,card_id,statement_month,amount_minor,paid_on,credit_cards(name)').eq('user_id',user.id).order('paid_on',{ascending:false}),
-          s.from('reserve_entries').select('id,kind,amount_minor,occurred_on,note').eq('user_id',user.id).order('occurred_on',{ascending:false}).order('created_at',{ascending:false}),
-          s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id)
-        ]);
-        if(!cancelled)setSearchData({tx:(r1.data||[]) as Tx[],work:(r2.data||[]) as unknown as Work[],recPays:(r3.data||[]) as unknown as RecPay[],cardPays:(r4.data||[]) as unknown as CardPay[],reserveEntries:(r5.data||[]) as ReserveEntry[],categories:(cats.data||[]) as CustomCategory[]});
-      }finally{if(!cancelled)setSearching(false)}
-    },180);
-    return()=>{cancelled=true;clearTimeout(timer)};
-  },[search,searchData]);
+    load(true);
+    const refresh=()=>{load(false);loadSearchIndex(false)};
+    window.addEventListener(FINANCE_UPDATED_EVENT,refresh);
+    return()=>window.removeEventListener(FINANCE_UPDATED_EVENT,refresh);
+  },[view,range,from,to]);
 
   function composeCashRows(txItems:Tx[],workItems:Work[],recItems:RecPay[],cardItems:CardPay[],reserveItems:ReserveEntry[],cats:CustomCategory[]){
     const rows:CashRow[]=[];
@@ -178,9 +194,21 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   const cashRows=useMemo<CashRow[]>(()=>composeCashRows(tx,work,recPays,cardPays,reserveEntries,customCategories),[tx,work,recPays,cardPays,reserveEntries,customCategories,t,date]);
 
   const searchRows=useMemo<CashRow[]>(()=>{
-    const q=normalizeSearch(search);
-    if(!q||!searchData)return[];
-    return composeCashRows(searchData.tx,searchData.work,searchData.recPays,searchData.cardPays,searchData.reserveEntries,searchData.categories).filter(row=>normalizeSearch([row.title,row.subtitle,row.groupLabel,row.date,row.sign>0?t('common.income'):t('common.expense'),String(Number(row.amount)/100).replace('.',',')].join(' ')).includes(q));
+    const tokens=normalizeSearch(search).split(/\s+/).filter(Boolean);
+    if(tokens.length===0||!searchData)return[];
+    return composeCashRows(searchData.tx,searchData.work,searchData.recPays,searchData.cardPays,searchData.reserveEntries,searchData.categories).filter(row=>{
+      const raw=row.raw as any;
+      const amount=(Number(row.amount)/100).toFixed(2);
+      const haystack=normalizeSearch([
+        row.title,row.subtitle,row.groupLabel,row.date,
+        row.sign>0?t('common.income'):t('common.expense'),
+        amount,amount.replace('.',','),
+        raw?.description,raw?.payment_method,raw?.category_id,raw?.source_type,
+        raw?.income_sources?.name,raw?.income_sources?.kind,raw?.vehicles?.name,
+        raw?.recurring_bills?.name,raw?.credit_cards?.name,raw?.note
+      ].filter(Boolean).join(' '));
+      return tokens.every(token=>haystack.includes(token));
+    });
   },[search,searchData,t,date]);
   const searchActive=search.trim().length>0;
 
@@ -328,6 +356,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     <p className="sectionLead">{t('move.lead')}</p>
     <div className="movementSearchBar"><span aria-hidden="true">⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('common.search')+'...'} aria-label={t('common.search')}/>{search&&<button type="button" onClick={()=>setSearch('')} aria-label={t('common.cancel')}>×</button>}</div>
     {searchActive&&<div className="movementSearchMeta"><small>{t('common.result')}</small><b>{searching?'…':searchRows.length}</b></div>}
+    {searchActive&&searchError&&<div className="authMessage error">{searchError}</div>}
     {!searchActive&&<div className="movementTabs"><button className={view==='today'?'active':''} onClick={()=>setView('today')}>{t('move.today')}</button><button className={view==='history'?'active':''} onClick={()=>setView('history')}>{t('move.history')}</button><button className={view==='pending'?'active':''} onClick={()=>setView('pending')}>{t('move.pending')}</button></div>}
 
     {!searchActive&&view==='history'&&<div className="historyFilters">
