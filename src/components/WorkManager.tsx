@@ -61,7 +61,7 @@ export function WorkManager(){
     const[v,src,ss]=await Promise.all([
       s.from('vehicles').select('id,name,vehicle_type,energy_type,efficiency,unit_price_minor,default_fuel_percent,is_default').eq('user_id',user.id).order('is_default',{ascending:false}).order('created_at'),
       s.from('income_sources').select('id,name,kind').eq('user_id',user.id).eq('is_active',true).order('created_at'),
-      s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked').eq('user_id',user.id).gte('worked_on',date30()).order('worked_on',{ascending:false}).order('created_at',{ascending:false}).limit(60)
+      s.from('work_sessions').select('id,vehicle_id,income_source_id,worked_on,gross_income_minor,energy_cost_minor,extra_work_cost_minor,distance_km,minutes_worked').eq('user_id',user.id).gte('worked_on',date30()).order('worked_on',{ascending:false}).order('created_at',{ascending:false}).limit(300)
     ]);
     const vv=(v.data||[]) as Vehicle[];const sourceRows=(src.data||[]) as Source[];setVehicles(vv);setSources(sourceRows);setSessions((ss.data||[]) as Session[]);
     if(!selectedVehicleId&&vv.length)setSelectedVehicleId(vv.find(x=>x.is_default)?.id||vv[0].id);
