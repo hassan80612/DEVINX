@@ -4,9 +4,10 @@ import {useI18n} from '@/i18n/provider';
 import {LanguageMenu} from '@/components/LanguageMenu';
 import {BrandLogo} from '@/components/BrandLogo';
 import {SubscriptionPlans} from '@/components/SubscriptionPlans';
+import {LandingDemoVideo} from '@/components/LandingDemoVideo';
 
 export default function Home(){
-  const{t,currency}=useI18n();
+  const{t,currency,locale}=useI18n();
   return <main className="landingV2">
     <header className="top landingTop">
       <div className="brand"><BrandLogo/></div>
@@ -23,6 +24,7 @@ export default function Home(){
           <a className="primary landingAccessCta" href="/entrar">{t('landing.loginCreate')}</a>
         </div>
         <a className="howLink" href="#como">{t('landing.how')}</a>
+        {locale==='pt-BR'&&<LandingDemoVideo/>}
         <div className="landingProof"><span>{t('landing.noSheet')}</span><span>{t('landing.noAds')}</span><span>{t('landing.mobile')}</span></div>
       </div>
 
