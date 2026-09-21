@@ -134,6 +134,7 @@ export function ReportManager(){
     const rows:ReportRow[]=[];
     const label=(kind:'income'|'expense',id:string)=>id==='work_income'?t('move.workIncome'):id==='card_payment'?t('move.cardPayment'):categoryName(kind,id,custom,t);
     tx.forEach(x=>{
+      if(x.source_type==='cash_adjustment'||x.source_type==='work_cash_model_migration')return;
       const kind=x.type;
       const isDebt=x.source_type==='debt_payment';
       const isFuture=x.source_type==='future_plan';
