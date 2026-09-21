@@ -12,10 +12,10 @@ import {
 import {useI18n} from '@/i18n/provider';
 import {
   FuturePlanLike,FutureReserveEntryLike,FutureSettlementLike,
-  committedReserveTotal,monthPlanningImpact,planningEvents
+  committedReserveTotal,monthPlanningImpact,planningEvents,occurrenceDates
 } from '@/domain/future-planning';
 
-type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean};
+type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean;source_type:string|null};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string};
 type Goal={id:string;name:string;target_minor:number;basis:string;period:string;goal_source:'manual'|'daily_reserve_auto'|'daily_reserve_manual';target_date:string|null};
 type Bill=RecurringBillLike&{created_at:string;is_avoidable:boolean};
@@ -77,6 +77,12 @@ export function DashboardOverview(){
   const[reserveEntries,setReserveEntries]=useState<ReserveEntry[]>([]);
   const[futurePlans,setFuturePlans]=useState<FuturePlanLike[]>([]);
   const[futureSettlements,setFutureSettlements]=useState<FutureSettlementLike[]>([]);
+  const[cashPosition,setCashPosition]=useState({current:0,hasAdjustment:false});
+  const[balanceOpen,setBalanceOpen]=useState(false);
+  const[balanceDraft,setBalanceDraft]=useState('');
+  const[cashSaving,setCashSaving]=useState(false);
+  const[cashNotice,setCashNotice]=useState('');
+  const[projectionDate,setProjectionDate]=useState(()=>monthEnd(localMonthStartISO()));
   const[goalTargetDate,setGoalTargetDate]=useState('');
   const[targetDraft,setTargetDraft]=useState('');
   const[loading,setLoading]=useState(true);
@@ -103,8 +109,8 @@ export function DashboardOverview(){
     const activePeriod=periodOverride||profilePeriod||'1m';
     setChartPeriod(activePeriod);
     const from=dashboardDataFrom(activePeriod);
-    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rFuturePlans,rFutureSettlements]=await Promise.all([
-      s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',user.id).gte('occurred_on',from),
+    const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rFuturePlans,rFutureSettlements,rCashTx,rCashWork,rCashBills,rCashCards]=await Promise.all([
+      s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable,source_type').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',user.id).gte('worked_on',from),
       s.from('goals').select('id,name,target_minor,basis,period,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
       s.from('recurring_bills').select('id,amount_minor,due_day,start_month,installment_count,created_at,is_avoidable').eq('user_id',user.id).eq('is_active',true),
@@ -115,7 +121,11 @@ export function DashboardOverview(){
       s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
       s.from('reserve_entries').select('kind,amount_minor,occurred_on,future_plan_id').eq('user_id',user.id),
       s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id),
-      s.from('future_plan_settlements').select('plan_id,due_date,amount_minor,settled_on').eq('user_id',user.id)
+      s.from('future_plan_settlements').select('plan_id,due_date,amount_minor,settled_on').eq('user_id',user.id),
+      s.from('transactions').select('type,amount_minor,source_type').eq('user_id',user.id),
+      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id),
+      s.from('recurring_bill_payments').select('amount_minor').eq('user_id',user.id),
+      s.from('card_bill_payments').select('amount_minor').eq('user_id',user.id)
     ]);
     setTx((rTx.data||[]) as Tx[]);
     setWork((rWork.data||[]) as Work[]);
@@ -136,6 +146,12 @@ export function DashboardOverview(){
     setReserveEntries((rReserve.data||[]) as ReserveEntry[]);
     setFuturePlans((rFuturePlans.data||[]) as FuturePlanLike[]);
     setFutureSettlements((rFutureSettlements.data||[]) as FutureSettlementLike[]);
+    const cashTx=(rCashTx.data||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null}[];
+    const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0);
+    const cashWork=(rCashWork.data||[]).reduce((sum:any,item:any)=>sum+Number(item.gross_income_minor)-Number(item.energy_cost_minor)-Number(item.extra_work_cost_minor),0);
+    const cashBills=(rCashBills.data||[]).reduce((sum:any,item:any)=>sum+Number(item.amount_minor),0);
+    const cashCards=(rCashCards.data||[]).reduce((sum:any,item:any)=>sum+Number(item.amount_minor),0);
+    setCashPosition({current:cashTransactions+cashWork-cashBills-cashCards,hasAdjustment:cashTx.some(item=>item.source_type==='cash_adjustment')});
     const saved=(profile as any)?.daily_goal_target_date||'';
     setGoalTargetDate(saved);
     setTargetDraft(saved);
@@ -145,7 +161,7 @@ export function DashboardOverview(){
   async function loadFlowData(s:ReturnType<typeof createClient>,userId:string,period:ChartPeriod){
     const from=dashboardDataFrom(period);
     const[rTx,rWork,rBillPay,rCardPay]=await Promise.all([
-      s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable').eq('user_id',userId).gte('occurred_on',from),
+      s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable,source_type').eq('user_id',userId).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',userId).gte('worked_on',from),
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',userId).gte('paid_on',from),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',userId).gte('paid_on',from)
@@ -190,7 +206,7 @@ export function DashboardOverview(){
   const numbers=useMemo(()=>{
     const today=localDateISO();
     const month=localMonthStartISO();
-    const txMonth=tx.filter(x=>x.occurred_on>=month);
+    const txMonth=tx.filter(x=>x.occurred_on>=month&&x.source_type!=='cash_adjustment');
     const workMonth=work.filter(x=>x.worked_on>=month);
     const billPayMonth=billPays.filter(x=>x.paid_on>=month);
     const cardPayMonth=cardPays.filter(x=>x.paid_on>=month);
@@ -200,17 +216,15 @@ export function DashboardOverview(){
     const workCost=workMonth.reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0);
     const recurringSpent=billPayMonth.reduce((a,b)=>a+Number(b.amount_minor),0);
     const cardSpent=cardPayMonth.reduce((a,b)=>a+Number(b.amount_minor),0);
-    const reserveMonthNet=reserveEntries.filter(e=>e.occurred_on>=month).reduce((sum,e)=>sum+(e.kind==='deposit'?Number(e.amount_minor):-Number(e.amount_minor)),0);
-    const reserveTodayNet=reserveEntries.filter(e=>e.occurred_on===today).reduce((sum,e)=>sum+(e.kind==='deposit'?Number(e.amount_minor):-Number(e.amount_minor)),0);
     const income=manualIncome+workGross;
     const spent=manualExpense+workCost+recurringSpent+cardSpent;
-    const balance=income-spent-reserveMonthNet;
+    const balance=income-spent;
 
     const todayIncome=
-      tx.filter(x=>x.occurred_on===today&&x.type==='income').reduce((a,b)=>a+Number(b.amount_minor),0)+
+      tx.filter(x=>x.occurred_on===today&&x.type==='income'&&x.source_type!=='cash_adjustment').reduce((a,b)=>a+Number(b.amount_minor),0)+
       work.filter(x=>x.worked_on===today).reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const todaySpent=
-      tx.filter(x=>x.occurred_on===today&&x.type==='expense').reduce((a,b)=>a+Number(b.amount_minor),0)+
+      tx.filter(x=>x.occurred_on===today&&x.type==='expense'&&x.source_type!=='cash_adjustment').reduce((a,b)=>a+Number(b.amount_minor),0)+
       work.filter(x=>x.worked_on===today).reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0)+
       billPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0)+
       cardPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0);
@@ -226,14 +240,47 @@ export function DashboardOverview(){
     const projected=balance-toPay;
     const avoidable=txMonth.filter(x=>x.type==='expense'&&x.is_avoidable).reduce((a,b)=>a+Number(b.amount_minor),0);
 
-    return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent-reserveTodayNet,recurringPending,cardsDueNow,toPay,projected,avoidable};
+    return{income,spent,balance,todayIncome,todaySpent,todayBalance:todayIncome-todaySpent,recurringPending,cardsDueNow,toPay,projected,avoidable};
   },[tx,work,bills,billPays,billOverrides,cardInst,cardPays,debtPays,reserveEntries]);
 
   const currentFutureImpact=useMemo(
     ()=>monthPlanningImpact(futurePlans,futureSettlements,reserveEntries,localMonthStartISO(),localDateISO()),
     [futurePlans,futureSettlements,reserveEntries]
   );
-  const projectedWithFuture=numbers.projected+currentFutureImpact.expectedIncome-currentFutureImpact.totalNeed;
+
+  const dateProjection=useMemo(()=>{
+    const today=localDateISO();
+    const horizon=projectionDate&&projectionDate>=today?projectionDate:today;
+    const horizonMonth=horizon.slice(0,7)+'-01';
+    let recurring=0;
+    for(const bill of bills){
+      for(const dueMonth of monthsBetween(localMonthStartISO(),horizonMonth)){
+        if(!billAppliesToMonth(bill,dueMonth))continue;
+        const due=dueDateForMonth(dueMonth,billDueDay(bill,dueMonth,billOverrides));
+        if(due>horizon)continue;
+        recurring+=billRemaining(bill,dueMonth,billPays,billOverrides);
+      }
+    }
+    const cards=cardInst
+      .filter(item=>(item.due_date||dueDateForMonth(item.billing_month,1))<=horizon)
+      .reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    let expectedIncome=0;
+    let plannedExpense=0;
+    for(const plan of futurePlans.filter(plan=>plan.is_active)){
+      let dates=occurrenceDates(plan,today,horizon,futureSettlements);
+      if(plan.kind==='expense'){
+        const overdue=occurrenceDates(plan,plan.due_date,today,futureSettlements).filter(value=>value<today);
+        dates=[...overdue,...dates];
+      }
+      const amount=dates.length*Number(plan.amount_minor);
+      if(plan.kind==='income')expectedIncome+=amount;
+      else plannedExpense+=amount;
+    }
+    const out=recurring+cards+plannedExpense;
+    return{horizon,recurring,cards,plannedExpense,expectedIncome,out,projected:cashPosition.current+expectedIncome-out};
+  },[projectionDate,bills,billPays,billOverrides,cardInst,futurePlans,futureSettlements,cashPosition.current]);
+
+  const projectedWithFuture=dateProjection.projected;
   const pendingWithFuture=numbers.toPay+currentFutureImpact.totalNeed;
 
   const selectedCommitments=useMemo(()=>{
@@ -288,7 +335,7 @@ export function DashboardOverview(){
       const row=map.get(bucket(value));if(!row)return;
       row.income+=income;row.out+=out;
     };
-    tx.forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
+    tx.filter(item=>item.source_type!=='cash_adjustment').forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
     work.forEach(item=>add(item.worked_on,Number(item.gross_income_minor),Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor)));
     billPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
     cardPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
@@ -345,7 +392,7 @@ export function DashboardOverview(){
       grouped.set(item.date,(grouped.get(item.date)||0)+(item.kind==='expense'?item.amount:-item.amount));
     }
 
-    const planningCash=numbers.balance;
+    const planningCash=cashPosition.current;
     let cumulative=0;
     let daily=0;
     let criticalDeadline=horizon;
@@ -374,7 +421,7 @@ export function DashboardOverview(){
       days:daysInclusive(today,horizon),
       hasCustomHorizon:!!goalTargetDate&&goalTargetDate>=today
     };
-  },[goalTargetDate,bills,billPays,billOverrides,cardInst,numbers.balance,futurePlans,futureSettlements,reserveEntries]);
+  },[goalTargetDate,bills,billPays,billOverrides,cardInst,cashPosition.current,futurePlans,futureSettlements,reserveEntries]);
 
   async function saveHorizon(){
     if(targetDraft&&targetDraft<localDateISO()){setGoalNotice(t('dashboard.futureDateError'));return}
@@ -514,7 +561,7 @@ export function DashboardOverview(){
     if(!goal)return null;
     const today=localDateISO();
     const start=goal.period==='daily'?today:goal.period==='weekly'?weekStart():localMonthStartISO();
-    const periodTx=tx.filter(x=>x.occurred_on>=start&&x.occurred_on<=today);
+    const periodTx=tx.filter(x=>x.occurred_on>=start&&x.occurred_on<=today&&x.source_type!=='cash_adjustment');
     const periodWork=work.filter(x=>x.worked_on>=start&&x.worked_on<=today);
     const periodBill=billPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
     const periodCard=cardPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
@@ -538,9 +585,44 @@ export function DashboardOverview(){
     return{base,target,percent:Math.min(100,Math.max(0,Math.round(base/Math.max(1,target)*100)))};
   },[goal,tx,work,billPays,cardPays,debtPays,reserveEntries,reserveSuggestion.daily]);
 
+  function openBalanceAdjust(){
+    setBalanceDraft(String(Number(cashPosition.current)/100).replace('.',','));
+    setCashNotice('');
+    setBalanceOpen(true);
+  }
+
+  async function saveBalanceAdjustment(e:any){
+    e.preventDefault();
+    const target=moneyMinor(balanceDraft);
+    const delta=target-cashPosition.current;
+    if(delta===0){setBalanceOpen(false);return}
+    setCashSaving(true);
+    try{
+      const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
+      const{error}=await s.from('transactions').insert({
+        user_id:user.id,type:delta>0?'income':'expense',category_id:'balance_adjustment',
+        description:t('dashboard.balanceAdjustment'),amount_minor:Math.abs(delta),occurred_on:localDateISO(),
+        payment_method:null,is_avoidable:false,is_recurring:false,source_type:'cash_adjustment',source_id:null
+      });
+      if(error){setCashNotice(t('common.errorSave'));return}
+      setBalanceOpen(false);setCashNotice('');notifyFinanceUpdated();await load(false);
+    }finally{setCashSaving(false)}
+  }
+
   if(loading)return <section className="panel dashboardLoading"><span className="loader"/></section>;
 
-  const projectedStrip=<section className="projectedStrip"><div><small>{t('dashboard.projected')}</small><strong>{currency(projectedWithFuture)}</strong></div><span>{t('future.projectedHelp')}</span></section>;
+  const projectedStrip=<section className="projectedStrip cashPositionStrip">
+    <div className="cashPositionPrimary">
+      <small>{t('dashboard.currentBalance')}</small>
+      <strong className={cashPosition.current>=0?'positive':'negative'}>{currency(cashPosition.current)}</strong>
+      <button type="button" onClick={openBalanceAdjust}>{cashPosition.hasAdjustment?t('dashboard.adjustBalance'):t('dashboard.setBalance')}</button>
+    </div>
+    <div className="cashPositionProjection">
+      <div><small>{t('dashboard.projected')}</small><strong className={projectedWithFuture>=0?'positive':'negative'}>{currency(projectedWithFuture)}</strong></div>
+      <label><span>{t('dashboard.projectUntil')}</span><input type="date" min={localDateISO()} value={projectionDate} onChange={e=>setProjectionDate(e.target.value||monthEnd(localMonthStartISO()))}/></label>
+    </div>
+    <span>{t('dashboard.currentBalanceHelp')} · {t('dashboard.projectedDateHelp')}</span>
+  </section>;
 
   const isDailyAutoGoal=goal?.goal_source==='daily_reserve_auto';
   const isDailyManualGoal=goal?.goal_source==='daily_reserve_manual';
@@ -551,8 +633,11 @@ export function DashboardOverview(){
     :isDailyManualGoal?t('dashboard.manualDailyGoalName')
     :goal?.name==='__devinx_default_goal__'?t('goals.defaultName'):goal?.name;
 
+  const balanceModal=balanceOpen?<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setBalanceOpen(false)}}><form className="modalCard" onSubmit={saveBalanceAdjustment}><div className="modalHead"><h2>{t('dashboard.setBalance')}</h2><button type="button" onClick={()=>setBalanceOpen(false)}>×</button></div><div className="settingsNote"><b>{t('dashboard.currentBalance')}</b><span>{t('dashboard.balanceReconcileHelp')}</span></div><label>{t('common.value')}<input value={balanceDraft} onChange={e=>setBalanceDraft(e.target.value)} inputMode="decimal" required autoFocus/></label>{cashNotice&&<div className="authMessage">{cashNotice}</div>}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setBalanceOpen(false)}>{t('common.cancel')}</button><button className="primary" disabled={cashSaving} aria-busy={cashSaving}>{cashSaving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.save')}</button></div></form></div>:null;
+
   return <div className="dashboardStack">
     {projectedHost&&createPortal(projectedStrip,projectedHost)}
+    {balanceModal}
 
     <div className="metricGrid dashboardMetrics">
       <article><small>{t('dashboard.entered')}</small><b>{currency(numbers.income)}</b></article>
@@ -584,7 +669,7 @@ export function DashboardOverview(){
         {goalMode==='automatic'?<>
           <div className="dailyReserveGrid">
             <span><small>{t('dashboard.commitmentsUntilDate')}</small><b>{currency(reserveSuggestion.total)}</b></span>
-            <span><small>{t('dashboard.cashAvailable')}</small><b className={numbers.balance>=0?'positive':'negative'}>{currency(numbers.balance)}</b></span>
+            <span><small>{t('dashboard.cashAvailable')}</small><b className={cashPosition.current>=0?'positive':'negative'}>{currency(cashPosition.current)}</b></span>
             <span><small>{t('dashboard.reserveSeparated')}</small><b>{currency(reserveBalance)}</b></span>
             <span><small>{t('future.expectedIncome')}</small><b className="positive">{currency(reserveSuggestion.expectedIncome)}</b></span>
             <span className="dailyTarget"><small>{t('dashboard.perDay')}</small><b>{currency(reserveSuggestion.daily)}</b></span>
