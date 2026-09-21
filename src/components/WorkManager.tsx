@@ -76,20 +76,18 @@ export function WorkManager(){
     const grossTotal=sessions.reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const cost=sessions.reduce((a,b)=>a+Number(b.energy_cost_minor)+Number(b.extra_work_cost_minor),0);
     const h=sessions.reduce((a,b)=>a+Number(b.minutes_worked),0)/60;
-    const distance=sessions.reduce((a,b)=>a+Number(b.distance_km),0);
     const net=grossTotal-cost;
-    return{gross:grossTotal,cost,h,distance,net,netHour:h?net/h:0,netKm:distance?net/distance:0,energy:sessions.reduce((a,b)=>a+Number(b.energy_cost_minor),0)};
+    return{gross:grossTotal,cost,h,net,netHour:h?net/h:0};
   },[sessions]);
 
   const historyDays=useMemo(()=>{
-    const days=new Map<string,{date:string;gross:number;energy:number;extra:number;cost:number;net:number;minutes:number;distance:number;sessions:Session[]}>();
+    const days=new Map<string,{date:string;gross:number;cost:number;net:number;minutes:number;sessions:Session[]}>();
     sessions.forEach(session=>{
-      const current=days.get(session.worked_on)||{date:session.worked_on,gross:0,energy:0,extra:0,cost:0,net:0,minutes:0,distance:0,sessions:[]};
+      const current=days.get(session.worked_on)||{date:session.worked_on,gross:0,cost:0,net:0,minutes:0,sessions:[]};
       const gross=Number(session.gross_income_minor);
-      const energy=Number(session.energy_cost_minor);
-      const extra=Number(session.extra_work_cost_minor);
-      current.gross+=gross;current.energy+=energy;current.extra+=extra;current.cost+=energy+extra;current.net+=gross-energy-extra;
-      current.minutes+=Number(session.minutes_worked);current.distance+=Number(session.distance_km);current.sessions.push(session);
+      const cost=Number(session.energy_cost_minor)+Number(session.extra_work_cost_minor);
+      current.gross+=gross;current.cost+=cost;current.net+=gross-cost;
+      current.minutes+=Number(session.minutes_worked);current.sessions.push(session);
       days.set(session.worked_on,current);
     });
     return [...days.values()].sort((a,b)=>b.date.localeCompare(a.date));
