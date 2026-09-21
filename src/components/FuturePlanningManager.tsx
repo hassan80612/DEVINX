@@ -234,7 +234,7 @@ export function FuturePlanningManager(){
           <span className={item.future_plans?.kind==='income'?'positive':'negative'}>{item.future_plans?.kind==='income'?'＋':'−'}</span>
           <div><b>{item.future_plans?.name||t('future.title')}</b><small>{date(item.settled_on,{day:'2-digit',month:'short',year:'numeric'})} · {t('future.plannedFor')} {date(item.due_date,{day:'2-digit',month:'short'})}</small></div>
           <strong>{currency(Number(item.amount_minor))}</strong>
-          <button className="textButton" type="button" disabled={saving==='reopen:'+item.id} onClick={()=>reopen(item)}>{t('future.reopen')}</button>
+          <button className="textButton" type="button" disabled={saving==='reopen:'+item.id} onClick={()=>reopen(item)}>{t(item.future_plans?.kind==='income'?'future.notReceived':'future.reopen')}</button>
         </article>)}
       </section>
     </div>}
