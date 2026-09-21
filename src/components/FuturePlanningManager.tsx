@@ -72,7 +72,11 @@ export function FuturePlanningManager(){
 
   const summary=useMemo(()=>{
     const in30=addCalendarMonths(today,1);
-    const expectedIncome=active.filter(p=>p.kind==='income').reduce((sum,p)=>sum+occurrenceDates(p,today,in30,activeSettlements).length*Number(p.amount_minor),0);
+    const expectedIncome=active.filter(p=>p.kind==='income').reduce((sum,p)=>{
+      const overdue=occurrenceDates(p,p.due_date,today,activeSettlements).filter(d=>d<today).length;
+      const upcoming=occurrenceDates(p,today,in30,activeSettlements).length;
+      return sum+(overdue+upcoming)*Number(p.amount_minor);
+    },0);
     const committed=committedReserveTotal(active,reserveEntries);
     const monthlyNeed=active.filter(p=>p.kind==='expense'&&p.reserve_enabled).reduce((sum,p)=>sum+reserveNeed(p,activeSettlements,reserveEntries,today).monthly,0);
     const nextExpense=active.filter(p=>p.kind==='expense').map(p=>nextPendingOccurrence(p,activeSettlements,today)).filter(Boolean).sort()[0]||null;
@@ -107,7 +111,7 @@ export function FuturePlanningManager(){
     }finally{setSaving('')}
   }
   async function pause(plan:FuturePlan){
-    if(!confirm(t('future.pauseConfirm')))return;
+    if(!confirm(t(plan.kind==='income'?'future.cancelIncomeConfirm':'future.pauseConfirm')))return;
     setSaving('pause:'+plan.id);
     try{
       const s=createClient();const{error}=await s.from('future_plans').update({is_active:false,updated_at:new Date().toISOString()}).eq('id',plan.id);
@@ -164,19 +168,22 @@ export function FuturePlanningManager(){
     const need=reserveNeed(plan,activeSettlements,reserveEntries,today);
     const isOpen=openIds[plan.id]!==false;
     const overdue=!!due&&due<today;
-    return <article className={'futurePlanCard '+plan.kind+(overdue?' overdue':'')+(!isOpen?' collapsed':'')} key={plan.id}>
+    const awaitingReceipt=plan.kind==='income'&&!!due&&due<=today;
+    const lateReceipt=awaitingReceipt&&due<today;
+    return <article className={'futurePlanCard '+plan.kind+(overdue?' overdue':'')+(awaitingReceipt?' awaitingReceipt':'')+(!isOpen?' collapsed':'')} key={plan.id}>
       <button type="button" className="futurePlanHead" onClick={()=>setOpenIds(current=>({...current,[plan.id]:!isOpen}))} aria-expanded={isOpen}>
         <span className="futurePlanIcon">{plan.kind==='income'?'＋':'−'}</span>
-        <div><small>{t(plan.kind==='income'?'future.income':'future.expense')}</small><h3>{plan.name}</h3></div>
+        <div><small>{t(plan.kind==='income'?'future.income':'future.expense')}</small><h3>{plan.name}</h3>{awaitingReceipt&&<span className={'futureReceiptStatus '+(lateReceipt?'late':'waiting')}>{t(lateReceipt?'future.receiptLate':'future.awaitingReceipt')}</span>}</div>
         <strong className={plan.kind==='income'?'positive':''}>{currency(Number(plan.amount_minor))}</strong>
         <i>{isOpen?'⌃':'⌄'}</i>
       </button>
       {isOpen&&<div className="futurePlanBody">
         <div className="futurePlanFacts">
-          <span><small>{t('future.nextDate')}</small><b>{due?date(due,{day:'2-digit',month:'short',year:'numeric'}):t('future.noNext')}</b></span>
+          <span><small>{t(awaitingReceipt?'future.plannedDate':'future.nextDate')}</small><b>{due?date(due,{day:'2-digit',month:'short',year:'numeric'}):t('future.noNext')}</b></span>
           <span><small>{t('future.recurrence')}</small><b>{t('future.recurrence.'+plan.recurrence)}</b></span>
           {plan.kind==='expense'&&plan.reserve_enabled&&<><span><small>{t('future.reserved')}</small><b>{currency(need.committed)}</b></span><span><small>{t('future.perMonth')}</small><b>{currency(need.monthly)}</b></span></>}
         </div>
+        {awaitingReceipt&&<div className={'futureReceiptNotice '+(lateReceipt?'late':'waiting')}><b>{t(lateReceipt?'future.receiptLate':'future.awaitingReceipt')}</b><span>{t('future.awaitingReceiptHelp')}</span></div>}
         {plan.kind==='expense'&&plan.reserve_enabled&&need.due&&<div className="futureReserveProgress">
           <div><span>{t('future.reserveProgress')}</span><b>{currency(need.committed)} / {currency(Number(plan.amount_minor))}</b></div>
           <div className="bar"><i style={{width:Math.min(100,Math.round(need.committed/Math.max(1,Number(plan.amount_minor))*100))+'%'}}/></div>
@@ -186,7 +193,7 @@ export function FuturePlanningManager(){
           {due&&<button className="primary" type="button" onClick={()=>openSettlement(plan)}>{plan.kind==='income'?t('future.confirmReceived'):t('future.confirmPaid')}</button>}
           {plan.kind==='expense'&&plan.reserve_enabled&&need.monthly>0&&<button className="goldOutline" type="button" disabled={saving==='reserve:'+plan.id} onClick={()=>reserveInstallment(plan)}>{saving==='reserve:'+plan.id?<span className="buttonSpinner"/>:'◇'} {t('future.reserveInstallment')} {currency(Math.min(need.remaining,need.monthly))}</button>}
           <button className="textButton" type="button" onClick={()=>openEdit(plan)}>{t('common.edit')}</button>
-          <button className="textButton dangerText" type="button" onClick={()=>pause(plan)}>{t('future.pause')}</button>
+          <button className="textButton dangerText" type="button" onClick={()=>pause(plan)}>{t(plan.kind==='income'?'future.cancelIncome':'future.pause')}</button>
         </div>
       </div>}
     </article>;
