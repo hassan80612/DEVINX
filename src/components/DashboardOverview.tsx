@@ -83,6 +83,8 @@ export function DashboardOverview(){
   const[cashSaving,setCashSaving]=useState(false);
   const[cashNotice,setCashNotice]=useState('');
   const[projectionDate,setProjectionDate]=useState(()=>monthEnd(localMonthStartISO()));
+  const[cashCardExpanded,setCashCardExpanded]=useState(false);
+  const[summaryCardExpanded,setSummaryCardExpanded]=useState(false);
   const[goalTargetDate,setGoalTargetDate]=useState('');
   const[targetDraft,setTargetDraft]=useState('');
   const[loading,setLoading]=useState(true);
@@ -178,9 +180,15 @@ export function DashboardOverview(){
       if(savedGoal!==null)setDailyGoalExpanded(savedGoal==='1');
       const savedProjection=localStorage.getItem('devinx_projection_date');
       if(savedProjection&&/^\d{4}-\d{2}-\d{2}$/.test(savedProjection))setProjectionDate(savedProjection);
+      const savedCashCard=localStorage.getItem('devinx_cash_card_expanded');
+      if(savedCashCard!==null)setCashCardExpanded(savedCashCard==='1');
+      const savedSummaryCard=localStorage.getItem('devinx_summary_card_expanded');
+      if(savedSummaryCard!==null)setSummaryCardExpanded(savedSummaryCard==='1');
     }catch{}
   },[]);
   function toggleDailyGoal(){setDailyGoalExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_daily_goal_expanded',next?'1':'0')}catch{}return next})}
+  function toggleCashCard(){setCashCardExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_cash_card_expanded',next?'1':'0')}catch{}return next})}
+  function toggleSummaryCard(){setSummaryCardExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_summary_card_expanded',next?'1':'0')}catch{}return next})}
 
   useEffect(()=>{
     load(true);
@@ -618,17 +626,24 @@ export function DashboardOverview(){
 
   if(loading)return <section className="panel dashboardLoading"><span className="loader"/></section>;
 
-  const projectedStrip=<section className="projectedStrip cashPositionStrip">
-    <div className="cashPositionPrimary">
-      <small>{t('dashboard.currentBalance')}</small>
-      <strong className={cashPosition.current>=0?'positive':'negative'}>{currency(cashPosition.current)}</strong>
-      <button type="button" onClick={openBalanceAdjust}>{cashPosition.hasAdjustment?t('dashboard.adjustBalance'):t('dashboard.setBalance')}</button>
-    </div>
-    <div className="cashPositionProjection">
-      <div><small>{t('dashboard.projected')}</small><strong className={projectedWithFuture>=0?'positive':'negative'}>{currency(projectedWithFuture)}</strong></div>
-      <label><span>{t('dashboard.projectUntil')}</span><input type="date" min={localDateISO()} value={projectionDate} onChange={e=>{const next=e.target.value||monthEnd(localMonthStartISO());setProjectionDate(next);try{localStorage.setItem('devinx_projection_date',next)}catch{}}}/></label>
-    </div>
-    <span>{t('dashboard.currentBalanceHelp')} · {t('dashboard.projectedDateHelp')}</span>
+  const projectedStrip=<section className={'projectedStrip cashPositionStrip '+(cashCardExpanded?'expanded':'isCollapsed')}>
+    <button type="button" className="cashPositionCollapseHeader" onClick={toggleCashCard} aria-expanded={cashCardExpanded}>
+      <span><small>{t('dashboard.currentBalance')}</small><strong className={cashPosition.current>=0?'positive':'negative'}>{currency(cashPosition.current)}</strong></span>
+      <span><small>{t('dashboard.projected')}</small><strong className={projectedWithFuture>=0?'positive':'negative'}>{currency(projectedWithFuture)}</strong></span>
+      <i>{cashCardExpanded?'⌃':'⌄'}</i>
+    </button>
+    {cashCardExpanded&&<div className="cashPositionExpanded">
+      <div className="cashPositionPrimary">
+        <small>{t('dashboard.currentBalance')}</small>
+        <strong className={cashPosition.current>=0?'positive':'negative'}>{currency(cashPosition.current)}</strong>
+        <button type="button" onClick={openBalanceAdjust}>{cashPosition.hasAdjustment?t('dashboard.adjustBalance'):t('dashboard.setBalance')}</button>
+      </div>
+      <div className="cashPositionProjection">
+        <div><small>{t('dashboard.projected')}</small><strong className={projectedWithFuture>=0?'positive':'negative'}>{currency(projectedWithFuture)}</strong></div>
+        <label><span>{t('dashboard.projectUntil')}</span><input type="date" min={localDateISO()} value={projectionDate} onChange={e=>{const next=e.target.value||monthEnd(localMonthStartISO());setProjectionDate(next);try{localStorage.setItem('devinx_projection_date',next)}catch{}}}/></label>
+      </div>
+      <span className="cashPositionHelp">{t('dashboard.currentBalanceHelp')} · {t('dashboard.projectedDateHelp')}</span>
+    </div>}
   </section>;
 
   const isDailyAutoGoal=goal?.goal_source==='daily_reserve_auto';
@@ -646,12 +661,18 @@ export function DashboardOverview(){
     {projectedHost&&createPortal(projectedStrip,projectedHost)}
     {balanceModal}
 
-    <div className="metricGrid dashboardMetrics">
-      <article><small>{t('dashboard.entered')}</small><b>{currency(numbers.income)}</b></article>
-      <article><small>{t('dashboard.spent')}</small><b>{currency(numbers.spent)}</b></article>
-      <article className="dayResult"><small>{t('dashboard.dayBalance')}</small><b className={numbers.todayBalance>=0?'positive':'negative'}>{currency(numbers.todayBalance)}</b><span>+{currency(numbers.todayIncome)} · −{currency(numbers.todaySpent)}</span></article>
-      <article><small>{t('dashboard.pending')}</small><b>{currency(pendingWithFuture)}</b><span>{currentFutureImpact.expectedIncome>0?t('future.expectedIncomeShort')+' +'+currency(currentFutureImpact.expectedIncome):t('future.includesPlanning')}</span></article>
-    </div>
+    <section className={'homeSummaryCard '+(summaryCardExpanded?'expanded':'isCollapsed')}>
+      <button type="button" className="homeSummaryHeader" onClick={toggleSummaryCard} aria-expanded={summaryCardExpanded}>
+        <span><small>{t('dashboard.summary')}</small><b>{t('dashboard.dayBalance')} · {currency(numbers.todayBalance)}</b></span>
+        <i>{summaryCardExpanded?'⌃':'⌄'}</i>
+      </button>
+      {summaryCardExpanded&&<div className="metricGrid dashboardMetrics">
+        <article><small>{t('dashboard.entered')}</small><b>{currency(numbers.income)}</b></article>
+        <article><small>{t('dashboard.spent')}</small><b>{currency(numbers.spent)}</b></article>
+        <article className="dayResult"><small>{t('dashboard.dayBalance')}</small><b className={numbers.todayBalance>=0?'positive':'negative'}>{currency(numbers.todayBalance)}</b><span>+{currency(numbers.todayIncome)} · −{currency(numbers.todaySpent)}</span></article>
+        <article><small>{t('dashboard.pending')}</small><b>{currency(pendingWithFuture)}</b><span>{currentFutureImpact.expectedIncome>0?t('future.expectedIncomeShort')+' +'+currency(currentFutureImpact.expectedIncome):t('future.includesPlanning')}</span></article>
+      </div>}
+    </section>
 
     <section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')+(!dailyGoalExpanded?' isCollapsed':'')}>
       <div className="dailyReserveTop">
