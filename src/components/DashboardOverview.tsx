@@ -125,8 +125,8 @@ export function DashboardOverview(){
       s.from('reserve_entries').select('kind,amount_minor,occurred_on,future_plan_id').eq('user_id',user.id),
       s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id),
       s.from('future_plan_settlements').select('plan_id,due_date,amount_minor,settled_on').eq('user_id',user.id),
-      s.from('transactions').select('type,amount_minor,source_type,source_id').eq('user_id',user.id),
-      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor').eq('user_id',user.id),
+      s.from('transactions').select('type,amount_minor,source_type,source_id,occurred_on,created_at').eq('user_id',user.id),
+      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on,created_at').eq('user_id',user.id),
       s.from('recurring_bill_payments').select('amount_minor').eq('user_id',user.id),
       s.from('card_bill_payments').select('amount_minor').eq('user_id',user.id)
     ]);
@@ -149,25 +149,21 @@ export function DashboardOverview(){
     setReserveEntries((rReserve.data||[]) as ReserveEntry[]);
     setFuturePlans((rFuturePlans.data||[]) as FuturePlanLike[]);
     setFutureSettlements((rFutureSettlements.data||[]) as FutureSettlementLike[]);
-    const cashTx=(rCashTx.data||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null}[];
+    const cashTx=(rCashTx.data||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null;occurred_on:string;created_at:string}[];
+    const allWork=(rCashWork.data||[]) as {gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string;created_at:string}[];
     setCardItemPays(cashTx.filter(item=>item.source_type==='card_installment_payment').map(item=>({source_id:item.source_id,amount_minor:Number(item.amount_minor)})));
-    const historicalWorkEstimate=(rCashWork.data||[]).reduce((sum:any,item:any)=>sum+Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor),0);
-    const hasCashBaseline=cashTx.some(item=>item.source_type==='cash_adjustment');
     const hasWorkCashMigration=cashTx.some(item=>item.source_type==='work_cash_model_migration');
-    let workCashMigrationOffset=0;
-    if(hasCashBaseline&&!hasWorkCashMigration&&historicalWorkEstimate>0){
-      const{error:migrationError}=await s.from('transactions').insert({
-        user_id:user.id,type:'expense',category_id:'balance_adjustment',description:'Work cash model baseline',
-        amount_minor:historicalWorkEstimate,occurred_on:localDateISO(),payment_method:null,is_avoidable:false,is_recurring:false,
-        source_type:'work_cash_model_migration',source_id:null
-      });
-      if(!migrationError)workCashMigrationOffset=historicalWorkEstimate;
-    }
-    const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0)-workCashMigrationOffset;
-    const cashWork=(rCashWork.data||[]).reduce((sum:any,item:any)=>sum+Number(item.gross_income_minor),0);
+    const legacyBaseline=cashTx
+      .filter(item=>item.source_type==='cash_adjustment')
+      .sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)))[0]||null;
+    const legacyWorkOffset=!hasWorkCashMigration&&legacyBaseline
+      ?allWork.filter(item=>String(item.created_at)<=String(legacyBaseline.created_at)).reduce((sum,item)=>sum+Number(item.energy_cost_minor)+Number(item.extra_work_cost_minor),0)
+      :0;
+    const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0)-legacyWorkOffset;
+    const cashWork=allWork.reduce((sum,item)=>sum+Number(item.gross_income_minor),0);
     const cashBills=(rCashBills.data||[]).reduce((sum:any,item:any)=>sum+Number(item.amount_minor),0);
     const cashCards=(rCashCards.data||[]).reduce((sum:any,item:any)=>sum+Number(item.amount_minor),0);
-    setCashPosition({current:cashTransactions+cashWork-cashBills-cashCards,hasAdjustment:hasCashBaseline});
+    setCashPosition({current:cashTransactions+cashWork-cashBills-cashCards,hasAdjustment:cashTx.some(item=>item.source_type==='cash_adjustment'||item.source_type==='cash_adjustment_v2')});
     const saved=(profile as any)?.daily_goal_target_date||'';
     setGoalTargetDate(saved);
     setTargetDraft(saved);
@@ -247,7 +243,7 @@ export function DashboardOverview(){
   const numbers=useMemo(()=>{
     const today=localDateISO();
     const month=localMonthStartISO();
-    const txMonth=tx.filter(x=>x.occurred_on>=month&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration');
+    const txMonth=tx.filter(x=>x.occurred_on>=month&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration');
     const workMonth=work.filter(x=>x.worked_on>=month);
     const billPayMonth=billPays.filter(x=>x.paid_on>=month);
     const cardPayMonth=cardPays.filter(x=>x.paid_on>=month);
@@ -259,10 +255,10 @@ export function DashboardOverview(){
     const income=manualIncome+workGross;
     const spent=manualExpense+recurringSpent+cardSpent;
     const todayIncome=
-      tx.filter(x=>x.occurred_on===today&&x.type==='income'&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
+      tx.filter(x=>x.occurred_on===today&&x.type==='income'&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
       work.filter(x=>x.worked_on===today).reduce((a,b)=>a+Number(b.gross_income_minor),0);
     const todaySpent=
-      tx.filter(x=>x.occurred_on===today&&x.type==='expense'&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
+      tx.filter(x=>x.occurred_on===today&&x.type==='expense'&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration').reduce((a,b)=>a+Number(b.amount_minor),0)+
       billPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0)+
       cardPays.filter(x=>x.paid_on===today).reduce((a,b)=>a+Number(b.amount_minor),0);
 
@@ -367,7 +363,7 @@ export function DashboardOverview(){
       const row=map.get(bucket(value));if(!row)return;
       row.income+=income;row.out+=out;
     };
-    tx.filter(item=>item.source_type!=='cash_adjustment'&&item.source_type!=='work_cash_model_migration').forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
+    tx.filter(item=>item.source_type!=='cash_adjustment'&&item.source_type!=='cash_adjustment_v2'&&item.source_type!=='work_cash_model_migration').forEach(item=>add(item.occurred_on,item.type==='income'?Number(item.amount_minor):0,item.type==='expense'?Number(item.amount_minor):0));
     work.forEach(item=>add(item.worked_on,Number(item.gross_income_minor),0));
     billPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
     cardPays.forEach(item=>add(item.paid_on,0,Number(item.amount_minor)));
@@ -594,7 +590,7 @@ export function DashboardOverview(){
     if(!goal)return null;
     const today=localDateISO();
     const start=goal.period==='daily'?today:goal.period==='weekly'?weekStart():localMonthStartISO();
-    const periodTx=tx.filter(x=>x.occurred_on>=start&&x.occurred_on<=today&&x.source_type!=='cash_adjustment'&&x.source_type!=='work_cash_model_migration');
+    const periodTx=tx.filter(x=>x.occurred_on>=start&&x.occurred_on<=today&&x.source_type!=='cash_adjustment'&&x.source_type!=='cash_adjustment_v2'&&x.source_type!=='work_cash_model_migration');
     const periodWork=work.filter(x=>x.worked_on>=start&&x.worked_on<=today);
     const periodBill=billPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
     const periodCard=cardPays.filter(x=>x.paid_on>=start&&x.paid_on<=today);
@@ -634,7 +630,7 @@ export function DashboardOverview(){
       const{error}=await s.from('transactions').insert({
         user_id:user.id,type:delta>0?'income':'expense',category_id:'balance_adjustment',
         description:t('dashboard.balanceAdjustment'),amount_minor:Math.abs(delta),occurred_on:localDateISO(),
-        payment_method:null,is_avoidable:false,is_recurring:false,source_type:'cash_adjustment',source_id:null
+        payment_method:null,is_avoidable:false,is_recurring:false,source_type:'cash_adjustment_v2',source_id:null
       });
       if(error){setCashNotice(t('common.errorSave'));return}
       setBalanceOpen(false);setCashNotice('');notifyFinanceUpdated();await load(false);
