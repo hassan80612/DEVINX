@@ -5,6 +5,7 @@ import {createClient} from '@/lib/supabase/client';
 import {SUPPORTED_CURRENCIES,type CurrencyCode,useI18n} from '@/i18n/provider';
 import {LanguageMenu} from './LanguageMenu';
 import {CalculatorModePreference,ProCalculator} from './CalculatorPro';
+import {isAutoFutureIncomeEnabled,setAutoFutureIncomeEnabled} from '@/lib/auto-future-income';
 
 const HISTORY_PERIODS=[1,3,6,12,24] as const;
 type ChartPeriod='3d'|'7d'|'1m'|'3m'|'6m'|'12m';
@@ -65,6 +66,7 @@ export function PreferencesManager(){
   const{t,locale,setLocale,currencyCode,setCurrencyCode,timezone,setTimezone,locales}=useI18n();
   const[retention,setRetention]=useState(12);
   const[chartPeriod,setChartPeriod]=useState<ChartPeriod>('1m');
+  const[autoFutureIncome,setAutoFutureIncome]=useState(false);
   const[notice,setNotice]=useState('');
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
@@ -83,6 +85,7 @@ export function PreferencesManager(){
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
+    setAutoFutureIncome(isAutoFutureIncomeEnabled());
     const{data}=await s.from('profiles').select('locale,currency_code,timezone,retention_months,dashboard_chart_period').eq('id',user.id).single();
     if(data){
       if(SUPPORTED_CURRENCIES.includes(data.currency_code as CurrencyCode))setCurrencyCode(data.currency_code as CurrencyCode);
@@ -107,6 +110,7 @@ export function PreferencesManager(){
         localStorage.setItem('devinx_history_period',String(retention));
         localStorage.setItem('devinx_dashboard_chart_period',chartPeriod);
       }catch{}
+      setAutoFutureIncomeEnabled(autoFutureIncome);
       window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
       window.dispatchEvent(new CustomEvent('devinx:preferences-updated'));
     }
@@ -155,6 +159,7 @@ export function PreferencesManager(){
           </select>
           <small>{t('settings.chartHelp')}</small>
         </label>
+        <label className="switchRow"><input type="checkbox" checked={autoFutureIncome} onChange={e=>setAutoFutureIncome(e.target.checked)}/><span><b>{t('settings.autoFutureIncome')}</b><small>{t('settings.autoFutureIncomeHelp')}</small></span></label>
         <button className="primary" onClick={save} disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('settings.save')}</button>
         {notice&&<div className="authMessage">{notice}</div>}
       </div>
