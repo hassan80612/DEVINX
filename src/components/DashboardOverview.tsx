@@ -297,10 +297,8 @@ export function DashboardOverview(){
     let plannedExpense=0;
     for(const plan of futurePlans.filter(plan=>plan.is_active)){
       let dates=occurrenceDates(plan,today,horizon,futureSettlements);
-      if(plan.kind==='expense'){
-        const overdue=occurrenceDates(plan,plan.due_date,today,futureSettlements).filter(value=>value<today);
-        dates=[...overdue,...dates];
-      }
+      const overdue=occurrenceDates(plan,plan.due_date,today,futureSettlements).filter(value=>value<today);
+      if(overdue.length)dates=[...overdue,...dates];
       const amount=dates.length*Number(plan.amount_minor);
       if(plan.kind==='income')expectedIncome+=amount;
       else plannedExpense+=amount;
