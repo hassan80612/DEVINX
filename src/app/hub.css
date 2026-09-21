@@ -646,3 +646,81 @@ linear-gradient(145deg,var(--surface-0) 0%,var(--surface-1) 38%,var(--surface-1)
   .movementGlobalRow>strong{justify-self:start}
   .movementGlobalActions{justify-content:flex-start}
 }
+
+
+/* Calculator geometry — single source of truth */
+.calculatorFab{position:fixed;right:18px;bottom:148px;z-index:45;display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border-radius:999px}
+.calculatorFab span{display:grid;place-items:center;min-width:28px;height:28px;padding:0 4px;border-radius:9px}
+.calculatorFab b{font-size:10px;font-weight:900;letter-spacing:.025em}
+
+.calculatorBackdrop{position:fixed;inset:0;z-index:79;display:flex;align-items:flex-end;justify-content:center;padding:18px}
+.calculatorSheet{width:min(560px,100%);max-height:92vh;overflow:auto;border-radius:24px}
+.proCalculatorEmbedded{padding:0;margin-top:14px;border-radius:20px;overflow:hidden}
+.proCalculator{padding:20px}
+.proCalculatorEmbedded>.proCalculator{padding:20px}
+
+.calculatorHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.calculatorHeader h2{margin:4px 0 4px}
+.calculatorHeader p{margin:0}
+.calculatorHeaderActions{display:flex;align-items:center;gap:7px}
+.calculatorReset,.calculatorClose{min-height:34px;padding:7px 10px;border-radius:10px}
+.calculatorClose{width:34px;padding:0}
+
+.calculatorModeTabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;margin-bottom:14px;border-radius:14px}
+.calculatorModeTabs button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:42px;border-radius:10px}
+.calculatorModeTabs button span{font-size:14px}
+
+.scientificDisplay{padding:18px 19px 16px;margin-bottom:10px;border-radius:18px}
+.scientificDisplay>div{display:flex;align-items:center;justify-content:space-between}
+.scientificDisplay strong{display:block;min-height:52px;margin-top:5px;overflow:hidden;text-align:right;font-size:39px;font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.045em;line-height:1.15;white-space:nowrap;text-overflow:ellipsis}
+.scientificDisplay>small{display:block;min-height:13px;text-align:right}
+.angleSwitch{display:flex;justify-content:flex-end;gap:5px;margin-bottom:10px}
+.angleSwitch button{min-width:44px;min-height:29px;padding:5px 8px;border-radius:9px}
+
+.scientificKeys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.scientificKeys button{min-height:47px;border-radius:12px}
+.scientificKeys .equals{grid-column:auto}
+
+.calculatorHistory{display:grid;gap:7px;margin-top:13px}
+.calculatorHistory>div{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:10px}
+.calculatorSubhead{margin-top:4px}
+
+.financeToolTabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.financeToolTabs button{min-height:42px;padding:7px 6px;border-radius:10px}
+.financeFormulaHint{margin-bottom:12px;padding:10px 12px;border-radius:12px}
+.financeFields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.financeFields label{display:grid;gap:6px}
+.financeFields input{min-height:46px;border-radius:11px;padding:10px 12px}
+.financeCalculate{width:100%;margin-top:12px}
+.financeResult{display:grid;gap:10px;margin-top:12px}
+.financeResultHero{padding:16px;border-radius:16px}
+.financeResultHero strong{display:block;margin-top:4px;font-size:29px}
+.financeResultGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.financeResultGrid>div{padding:11px 12px;border-radius:12px}
+.useResultButton{width:100%}
+
+.calculatorPreferenceChoices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.calculatorPreferenceChoices button{min-height:62px;border-radius:14px}
+.calculatorModeBadge{display:grid;place-items:center;min-width:38px;height:38px;border-radius:12px}
+
+@media(max-width:700px){
+  .calculatorFab{right:12px;bottom:137px}
+  .calculatorBackdrop{padding:0}
+  .calculatorSheet{max-height:94vh;border-left:0;border-right:0;border-bottom:0;border-radius:24px 24px 0 0}
+  .proCalculator{padding:16px}
+  .scientificKeys{gap:6px}
+  .scientificKeys button{min-height:45px}
+  .financeFields{grid-template-columns:1fr 1fr}
+}
+@media(max-width:460px){
+  .calculatorFab{width:44px;height:44px;padding:7px;justify-content:center}
+  .calculatorFab b{display:none}
+  .calculatorFab span{min-width:28px}
+  .calculatorHeader h2{font-size:21px}
+  .scientificDisplay strong{font-size:32px}
+  .scientificKeys button{min-height:43px;font-size:13px}
+  .scientificKeys .fn{font-size:10px}
+  .financeToolTabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .financeFields{grid-template-columns:1fr}
+  .financeResultGrid{grid-template-columns:1fr 1fr}
+}

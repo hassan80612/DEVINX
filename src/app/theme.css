@@ -290,89 +290,6 @@ select option{background:var(--surface-0);color:var(--text)}
 
 
 /* DevinX Pro Calculator — restrained obsidian instrument */
-.calculatorFab{
-  position:fixed;right:18px;bottom:148px;z-index:45;display:flex;align-items:center;gap:8px;
-  min-height:42px;padding:8px 12px;border:1px solid rgb(var(--accent-rgb) / .38);border-radius:999px;
-  background:var(--surface-0);color:var(--text);
-  box-shadow:0 12px 28px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.055);
-  backdrop-filter:blur(14px)
-}
-.calculatorFab:hover{transform:translateY(-1px);border-color:rgba(232,196,107,.58)}
-.calculatorFab span{display:grid;place-items:center;min-width:27px;height:27px;padding:0 4px;border-radius:9px;background:linear-gradient(180deg,#edcf77,#b97b25);color:#171006;font-size:12px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.38)}
-.calculatorFab b{font-size:10px;font-weight:900;letter-spacing:.025em}
-
-.calculatorBackdrop{position:fixed;inset:0;z-index:79;display:flex;align-items:flex-end;justify-content:center;padding:18px;background:rgba(0,0,0,.80);backdrop-filter:blur(11px)}
-.calculatorSheet,.proCalculatorEmbedded{position:relative;isolation:isolate;overflow:hidden;border:1px solid rgb(var(--accent-rgb) / .28);background:var(--surface-0)}
-.calculatorSheet{width:min(520px,100%);max-height:92vh;overflow:auto;border-radius:22px;box-shadow:0 30px 90px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.045)}
-.calculatorSheet:before,.proCalculatorEmbedded:before{content:"";position:absolute;z-index:2;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(235,200,111,.72),transparent);pointer-events:none}
-.proCalculator{padding:20px;font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-.proCalculatorEmbedded{padding:0;margin-top:14px;border-radius:18px}
-.proCalculatorEmbedded>.proCalculator{padding:18px}
-
-.calculatorHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
-.calculatorHeader small{color:#cfae5b;font-size:8px;font-weight:900;letter-spacing:.16em}
-.calculatorHeader h2{margin:5px 0 4px;color:var(--text);font-size:22px;font-weight:780;letter-spacing:-.03em}
-.calculatorHeader p{max-width:390px;margin:0;color:#898a87;font-size:9px;line-height:1.5}
-.calculatorHeaderActions{display:flex;align-items:center;gap:7px}
-.calculatorReset,.calculatorClose{min-height:32px;border:1px solid rgba(255,255,255,.085);border-radius:10px;background:var(--surface-1);color:#c8a95b;font-size:8px;font-weight:900;box-shadow:none}
-.calculatorReset{padding:6px 9px}.calculatorClose{width:32px;padding:0;color:#e6e3dd;font-size:18px}
-.calculatorReset:hover,.calculatorClose:hover{border-color:rgb(var(--accent-rgb) / .3);background:#14171c}
-
-.calculatorModeTabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin-bottom:15px;border:1px solid rgba(255,255,255,.065);border-radius:13px;background:var(--canvas)}
-.calculatorModeTabs button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid transparent;border-radius:9px;background:transparent;color:#777a79;font-size:10px;font-weight:900}
-.calculatorModeTabs button span{font-size:13px}
-.calculatorModeTabs button.active{border-color:rgb(var(--accent-rgb) / .22);background:#171713;color:#e7c86e;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
-
-.scientificDisplay{padding:16px 17px 15px;margin-bottom:9px;border:1px solid rgb(var(--accent-rgb) / .20);border-radius:16px;background:var(--canvas-deep);box-shadow:inset 0 0 28px rgba(0,0,0,.38)}
-.scientificDisplay>div{display:flex;align-items:center;justify-content:space-between;color:#777b79;font-size:8px;font-weight:800}
-.scientificDisplay>div span{min-width:14px;color:#d5b65f;font-weight:950}
-.scientificDisplay strong{display:block;min-height:49px;margin-top:5px;overflow:hidden;text-align:right;color:#fff;font-size:37px;font-weight:680;font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.045em;line-height:1.15;white-space:nowrap;text-overflow:ellipsis}
-.scientificDisplay>small{display:block;min-height:13px;text-align:right;color:#5f6362;font-size:8px}
-.angleSwitch{display:flex;justify-content:flex-end;gap:4px;margin-bottom:9px}
-.angleSwitch button{min-width:42px;min-height:27px;padding:5px 7px;border:1px solid rgba(255,255,255,.07);border-radius:8px;background:var(--surface-1);color:#6f7371;font-size:7px;font-weight:900}
-.angleSwitch button.active{border-color:rgb(var(--accent-rgb) / .25);color:#d9bb67;background:#15140f}
-
-.scientificKeys{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
-.scientificKeys button{min-height:46px;border:1px solid rgba(255,255,255,.075);border-radius:11px;background:#181c21;color:#f3f4f3;font-size:14px;font-weight:760;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 4px 9px rgba(0,0,0,.18);transition:transform .1s ease,background .1s ease,border-color .1s ease}
-.scientificKeys button:hover{background:#1d2228;border-color:rgba(255,255,255,.12)}
-.scientificKeys button:active{transform:translateY(1px);background:#12161a}
-.scientificKeys .fn,.scientificKeys .memory{background:var(--surface-1);color:#c8aa5b;border-color:rgb(var(--accent-rgb) / .12);font-size:11px}
-.scientificKeys .memory{color:#aaa79d;font-size:9px}
-.scientificKeys .operator{background:#231f15;color:#e4c66e;border-color:rgb(var(--accent-rgb) / .23);font-size:16px;font-weight:900}
-.scientificKeys .equals{background:linear-gradient(180deg,#e8c96e,#ad7120);color:#171006;border-color:rgba(244,215,132,.62);font-size:19px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 7px 16px rgba(135,87,17,.18)}
-.scientificKeys .clear{background:#26171a;color:#e9aaa4;border-color:rgba(213,112,104,.20)}
-
-.financeToolTabs{display:flex;gap:6px;overflow:auto;padding:1px 0 5px;scrollbar-width:none}.financeToolTabs::-webkit-scrollbar{display:none}
-.financeToolTabs button{flex:0 0 auto;min-height:34px;padding:7px 10px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:var(--surface-1);color:#8a8c88;font-size:8px;font-weight:900;white-space:nowrap;box-shadow:none}
-.financeToolTabs button.active{border-color:rgb(var(--accent-rgb) / .25);background:#19170f;color:#dec168}
-.financeFormulaHint{margin:9px 0 13px;padding:8px 10px;border:1px solid rgb(var(--accent-rgb) / .10);border-left:2px solid #b89035;border-radius:8px;background:var(--surface-0);color:#777b77;font-size:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.financeFields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.financeFields label{display:grid;color:#8c8d88;font-size:8px;font-weight:850;letter-spacing:.01em}
-.proCalculator .financeFields input{min-height:46px;margin-top:6px;border:1px solid rgba(255,255,255,.085);border-radius:11px;background:var(--surface-0);color:#f9f9f7;font-size:16px;font-weight:720;font-variant-numeric:tabular-nums;box-shadow:inset 0 1px 8px rgba(0,0,0,.26)}
-.proCalculator .financeFields input:focus{outline:none;border-color:rgb(var(--accent-rgb) / .38);box-shadow:0 0 0 3px rgb(var(--accent-rgb) / .055)}
-.financeCalculate{width:100%;min-height:46px;margin-top:12px;background:linear-gradient(180deg,#e4c56a,#aa6f20);border:1px solid rgba(242,211,124,.55);color:#171006;font-size:11px;font-weight:950;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 7px 18px rgba(120,76,14,.16);text-shadow:none}
-
-.financeResult{margin-top:13px;padding:15px;border:1px solid rgb(var(--accent-rgb) / .22);border-radius:15px;background:var(--surface-0);box-shadow:inset 3px 0 0 rgba(203,164,69,.78)}
-.financeResultHero{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:11px}
-.financeResultHero small{color:#858882;font-size:8px;font-weight:900;letter-spacing:.04em}
-.financeResultHero strong{color:#ecd176;font-size:29px;font-weight:820;font-variant-numeric:tabular-nums;letter-spacing:-.035em}
-.financeResultGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-.financeResultGrid span{padding:9px;border:1px solid rgba(255,255,255,.06);border-radius:9px;background:var(--surface-0)}
-.financeResultGrid small,.financeResultGrid b{display:block}.financeResultGrid small{color:#70736f;font-size:7px}.financeResultGrid b{margin-top:4px;color:#ecece9;font-size:11px;font-weight:760;font-variant-numeric:tabular-nums}
-.useResultButton{width:100%;min-height:39px;margin-top:9px;background:#13140f;border-color:rgb(var(--accent-rgb) / .18);color:#d7b75e}
-
-.calculatorHistory{margin-top:13px;padding:10px 11px;border:1px solid rgba(255,255,255,.055);border-radius:11px;background:var(--surface-0);box-shadow:none}
-.calculatorSubhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}.calculatorSubhead b{color:#9b8a5b;font-size:8px}.calculatorSubhead span{color:#5e625f;font-size:8px}
-.calculatorHistory p{margin:0;color:#626663;font-size:8px}
-.calculatorHistory>div:not(.calculatorSubhead){padding:6px 0;border-top:1px solid rgba(255,255,255,.045);color:#979a96;font-size:8px;text-align:right;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-
-.calculatorPreference{margin-top:14px}
-.calculatorPreference,.proCalculatorEmbedded{border-color:rgb(var(--accent-rgb) / .18);background:var(--surface-0);box-shadow:0 12px 30px rgba(0,0,0,.20),inset 0 1px 0 rgba(255,255,255,.025)}
-.calculatorModeBadge{display:grid;place-items:center;width:36px;height:36px;border:1px solid rgb(var(--accent-rgb) / .20);border-radius:10px;background:#11130f;color:#d7b85f;font-weight:950}
-.calculatorPreferenceChoices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.calculatorPreferenceChoices button{display:flex;align-items:center;gap:10px;min-height:54px;padding:11px;border:1px solid rgba(255,255,255,.06);border-radius:11px;background:var(--surface-1);color:#8b8d89;text-align:left;box-shadow:none}
-.calculatorPreferenceChoices button span{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:#151812;color:#cfae59;font-weight:950}
-.calculatorPreferenceChoices button b{font-size:10px}.calculatorPreferenceChoices button.active{border-color:rgb(var(--accent-rgb) / .25);background:#14140f;color:#ece9e1}
 
 /* Collapsible work areas + daily target controls */
 .collapsibleTitleRow{align-items:center}
@@ -389,29 +306,13 @@ select option{background:var(--surface-0);color:var(--text)}
 .manualDailyGoal label span,.manualDailyGoal small{display:block;margin-bottom:5px;color:#96948c;font-size:8px}
 .manualDailyGoal input{width:100%;min-height:42px;font-size:15px;font-weight:800}
 .manualDailyGoal>div{display:flex;flex-direction:column;justify-content:center}.manualDailyGoal>div b{color:#d9ba62;font-size:17px;font-variant-numeric:tabular-nums}
-@keyframes devinxCalcReveal{from{opacity:.2;transform:translateY(-3px)}to{opacity:1;transform:none}}
-
-[dir="rtl"] .calculatorHeader,[dir="rtl"] .financeResultHero,[dir="rtl"] .calculatorSubhead,[dir="rtl"] .dailyReserveTop{direction:rtl}
-[dir="rtl"] .scientificDisplay strong,[dir="rtl"] .scientificDisplay>small{text-align:left}
-[dir="rtl"] .calculatorHistory>div:not(.calculatorSubhead){text-align:left}
-[dir="rtl"] .financeFormulaHint{border-left:1px solid rgb(var(--accent-rgb) / .10);border-right:2px solid #b89035}
+@keyframes devinxCalcReveal{from{opacity:.2;transform:translateY(-3px)}to{opacity:1;transform:none}}[dir="rtl"] .dailyReserveTop{direction:rtl}
 
 @media(max-width:700px){
-  .calculatorFab{right:12px;bottom:137px}
-  .calculatorBackdrop{padding:0;align-items:flex-end}
-  .calculatorSheet{max-height:94vh;border-left:0;border-right:0;border-bottom:0;border-radius:22px 22px 0 0}
-  .proCalculator{padding:16px}
-  .scientificKeys{gap:6px}.scientificKeys button{min-height:44px}
-  .financeFields{grid-template-columns:1fr 1fr}
   .collapsedGoalSummary{grid-template-columns:auto auto}.collapsedGoalSummary small{grid-column:1/-1;text-align:left}
   .dailyReserveTop{gap:8px}.collapsibleHeaderTools{max-width:54%}
 }
 @media(max-width:420px){
-  .calculatorFab b{display:none}.calculatorFab{width:42px;height:42px;padding:7px;justify-content:center}.calculatorFab span{min-width:27px}
-  .calculatorHeader h2{font-size:20px}.calculatorHeader p{font-size:8px}.calculatorReset{padding:6px 7px}
-  .scientificDisplay strong{font-size:31px}
-  .scientificKeys button{min-height:42px;font-size:13px}.scientificKeys .operator{font-size:15px}.scientificKeys .fn{font-size:10px}
-  .financeFields{grid-template-columns:1fr}.financeResultGrid{grid-template-columns:1fr 1fr}
   .manualDailyGoal{grid-template-columns:1fr}
   .collapseToggle{padding:6px 8px}.collapseToggle{font-size:0}.collapseToggle span,.collapseToggle i{font-size:13px}
 }
@@ -427,11 +328,6 @@ select option{background:var(--surface-0);color:var(--text)}
 .settingsFoldHead>div h2{margin:4px 0 0;color:#f2efe8;font-size:18px;letter-spacing:-.02em}
 .settingsFoldSummary{margin-top:10px;padding:9px 10px;border:1px solid rgb(var(--accent-rgb) / .10);border-radius:10px;background:var(--surface-0);color:#8e8f8b;font-size:8px;line-height:1.45}
 .settingsFoldBody{margin-top:14px;animation:devinxCalcReveal .16s ease-out}
-.settingsFoldBody>.calculatorPreference{margin:0;padding:0;border:0;background:transparent;box-shadow:none}
-.settingsFoldBody>.calculatorPreference>.sectionTitleRow{display:none}
-.settingsFoldBody>.calculatorPreference>.lead{margin-top:0}
-.settingsFoldBody>.proCalculatorEmbedded{margin:0;border:0;border-radius:0;background:transparent;box-shadow:none}
-.settingsFoldBody>.proCalculatorEmbedded:before{display:none}
 .settingsFormInner{gap:14px}
 .settingsFormInner label>small{margin-top:5px;color:#777b77;font-size:8px;line-height:1.45}
 .settingsFormInner select{min-height:44px}
@@ -474,7 +370,7 @@ select option{background:var(--surface-0);color:var(--text)}
   box-shadow:inset 0 4px 10px rgba(0,0,0,.25),0 3px 10px rgba(0,0,0,.18);
 }
 .filterRow button.active,.movementTabs button.active,.historyTypeFilter button.active,.quickCaptureTabs button.active,
-.quickPayment button.selected,.quickAvoidable.selected,.tagRow button.selected,.calculatorModeTabs button.active,
+.quickPayment button.selected,.quickAvoidable.selected,.tagRow button.selected,
 .dailyGoalModeTabs button.active,.financeBottomNav button.active{
   transform:translateY(1px);
   box-shadow:inset 0 3px 8px rgba(0,0,0,.28),inset 0 0 0 1px rgba(232,190,89,.08);
@@ -529,8 +425,6 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   border-color:rgba(232,190,89,.34);background:linear-gradient(180deg,#292116,#151109);
   color:#e8c76e;box-shadow:inset 0 3px 8px rgba(0,0,0,.30),0 0 15px rgba(218,177,78,.055)
 }
-
-.calculatorFabPending{visibility:hidden}
 
 
 /* Home quick actions — richer premium hierarchy */
@@ -742,7 +636,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   color:var(--accent-ink);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.34),var(--shadow-sm);
 }
-.secondary,.ghost,.goldOutline,.backButton,.calculatorFab{
+.secondary,.ghost,.goldOutline,.backButton{
   background:var(--button-secondary-background);
   border-color:var(--border);
   color:var(--text-soft);
@@ -767,7 +661,7 @@ select option{background:var(--surface-1);color:var(--text)}
 .financeBottomNav button{color:var(--text-faint)}
 .financeBottomNav button.active{background:rgb(var(--accent-rgb) / .12);color:var(--accent-strong);box-shadow:inset 0 0 0 1px rgb(var(--accent-rgb) / .16)}
 
-.movementTabs,.quickCaptureTabs,.calculatorModeTabs{background:var(--surface-0);border-color:var(--border)}
+.movementTabs,.quickCaptureTabs{background:var(--surface-0);border-color:var(--border)}
 .filterRow button,.movementTabs button,.historyTypeFilter button,.quickCaptureTabs button,
 .quickPayment button,.quickAvoidable,.tagRow button{
   background:var(--surface-2);
@@ -843,3 +737,89 @@ select option{background:var(--surface-1);color:var(--text)}
   .ledgerText b,.movementGlobalTitle b{font-size:12.5px}
   .ledgerText small,.movementGlobalMain small{font-size:10px}
 }
+
+
+/* Calculator appearance — vivid premium instrument */
+.calculatorFab{
+  border:1px solid rgb(var(--accent-rgb) / .42);
+  background:linear-gradient(145deg,var(--surface-3),var(--surface-1));
+  color:var(--text);
+  box-shadow:0 14px 32px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.07);
+  backdrop-filter:blur(14px)
+}
+.calculatorFab span{background:var(--button-primary-background);color:var(--accent-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 0 18px rgb(var(--accent-rgb) / .10)}
+
+.calculatorBackdrop{background:rgba(3,9,11,.74);backdrop-filter:blur(11px)}
+.calculatorSheet,.proCalculatorEmbedded{
+  position:relative;isolation:isolate;
+  border:1px solid var(--border-strong);
+  background:
+    radial-gradient(circle at 92% 0%,rgb(var(--info-rgb) / .11),transparent 28%),
+    radial-gradient(circle at 10% 100%,rgb(var(--accent-rgb) / .07),transparent 30%),
+    linear-gradient(145deg,var(--surface-2),var(--surface-0));
+  box-shadow:0 30px 90px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.05)
+}
+.calculatorSheet:before,.proCalculatorEmbedded:before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent-strong),transparent);opacity:.75}
+.proCalculator{font-family:var(--font-ui);color:var(--text)}
+.calculatorHeader small{color:var(--accent-strong);font-size:9px;font-weight:900;letter-spacing:.12em}
+.calculatorHeader h2{color:var(--text);font-size:25px;letter-spacing:-.025em}
+.calculatorHeader p{color:var(--text-muted);font-size:11px}
+.calculatorReset,.calculatorClose{border:1px solid var(--border);background:var(--surface-3);color:var(--text-soft)}
+.calculatorReset:hover,.calculatorClose:hover{background:var(--surface-hover);border-color:var(--border-strong)}
+
+.calculatorModeTabs{border:1px solid var(--border);background:rgba(8,18,21,.62)}
+.calculatorModeTabs button{border:1px solid transparent;background:transparent;color:var(--text-muted);font-weight:900}
+.calculatorModeTabs button.active{border-color:rgb(var(--accent-rgb) / .28);background:linear-gradient(145deg,rgb(var(--accent-rgb) / .14),rgb(var(--info-rgb) / .06));color:var(--accent-strong);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+
+.scientificDisplay{
+  border:1px solid rgb(var(--info-rgb) / .22);
+  background:
+    radial-gradient(circle at 88% 0%,rgb(var(--info-rgb) / .12),transparent 40%),
+    linear-gradient(145deg,#0b1c21,var(--surface-1));
+  box-shadow:inset 0 0 30px rgba(0,0,0,.24),0 10px 26px rgba(0,0,0,.18)
+}
+.scientificDisplay>div{color:var(--text-muted);font-size:9px;font-weight:800}
+.scientificDisplay>div span{color:var(--accent-strong);font-weight:950}
+.scientificDisplay strong{color:var(--text);font-weight:720;text-shadow:0 0 18px rgb(var(--info-rgb) / .08)}
+.scientificDisplay>small{color:var(--text-faint);font-size:9px}
+
+.angleSwitch button{border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);font-size:8px;font-weight:900}
+.angleSwitch button.active{border-color:rgb(var(--info-rgb) / .34);background:rgb(var(--info-rgb) / .11);color:var(--info)}
+
+.scientificKeys button{
+  border:1px solid var(--border);
+  background:linear-gradient(145deg,var(--surface-3),var(--surface-2));
+  color:var(--text);
+  font-weight:820;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.055),0 5px 12px rgba(0,0,0,.14)
+}
+.scientificKeys button:hover{background:linear-gradient(145deg,var(--surface-hover),var(--surface-3));border-color:var(--border-strong)}
+.scientificKeys .fn{background:linear-gradient(145deg,#19313a,var(--surface-2));color:var(--info);border-color:rgb(var(--info-rgb) / .15)}
+.scientificKeys .memory{background:linear-gradient(145deg,#263326,var(--surface-2));color:#b8df9b}
+.scientificKeys .operator{background:linear-gradient(145deg,#3b321d,var(--surface-2));color:var(--accent-strong);border-color:rgb(var(--accent-rgb) / .24)}
+.scientificKeys .clear{background:linear-gradient(145deg,#3b2424,var(--surface-2));color:#ffaaa3;border-color:rgb(var(--negative-rgb) / .22)}
+.scientificKeys .equals{background:var(--button-primary-background);color:var(--accent-ink);border-color:rgb(var(--accent-rgb) / .56);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 8px 18px rgb(var(--accent-rgb) / .10)}
+
+.calculatorHistory>div{background:var(--surface-2);border:1px solid var(--border);color:var(--text-muted)}
+.calculatorSubhead{color:var(--accent-strong);font-size:9px;font-weight:900;letter-spacing:.08em}
+
+.financeToolTabs button{border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted);font-size:9px;font-weight:850}
+.financeToolTabs button:hover{background:var(--surface-3)}
+.financeToolTabs button.active{border-color:rgb(var(--info-rgb) / .28);background:linear-gradient(145deg,rgb(var(--info-rgb) / .13),var(--surface-2));color:var(--info)}
+.financeFormulaHint{border:1px solid rgb(var(--accent-rgb) / .16);border-left:3px solid var(--accent);background:rgb(var(--accent-rgb) / .055);color:var(--text-muted);font-size:10px}
+.financeFields label{color:var(--text-soft);font-size:10px;font-weight:800}
+.financeFields input{background:linear-gradient(180deg,var(--surface-3),var(--surface-2));border:1px solid var(--border-strong);color:var(--text)}
+.financeFields input:focus{border-color:rgb(var(--info-rgb) / .42);box-shadow:0 0 0 3px rgb(var(--info-rgb) / .08)}
+
+.financeResultHero{border:1px solid rgb(var(--accent-rgb) / .25);background:linear-gradient(145deg,rgb(var(--accent-rgb) / .12),rgb(var(--info-rgb) / .06),var(--surface-2))}
+.financeResultHero small{color:var(--text-muted)}
+.financeResultHero strong{color:var(--accent-strong)}
+.financeResultGrid>div{border:1px solid var(--border);background:var(--surface-2)}
+.financeResultGrid small{color:var(--text-muted)}
+.financeResultGrid b{color:var(--text)}
+
+.calculatorPreference{background:var(--panel-background)}
+.calculatorModeBadge{background:linear-gradient(145deg,rgb(var(--accent-rgb) / .16),rgb(var(--info-rgb) / .08));border:1px solid var(--border-accent);color:var(--accent-strong)}
+.calculatorPreferenceChoices button{border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted)}
+.calculatorPreferenceChoices button.active{border-color:var(--border-accent);background:linear-gradient(145deg,rgb(var(--accent-rgb) / .13),var(--surface-3));color:var(--text)}
+.calculatorPreferenceChoices button span{color:var(--accent-strong);font-size:19px}
