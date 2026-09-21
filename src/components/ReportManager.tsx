@@ -132,7 +132,7 @@ export function ReportManager(){
 
   const allRows=useMemo<ReportRow[]>(()=>{
     const rows:ReportRow[]=[];
-    const label=(kind:'income'|'expense',id:string)=>id==='work_income'?t('move.workIncome'):id==='work_cost'?t('move.workCost'):id==='card_payment'?t('move.cardPayment'):categoryName(kind,id,custom,t);
+    const label=(kind:'income'|'expense',id:string)=>id==='work_income'?t('move.workIncome'):id==='card_payment'?t('move.cardPayment'):categoryName(kind,id,custom,t);
     tx.forEach(x=>{
       const kind=x.type;
       const isDebt=x.source_type==='debt_payment';
@@ -145,8 +145,6 @@ export function ReportManager(){
       const sourceKey='work:'+(x.income_source_id||x.income_sources?.kind||'general');
       const sourceLabel=t('nav.work')+' · '+source;
       rows.push({id:'wi:'+x.id,sign:1,amount:Number(x.gross_income_minor),date:x.worked_on,title:source,subtitle:t('move.workIncome'),kind:'income',categoryId:'work_income',categoryKey:'income|work_income',categoryLabel:t('move.workIncome'),sourceKey,sourceLabel,origin:'work',avoidable:false,rawId:x.id,raw:x});
-      const cost=Number(x.energy_cost_minor)+Number(x.extra_work_cost_minor);
-      if(cost>0)rows.push({id:'wc:'+x.id,sign:-1,amount:cost,date:x.worked_on,title:source,subtitle:t('move.workCost'),kind:'expense',categoryId:'work_cost',categoryKey:'expense|work_cost',categoryLabel:t('move.workCost'),sourceKey,sourceLabel,origin:'work',avoidable:false,rawId:x.id,raw:x});
     });
     billPays.forEach(x=>{
       const catId=x.recurring_bills?.category_id||'other';
@@ -225,13 +223,13 @@ export function ReportManager(){
     const categoryMap=new Map<string,{kind:'income'|'expense';amount:number;label:string}>();
     filteredRows.forEach(r=>{const prev=categoryMap.get(r.categoryKey)||{kind:r.kind,amount:0,label:r.categoryLabel};prev.amount+=r.amount;categoryMap.set(r.categoryKey,prev)});
     const categoryRows=[...categoryMap.entries()].map(([key,v])=>({key,...v})).sort((a,b)=>b.amount-a.amount);
-    const sourceMap=new Map<string,{gross:number;cost:number;hours:number}>();
+    const sourceMap=new Map<string,{gross:number;hours:number}>();
     work.forEach(w=>{
       if(!visibleWorkIds.has(w.id))return;
-      const name=w.income_sources?.name||t('move.workIncome');const prev=sourceMap.get(name)||{gross:0,cost:0,hours:0};
-      prev.gross+=Number(w.gross_income_minor);prev.cost+=Number(w.energy_cost_minor)+Number(w.extra_work_cost_minor);prev.hours+=Number(w.minutes_worked)/60;sourceMap.set(name,prev);
+      const name=w.income_sources?.name||t('move.workIncome');const prev=sourceMap.get(name)||{gross:0,hours:0};
+      prev.gross+=Number(w.gross_income_minor);prev.hours+=Number(w.minutes_worked)/60;sourceMap.set(name,prev);
     });
-    const sourceRows=[...sourceMap.entries()].map(([name,v])=>({name,...v,net:v.gross-v.cost})).sort((a,b)=>b.net-a.net);
+    const sourceRows=[...sourceMap.entries()].map(([name,v])=>({name,...v})).sort((a,b)=>b.gross-a.gross);
     return{rows,totals,categoryRows,sourceRows};
   },[filteredRows,work,bounds.start,bounds.end,t]);
 
@@ -313,7 +311,7 @@ export function ReportManager(){
 
     <section className="panel reportTable"><div className="sectionTitleRow"><h2>{t('reports.title')}</h2></div>{report.rows.map(r=><article key={r.month}><div><b>{date(r.month+'-01',{month:'long',year:'numeric'})}</b><small>{t('reports.workHours')}: {r.hours.toFixed(1)}h</small></div><span className="positive">+ {currency(r.income)}</span><span className="negative">− {currency(r.out)}</span><strong className={r.result>=0?'positive':'negative'}>{currency(r.result)}</strong></article>)}</section>
 
-    <div className="reportColumns"><section className="panel"><div className="sectionTitleRow"><h2>{t('reports.byCategory')}</h2></div>{report.categoryRows.length===0?<p>{t('reports.noData')}</p>:<div className="analysisList">{report.categoryRows.map(c=><article key={c.key}><span>{c.label}</span><b className={c.kind==='income'?'positive':'negative'}>{c.kind==='income'?'+ ':'− '}{currency(c.amount)}</b></article>)}</div>}</section><section className="panel"><div className="sectionTitleRow"><h2>{t('reports.bySource')}</h2></div>{report.sourceRows.length===0?<p>{t('reports.noData')}</p>:<div className="analysisList">{report.sourceRows.map(s=><article key={s.name}><div><span>{s.name}</span><small>{s.hours.toFixed(1)}h · {t('reports.workCosts')} {currency(s.cost)}</small></div><b className={s.net>=0?'positive':'negative'}>{currency(s.net)}</b></article>)}</div>}</section></div>
+    <div className="reportColumns"><section className="panel"><div className="sectionTitleRow"><h2>{t('reports.byCategory')}</h2></div>{report.categoryRows.length===0?<p>{t('reports.noData')}</p>:<div className="analysisList">{report.categoryRows.map(c=><article key={c.key}><span>{c.label}</span><b className={c.kind==='income'?'positive':'negative'}>{c.kind==='income'?'+ ':'− '}{currency(c.amount)}</b></article>)}</div>}</section><section className="panel"><div className="sectionTitleRow"><h2>{t('reports.bySource')}</h2></div>{report.sourceRows.length===0?<p>{t('reports.noData')}</p>:<div className="analysisList">{report.sourceRows.map(s=><article key={s.name}><div><span>{s.name}</span><small>{s.hours.toFixed(1)}h · {t('work.gross')}</small></div><b className="positive">{currency(s.gross)}</b></article>)}</div>}</section></div>
 
     {notice&&<div className="authMessage">{notice}</div>}
 
