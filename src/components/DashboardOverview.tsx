@@ -14,10 +14,10 @@ import {
   committedReserveTotal,monthPlanningImpact,planningEvents,occurrenceDates
 } from '@/domain/future-planning';
 
-type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;is_avoidable:boolean;source_type:string|null};
+type Tx={type:'income'|'expense';amount_minor:number;occurred_on:string;source_type:string|null};
 type Work={gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string};
 type Goal={id:string;name:string;target_minor:number;basis:string;period:string;goal_source:'manual'|'daily_reserve_auto'|'daily_reserve_manual';target_date:string|null};
-type Bill=RecurringBillLike&{created_at:string;is_avoidable:boolean};
+type Bill=RecurringBillLike&{created_at:string};
 type BillPay=RecurringPaymentLike&{paid_on:string};
 type BillOverride=RecurringOverrideLike;
 type CardInst={id:string;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null};
@@ -113,10 +113,10 @@ export function DashboardOverview(){
     setChartPeriod(activePeriod);
     const from=dashboardDataFrom(activePeriod);
     const[rTx,rWork,rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rFuturePlans,rFutureSettlements,rCashTx,rCashWork,rCashBills,rCashCards]=await Promise.all([
-      s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable,source_type').eq('user_id',user.id).gte('occurred_on',from),
+      s.from('transactions').select('type,amount_minor,occurred_on,source_type').eq('user_id',user.id).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',user.id).gte('worked_on',from),
       s.from('goals').select('id,name,target_minor,basis,period,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
-      s.from('recurring_bills').select('id,amount_minor,due_day,start_month,installment_count,created_at,is_avoidable').eq('user_id',user.id).eq('is_active',true),
+      s.from('recurring_bills').select('id,amount_minor,due_day,start_month,installment_count,created_at').eq('user_id',user.id).eq('is_active',true),
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',user.id),
       s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id),
       s.from('card_installments').select('id,amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id),
@@ -165,7 +165,7 @@ export function DashboardOverview(){
   async function loadFlowData(s:ReturnType<typeof createClient>,userId:string,period:ChartPeriod){
     const from=dashboardDataFrom(period);
     const[rTx,rWork,rBillPay,rCardPay]=await Promise.all([
-      s.from('transactions').select('type,amount_minor,occurred_on,is_avoidable,source_type').eq('user_id',userId).gte('occurred_on',from),
+      s.from('transactions').select('type,amount_minor,occurred_on,source_type').eq('user_id',userId).gte('occurred_on',from),
       s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on').eq('user_id',userId).gte('worked_on',from),
       s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',userId).gte('paid_on',from),
       s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',userId).gte('paid_on',from)
