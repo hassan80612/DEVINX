@@ -10,6 +10,7 @@ import {
   addCalendarMonths,committedReserveTotal,monthsToDue,nextPendingOccurrence,occurrenceDates,reserveNeed
 } from '@/domain/future-planning';
 import {useI18n} from '@/i18n/provider';
+import {ignoreAutomaticFutureIncome,isAutoFutureIncomeEnabled} from '@/lib/auto-future-income';
 
 type FuturePlan=FuturePlanLike&{created_at:string;updated_at:string};
 type Settlement=FutureSettlementLike&{
@@ -157,6 +158,7 @@ export function FuturePlanningManager(){
     if(!confirm(t('future.reopenConfirm')))return;
     setSaving('reopen:'+item.id);
     try{
+      if(item.future_plans?.kind==='income'&&isAutoFutureIncomeEnabled())ignoreAutomaticFutureIncome(item.plan_id,item.due_date);
       const s=createClient();const{error}=await s.rpc('reopen_future_plan_settlement',{p_settlement_id:item.id});
       if(error){setNotice(t('common.errorUpdate'));return}
       setNotice(t('future.reopened'));notifyFinanceUpdated();await load();
