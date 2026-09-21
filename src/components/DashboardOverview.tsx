@@ -1,7 +1,6 @@
 'use client';
 
 import {useEffect,useLayoutEffect,useMemo,useRef,useState} from 'react';
-import {createPortal} from 'react-dom';
 import {createClient} from '@/lib/supabase/client';
 import {notifyFinanceUpdated,FINANCE_UPDATED_EVENT,notifyGoalUpdated} from '@/lib/finance-events';
 import {localDateISO,localMonthStartISO} from '@/lib/date';
@@ -90,10 +89,10 @@ export function DashboardOverview(){
   const[goalTargetDate,setGoalTargetDate]=useState('');
   const[targetDraft,setTargetDraft]=useState('');
   const[loading,setLoading]=useState(true);
-  const[projectedHost,setProjectedHost]=useState<HTMLElement|null>(null);
   const[goalNotice,setGoalNotice]=useState('');
   const[commitmentMonth,setCommitmentMonth]=useState(localMonthStartISO());
-  const[dailyGoalExpanded,setDailyGoalExpanded]=useState(true);
+  const[dailyGoalExpanded,setDailyGoalExpanded]=useState(false);
+  const[commitmentsExpanded,setCommitmentsExpanded]=useState(false);
   const[goalMode,setGoalMode]=useState<'automatic'|'manual'>('automatic');
   const[manualDailyTarget,setManualDailyTarget]=useState('');
   const[chartPeriod,setChartPeriod]=useState<ChartPeriod>('1m');
@@ -179,23 +178,25 @@ export function DashboardOverview(){
 
   useLayoutEffect(()=>{
     try{
-      const savedGoal=localStorage.getItem('devinx_daily_goal_expanded');
+      const savedGoal=localStorage.getItem('devinx_home_daily_expanded_v2');
       if(savedGoal!==null)setDailyGoalExpanded(savedGoal==='1');
       const savedProjection=localStorage.getItem('devinx_projection_date');
       if(savedProjection&&/^\d{4}-\d{2}-\d{2}$/.test(savedProjection))setProjectionDate(savedProjection);
-      const savedCashCard=localStorage.getItem('devinx_cash_card_expanded');
+      const savedCashCard=localStorage.getItem('devinx_home_cash_expanded_v2');
       if(savedCashCard!==null)setCashCardExpanded(savedCashCard==='1');
-      const savedSummaryCard=localStorage.getItem('devinx_summary_card_expanded');
+      const savedSummaryCard=localStorage.getItem('devinx_home_summary_expanded_v2');
       if(savedSummaryCard!==null)setSummaryCardExpanded(savedSummaryCard==='1');
+      const savedCommitments=localStorage.getItem('devinx_home_commitments_expanded_v2');
+      if(savedCommitments!==null)setCommitmentsExpanded(savedCommitments==='1');
     }catch{}
   },[]);
-  function toggleDailyGoal(){setDailyGoalExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_daily_goal_expanded',next?'1':'0')}catch{}return next})}
-  function toggleCashCard(){setCashCardExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_cash_card_expanded',next?'1':'0')}catch{}return next})}
-  function toggleSummaryCard(){setSummaryCardExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_summary_card_expanded',next?'1':'0')}catch{}return next})}
+  function toggleDailyGoal(){setDailyGoalExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_home_daily_expanded_v2',next?'1':'0')}catch{}return next})}
+  function toggleCashCard(){setCashCardExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_home_cash_expanded_v2',next?'1':'0')}catch{}return next})}
+  function toggleSummaryCard(){setSummaryCardExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_home_summary_expanded_v2',next?'1':'0')}catch{}return next})}
+  function toggleCommitments(){setCommitmentsExpanded(current=>{const next=!current;try{localStorage.setItem('devinx_home_commitments_expanded_v2',next?'1':'0')}catch{}return next})}
 
   useEffect(()=>{
     load(true);
-    setProjectedHost(document.getElementById('home-projected-slot'));
     const runRefresh=async()=>{
       if(refreshRunning.current){refreshQueued.current=true;return}
       refreshRunning.current=true;
@@ -672,8 +673,8 @@ export function DashboardOverview(){
   const balanceModal=balanceOpen?<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setBalanceOpen(false)}}><form className="modalCard" onSubmit={saveBalanceAdjustment}><div className="modalHead"><h2>{t('dashboard.setBalance')}</h2><button type="button" onClick={()=>setBalanceOpen(false)}>×</button></div><div className="settingsNote"><b>{t('dashboard.currentBalance')}</b><span>{t('dashboard.balanceReconcileHelp')}</span></div><label>{t('common.value')}<input value={balanceDraft} onChange={e=>setBalanceDraft(e.target.value)} inputMode="decimal" required autoFocus/></label>{cashNotice&&<div className="authMessage">{cashNotice}</div>}<div className="modalActions"><button type="button" className="secondary" onClick={()=>setBalanceOpen(false)}>{t('common.cancel')}</button><button className="primary" disabled={cashSaving} aria-busy={cashSaving}>{cashSaving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.save')}</button></div></form></div>:null;
 
   return <div className="dashboardStack">
-    {projectedHost&&createPortal(projectedStrip,projectedHost)}
     {balanceModal}
+    {projectedStrip}
 
     <section className={'homeSummaryCard '+(summaryCardExpanded?'expanded':'isCollapsed')}>
       <button type="button" className="homeSummaryHeader" onClick={toggleSummaryCard} aria-expanded={summaryCardExpanded}>
@@ -688,13 +689,15 @@ export function DashboardOverview(){
       </div>}
     </section>
 
-    <section className={'panel dailyReserveCard '+(reserveSuggestion.daily>0?'needsAction':'covered')+(!dailyGoalExpanded?' isCollapsed':'')}>
-      <div className="dailyReserveTop">
-        <div><small>{t('dashboard.dailyReserveEyebrow')}</small><h2>{reserveSuggestion.daily>0?t('dashboard.dailyReserveTitle'):t('dashboard.dailyReserveCovered')}</h2></div>
-        <div className="collapsibleHeaderTools"><span>{date(reserveSuggestion.horizon,{day:'2-digit',month:'2-digit',year:'numeric'})}</span><button type="button" className="collapseToggle" onClick={toggleDailyGoal} aria-expanded={dailyGoalExpanded}>{dailyGoalExpanded?t('common.collapseSection'):t('common.expandSection')} <i>{dailyGoalExpanded?'⌃':'⌄'}</i></button></div>
-      </div>
-
-      {!dailyGoalExpanded&&<div className="collapsedGoalSummary"><span>{t('dashboard.perDay')}</span><b>{currency(reserveSuggestion.daily)}</b><small>{t('dashboard.criticalCheckpoint')} · {date(reserveSuggestion.criticalDeadline,{day:'2-digit',month:'2-digit'})}</small></div>}
+    <section className={'panel dailyReserveCard homeCompactCard '+(reserveSuggestion.daily>0?'needsAction':'covered')+(dailyGoalExpanded?' expanded':' isCollapsed')}>
+      <button type="button" className="homeSummaryHeader homeCompactHeader" onClick={toggleDailyGoal} aria-expanded={dailyGoalExpanded}>
+        <span>
+          <small>{t('dashboard.dailyReserveEyebrow')}</small>
+          <b>{reserveSuggestion.daily>0?t('dashboard.perDay')+' · '+currency(reserveSuggestion.daily):t('dashboard.dailyReserveCovered')}</b>
+        </span>
+        <span className="homeCompactMeta">{date(reserveSuggestion.horizon,{day:'2-digit',month:'2-digit'})}</span>
+        <i>{dailyGoalExpanded?'⌃':'⌄'}</i>
+      </button>
 
       {dailyGoalExpanded&&<div className="collapsibleBody">
         <div className="dailyGoalModeTabs" role="tablist" aria-label={t('dashboard.dailyGoalMode')}>
@@ -742,15 +745,24 @@ export function DashboardOverview(){
 
     {goal&&goalProgress&&<section className="panel goalPanel"><div className="sectionTitleRow"><div><small>{t('dashboard.goal')}</small><h2>{goalTitle}</h2>{dailyReserveDeadline&&<span className="goalDeadline">{t('dashboard.untilDate')} {date(dailyReserveDeadline,{day:'2-digit',month:'2-digit',year:'numeric'})}</span>}</div><div className="goalRing" style={{background:'conic-gradient(#edc55e '+goalProgress.percent+'%, rgba(255,255,255,.08) 0)'}}><div className="goalRingInner"><small>{t('dashboard.todayGoal')}</small><strong>{goalProgress.percent}%</strong></div></div></div><div className="bar"><i style={{width:String(goalProgress.percent)+'%'}}/></div><p className="lead">{currency(goalProgress.base)} / {currency(goalProgress.target)}</p></section>}
 
-    <section className="panel commitmentsPanel">
-      <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
-      <div className="commitmentDouble futureCommitmentGrid">
-        <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
-        <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b></article>
-        <article><span>{t('future.planningNeed')}</span><b>{currency(selectedCommitments.futureNeed)}</b></article>
-        <article className="futureIncomeCommitment"><span>{t('future.expectedIncome')}</span><b className="positive">+ {currency(selectedCommitments.expectedIncome)}</b></article>
-      </div>
-      <div className="commitmentMonthTotal"><span>{t('future.netMonthlyNeed')}</span><strong>{currency(selectedCommitments.total)}</strong><small>{t('future.grossCommitments')} {currency(selectedCommitments.gross)}</small></div>
+    <section className={'panel commitmentsPanel homeCompactCard '+(commitmentsExpanded?'expanded':'isCollapsed')}>
+      <button type="button" className="homeSummaryHeader homeCompactHeader" onClick={toggleCommitments} aria-expanded={commitmentsExpanded}>
+        <span>
+          <small>{t('dashboard.commitments')}</small>
+          <b>{date(commitmentMonth,{month:'long',year:'numeric'})} · {currency(selectedCommitments.total)}</b>
+        </span>
+        <i>{commitmentsExpanded?'⌃':'⌄'}</i>
+      </button>
+      {commitmentsExpanded&&<div className="collapsibleBody commitmentsBody">
+        <div className="sectionTitleRow commitmentsTitleRow"><div><small>{t('dashboard.commitments')}</small><h2>{t('dashboard.stillWeighs')}</h2></div><label className="commitmentMonthPicker"><span>{t('common.month')}</span><input type="month" min={localMonthStartISO().slice(0,7)} value={commitmentMonth.slice(0,7)} onChange={e=>setCommitmentMonth((e.target.value||localMonthStartISO().slice(0,7))+'-01')}/></label></div>
+        <div className="commitmentDouble futureCommitmentGrid">
+          <article><span>{t('dashboard.monthlyBills')}</span><b>{currency(selectedCommitments.recurringPending)}</b></article>
+          <article><span>{t('dashboard.cards')}</span><b>{currency(selectedCommitments.cardsDue)}</b></article>
+          <article><span>{t('future.planningNeed')}</span><b>{currency(selectedCommitments.futureNeed)}</b></article>
+          <article className="futureIncomeCommitment"><span>{t('future.expectedIncome')}</span><b className="positive">+ {currency(selectedCommitments.expectedIncome)}</b></article>
+        </div>
+        <div className="commitmentMonthTotal"><span>{t('future.netMonthlyNeed')}</span><strong>{currency(selectedCommitments.total)}</strong><small>{t('future.grossCommitments')} {currency(selectedCommitments.gross)}</small></div>
+      </div>}
     </section>
 
     {numbers.income===0&&numbers.spent===0&&<section className="empty premiumEmpty"><b>{t('dashboard.emptyTitle')}</b><p>{t('dashboard.emptyText')}</p></section>}
