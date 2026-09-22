@@ -27,7 +27,7 @@ export function AccessGateCard({trialReason}:{trialReason?:string}){
       <span className="goldPill">DEVINX</span>
       <h1>{t('access.expiredTitle')}</h1>
       <p>{trialMessage||t('access.expiredDesc')}</p>
-      <SubscriptionPlans/>
+      <SubscriptionPlans variant="compact"/>
       <button className="secondary" type="button" onClick={signOut}>{t('access.signOut')}</button>
     </section>
   </main>;
