@@ -55,7 +55,7 @@ export function SubscriptionPanel({isAdmin=false}:{isAdmin?:boolean}){
       {!manual&&!trial&&<span><b>{t('subscription.plan')}:</b> {data?.plan_name||t('subscription.monthly')}</span>}
       {!manual&&!trial&&<span><b>{t('subscription.value')}:</b> {amount}{data?.amount_minor==null?' / '+t('subscription.month'):''}</span>}
       {trial&&data?.expires_at&&<span><b>{t('trial.ends')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>}
-      {data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric'})}</span>}
+      {!manual&&!trial&&data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric'})}</span>}
       {manual&&data?.expires_at&&<span><b>{t('subscription.validUntil')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric'})}</span>}
       {manual&&!data?.expires_at&&<span><b>{t('subscription.access')}:</b> {t('subscription.noExpiry')}</span>}
       {!manual&&active&&!data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {t('subscription.managedByKiwify')}</span>}
