@@ -1,8 +1,6 @@
 -- Live presence v2: one browser identity, activity-aware client and a versioned
 -- heartbeat signature so old tabs cannot keep stale sessions alive forever.
 
-drop function if exists public.touch_devinx_presence(uuid,text,text,text,text);
-
 create or replace function public.touch_devinx_presence(
   p_session_id uuid,
   p_secret text,
@@ -66,3 +64,7 @@ $$;
 
 revoke all on function public.touch_devinx_presence(uuid,text,text,text,text,integer) from public;
 grant execute on function public.touch_devinx_presence(uuid,text,text,text,text,integer) to anon, authenticated;
+
+-- Keep the old function definition for migration history compatibility, but remove
+-- browser access so already-open v1 tabs expire naturally instead of refreshing ghosts.
+revoke execute on function public.touch_devinx_presence(uuid,text,text,text,text) from anon, authenticated;
