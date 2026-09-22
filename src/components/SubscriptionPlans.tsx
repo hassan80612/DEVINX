@@ -3,6 +3,7 @@
 import {useI18n} from '@/i18n/provider';
 import {
   DEVINX_SUBSCRIPTION_PLANS,
+  approximateUsdMinorFromBrlMinor,
   checkoutForLocale,
   monthlyEquivalentMinor,
   savingsPercent,
@@ -18,7 +19,10 @@ function planLabel(t:(key:string)=>string,id:DevinxPlanId){
 
 export function SubscriptionPlans({variant='landing'}:{variant?:'landing'|'compact'}){
   const{t,locale}=useI18n();
+  const isInternational=locale!=='pt-BR';
   const brl=(minor:number)=>new Intl.NumberFormat(locale,{style:'currency',currency:'BRL'}).format(minor/100);
+  const usdApprox=(minor:number)=>'≈ '+new Intl.NumberFormat(locale,{style:'currency',currency:'USD'}).format(approximateUsdMinorFromBrlMinor(minor)/100);
+  const displayPrice=(minor:number)=>isInternational?usdApprox(minor):brl(minor);
 
   return <div className={'subscriptionPlans '+(variant==='compact'?'compact':'landing')}>
     {variant==='landing'&&<div className="subscriptionPlansIntro">
@@ -43,14 +47,14 @@ export function SubscriptionPlans({variant='landing'}:{variant?:'landing'|'compa
           </div>
 
           <div className="subscriptionPlanPrice">
-            <strong>{brl(plan.amountMinor)}</strong>
+            <strong>{displayPrice(plan.amountMinor)}</strong>
             <span>{plan.months===1?t('subscription.perMonth'):t('subscription.totalPeriod')}</span>
           </div>
 
           <div className="subscriptionPlanMeta">
             {plan.months===1
               ?<span>{t('subscription.cancelAnytime')}</span>
-              :<span>{t('subscription.equivalent')} <b>{brl(equivalent)}{t('subscription.perMonth')}</b></span>}
+              :<span>{t('subscription.equivalent')} <b>{displayPrice(equivalent)}{t('subscription.perMonth')}</b></span>}
             <span>✓ {t('subscription.sameAccess')}</span>
           </div>
 
