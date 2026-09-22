@@ -23,7 +23,7 @@ export function AdminMaster(){
   const[funnel,setFunnel]=useState<Funnel|null>(null);
   const[customers,setCustomers]=useState<Customer[]>([]);
   const[search,setSearch]=useState('');
-  const[filter,setFilter]=useState<'all'|'active'|'blocked'|'pending'|'kiwify'|'manual'>('all');
+  const[filter,setFilter]=useState<'all'|'active'|'blocked'|'pending'|'kiwify'|'manual'|'trial'>('all');
   const[notice,setNotice]=useState('');
   const[loading,setLoading]=useState(true);
   const[diag,setDiag]=useState<Diagnostic|null>(null);
@@ -49,6 +49,7 @@ export function AdminMaster(){
     if(source==='kiwify')return t('master.sourceKiwify');
     if(source==='manual')return t('master.sourceManual');
     if(source==='legacy')return t('master.sourceLegacy');
+    if(source==='trial')return t('master.sourceTrial');
     return t('master.sourceAccount');
   }
 
@@ -82,6 +83,7 @@ export function AdminMaster(){
     if(filter==='pending')return !c.account_exists;
     if(filter==='kiwify')return c.kiwify_customer;
     if(filter==='manual')return c.manual_grant||c.access_source==='manual';
+    if(filter==='trial')return c.access_source==='trial';
     return true;
   }),[customers,search,filter]);
 
@@ -226,6 +228,7 @@ export function AdminMaster(){
         <button className={filter==='pending'?'active':''} onClick={()=>setFilter('pending')}>{t('master.noAccount')}</button>
         <button className={filter==='kiwify'?'active':''} onClick={()=>setFilter('kiwify')}>{t('master.kiwify')}</button>
         <button className={filter==='manual'?'active':''} onClick={()=>setFilter('manual')}>{t('master.manual')}</button>
+        <button className={filter==='trial'?'active':''} onClick={()=>setFilter('trial')}>{t('master.trial')}</button>
       </div></div>
 
       <div className="adminUserList">{visible.length===0?<div className="empty"><b>{t('master.noUsers')}</b></div>:visible.map(c=>{
