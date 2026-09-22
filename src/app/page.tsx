@@ -21,7 +21,8 @@ export default function Home(){
         <p>{t('landing.desc')}</p>
 
         <div className="heroActions heroAccessOnly">
-          <a className="primary landingAccessCta" href="/entrar">{t('landing.loginCreate')}</a>
+          <a className="secondary landingAccessCta" href="/entrar">{t('landing.login')}</a>
+          <a className="primary landingAccessCta" href="/entrar?trial=1">{t('trial.cta')}</a>
         </div>
         <a className="howLink" href="#como">{t('landing.how')}</a>
         {locale==='pt-BR'&&<LandingDemoVideo/>}
