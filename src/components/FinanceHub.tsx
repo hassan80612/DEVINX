@@ -77,6 +77,21 @@ export function FinanceHub(){
   })()},[]);
 
   useEffect(()=>{
+    if(!access)return;
+    if(!access.allowed){location.replace('/entrar?acesso=expirado');return}
+    if(access.is_admin||!access.expires_at)return;
+    const expiresAt=new Date(access.expires_at).getTime();
+    let timer=0;
+    const check=()=>{
+      const remaining=expiresAt-Date.now();
+      if(remaining<=0){location.replace('/entrar?acesso=expirado');return}
+      timer=window.setTimeout(check,Math.min(remaining,60*60*1000));
+    };
+    check();
+    return()=>{if(timer)window.clearTimeout(timer)};
+  },[access]);
+
+  useEffect(()=>{
     if(!access?.allowed)return;
     let mounted=true;
     const run=async()=>{
@@ -110,7 +125,7 @@ export function FinanceHub(){
   if(accessError)return <main className="financeApp">
     <section className="centerState"><b>DEVINX</b><p>{t('common.errorAccess')}</p><button className="primary" onClick={()=>location.reload()}>{t('common.tryAgain')}</button></section></main>;
   if(!access)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
-  if(!access.allowed)return <main className="financeApp"><section className="paywallCard"><span className="goldPill">DEVINX</span><h1>{t('access.title')}</h1><p>{t('access.desc')}</p><SubscriptionPanel/><button className="secondary" onClick={signOut}>{t('access.signOut')}</button></section></main>;
+  if(!access.allowed)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
 
   return <main className="financeApp">
     <IntegrationBootstrap enabled={access.is_admin}/>
@@ -121,6 +136,7 @@ export function FinanceHub(){
         <LanguageMenu/>
       </div>
     </header>
+    {access.source==='trial'&&access.expires_at&&<div className="trialAccessNotice"><b>{t('trial.active')}</b><span>{t('trial.ends')} {date(access.expires_at,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div>}
 
     <section className="financeContent">
       {section!=='home'&&<div className="sectionTopbar"><button type="button" className="backButton" onClick={()=>setSection(backTarget())}>‹</button><div><small>DEVINX</small><h1>{titles[section]}</h1></div></div>}
