@@ -4,11 +4,14 @@ import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {usePathname} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
 
-const SESSION_KEY='devinx-presence-session-v1';
-const SECRET_KEY='devinx-presence-secret-v1';
+const SESSION_KEY='devinx-presence-browser-v2';
+const SECRET_KEY='devinx-presence-secret-v2';
 const SOURCE_KEY='devinx-presence-source-v1';
+const PRESENCE_CLIENT_VERSION=2;
 const HEARTBEAT_MS=25_000;
+const ACTIVE_WINDOW_MS=120_000;
 const MASTER_REFRESH_MS=10_000;
+const MASTER_REQUEST_TIMEOUT_MS=8_000;
 const ONLINE_WINDOW_SECONDS=75;
 
 type LivePresenceRow={
@@ -40,10 +43,12 @@ function randomSecret(){
 
 function sessionIdentity(){
   try{
-    let sessionId=sessionStorage.getItem(SESSION_KEY);
-    let secret=sessionStorage.getItem(SECRET_KEY);
-    if(!sessionId){sessionId=uuid();sessionStorage.setItem(SESSION_KEY,sessionId)}
-    if(!secret){secret=randomSecret();sessionStorage.setItem(SECRET_KEY,secret)}
+    // localStorage intentionally identifies one browser, not one tab. Multiple open
+    // tabs from the same person therefore count as a single online visitor.
+    let sessionId=localStorage.getItem(SESSION_KEY);
+    let secret=localStorage.getItem(SECRET_KEY);
+    if(!sessionId){sessionId=uuid();localStorage.setItem(SESSION_KEY,sessionId)}
+    if(!secret){secret=randomSecret();localStorage.setItem(SECRET_KEY,secret)}
     return{sessionId,secret};
   }catch{
     return{sessionId:uuid(),secret:randomSecret()};
@@ -84,14 +89,21 @@ function ago(value:string){
   return`há ${Math.max(1,Math.floor(seconds/60))}min`;
 }
 
+function isFresh(row:LivePresenceRow){
+  const seen=Date.parse(row.last_seen_at||'');
+  return Number.isFinite(seen)&&Date.now()-seen<ONLINE_WINDOW_SECONDS*1000;
+}
+
 export function PresenceProvider({children}:{children:ReactNode}){
   const pathname=usePathname();
   const pathRef=useRef(pathname||'/');
   const beatRef=useRef<()=>void>(()=>{});
+  const lastActivityRef=useRef(Date.now());
   const[status,setStatus]=useState<'idle'|'ok'|'error'>('idle');
 
   useEffect(()=>{
     pathRef.current=pathname||'/';
+    lastActivityRef.current=Date.now();
     beatRef.current();
   },[pathname]);
 
@@ -104,6 +116,7 @@ export function PresenceProvider({children}:{children:ReactNode}){
 
     async function heartbeat(){
       if(!active||sending||document.visibilityState!=='visible')return;
+      if(Date.now()-lastActivityRef.current>ACTIVE_WINDOW_MS)return;
       sending=true;
       try{
         const{error}=await client.rpc('touch_devinx_presence',{
@@ -111,7 +124,8 @@ export function PresenceProvider({children}:{children:ReactNode}){
           p_secret:secret,
           p_path:pathRef.current||'/',
           p_source:source,
-          p_language:languageLabel()
+          p_language:languageLabel(),
+          p_client_version:PRESENCE_CLIENT_VERSION
         });
         if(!active)return;
         setStatus(error?'error':'ok');
@@ -122,16 +136,35 @@ export function PresenceProvider({children}:{children:ReactNode}){
       }
     }
 
+    function markActivity(){
+      lastActivityRef.current=Date.now();
+    }
+
     beatRef.current=()=>{void heartbeat()};
     void heartbeat();
 
-    const{data:authSubscription}=client.auth.onAuthStateChange(()=>{void heartbeat()});
-    const onVisible=()=>{if(document.visibilityState==='visible')void heartbeat()};
-    const onFocus=()=>{void heartbeat()};
+    const{data:authSubscription}=client.auth.onAuthStateChange(()=>{
+      markActivity();
+      void heartbeat();
+    });
+    const onVisible=()=>{
+      if(document.visibilityState==='visible'){
+        markActivity();
+        void heartbeat();
+      }
+    };
+    const onFocus=()=>{
+      markActivity();
+      void heartbeat();
+    };
     const timer=window.setInterval(()=>{void heartbeat()},HEARTBEAT_MS);
 
     document.addEventListener('visibilitychange',onVisible);
     window.addEventListener('focus',onFocus);
+    window.addEventListener('pointerdown',markActivity,{passive:true});
+    window.addEventListener('keydown',markActivity);
+    window.addEventListener('touchstart',markActivity,{passive:true});
+    window.addEventListener('scroll',markActivity,{passive:true});
 
     return()=>{
       active=false;
@@ -139,6 +172,10 @@ export function PresenceProvider({children}:{children:ReactNode}){
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange',onVisible);
       window.removeEventListener('focus',onFocus);
+      window.removeEventListener('pointerdown',markActivity);
+      window.removeEventListener('keydown',markActivity);
+      window.removeEventListener('touchstart',markActivity);
+      window.removeEventListener('scroll',markActivity);
       authSubscription.subscription.unsubscribe();
     };
   },[]);
@@ -158,25 +195,36 @@ export function MasterLivePresence(){
     let active=true;
     const client=createClient();
 
+    function pruneStale(){
+      setRows(current=>current.filter(isFresh));
+    }
+
     async function load(){
       if(!active||busyRef.current||document.visibilityState!=='visible')return;
       busyRef.current=true;
+      const controller=new AbortController();
+      const timeout=window.setTimeout(()=>controller.abort(),MASTER_REQUEST_TIMEOUT_MS);
       try{
         const{data,error}=await client.rpc('admin_get_devinx_live_presence',{
           p_window_seconds:ONLINE_WINDOW_SECONDS
-        });
+        }).abortSignal(controller.signal);
         if(!active)return;
         if(error){
           console.error('DEVINX LIVE PRESENCE READ',error);
+          pruneStale();
           setStatus('error');
           return;
         }
-        setRows((data||[]) as LivePresenceRow[]);
+        setRows(((data||[]) as LivePresenceRow[]).filter(isFresh));
         setStatus('ok');
       }catch(error){
         console.error('DEVINX LIVE PRESENCE READ',error);
-        if(active)setStatus('error');
+        if(active){
+          pruneStale();
+          setStatus('error');
+        }
       }finally{
+        window.clearTimeout(timeout);
         busyRef.current=false;
       }
     }
@@ -211,7 +259,7 @@ export function MasterLivePresence(){
       <article><small>Logados</small><b>{logged}</b></article>
     </div>
 
-    <p className="sectionLead">Leitura própria do DevinX: atualização a cada 10s, presença válida por 75s e conta Master fora da contagem. Não usa Function da Vercel para o heartbeat.</p>
+    <p className="sectionLead">Leitura própria do DevinX: um visitante por navegador, heartbeat somente com atividade recente, atualização a cada 10s, presença válida por 75s e conta Master fora da contagem.</p>
 
     <div className="adminUserList">
       {rows.length===0
