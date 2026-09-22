@@ -20,7 +20,7 @@ export function TrialActivation(){
       if(!active)return;
       if(error){setFailed('error');return}
       const row=(Array.isArray(data)?data[0]:data) as ClaimResult|null;
-      if(row?.allowed){location.replace('/onboarding');return}
+      if(row?.allowed){const{data:{user}}=await s.auth.getUser();const{data:profile}=user?await s.from('profiles').select('onboarded_at').eq('id',user.id).maybeSingle():{data:null};location.replace(profile?.onboarded_at?'/painel':'/onboarding');return}
       setFailed(row?.reason||'error');
     }catch{if(active)setFailed('error')}
   })();return()=>{active=false}},[]);
