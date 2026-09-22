@@ -5,79 +5,92 @@ import {LanguageMenu} from '@/components/LanguageMenu';
 import {BrandLogo} from '@/components/BrandLogo';
 import {SubscriptionPlans} from '@/components/SubscriptionPlans';
 import {LandingDemoVideo} from '@/components/LandingDemoVideo';
+import styles from './page.module.css';
 
-export default function Home(){
-  const{t,currency,locale}=useI18n();
+const features = [
+  {icon: '⌁', key: 'movements'},
+  {icon: '↻', key: 'bills'},
+  {icon: '▣', key: 'cards'},
+  {icon: '◇', key: 'reserves'},
+  {icon: '◷', key: 'work'},
+  {icon: '◎', key: 'goals'},
+] as const;
+
+// A fixed illustration, separate from the signed-in financial calculations.
+const example = {available: 40000, bills: 130000, days: 5};
+const exampleGap = example.bills - example.available;
+const exampleDailyTarget = exampleGap / example.days;
+
+export default function Home() {
+  const {t, currency, locale} = useI18n();
+
   return <main className="landingV2">
     <header className="top landingTop">
       <div className="brand"><BrandLogo/></div>
       <div className="landingTopActions"><LanguageMenu/></div>
     </header>
 
-    <section className="landingHero">
+    <section className="landingHero" aria-labelledby="landing-title">
       <div className="landingCopy">
         <span className="goldPill">{t('landing.eyebrow')}</span>
-        <h1>{t('landing.title')}<br/><em>{t('landing.accent')}</em></h1>
+        <h1 id="landing-title">{t('landing.title')} <em>{t('landing.accent')}</em></h1>
         <p>{t('landing.desc')}</p>
-
         <div className="heroActions heroAccessOnly">
+          <div className={styles.trialAction}>
+            <a className="primary landingAccessCta" href="/entrar?trial=1" aria-describedby="trial-conditions">{t('trial.cta')}</a>
+            <small id="trial-conditions" className={styles.trialNote}>{t('trial.noCard')}</small>
+          </div>
           <a className="secondary landingAccessCta" href="/entrar">{t('landing.login')}</a>
-          <a className="primary landingAccessCta" href="/entrar?trial=1">{t('trial.cta')}</a>
         </div>
         <a className="howLink" href="#como">{t('landing.how')}</a>
-        {locale==='pt-BR'&&<LandingDemoVideo/>}
+        {locale === 'pt-BR' && <LandingDemoVideo/>}
         <div className="landingProof"><span>{t('landing.noSheet')}</span><span>{t('landing.noAds')}</span><span>{t('landing.mobile')}</span></div>
       </div>
 
-      <div className="landingPreview">
-        <div className="previewGlow"/>
-        <div className="previewTop"><small>DEVINX</small><b>{t('nav.home')}</b></div>
-        <div className="previewBalance"><span>{t('dashboard.projected')}</span><strong>{currency(188000)}</strong><small>{t('dashboard.projectedHelp')}</small></div>
-        <div className="previewQuick"><button>＋ {t('common.income')}</button><button>− {t('quick.expense')}</button><button>◷ {t('home.work')}</button><button>▣ {t('home.card')}</button></div>
-        <div className="previewRows"><div><span>{t('dashboard.entered')}</span><b>{currency(485000)}</b></div><div><span>{t('dashboard.spent')}</span><b>{currency(219000)}</b></div><div><span>{t('dashboard.pending')}</span><b>{currency(78000)}</b></div></div>
+      <aside className="landingPreview" aria-labelledby="preview-title" aria-describedby="preview-caption">
+        <div className="previewGlow" aria-hidden="true"/>
+        <div className="previewTop"><small>DEVINX</small><span className={styles.exampleLabel}>{t('landing.preview.example')}</span></div>
+        <div className={styles.dailyTarget}>
+          <h2 id="preview-title">{t('landing.preview.title')}</h2>
+          <strong><bdi>{currency(exampleDailyTarget)}</bdi></strong>
+          <span>{t('landing.preview.adapts')}</span>
+        </div>
+        <div className="previewBalance">
+          <span>{t('landing.preview.available')}</span>
+          <strong><bdi>{currency(example.available)}</bdi></strong>
+        </div>
+        <div className="previewRows">
+          <div><span>{t('landing.preview.bills')}</span><b><bdi>{currency(example.bills)}</bdi></b></div>
+          <div><span>{t('landing.preview.gap')}</span><b><bdi>{currency(exampleGap)}</bdi></b></div>
+        </div>
+        <p id="preview-caption" className={styles.exampleCaption}>{t('landing.preview.caption')}</p>
+      </aside>
+    </section>
+
+    <section className="landingSteps" id="como" aria-label={t('landing.how')}>
+      {[1, 2, 3].map(step => <div key={step}>
+        <small aria-hidden="true">0{step}</small>
+        <h2>{t(`landing.step${step}`)}</h2>
+        <p>{t(`landing.step${step}Text`)}</p>
+      </div>)}
+    </section>
+
+    <section className="landingExplainer" aria-labelledby="features-title">
+      <div className="landingSectionHead">
+        <span className="goldPill">{t('landing.controlEyebrow')}</span>
+        <h2 id="features-title">{t('landing.controlTitle')}</h2>
+        <p>{t('landing.controlText')}</p>
       </div>
-    </section>
-
-    <section className="landingSteps" id="como">
-      <div><small>01</small><h2>{t('landing.step1')}</h2><p>{t('landing.step1Text')}</p></div>
-      <div><small>02</small><h2>{t('landing.step2')}</h2><p>{t('landing.step2Text')}</p></div>
-      <div><small>03</small><h2>{t('landing.step3')}</h2><p>{t('landing.step3Text')}</p></div>
-    </section>
-
-    <section className="landingExplainer">
-      <div className="landingSectionHead"><span className="goldPill">{t('landing.controlEyebrow')}</span><h2>{t('landing.controlTitle')}</h2><p>{t('landing.controlText')}</p></div>
       <div className="landingFeatureGrid">
-        <article><span>⌁</span><h3>{t('landing.featureCategories')}</h3><p>{t('landing.featureCategoriesText')}</p></article>
-        <article><span>▣</span><h3>{t('landing.featureCards')}</h3><p>{t('landing.featureCardsText')}</p></article>
-        <article><span>◇</span><h3>{t('nav.reserves')}</h3><p>{t('landing.deepReserveText')}</p></article>
-        <article><span>◎</span><h3>{t('landing.featureGoals')}</h3><p>{t('landing.featureGoalsText')}</p></article>
-        <article className="driverFeature"><span>◷</span><h3>{t('landing.featureDriver')}</h3><p>{t('landing.featureDriverText')}</p><div className="driverFormula"><b>{t('landing.driverCalc1')}</b><b>{t('landing.driverCalc2')}</b><b>{t('landing.driverCalc3')}</b><b>{t('landing.driverCalc4')}</b></div></article>
-        <article><span>▥</span><h3>{t('landing.featureHistory')}</h3><p>{t('landing.featureHistoryText')}</p></article>
+        {features.map(({icon, key}) => <article key={key}>
+          <span aria-hidden="true">{icon}</span>
+          <h3>{t(`landing.features.${key}`)}</h3>
+          <p>{t(`landing.features.${key}Text`)}</p>
+        </article>)}
       </div>
     </section>
 
-    <section className="landingDeepDive">
-      <div className="landingSectionHead deepDiveHead"><span className="goldPill">{t('landing.deepEyebrow')}</span><h2>{t('landing.deepTitle')}</h2><p>{t('landing.deepText')}</p></div>
-
-      <article className="deepDiveCard dailyDive">
-        <div className="deepDiveIcon">◎</div>
-        <div><small>{t('landing.deepDailyEyebrow')}</small><h3>{t('landing.deepDailyTitle')}</h3><p>{t('landing.deepDailyText')}</p></div>
-        <div className="deepDiveFlow"><span>{t('landing.flowToday')}</span><i>→</i><span>{t('landing.flowDueDates')}</span><i>→</i><b>{t('landing.flowDailyTarget')}</b></div>
-      </article>
-
-      <div className="deepDiveGrid">
-        <article className="deepDiveCard"><div className="deepDiveIcon">◇</div><small>{t('landing.deepReserveEyebrow')}</small><h3>{t('landing.deepReserveTitle')}</h3><p>{t('landing.deepReserveText')}</p><div className="deepMiniStats"><span>{t('landing.deepReserveStat1')}</span><span>{t('landing.deepReserveStat2')}</span><span>{t('landing.deepReserveStat3')}</span></div></article>
-        <article className="deepDiveCard"><div className="deepDiveIcon">↻</div><small>{t('landing.deepBillsEyebrow')}</small><h3>{t('landing.deepBillsTitle')}</h3><p>{t('landing.deepBillsText')}</p><div className="deepMiniStats"><span>48x</span><span>{t('landing.deepBillsStat2')}</span><span>{t('landing.deepBillsStat3')}</span></div></article>
-        <article className="deepDiveCard"><div className="deepDiveIcon">▣</div><small>{t('landing.deepCardsEyebrow')}</small><h3>{t('landing.deepCardsTitle')}</h3><p>{t('landing.deepCardsText')}</p><div className="deepMiniStats"><span>{t('landing.deepCardsStat1')}</span><span>{t('landing.deepCardsStat2')}</span><span>{t('landing.deepCardsStat3')}</span></div></article>
-        <article className="deepDiveCard"><div className="deepDiveIcon">◷</div><small>{t('landing.deepWorkEyebrow')}</small><h3>{t('landing.deepWorkTitle')}</h3><p>{t('landing.deepWorkText')}</p><div className="deepMiniStats"><span>KM/L</span><span>R$/h</span><span>R$/km</span></div></article>
-        <article className="deepDiveCard wideDive"><div className="deepDiveIcon">▥</div><small>{t('landing.deepHistoryEyebrow')}</small><h3>{t('landing.deepHistoryTitle')}</h3><p>{t('landing.deepHistoryText')}</p><div className="deepMiniStats"><span>{t('landing.deepHistoryStat1')}</span><span>{t('landing.deepHistoryStat2')}</span><span>{t('landing.deepHistoryStat3')}</span></div></article>
-      </div>
-    </section>
-
-    <section className="landingPlansSection" id="planos">
-      <SubscriptionPlans/>
-    </section>
-
+    <section className="landingPlansSection" id="planos"><SubscriptionPlans/></section>
     <footer>DEVINX <span>{t('brand.tagline')}</span></footer>
   </main>;
 }

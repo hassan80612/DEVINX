@@ -8,7 +8,8 @@ function copySessionCookies(source:NextResponse,target:NextResponse){source.cook
 
 export async function middleware(request:NextRequest){
   const host=(request.headers.get('x-forwarded-host')||request.headers.get('host')||'').split(':')[0].toLowerCase();
-  if(host.endsWith('.vercel.app')){const canonical=request.nextUrl.clone();canonical.protocol='https:';canonical.host=CANONICAL_HOST;return NextResponse.redirect(canonical,308)}
+  // Keep preview deployments reviewable; production aliases still use the canonical domain.
+  if(process.env.VERCEL_ENV!=='preview'&&host.endsWith('.vercel.app')){const canonical=request.nextUrl.clone();canonical.protocol='https:';canonical.host=CANONICAL_HOST;return NextResponse.redirect(canonical,308)}
 
   let response=NextResponse.next({request});
   const supabase=createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{cookies:{getAll(){return request.cookies.getAll()},setAll(cookiesToSet){cookiesToSet.forEach(({name,value})=>request.cookies.set(name,value));response=NextResponse.next({request});cookiesToSet.forEach(({name,value,options})=>response.cookies.set(name,value,options))}}});
