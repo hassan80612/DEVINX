@@ -5,7 +5,7 @@ import {createServerSupabaseClient} from '@/lib/supabase/server';
 export const runtime='nodejs';
 
 const PRODUCT_ID='42a1cde0-b411-11f1-b998-436a8b692e83';
-const CHECKOUT_URL='https://pay.kiwify.com.br/pf2YM64';
+const CHECKOUT_URL='https://pay.kiwify.com.br/S2uuSUA';
 
 export async function POST(){
   const secret=process.env.KIWIFY_WEBHOOK_TOKEN;

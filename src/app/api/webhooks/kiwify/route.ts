@@ -1,7 +1,10 @@
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {createClient} from '@supabase/supabase-js';
 import {NextRequest,NextResponse} from 'next/server';
-import {DEVINX_KIWIFY_PRODUCT_ID} from '@/lib/subscription-plans';
+import {
+  DEVINX_KIWIFY_INTERNATIONAL_PRODUCT_ID,
+  DEVINX_KIWIFY_PRODUCT_ID
+} from '@/lib/subscription-plans';
 
 export const runtime='nodejs';
 
@@ -42,14 +45,18 @@ export async function POST(request:NextRequest){
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
 
-  if(productId!==DEVINX_KIWIFY_PRODUCT_ID){
+  const isBrazil=productId===DEVINX_KIWIFY_PRODUCT_ID;
+  const isInternational=productId===DEVINX_KIWIFY_INTERNATIONAL_PRODUCT_ID;
+
+  if(!isBrazil&&!isInternational){
     await supabase.rpc('record_kiwify_webhook_attempt',{
       p_token_hash:tokenHash,p_outcome:'ignored',p_event_type:eventType,p_product_id:productId,p_note:'product_id_mismatch'
     });
     return NextResponse.json({ok:true,ignored:'product'});
   }
 
-  const{data,error}=await supabase.rpc('process_kiwify_webhook',{p_payload:payload,p_token_hash:tokenHash});
+  const rpcName=isInternational?'process_kiwify_international_purchase':'process_kiwify_webhook';
+  const{data,error}=await supabase.rpc(rpcName,{p_payload:payload,p_token_hash:tokenHash});
   if(error){
     await supabase.rpc('record_kiwify_webhook_attempt',{
       p_token_hash:tokenHash,p_outcome:'error',p_event_type:eventType,p_product_id:productId,p_note:error.code||'processing_failed'
@@ -57,8 +64,10 @@ export async function POST(request:NextRequest){
     console.error('kiwify webhook processing failed',error.code);
     return NextResponse.json({ok:false,error:'processing_failed'},{status:500});
   }
+
   await supabase.rpc('record_kiwify_webhook_attempt',{
-    p_token_hash:tokenHash,p_outcome:'accepted',p_event_type:eventType,p_product_id:productId,p_note:null
+    p_token_hash:tokenHash,p_outcome:'accepted',p_event_type:eventType,p_product_id:productId,
+    p_note:isInternational?'international_prepaid':null
   });
   return NextResponse.json(data||{ok:true});
 }

@@ -41,6 +41,7 @@ export function SubscriptionPanel({isAdmin=false}:{isAdmin?:boolean}){
   const active=data?.status==='active';
   const manual=data?.source==='manual';
   const trial=data?.source==='trial';
+  const prepaid=data?.source==='kiwify_pass';
   const checkout=data?.checkout_url?checkoutForLocale(data.checkout_url,locale):null;
   const amount=data?.amount_minor!=null
     ?new Intl.NumberFormat(locale,{style:'currency',currency:data.currency_code||'BRL'}).format(Number(data.amount_minor)/100)
@@ -55,13 +56,14 @@ export function SubscriptionPanel({isAdmin=false}:{isAdmin?:boolean}){
       {!manual&&!trial&&<span><b>{t('subscription.plan')}:</b> {data?.plan_name||t('subscription.monthly')}</span>}
       {!manual&&!trial&&<span><b>{t('subscription.value')}:</b> {amount}{data?.amount_minor==null?' / '+t('subscription.month'):''}</span>}
       {trial&&data?.expires_at&&<span><b>{t('trial.ends')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>}
-      {!manual&&!trial&&data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric'})}</span>}
+      {prepaid&&data?.expires_at&&<span><b>{t('subscription.validUntil')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric'})}</span>}
+      {!manual&&!trial&&!prepaid&&data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric'})}</span>}
       {manual&&data?.expires_at&&<span><b>{t('subscription.validUntil')}:</b> {date(data.expires_at,{day:'2-digit',month:'long',year:'numeric'})}</span>}
       {manual&&!data?.expires_at&&<span><b>{t('subscription.access')}:</b> {t('subscription.noExpiry')}</span>}
-      {!manual&&active&&!data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {t('subscription.managedByKiwify')}</span>}
-      {data?.subscription_status&&<span><b>{t('subscription.status')}:</b> {data.subscription_status}</span>}
+      {!manual&&!trial&&!prepaid&&active&&!data?.expires_at&&<span><b>{t('subscription.renewal')}:</b> {t('subscription.managedByKiwify')}</span>}
+      {!prepaid&&data?.subscription_status&&<span><b>{t('subscription.status')}:</b> {data.subscription_status}</span>}
     </div>
     {(!active||trial)&&<SubscriptionPlans variant="compact"/>}
-    {active&&!manual&&!trial&&checkout&&<a className="secondary subscriptionCta" href={checkout}>{t('subscription.checkout')}</a>}
+    {active&&!manual&&!trial&&!prepaid&&checkout&&<a className="secondary subscriptionCta" href={checkout}>{t('subscription.checkout')}</a>}
   </section>;
 }

@@ -3,9 +3,8 @@
 import {useI18n} from '@/i18n/provider';
 import {
   DEVINX_SUBSCRIPTION_PLANS,
-  approximateUsdMinorFromBrlMinor,
-  checkoutForLocale,
   monthlyEquivalentMinor,
+  pricingForLocale,
   savingsPercent,
   type DevinxPlanId
 } from '@/lib/subscription-plans';
@@ -19,10 +18,7 @@ function planLabel(t:(key:string)=>string,id:DevinxPlanId){
 
 export function SubscriptionPlans({variant='landing'}:{variant?:'landing'|'compact'}){
   const{t,locale}=useI18n();
-  const isInternational=locale!=='pt-BR';
-  const brl=(minor:number)=>new Intl.NumberFormat(locale,{style:'currency',currency:'BRL'}).format(minor/100);
-  const usdApprox=(minor:number)=>'≈ '+new Intl.NumberFormat(locale,{style:'currency',currency:'USD'}).format(approximateUsdMinorFromBrlMinor(minor)/100);
-  const displayPrice=(minor:number)=>isInternational?usdApprox(minor):brl(minor);
+  const money=(minor:number,currency:string)=>new Intl.NumberFormat(locale,{style:'currency',currency}).format(minor/100);
 
   return <div className={'subscriptionPlans '+(variant==='compact'?'compact':'landing')}>
     {variant==='landing'&&<div className="subscriptionPlansIntro">
@@ -35,8 +31,9 @@ export function SubscriptionPlans({variant='landing'}:{variant?:'landing'|'compa
     <div className="subscriptionPlanGrid">
       {DEVINX_SUBSCRIPTION_PLANS.map(plan=>{
         const featured=plan.id==='annual';
-        const saving=savingsPercent(plan);
-        const equivalent=monthlyEquivalentMinor(plan);
+        const pricing=pricingForLocale(plan,locale);
+        const saving=savingsPercent(plan,locale);
+        const equivalent=monthlyEquivalentMinor(plan,locale);
         return <article className={'subscriptionPlanCard '+(featured?'featured':'')} key={plan.id}>
           <div className="subscriptionPlanTop">
             <div>
@@ -47,18 +44,18 @@ export function SubscriptionPlans({variant='landing'}:{variant?:'landing'|'compa
           </div>
 
           <div className="subscriptionPlanPrice">
-            <strong>{displayPrice(plan.amountMinor)}</strong>
+            <strong>{money(pricing.amountMinor,pricing.currencyCode)}</strong>
             <span>{plan.months===1?t('subscription.perMonth'):t('subscription.totalPeriod')}</span>
           </div>
 
           <div className="subscriptionPlanMeta">
             {plan.months===1
               ?<span>{t('subscription.cancelAnytime')}</span>
-              :<span>{t('subscription.equivalent')} <b>{displayPrice(equivalent)}{t('subscription.perMonth')}</b></span>}
+              :<span>{t('subscription.equivalent')} <b>{money(equivalent,pricing.currencyCode)}{t('subscription.perMonth')}</b></span>}
             <span>✓ {t('subscription.sameAccess')}</span>
           </div>
 
-          <a className={featured?'goldButton subscriptionPlanCta':'primary subscriptionPlanCta'} href={checkoutForLocale(plan.checkoutUrl,locale)}>
+          <a className={featured?'goldButton subscriptionPlanCta':'primary subscriptionPlanCta'} href={pricing.checkoutUrl}>
             {t('subscription.choose')}
           </a>
         </article>;
