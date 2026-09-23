@@ -39,17 +39,23 @@ export const DEVINX_SUBSCRIPTION_PLANS:readonly DevinxSubscriptionPlan[]=[
   }
 ] as const;
 
+function internationalCheckoutUrl(url:string){
+  const checkout=new URL(url);
+  checkout.searchParams.set('region','intl');
+  return checkout.toString();
+}
+
 export function pricingForLocale(plan:DevinxSubscriptionPlan,locale:string){
   const international=locale!=='pt-BR';
   return {
     amountMinor:international?plan.internationalAmountMinor:plan.amountMinor,
     currencyCode:international?'USD':'BRL',
-    checkoutUrl:international?plan.internationalCheckoutUrl:plan.checkoutUrl
+    checkoutUrl:international?internationalCheckoutUrl(plan.internationalCheckoutUrl):plan.checkoutUrl
   } as const;
 }
 
-export function checkoutForLocale(url:string,_locale:string){
-  return url;
+export function checkoutForLocale(url:string,locale:string){
+  return locale==='pt-BR'?url:internationalCheckoutUrl(url);
 }
 
 export function approximateUsdMinorFromBrlMinor(minor:number){
