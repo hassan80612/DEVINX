@@ -16,27 +16,50 @@ function safeHexEqual(a:string,b:string){
   }catch{return false}
 }
 
-export async function POST(request:NextRequest){
-  const secret=process.env.KIWIFY_WEBHOOK_TOKEN;
-  if(!secret)return NextResponse.json({ok:false,error:'integration_not_configured'},{status:503});
+function signatureMatches(secret:string,signature:string,raw:string,payload:any){
+  const expectedJson=createHmac('sha1',secret).update(JSON.stringify(payload)).digest('hex');
+  const expectedRaw=createHmac('sha1',secret).update(raw).digest('hex');
+  return !!signature&&(safeHexEqual(signature,expectedJson)||safeHexEqual(signature,expectedRaw));
+}
 
+export async function POST(request:NextRequest){
   const raw=await request.text();
   let payload:any;
   try{payload=JSON.parse(raw)}catch{return NextResponse.json({ok:false,error:'invalid_json'},{status:400})}
+
+  const productId=payload?.Product?.product_id||payload?.product_id||payload?.product?.product_id||payload?.product?.id||payload?.order?.product_id||'';
+  const eventType=String(payload?.webhook_event_type||payload?.event_type||payload?.event||'');
+  const isBrazil=productId===DEVINX_KIWIFY_PRODUCT_ID;
+  const isInternational=productId===DEVINX_KIWIFY_INTERNATIONAL_PRODUCT_ID;
+
+  const brazilSecret=process.env.KIWIFY_WEBHOOK_TOKEN||'';
+  const internationalSecret=process.env.KIWIFY_WEBHOOK_TOKEN_INTL||'';
+  if(!brazilSecret&&!internationalSecret){
+    return NextResponse.json({ok:false,error:'integration_not_configured'},{status:503});
+  }
 
   const signature=(
     request.headers.get('x-kiwify-signature')||
     request.nextUrl.searchParams.get('signature')||
     ''
   ).trim();
-  const expectedJson=createHmac('sha1',secret).update(JSON.stringify(payload)).digest('hex');
-  const expectedRaw=createHmac('sha1',secret).update(raw).digest('hex');
-  if(!signature||(!safeHexEqual(signature,expectedJson)&&!safeHexEqual(signature,expectedRaw))){
+
+  let secret='';
+  if(isBrazil){
+    secret=brazilSecret;
+  }else if(isInternational){
+    secret=internationalSecret;
+  }else if(brazilSecret&&signatureMatches(brazilSecret,signature,raw,payload)){
+    secret=brazilSecret;
+  }else if(internationalSecret&&signatureMatches(internationalSecret,signature,raw,payload)){
+    secret=internationalSecret;
+  }
+
+  if(!secret)return NextResponse.json({ok:false,error:'integration_not_configured'},{status:503});
+  if(!signatureMatches(secret,signature,raw,payload)){
     return NextResponse.json({ok:false,error:'invalid_signature'},{status:401});
   }
 
-  const productId=payload?.Product?.product_id||payload?.product_id||payload?.product?.product_id||payload?.product?.id||payload?.order?.product_id||'';
-  const eventType=String(payload?.webhook_event_type||payload?.event_type||payload?.event||'');
   const tokenHash=createHash('sha256').update(secret).digest('hex');
 
   const supabase=createClient(
@@ -44,9 +67,6 @@ export async function POST(request:NextRequest){
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
-
-  const isBrazil=productId===DEVINX_KIWIFY_PRODUCT_ID;
-  const isInternational=productId===DEVINX_KIWIFY_INTERNATIONAL_PRODUCT_ID;
 
   if(!isBrazil&&!isInternational){
     await supabase.rpc('record_kiwify_webhook_attempt',{

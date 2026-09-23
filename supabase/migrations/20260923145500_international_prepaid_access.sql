@@ -4,6 +4,9 @@
 alter table public.devinx_integration_settings
   add column if not exists kiwify_international_product_id text;
 
+alter table public.devinx_integration_settings
+  add column if not exists kiwify_international_token_hash text;
+
 update public.devinx_integration_settings
 set kiwify_international_product_id='abf1b7b0-b75e-11f1-b984-a1fb5dadf988',
     kiwify_checkout_url='https://pay.kiwify.com.br/S2uuSUA',
@@ -156,7 +159,7 @@ declare
   v_access_until timestamptz;
   v_existing public.devinx_kiwify_pass_orders%rowtype;
 begin
-  select kiwify_token_hash,kiwify_international_product_id
+  select kiwify_international_token_hash,kiwify_international_product_id
     into v_expected_hash,v_expected_product
   from public.devinx_integration_settings
   where singleton=true;
@@ -758,4 +761,71 @@ order by greatest(
   coalesce(b.last_sign_in_at,'epoch'::timestamptz),
   coalesce(b.created_at,'epoch'::timestamptz)
 ) desc,b.email;
+$$;
+
+
+create or replace function public.admin_sync_kiwify_international_integration(
+  p_token_hash text,
+  p_product_id text
+)
+returns void
+language plpgsql
+security definer
+set search_path to 'public','auth'
+as $$
+begin
+  if not public.is_devinx_admin() then
+    raise exception 'not authorized';
+  end if;
+  if coalesce(length(trim(p_token_hash)),0) < 32 then
+    raise exception 'invalid token hash';
+  end if;
+  if coalesce(length(trim(p_product_id)),0) < 10 then
+    raise exception 'invalid product id';
+  end if;
+
+  update public.devinx_integration_settings
+  set kiwify_international_token_hash=p_token_hash,
+      kiwify_international_product_id=p_product_id,
+      updated_at=now()
+  where singleton=true;
+end;
+$$;
+
+revoke all on function public.admin_sync_kiwify_international_integration(text,text) from public,anon;
+grant execute on function public.admin_sync_kiwify_international_integration(text,text) to authenticated;
+
+create or replace function public.record_kiwify_webhook_attempt(
+  p_token_hash text,
+  p_outcome text,
+  p_event_type text default null,
+  p_product_id text default null,
+  p_note text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path to 'public'
+as $$
+declare
+  v_expected_brazil text;
+  v_expected_international text;
+begin
+  select kiwify_token_hash,kiwify_international_token_hash
+    into v_expected_brazil,v_expected_international
+  from public.devinx_integration_settings
+  where singleton=true;
+
+  if p_token_hash is distinct from v_expected_brazil
+     and p_token_hash is distinct from v_expected_international then
+    raise exception 'unauthorized';
+  end if;
+
+  if p_outcome not in ('received','accepted','ignored','error') then
+    raise exception 'invalid outcome';
+  end if;
+
+  insert into public.devinx_kiwify_webhook_attempts(outcome,event_type,product_id,note)
+  values(p_outcome,nullif(p_event_type,''),nullif(p_product_id,''),left(nullif(p_note,''),300));
+end;
 $$;
