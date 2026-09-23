@@ -15,9 +15,9 @@ export const DEVINX_APPROX_BRL_TO_USD_RATE=0.20;
 
 export const DEVINX_SUBSCRIPTION_PLANS:readonly DevinxSubscriptionPlan[]=[
   {id:'monthly',months:1,amountMinor:1390,checkoutUrl:'https://pay.kiwify.com.br/pf2YM64'},
-  {id:'quarterly',months:3,amountMinor:2990,checkoutUrl:'https://pay.kiwify.com.br/3H9AGgh'},
-  {id:'semiannual',months:6,amountMinor:4990,checkoutUrl:'https://pay.kiwify.com.br/uBJIdMY'},
-  {id:'annual',months:12,amountMinor:8990,checkoutUrl:'https://pay.kiwify.com.br/gyeQ7Il'}
+  {id:'quarterly',months:3,amountMinor:3990,checkoutUrl:'https://pay.kiwify.com.br/ceP0z3M'},
+  {id:'semiannual',months:6,amountMinor:6990,checkoutUrl:'https://pay.kiwify.com.br/gCd77k2'},
+  {id:'annual',months:12,amountMinor:11990,checkoutUrl:'https://pay.kiwify.com.br/YevdbZa'}
 ] as const;
 
 export function checkoutForLocale(url:string,locale:string){
