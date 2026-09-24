@@ -1,6 +1,5 @@
 "use client";
 
-import {useEffect,useState} from "react";
 import {useI18n} from "@/i18n/provider";
 import {LanguageMenu} from "@/components/LanguageMenu";
 import {BrandLogo} from "@/components/BrandLogo";
@@ -16,9 +15,6 @@ const COPY={
 
 export function StoreAvailabilityGate({children}:{children:React.ReactNode}){
   const{locale}=useI18n();
-  const[ready,setReady]=useState(false);
-  useEffect(()=>setReady(true),[]);
-  if(!ready)return <main className={styles.availabilityLoading}></main>;
   if(locale==="pt-BR")return <>{children}</>;
   const c=COPY[(locale in COPY?locale:"en") as keyof typeof COPY];
   return <main className={styles.availabilityPage}>
