@@ -103,3 +103,5 @@
 @media(max-width:500px){.storeLinks{align-items:flex-start;flex-direction:column;gap:0}}
 
 .financeOnly{grid-template-columns:minmax(0,720px);justify-content:center}
+
+.localeLoading{min-height:520px}
