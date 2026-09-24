@@ -1,0 +1,16 @@
+export const DEFAULT_PERSONALIZATION_CONFIG={
+  pricing:{
+    thermal:{label:"Peças térmicas",options:[{id:"side1",label:"1 lado · gravação elaborada",price:2000},{id:"side2",label:"2 lados",price:3000},{id:"wrap360",label:"Gravação 360°",price:4000}]},
+    small:{label:"Chaveiros, canetas e peças pequenas",options:[{id:"side1",label:"1 lado",price:2000},{id:"side2",label:"2 lados",price:5000}]},
+    knife:{label:"Facas",options:[{id:"side1",label:"1 lado",price:2000},{id:"side2",label:"2 lados",price:5000}]},
+    wood:{label:"Tábuas e madeira",options:[{id:"simple",label:"Gravação pequena / simples",price:2000},{id:"detailed",label:"Gravação elaborada",price:5000}]}
+  },
+  photoTypes:[{id:"photo_vector",label:"Foto · gravação vetorizada",price:2000},{id:"photo_real",label:"Foto · gravação realista",price:5000}],
+  ownPiece:{enabled:true,materials:["Inox","Madeira","Alumínio","Couro","Outros"],options:[{id:"name",label:"Nome ou frase",price:1500},{id:"side1",label:"Gravação elaborada · 1 lado",price:2000},{id:"side2",label:"Gravação · 2 lados",price:3000},{id:"wrap360",label:"Gravação 360°",price:4000}]}
+};
+const t=(v,m=120)=>String(v??"").trim().slice(0,m), p=v=>Math.max(0,Math.min(10000000,Math.round(Number(v||0))));
+const opt=(r,d)=>({id:t(r?.id||d.id,60),label:t(r?.label||d.label,120),price:p(r?.price??d.price)});
+export function normalizePersonalizationConfig(raw){const b=raw&&typeof raw==="object"?raw:{};const pricing={};for(const[k,d]of Object.entries(DEFAULT_PERSONALIZATION_CONFIG.pricing)){const s=b.pricing?.[k];pricing[k]={label:t(s?.label||d.label,100),options:d.options.map((x,i)=>opt(s?.options?.find?.(y=>y?.id===x.id)||s?.options?.[i],x))};}const photoTypes=DEFAULT_PERSONALIZATION_CONFIG.photoTypes.map((x,i)=>opt(b.photoTypes?.find?.(y=>y?.id===x.id)||b.photoTypes?.[i],x));const own=b.ownPiece||{};const materials=(Array.isArray(own.materials)?own.materials:DEFAULT_PERSONALIZATION_CONFIG.ownPiece.materials).map(x=>t(x,40)).filter(Boolean).filter(x=>!["acrílico","acrilico"].includes(x.toLowerCase())).slice(0,12);return{pricing,photoTypes,ownPiece:{enabled:own.enabled!==false,materials:materials.length?materials:[...DEFAULT_PERSONALIZATION_CONFIG.ownPiece.materials],options:DEFAULT_PERSONALIZATION_CONFIG.ownPiece.options.map((x,i)=>opt(own.options?.find?.(y=>y?.id===x.id)||own.options?.[i],x))}};}
+export function normalizeProductPersonalization(raw){const v=raw&&typeof raw==="object"&&!Array.isArray(raw)?raw:{};return{enabled:v.enabled!==false,category:t(v.category,40),enabledOptions:[...new Set((Array.isArray(v.enabledOptions)?v.enabledOptions:[]).map(x=>t(x,60)).filter(Boolean))].slice(0,20)};}
+export function productPersonalizationOptions(cRaw,pRaw){const c=normalizePersonalizationConfig(cRaw),p=normalizeProductPersonalization(pRaw);if(!p.enabled)return[];const cat=c.pricing[p.category];if(!cat)return[];const on=new Set(p.enabledOptions);return[...cat.options,...c.photoTypes].filter(x=>on.has(x.id));}
+export function ownPiecePersonalizationOptions(cRaw){const c=normalizePersonalizationConfig(cRaw);if(!c.ownPiece.enabled)return[];const photos=new Map(c.photoTypes.map(x=>[x.id,x]));return[...c.ownPiece.options,photos.get("photo_vector"),photos.get("photo_real")].filter(Boolean);}
