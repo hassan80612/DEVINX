@@ -1,6 +1,7 @@
+'use client';
+
 import '../hub.css';
 import '../theme.css';
-'use client';
 
 import {FormEvent,useState} from 'react';
 import Link from 'next/link';
