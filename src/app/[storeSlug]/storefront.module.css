@@ -40,6 +40,9 @@
 .footer{display:flex;justify-content:space-between;gap:20px;padding:23px max(18px,calc((100vw - 1120px)/2));border-top:1px solid rgba(80,132,160,.16);background:rgba(5,15,17,.94);color:#fff}
 .footer strong{font-size:15px;color:#f2cb62}
 .footer span{display:block;margin-top:5px;color:#7b919f;font-size:10px}
+.footerMeta{display:grid;justify-items:end;gap:8px;max-width:620px}
+.devinxAttribution{color:#738992;font-size:9px;font-weight:800;letter-spacing:.02em;text-decoration:none;transition:color .16s ease,opacity .16s ease;opacity:.82}
+.devinxAttribution:hover,.devinxAttribution:focus-visible{color:#d7b85a;opacity:1;text-decoration:underline;text-underline-offset:3px}
 .paymentNotice{position:relative;overflow:hidden;max-width:620px;margin:0;padding:10px 14px;border:1px solid rgba(242,203,98,.22);border-radius:12px;background:linear-gradient(180deg,rgba(242,203,98,.07),rgba(242,203,98,.025));color:#f1cf72;font-size:11px;font-weight:850;line-height:1.45;text-align:right;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 0 22px rgba(242,203,98,.055);text-shadow:0 0 12px rgba(242,203,98,.12)}
 .paymentNotice:after{content:"";position:absolute;top:-25%;bottom:-25%;left:-35%;width:24%;background:linear-gradient(90deg,transparent,rgba(255,244,185,.18),transparent);transform:skewX(-18deg);animation:storefrontPaymentShine 4.8s ease-in-out infinite}
 @keyframes storefrontPaymentShine{0%,25%{left:-35%}65%,100%{left:125%}}
@@ -80,7 +83,9 @@
   .photoBox img{padding:5px}
   .footer{display:block}
   .footer span{display:block;margin-top:5px}
+  .footerMeta{justify-items:start;max-width:none}
   .paymentNotice{max-width:none;margin-top:12px;padding:10px 12px;font-size:10px;text-align:left}
+  .devinxAttribution{font-size:9px}
   .videos{padding:18px}
   .zoomBackdrop{padding:8px}
   .zoomModal{width:calc(100vw - 16px);height:76vh;padding:50px 38px 42px;border-radius:14px}
