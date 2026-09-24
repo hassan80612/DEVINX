@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import {BrandLogo} from "@/components/BrandLogo";
 import {fetchPublicStorePlans} from "@/lib/storefront-backend";
 import styles from "./page.module.css";
+import {StoreAvailabilityGate} from "@/components/StoreAvailabilityGate";
 
 export const metadata:Metadata={
   title:{absolute:"DevinX Loja | Vitrine, estoque e vendas"},
@@ -33,10 +34,11 @@ export default async function LojaPage(){
   const planData=await fetchPublicStorePlans().catch(()=>({plans:[]}));
   const plans=Array.isArray(planData?.plans)?planData.plans:[];
 
-  return <main className={styles.page}>
+  return <StoreAvailabilityGate><main className={styles.page}>
     <header className={styles.header}>
       <a href="/" className={styles.brand} aria-label="DevinX"><BrandLogo/></a>
       <div className={styles.headerActions}>
+        <a href="/financeiro">Financeiro</a>
         <a href="#planos">Planos</a>
         <a href="/loja/entrar" className={styles.headerLogin}>Entrar na DevinX Loja</a>
       </div>
@@ -166,6 +168,6 @@ export default async function LojaPage(){
 
     <section className={styles.retention}><strong>Sobre cancelamento e seus dados</strong><p>Ao cancelar, você continua com acesso até o fim do período pago. Depois do vencimento, a loja é suspensa e mantida por 7 dias para possível reativação. Sem reativação nesse prazo, o conteúdo é excluído definitivamente.</p></section>
 
-    <footer className={styles.footer}><span>© 2026 DevinX · Loja</span><a href="/">Voltar ao DevinX</a></footer>
-  </main>;
+    <footer className={styles.footer}><span>© 2026 DevinX · Loja</span><div className={styles.footerLinks}><a href="/financeiro">Conhecer DevinX Financeiro</a><a href="/">Voltar ao DevinX</a></div></footer>
+  </main></StoreAvailabilityGate>;
 }
