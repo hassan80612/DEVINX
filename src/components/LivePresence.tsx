@@ -8,11 +8,11 @@ const SESSION_KEY='devinx-presence-browser-v2';
 const SECRET_KEY='devinx-presence-secret-v2';
 const SOURCE_KEY='devinx-presence-source-v1';
 const PRESENCE_CLIENT_VERSION=2;
-const HEARTBEAT_MS=60_000;
+const HEARTBEAT_MS=120_000;
 const ACTIVE_WINDOW_MS=180_000;
-const MASTER_REFRESH_MS=20_000;
+const MASTER_REFRESH_MS=30_000;
 const MASTER_REQUEST_TIMEOUT_MS=8_000;
-const ONLINE_WINDOW_SECONDS=150;
+const ONLINE_WINDOW_SECONDS=210;
 
 type LivePresenceRow={
   session_id:string;
