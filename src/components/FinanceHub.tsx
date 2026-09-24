@@ -32,19 +32,19 @@ type Section='home'|'movements'|'work'|'plan'|'more'|'cards'|'bills'|'reserves'|
 type CaptureMode='income'|'expense';
 type CaptureRequest={id:number;mode:CaptureMode};
 type Access={is_admin:boolean;allowed:boolean;status:string;source:string;expires_at:string|null;subscription_required:boolean;checkout_url:string|null};
+type ProfilePreferences={locale:string|null;currency_code:string|null;timezone:string|null};
 
 function checkoutForLocale(url:string,locale:string){
   if(locale==='pt-BR'||/([?&])region=intl(?:&|$)/.test(url))return url;
   return url+(url.includes('?')?'&':'?')+'region=intl';
 }
 
-export function FinanceHub(){
+export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;initialProfile:ProfilePreferences}){
   const{locale,setLocale,setCurrencyCode,setTimezone,date,t}=useI18n();
   const[section,setSection]=useState<Section>('home');
   const[sectionReady,setSectionReady]=useState(false);
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
-  const[access,setAccess]=useState<Access|null>(null);
-  const[accessError,setAccessError]=useState('');
+  const access=initialAccess;
 
   useEffect(()=>{
     try{
@@ -60,21 +60,11 @@ export function FinanceHub(){
     try{sessionStorage.setItem('devinx-active-section',section)}catch{}
   },[section,sectionReady]);
 
-  useEffect(()=>{(async()=>{
-    const s=createClient();
-    const{data:{user}}=await s.auth.getUser();
-    if(!user){location.replace('/entrar');return}
-    const[{data,error},{data:profile}]=await Promise.all([
-      s.rpc('get_devinx_access_status'),
-      s.from('profiles').select('locale,currency_code,timezone').eq('id',user.id).maybeSingle()
-    ]);
-    if(profile?.locale)setLocale(profile.locale as any);
-    if(SUPPORTED_CURRENCIES.includes(profile?.currency_code as CurrencyCode))setCurrencyCode(profile!.currency_code as CurrencyCode);
-    if(profile?.timezone)setTimezone(profile.timezone);
-    if(error){setAccessError('access');return}
-    const row=Array.isArray(data)?data[0]:data;
-    setAccess(row as Access);
-  })()},[]);
+  useEffect(()=>{
+    if(initialProfile.locale)setLocale(initialProfile.locale as any);
+    if(SUPPORTED_CURRENCIES.includes(initialProfile.currency_code as CurrencyCode))setCurrencyCode(initialProfile.currency_code as CurrencyCode);
+    if(initialProfile.timezone)setTimezone(initialProfile.timezone);
+  },[initialProfile.currency_code,initialProfile.locale,initialProfile.timezone,setCurrencyCode,setLocale,setTimezone]);
 
   useEffect(()=>{
     if(!access)return;
@@ -122,10 +112,6 @@ export function FinanceHub(){
   async function signOut(){try{sessionStorage.removeItem('devinx-active-section')}catch{}await createClient().auth.signOut();location.href='/'}
 
   if(!sectionReady)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
-  if(accessError)return <main className="financeApp">
-    <section className="centerState"><b>DEVINX</b><p>{t('common.errorAccess')}</p><button className="primary" onClick={()=>location.reload()}>{t('common.tryAgain')}</button></section></main>;
-  if(!access)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
-  if(!access.allowed)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
 
   return <main className="financeApp">
     <IntegrationBootstrap enabled={access.is_admin}/>
