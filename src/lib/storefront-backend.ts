@@ -34,3 +34,27 @@ export async function proxyStorefrontRequest(path: string, init?: RequestInit) {
     }
   });
 }
+
+
+export async function fetchPublicStorePlans() {
+  const response = await fetch(`${storeBackendOrigin()}/api/public-store-plans`, {
+    cache: "no-store",
+    headers: { "Accept": "application/json" }
+  });
+  if (!response.ok) throw new Error(`store_plans_backend_${response.status}`);
+  return response.json() as Promise<{
+    schema_version: number;
+    plans: Array<{
+      id: string;
+      name: string;
+      priceCents: number;
+      products: number;
+      photos: number;
+      photosPerProduct: number;
+      links: number;
+      videos: number;
+      collaborators: number;
+      whatsappContacts: number;
+    }>;
+  }>;
+}
