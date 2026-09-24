@@ -1,6 +1,7 @@
+'use client';
+
 import '../hub.css';
 import '../theme.css';
-'use client';
 
 import {useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
