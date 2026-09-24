@@ -74,9 +74,9 @@ test("sincronizacao administrativa da Kiwify nao roda a cada entrada",()=>{
 
 test("presenca do DevinX usa frequencia economica",()=>{
   const source=read("src/components/LivePresence.tsx");
-  assert.ok(source.includes("HEARTBEAT_MS=60_000"));
-  assert.ok(source.includes("MASTER_REFRESH_MS=20_000"));
-  assert.ok(source.includes("ONLINE_WINDOW_SECONDS=150"));
+  assert.ok(source.includes("HEARTBEAT_MS=120_000"));
+  assert.ok(source.includes("MASTER_REFRESH_MS=30_000"));
+  assert.ok(source.includes("ONLINE_WINDOW_SECONDS=210"));
 });
 
 test("vitrine publica usa ISR curto em vez de render dinamico a cada visita",()=>{
