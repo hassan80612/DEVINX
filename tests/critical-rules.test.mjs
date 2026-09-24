@@ -123,3 +123,22 @@ test("presença mantém recurso com frequência econômica",()=>{
   assert.ok(source.includes("MASTER_REFRESH_MS=30_000"));
   assert.ok(source.includes("ONLINE_WINDOW_SECONDS=210"));
 });
+
+
+test("APIs do DevinX não passam pelo middleware",()=>{
+  const source=read("src/middleware.ts");
+  assert.ok(source.includes("((?!api|_next/static"));
+});
+
+test("vitrine usa shipping_free do payload sem segunda chamada",()=>{
+  const source=read("src/app/[storeSlug]/StorefrontClientV3.js");
+  assert.ok(source.includes("Boolean(item.shipping_free)"));
+  assert.equal(source.includes("/shipping-flags"),false);
+});
+
+test("presença escolhe uma única aba líder por navegador",()=>{
+  const source=read("src/components/LivePresence.tsx");
+  assert.ok(source.includes("LEADER_KEY='devinx-presence-leader-v1'"));
+  assert.ok(source.includes("claimPresenceLeader(tabId)"));
+  assert.ok(source.includes("releasePresenceLeader(tabId)"));
+});
