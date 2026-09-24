@@ -3,8 +3,8 @@
 import {useI18n} from '@/i18n/provider';
 import {LanguageMenu} from '@/components/LanguageMenu';
 import {BrandLogo} from '@/components/BrandLogo';
-import {SubscriptionPlans} from '@/components/SubscriptionPlans';
 import {LandingDemoVideo} from '@/components/LandingDemoVideo';
+import {ProductOverview,ProductPlansHub} from '@/components/ProductHub';
 import styles from './page.module.css';
 
 const features = [
@@ -30,7 +30,9 @@ export default function Home() {
       <div className="landingTopActions"><LanguageMenu/></div>
     </header>
 
-    <section className="landingHero" aria-labelledby="landing-title">
+    <ProductOverview/>
+
+    <section id="financeiro" className="landingHero" aria-labelledby="landing-title">
       <div className="landingCopy">
         <span className="goldPill">{t('landing.eyebrow')}</span>
         <h1 id="landing-title">{t('landing.title')} <em>{t('landing.accent')}</em></h1>
@@ -90,7 +92,7 @@ export default function Home() {
       </div>
     </section>
 
-    <section className="landingPlansSection" id="planos"><SubscriptionPlans/></section>
+    <section className="landingPlansSection" id="planos"><ProductPlansHub/></section>
     <footer>DEVINX <span>{t('brand.tagline')}</span></footer>
   </main>;
 }
