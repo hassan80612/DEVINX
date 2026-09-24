@@ -55,3 +55,11 @@ test("plano da DevinX Loja entra na ponte direta de checkout",()=>{
   assert.equal(source.includes("?assinar="),false);
   assert.equal(source.includes("#planos"),false);
 });
+
+
+test("idioma do Financeiro é inicializado uma vez e não sobrescreve escolha do usuário",()=>{
+  const source=read("src/components/FinanceHub.tsx");
+  assert.ok(source.includes("initialPreferencesApplied=useRef(false)"));
+  assert.ok(source.includes("if(initialPreferencesApplied.current)return"));
+  assert.ok(source.includes("initialPreferencesApplied.current=true"));
+});
