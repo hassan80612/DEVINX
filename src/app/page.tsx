@@ -2,10 +2,10 @@ import type {Metadata} from "next";
 import {HomeHub} from "@/components/HomeHub";
 
 export const metadata:Metadata={
-  title:{absolute:"DevinX | Escolha seu produto"},
-  description:"Escolha seu produto DevinX: Financeiro ou Loja. São soluções independentes, com acesso e assinatura próprios.",
+  title:{absolute:"DevinX | Você no controle"},
+  description:"Escolha o que mantém você no controle: organize suas finanças com o DevinX Financeiro ou sua operação com a DevinX Loja.",
   alternates:{canonical:"/"},
-  openGraph:{title:"DevinX | Escolha seu produto",description:"Financeiro ou Loja. Produtos independentes, cada um com seu próprio acesso.",url:"https://devinx.com.br",siteName:"DEVINX",type:"website"}
+  openGraph:{title:"DevinX | Você no controle",description:"Finanças, trabalho ou negócio: escolha o DevinX que faz sentido para a sua rotina.",url:"https://devinx.com.br",siteName:"DEVINX",type:"website"}
 };
 
 export default function Home(){return <HomeHub/>;}

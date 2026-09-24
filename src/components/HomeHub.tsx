@@ -190,71 +190,71 @@ const FINANCE_FEATURES={
     "Salary and monthly income","Extra income",
     "Automatic daily target","Current balance",
     "Projected balance","Monthly bills",
-    "Cards and installments","Future receivables",
-    "Financial reserves","Goals and objectives",
-    "Work sessions","Gross vs net",
-    "Automatic receivables","Scheduled future expenses",
+    "Cards and installments","Automatic receivables",
+    "Scheduled future expenses","Financial reserves",
+    "Goals and objectives","Work sessions",
+    "Gross vs net","Monthly planning",
     "Daily transactions","Categories and filters",
     "12-month history","Income vs expenses",
-    "Future commitments","Complete reports",
-    "Monthly planning","Date-based control",
-    "Freelancers and self-employed","Companies and businesses"
+    "30-day forecast","Complete reports",
+    "Commitment reserves","Freelancers and self-employed",
+    "App drivers","Companies and businesses"
   ],
   es:[
     "Salario e ingreso mensual","Ingresos extra",
     "Meta diaria automática","Saldo actual",
     "Saldo previsto","Cuentas mensuales",
-    "Tarjetas y cuotas","Cobros futuros",
-    "Reservas financieras","Metas y objetivos",
-    "Jornada de trabajo","Bruto vs neto",
-    "Cobros automáticos","Gastos futuros programados",
+    "Tarjetas y cuotas","Cobros automáticos",
+    "Gastos futuros programados","Reservas financieras",
+    "Metas y objetivos","Jornada de trabajo",
+    "Bruto vs neto","Planificación mensual",
     "Movimientos diarios","Categorías y filtros",
     "Historial de 12 meses","Ingresos vs gastos",
-    "Compromisos futuros","Informes completos",
-    "Planificación mensual","Control por fechas",
-    "Autónomos y freelancers","Empresas y negocios"
+    "Previsión de los próximos 30 días","Informes completos",
+    "Reservas para compromisos","Autónomos y freelancers",
+    "Conductores de aplicaciones","Empresas y negocios"
   ],
   fr:[
     "Salaire et revenu mensuel","Revenus supplémentaires",
     "Objectif quotidien automatique","Solde actuel",
     "Solde prévisionnel","Factures mensuelles",
-    "Cartes et échéances","Encaissements futurs",
-    "Réserves financières","Objectifs",
-    "Journée de travail","Brut vs net",
-    "Encaissements automatiques","Dépenses futures programmées",
+    "Cartes et échéances","Encaissements automatiques",
+    "Dépenses futures programmées","Réserves financières",
+    "Objectifs","Journée de travail",
+    "Brut vs net","Planification mensuelle",
     "Mouvements quotidiens","Catégories et filtres",
     "Historique sur 12 mois","Entrées vs sorties",
-    "Engagements futurs","Rapports complets",
-    "Planification mensuelle","Contrôle par dates",
-    "Indépendants et freelances","Entreprises et activités"
+    "Prévision sur 30 jours","Rapports complets",
+    "Réserves pour engagements","Indépendants et freelances",
+    "Chauffeurs d'applications","Entreprises et activités"
   ],
   de:[
     "Gehalt und Monatseinkommen","Zusätzliche Einnahmen",
     "Automatisches Tagesziel","Aktueller Saldo",
     "Prognostizierter Saldo","Monatliche Rechnungen",
-    "Karten und Raten","Künftige Einnahmen",
-    "Finanzielle Rücklagen","Ziele",
-    "Arbeitszeiten","Brutto vs netto",
-    "Automatische Einnahmen","Geplante zukünftige Ausgaben",
+    "Karten und Raten","Automatische Einnahmen",
+    "Geplante zukünftige Ausgaben","Finanzielle Rücklagen",
+    "Ziele","Arbeitszeiten",
+    "Brutto vs netto","Monatsplanung",
     "Tägliche Bewegungen","Kategorien und Filter",
     "12-Monats-Verlauf","Einnahmen vs Ausgaben",
-    "Künftige Verpflichtungen","Vollständige Berichte",
-    "Monatsplanung","Datumssteuerung",
-    "Selbstständige und Freelancer","Unternehmen und Betriebe"
+    "30-Tage-Prognose","Vollständige Berichte",
+    "Rücklagen für Verpflichtungen","Selbstständige und Freelancer",
+    "App-Fahrer","Unternehmen und Betriebe"
   ],
   ar:[
     "الراتب والدخل الشهري","دخل إضافي",
     "هدف يومي تلقائي","الرصيد الحالي",
     "الرصيد المتوقع","الفواتير الشهرية",
-    "البطاقات والأقساط","المبالغ القادمة",
-    "الاحتياطي المالي","الأهداف",
-    "ساعات العمل","الإجمالي مقابل الصافي",
-    "تحصيلات تلقائية","مصروفات مستقبلية مجدولة",
+    "البطاقات والأقساط","تحصيلات تلقائية",
+    "مصروفات مستقبلية مجدولة","الاحتياطي المالي",
+    "الأهداف","ساعات العمل",
+    "الإجمالي مقابل الصافي","تخطيط شهري",
     "الحركات اليومية","الفئات والفلاتر",
     "سجل 12 شهراً","الدخل مقابل المصروف",
-    "الالتزامات القادمة","تقارير كاملة",
-    "تخطيط شهري","تحكم حسب التاريخ",
-    "المستقلون وأصحاب الأعمال الحرة","الشركات والأعمال"
+    "توقعات 30 يوماً","تقارير كاملة",
+    "احتياطي للالتزامات","المستقلون وأصحاب الأعمال الحرة",
+    "سائقو التطبيقات","الشركات والأعمال"
   ]
 } as const;
 
@@ -359,6 +359,6 @@ export function HomeHub(){
       </>}
     </section>
 
-    <footer className={styles.footer}>DEVINX · VOCÊ NO CONTROLE</footer>
+    <footer className={styles.footer}>{c.control}</footer>
   </main>;
 }
