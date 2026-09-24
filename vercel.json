@@ -1,0 +1,65 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
+    {
+      "src": "/wp-admin(?:/.*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/wp-login\\.php",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/xmlrpc\\.php",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/wp-content(?:/.*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/wp-includes(?:/.*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/phpmyadmin(?:/.*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/vendor/phpunit(?:/.*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/\\.git(?:/.*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/\\.env(?:\\..*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/server-status(?:/.*)?",
+      "mitigate": {
+        "action": "deny"
+      }
+    }
+  ]
+}

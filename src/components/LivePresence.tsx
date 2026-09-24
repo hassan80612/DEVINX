@@ -7,6 +7,9 @@ import {createClient} from '@/lib/supabase/client';
 const SESSION_KEY='devinx-presence-browser-v2';
 const SECRET_KEY='devinx-presence-secret-v2';
 const SOURCE_KEY='devinx-presence-source-v1';
+const TAB_KEY='devinx-presence-tab-v1';
+const LEADER_KEY='devinx-presence-leader-v1';
+const LEADER_LEASE_MS=150_000;
 const PRESENCE_CLIENT_VERSION=2;
 const HEARTBEAT_MS=120_000;
 const ACTIVE_WINDOW_MS=180_000;
@@ -53,6 +56,33 @@ function sessionIdentity(){
   }catch{
     return{sessionId:uuid(),secret:randomSecret()};
   }
+}
+
+function tabIdentity(){
+  try{
+    let tabId=sessionStorage.getItem(TAB_KEY);
+    if(!tabId){tabId=uuid();sessionStorage.setItem(TAB_KEY,tabId)}
+    return tabId;
+  }catch{return uuid()}
+}
+
+function claimPresenceLeader(tabId:string){
+  try{
+    const now=Date.now();
+    const current=JSON.parse(localStorage.getItem(LEADER_KEY)||'null') as {tabId?:string;expiresAt?:number}|null;
+    if(current?.tabId&&current.tabId!==tabId&&Number(current.expiresAt||0)>now)return false;
+    const next={tabId,expiresAt:now+LEADER_LEASE_MS};
+    localStorage.setItem(LEADER_KEY,JSON.stringify(next));
+    const verify=JSON.parse(localStorage.getItem(LEADER_KEY)||'null') as {tabId?:string}|null;
+    return verify?.tabId===tabId;
+  }catch{return true}
+}
+
+function releasePresenceLeader(tabId:string){
+  try{
+    const current=JSON.parse(localStorage.getItem(LEADER_KEY)||'null') as {tabId?:string}|null;
+    if(current?.tabId===tabId)localStorage.removeItem(LEADER_KEY);
+  }catch{}
 }
 
 function sourceLabel(){
@@ -113,10 +143,12 @@ export function PresenceProvider({children}:{children:ReactNode}){
     const client=createClient();
     const{sessionId,secret}=sessionIdentity();
     const source=sourceLabel();
+    const tabId=tabIdentity();
 
     async function heartbeat(){
       if(!active||sending||document.visibilityState!=='visible')return;
       if(Date.now()-lastActivityRef.current>ACTIVE_WINDOW_MS)return;
+      if(!claimPresenceLeader(tabId))return;
       sending=true;
       try{
         const{error}=await client.rpc('touch_devinx_presence',{
@@ -158,6 +190,7 @@ export function PresenceProvider({children}:{children:ReactNode}){
       void heartbeat();
     };
     const timer=window.setInterval(()=>{void heartbeat()},HEARTBEAT_MS);
+    const onPageHide=()=>releasePresenceLeader(tabId);
 
     document.addEventListener('visibilitychange',onVisible);
     window.addEventListener('focus',onFocus);
@@ -165,6 +198,7 @@ export function PresenceProvider({children}:{children:ReactNode}){
     window.addEventListener('keydown',markActivity);
     window.addEventListener('touchstart',markActivity,{passive:true});
     window.addEventListener('scroll',markActivity,{passive:true});
+    window.addEventListener('pagehide',onPageHide);
 
     return()=>{
       active=false;
@@ -176,6 +210,8 @@ export function PresenceProvider({children}:{children:ReactNode}){
       window.removeEventListener('keydown',markActivity);
       window.removeEventListener('touchstart',markActivity);
       window.removeEventListener('scroll',markActivity);
+      window.removeEventListener('pagehide',onPageHide);
+      releasePresenceLeader(tabId);
       authSubscription.subscription.unsubscribe();
     };
   },[]);
@@ -259,7 +295,7 @@ export function MasterLivePresence(){
       <article><small>Logados</small><b>{logged}</b></article>
     </div>
 
-    <p className="sectionLead">Leitura própria do DevinX: um visitante por navegador, heartbeat somente com atividade recente, atualização a cada 10s, presença válida por 75s e conta Master fora da contagem.</p>
+    <p className="sectionLead">Leitura própria do DevinX: um visitante por navegador, apenas uma aba envia heartbeat, somente com atividade recente e conta Master fora da contagem.</p>
 
     <div className="adminUserList">
       {rows.length===0
