@@ -84,7 +84,7 @@ export function HomeHub(){
     </section>
 
     <section className={styles.products} aria-label={c.choose}>
-      <article className={`${styles.product} ${styles.finance}`}>
+      <article className={styles.product}>
         <div className={styles.productGlow}></div>
         <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
         <div className={styles.copy}>
@@ -114,7 +114,7 @@ export function HomeHub(){
 
       <div className={styles.or} aria-hidden="true">{c.or}</div>
 
-      <article className={`${styles.product} ${styles.store}`}>
+      <article className={styles.product}>
         <div className={styles.productGlow}></div>
         <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
         <div className={styles.copy}>
