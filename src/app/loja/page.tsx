@@ -163,7 +163,7 @@ export default async function LojaPage(){
 
     <section className={styles.finalCta}>
       <div><span>SUA OPERAÇÃO JÁ EXISTE</span><h2>Agora dê a ela uma estrutura à altura.</h2><p>Uma vitrine bonita para vender e um painel simples para não perder o controle.</p></div>
-      <a href="#planos" className={styles.primary}>Escolher meu plano</a>
+      <a href="/iguassu-shop" className={styles.primary}>Ver vitrine de exemplo</a>
     </section>
 
     <section className={styles.retention}><strong>Sobre cancelamento e seus dados</strong><p>Ao cancelar, você continua com acesso até o fim do período pago. Depois do vencimento, a loja é suspensa e mantida por 7 dias para possível reativação. Sem reativação nesse prazo, o conteúdo é excluído definitivamente.</p></section>
