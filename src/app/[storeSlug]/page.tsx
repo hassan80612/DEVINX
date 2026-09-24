@@ -4,8 +4,7 @@ import {fetchPublicStorefront} from "@/lib/storefront-backend";
 // @ts-ignore -- Storefront client remains in JavaScript during the staged migration.
 import StorefrontClient from "./StorefrontClient";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 30;
 
 type RouteProps={params:Promise<{storeSlug:string}>};
 
