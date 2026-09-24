@@ -154,7 +154,7 @@ export default async function LojaPage(){
           <li>Até {plan.photosPerProduct} fotos por produto</li>
           <li>{plan.whatsappContacts} {plan.whatsappContacts===1?"WhatsApp":"WhatsApps"}</li>
           <li>{plan.links} {plan.links===1?"link externo":"links externos"}</li>
-          <li>{plan.collaborators===0?"Acesso do assinante":`Acesso para +${plan.collaborators} ${plan.collaborators===1?"pessoa":"pessoas"}`}</li>
+          <li>Até {Number(plan.collaborators||0)+1} usuários</li>
         </ul>
         <a href={`/loja/assinar/${plan.id}`} className={styles.subscribeButton}>Assinar {plan.name}</a>
       </article>)}</div>:<div className={styles.planUnavailable}>Os planos estão temporariamente indisponíveis. Tente novamente em instantes.</div>}
