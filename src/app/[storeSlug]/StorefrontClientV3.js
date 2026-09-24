@@ -60,7 +60,7 @@ export default function StorefrontClientV3({initialData}){
   const [photoIndex,setPhotoIndex]=useState({});
   const [zoom,setZoom]=useState(null);
   const [zoomTouchStart,setZoomTouchStart]=useState(null);
-  const [shippingFree,setShippingFree]=useState({});
+  const [shippingFree,setShippingFree]=useState(()=>Object.fromEntries((products||[]).map((item)=>[item.id,Boolean(item.shipping_free)])));
   const [favorites,setFavorites]=useState([]);
   const [cart,setCart]=useState([]);
   const [panel,setPanel]=useState("");
@@ -77,9 +77,9 @@ export default function StorefrontClientV3({initialData}){
 
   useEffect(()=>{
     const savedFavorites=safeRead(`${storageBase}:favorites`,[]);const savedCart=safeRead(`${storageBase}:cart`,[]);
-    setFavorites(Array.isArray(savedFavorites)?savedFavorites:[]);setCart(Array.isArray(savedCart)?savedCart:[]);setShippingCep(formatCep(safeRead(`${storageBase}:shipping-cep`,"")));
-    fetch(`/api/storefront/${encodeURIComponent(store.slug)}/shipping-flags`,{cache:"no-store"}).then((r)=>r.ok?r.json():Promise.reject()).then((json)=>{const flags=Object.fromEntries((json.products||[]).map((item)=>[item.id,Boolean(item.shipping_free)]));setShippingFree(flags);setCart((current)=>current.map((item)=>({...item,shipping_free:Boolean(flags[item.product_id])})));}).catch(()=>{});
-  },[storageBase,store.slug]);
+    const flags=Object.fromEntries((products||[]).map((item)=>[item.id,Boolean(item.shipping_free)]));
+    setShippingFree(flags);setFavorites(Array.isArray(savedFavorites)?savedFavorites:[]);setCart((Array.isArray(savedCart)?savedCart:[]).map((item)=>({...item,shipping_free:Boolean(flags[item.product_id])})));setShippingCep(formatCep(safeRead(`${storageBase}:shipping-cep`,"")));
+  },[storageBase,products]);
   useEffect(()=>{safeWrite(`${storageBase}:favorites`,favorites);},[favorites,storageBase]);
   useEffect(()=>{safeWrite(`${storageBase}:cart`,cart);setCartQuote(null);setCartServiceId("");setCartShippingError("");},[cart,storageBase]);
   useEffect(()=>{safeWrite(`${storageBase}:shipping-cep`,cleanCep(shippingCep));},[shippingCep,storageBase]);
