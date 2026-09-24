@@ -96,3 +96,8 @@
   .actions{grid-template-columns:1fr 1fr;gap:8px}.primary,.secondary{min-height:48px;padding:10px 8px;font-size:12px}
   .preview{margin-top:22px}.financeHero strong{font-size:27px}.kpis{gap:7px}
 }
+
+.storeLinks{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.exampleLink{display:inline-flex;margin-top:13px;color:#9fb8b1;font-size:11px;font-weight:800;text-decoration:none}
+.exampleLink:hover{color:#e0c15f}
+@media(max-width:500px){.storeLinks{align-items:flex-start;flex-direction:column;gap:0}}
