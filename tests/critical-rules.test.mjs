@@ -4,10 +4,14 @@ import {readFileSync} from "node:fs";
 
 const read=(path)=>readFileSync(path,"utf8");
 
-test("middleware protege sessão sem consultar assinatura em páginas públicas",()=>{
+test("middleware mantém páginas públicas rápidas e protege acesso do onboarding",()=>{
   const source=read("src/middleware.ts");
   assert.match(source,/if\(!isProtected\)return NextResponse\.next/);
-  assert.doesNotMatch(source,/get_devinx_access_status/);
+  assert.match(source,/pathname==='\/onboarding'/);
+  assert.match(source,/rpc\('get_devinx_access_status'\)/);
+  const publicFastPath=source.indexOf("if(!isProtected)return NextResponse.next");
+  const accessRpc=source.indexOf("rpc('get_devinx_access_status')");
+  assert.ok(publicFastPath>=0&&accessRpc>publicFastPath);
 });
 
 test("painel resolve acesso e preferências no servidor uma única vez",()=>{

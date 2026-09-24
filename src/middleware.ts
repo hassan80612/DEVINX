@@ -53,8 +53,20 @@ export async function middleware(request:NextRequest){
     return copySessionCookies(response,NextResponse.redirect(url));
   }
 
-  // Access/subscription checks are intentionally handled by the protected page
-  // itself, once, instead of repeating an RPC in middleware and in the client.
+  // The onboarding screen is client-only, so it needs one access check here.
+  // /painel performs its access check once in its server page instead.
+  if(pathname==='/onboarding'||pathname.startsWith('/onboarding/')){
+    const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
+    const access=Array.isArray(accessData)?accessData[0]:accessData;
+    if(accessError||!access?.allowed){
+      const url=request.nextUrl.clone();
+      url.pathname='/entrar';
+      url.search='';
+      url.searchParams.set('acesso','expirado');
+      return copySessionCookies(response,NextResponse.redirect(url));
+    }
+  }
+
   return response;
 }
 
