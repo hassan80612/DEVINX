@@ -13,95 +13,190 @@
   border-bottom:1px solid rgba(232,205,125,.16)
 }
 .brand{display:inline-flex}
-.intro{width:min(820px,100%);margin:0 auto;padding:58px 0 30px;text-align:center}
+.intro{width:min(900px,100%);margin:0 auto;padding:58px 0 30px;text-align:center}
 .control{
   display:inline-flex;align-items:center;justify-content:center;
-  padding:8px 14px;border:1px solid rgba(226,193,101,.42);border-radius:999px;
-  background:rgba(7,42,37,.42);color:#e1c467;font-size:10px;font-weight:950;
-  letter-spacing:.16em;box-shadow:inset 0 1px 0 rgba(255,255,255,.04)
+  padding:9px 15px;border:1px solid rgba(226,193,101,.44);border-radius:999px;
+  background:rgba(7,32,29,.48);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 0 24px rgba(213,174,70,.06)
 }
-.intro h1{margin:18px auto 0;max-width:760px;font-size:clamp(36px,5.7vw,64px);line-height:1.02;letter-spacing:-.05em}
-.intro p{max-width:650px;margin:16px auto 0;color:#c1d0cc;font-size:15px;line-height:1.6}.intro p::after{content:"";display:block;width:54px;height:1px;margin:20px auto 0;background:linear-gradient(90deg,transparent,#c9aa4e,transparent)}
+.control b{
+  background:linear-gradient(105deg,#9d7620 0%,#e8c45c 28%,#fff3b4 45%,#ffffff 50%,#ffe98d 56%,#c8972c 78%,#8e681b 100%);
+  background-size:260% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  font-size:10px;font-weight:950;letter-spacing:.16em;
+  animation:brandShine 3.8s linear infinite
+}
+.intro h1{margin:18px auto 0;max-width:840px;font-size:clamp(36px,5.7vw,64px);line-height:1.02;letter-spacing:-.05em}
+.intro p{max-width:720px;margin:16px auto 0;color:#c1d0cc;font-size:15px;line-height:1.6}
+.intro p::after{content:"";display:block;width:64px;height:1px;margin:20px auto 0;background:linear-gradient(90deg,transparent,#d4b34e,transparent)}
+
 .products{width:min(1160px,100%);margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr);gap:12px;align-items:stretch}
 .product{
   position:relative;overflow:hidden;min-width:0;padding:28px;
-  border:1px solid rgba(222,190,99,.22);border-radius:25px;
-  background:linear-gradient(180deg,rgba(11,55,49,.96),rgba(6,36,34,.98));
-  box-shadow:0 24px 55px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.03);
+  border:1px solid rgba(222,190,99,.24);border-radius:25px;
+  box-shadow:0 26px 62px rgba(0,0,0,.26),inset 0 1px 0 rgba(255,255,255,.035)
 }
 .product::after{
   content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
-  background:linear-gradient(135deg,rgba(255,255,255,.025),transparent 30%,transparent 68%,rgba(220,184,84,.03))
+  background:linear-gradient(135deg,rgba(255,255,255,.025),transparent 28%,transparent 70%,rgba(220,184,84,.035))
 }
-.independent{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-2px 0 18px;padding-bottom:14px;border-bottom:1px solid rgba(221,188,95,.14)}.independent b{color:#e2c45e;font-size:8px;letter-spacing:.14em}.independent span{color:#93a9a4;font-size:8px;text-align:right}.or{align-self:center;justify-self:center;display:grid;place-items:center;width:38px;height:38px;border:1px solid rgba(221,188,95,.28);border-radius:50%;background:#082f2a;color:#d6b85b;font-size:9px;font-weight:950;letter-spacing:.08em;box-shadow:0 8px 20px rgba(0,0,0,.16)}.productGlow{position:absolute;right:-120px;top:-140px;width:330px;height:330px;border-radius:50%;background:radial-gradient(circle,rgba(219,184,83,.15),transparent 66%);filter:blur(8px);pointer-events:none}
+.financeProduct{
+  background:
+    radial-gradient(circle at 92% 6%,rgba(212,171,67,.13),transparent 28%),
+    linear-gradient(155deg,#111318 0%,#090b0f 52%,#050608 100%);
+  border-color:rgba(219,183,82,.34);
+  box-shadow:0 30px 70px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.04),0 0 0 1px rgba(214,176,72,.03)
+}
+.storeProduct{
+  background:
+    radial-gradient(circle at 90% 4%,rgba(220,184,83,.14),transparent 30%),
+    linear-gradient(165deg,rgba(11,58,51,.99),rgba(5,34,32,.99) 58%,rgba(4,27,27,.99));
+}
+.independent{
+  position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:-2px 0 18px;padding-bottom:14px;border-bottom:1px solid rgba(221,188,95,.15)
+}
+.independent b{color:#e2c45e;font-size:8px;letter-spacing:.14em}
+.independent span{color:#93a9a4;font-size:8px;text-align:right}
+.or{
+  align-self:center;justify-self:center;display:grid;place-items:center;width:38px;height:38px;
+  border:1px solid rgba(221,188,95,.30);border-radius:50%;background:#082f2a;color:#d6b85b;
+  font-size:9px;font-weight:950;letter-spacing:.08em;box-shadow:0 8px 20px rgba(0,0,0,.16)
+}
+.productGlow{
+  position:absolute;right:-120px;top:-140px;width:330px;height:330px;border-radius:50%;
+  background:radial-gradient(circle,rgba(219,184,83,.16),transparent 66%);filter:blur(8px);pointer-events:none
+}
 .copy{position:relative;z-index:2}
 .tag{
   display:inline-flex;align-items:center;gap:9px;max-width:100%;
-  padding:8px 13px;border:1px solid rgba(221,188,95,.34);border-radius:999px;
-  background:rgba(6,39,35,.54);color:#e7d07c;font-size:9px;font-weight:950;
+  padding:8px 13px;border:1px solid rgba(221,188,95,.36);border-radius:999px;
+  background:rgba(5,15,17,.46);color:#e7d07c;font-size:9px;font-weight:950;
   letter-spacing:.11em;line-height:1.25
 }
-.tag i{width:7px;height:7px;border-radius:50%;background:#d8b958;box-shadow:0 0 12px rgba(216,185,88,.5);flex:0 0 auto}
+.tag i{width:7px;height:7px;border-radius:50%;background:#d8b958;box-shadow:0 0 13px rgba(216,185,88,.58);flex:0 0 auto}
 .product h2{margin:22px 0 0;font-size:clamp(31px,4.2vw,49px);line-height:.98;letter-spacing:-.05em}
-.product h2 em{font-style:normal;color:#cda742}
+.product h2 em{
+  font-style:normal;
+  background:linear-gradient(105deg,#a77d22,#e8c45d 38%,#fff1ad 50%,#d5a838 64%,#a4771d);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:goldTextShine 6s linear infinite
+}
 .product p{margin:17px 0 0;color:#b4c7c1;font-size:14px;line-height:1.65;max-width:520px}
+
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}
-.primary,.secondary{
+.primary,.secondary,.accessButton{
   position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
   min-height:50px;padding:12px 14px;border-radius:14px;text-align:center;font-weight:900;
-  font-size:13px;transition:transform .18s ease,border-color .18s ease,background .18s ease
+  font-size:13px;text-decoration:none;transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease
 }
 .primary{
-  border:1px solid rgba(215,181,84,.52);
+  border:1px solid rgba(215,181,84,.55);
   background:linear-gradient(180deg,#10282d,#0b1e25);
-  color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 12px 24px rgba(0,0,0,.18)
+  color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 12px 24px rgba(0,0,0,.18)
 }
-.primary::after{
-  content:"";position:absolute;top:-80%;bottom:-80%;left:-32%;width:28%;
-  transform:rotate(18deg);background:linear-gradient(90deg,transparent,rgba(255,225,137,.55),rgba(255,255,255,.36),transparent);
-  animation:buttonShine 4.4s ease-in-out infinite
+.primary::after,.trialPrimary::after{
+  content:"";position:absolute;top:-90%;bottom:-90%;left:-38%;width:24%;
+  transform:rotate(18deg);background:linear-gradient(90deg,transparent,rgba(255,245,201,.14),rgba(255,255,255,.70),rgba(255,236,165,.14),transparent);
+  animation:buttonShine 3.5s ease-in-out infinite
 }
-.secondary{border:1px solid rgba(126,169,159,.14);background:#061f21;color:#f2f4f2}
-.primary:hover,.secondary:hover{transform:translateY(-1px);border-color:rgba(230,198,106,.55)}
-.loginLink{display:inline-flex;margin-top:13px;color:#d7c172;font-size:11px;font-weight:850;text-decoration:none}
-.preview{
-  position:relative;z-index:2;margin-top:27px;padding:0 0 18px;overflow:hidden;
-  border:1px solid rgba(75,117,111,.33);border-radius:19px;background:#06171d;
-  box-shadow:0 18px 34px rgba(0,0,0,.24)
+.trialPrimary{
+  border-color:#e5bf53;
+  background:linear-gradient(135deg,#8f6617 0%,#d6a92f 28%,#ffe27a 50%,#d4a32a 72%,#8a6116 100%);
+  background-size:180% 100%;color:#171208;text-shadow:0 1px 0 rgba(255,255,255,.26);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.48),0 12px 28px rgba(202,151,37,.20);
+  animation:trialPulse 2.25s ease-in-out infinite
 }
-.previewBar{min-height:45px;padding:0 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid rgba(101,136,137,.16);color:#9bb0b1;font-size:10px}
-.previewBar>span{width:7px;height:7px;border-radius:50%;background:#33444a}.previewBar>span:first-child{background:#c7a844}
-.previewBar b{margin-left:4px;font-size:10px}.previewBar small{margin-left:auto;padding:4px 7px;border:1px solid rgba(89,175,132,.26);border-radius:999px;color:#81c7a2;font-size:7px;font-weight:950}
-.financeHero,.storeSummary{padding:17px 16px 5px}.financeHero small,.storeSummary small{display:block;color:#c9aa4e;font-size:8px;font-weight:950;letter-spacing:.12em}
-.financeHero strong{display:block;margin-top:5px;font-size:31px;letter-spacing:-.04em}.financeHero span{color:#6f8b8d;font-size:9px}
-.storeSummary strong{display:block;margin-top:6px;font-size:17px}
-.kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:13px 16px 0}
-.kpis div{padding:12px;border:1px solid rgba(77,111,115,.2);border-radius:12px;background:#081d24}
-.kpis small{display:block;color:#71888d;font-size:8px}.kpis b{display:block;margin-top:5px;font-size:14px}
-.progress{height:7px;margin:15px 16px 0;border-radius:999px;background:#0c2930;overflow:hidden}.progress span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#967528,#e6c75c,#8c702c)}
-.financeRows{display:grid;grid-template-columns:auto 1fr auto 1fr auto;align-items:center;gap:8px;padding:15px 16px 0;color:#89a1a2;font-size:9px}.financeRows i{height:1px;background:rgba(108,139,140,.18)}
-.stock{position:relative;margin:12px 16px 0;padding:12px;border:1px solid rgba(77,111,115,.2);border-radius:12px;background:#081d24}.stock b{display:block;font-size:10px}.stock strong{position:absolute;right:12px;top:11px;color:#e2c45e;font-size:13px}.stock small{display:block;margin-top:4px;color:#71888d;font-size:8px}
-.factChips{display:flex;gap:7px;flex-wrap:wrap;padding:12px 16px 0}.factChips span{padding:5px 8px;border-radius:999px;background:#08272a;color:#a6b8b4;font-size:8px}
-.footer{width:min(1160px,100%);margin:38px auto 0;padding-top:20px;border-top:1px solid rgba(232,205,125,.14);text-align:center;color:#b79f55;font-size:9px;font-weight:950;letter-spacing:.18em}
-@keyframes buttonShine{0%,68%{left:-34%}82%,100%{left:126%}}
-@media(prefers-reduced-motion:reduce){.primary::after{animation:none;display:none}}
+.secondary{border:1px solid rgba(167,186,181,.18);background:rgba(5,20,23,.72);color:#f2f4f2}
+.primary:hover,.secondary:hover,.accessButton:hover{transform:translateY(-1px);border-color:rgba(236,204,109,.65)}
+.trialPrimary:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 14px 32px rgba(220,169,48,.28),0 0 0 4px rgba(221,179,65,.10)}
+
+.accessButton{
+  width:100%;box-sizing:border-box;margin-top:11px;min-height:44px;
+  border:1px solid rgba(224,191,96,.45);
+  background:linear-gradient(180deg,rgba(16,17,19,.72),rgba(6,8,10,.82));
+  color:#f2d776;font-size:11px;letter-spacing:.02em
+}
+.storeProduct .accessButton{background:rgba(4,27,28,.72)}
+
+.featureSection{
+  position:relative;z-index:2;margin-top:27px;padding-top:20px;
+  border-top:1px solid rgba(219,184,83,.18)
+}
+.featureTitle{
+  margin-bottom:12px;color:#d6b64f;font-size:9px;font-weight:950;letter-spacing:.13em
+}
+.featureGrid{display:grid;grid-template-columns:1fr 1fr;column-gap:18px}
+.featureLine{
+  min-width:0;display:flex;align-items:center;gap:9px;min-height:38px;
+  border-bottom:1px solid rgba(151,137,91,.14)
+}
+.featureLine i{
+  width:5px;height:5px;flex:0 0 auto;transform:rotate(45deg);
+  background:#d8b958;box-shadow:0 0 9px rgba(216,185,88,.34)
+}
+.featureLine strong{
+  min-width:0;
+  background:linear-gradient(105deg,#977019 0%,#d6aa38 28%,#ffe58a 47%,#fff6c5 52%,#d2a332 70%,#916817 100%);
+  background-size:240% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  font-size:10.5px;font-weight:900;line-height:1.25;
+  animation:goldTextShine 7.2s linear infinite
+}
+
+.exampleButton{
+  position:relative;z-index:2;display:grid;grid-template-columns:1fr auto;align-items:center;
+  margin-top:20px;padding:15px 16px;border:1px solid rgba(229,194,93,.58);border-radius:15px;
+  background:linear-gradient(135deg,rgba(18,47,43,.98),rgba(8,30,31,.98));
+  color:#fff;text-decoration:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 12px 26px rgba(0,0,0,.18)
+}
+.exampleButton span{grid-column:1;color:#b8993d;font-size:7px;font-weight:950;letter-spacing:.15em}
+.exampleButton strong{
+  grid-column:1;margin-top:3px;
+  background:linear-gradient(105deg,#c79829,#f0cf69,#fff2ad,#d5a635);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  font-size:13px
+}
+.exampleButton b{grid-column:2;grid-row:1/3;color:#f0d26e;font-size:18px}
+.exampleButton:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 16px 32px rgba(0,0,0,.22)}
+
+.footer{
+  width:min(1160px,100%);margin:38px auto 0;padding-top:20px;border-top:1px solid rgba(232,205,125,.14);
+  text-align:center;color:#b79f55;font-size:9px;font-weight:950;letter-spacing:.18em
+}
+.financeOnly{grid-template-columns:minmax(0,760px);justify-content:center}
+.localeLoading{min-height:520px}
+
+@keyframes brandShine{0%{background-position:130% 0}100%{background-position:-130% 0}}
+@keyframes goldTextShine{0%{background-position:130% 0}100%{background-position:-130% 0}}
+@keyframes buttonShine{0%,62%{left:-38%}82%,100%{left:132%}}
+@keyframes trialPulse{
+  0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.48),0 12px 28px rgba(202,151,37,.18),0 0 0 0 rgba(221,179,65,.08)}
+  50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.52),0 15px 34px rgba(222,170,47,.30),0 0 0 7px rgba(221,179,65,.08)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .control b,.product h2 em,.featureLine strong,.trialPrimary,.primary::after,.trialPrimary::after{animation:none}
+}
 @media(max-width:860px){
   .page{padding:0 14px 28px}.header{min-height:70px}.intro{padding:43px 3px 27px}
-  .intro h1{font-size:clamp(34px,9vw,50px)}.products{grid-template-columns:1fr;max-width:680px}.or{margin:2px auto}
+  .intro h1{font-size:clamp(34px,9vw,50px)}
+  .products{grid-template-columns:1fr;max-width:680px}.or{margin:2px auto}
   .product{padding:22px}.product h2{font-size:clamp(34px,8vw,47px)}
 }
 @media(max-width:500px){
-  .intro{padding-top:34px}.intro p{font-size:13px}.control{font-size:8px;padding:7px 11px}
-  .tag{font-size:7.5px;padding:7px 10px;letter-spacing:.08em}.independent{align-items:flex-start;flex-direction:column;gap:4px}.independent span{text-align:left}.product{border-radius:20px}
-  .actions{grid-template-columns:1fr 1fr;gap:8px}.primary,.secondary{min-height:48px;padding:10px 8px;font-size:12px}
-  .preview{margin-top:22px}.financeHero strong{font-size:27px}.kpis{gap:7px}
+  .intro{padding-top:34px}.intro p{font-size:13px}.control{padding:7px 11px}.control b{font-size:8px}
+  .tag{font-size:7.5px;padding:7px 10px;letter-spacing:.08em}
+  .independent{align-items:flex-start;flex-direction:column;gap:4px}.independent span{text-align:left}
+  .product{border-radius:20px}
+  .actions{grid-template-columns:1fr 1fr;gap:8px}
+  .primary,.secondary{min-height:48px;padding:10px 8px;font-size:12px}
+  .featureGrid{column-gap:12px}
+  .featureLine{min-height:40px;gap:7px}
+  .featureLine strong{font-size:9.5px}
+  .featureTitle{font-size:8px;line-height:1.4}
 }
-
-.storeLinks{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.exampleLink{display:inline-flex;margin-top:13px;color:#9fb8b1;font-size:11px;font-weight:800;text-decoration:none}
-.exampleLink:hover{color:#e0c15f}
-@media(max-width:500px){.storeLinks{align-items:flex-start;flex-direction:column;gap:0}}
-
-.financeOnly{grid-template-columns:minmax(0,720px);justify-content:center}
-
-.localeLoading{min-height:520px}
+@media(max-width:360px){
+  .featureGrid{grid-template-columns:1fr}
+  .featureLine strong{font-size:10px}
+}
