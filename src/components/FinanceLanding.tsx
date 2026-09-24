@@ -25,7 +25,7 @@ export function FinanceLanding(){
   return <main className="landingV2">
     <header className="top landingTop">
       <a className="brand" href="/"><BrandLogo/></a>
-      <div className="landingTopActions"><a className="secondary" href="/loja">Loja</a><LanguageMenu/></div>
+      <div className="landingTopActions">{locale==="pt-BR"&&<a className="secondary" href="/loja">Loja</a>}<LanguageMenu/></div>
     </header>
 
     <section className="landingHero" aria-labelledby="landing-title">

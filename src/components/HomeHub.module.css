@@ -101,3 +101,7 @@
 .exampleLink{display:inline-flex;margin-top:13px;color:#9fb8b1;font-size:11px;font-weight:800;text-decoration:none}
 .exampleLink:hover{color:#e0c15f}
 @media(max-width:500px){.storeLinks{align-items:flex-start;flex-direction:column;gap:0}}
+
+.financeOnly{grid-template-columns:minmax(0,720px);justify-content:center}
+
+.localeLoading{min-height:520px}
