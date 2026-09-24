@@ -63,3 +63,30 @@ test("idioma do Financeiro é inicializado uma vez e não sobrescreve escolha do
   assert.ok(source.includes("if(initialPreferencesApplied.current)return"));
   assert.ok(source.includes("initialPreferencesApplied.current=true"));
 });
+
+
+test("sincronizacao administrativa da Kiwify nao roda a cada entrada",()=>{
+  const source=read("src/components/IntegrationBootstrap.tsx");
+  assert.ok(source.includes("SYNC_INTERVAL_MS=24*60*60*1000"));
+  assert.ok(source.includes("devinx-integration-sync-v1"));
+  assert.ok(source.includes("localStorage.setItem(SYNC_KEY"));
+});
+
+test("presenca do DevinX usa frequencia economica",()=>{
+  const source=read("src/components/LivePresence.tsx");
+  assert.ok(source.includes("HEARTBEAT_MS=60_000"));
+  assert.ok(source.includes("MASTER_REFRESH_MS=20_000"));
+  assert.ok(source.includes("ONLINE_WINDOW_SECONDS=150"));
+});
+
+test("vitrine publica usa ISR curto em vez de render dinamico a cada visita",()=>{
+  const source=read("src/app/[storeSlug]/page.tsx");
+  assert.ok(source.includes("export const revalidate = 30"));
+  assert.equal(source.includes('dynamic = "force-dynamic"'),false);
+  assert.equal(source.includes("revalidate = 0"),false);
+});
+
+test("middleware do DevinX ignora midia e arquivos estaticos",()=>{
+  const source=read("src/middleware.ts");
+  assert.ok(source.includes("mp4|webm|pdf|zip|txt|xml|json"));
+});
