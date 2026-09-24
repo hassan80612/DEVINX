@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import dynamic from 'next/dynamic';
 import {createClient} from '@/lib/supabase/client';
 import {DashboardOverview} from './DashboardOverview';
@@ -43,6 +43,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   const{locale,setLocale,setCurrencyCode,setTimezone,date,t}=useI18n();
   const[section,setSection]=useState<Section>('home');
   const[sectionReady,setSectionReady]=useState(false);
+  const initialPreferencesApplied=useRef(false);
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
   const access=initialAccess;
 
@@ -61,6 +62,8 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   },[section,sectionReady]);
 
   useEffect(()=>{
+    if(initialPreferencesApplied.current)return;
+    initialPreferencesApplied.current=true;
     if(initialProfile.locale)setLocale(initialProfile.locale as any);
     if(SUPPORTED_CURRENCIES.includes(initialProfile.currency_code as CurrencyCode))setCurrencyCode(initialProfile.currency_code as CurrencyCode);
     if(initialProfile.timezone)setTimezone(initialProfile.timezone);
