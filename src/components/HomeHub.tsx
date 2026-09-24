@@ -3,7 +3,6 @@
 import {BrandLogo} from "@/components/BrandLogo";
 import {LanguageMenu} from "@/components/LanguageMenu";
 import {useI18n} from "@/i18n/provider";
-import {useEffect,useState} from "react";
 import styles from "./HomeHub.module.css";
 
 const COPY={
@@ -284,23 +283,11 @@ function FeatureGrid({title,items}:{title:string;items:readonly string[]}){
 
 export function HomeHub(){
   const{locale}=useI18n();
-  const[mounted,setMounted]=useState(false);
-  useEffect(()=>setMounted(true),[]);
   const activeLocale=(locale in COPY?locale:"pt-BR") as keyof typeof COPY;
   const c=COPY[activeLocale];
   const showStore=locale==="pt-BR";
   const intl=locale!=="pt-BR";
   const financeFeatures=FINANCE_FEATURES[activeLocale];
-
-  if(!mounted){
-    return <main className={styles.page}>
-      <header className={styles.header}>
-        <a href="/" className={styles.brand}><BrandLogo/></a>
-        <LanguageMenu/>
-      </header>
-      <section className={styles.localeLoading} aria-hidden="true"></section>
-    </main>;
-  }
 
   return <main className={styles.page}>
     <header className={styles.header}>

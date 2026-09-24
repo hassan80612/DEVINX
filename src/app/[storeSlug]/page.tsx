@@ -33,7 +33,7 @@ export async function generateMetadata({params}:RouteProps):Promise<Metadata>{
 
 export default async function StorefrontPage({params}:RouteProps){
   const {storeSlug}=await params;
-  const data=await fetchPublicStorefront(storeSlug).catch(()=>null);
+  const data=await fetchPublicStorefront(storeSlug);
   if(!data)notFound();
   const canonical=String(data.canonical_slug||data.store?.slug||storeSlug);
   if(canonical!==storeSlug)permanentRedirect(`/${encodeURIComponent(canonical)}`);

@@ -13,11 +13,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: npm-lock
-          path: package-lock.json
+      - run: npm test
       - run: npm run typecheck
       - run: npm run build
         env:

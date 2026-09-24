@@ -4,25 +4,57 @@ import {NextResponse,type NextRequest} from 'next/server';
 const CANONICAL_HOST='devinx.com.br';
 const protectedPrefixes=['/painel','/onboarding','/redefinir-senha'];
 
-function copySessionCookies(source:NextResponse,target:NextResponse){source.cookies.getAll().forEach(cookie=>target.cookies.set(cookie));return target}
+function copySessionCookies(source:NextResponse,target:NextResponse){
+  source.cookies.getAll().forEach(cookie=>target.cookies.set(cookie));
+  return target;
+}
 
 export async function middleware(request:NextRequest){
   const host=(request.headers.get('x-forwarded-host')||request.headers.get('host')||'').split(':')[0].toLowerCase();
-  // Keep preview deployments reviewable; production aliases still use the canonical domain.
-  if(process.env.VERCEL_ENV!=='preview'&&host.endsWith('.vercel.app')){const canonical=request.nextUrl.clone();canonical.protocol='https:';canonical.host=CANONICAL_HOST;return NextResponse.redirect(canonical,308)}
+
+  // Keep preview deployments reviewable; production aliases use the canonical domain.
+  if(process.env.VERCEL_ENV!=='preview'&&host.endsWith('.vercel.app')){
+    const canonical=request.nextUrl.clone();
+    canonical.protocol='https:';
+    canonical.host=CANONICAL_HOST;
+    return NextResponse.redirect(canonical,308);
+  }
+
+  const pathname=request.nextUrl.pathname;
+  const isProtected=protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+
+  // Public pages do not need an Auth round-trip. This keeps marketing/storefront
+  // requests independent from Supabase availability and removes middleware latency.
+  if(!isProtected)return NextResponse.next({request});
 
   let response=NextResponse.next({request});
-  const supabase=createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{cookies:{getAll(){return request.cookies.getAll()},setAll(cookiesToSet){cookiesToSet.forEach(({name,value})=>request.cookies.set(name,value));response=NextResponse.next({request});cookiesToSet.forEach(({name,value,options})=>response.cookies.set(name,value,options))}}});
-  const{data,error}=await supabase.auth.getClaims();const claims=error?null:data?.claims;const pathname=request.nextUrl.pathname;const isProtected=protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
-  const needsAccess=pathname==='/painel'||pathname.startsWith('/painel/')||pathname==='/onboarding'||pathname.startsWith('/onboarding/');
-  const isTrialClaim=pathname==='/entrar'&&request.nextUrl.searchParams.get('trial')==='claim';
-  if(isProtected&&!claims){const url=request.nextUrl.clone();url.pathname='/entrar';url.searchParams.set('next',pathname);return copySessionCookies(response,NextResponse.redirect(url))}
-  if(claims&&(needsAccess||pathname==='/entrar')){
-    const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
-    const access=Array.isArray(accessData)?accessData[0]:accessData;
-    if(!accessError&&needsAccess&&!access?.allowed){const url=request.nextUrl.clone();url.pathname='/entrar';url.search='';url.searchParams.set('acesso','expirado');return copySessionCookies(response,NextResponse.redirect(url))}
-    if(!accessError&&pathname==='/entrar'&&!isTrialClaim&&access?.allowed){const url=request.nextUrl.clone();url.pathname='/painel';url.search='';return copySessionCookies(response,NextResponse.redirect(url))}
+  const supabase=createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies:{
+        getAll(){return request.cookies.getAll()},
+        setAll(cookiesToSet){
+          cookiesToSet.forEach(({name,value})=>request.cookies.set(name,value));
+          response=NextResponse.next({request});
+          cookiesToSet.forEach(({name,value,options})=>response.cookies.set(name,value,options));
+        }
+      }
+    }
+  );
+
+  const{data,error}=await supabase.auth.getClaims();
+  const claims=error?null:data?.claims;
+  if(!claims){
+    const url=request.nextUrl.clone();
+    url.pathname='/entrar';
+    url.search='';
+    url.searchParams.set('next',pathname);
+    return copySessionCookies(response,NextResponse.redirect(url));
   }
+
+  // Access/subscription checks are intentionally handled by the protected page
+  // itself, once, instead of repeating an RPC in middleware and in the client.
   return response;
 }
 

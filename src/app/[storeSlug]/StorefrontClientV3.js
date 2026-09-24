@@ -26,6 +26,7 @@ const SHIPPING_ERROR={
   shipping_unavailable:"Nenhuma opção de entrega foi encontrada para este CEP.",
   shipping_product_unavailable:"Um item do pedido não está mais disponível nessa quantidade.",
   shipping_provider_failed:"O Melhor Envio não conseguiu calcular este CEP agora. Confira o CEP e tente novamente.",
+  shipping_rate_limited:"Muitas consultas de frete em pouco tempo. Aguarde um minuto e tente novamente.",
 };
 
 function ShippingBox({target,items,free,shippingCep,setShippingCep,shippingBusy,calculateShipping,quote,error,serviceId,setServiceId}){
