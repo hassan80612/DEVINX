@@ -17,7 +17,7 @@ const COPY={
     financeLine1:"Seu dinheiro organizado.",
     financeLine2:"Sua rotina sob controle.",
     financeText:"Contas, cartões, metas, reservas, recebimentos e jornada reunidos para você saber onde está e quanto precisa fazer.",
-    financePrimary:"Começar agora",
+    financePrimary:"Teste grátis",
     financeSecondary:"Ver por dentro",
     financeLogin:"Já tenho acesso · Entrar",
     storeTag:"DEVINX LOJA · SUA OPERAÇÃO EM UM SÓ LUGAR",
@@ -37,31 +37,31 @@ const COPY={
   },
   en:{
     control:"DEVINX · YOU'RE IN CONTROL",choose:"Choose one product.",chooseText:"Finance and Store are separate products. You can use only one — you do not need to subscribe to both.",independent:"INDEPENDENT PRODUCT",ownPlan:"Own subscription · does not include the other product",or:"OR",
-    financeTag:"DEVINX FINANCE · YOUR FINANCES IN ONE PLACE",financeLine1:"Your money organized.",financeLine2:"Your routine under control.",financeText:"Bills, cards, goals, savings, income and work sessions together so you always know where you stand.",financePrimary:"Start now",financeSecondary:"See inside",financeLogin:"I already have access · Sign in",
+    financeTag:"DEVINX FINANCE · YOUR FINANCES IN ONE PLACE",financeLine1:"Your money organized.",financeLine2:"Your routine under control.",financeText:"Bills, cards, goals, savings, income and work sessions together so you always know where you stand.",financePrimary:"Free trial",financeSecondary:"See inside",financeLogin:"I already have access · Sign in",
     storeTag:"DEVINX STORE · YOUR OPERATION IN ONE PLACE",storeLine1:"A beautiful store for your customer.",storeLine2:"An organized business for you.",storeText:"Storefront, products, stock, costs and sales in one place — with no sales commission.",storePrimary:"Create my store",storeSecondary:"See inside",storeLogin:"I already have a store · Sign in",
     daily:"Daily target",available:"Current balance",month:"Commitments",stock:"Stock by color",orders:"Direct WhatsApp",noFee:"0% commission",example:"EXAMPLE"
   },
   es:{
     control:"DEVINX · TÚ TIENES EL CONTROL",choose:"Elige un producto.",chooseText:"Finanzas y Tienda son productos separados. Puedes usar solo uno — no necesitas contratar ambos.",independent:"PRODUCTO INDEPENDIENTE",ownPlan:"Suscripción propia · no incluye el otro producto",or:"O",
-    financeTag:"DEVINX FINANZAS · TU VIDA FINANCIERA EN UN SOLO LUGAR",financeLine1:"Tu dinero organizado.",financeLine2:"Tu rutina bajo control.",financeText:"Cuentas, tarjetas, metas, reservas, ingresos y jornadas reunidos para que sepas dónde estás.",financePrimary:"Empezar ahora",financeSecondary:"Ver por dentro",financeLogin:"Ya tengo acceso · Entrar",
+    financeTag:"DEVINX FINANZAS · TU VIDA FINANCIERA EN UN SOLO LUGAR",financeLine1:"Tu dinero organizado.",financeLine2:"Tu rutina bajo control.",financeText:"Cuentas, tarjetas, metas, reservas, ingresos y jornadas reunidos para que sepas dónde estás.",financePrimary:"Prueba gratis",financeSecondary:"Ver por dentro",financeLogin:"Ya tengo acceso · Entrar",
     storeTag:"DEVINX TIENDA · TU OPERACIÓN EN UN SOLO LUGAR",storeLine1:"Una tienda bonita para el cliente.",storeLine2:"Un negocio organizado para ti.",storeText:"Vitrina, productos, stock, costos y ventas en un solo lugar — sin comisión por venta.",storePrimary:"Crear mi tienda",storeSecondary:"Ver por dentro",storeLogin:"Ya tengo tienda · Entrar",
     daily:"Meta diaria",available:"Saldo actual",month:"Compromisos",stock:"Stock por color",orders:"WhatsApp directo",noFee:"0% comisión",example:"EJEMPLO"
   },
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",choose:"Choisissez un produit.",chooseText:"Finance et Boutique sont des produits séparés. Vous pouvez n’en utiliser qu’un.",independent:"PRODUIT INDÉPENDANT",ownPlan:"Abonnement propre · n’inclut pas l’autre produit",or:"OU",
-    financeTag:"DEVINX FINANCE · VOS FINANCES EN UN SEUL ENDROIT",financeLine1:"Votre argent organisé.",financeLine2:"Votre quotidien sous contrôle.",financeText:"Factures, cartes, objectifs, réserves, revenus et travail réunis pour garder une vision claire.",financePrimary:"Commencer",financeSecondary:"Voir l'intérieur",financeLogin:"J'ai déjà accès · Connexion",
+    financeTag:"DEVINX FINANCE · VOS FINANCES EN UN SEUL ENDROIT",financeLine1:"Votre argent organisé.",financeLine2:"Votre quotidien sous contrôle.",financeText:"Factures, cartes, objectifs, réserves, revenus et travail réunis pour garder une vision claire.",financePrimary:"Essai gratuit",financeSecondary:"Voir l'intérieur",financeLogin:"J'ai déjà accès · Connexion",
     storeTag:"DEVINX BOUTIQUE · VOTRE ACTIVITÉ EN UN SEUL ENDROIT",storeLine1:"Une belle boutique pour le client.",storeLine2:"Une activité organisée pour vous.",storeText:"Vitrine, produits, stock, coûts et ventes réunis — sans commission sur les ventes.",storePrimary:"Créer ma boutique",storeSecondary:"Voir l'intérieur",storeLogin:"J'ai déjà une boutique · Connexion",
     daily:"Objectif du jour",available:"Solde actuel",month:"Engagements",stock:"Stock par couleur",orders:"WhatsApp direct",noFee:"0% commission",example:"EXEMPLE"
   },
   de:{
     control:"DEVINX · DU HAST DIE KONTROLLE",choose:"Wähle ein Produkt.",chooseText:"Finanzen und Shop sind getrennte Produkte. Du kannst nur eines davon nutzen.",independent:"EIGENSTÄNDIGES PRODUKT",ownPlan:"Eigenes Abo · enthält nicht das andere Produkt",or:"ODER",
-    financeTag:"DEVINX FINANZEN · DEINE FINANZEN AN EINEM ORT",financeLine1:"Dein Geld organisiert.",financeLine2:"Dein Alltag unter Kontrolle.",financeText:"Rechnungen, Karten, Ziele, Rücklagen, Einnahmen und Arbeit zusammen an einem Ort.",financePrimary:"Jetzt starten",financeSecondary:"Innen ansehen",financeLogin:"Ich habe Zugang · Anmelden",
+    financeTag:"DEVINX FINANZEN · DEINE FINANZEN AN EINEM ORT",financeLine1:"Dein Geld organisiert.",financeLine2:"Dein Alltag unter Kontrolle.",financeText:"Rechnungen, Karten, Ziele, Rücklagen, Einnahmen und Arbeit zusammen an einem Ort.",financePrimary:"Kostenlos testen",financeSecondary:"Innen ansehen",financeLogin:"Ich habe Zugang · Anmelden",
     storeTag:"DEVINX SHOP · DEIN GESCHÄFT AN EINEM ORT",storeLine1:"Ein schöner Shop für Kunden.",storeLine2:"Ein organisiertes Geschäft für dich.",storeText:"Shop, Produkte, Bestand, Kosten und Verkäufe an einem Ort — ohne Verkaufsprovision.",storePrimary:"Shop erstellen",storeSecondary:"Innen ansehen",storeLogin:"Ich habe einen Shop · Anmelden",
     daily:"Tagesziel",available:"Aktueller Saldo",month:"Verpflichtungen",stock:"Bestand nach Farbe",orders:"WhatsApp direkt",noFee:"0% Provision",example:"BEISPIEL"
   },
   ar:{
     control:"DEVINX · أنت المتحكم",choose:"اختر منتجاً واحداً.",chooseText:"المالي والمتجر منتجان منفصلان. يمكنك استخدام واحد فقط ولا تحتاج للاشتراك في الاثنين.",independent:"منتج مستقل",ownPlan:"اشتراك مستقل · لا يشمل المنتج الآخر",or:"أو",
-    financeTag:"DEVINX المالي · حياتك المالية في مكان واحد",financeLine1:"أموالك منظمة.",financeLine2:"روتينك تحت السيطرة.",financeText:"الفواتير والبطاقات والأهداف والاحتياطي والدخل والعمل في مكان واحد لتعرف وضعك دائماً.",financePrimary:"ابدأ الآن",financeSecondary:"شاهد من الداخل",financeLogin:"لدي وصول · دخول",
+    financeTag:"DEVINX المالي · حياتك المالية في مكان واحد",financeLine1:"أموالك منظمة.",financeLine2:"روتينك تحت السيطرة.",financeText:"الفواتير والبطاقات والأهداف والاحتياطي والدخل والعمل في مكان واحد لتعرف وضعك دائماً.",financePrimary:"تجربة مجانية",financeSecondary:"شاهد من الداخل",financeLogin:"لدي وصول · دخول",
     storeTag:"DEVINX المتجر · نشاطك في مكان واحد",storeLine1:"متجر جميل لعميلك.",storeLine2:"ونشاط منظم لك.",storeText:"واجهة المتجر والمنتجات والمخزون والتكاليف والمبيعات في مكان واحد — بدون عمولة على المبيعات.",storePrimary:"أنشئ متجري",storeSecondary:"شاهد من الداخل",storeLogin:"لدي متجر · دخول",
     daily:"الهدف اليومي",available:"الرصيد الحالي",month:"الالتزامات",stock:"المخزون حسب اللون",orders:"واتساب مباشر",noFee:"0% عمولة",example:"مثال"
   }
