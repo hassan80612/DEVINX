@@ -1,7 +1,8 @@
 import type {Metadata} from "next";
 import {notFound, permanentRedirect} from "next/navigation";
 import {fetchPublicStorefront} from "@/lib/storefront-backend";
-// @ts-expect-error Storefront client is intentionally kept in JavaScript during the staged migration.\nimport StorefrontClient from "./StorefrontClient";
+// @ts-ignore -- Storefront client remains in JavaScript during the staged migration.
+import StorefrontClient from "./StorefrontClient";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
