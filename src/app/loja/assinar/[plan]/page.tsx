@@ -6,5 +6,6 @@ export default async function StoreSubscribeBridge({params}:{params:Promise<{pla
   const {plan}=await params;
   const normalized=String(plan||"").trim().toLowerCase();
   if(!VALID_PLANS.has(normalized))notFound();
-  redirect(`https://www.vetorizeai.com.br/minha-loja?assinar=${encodeURIComponent(normalized)}#planos`);
+
+  redirect(`https://www.vetorizeai.com.br/minha-loja/assinar/${encodeURIComponent(normalized)}`);
 }
