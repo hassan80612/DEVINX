@@ -1,3 +1,5 @@
+import '../hub.css';
+import '../theme.css';
 'use client';
 
 import {useMemo,useState} from 'react';
