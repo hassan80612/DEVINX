@@ -76,9 +76,19 @@ export function HomeHub(){
   const[mounted,setMounted]=useState(false);
   useEffect(()=>setMounted(true),[]);
   const c=COPY[(locale in COPY?locale:"pt-BR") as keyof typeof COPY];
-  const showStore=mounted&&locale==="pt-BR";
-  const intl=!showStore;
+  const showStore=locale==="pt-BR";
+  const intl=locale!=="pt-BR";
   const previewMoney=(minor:number)=>currency(minor);
+
+  if(!mounted){
+    return <main className={styles.page}>
+      <header className={styles.header}>
+        <a href="/" className={styles.brand}><BrandLogo/></a>
+        <LanguageMenu/>
+      </header>
+      <section className={styles.localeLoading} aria-hidden="true"></section>
+    </main>;
+  }
 
   return <main className={styles.page}>
     <header className={styles.header}>
