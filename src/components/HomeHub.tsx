@@ -40,7 +40,7 @@ const COPY={
     example:"EXEMPLO"
   },
   en:{
-    control:"DEVINX · YOU'RE IN CONTROL",choose:"Choose one product.",chooseText:"Finance and Store are separate products.",independent:"INDEPENDENT PRODUCT",ownPlan:"Own subscription · does not include the other product",or:"OR",
+    control:"DEVINX · YOU'RE IN CONTROL",choose:"Choose one product.",chooseText:"Finance and Store are separate products.",intlChoose:"Take control of your finances.",intlChooseText:"Manage your money with DevinX Finance.",independent:"INDEPENDENT PRODUCT",ownPlan:"Own subscription · does not include the other product",or:"OR",
     financeTag:"DEVINX FINANCE · YOUR FINANCES IN ONE PLACE",financeLine1:"Your money organized.",financeLine2:"Your routine under control.",financeText:"Bills, cards, goals, savings, income and work sessions together so you always know where you stand.",financePrimary:"Free trial",financeSecondary:"See inside",financeLogin:"I already have access · Sign in",
     storeTag:"DEVINX STORE · YOUR OPERATION IN ONE PLACE",storeLine1:"A beautiful store for your customer.",storeLine2:"An organized business for you.",storeText:"Storefront, products, stock, costs and sales in one place — with no sales commission.",storePrimary:"Create my store",storeSecondary:"See inside",storeLogin:"I already have a store · Sign in",storeExample:"View example storefront",
     daily:"Daily target",available:"Current balance",month:"Commitments",stock:"Stock by color",orders:"Direct WhatsApp",noFee:"0% commission",example:"EXAMPLE"
