@@ -1,3 +1,5 @@
+import '../hub.css';
+import '../theme.css';
 import {redirect} from 'next/navigation';
 import {createServerSupabaseClient} from '@/lib/supabase/server';
 import {AuthForm} from './AuthForm';

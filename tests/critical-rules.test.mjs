@@ -74,9 +74,9 @@ test("sincronizacao administrativa da Kiwify nao roda a cada entrada",()=>{
 
 test("presenca do DevinX usa frequencia economica",()=>{
   const source=read("src/components/LivePresence.tsx");
-  assert.ok(source.includes("HEARTBEAT_MS=60_000"));
-  assert.ok(source.includes("MASTER_REFRESH_MS=20_000"));
-  assert.ok(source.includes("ONLINE_WINDOW_SECONDS=150"));
+  assert.ok(source.includes("HEARTBEAT_MS=120_000"));
+  assert.ok(source.includes("MASTER_REFRESH_MS=30_000"));
+  assert.ok(source.includes("ONLINE_WINDOW_SECONDS=210"));
 });
 
 test("vitrine publica usa ISR curto em vez de render dinamico a cada visita",()=>{
@@ -89,4 +89,37 @@ test("vitrine publica usa ISR curto em vez de render dinamico a cada visita",()=
 test("middleware do DevinX ignora midia e arquivos estaticos",()=>{
   const source=read("src/middleware.ts");
   assert.ok(source.includes("mp4|webm|pdf|zip|txt|xml|json"));
+});
+
+
+test("CSS pesado do Financeiro não fica no layout global",()=>{
+  const root=read("src/app/layout.tsx");
+  const finance=read("src/app/financeiro/page.tsx");
+  assert.equal(root.includes("hub.css"),false);
+  assert.equal(root.includes("theme.css"),false);
+  assert.ok(finance.includes("import '../hub.css'"));
+  assert.ok(finance.includes("import '../theme.css'"));
+});
+
+test("vitrine usa CSS estático sem injeção em runtime",()=>{
+  const client=read("src/app/[storeSlug]/StorefrontClient.js");
+  const theme=read("src/app/[storeSlug]/storefront-theme.css");
+  assert.equal(client.includes('document.createElement("style")'),false);
+  assert.ok(theme.includes("@keyframes storefrontGoldShine"));
+  assert.ok(client.includes("closeNativeSelectAfterChoice"));
+});
+
+test("scans óbvios são rejeitados cedo no DevinX",()=>{
+  const source=read("src/middleware.ts");
+  assert.ok(source.includes("isObviousProbe"));
+  assert.ok(source.includes("/wp-admin"));
+  assert.ok(source.includes("/xmlrpc.php"));
+  assert.ok(source.includes("status:404"));
+});
+
+test("presença mantém recurso com frequência econômica",()=>{
+  const source=read("src/components/LivePresence.tsx");
+  assert.ok(source.includes("HEARTBEAT_MS=120_000"));
+  assert.ok(source.includes("MASTER_REFRESH_MS=30_000"));
+  assert.ok(source.includes("ONLINE_WINDOW_SECONDS=210"));
 });

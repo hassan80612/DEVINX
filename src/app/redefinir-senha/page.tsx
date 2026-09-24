@@ -1,5 +1,8 @@
 'use client';
 
+import '../hub.css';
+import '../theme.css';
+
 import {FormEvent,useState} from 'react';
 import Link from 'next/link';
 import {createClient} from '@/lib/supabase/client';

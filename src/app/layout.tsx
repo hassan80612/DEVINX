@@ -1,6 +1,4 @@
 import './globals.css';
-import './hub.css';
-import './theme.css';
 import type {Metadata} from 'next';
 import {Analytics} from '@vercel/analytics/next';
 import {I18nProvider} from '@/i18n/provider';
