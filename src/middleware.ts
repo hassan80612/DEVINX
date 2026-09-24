@@ -79,4 +79,4 @@ export async function middleware(request:NextRequest){
   return response;
 }
 
-export const config={matcher:['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js|woff2?|ttf|otf|mp4|webm|pdf|zip|txt|xml|json)$).*)']};
+export const config={matcher:['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js|woff2?|ttf|otf|mp4|webm|pdf|zip|txt|xml|json)$).*)']};
