@@ -8,7 +8,9 @@ export async function fetchPublicStorefront(slug: string) {
   const normalized = String(slug || "").trim().toLowerCase();
   if (!normalized) return null;
   const response = await fetch(`${storeBackendOrigin()}/api/public-storefront/${encodeURIComponent(normalized)}`, {
-    cache: "no-store",
+    cache: "force-cache",
+    next: { revalidate: 30 },
+    signal: AbortSignal.timeout(8_000),
     headers: { "Accept": "application/json" }
   });
   if (response.status === 404) return null;
@@ -38,7 +40,9 @@ export async function proxyStorefrontRequest(path: string, init?: RequestInit) {
 
 export async function fetchPublicStorePlans() {
   const response = await fetch(`${storeBackendOrigin()}/api/public-store-plans`, {
-    cache: "no-store",
+    cache: "force-cache",
+    next: { revalidate: 60 },
+    signal: AbortSignal.timeout(8_000),
     headers: { "Accept": "application/json" }
   });
   if (!response.ok) throw new Error(`store_plans_backend_${response.status}`);
