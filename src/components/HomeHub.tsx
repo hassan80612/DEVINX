@@ -51,7 +51,7 @@ const COPY={
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",choose:"Choisissez un produit.",chooseText:"Finance et Boutique sont des produits séparés.",independent:"PRODUIT INDÉPENDANT",ownPlan:"Abonnement propre · n’inclut pas l’autre produit",or:"OU",
     financeTag:"DEVINX FINANCE · VOS FINANCES EN UN SEUL ENDROIT",financeLine1:"Votre argent organisé.",financeLine2:"Votre quotidien sous contrôle.",financeText:"Factures, cartes, objectifs, réserves, revenus et travail réunis pour garder une vision claire.",financePrimary:"Essai gratuit",financeSecondary:"Voir l'intérieur",financeLogin:"J'ai déjà accès · Connexion",
-    storeTag:"DEVINX BOUTIQUE · VOTRE ACTIVITÉ EN UN SEUL ENDROIT",storeLine1:"Une belle boutique pour le client.",storeLine2:"Une activité organisée pour vous.",storeText:"Vitrine, produits, stock, coûts et ventes réunis — sans commission sur les ventes.",storePrimary:"Créer ma boutique",storeSecondary:"Voir l'intérieur",storeLogin:"J'ai déjà une boutique · Connexion",
+    storeTag:"DEVINX BOUTIQUE · VOTRE ACTIVITÉ EN UN SEUL ENDROIT",storeLine1:"Une belle boutique pour le client.",storeLine2:"Une activité organisée pour vous.",storeText:"Vitrine, produits, stock, coûts et ventes réunis — sans commission sur les ventes.",storePrimary:"Créer ma boutique",storeSecondary:"Voir l'intérieur",storeLogin:"J'ai déjà une boutique · Connexion",storeExample:"Voir une vitrine exemple",
     daily:"Objectif du jour",available:"Solde actuel",month:"Engagements",stock:"Stock par couleur",orders:"WhatsApp direct",noFee:"0% commission",example:"EXEMPLE"
   },
   de:{
