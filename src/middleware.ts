@@ -3,6 +3,14 @@ import {NextResponse,type NextRequest} from 'next/server';
 
 const CANONICAL_HOST='devinx.com.br';
 const protectedPrefixes=['/painel','/onboarding','/redefinir-senha'];
+const obviousProbePrefixes=['/wp-admin','/wp-content','/wp-includes','/phpmyadmin','/vendor/phpunit','/.git','/.env','/server-status'];
+const obviousProbeExact=new Set(['/wp-login.php','/xmlrpc.php','/wp-config.php','/composer.json','/composer.lock']);
+
+function isObviousProbe(pathname:string){
+  const path=String(pathname||'').toLowerCase();
+  return obviousProbeExact.has(path)||obviousProbePrefixes.some(prefix=>path===prefix||path.startsWith(prefix+'/'));
+}
+
 
 function copySessionCookies(source:NextResponse,target:NextResponse){
   source.cookies.getAll().forEach(cookie=>target.cookies.set(cookie));
@@ -11,6 +19,7 @@ function copySessionCookies(source:NextResponse,target:NextResponse){
 
 export async function middleware(request:NextRequest){
   const host=(request.headers.get('x-forwarded-host')||request.headers.get('host')||'').split(':')[0].toLowerCase();
+  if(isObviousProbe(request.nextUrl.pathname))return new NextResponse(null,{status:404});
 
   // Keep preview deployments reviewable; production aliases use the canonical domain.
   if(process.env.VERCEL_ENV!=='preview'&&host.endsWith('.vercel.app')){
