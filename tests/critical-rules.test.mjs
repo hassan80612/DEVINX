@@ -47,3 +47,11 @@ test("vitrine diferencia inexistência de falha temporária do backend",()=>{
   assert.match(backend,/revalidate:\s*30/);
   assert.match(backend,/AbortSignal\.timeout\(8_000\)/);
 });
+
+
+test("plano da DevinX Loja entra na ponte direta de checkout",()=>{
+  const source=read("src/app/loja/assinar/[plan]/page.tsx");
+  assert.ok(source.includes("https://www.vetorizeai.com.br/minha-loja/assinar/"));
+  assert.equal(source.includes("?assinar="),false);
+  assert.equal(source.includes("#planos"),false);
+});
