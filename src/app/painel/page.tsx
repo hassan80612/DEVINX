@@ -10,11 +10,22 @@ export default async function PainelPage(){
   const userId=data?.claims?.sub;
   if(!userId)redirect('/entrar');
 
-  const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
+  const[{data:accessData,error:accessError},{data:profile,error:profileError}]=await Promise.all([
+    supabase.rpc('get_devinx_access_status'),
+    supabase.from('profiles').select('onboarded_at,locale,currency_code,timezone').eq('id',userId).maybeSingle()
+  ]);
+
   const access=Array.isArray(accessData)?accessData[0]:accessData;
   if(accessError||!access?.allowed)redirect('/entrar?acesso=expirado');
-
-  const{data:profile}=await supabase.from('profiles').select('onboarded_at').eq('id',userId).maybeSingle();
+  if(profileError)throw profileError;
   if(!profile?.onboarded_at)redirect('/onboarding');
-  return <FinanceHub/>;
+
+  return <FinanceHub
+    initialAccess={access}
+    initialProfile={{
+      locale:profile.locale||null,
+      currency_code:profile.currency_code||null,
+      timezone:profile.timezone||null
+    }}
+  />;
 }
