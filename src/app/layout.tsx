@@ -6,8 +6,8 @@ import {Analytics} from '@vercel/analytics/next';
 import {I18nProvider} from '@/i18n/provider';
 import {PresenceProvider} from '@/components/LivePresence';
 
-const title='DevinX | Controle financeiro e meta diária';
-const description='Controle financeiro pessoal para organizar contas, gastos, cartões, metas e renda. Veja quanto precisa ganhar por dia e acompanhe sua rotina em um só lugar.';
+const title='DevinX | Financeiro e Loja';
+const description='DevinX reúne duas ferramentas independentes: Financeiro para organizar sua vida financeira e Loja para organizar produtos, estoque e vendas.';
 
 export const metadata:Metadata={
   metadataBase:new URL('https://devinx.com.br'),
@@ -28,7 +28,7 @@ export const metadata:Metadata={
     'controle financeiro Uber',
     'organizar contas'
   ],
-  category:'finance',
+  category:'business',
   alternates:{canonical:'/'},
   robots:{
     index:true,
@@ -61,17 +61,10 @@ const softwareApplicationJsonLd={
   '@type':'SoftwareApplication',
   name:'DevinX',
   url:'https://devinx.com.br',
-  applicationCategory:'FinanceApplication',
+  applicationCategory:'BusinessApplication',
   operatingSystem:'Web',
   inLanguage:'pt-BR',
-  description,
-  offers:{
-    '@type':'AggregateOffer',
-    priceCurrency:'BRL',
-    lowPrice:'19.90',
-    highPrice:'149.90',
-    offerCount:'4'
-  }
+  description
 };
 
 export default function RootLayout({children}:Readonly<{children:React.ReactNode}>){
