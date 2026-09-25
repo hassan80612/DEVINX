@@ -142,3 +142,15 @@ test("presença escolhe uma única aba líder por navegador",()=>{
   assert.ok(source.includes("claimPresenceLeader(tabId)"));
   assert.ok(source.includes("releasePresenceLeader(tabId)"));
 });
+
+
+test("vitrine recupera imagens após falha transitória sem criar proxy extra",()=>{
+  const source=read("src/app/[storeSlug]/StorefrontClientV3.js");
+  assert.ok(source.includes("IMAGE_RETRY_DELAYS_MS=[300,1000,2500]"));
+  assert.ok(source.includes("function retryStorefrontImage(event)"));
+  assert.ok(source.includes('image.removeAttribute("src")'));
+  assert.ok(source.includes("data-storefront-src={store.logo_url}"));
+  assert.ok(source.includes("data-storefront-src={currentPreview}"));
+  assert.ok((source.match(/onError=\{retryStorefrontImage\}/g)||[]).length>=4);
+  assert.equal(source.includes("/api/storefront/image"),false);
+});
