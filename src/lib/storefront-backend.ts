@@ -19,22 +19,33 @@ export async function fetchPublicStorefront(slug: string) {
 }
 
 export async function proxyStorefrontRequest(path: string, init?: RequestInit) {
-  const response = await fetch(`${storeBackendOrigin()}${path}`, {
-    ...init,
-    cache: "no-store",
-    headers: {
-      "Accept": "application/json",
-      ...(init?.headers || {})
-    }
-  });
-  const body = await response.arrayBuffer();
-  return new Response(body, {
-    status: response.status,
-    headers: {
-      "Content-Type": response.headers.get("content-type") || "application/json",
-      "Cache-Control": response.headers.get("cache-control") || "no-store"
-    }
-  });
+  try {
+    const response = await fetch(`${storeBackendOrigin()}${path}`, {
+      ...init,
+      cache: "no-store",
+      signal: init?.signal || AbortSignal.timeout(8_000),
+      headers: {
+        "Accept": "application/json",
+        ...(init?.headers || {})
+      }
+    });
+    const body = await response.arrayBuffer();
+    return new Response(body, {
+      status: response.status,
+      headers: {
+        "Content-Type": response.headers.get("content-type") || "application/json",
+        "Cache-Control": response.headers.get("cache-control") || "no-store"
+      }
+    });
+  } catch (error) {
+    const timeout =
+      error instanceof DOMException &&
+      (error.name === "TimeoutError" || error.name === "AbortError");
+    return Response.json(
+      {error: timeout ? "storefront_backend_timeout" : "storefront_backend_unavailable"},
+      {status: timeout ? 504 : 503, headers: {"Cache-Control": "no-store"}}
+    );
+  }
 }
 
 
