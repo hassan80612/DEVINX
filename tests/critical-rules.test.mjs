@@ -51,7 +51,7 @@ test("vitrine diferencia inexistência de falha temporária do backend",()=>{
 
 test("plano da DevinX Loja entra na ponte direta de checkout",()=>{
   const source=read("src/app/loja/assinar/[plan]/page.tsx");
-  assert.ok(source.includes("https://www.vetorizeai.com.br/minha-loja/assinar/"));
+  assert.ok(source.includes("https://vetorizeai.com.br/minha-loja/assinar/"));
   assert.equal(source.includes("?assinar="),false);
   assert.equal(source.includes("#planos"),false);
 });
