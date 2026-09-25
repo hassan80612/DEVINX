@@ -1,4 +1,4 @@
-const DEFAULT_STORE_BACKEND_ORIGIN = "https://www.vetorizeai.com.br";
+const DEFAULT_STORE_BACKEND_ORIGIN = "https://vetorizeai.com.br";
 
 export function storeBackendOrigin() {
   return String(process.env.STORE_BACKEND_ORIGIN || DEFAULT_STORE_BACKEND_ORIGIN).replace(/\/$/, "");
