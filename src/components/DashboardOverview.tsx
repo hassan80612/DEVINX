@@ -107,31 +107,29 @@ export function DashboardOverview(){
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.replace('/entrar');return}
-    const{data:profile}=await s.from('profiles').select('daily_goal_target_date,dashboard_chart_period').eq('id',user.id).maybeSingle();
-    const profilePeriod=validChartPeriod((profile as any)?.dashboard_chart_period)?(profile as any).dashboard_chart_period as ChartPeriod:chartPeriod;
+
+    const{data:snapshotData,error:snapshotError}=await s.rpc('get_dashboard_snapshot');
+    if(snapshotError||!snapshotData){
+      setLoading(false);
+      return;
+    }
+
+    const snapshot=snapshotData as any;
+    const profile=snapshot.profile||{};
+    const profilePeriod=validChartPeriod(profile.dashboard_chart_period)?profile.dashboard_chart_period as ChartPeriod:chartPeriod;
     const activePeriod=periodOverride||profilePeriod||'1m';
     setChartPeriod(activePeriod);
     const from=dashboardDataFrom(activePeriod);
-    const[rGoal,rBills,rBillPay,rBillOverrides,rInst,rCardPay,rDebtPay,rReserve,rFuturePlans,rFutureSettlements,rCashTx,rCashWork]=await Promise.all([
-      s.from('goals').select('id,name,target_minor,basis,period,goal_source,target_date').eq('user_id',user.id).eq('is_active',true).order('created_at',{ascending:false}).limit(1),
-      s.from('recurring_bills').select('id,amount_minor,due_day,start_month,installment_count,created_at').eq('user_id',user.id).eq('is_active',true),
-      s.from('recurring_bill_payments').select('recurring_bill_id,amount_minor,due_month,paid_on').eq('user_id',user.id),
-      s.from('recurring_bill_month_overrides').select('recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id),
-      s.from('card_installments').select('id,amount_minor,billing_month,due_date,paid_at').eq('user_id',user.id),
-      s.from('card_bill_payments').select('amount_minor,paid_on').eq('user_id',user.id),
-      s.from('debt_payments').select('debt_id,amount_minor,paid_on').eq('user_id',user.id).gte('paid_on',from),
-      s.from('reserve_entries').select('kind,amount_minor,occurred_on,future_plan_id').eq('user_id',user.id),
-      s.from('future_plans').select('id,kind,name,amount_minor,category_id,due_date,recurrence,reserve_enabled,is_active').eq('user_id',user.id),
-      s.from('future_plan_settlements').select('plan_id,due_date,amount_minor,settled_on').eq('user_id',user.id),
-      s.from('transactions').select('type,amount_minor,source_type,source_id,occurred_on,created_at').eq('user_id',user.id),
-      s.from('work_sessions').select('gross_income_minor,energy_cost_minor,extra_work_cost_minor,worked_on,created_at').eq('user_id',user.id)
-    ]);
-    const cashTx=(rCashTx.data||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null;occurred_on:string;created_at:string}[];
-    const allWork=(rCashWork.data||[]) as {gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string;created_at:string}[];
-    const allCardPays=(rCardPay.data||[]) as CardPay[];
+
+    const cashTx=(snapshot.transactions||[]) as {type:'income'|'expense';amount_minor:number;source_type:string|null;source_id:string|null;occurred_on:string;created_at:string}[];
+    const allWork=(snapshot.work_sessions||[]) as {gross_income_minor:number;energy_cost_minor:number;extra_work_cost_minor:number;worked_on:string;created_at:string}[];
+    const allCardPays=(snapshot.card_payments||[]) as CardPay[];
+    const allBillPays=(snapshot.bill_payments||[]) as BillPay[];
+
     setTx(cashTx.filter(item=>item.occurred_on>=from).map(item=>({type:item.type,amount_minor:item.amount_minor,occurred_on:item.occurred_on,source_type:item.source_type})) as Tx[]);
     setWork(allWork.filter(item=>item.worked_on>=from).map(item=>({gross_income_minor:item.gross_income_minor,energy_cost_minor:item.energy_cost_minor,extra_work_cost_minor:item.extra_work_cost_minor,worked_on:item.worked_on})) as Work[]);
-    const loadedGoal=((rGoal.data||[])[0]||null) as Goal|null;
+
+    const loadedGoal=(snapshot.goal||null) as Goal|null;
     setGoal(loadedGoal);
     if(loadedGoal?.goal_source==='daily_reserve_manual'){
       setGoalMode('manual');
@@ -139,16 +137,18 @@ export function DashboardOverview(){
     }else{
       setGoalMode('automatic');
     }
-    setBills((rBills.data||[]) as Bill[]);
-    setBillPays((rBillPay.data||[]) as BillPay[]);
-    setBillOverrides((rBillOverrides.data||[]) as BillOverride[]);
-    setCardInst((rInst.data||[]) as CardInst[]);
+
+    setBills((snapshot.bills||[]) as Bill[]);
+    setBillPays(allBillPays);
+    setBillOverrides((snapshot.bill_overrides||[]) as BillOverride[]);
+    setCardInst((snapshot.card_installments||[]) as CardInst[]);
     setCardPays(allCardPays.filter(item=>item.paid_on>=from));
-    setDebtPays((rDebtPay.data||[]) as DebtPay[]);
-    setReserveEntries((rReserve.data||[]) as ReserveEntry[]);
-    setFuturePlans((rFuturePlans.data||[]) as FuturePlanLike[]);
-    setFutureSettlements((rFutureSettlements.data||[]) as FutureSettlementLike[]);
+    setDebtPays((snapshot.debt_payments||[]) as DebtPay[]);
+    setReserveEntries((snapshot.reserve_entries||[]) as ReserveEntry[]);
+    setFuturePlans((snapshot.future_plans||[]) as FuturePlanLike[]);
+    setFutureSettlements((snapshot.future_settlements||[]) as FutureSettlementLike[]);
     setCardItemPays(cashTx.filter(item=>item.source_type==='card_installment_payment').map(item=>({source_id:item.source_id,amount_minor:Number(item.amount_minor)})));
+
     const hasWorkCashMigration=cashTx.some(item=>item.source_type==='work_cash_model_migration');
     const legacyBaseline=cashTx
       .filter(item=>item.source_type==='cash_adjustment')
@@ -158,10 +158,11 @@ export function DashboardOverview(){
       :0;
     const cashTransactions=cashTx.reduce((sum,item)=>sum+(item.type==='income'?Number(item.amount_minor):-Number(item.amount_minor)),0)-legacyWorkOffset;
     const cashWork=allWork.reduce((sum,item)=>sum+Number(item.gross_income_minor),0);
-    const cashBills=((rBillPay.data||[]) as BillPay[]).reduce((sum,item)=>sum+Number(item.amount_minor),0);
+    const cashBills=allBillPays.reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const cashCards=allCardPays.reduce((sum,item)=>sum+Number(item.amount_minor),0);
     setCashPosition({current:cashTransactions+cashWork-cashBills-cashCards,hasAdjustment:cashTx.some(item=>item.source_type==='cash_adjustment'||item.source_type==='cash_adjustment_v2')});
-    const saved=(profile as any)?.daily_goal_target_date||'';
+
+    const saved=profile.daily_goal_target_date||'';
     setGoalTargetDate(saved);
     setTargetDraft(saved);
     setLoading(false);
