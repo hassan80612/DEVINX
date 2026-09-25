@@ -24,13 +24,13 @@ test("painel resolve acesso e preferências no servidor uma única vez",()=>{
   assert.doesNotMatch(hub,/rpc\('get_devinx_access_status'\)/);
 });
 
-test("dashboard não repete consultas apenas para calcular caixa",()=>{
+test("dashboard consolida o carregamento inicial em um único snapshot",()=>{
   const source=read("src/components/DashboardOverview.tsx");
   const load=source.slice(source.indexOf("async function load("),source.indexOf("async function loadFlowData("));
-  assert.equal((load.match(/from\('transactions'\)/g)||[]).length,1);
-  assert.equal((load.match(/from\('work_sessions'\)/g)||[]).length,1);
-  assert.equal((load.match(/from\('recurring_bill_payments'\)/g)||[]).length,1);
-  assert.equal((load.match(/from\('card_bill_payments'\)/g)||[]).length,1);
+  assert.equal((load.match(/rpc\('get_dashboard_snapshot'\)/g)||[]).length,1);
+  for(const table of ["transactions","work_sessions","recurring_bill_payments","card_bill_payments","future_plans"]){
+    assert.equal((load.match(new RegExp(`from\\('${table}'\\)`,"g"))||[]).length,0);
+  }
 });
 
 test("home e loja não escondem todo conteúdo até o primeiro useEffect",()=>{
