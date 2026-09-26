@@ -29,7 +29,8 @@ internal sealed class ContinuousAgent
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         AgentTelemetry? lastSent = null;
-        var nextNetworkSend = DateTimeOffset.MinValue;
+        var nextAllowedAttempt = DateTimeOffset.MinValue;
+        var nextKeepAlive = DateTimeOffset.MinValue;
 
         using var rest = new LightBurnRestClient();
         using var heartbeat = new DevinXHeartbeatClient();
@@ -56,20 +57,22 @@ internal sealed class ContinuousAgent
             var changed = lastSent is null || MeaningfullyDifferent(lastSent, telemetry);
             var now = DateTimeOffset.UtcNow;
 
-            if (changed || now >= nextNetworkSend)
+            if (now >= nextAllowedAttempt && (changed || now >= nextKeepAlive))
             {
                 try
                 {
                     var result = await heartbeat.SendAsync(_identity, telemetry, cancellationToken);
                     if (result.Accepted)
                     {
+                        var acceptedAt = DateTimeOffset.UtcNow;
                         lastSent = telemetry;
-                        nextNetworkSend = DateTimeOffset.UtcNow.Add(KeepAliveInterval);
+                        nextAllowedAttempt = acceptedAt.AddSeconds(5);
+                        nextKeepAlive = acceptedAt.Add(KeepAliveInterval);
                     }
                     else
                     {
                         _tray.SetStatus("DevinX Laser Agent — vínculo recusado");
-                        nextNetworkSend = DateTimeOffset.UtcNow.Add(RetryInterval);
+                        nextAllowedAttempt = DateTimeOffset.UtcNow.Add(RetryInterval);
                     }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -79,15 +82,13 @@ internal sealed class ContinuousAgent
                 catch
                 {
                     _tray.SetStatus("DevinX Laser Agent — sem conexão");
-                    nextNetworkSend = DateTimeOffset.UtcNow.Add(RetryInterval);
+                    nextAllowedAttempt = DateTimeOffset.UtcNow.Add(RetryInterval);
                 }
             }
 
             try
             {
-                var delay = Task.Delay(SampleInterval, cancellationToken);
-                var refresh = _refreshSignal.WaitAsync(cancellationToken);
-                await Task.WhenAny(delay, refresh);
+                await _refreshSignal.WaitAsync(SampleInterval, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
