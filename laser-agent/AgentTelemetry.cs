@@ -70,7 +70,7 @@ internal static class AgentTelemetryFactory
     public static AgentTelemetry FromLegacyUdp(AgentIdentity identity,LightBurnReply ping,LightBurnReply? status)
     {
         var online=ping.Received&&ping.Response=="OK";
-        var state=status?.Response=="OK"?"idle":status?.Response=="!"?"busy":"unknown";
+        var state=status?.Response=="OK"?"idle":"unknown";
 
         return new AgentTelemetry(
             1,
@@ -85,6 +85,20 @@ internal static class AgentTelemetryFactory
             null,
             DateTimeOffset.UtcNow);
     }
+
+    public static AgentTelemetry Offline(AgentIdentity identity) =>
+        new(
+            1,
+            identity.DeviceId,
+            identity.PublicKeyFingerprint,
+            "lightburn-udp-legacy",
+            false,
+            false,
+            null,
+            "unknown",
+            null,
+            null,
+            DateTimeOffset.UtcNow);
 
     private static string NormalizeJobState(string? value) =>
         value?.Trim().ToLowerInvariant() switch
