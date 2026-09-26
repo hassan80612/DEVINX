@@ -48,6 +48,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   const[paying,setPaying]=useState<Bill|null>(null);
   const[editingPayment,setEditingPayment]=useState<Payment|null>(null);
   const[paidAmount,setPaidAmount]=useState('');
+  const[paymentMode,setPaymentMode]=useState<'partial'|'settle'>('partial');
   const[paidOn,setPaidOn]=useState(localDateISO());
 
   const[editBill,setEditBill]=useState<Bill|null>(null);
@@ -135,6 +136,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     const remaining=billRemaining(b,selectedMonth,payments,overrides);
     setPaying(b);
     setEditingPayment(p||null);
+    setPaymentMode('partial');
     setPaidAmount(String(Number(p?.amount_minor??remaining)/100).replace('.',','));
     setPaidOn(p?.paid_on||localDateISO());
     setNotice('');
@@ -166,7 +168,15 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
         }));
       }
       if(error){setNotice(t('common.errorSave'));return}
-      setPaying(null);setEditingPayment(null);setNotice(t('bills.paymentSaved'));
+      const settlesWithDiscount=paymentMode==='settle'&&paidOther+value<expected;
+      if(settlesWithDiscount){
+        const{error:overrideError}=await s.from('recurring_bill_month_overrides').upsert({
+          user_id:user.id,recurring_bill_id:paying.id,due_month:selectedMonth,
+          amount_minor:paidOther+value,due_day:billDueDay(paying,selectedMonth,overrides)
+        },{onConflict:'recurring_bill_id,due_month'});
+        if(overrideError){setNotice(t('common.errorSave'));return}
+      }
+      setPaying(null);setEditingPayment(null);setPaymentMode('partial');setNotice(settlesWithDiscount?t('payment.discountSettled'):t('bills.paymentSaved'));
       notifyFinanceUpdated();
       await load();
     }finally{setSavingAction('')}
@@ -315,6 +325,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
       <div className="modalHead"><h2>{paying.name}</h2><button type="button" onClick={()=>setPaying(null)}>×</button></div>
       <p className="formHint">{date(selectedMonth,{month:'long',year:'numeric'})} · {t('bills.partialHelp')}</p>
       <label>{t('bills.valuePaid')}<input value={paidAmount} onChange={e=>setPaidAmount(e.target.value)} inputMode="decimal" required/></label>
+      {!editingPayment&&<div className="paymentModePicker" role="group" aria-label={t('payment.mode')}><button type="button" className={paymentMode==='partial'?'active':''} onClick={()=>setPaymentMode('partial')}><b>{t('payment.partial')}</b><small>{t('payment.partialHelp')}</small></button><button type="button" className={paymentMode==='settle'?'active':''} onClick={()=>setPaymentMode('settle')}><b>{t('payment.settle')}</b><small>{t('payment.settleHelp')}</small></button></div>}
       <label>{t('bills.paidDate')}<input type="date" value={paidOn} onChange={e=>setPaidOn(e.target.value)} required/></label>
       <div className="modalActions"><button type="button" className="secondary" onClick={()=>setPaying(null)}>{t('common.cancel')}</button><button className="primary" disabled={savingAction==='payment'} aria-busy={savingAction==='payment'}>{savingAction==='payment'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div>
     </form></div>}
