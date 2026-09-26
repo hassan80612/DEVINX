@@ -5,7 +5,8 @@ const ALLOWED_FUNCTIONS=new Set([
   'laser-master-devices',
   'laser-master-device-access',
   'laser-master-preview',
-  'laser-master-command'
+  'laser-master-command',
+  'laser-master-remote-session'
 ]);
 
 export async function invokeLaserMasterFunction(slug:string,body:Record<string,unknown>){
