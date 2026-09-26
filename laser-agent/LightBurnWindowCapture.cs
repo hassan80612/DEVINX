@@ -12,6 +12,15 @@ internal static class LightBurnWindowCapture
     [StructLayout(LayoutKind.Sequential)]
     private struct Rect { public int Left,Top,Right,Bottom; }
 
+    private const int DwmwaExtendedFrameBounds=9;
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(
+        IntPtr hwnd,
+        int dwAttribute,
+        out Rect pvAttribute,
+        int cbAttribute);
+
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hWnd,out Rect rect);
 
@@ -27,7 +36,7 @@ internal static class LightBurnWindowCapture
 
         var handle=FindLightBurnWindow();
         if(handle==IntPtr.Zero||IsIconic(handle)||!IsWindowVisible(handle))return null;
-        if(!GetWindowRect(handle,out var rect))return null;
+        if(!TryGetPhysicalBounds(handle,out var rect))return null;
 
         var width=rect.Right-rect.Left;
         var height=rect.Bottom-rect.Top;
@@ -76,6 +85,23 @@ internal static class LightBurnWindowCapture
         {
             resized?.Dispose();
         }
+    }
+
+    private static bool TryGetPhysicalBounds(IntPtr handle,out Rect rect)
+    {
+        // GetWindowRect can be DPI-virtualized. DWM extended frame bounds are physical pixels.
+        if(DwmGetWindowAttribute(
+            handle,
+            DwmwaExtendedFrameBounds,
+            out rect,
+            Marshal.SizeOf<Rect>())==0)
+        {
+            if(rect.Right>rect.Left&&rect.Bottom>rect.Top)return true;
+        }
+
+        return GetWindowRect(handle,out rect)
+            &&rect.Right>rect.Left
+            &&rect.Bottom>rect.Top;
     }
 
     private static IntPtr FindLightBurnWindow()

@@ -7,6 +7,8 @@ internal static class Program
 {
     public static async Task Main(string[] args)
     {
+        DpiAwareness.Initialize();
+
         using var singleInstance = new SingleInstanceGuard();
         if (!singleInstance.IsPrimary)
         {
