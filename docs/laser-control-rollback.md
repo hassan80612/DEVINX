@@ -70,6 +70,8 @@ Funções atualmente implantadas no Supabase do DevinX:
 - `laser-agent-pairing-offer`
 - `laser-agent-pairing-status`
 - `laser-master-pairing-claim`
+- `laser-agent-heartbeat`
+- `laser-master-devices`
 
 Em um rollback completo, elas fazem parte do escopo e devem ser removidas/desativadas junto com o schema e o código. Antes da remoção, se necessário, pode-se publicar temporariamente um handler de bloqueio que responde HTTP 410 para cortar tráfego imediatamente.
 
@@ -84,3 +86,11 @@ Migrations reais adicionais:
 - `20260926182805 laser_control_telemetry_consolidation` — remove a duplicação e mantém uma única telemetria.
 
 O estado final correto é: `device_state` + `laser_internal_accept_telemetry`. A migration 182613 permanece no histórico apenas porque foi aplicada; seus objetos redundantes foram removidos em 182805.
+
+
+### Estado final da telemetria
+- `laser-agent-heartbeat` aceita somente envelope assinado pelo par de chaves do Agent;
+- `last_sequence` impede replay;
+- `device_state` guarda apenas o snapshot atual, sem histórico de heartbeat;
+- `laser-master-devices` exige sessão de usuário + membership admin;
+- nenhuma dessas funções autoriza comandos físicos.
