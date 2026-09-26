@@ -141,6 +141,14 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
     </header>
     {access.source==='trial'&&access.expires_at&&<div className="trialAccessNotice"><b>{t('trial.active')}</b><span>{t('trial.ends')} {date(access.expires_at,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div>}
 
+    <div className="financeWorkspace">
+    <nav className="financeBottomNav" aria-label="Main navigation">
+      <button type="button" className={section==='home'?'active':''} onClick={()=>setSection('home')}><span>⌂</span><b>{t('nav.home')}</b></button>
+      <button type="button" className={section==='movements'?'active':''} onClick={()=>setSection('movements')}><span>↕</span><b>{t('nav.movements')}</b></button>
+      <button type="button" className={section==='work'?'active':''} onClick={()=>setSection('work')}><span>◷</span><b>{t('nav.work')}</b></button>
+      <button type="button" className={section==='plan'?'active':''} onClick={()=>setSection('plan')}><span>◎</span><b>{t('nav.plan')}</b></button>
+      <button type="button" className={section==='more'||['cards','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>{t('nav.more')}</b></button>
+    </nav>
     <section className="financeContent">
       {section!=='home'&&<div className="sectionTopbar"><button type="button" className="backButton" onClick={()=>setSection(backTarget())}>‹</button><div><small>DEVINX</small><h1>{titles[section]}</h1></div></div>}
 
@@ -185,15 +193,11 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
       {section==='master'&&access.is_admin&&<AdminMaster/>}
     </section>
 
+    </div>
+
     <ProCalculator variant="floating"/>
     <QuickCapture request={capture} onNavigate={navigate}/>
 
-    <nav className="financeBottomNav" aria-label="Main navigation">
-      <button type="button" className={section==='home'?'active':''} onClick={()=>setSection('home')}><span>⌂</span><b>{t('nav.home')}</b></button>
-      <button type="button" className={section==='movements'?'active':''} onClick={()=>setSection('movements')}><span>↕</span><b>{t('nav.movements')}</b></button>
-      <button type="button" className={section==='work'?'active':''} onClick={()=>setSection('work')}><span>◷</span><b>{t('nav.work')}</b></button>
-      <button type="button" className={section==='plan'?'active':''} onClick={()=>setSection('plan')}><span>◎</span><b>{t('nav.plan')}</b></button>
-      <button type="button" className={section==='more'||['cards','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'active':''} onClick={()=>setSection('more')}><span>•••</span><b>{t('nav.more')}</b></button>
-    </nav>
+
   </main>;
 }

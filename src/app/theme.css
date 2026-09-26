@@ -42,10 +42,10 @@ body:before{
 .switchRow,.adminUser,.diagGrid article,.commitmentDouble article{background:var(--finance-card-bg);border-color:var(--border);box-shadow:var(--shadow-sm)}
 
 .primary,.goldButton,.quickCaptureFab,.paidButton{
-  background:linear-gradient(180deg,#f3d47c 0%,#dfb34b 45%,#ad741e 100%);
-  border:1px solid rgba(255,230,149,.62);
-  color:#171006;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 8px 20px rgba(170,109,20,.16);
+  background:var(--button-primary-background);
+  border:1px solid var(--border-accent);
+  color:var(--accent-ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.30),var(--shadow-sm);
   text-shadow:none;
 }
 .primary:hover,.goldButton:hover,.quickCaptureFab:hover{filter:brightness(1.05);transform:translateY(-1px)}
@@ -57,7 +57,7 @@ body:before{
 }
 .textButton,.ledgerActions button,.pendingActions button,.pendingRow>button,
 .workSessionActions button,.categoryActions button,.flowGuard button,.quickCaptureRoutes button,.authLinkButton{
-  color:#d8b761;
+  color:var(--accent);
 }
 .pendingActions button,.pendingRow>button,.adminActions button{
   background:var(--surface-0);
@@ -139,7 +139,7 @@ select option{background:var(--surface-0);color:var(--text)}
 .positive{color:var(--green)}
 .negative,.dangerText{color:var(--red)}
 
-.projectedStrip strong,.summaryHero strong,.commitmentMonthTotal strong,.dailyTarget b{color:#efc968}
+.projectedStrip strong,.summaryHero strong,.commitmentMonthTotal strong,.dailyTarget b{color:var(--finance-accent-text)}
 .goldPill{background:rgb(var(--accent-rgb) / .045);border-color:rgb(var(--accent-rgb) / .22);color:#e6c263;text-shadow:none}
 
 /* Real dashboard visualizations */
@@ -182,7 +182,7 @@ select option{background:var(--surface-0);color:var(--text)}
   box-shadow:0 10px 26px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,244,204,.02);
 }
 .landingV2 .deepDiveCard:before,.landingV2 .dailyDive:before{background:linear-gradient(180deg,#dcb24d,rgba(220,178,77,.08),transparent)}
-.landingCopy h1 em,.deepDiveCard small,.miniHeading small,.sectionTopbar small,.financeHeaderMeta small{color:#e4bf61}
+.landingCopy h1 em{color:#e4bf61}.deepDiveCard small,.miniHeading small,.sectionTopbar small,.financeHeaderMeta small{color:var(--accent-strong)}
 
 @media(max-width:650px){
   .devinxEmblem{width:40px;height:40px}.devinxWordmark{font-size:17px}
@@ -257,7 +257,7 @@ select option{background:var(--surface-0);color:var(--text)}
 
 
 /* CTA readability fixes */
-.dailyGoalButton{color:#171006;text-shadow:none}
+.dailyGoalButton{color:var(--accent-ink);text-shadow:none}
 .quickCaptureFab:after{content:none}
 
 
@@ -529,12 +529,8 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   color:var(--text);
   font-family:var(--font-ui);
 }
-.financeHeader,.landingTop,.authTop{
-  background:rgba(7,16,19,.94);
-  border-bottom:1px solid var(--border);
-  box-shadow:0 10px 30px rgba(0,0,0,.24);
-  backdrop-filter:blur(18px);
-}
+.financeHeader{background:var(--finance-chrome-bg);border-bottom:1px solid var(--finance-chrome-border);box-shadow:var(--finance-chrome-shadow);backdrop-filter:blur(18px)}
+.landingTop,.authTop{background:rgba(7,16,19,.94);border-bottom:1px solid var(--border);box-shadow:0 10px 30px rgba(0,0,0,.24);backdrop-filter:blur(18px)}
 .financeContent{width:min(1100px,100%)}
 
 .panel,.empty,.moduleSummary,.creditCard,.recurringCard,.debtCard,.goalCard,
@@ -624,13 +620,9 @@ input::placeholder,textarea::placeholder{color:var(--text-faint)}
 input:focus,select:focus,textarea:focus{border-color:var(--border-accent);box-shadow:0 0 0 3px rgb(var(--info-rgb) / .08)}
 select option{background:var(--surface-1);color:var(--text)}
 
-.financeBottomNav{
-  background:rgba(16,27,31,.94);
-  border-color:var(--border-strong);
-  box-shadow:0 14px 36px rgba(0,0,0,.30);
-}
-.financeBottomNav button{color:var(--text-faint)}
-.financeBottomNav button.active{background:rgb(var(--accent-rgb) / .12);color:var(--accent-strong);box-shadow:inset 0 0 0 1px rgb(var(--accent-rgb) / .16)}
+.financeBottomNav{background:var(--finance-chrome-bg);border-color:var(--finance-chrome-border);box-shadow:var(--finance-chrome-shadow)}
+.financeBottomNav button{color:var(--finance-nav-text)}
+.financeBottomNav button.active{background:var(--finance-nav-active-bg);color:var(--finance-accent-text);box-shadow:inset 0 0 0 1px rgb(var(--accent-rgb) / .14)}
 
 .movementTabs,.quickCaptureTabs{background:var(--surface-0);border-color:var(--border)}
 .filterRow button,.movementTabs button,.historyTypeFilter button,.quickCaptureTabs button,
@@ -882,3 +874,55 @@ select option{background:var(--surface-1);color:var(--text)}
 .financeApp[data-theme="light"] .financeBottomNav button b{color:var(--finance-nav-text)}
 .financeApp[data-theme="light"] .financeBottomNav button.active b{color:var(--accent-dark)}
 .financeApp[data-theme="light"] .financeHeaderMeta span{color:var(--text-muted)}
+
+/* Finance work module: semantic surfaces for both themes. */
+.financeApp .vehicleHero,
+.financeApp .workDayCard,
+.financeApp .workSessionCard,
+.financeApp .workDayMetrics>span,
+.financeApp .workJourneyBreakdown>span,
+.financeApp .workCashRule,
+.financeApp .settingsNote{
+  background:var(--finance-card-bg);
+  border-color:var(--border);
+  color:var(--text);
+  box-shadow:var(--shadow-sm);
+}
+.financeApp .vehicleSpecs span{background:var(--finance-card-inset);border-color:var(--border);color:var(--text-soft)}
+.financeApp .workDayHead b,.financeApp .workSessionMain strong{color:var(--text)}
+.financeApp .workDayHead small,.financeApp .workSessionMain small,.financeApp .workDayCashHint,.financeApp .workJourneyBreakdown small{color:var(--text-muted)}
+@media (min-width:901px){
+  .financeApp .workDayCard{padding:18px}
+  .financeApp .workSessionCard{padding:14px 15px}
+}
+
+.financeApp[data-theme="light"] .financeBottomNav button span{color:var(--accent-strong);text-shadow:none}
+.financeApp[data-theme="light"] .financeBottomNav button.active{background:linear-gradient(145deg,rgb(var(--accent-rgb) / .11),var(--surface-1));color:var(--accent-dark)}
+.financeApp[data-theme="light"] .financeBottomNav button.active b{color:var(--accent-dark)}
+.financeApp[data-theme="light"] .financeBottomNav{box-shadow:var(--shadow-md)}
+
+.financeApp .metricGrid article{background:var(--finance-card-inset);border-color:var(--border);color:var(--text);box-shadow:none}
+.financeApp .metricGrid article small{color:var(--text-muted)}
+.financeApp .metricGrid article b,.financeApp .metricGrid article strong{color:var(--text)}
+
+.financeApp[data-theme="light"] .quickCaptureFab,
+.financeApp[data-theme="light"] .quickSave,
+.financeApp[data-theme="light"] .dailyGoalButton,
+.financeApp[data-theme="light"] .billPayPrimary,
+.financeApp[data-theme="light"] .paidButton,
+.financeApp[data-theme="light"] .goldButton{
+  background:var(--button-primary-background);
+  border-color:var(--border-accent);
+  color:var(--accent-ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),var(--shadow-sm);
+  text-shadow:none;
+}
+.financeApp[data-theme="light"] .goalPanel .bar i,
+.financeApp[data-theme="light"] .reserveGoalBar i{
+  background:linear-gradient(90deg,var(--accent-dark),var(--accent));
+  box-shadow:none;
+}
+
+@media (min-width:901px){
+  .financeApp .financeWorkspace .financeContent{width:100%;max-width:none;margin:0;padding:4px 0 0}
+}
