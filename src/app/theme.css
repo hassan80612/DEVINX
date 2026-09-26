@@ -907,3 +907,25 @@ select option{background:var(--surface-1);color:var(--text)}
 .financeApp[data-theme="light"] .scientificKeys .memory{background:linear-gradient(145deg,#eff7ee,var(--surface-2));color:#39734d}
 .financeApp[data-theme="light"] .scientificKeys .operator{background:linear-gradient(145deg,#fff6dc,var(--surface-2));color:var(--accent-dark)}
 .financeApp[data-theme="light"] .scientificKeys .clear{background:linear-gradient(145deg,#fff0ef,var(--surface-2));color:var(--negative)}
+
+.financeApp[data-theme="light"] .homeSummaryCard{background:var(--finance-card-bg);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.financeApp[data-theme="light"] .homeSummaryHeader b{color:var(--text-soft)}
+.financeApp[data-theme="light"] .homeSummaryHeader i{color:var(--accent)}
+.financeApp[data-theme="light"] .quickPresetGrid button{color:var(--text);background:var(--surface-0)}
+.financeApp[data-theme="light"] .quickPresetGrid button.selected{background:var(--finance-soft-accent-bg);color:var(--accent-dark)}
+.financeApp[data-theme="light"] .quickReserveField{background:var(--finance-soft-accent-bg)}
+.financeApp[data-theme="light"] .cashPositionPrimary,
+.financeApp[data-theme="light"] .cashPositionProjection,
+.financeApp[data-theme="light"] .dailyReserveGrid>span,
+.financeApp[data-theme="light"] .statementGroup{background:var(--finance-card-inset)}
+.financeApp[data-theme="light"] .projectedStrip strong,
+.financeApp[data-theme="light"] .summaryHero strong,
+.financeApp[data-theme="light"] .commitmentMonthTotal strong,
+.financeApp[data-theme="light"] .dailyTarget b{color:var(--accent-dark);text-shadow:none}
+.financeApp[data-theme="light"] .financeHeader .languageMenuButton,
+.financeApp[data-theme="light"] .financeHeader .languageMini{background:var(--surface-0);color:var(--accent-dark);border-color:var(--border-strong)}
+.financeApp[data-theme="light"] .financeBottomNav button{color:var(--finance-nav-text)}
+.financeApp[data-theme="light"] .financeBottomNav button span{color:var(--finance-nav-icon);text-shadow:none}
+.financeApp[data-theme="light"] .financeBottomNav button b{color:var(--finance-nav-text)}
+.financeApp[data-theme="light"] .financeBottomNav button.active b{color:var(--accent-dark)}
+.financeApp[data-theme="light"] .financeHeaderMeta span{color:var(--text-muted)}
