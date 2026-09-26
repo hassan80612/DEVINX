@@ -233,10 +233,10 @@ export function LaserControlMasterPanel(){
       <div className={styles.testGuide}>
         <small>COMO TESTAR</small>
         <ol>
-          <li><b>1.</b><span>Abra o Agent no PC com LightBurn aberto.</span></li>
-          <li><b>2.</b><span>Execute <code>DevinXLaserAgent.exe --pair-rest</code> uma vez para autorizar a leitura local do LightBurn.</span></li>
-          <li><b>3.</b><span>Execute <code>DevinXLaserAgent.exe --pair-devinx</code>, copie o código e use “Vincular PC” acima.</span></li>
-          <li><b>4.</b><span>Depois rode <code>DevinXLaserAgent.exe --heartbeat-once</code> e clique em “Atualizar” para ver o estado do PC.</span></li>
+          <li><b>1.</b><span>Abra o LightBurn no PC.</span></li>
+          <li><b>2.</b><span>Execute <code>DevinXLaserAgent.exe --pair-devinx</code>, copie o código e use “Vincular PC” acima.</span></li>
+          <li><b>3.</b><span>Rode <code>DevinXLaserAgent.exe --heartbeat-once</code> e clique em “Atualizar” para ver o estado. Se a REST API não existir, o Agent usa o diagnóstico UDP legado.</span></li>
+          <li><b>4.</b><span>Em LightBurn com REST API compatível, rode também <code>DevinXLaserAgent.exe --pair-rest</code> uma vez para liberar telemetria mais rica de projeto/progresso.</span></li>
         </ol>
         <p>Nesta versão de teste não existe Start, Stop, Pause ou Frame remoto. O objetivo é validar pareamento e monitoramento antes de liberar qualquer comando físico.</p>
       </div>
