@@ -96,6 +96,23 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         },cancellationToken);
     }
 
+    public async Task SendCommandResultAsync(
+        string commandId,
+        bool ok,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        if(!IsConnected)return;
+        await SendBroadcastAsync("command_result",new
+        {
+            token=_config.ControlToken,
+            commandId,
+            ok,
+            reason,
+            at=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        },cancellationToken);
+    }
+
     private async Task SendBroadcastAsync(string eventName,object payload,CancellationToken cancellationToken)
     {
         await SendEnvelopeAsync(
@@ -217,7 +234,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                     expires=parsed;
 
                 if(!string.IsNullOrWhiteSpace(id)&&!string.IsNullOrWhiteSpace(command))
-                    await _onCommand(new RealtimeCommand(token??"",id!,command!,expires));
+                    _=Task.Run(()=>_onCommand(new RealtimeCommand(token??"",id!,command!,expires)));
                 return;
             }
 
