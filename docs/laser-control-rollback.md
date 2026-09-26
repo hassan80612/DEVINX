@@ -72,6 +72,7 @@ Funções atualmente implantadas no Supabase do DevinX:
 - `laser-master-pairing-claim`
 - `laser-agent-heartbeat`
 - `laser-master-devices`
+- `laser-master-device-access`
 
 Em um rollback completo, elas fazem parte do escopo e devem ser removidas/desativadas junto com o schema e o código. Antes da remoção, se necessário, pode-se publicar temporariamente um handler de bloqueio que responde HTTP 410 para cortar tráfego imediatamente.
 
@@ -94,3 +95,6 @@ O estado final correto é: `device_state` + `laser_internal_accept_telemetry`. A
 - `device_state` guarda apenas o snapshot atual, sem histórico de heartbeat;
 - `laser-master-devices` exige sessão de usuário + membership admin;
 - nenhuma dessas funções autoriza comandos físicos.
+
+
+Migration adicional aplicada: `20260926183437 laser_control_master_device_revocation`, com rollback em `supabase/rollback/20260926183437_laser_control_master_device_revocation.down.sql`.
