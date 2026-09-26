@@ -1,0 +1,36 @@
+name: Laser Agent Check
+
+on:
+  push:
+    branches:
+      - feature/laser-control-foundation
+    paths:
+      - 'laser-agent/**'
+      - '.github/workflows/laser-agent-check.yml'
+  pull_request:
+    paths:
+      - 'laser-agent/**'
+      - '.github/workflows/laser-agent-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-agent:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore .\laser-agent\DevinXLaserAgent.csproj
+
+      - name: Build
+        run: dotnet build .\laser-agent\DevinXLaserAgent.csproj -c Release --no-restore
