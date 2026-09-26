@@ -51,3 +51,21 @@ jobs:
             Write-Host $body
             exit 1
           }
+
+
+      - name: Heartbeat endpoint rejects unsigned payload
+        shell: pwsh
+        run: |
+          $url = 'https://jubiwhtnhxluetzkzomm.supabase.co/functions/v1/laser-agent-heartbeat'
+          $status = curl.exe -sS -o heartbeat-negative.json -w "%{http_code}" -X POST $url -H "Content-Type: application/json" --data "{}"
+          if ($status -ne '400') {
+            Write-Host "Unexpected HTTP status: $status"
+            Get-Content heartbeat-negative.json
+            exit 1
+          }
+          $body = Get-Content heartbeat-negative.json -Raw
+          if ($body -notmatch 'protocol_version') {
+            Write-Host "Heartbeat endpoint did not reject the unsigned payload for the expected reason."
+            Write-Host $body
+            exit 1
+          }
