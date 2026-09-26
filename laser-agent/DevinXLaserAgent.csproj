@@ -1,0 +1,1 @@
+<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net8.0</TargetFramework>\n    <ImplicitUsings>enable</ImplicitUsings>\n    <Nullable>enable</Nullable>\n    <AssemblyName>DevinXLaserAgent</AssemblyName>\n    <RootNamespace>DevinXLaserAgent</RootNamespace>\n  </PropertyGroup>\n</Project>\n
