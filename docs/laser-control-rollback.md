@@ -15,7 +15,7 @@ A branch de rollback foi criada diretamente do commit base original da feature.
 
 ## Situação no momento deste registro
 
-A fundação começou somente com arquivos novos. Depois da entrada das Edge Functions Deno, o único arquivo pré-existente alterado intencionalmente foi `tsconfig.json`, apenas para excluir `supabase/functions` do typecheck Node/Next. A âncora pré-Laser continua sendo a referência exata para restaurá-lo.
+A fundação começou somente com arquivos novos. Hoje os arquivos pré-existentes alterados intencionalmente são `tsconfig.json` (separação do typecheck Deno/Next) e `src/components/AdminMaster.tsx` (entrada master-only do Laser Control). A âncora pré-Laser continua sendo a referência exata para restaurá-los.
 
 Isso significa que, enquanto o PR não for mesclado, rollback = abandonar/fechar o PR e remover a branch da feature. Produção permanece exatamente como estava.
 
@@ -98,3 +98,6 @@ O estado final correto é: `device_state` + `laser_internal_accept_telemetry`. A
 
 
 Migration adicional aplicada: `20260926183437 laser_control_master_device_revocation`, com rollback em `supabase/rollback/20260926183437_laser_control_master_device_revocation.down.sql`.
+
+
+Antes do instalador comercial, mover o código do Agent para um repositório privado; o repositório DEVINX atual é público. Isso não altera o rollback: a branch pré-Laser continua sendo a âncora do site.
