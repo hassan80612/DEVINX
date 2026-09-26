@@ -6,6 +6,7 @@ function canonicalPayload(proof:LaserPairingProof){
     'devinx-laser-pair-v1',
     proof.deviceId,
     proof.publicKeyFingerprint,
+    proof.agentVersion,
     proof.pairingCode,
     String(Math.floor(Date.parse(proof.expiresAt)/1000)),
     proof.nonce
@@ -21,6 +22,7 @@ function fingerprintFromPem(publicKeyPem:string){
 export function verifyLaserPairingProof(proof:LaserPairingProof,now=Date.now()){
   if(proof.version!==1)return {ok:false as const,reason:'protocol_version'};
   if(!/^[0-9a-f-]{36}$/i.test(proof.deviceId))return {ok:false as const,reason:'device_id'};
+  if(typeof proof.agentVersion!=='string'||proof.agentVersion.length<1||proof.agentVersion.length>40)return {ok:false as const,reason:'agent_version'};
   if(!/^[0-9a-f]{64}$/.test(proof.publicKeyFingerprint))return {ok:false as const,reason:'fingerprint'};
   if(!isLaserPairingCode(proof.pairingCode))return {ok:false as const,reason:'pairing_code'};
   if(!/^[0-9a-f]{32}$/.test(proof.nonce))return {ok:false as const,reason:'nonce'};
@@ -39,7 +41,7 @@ export function verifyLaserPairingProof(proof:LaserPairingProof,now=Date.now()){
   const valid=verify(
     'sha256',
     Buffer.from(canonicalPayload(proof),'utf8'),
-    createPublicKey(proof.publicKeyPem),
+    {key:createPublicKey(proof.publicKeyPem),dsaEncoding:'ieee-p1363'},
     signature
   );
 
