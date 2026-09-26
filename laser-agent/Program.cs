@@ -11,6 +11,19 @@ internal static class Program
         Console.WriteLine("Remote machine commands are OFF.");
         Console.WriteLine();
 
+        if (args.Contains("--reset-local-state", StringComparer.OrdinalIgnoreCase))
+        {
+            if (!args.Contains("--confirm-reset", StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Refused. Add --confirm-reset to permanently remove local Agent identity and LightBurn pairing.");
+                return;
+            }
+
+            AgentLocalState.ResetAll();
+            Console.WriteLine("Local DevinX Laser Agent state removed.");
+            return;
+        }
+
         var identity = AgentIdentityStore.GetOrCreate();
         Console.WriteLine("Agent device: " + identity.DeviceId);
         Console.WriteLine("Agent fingerprint: " + identity.PublicKeyFingerprint);
