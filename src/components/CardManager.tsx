@@ -90,24 +90,28 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   async function pay(e:FormEvent){
     e.preventDefault();if(!payTarget)return;
     const value=minor(payAmount);
-    if(value<=0)return;
-    if(value>payTarget.installment.remaining){setNotice(t('cards.paymentTooHigh'));return}
+    const installment=payTarget.installment;const purchase=installment.card_purchases;
+    const settleExisting=payMode==='settle'&&installment.paid>0&&value===0;
+    if((value<=0&&!settleExisting)||value>installment.remaining){if(value>installment.remaining)setNotice(t('cards.paymentTooHigh'));return}
     setSaving(true);
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){setSaving(false);return}
-    const installment=payTarget.installment;const purchase=installment.card_purchases;
-    const{data:created,error:txError}=await s.from('transactions').insert({
-      user_id:user.id,type:'expense',category_id:purchase?.category_id||'card_payment',
-      description:purchase?.description||payTarget.card.name,amount_minor:value,
-      occurred_on:payDate,payment_method:null,is_avoidable:!!purchase?.is_avoidable,is_recurring:false,
-      source_type:'card_installment_payment',source_id:installment.id
-    }).select('id').single();
-    if(txError||!created?.id){setSaving(false);setNotice(t('common.errorSave'));return}
+    let created:{id:string}|null=null;
+    if(value>0){
+      const{data,error:txError}=await s.from('transactions').insert({
+        user_id:user.id,type:'expense',category_id:purchase?.category_id||'card_payment',
+        description:purchase?.description||payTarget.card.name,amount_minor:value,
+        occurred_on:payDate,payment_method:null,is_avoidable:!!purchase?.is_avoidable,is_recurring:false,
+        source_type:'card_installment_payment',source_id:installment.id
+      }).select('id').single();
+      if(txError||!data?.id){setSaving(false);setNotice(t('common.errorSave'));return}
+      created=data;
+    }
     const willFinish=payMode==='settle'||installment.paid+value>=Number(installment.amount_minor);
     if(willFinish){
       const paidAt=new Date(payDate+'T12:00:00').toISOString();
       const{error:installmentError}=await s.from('card_installments').update({paid_at:paidAt}).eq('id',installment.id).eq('user_id',user.id);
       if(installmentError){
-        await s.from('transactions').delete().eq('id',created.id).eq('user_id',user.id);
+        if(created?.id)await s.from('transactions').delete().eq('id',created.id).eq('user_id',user.id);
         setSaving(false);setNotice(t('common.errorSave'));return
       }
     }else if(installment.paid_at){
@@ -138,6 +142,6 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
 
     {editingCard&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditingCard(null)}}><form className="modalCard" onSubmit={saveCardEdit}><div className="modalHead"><h2>{t('common.edit')} · {editingCard.name}</h2><button type="button" onClick={()=>setEditingCard(null)}>×</button></div><label>{t('cards.cardName')}<input required value={eCardName} onChange={e=>setECardName(e.target.value)}/></label><label>{t('cards.closing')}<input type="number" min="1" max="31" value={eCardClosing} onChange={e=>setECardClosing(e.target.value)}/></label><label>{t('cards.dueDay')}<input type="number" min="1" max="31" value={eCardDue} onChange={e=>setECardDue(e.target.value)}/></label><label>{t('cards.limit')} <small>({t('common.optional')})</small><input value={eCardLimit} onChange={e=>setECardLimit(e.target.value)} inputMode="decimal"/></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditingCard(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
 
-    {payTarget&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPayTarget(null)}}><form className="modalCard" onSubmit={pay}><div className="modalHead"><h2>{t('cards.payItem')}</h2><button type="button" onClick={()=>setPayTarget(null)}>×</button></div><div className="payBillAmount"><small>{payTarget.card.name} · {payTarget.installment.card_purchases?.description||t('cards.purchase')} · {t('move.dueOn')} {date(payTarget.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small><strong>{currency(payTarget.installment.remaining)}</strong>{payTarget.installment.paid>0&&<span>{t('cards.paidSoFar')}: {currency(payTarget.installment.paid)} · {t('cards.originalValue')}: {currency(Number(payTarget.installment.amount_minor))}</span>}<span>{t('cards.individualPaymentHelp')}</span></div><label>{t('cards.amountToPay')}<input value={payAmount} onChange={e=>setPayAmount(e.target.value)} inputMode="decimal" required/></label><div className="paymentModePicker" role="group" aria-label={t('payment.mode')}><button type="button" className={payMode==='partial'?'active':''} onClick={()=>setPayMode('partial')}><b>{t('payment.partial')}</b><small>{t('payment.partialHelp')}</small></button><button type="button" className={payMode==='settle'?'active':''} onClick={()=>setPayMode('settle')}><b>{t('payment.settle')}</b><small>{t('payment.settleHelp')}</small></button></div><label>{t('cards.payDate')}<input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} required/></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setPayTarget(null)}>{t('common.cancel')}</button><button className="primary" disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div></form></div>}
+    {payTarget&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPayTarget(null)}}><form className="modalCard" onSubmit={pay}><div className="modalHead"><h2>{t('cards.payItem')}</h2><button type="button" onClick={()=>setPayTarget(null)}>×</button></div><div className="payBillAmount"><small>{payTarget.card.name} · {payTarget.installment.card_purchases?.description||t('cards.purchase')} · {t('move.dueOn')} {date(payTarget.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small><strong>{currency(payTarget.installment.remaining)}</strong>{payTarget.installment.paid>0&&<span>{t('cards.paidSoFar')}: {currency(payTarget.installment.paid)} · {t('cards.originalValue')}: {currency(Number(payTarget.installment.amount_minor))}</span>}<span>{t('cards.individualPaymentHelp')}</span></div><label>{t('cards.amountToPay')}<input value={payAmount} onChange={e=>setPayAmount(e.target.value)} inputMode="decimal" required/></label><div className="paymentModePicker" role="group" aria-label={t('payment.mode')}><button type="button" className={payMode==='partial'?'active':''} onClick={()=>setPayMode('partial')}><b>{t('payment.partial')}</b><small>{t('payment.partialHelp')}</small></button><button type="button" className={payMode==='settle'?'active':''} onClick={()=>{setPayMode('settle');if(payTarget.installment.paid>0)setPayAmount('0')}}><b>{t('payment.settle')}</b><small>{payTarget.installment.paid>0?t('payment.settleExistingHelp'):t('payment.settleHelp')}</small></button></div><label>{t('cards.payDate')}<input type="date" value={payDate} onChange={e=>setPayDate(e.target.value)} required/></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setPayTarget(null)}>{t('common.cancel')}</button><button className="primary" disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div></form></div>}
   </div>;
 }
