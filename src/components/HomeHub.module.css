@@ -200,3 +200,18 @@
   .featureGrid{grid-template-columns:1fr}
   .featureLine strong{font-size:10px}
 }
+
+.laserSoon{
+  width:min(560px,100%);margin:22px auto 0;padding:11px 14px;
+  display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:9px;
+  border:1px solid rgba(151,62,92,.28);border-radius:14px;
+  background:linear-gradient(135deg,rgba(42,16,26,.44),rgba(8,27,27,.36));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)
+}
+.laserSoon span{color:#e2a2b8;font-size:9px;font-weight:950;letter-spacing:.10em}
+.laserSoon b{padding:4px 7px;border:1px solid rgba(198,92,128,.28);border-radius:999px;background:rgba(111,31,60,.18);color:#d488a2;font-size:7px;letter-spacing:.08em}
+.laserSoon small{color:#91a49f;font-size:8px;text-align:right;line-height:1.4}
+@media(max-width:560px){
+  .laserSoon{grid-template-columns:1fr auto;text-align:left}
+  .laserSoon small{grid-column:1/-1;text-align:left}
+}

@@ -170,6 +170,15 @@ const COPY={
   }
 } as const;
 
+const LASER_SOON={
+  "pt-BR":{title:"Laser Control",status:"Em breve",text:"Controle e monitoramento do LightBurn pelo celular."},
+  en:{title:"Laser Control",status:"Coming soon",text:"Monitor and control LightBurn from your phone."},
+  es:{title:"Laser Control",status:"Próximamente",text:"Control y monitoreo de LightBurn desde el móvil."},
+  fr:{title:"Laser Control",status:"Bientôt",text:"Contrôle et suivi de LightBurn depuis le mobile."},
+  de:{title:"Laser Control",status:"Demnächst",text:"LightBurn vom Smartphone überwachen und steuern."},
+  ar:{title:"Laser Control",status:"قريباً",text:"مراقبة LightBurn والتحكم به من الهاتف."}
+} as const;
+
 const FINANCE_FEATURES={
   "pt-BR":[
     "Salário e renda mensal","Entradas extras",
@@ -299,6 +308,11 @@ export function HomeHub(){
       <span className={styles.control}><b>{c.control}</b></span>
       <h1>{intl?c.intlChoose:c.choose}</h1>
       <p>{intl?c.intlChooseText:c.chooseText}</p>
+      <div className={styles.laserSoon} aria-label={LASER_SOON[activeLocale].status}>
+        <span>{LASER_SOON[activeLocale].title}</span>
+        <b>{LASER_SOON[activeLocale].status}</b>
+        <small>{LASER_SOON[activeLocale].text}</small>
+      </div>
     </section>
 
     <section className={`${styles.products} ${!showStore?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
