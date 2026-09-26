@@ -9,6 +9,9 @@ internal static class Program
     {
         DpiAwareness.Initialize();
 
+        if (AgentInstallation.TryInstallAndRelaunch(args))
+            return;
+
         using var singleInstance = new SingleInstanceGuard();
         if (!singleInstance.IsPrimary)
         {
@@ -31,7 +34,8 @@ internal static class Program
         }
 
         var backgroundMode = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
-        var guidedMode = args.Length == 0 || backgroundMode;
+        var installedLaunch = args.Contains("--installed-launch", StringComparer.OrdinalIgnoreCase);
+        var guidedMode = args.Length == 0 || backgroundMode || installedLaunch;
         if (!guidedMode)
             ConsoleHost.AttachForTechnicalMode();
 
@@ -63,13 +67,30 @@ internal static class Program
             if (!backgroundMode)
                 tray.ShowInfo("DevinX Laser Agent", "Conectado. O Agent continuará rodando em segundo plano.");
 
+            tray.UninstallRequested += () =>
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var commandClient = new DevinXCommandClient();
+                        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                        await commandClient.NotifyUninstallAsync(identity, timeout.Token);
+                    }
+                    catch { }
+
+                    AgentInstallation.ScheduleRemoval();
+                    tray.RequestExit();
+                });
+            };
+
             var continuous = new ContinuousAgent(identity, tray);
             await continuous.RunAsync(tray.ExitToken);
             return;
         }
 
         Console.WriteLine("DevinX Laser Agent — modo técnico");
-        Console.WriteLine("Comandos físicos remotos estão DESLIGADOS.");
+        Console.WriteLine("Modo técnico do DevinX Laser Agent.");
         Console.WriteLine("Agent device: " + identity.DeviceId);
         Console.WriteLine("Agent fingerprint: " + identity.PublicKeyFingerprint);
         Console.WriteLine();
