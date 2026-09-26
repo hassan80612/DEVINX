@@ -114,6 +114,7 @@ internal static class Program
                     var telemetry = AgentTelemetryFactory.FromRest(identity, status, project, poll);
                     if (args.Contains("--json-status", StringComparer.OrdinalIgnoreCase))
                         Console.WriteLine("Telemetry: " + JsonSerializer.Serialize(telemetry));
+                    await SendHeartbeatIfRequestedAsync(args, identity, telemetry);
                 }
             }
             else
@@ -136,11 +137,30 @@ internal static class Program
                 var telemetry = AgentTelemetryFactory.FromLegacyUdp(identity, ping, status);
                 if (args.Contains("--json-status", StringComparer.OrdinalIgnoreCase))
                     Console.WriteLine("Telemetry: " + JsonSerializer.Serialize(telemetry));
+                await SendHeartbeatIfRequestedAsync(args, identity, telemetry);
             }
         }
 
         Console.WriteLine();
         Console.WriteLine("No Start, Stop, Pause, Frame, mouse, keyboard, shell, or remote desktop capability exists in this build.");
+    }
+
+    private static async Task SendHeartbeatIfRequestedAsync(string[] args,AgentIdentity identity,AgentTelemetry telemetry)
+    {
+        if(!args.Contains("--heartbeat-once",StringComparer.OrdinalIgnoreCase))return;
+
+        using var heartbeat=new DevinXHeartbeatClient();
+        try
+        {
+            var result=await heartbeat.SendAsync(identity,telemetry);
+            Console.WriteLine(result.Accepted
+                ?"DevinX heartbeat accepted."
+                :"DevinX heartbeat rejected: "+result.Reason);
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine("Could not send DevinX heartbeat: "+ex.Message);
+        }
     }
 
     private static void PrintCompact(string label, string json)
