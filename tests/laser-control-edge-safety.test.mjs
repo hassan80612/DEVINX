@@ -50,3 +50,13 @@ test('master device list requires authenticated admin',async()=>{
   assert.match(source,/devinx_admin_users/);
   assert.match(source,/laser_internal_admin_list_devices/);
 });
+
+
+test('master device access requires authenticated admin',async()=>{
+  const source=await readFile('supabase/functions/laser-master-device-access/index.ts','utf8');
+  assert.match(source,/auth:"user"/);
+  assert.match(source,/devinx_admin_users/);
+  assert.match(source,/laser_internal_admin_set_device_access/);
+  assert.match(source,/revoke/);
+  assert.match(source,/reactivate/);
+});
