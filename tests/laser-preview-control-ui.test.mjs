@@ -14,7 +14,15 @@ test('Laser workspace has separate Visualização and Controle tabs',async()=>{
   const panel=await readFile('src/components/LaserControlMasterPanel.tsx','utf8');
   assert.match(panel,/>Visualização<\/button>/);
   assert.match(panel,/>Controle<\/button>/);
-  assert.match(panel,/LIGHTBURN · SOMENTE LEITURA/);
+  assert.match(panel,/LIGHTBURN · VISUALIZAÇÃO REMOTA/);
+});
+
+test('fullscreen and touch control are exposed without direct Edge calls',async()=>{
+  const panel=await readFile('src/components/LaserControlMasterPanel.tsx','utf8');
+  assert.match(panel,/Tela cheia/);
+  assert.match(panel,/Controle por toque/);
+  assert.match(panel,/action:'tap'/);
+  assert.doesNotMatch(panel,/laser-agent-preview-control/);
 });
 
 test('physical controls remain disabled',async()=>{
