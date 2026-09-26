@@ -8,6 +8,25 @@ function json(body:unknown,status=200){
     "X-Content-Type-Options":"nosniff"
   }});
 }
+function normalizeSession(data:any){
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row)return null;
+  return {
+    id:row.session_id,
+    topic:row.topic,
+    frameToken:row.frame_token,
+    controlToken:row.control_token,
+    inputToken:row.input_token??null,
+    remoteInputEnabled:Boolean(row.remote_input_enabled),
+    revision:Number(row.revision||0),
+    expiresAt:row.expires_at
+  };
+}
+function normalizeCommand(data:any){
+  const row=Array.isArray(data)?data[0]:data;
+  if(!row)return null;
+  return {id:row.command_id,type:row.command_type,expiresAt:row.expires_at};
+}
 
 Deno.serve(withSupabase({auth:"none"},async(req,ctx)=>{
   if(req.method!=="POST")return json({ok:false,reason:"method_not_allowed"},405);
@@ -25,24 +44,13 @@ Deno.serve(withSupabase({auth:"none"},async(req,ctx)=>{
     p_device_id:envelope.deviceId
   });
   if(authError)return json({ok:false,reason:"auth_context_failed"},500);
-
   const auth=Array.isArray(authData)?authData[0]:authData;
   if(!auth)return json({ok:false,reason:"unknown_device"},404);
   if(auth.device_status!=="active")return json({ok:false,reason:"device_not_active"},403);
   if(auth.public_key_fingerprint!==envelope.publicKeyFingerprint)
     return json({ok:false,reason:"fingerprint_mismatch"},403);
-
   if(!await verify(envelope,auth.public_key_pem))
     return json({ok:false,reason:"signature"},403);
-
-  if(envelope.action==="arm"){
-    const{data,error}=await ctx.supabaseAdmin.rpc("laser_internal_agent_set_remote_arm",{
-      p_device_id:envelope.deviceId,
-      p_enabled:envelope.enabled===true
-    });
-    if(error)return json({ok:false,reason:"arm_failed"},500);
-    return json({ok:true,enabled:envelope.enabled===true,localArmUntil:data??null});
-  }
 
   if(envelope.action==="ack"){
     const{data,error}=await ctx.supabaseAdmin.rpc("laser_internal_agent_ack_command",{
@@ -55,20 +63,39 @@ Deno.serve(withSupabase({auth:"none"},async(req,ctx)=>{
     return json({ok:data===true});
   }
 
-  const{data,error}=await ctx.supabaseAdmin.rpc("laser_internal_agent_next_command",{
+  if(envelope.action==="uninstall"){
+    const{data,error}=await ctx.supabaseAdmin.rpc("laser_internal_agent_uninstall_device",{
+      p_device_id:envelope.deviceId
+    });
+    if(error)return json({ok:false,reason:"uninstall_failed"},500);
+    return json({ok:data===true});
+  }
+
+  const knownId=String(envelope.knownSessionId||"");
+  const knownRevision=Number(envelope.knownRevision||0);
+
+  for(let attempt=0;attempt<20;attempt++){
+    const[{data:sessionData,error:sessionError},{data:commandData,error:commandError}]=await Promise.all([
+      ctx.supabaseAdmin.rpc("laser_internal_agent_remote_session",{p_device_id:envelope.deviceId}),
+      ctx.supabaseAdmin.rpc("laser_internal_agent_next_session_command",{p_device_id:envelope.deviceId})
+    ]);
+    if(sessionError)return json({ok:false,reason:"session_poll_failed"},500);
+    if(commandError)return json({ok:false,reason:"command_poll_failed"},500);
+
+    const session=normalizeSession(sessionData);
+    const command=normalizeCommand(commandData);
+    if(command)return json({ok:true,session,command});
+
+    const changed=
+      (!session&&knownId.length>0)
+      ||(session&&(session.id!==knownId||session.revision!==knownRevision));
+    if(changed)return json({ok:true,session,command:null});
+
+    if(attempt<19)await new Promise(resolve=>setTimeout(resolve,500));
+  }
+
+  const{data:latest}=await ctx.supabaseAdmin.rpc("laser_internal_agent_remote_session",{
     p_device_id:envelope.deviceId
   });
-  if(error)return json({ok:false,reason:"poll_failed"},500);
-  const row=Array.isArray(data)?data[0]:data;
-  if(!row)return json({ok:true,command:null});
-
-  return json({
-    ok:true,
-    command:{
-      id:row.command_id,
-      type:row.command_type,
-      expiresAt:row.expires_at
-    },
-    localArmUntil:row.local_arm_until??null
-  });
+  return json({ok:true,session:normalizeSession(latest),command:null});
 }));
