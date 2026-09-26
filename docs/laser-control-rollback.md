@@ -15,7 +15,7 @@ A branch de rollback foi criada diretamente do commit base original da feature.
 
 ## Situação no momento deste registro
 
-A comparação entre o commit base e a feature mostra que todos os arquivos do Laser Control são **arquivos adicionados**. Nenhum arquivo que já existia no DevinX foi modificado para criar esta fundação.
+A fundação começou somente com arquivos novos. Depois da entrada das Edge Functions Deno, o único arquivo pré-existente alterado intencionalmente foi `tsconfig.json`, apenas para excluir `supabase/functions` do typecheck Node/Next. A âncora pré-Laser continua sendo a referência exata para restaurá-lo.
 
 Isso significa que, enquanto o PR não for mesclado, rollback = abandonar/fechar o PR e remover a branch da feature. Produção permanece exatamente como estava.
 
