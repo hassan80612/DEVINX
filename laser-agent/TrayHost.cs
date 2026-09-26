@@ -14,6 +14,7 @@ internal sealed class TrayHost : IDisposable
 
     public CancellationToken ExitToken => _exit.Token;
     public event Action? RefreshRequested;
+    public event Action<bool>? ControlArmRequested;
 
     public TrayHost()
     {
@@ -37,8 +38,16 @@ internal sealed class TrayHost : IDisposable
         var menu = new ContextMenuStrip();
         var open = new ToolStripMenuItem("Abrir Laser Control");
         open.Click += (_, _) => OpenDashboard();
+
         var refresh = new ToolStripMenuItem("Atualizar agora");
         refresh.Click += (_, _) => RefreshRequested?.Invoke();
+
+        var arm = new ToolStripMenuItem("Permitir controle por toque (5 min)");
+        arm.Click += (_, _) => ControlArmRequested?.Invoke(true);
+
+        var disarm = new ToolStripMenuItem("Bloquear controle por toque");
+        disarm.Click += (_, _) => ControlArmRequested?.Invoke(false);
+
         var exit = new ToolStripMenuItem("Sair");
         exit.Click += (_, _) =>
         {
@@ -49,6 +58,9 @@ internal sealed class TrayHost : IDisposable
 
         menu.Items.Add(open);
         menu.Items.Add(refresh);
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(arm);
+        menu.Items.Add(disarm);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(exit);
 

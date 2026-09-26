@@ -4,22 +4,25 @@ namespace DevinXLaserAgent;
 
 internal sealed class ContinuousAgent
 {
-    private static readonly TimeSpan NormalSampleInterval=TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan PreviewSampleInterval=TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan OnlineKeepAliveInterval=TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan OfflineKeepAliveInterval=TimeSpan.FromSeconds(60);
-    private static readonly TimeSpan RetryInterval=TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan UnchangedPreviewRefresh=TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan NormalSampleInterval=TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan PreviewSampleInterval=TimeSpan.FromMilliseconds(700);
+    private static readonly TimeSpan OnlineKeepAliveInterval=TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan OfflineKeepAliveInterval=TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan RetryInterval=TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan UnchangedPreviewRefresh=TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan TelemetryRefreshInterval=TimeSpan.FromSeconds(5);
 
     private readonly AgentIdentity _identity;
     private readonly TrayHost _tray;
     private readonly SemaphoreSlim _refreshSignal=new(0,1);
+    private int _armRequest;
 
     public ContinuousAgent(AgentIdentity identity,TrayHost tray)
     {
         _identity=identity;
         _tray=tray;
         _tray.RefreshRequested+=RequestRefresh;
+        _tray.ControlArmRequested+=OnControlArmRequested;
     }
 
     private void RequestRefresh()
@@ -31,43 +34,88 @@ internal sealed class ContinuousAgent
         catch { }
     }
 
+    private void OnControlArmRequested(bool enabled)
+    {
+        Interlocked.Exchange(ref _armRequest,enabled?1:2);
+        RequestRefresh();
+    }
+
     public async Task RunAsync(CancellationToken cancellationToken)
     {
+        AgentTelemetry telemetry=AgentTelemetryFactory.Offline(_identity);
         AgentTelemetry? lastSent=null;
+        var lastTelemetryCapture=DateTimeOffset.MinValue;
         var nextAllowedAttempt=DateTimeOffset.MinValue;
         var nextKeepAlive=DateTimeOffset.MinValue;
 
         var previewActive=false;
+        var touchEnabled=false;
         DateTimeOffset? previewUntil=null;
         string? lastPreviewHash=null;
         var lastPreviewUpload=DateTimeOffset.MinValue;
         var forcePreviewFrame=false;
+        long lastTouchEventSeq=0;
 
         using var rest=new LightBurnRestClient();
         using var heartbeat=new DevinXHeartbeatClient();
         using var previewClient=new DevinXPreviewClient();
+        using var controlClient=new DevinXPreviewControlClient();
         var udp=new LightBurnUdpClient();
 
         while(!cancellationToken.IsCancellationRequested)
         {
-            AgentTelemetry telemetry;
-            try
-            {
-                telemetry=await CaptureAsync(rest,udp,cancellationToken);
-            }
-            catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch
-            {
-                telemetry=AgentTelemetryFactory.Offline(_identity);
-            }
-
             var now=DateTimeOffset.UtcNow;
-            if(previewUntil.HasValue&&previewUntil<=now)previewActive=false;
 
-            _tray.SetStatus(Describe(telemetry,previewActive));
+            var armRequest=Interlocked.Exchange(ref _armRequest,0);
+            if(armRequest!=0)
+            {
+                try
+                {
+                    var enabled=armRequest==1;
+                    var arm=await controlClient.SetLocalArmAsync(_identity,enabled,cancellationToken);
+                    if(arm.Ok)
+                    {
+                        _tray.ShowInfo(
+                            "DevinX Laser Agent",
+                            enabled
+                                ?"Controle por toque permitido por 5 minutos."
+                                :"Controle por toque bloqueado.");
+                    }
+                    else
+                    {
+                        _tray.ShowInfo("DevinX Laser Agent","Não foi possível alterar a permissão de toque.");
+                    }
+                }
+                catch
+                {
+                    _tray.ShowInfo("DevinX Laser Agent","Falha de rede ao alterar a permissão de toque.");
+                }
+            }
+
+            if(now-lastTelemetryCapture>=TelemetryRefreshInterval)
+            {
+                try
+                {
+                    telemetry=await CaptureTelemetryAsync(rest,udp,cancellationToken);
+                }
+                catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch
+                {
+                    telemetry=AgentTelemetryFactory.Offline(_identity);
+                }
+                lastTelemetryCapture=DateTimeOffset.UtcNow;
+            }
+
+            if(previewUntil.HasValue&&previewUntil<=now)
+            {
+                previewActive=false;
+                touchEnabled=false;
+            }
+
+            _tray.SetStatus(Describe(telemetry,previewActive,touchEnabled));
 
             var changed=lastSent is null||MeaningfullyDifferent(lastSent,telemetry);
             if(now>=nextAllowedAttempt&&(changed||now>=nextKeepAlive))
@@ -79,7 +127,7 @@ internal sealed class ContinuousAgent
                     {
                         var acceptedAt=DateTimeOffset.UtcNow;
                         lastSent=telemetry;
-                        nextAllowedAttempt=acceptedAt.AddSeconds(5);
+                        nextAllowedAttempt=acceptedAt.AddSeconds(2);
                         nextKeepAlive=acceptedAt.Add(
                             telemetry.LightBurnOnline?OnlineKeepAliveInterval:OfflineKeepAliveInterval);
 
@@ -103,6 +151,40 @@ internal sealed class ContinuousAgent
                 {
                     _tray.SetStatus("DevinX Laser Agent — sem conexão");
                     nextAllowedAttempt=DateTimeOffset.UtcNow.Add(RetryInterval);
+                }
+            }
+
+            if(previewActive)
+            {
+                try
+                {
+                    var control=await controlClient.PollAsync(_identity,lastTouchEventSeq,cancellationToken);
+                    if(control is not null)
+                    {
+                        previewActive=control.PreviewActive;
+                        touchEnabled=control.TouchEnabled;
+
+                        if(control.EventSeq>lastTouchEventSeq)
+                        {
+                            lastTouchEventSeq=control.EventSeq;
+                            if(touchEnabled
+                               && control.TouchEventType=="tap"
+                               && control.TouchX.HasValue
+                               && control.TouchY.HasValue
+                               && LightBurnWindowCapture.TryTap(control.TouchX.Value,control.TouchY.Value))
+                            {
+                                forcePreviewFrame=true;
+                            }
+                        }
+                    }
+                }
+                catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch
+                {
+                    // Control is optional; preview and telemetry continue.
                 }
             }
 
@@ -130,6 +212,7 @@ internal sealed class ContinuousAgent
                             else if(uploaded.Reason=="preview_not_requested")
                             {
                                 previewActive=false;
+                                touchEnabled=false;
                                 previewUntil=null;
                             }
                         }
@@ -157,7 +240,7 @@ internal sealed class ContinuousAgent
         }
     }
 
-    private async Task<AgentTelemetry> CaptureAsync(
+    private async Task<AgentTelemetry> CaptureTelemetryAsync(
         LightBurnRestClient rest,
         LightBurnUdpClient udp,
         CancellationToken cancellationToken)
@@ -193,9 +276,10 @@ internal sealed class ContinuousAgent
         ||a.Progress!=b.Progress
         ||a.ProjectFile!=b.ProjectFile;
 
-    private static string Describe(AgentTelemetry telemetry,bool previewActive)
+    private static string Describe(AgentTelemetry telemetry,bool previewActive,bool touchEnabled)
     {
         if(!telemetry.LightBurnOnline)return "DevinX Laser Agent — LightBurn offline";
+        if(previewActive&&touchEnabled)return "DevinX Laser Agent — toque remoto ativo";
         if(previewActive)return "DevinX Laser Agent — visualização ativa";
 
         return telemetry.JobState switch
