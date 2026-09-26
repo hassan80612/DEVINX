@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-agent:
@@ -74,12 +74,44 @@ jobs:
       - name: Publish test Agent
         run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish
 
-      - name: Upload test Agent
+      - name: Package self-contained Agent
+        shell: pwsh
+        run: |
+          Copy-Item .\laser-agent\README.md .\laser-agent\publish\LEIA-ME.txt
+          Compress-Archive -Path .\laser-agent\publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.0.zip -Force
+
+      - name: Upload self-contained Agent
         uses: actions/upload-artifact@v4
         with:
           name: DevinX-Laser-Agent-win-x64
-          path: |
-            .\laser-agent\publish\DevinXLaserAgent.exe
-            .\laser-agent\README.md
+          path: .\laser-agent\DevinX-Laser-Agent-1.0.0.zip
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish compact web package
+        shell: pwsh
+        run: |
+          dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained false -o .\laser-agent\web-publish
+          Copy-Item .\laser-agent\README.md .\laser-agent\web-publish\LEIA-ME.txt
+          Compress-Archive -Path .\laser-agent\web-publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.0.zip -Force
+
+      - name: Upload compact web package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevinX-Laser-Agent-web
+          path: .\laser-agent\DevinX-Laser-Agent-1.0.0.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish stable Agent download
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/laser-control-foundation'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'laser-agent-v1.0.0'
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title 'DevinX Laser Agent 1.0.0' --notes 'DevinX Laser Agent 1.0.0 para Windows 10/11 x64.'
+          }
+          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.0.zip --clobber

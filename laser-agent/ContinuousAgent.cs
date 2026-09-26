@@ -1,28 +1,26 @@
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
 
 namespace DevinXLaserAgent;
 
 internal sealed class ContinuousAgent
 {
-    private static readonly TimeSpan NormalSampleInterval=TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan PreviewSampleInterval=TimeSpan.FromMilliseconds(350);
-    private static readonly TimeSpan OnlineKeepAliveInterval=TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan OfflineKeepAliveInterval=TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan RetryInterval=TimeSpan.FromSeconds(8);
-    private static readonly TimeSpan UnchangedPreviewRefresh=TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan TelemetryRefreshInterval=TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan TelemetryInterval=TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan OnlineKeepAlive=TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan OfflineKeepAlive=TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan FrameInterval=TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan UnchangedFrameKeepAlive=TimeSpan.FromSeconds(3);
 
     private readonly AgentIdentity _identity;
     private readonly TrayHost _tray;
     private readonly SemaphoreSlim _refreshSignal=new(0,1);
-    private int _armRequest;
+    private readonly ConcurrentDictionary<string,DateTimeOffset> _seenCommands=new();
 
     public ContinuousAgent(AgentIdentity identity,TrayHost tray)
     {
         _identity=identity;
         _tray=tray;
         _tray.RefreshRequested+=RequestRefresh;
-        _tray.ControlArmRequested+=OnControlArmRequested;
     }
 
     private void RequestRefresh()
@@ -31,213 +29,253 @@ internal sealed class ContinuousAgent
         {
             if(_refreshSignal.CurrentCount==0)_refreshSignal.Release();
         }
-        catch { }
-    }
-
-    private void OnControlArmRequested(bool enabled)
-    {
-        Interlocked.Exchange(ref _armRequest,enabled?1:2);
-        RequestRefresh();
+        catch{}
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         using var linked=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var commandTask=RunCommandLoopAsync(linked.Token);
-        try
-        {
-            await RunTelemetryAndPreviewLoopAsync(linked.Token);
-        }
-        finally
-        {
-            linked.Cancel();
-            try{await commandTask;}catch(OperationCanceledException){}
-        }
+        var telemetryTask=RunTelemetryLoopAsync(linked.Token);
+        var remoteTask=RunRemoteLoopAsync(linked.Token);
+
+        try{await Task.WhenAll(telemetryTask,remoteTask);}
+        finally{linked.Cancel();}
     }
 
-    private async Task RunCommandLoopAsync(CancellationToken cancellationToken)
+    private async Task RunRemoteLoopAsync(CancellationToken cancellationToken)
     {
         using var commandClient=new DevinXCommandClient();
         var udp=new LightBurnUdpClient();
-        DateTimeOffset? armedUntil=null;
+
+        RemoteSessionConfig? current=null;
+        DevinXRealtimeSession? realtime=null;
+        CancellationTokenSource? frameCts=null;
+        Task? frameTask=null;
+
+        async Task StopRealtimeAsync()
+        {
+            if(frameCts is not null)
+            {
+                frameCts.Cancel();
+                try{if(frameTask is not null)await frameTask;}catch(OperationCanceledException){}
+                frameCts.Dispose();
+                frameCts=null;
+                frameTask=null;
+            }
+            if(realtime is not null)
+            {
+                await realtime.DisposeAsync();
+                realtime=null;
+            }
+        }
+
+        async Task ExecuteOnceAsync(RemoteCommand command)
+        {
+            if(!_seenCommands.TryAdd(command.Id,DateTimeOffset.UtcNow))return;
+            CleanupSeenCommands();
+
+            if(command.ExpiresAt.HasValue&&command.ExpiresAt<=DateTimeOffset.UtcNow)
+            {
+                await commandClient.AckAsync(_identity,command.Id,false,"command_expired",cancellationToken);
+                return;
+            }
+
+            CommandExecutionResult result;
+            try
+            {
+                result=await LightBurnCommandExecutor.ExecuteAsync(command.Type,udp,cancellationToken);
+            }
+            catch(Exception ex)
+            {
+                result=new CommandExecutionResult(false,"agent_error:"+ex.GetType().Name);
+            }
+
+            await commandClient.AckAsync(_identity,command.Id,result.Ok,result.Reason,cancellationToken);
+            RequestRefresh();
+        }
+
+        async Task HandleRealtimeCommandAsync(RealtimeCommand command)
+        {
+            await ExecuteOnceAsync(new RemoteCommand(command.CommandId,command.Command,command.ExpiresAt));
+        }
+
+        Task HandleRemoteInputAsync(RealtimeRemoteInput input)
+        {
+            LightBurnRemoteInput.Apply(input);
+            return Task.CompletedTask;
+        }
 
         while(!cancellationToken.IsCancellationRequested)
         {
-            var armRequest=Interlocked.Exchange(ref _armRequest,0);
-            if(armRequest!=0)
+            AgentPollResult poll;
+            try
             {
-                try
+                poll=await commandClient.PollAsync(
+                    _identity,current?.Id,current?.Revision??0,cancellationToken);
+            }
+            catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
+            catch
+            {
+                await DelaySafe(TimeSpan.FromSeconds(2),cancellationToken);
+                continue;
+            }
+
+            if(!poll.Ok)
+            {
+                await DelaySafe(TimeSpan.FromSeconds(2),cancellationToken);
+                continue;
+            }
+
+            if(poll.Command is not null)
+            {
+                try{await ExecuteOnceAsync(poll.Command);}
+                catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
+                catch{}
+            }
+
+            var sessionChanged=
+                (current is null)!=(poll.Session is null)
+                ||(current is not null&&poll.Session is not null
+                    &&(current.Id!=poll.Session.Id||current.Revision!=poll.Session.Revision));
+
+            if(sessionChanged)
+            {
+                await StopRealtimeAsync();
+                current=poll.Session;
+
+                if(current is not null)
                 {
-                    var enabled=armRequest==1;
-                    var arm=await commandClient.SetRemoteArmAsync(_identity,enabled,cancellationToken);
-                    if(arm.Ok)
+                    realtime=new DevinXRealtimeSession(
+                        current,
+                        HandleRealtimeCommandAsync,
+                        HandleRemoteInputAsync);
+
+                    var connected=await realtime.ConnectAsync(cancellationToken);
+                    if(connected)
                     {
-                        armedUntil=enabled?arm.LocalArmUntil:null;
-                        _tray.ShowInfo(
-                            "DevinX Laser Agent",
-                            enabled
-                                ?"Controles remotos liberados por 5 minutos."
-                                :"Controles remotos bloqueados.");
+                        _tray.SetStatus(current.RemoteInputEnabled
+                            ?"DevinX Laser Agent — controle remoto ativo"
+                            :"DevinX Laser Agent — transmissão ao vivo");
+                        await realtime.SendAgentStateAsync(
+                            current.RemoteInputEnabled?"control-ready":"preview-ready",
+                            cancellationToken);
+
+                        frameCts=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        frameTask=RunFrameLoopAsync(realtime,frameCts.Token);
                     }
                     else
                     {
-                        _tray.ShowInfo("DevinX Laser Agent","Não foi possível alterar a permissão dos controles.");
+                        await realtime.DisposeAsync();
+                        realtime=null;
                     }
                 }
-                catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
-                catch
-                {
-                    _tray.ShowInfo("DevinX Laser Agent","Falha de rede ao alterar a permissão dos controles.");
-                }
             }
-
-            var armed=armedUntil.HasValue&&armedUntil>DateTimeOffset.UtcNow;
-            if(armed)
+            else if(current is not null&&(realtime is null||!realtime.IsConnected))
             {
-                try
+                await StopRealtimeAsync();
+                realtime=new DevinXRealtimeSession(current,HandleRealtimeCommandAsync,HandleRemoteInputAsync);
+                if(await realtime.ConnectAsync(cancellationToken))
                 {
-                    var command=await commandClient.PollAsync(_identity,cancellationToken);
-                    if(command is not null)
-                    {
-                        if(command.ExpiresAt.HasValue&&command.ExpiresAt<=DateTimeOffset.UtcNow)
-                        {
-                            await commandClient.AckAsync(_identity,command.Id,false,"command_expired",cancellationToken);
-                        }
-                        else
-                        {
-                            var result=await LightBurnCommandExecutor.ExecuteAsync(command.Type,udp,cancellationToken);
-                            await commandClient.AckAsync(_identity,command.Id,result.Ok,result.Reason,cancellationToken);
-                            RequestRefresh();
-                        }
-                    }
+                    frameCts=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    frameTask=RunFrameLoopAsync(realtime,frameCts.Token);
                 }
-                catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
-                catch
+                else
                 {
-                    // Keep the Agent alive; next poll retries automatically.
+                    await realtime.DisposeAsync();
+                    realtime=null;
                 }
             }
+        }
 
+        await StopRealtimeAsync();
+    }
+
+    private async Task RunFrameLoopAsync(
+        DevinXRealtimeSession realtime,
+        CancellationToken cancellationToken)
+    {
+        string? lastHash=null;
+        var lastSent=DateTimeOffset.MinValue;
+        long sequence=0;
+
+        while(!cancellationToken.IsCancellationRequested&&realtime.IsConnected)
+        {
             try
             {
-                await Task.Delay(armed?300:1200,cancellationToken);
+                var frame=LightBurnWindowCapture.TryCapture();
+                if(frame is not null)
+                {
+                    var hash=Convert.ToHexString(SHA256.HashData(frame.Jpeg));
+                    var changed=!string.Equals(lastHash,hash,StringComparison.Ordinal);
+                    var keepAlive=DateTimeOffset.UtcNow-lastSent>=UnchangedFrameKeepAlive;
+
+                    if(changed||keepAlive)
+                    {
+                        await realtime.SendFrameAsync(frame,Interlocked.Increment(ref sequence),cancellationToken);
+                        lastHash=hash;
+                        lastSent=DateTimeOffset.UtcNow;
+                    }
+                }
             }
             catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
+            catch
+            {
+                // Realtime reconnect is handled by the session loop.
+            }
+
+            await DelaySafe(FrameInterval,cancellationToken);
         }
     }
 
-    private async Task RunTelemetryAndPreviewLoopAsync(CancellationToken cancellationToken)
+    private async Task RunTelemetryLoopAsync(CancellationToken cancellationToken)
     {
-        AgentTelemetry telemetry=AgentTelemetryFactory.Offline(_identity);
         AgentTelemetry? lastSent=null;
-        var lastTelemetryCapture=DateTimeOffset.MinValue;
-        var nextAllowedAttempt=DateTimeOffset.MinValue;
+        var nextCapture=DateTimeOffset.MinValue;
         var nextKeepAlive=DateTimeOffset.MinValue;
-
-        var previewActive=false;
-        DateTimeOffset? previewUntil=null;
-        string? lastPreviewHash=null;
-        var lastPreviewUpload=DateTimeOffset.MinValue;
-        var forcePreviewFrame=false;
+        AgentTelemetry telemetry=AgentTelemetryFactory.Offline(_identity);
 
         using var rest=new LightBurnRestClient();
         using var heartbeat=new DevinXHeartbeatClient();
-        using var previewClient=new DevinXPreviewClient();
         var udp=new LightBurnUdpClient();
 
         while(!cancellationToken.IsCancellationRequested)
         {
             var now=DateTimeOffset.UtcNow;
-
-            if(now-lastTelemetryCapture>=TelemetryRefreshInterval)
+            if(now>=nextCapture)
             {
-                try
-                {
-                    telemetry=await CaptureTelemetryAsync(rest,udp,cancellationToken);
-                }
+                try{telemetry=await CaptureTelemetryAsync(rest,udp,cancellationToken);}
                 catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
-                catch
-                {
-                    telemetry=AgentTelemetryFactory.Offline(_identity);
-                }
-                lastTelemetryCapture=DateTimeOffset.UtcNow;
+                catch{telemetry=AgentTelemetryFactory.Offline(_identity);}
+                nextCapture=DateTimeOffset.UtcNow+TelemetryInterval;
             }
 
-            if(previewUntil.HasValue&&previewUntil<=now)previewActive=false;
-            _tray.SetStatus(Describe(telemetry,previewActive));
+            _tray.SetStatus(Describe(telemetry));
 
             var changed=lastSent is null||MeaningfullyDifferent(lastSent,telemetry);
-            if(now>=nextAllowedAttempt&&(changed||now>=nextKeepAlive))
+            if(changed||DateTimeOffset.UtcNow>=nextKeepAlive)
             {
                 try
                 {
                     var result=await heartbeat.SendAsync(_identity,telemetry,cancellationToken);
                     if(result.Accepted)
                     {
-                        var acceptedAt=DateTimeOffset.UtcNow;
                         lastSent=telemetry;
-                        nextAllowedAttempt=acceptedAt.AddSeconds(1);
-                        nextKeepAlive=acceptedAt.Add(
-                            telemetry.LightBurnOnline?OnlineKeepAliveInterval:OfflineKeepAliveInterval);
-
-                        var wasPreviewActive=previewActive;
-                        previewActive=result.PreviewActive
-                            &&(!result.PreviewUntil.HasValue||result.PreviewUntil>acceptedAt);
-                        previewUntil=result.PreviewUntil;
-                        if(previewActive&&!wasPreviewActive)forcePreviewFrame=true;
+                        nextKeepAlive=DateTimeOffset.UtcNow+
+                            (telemetry.LightBurnOnline?OnlineKeepAlive:OfflineKeepAlive);
                     }
                     else
                     {
-                        nextAllowedAttempt=DateTimeOffset.UtcNow.Add(RetryInterval);
+                        nextKeepAlive=DateTimeOffset.UtcNow+TimeSpan.FromSeconds(8);
                     }
                 }
                 catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
                 catch
                 {
-                    nextAllowedAttempt=DateTimeOffset.UtcNow.Add(RetryInterval);
+                    nextKeepAlive=DateTimeOffset.UtcNow+TimeSpan.FromSeconds(8);
                 }
             }
 
-            if(previewActive&&telemetry.LightBurnOnline)
-            {
-                try
-                {
-                    var frame=LightBurnWindowCapture.TryCapture();
-                    if(frame is not null)
-                    {
-                        var hash=Convert.ToHexString(SHA256.HashData(frame.Jpeg));
-                        var shouldUpload=forcePreviewFrame
-                            ||!string.Equals(lastPreviewHash,hash,StringComparison.Ordinal)
-                            ||DateTimeOffset.UtcNow-lastPreviewUpload>=UnchangedPreviewRefresh;
-
-                        if(shouldUpload)
-                        {
-                            var uploaded=await previewClient.UploadAsync(_identity,frame,cancellationToken);
-                            if(uploaded.Accepted)
-                            {
-                                lastPreviewHash=hash;
-                                lastPreviewUpload=DateTimeOffset.UtcNow;
-                                forcePreviewFrame=false;
-                            }
-                            else if(uploaded.Reason=="preview_not_requested")
-                            {
-                                previewActive=false;
-                                previewUntil=null;
-                            }
-                        }
-                    }
-                }
-                catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
-                catch
-                {
-                    // Preview is optional; telemetry stays alive.
-                }
-            }
-
-            try
-            {
-                await _refreshSignal.WaitAsync(previewActive?PreviewSampleInterval:NormalSampleInterval,cancellationToken);
-            }
+            try{await _refreshSignal.WaitAsync(TimeSpan.FromSeconds(1),cancellationToken);}
             catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
         }
     }
@@ -264,9 +302,15 @@ internal sealed class ContinuousAgent
 
         var ping=await udp.PingAsync(cancellationToken);
         if(!ping.Received)return AgentTelemetryFactory.Offline(_identity);
+        return AgentTelemetryFactory.FromLegacyUdp(
+            _identity,ping,await udp.StatusAsync(cancellationToken));
+    }
 
-        var statusReply=await udp.StatusAsync(cancellationToken);
-        return AgentTelemetryFactory.FromLegacyUdp(_identity,ping,statusReply);
+    private void CleanupSeenCommands()
+    {
+        var cutoff=DateTimeOffset.UtcNow-TimeSpan.FromMinutes(5);
+        foreach(var pair in _seenCommands)
+            if(pair.Value<cutoff)_seenCommands.TryRemove(pair.Key,out _);
     }
 
     private static bool MeaningfullyDifferent(AgentTelemetry a,AgentTelemetry b)=>
@@ -278,11 +322,9 @@ internal sealed class ContinuousAgent
         ||a.Progress!=b.Progress
         ||a.ProjectFile!=b.ProjectFile;
 
-    private static string Describe(AgentTelemetry telemetry,bool previewActive)
+    private static string Describe(AgentTelemetry telemetry)
     {
         if(!telemetry.LightBurnOnline)return "DevinX Laser Agent — LightBurn offline";
-        if(previewActive)return "DevinX Laser Agent — visualização ativa";
-
         return telemetry.JobState switch
         {
             "running"=>"DevinX Laser Agent — gravando",
@@ -290,5 +332,11 @@ internal sealed class ContinuousAgent
             "idle"=>"DevinX Laser Agent — LightBurn pronto",
             _=>"DevinX Laser Agent — LightBurn conectado"
         };
+    }
+
+    private static async Task DelaySafe(TimeSpan delay,CancellationToken token)
+    {
+        try{await Task.Delay(delay,token);}
+        catch(OperationCanceledException) when(token.IsCancellationRequested){}
     }
 }

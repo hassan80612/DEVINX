@@ -1,85 +1,64 @@
-# DevinX Laser Agent
+# DevinX Laser Agent 1.0.0
 
-O Agent roda localmente no Windows e faz a ponte segura entre o DevinX e o LightBurn.
+Agent Windows do DevinX Laser Control.
 
 ## Uso normal
 
-O usuário não precisa de PowerShell.
+1. Extraia o ZIP em uma pasta.
+2. Dê dois cliques em `DevinXLaserAgent.exe`.
+3. Na primeira execução, o Agent copia seus arquivos para:
+   `%LOCALAPPDATA%\Programs\DevinX Laser Agent`
+4. O navegador abre o DevinX para vincular o PC.
+5. Depois de vinculado, o Agent permanece na bandeja do Windows e inicia automaticamente com o usuário.
 
-1. Dê dois cliques em `DevinXLaserAgent.exe`.
-2. Na primeira vez, o Agent abre o DevinX e pede apenas **Vincular este PC**.
-3. Depois do vínculo, o Agent fica na bandeja do Windows.
-4. O Agent registra inicialização automática para o usuário atual do Windows.
-5. O LightBurn é monitorado localmente e o estado é enviado ao DevinX apenas quando muda ou em keep-alive periódico.
-
-Se o Agent já estiver rodando e o usuário abrir o EXE novamente, o painel `https://devinx.com.br/laser-control` é aberto em vez de criar outra instância.
-
-## Bandeja do Windows
-
-O menu da bandeja oferece:
-- **Abrir Laser Control**
-- **Atualizar agora**
-- **Sair**
-
-Fechar a janela do navegador não encerra o Agent. O Agent continua em segundo plano até o usuário escolher **Sair** ou encerrar a sessão do Windows.
+O vínculo fica salvo. Não é necessário repetir o pareamento a cada inicialização.
 
 ## LightBurn
 
-### REST compatível
-Quando houver REST API compatível e autorização local salva:
-- usa `127.0.0.1:19520`;
-- lê estado/projeto;
-- o segredo fica protegido por DPAPI no Windows;
-- o segredo nunca é enviado ao DevinX.
+Abra o LightBurn normalmente. O Agent detecta o aplicativo e envia:
+- estado do LightBurn e da máquina;
+- projeto/progresso quando a API local disponibiliza;
+- visualização da janela somente enquanto existe uma sessão remota aberta no DevinX.
 
-Pareamento REST técnico:
-```powershell
-DevinXLaserAgent.exe --pair-rest
-```
+A transmissão ao vivo usa um canal temporário e não grava cada quadro no banco.
 
-### UDP legado
-Quando REST não estiver disponível:
-- usa apenas `PING` e `STATUS` em localhost;
-- nunca envia comando físico;
-- resposta ambígua `!` é tratada como **unknown**, não como “gravando”.
+## Controle remoto
 
-## Frequência
+- Botões dedicados: Frame seleção, Iniciar, Pausar e Parar.
+- Iniciar usa o comando local documentado pelo LightBurn.
+- Frame/Pause/Stop usam os atalhos oficiais do LightBurn no Windows.
+- O modo de mouse/toque/teclado só aceita entrada dentro da janela do LightBurn.
+- O modo de toque é habilitado pelo dispositivo remoto em tela cheia e é desativado ao sair da sessão.
 
-- leitura local aproximada: 15 s;
-- envio imediato quando um estado relevante muda, respeitando limite mínimo;
-- keep-alive: 60 s;
-- nova tentativa após erro de rede: 30 s.
+A supervisão física da máquina, intertravamentos e botão de emergência continuam obrigatórios.
 
-Isso mantém o card online sem criar polling agressivo na Vercel.
+## Bandeja do Windows
 
-## Segurança
+Clique no ícone do DevinX Laser Agent perto do relógio para:
+- abrir o Laser Control;
+- atualizar o estado;
+- sair;
+- desinstalar o Agent.
 
-Continuam inexistentes nesta versão:
-- START remoto;
-- STOP remoto;
-- PAUSE remoto;
-- FRAME remoto;
-- mouse/teclado;
-- shell;
-- desktop remoto;
-- porta inbound no roteador.
+## Desinstalação
 
-O Agent usa identidade criptográfica própria por dispositivo e heartbeats assinados.
+No ícone da bandeja escolha **Desinstalar DevinX Laser Agent**.
 
-## Modo técnico
+O Agent:
+1. informa o DevinX;
+2. remove a inicialização automática;
+3. apaga o vínculo/chaves locais;
+4. remove os arquivos instalados do usuário.
 
-Mantido apenas para suporte/desenvolvimento:
-```powershell
-DevinXLaserAgent.exe --pair-devinx
-DevinXLaserAgent.exe --heartbeat-once
-DevinXLaserAgent.exe --json-status
-DevinXLaserAgent.exe --pair-rest
-```
+Não é necessário editar o Registro ou apagar pastas manualmente.
 
-## Limpeza local
+## Diagnóstico técnico
 
-```powershell
-DevinXLaserAgent.exe --reset-local-state --confirm-reset
-```
+Opções de suporte continuam disponíveis:
+- `--pair-devinx`
+- `--pair-rest`
+- `--heartbeat-once`
+- `--json-status`
+- `--reset-local-state --confirm-reset`
 
-A limpeza remove o estado em `%LOCALAPPDATA%\DevinXLaserAgent` e também o registro de inicialização automática do Agent.
+O modo normal não abre console.

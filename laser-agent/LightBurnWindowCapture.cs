@@ -10,16 +10,14 @@ internal sealed record CapturedPreview(byte[] Jpeg,int Width,int Height,DateTime
 internal static class LightBurnWindowCapture
 {
     [StructLayout(LayoutKind.Sequential)]
-    private struct Rect { public int Left,Top,Right,Bottom; }
+    private struct Rect{public int Left,Top,Right,Bottom;}
 
     private const int DwmwaExtendedFrameBounds=9;
+    private const int MaxJpegBytes=165_000;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmGetWindowAttribute(
-        IntPtr hwnd,
-        int dwAttribute,
-        out Rect pvAttribute,
-        int cbAttribute);
+        IntPtr hwnd,int dwAttribute,out Rect pvAttribute,int cbAttribute);
 
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hWnd,out Rect rect);
@@ -36,75 +34,89 @@ internal static class LightBurnWindowCapture
 
         var handle=FindLightBurnWindow();
         if(handle==IntPtr.Zero||IsIconic(handle)||!IsWindowVisible(handle))return null;
-        if(!TryGetPhysicalBounds(handle,out var rect))return null;
-
-        var width=rect.Right-rect.Left;
-        var height=rect.Bottom-rect.Top;
+        if(!TryGetPhysicalBounds(handle,out var left,out var top,out var width,out var height))return null;
         if(width<200||height<150||width>10000||height>10000)return null;
 
         using var source=new Bitmap(width,height,PixelFormat.Format24bppRgb);
         try
         {
             using var graphics=Graphics.FromImage(source);
-            graphics.CopyFromScreen(
-                rect.Left,rect.Top,0,0,
-                new Size(width,height),
-                CopyPixelOperation.SourceCopy);
+            graphics.CopyFromScreen(left,top,0,0,new Size(width,height),CopyPixelOperation.SourceCopy);
         }
-        catch
-        {
-            return null;
-        }
+        catch{return null;}
 
-        const int maxWidth=1600;
-        Bitmap output=source;
-        Bitmap? resized=null;
-        if(width>maxWidth)
-        {
-            var scale=(double)maxWidth/width;
-            var targetHeight=Math.Max(1,(int)Math.Round(height*scale));
-            resized=new Bitmap(maxWidth,targetHeight,PixelFormat.Format24bppRgb);
-            using var g=Graphics.FromImage(resized);
-            g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
-            g.DrawImage(source,0,0,maxWidth,targetHeight);
-            output=resized;
-        }
-
-        try
-        {
-            using var stream=new MemoryStream();
-            var codec=ImageCodecInfo.GetImageEncoders().First(x=>x.FormatID==ImageFormat.Jpeg.Guid);
-            using var parameters=new EncoderParameters(1);
-            parameters.Param[0]=new EncoderParameter(System.Drawing.Imaging.Encoder.Quality,62L);
-            output.Save(stream,codec,parameters);
-            var bytes=stream.ToArray();
-            if(bytes.Length<100||bytes.Length>500000)return null;
-            return new CapturedPreview(bytes,output.Width,output.Height,DateTimeOffset.UtcNow);
-        }
-        finally
-        {
-            resized?.Dispose();
-        }
+        var encoded=EncodeAdaptive(source);
+        if(encoded is null)return null;
+        return new CapturedPreview(encoded.Value.Bytes,encoded.Value.Width,encoded.Value.Height,DateTimeOffset.UtcNow);
     }
 
-    private static bool TryGetPhysicalBounds(IntPtr handle,out Rect rect)
+    private static (byte[] Bytes,int Width,int Height)? EncodeAdaptive(Bitmap source)
     {
-        // GetWindowRect can be DPI-virtualized. DWM extended frame bounds are physical pixels.
-        if(DwmGetWindowAttribute(
-            handle,
-            DwmwaExtendedFrameBounds,
-            out rect,
-            Marshal.SizeOf<Rect>())==0)
+        foreach(var width in new[]{1440,1280,1120,960})
         {
-            if(rect.Right>rect.Left&&rect.Bottom>rect.Top)return true;
+            Bitmap? resized=null;
+            Bitmap output=source;
+            if(source.Width>width)
+            {
+                var scale=(double)width/source.Width;
+                var targetHeight=Math.Max(1,(int)Math.Round(source.Height*scale));
+                resized=new Bitmap(width,targetHeight,PixelFormat.Format24bppRgb);
+                using var g=Graphics.FromImage(resized);
+                g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                g.DrawImage(source,0,0,width,targetHeight);
+                output=resized;
+            }
+
+            try
+            {
+                foreach(var quality in new long[]{58,50,43,36})
+                {
+                    var bytes=EncodeJpeg(output,quality);
+                    if(bytes.Length is>=100 and<=MaxJpegBytes)
+                        return (bytes,output.Width,output.Height);
+                }
+            }
+            finally{resized?.Dispose();}
+
+            if(source.Width<=width)break;
         }
 
-        return GetWindowRect(handle,out rect)
-            &&rect.Right>rect.Left
-            &&rect.Bottom>rect.Top;
+        return null;
     }
 
-    private static IntPtr FindLightBurnWindow()
+    private static byte[] EncodeJpeg(Bitmap bitmap,long quality)
+    {
+        using var stream=new MemoryStream();
+        var codec=ImageCodecInfo.GetImageEncoders().First(x=>x.FormatID==ImageFormat.Jpeg.Guid);
+        using var parameters=new EncoderParameters(1);
+        parameters.Param[0]=new EncoderParameter(System.Drawing.Imaging.Encoder.Quality,quality);
+        bitmap.Save(stream,codec,parameters);
+        return stream.ToArray();
+    }
+
+    public static bool TryGetPhysicalBounds(
+        IntPtr handle,
+        out int left,
+        out int top,
+        out int width,
+        out int height)
+    {
+        left=top=width=height=0;
+        Rect rect;
+        if(DwmGetWindowAttribute(
+            handle,DwmwaExtendedFrameBounds,out rect,Marshal.SizeOf<Rect>())!=0)
+        {
+            if(!GetWindowRect(handle,out rect))return false;
+        }
+
+        width=rect.Right-rect.Left;
+        height=rect.Bottom-rect.Top;
+        left=rect.Left;
+        top=rect.Top;
+        return width>0&&height>0;
+    }
+
+    public static IntPtr FindLightBurnWindow()
     {
         foreach(var process in Process.GetProcesses())
         {
@@ -113,12 +125,12 @@ internal static class LightBurnWindowCapture
                 var name=process.ProcessName;
                 var title=process.MainWindowTitle;
                 if(process.MainWindowHandle!=IntPtr.Zero
-                   && (name.Equals("LightBurn",StringComparison.OrdinalIgnoreCase)
-                       || title.Contains("LightBurn",StringComparison.OrdinalIgnoreCase)))
+                   &&(name.Equals("LightBurn",StringComparison.OrdinalIgnoreCase)
+                      ||title.Contains("LightBurn",StringComparison.OrdinalIgnoreCase)))
                     return process.MainWindowHandle;
             }
-            catch { }
-            finally { process.Dispose(); }
+            catch{}
+            finally{process.Dispose();}
         }
         return IntPtr.Zero;
     }
