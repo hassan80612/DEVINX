@@ -24,7 +24,7 @@ export default async function LaserGuidePage(){
       <h1>Seu LightBurn conectado ao DevinX.</h1>
       <p>Veja a janela do LightBurn em tempo real, acompanhe a máquina e use controles remotos a partir do celular ou de outro computador.</p>
       <div className={styles.actions}>
-        <a className={styles.primary} href="/downloads/DevinX-Laser-Agent-1.0.0.zip" download>Baixar Agent para Windows</a>
+        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.0/DevinX-Laser-Agent-1.0.0.zip" download>Baixar Agent para Windows</a>
         <a className={styles.secondary} href="/laser-control">Abrir Laser Control</a>
       </div>
     </section>
@@ -43,7 +43,7 @@ export default async function LaserGuidePage(){
 
     <section className={styles.block}>
       <h2>Como funciona o controle remoto</h2>
-      <p>Na tela Ao vivo você pode usar zoom, alternar orientação e entrar em tela cheia. O controle por toque, mouse e teclado só pode ser habilitado dentro da tela cheia e é limitado à janela do LightBurn. A aba Controle traz Frame seleção, Iniciar, Pausar e Parar.</p>
+      <p>Na tela Ao vivo você pode usar zoom de 75% a 300%, alternar entre orientação automática, horizontal e vertical e entrar em tela cheia. O controle por toque, mouse e teclado só pode ser habilitado dentro da tela cheia e é limitado à janela do LightBurn. A aba Controle traz Frame seleção, Iniciar, Pausar e Parar.</p>
       <p>O botão Iniciar pede confirmação antes de executar. A supervisão da máquina, intertravamentos e botão de emergência continuam independentes do DevinX.</p>
     </section>
 
