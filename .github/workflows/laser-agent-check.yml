@@ -69,3 +69,17 @@ jobs:
             Write-Host $body
             exit 1
           }
+
+
+      - name: Publish test Agent
+        run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish
+
+      - name: Upload test Agent
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevinX-Laser-Agent-win-x64
+          path: |
+            .\laser-agent\publish\DevinXLaserAgent.exe
+            .\laser-agent\README.md
+          if-no-files-found: error
+          retention-days: 14
