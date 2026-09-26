@@ -399,7 +399,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   .flowLegend{margin-left:auto}.flowPeriodControl{min-width:128px}
   .cashFlowViewport.period-3m .cashFlowChart{min-width:520px}
   .cashFlowViewport.period-12m .cashFlowChart{min-width:480px}
-  .flowSelection{grid-template-columns:1fr 1fr}.flowSelection span{grid-column:1/-1}
+  .flowSelection{grid-template-columns:1fr 1fr}.flowSelectionDate{grid-column:1/-1}.paymentModePicker{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){
   .flowBars i,.financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{animation:none}
