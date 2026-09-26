@@ -14,8 +14,8 @@ export async function GET(){
     protocolVersion:LASER_AGENT_PROTOCOL_VERSION,
     remoteCommandsEnabled:LASER_REMOTE_COMMANDS_ENABLED,
     storageConnected:true,
-    pairingEnabled:false,
-    reason:'pairing_transport_not_enabled',
+    pairingEnabled:true,
+    reason:'remote_commands_disabled',
     plans:LASER_PLANS.map(({checkoutUrl,...plan})=>({...plan,checkoutConfigured:Boolean(checkoutUrl.BRL||checkoutUrl.USD)}))
   },{
     headers:{
