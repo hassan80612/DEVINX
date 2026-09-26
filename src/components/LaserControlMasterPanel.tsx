@@ -1,6 +1,6 @@
 'use client';
 
-import {FormEvent,useEffect,useState} from 'react';
+import {FormEvent,useCallback,useEffect,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import styles from './LaserControlMasterPanel.module.css';
 
@@ -11,10 +11,26 @@ type Status={
   storageConnected:boolean;
   pairingEnabled:boolean;
   reason:string;
-  plans:Array<{
-    id:string;pcs:number;machines:number;mobileDevices:number;activeOperators:number;
-    monthlyMinor:{BRL:number;USD:number};checkoutConfigured:boolean;
-  }>;
+};
+
+type LaserDevice={
+  device_id:string;
+  owner_user_id:string;
+  display_name:string;
+  device_status:string;
+  agent_version:string|null;
+  adapter:string|null;
+  last_seen_at:string|null;
+  lightburn_online:boolean|null;
+  machine_connected:boolean|null;
+  machine_name:string|null;
+  job_state:string|null;
+  progress_permille:number|null;
+  project_file:string|null;
+  captured_at:string|null;
+  remote_control_enabled:boolean;
+  local_arm_until:string|null;
+  paired_at:string|null;
 };
 
 export function LaserControlMasterPanel(){
@@ -24,6 +40,21 @@ export function LaserControlMasterPanel(){
   const[deviceName,setDeviceName]=useState('PC Oficina');
   const[pairingPending,setPairingPending]=useState(false);
   const[pairingNotice,setPairingNotice]=useState('');
+  const[devices,setDevices]=useState<LaserDevice[]>([]);
+  const[devicesPending,setDevicesPending]=useState(false);
+
+  const loadDevices=useCallback(async()=>{
+    setDevicesPending(true);
+    try{
+      const{data,error}=await createClient().functions.invoke('laser-master-devices',{body:{}});
+      if(error)throw error;
+      setDevices(Array.isArray(data?.devices)?data.devices:[]);
+    }catch{
+      setPairingNotice('Não foi possível carregar os PCs vinculados.');
+    }finally{
+      setDevicesPending(false);
+    }
+  },[]);
 
   useEffect(()=>{
     let active=true;
@@ -34,8 +65,9 @@ export function LaserControlMasterPanel(){
       })
       .then(data=>{if(active)setStatus(data)})
       .catch(()=>{if(active)setError(true)});
+    void loadDevices();
     return()=>{active=false};
-  },[]);
+  },[loadDevices]);
 
   async function claimPairing(event:FormEvent){
     event.preventDefault();
@@ -58,13 +90,19 @@ export function LaserControlMasterPanel(){
         return;
       }
       setPairingCode('');
-      setPairingNotice('PC vinculado com sucesso. Comandos remotos continuam desligados.');
+      setPairingNotice('PC vinculado. Comandos remotos continuam desligados.');
+      await loadDevices();
     }catch{
       setPairingNotice('Falha ao comunicar com o serviço de pareamento.');
     }finally{
       setPairingPending(false);
     }
   }
+
+  const online=(device:LaserDevice)=>{
+    if(!device.last_seen_at)return false;
+    return Date.now()-Date.parse(device.last_seen_at)<90_000;
+  };
 
   return <section className={styles.panel}>
     <div className={styles.head}>
@@ -125,13 +163,43 @@ export function LaserControlMasterPanel(){
       </form>
       {pairingNotice&&<div className={styles.pairNotice}>{pairingNotice}</div>}
 
+      <div className={styles.devicesHead}>
+        <div><small>PCS VINCULADOS</small><b>{devices.length} dispositivo{devices.length===1?'':'s'}</b></div>
+        <button type="button" onClick={()=>void loadDevices()} disabled={devicesPending}>{devicesPending?'Atualizando…':'Atualizar'}</button>
+      </div>
+
+      <div className={styles.devices}>
+        {devices.length===0&&<div className={styles.emptyDevice}>Nenhum PC vinculado ainda.</div>}
+        {devices.map(device=><article className={styles.deviceCard} key={device.device_id}>
+          <div className={styles.deviceTop}>
+            <div>
+              <span className={online(device)?styles.onlineDot:styles.offlineDot}></span>
+              <strong>{device.display_name}</strong>
+            </div>
+            <small>{online(device)?'ONLINE':'OFFLINE'}</small>
+          </div>
+          <div className={styles.deviceMeta}>
+            <span><b>Agent</b>{device.agent_version||'—'}</span>
+            <span><b>Adaptador</b>{device.adapter||'—'}</span>
+            <span><b>LightBurn</b>{device.lightburn_online===true?'Conectado':device.lightburn_online===false?'Offline':'—'}</span>
+            <span><b>Máquina</b>{device.machine_connected===true?(device.machine_name||'Conectada'):device.machine_connected===false?'Desconectada':'—'}</span>
+            <span><b>Job</b>{device.job_state||'—'}</span>
+            <span><b>Progresso</b>{device.progress_permille===null?'—':`${(device.progress_permille/10).toFixed(1)}%`}</span>
+          </div>
+          <div className={styles.deviceFoot}>
+            <span>{device.project_file||'Nenhum projeto reportado'}</span>
+            <span>{device.last_seen_at?`Último contato: ${new Date(device.last_seen_at).toLocaleString('pt-BR')}`:'Sem heartbeat ainda'}</span>
+          </div>
+        </article>)}
+      </div>
+
       <div className={styles.flow}>
         <span>CELULAR</span><i>→</i><span>DEVINX</span><i>→</i><span>AGENT</span><i>→</i><span>LIGHTBURN</span>
       </div>
 
       <div className={styles.rules}>
         <b>Travas desta fase</b>
-        <p>O pareamento de PC está ativo somente para master. Checkout e todos os comandos físicos do laser continuam desligados.</p>
+        <p>Pareamento e telemetria estão ativos somente para desenvolvimento master. Checkout e todos os comandos físicos do laser continuam desligados.</p>
       </div>
     </>}
   </section>;
