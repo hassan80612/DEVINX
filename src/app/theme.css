@@ -351,6 +351,8 @@ select option{background:var(--surface-0);color:var(--text)}
 .flowSelection{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;margin-top:8px;padding:9px 10px;border:1px solid rgba(218,176,79,.12);border-radius:10px;background:var(--surface-0);font-size:9px}
 .flowSelection span{color:#8c8e89}.flowSelection b{font-variant-numeric:tabular-nums;color:#aaaead}
 .flowTapHint{display:block;margin-top:7px;color:#666a66;font-size:8px}
+.flowSelection button{appearance:none;border:0;font:inherit;cursor:pointer}.flowSelectionDate,.flowSelectionValue{min-height:40px;border-radius:9px!important;background:rgba(255,255,255,.025)!important;padding:7px 9px!important;text-align:left;transition:transform .12s ease,background .16s ease,box-shadow .16s ease}.flowSelectionDate:hover,.flowSelectionValue:hover{background:rgba(225,181,79,.07)!important;box-shadow:inset 0 0 0 1px rgba(229,188,89,.14)}.flowSelectionDate:active,.flowSelectionValue:active{transform:translateY(1px)}.flowSelectionDate span,.flowSelectionDate small,.flowSelectionValue small{display:block}.flowSelectionDate small,.flowSelectionValue small{margin-top:2px;font-size:7px;color:#777a75;text-transform:uppercase;letter-spacing:.07em}.flowSelectionValue{font-weight:900;font-variant-numeric:tabular-nums}.flowSelectionValue.positive{color:#d8bd6b}.flowSelectionValue.negative{color:#c6aaa5}
+.paymentModePicker{display:grid;grid-template-columns:1fr 1fr;gap:8px}.paymentModePicker button{min-height:62px;border:1px solid rgba(220,181,88,.13);border-radius:12px;background:rgba(255,255,255,.025);color:var(--text);padding:10px;text-align:left;cursor:pointer}.paymentModePicker button b,.paymentModePicker button small{display:block}.paymentModePicker button small{margin-top:4px;color:var(--text-muted);font-size:9px;line-height:1.35}.paymentModePicker button.active{border-color:rgba(226,186,90,.52);background:linear-gradient(145deg,rgba(225,181,79,.12),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(226,186,90,.08)}
 @keyframes devinxBarRise{from{transform:scaleY(.08);opacity:.28}to{transform:scaleY(1);opacity:1}}
 
 .financeApp button,.authPage button,.landingV2 button,.financeApp a.primary,.landingV2 a.primary{
@@ -397,7 +399,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   .flowLegend{margin-left:auto}.flowPeriodControl{min-width:128px}
   .cashFlowViewport.period-3m .cashFlowChart{min-width:520px}
   .cashFlowViewport.period-12m .cashFlowChart{min-width:480px}
-  .flowSelection{grid-template-columns:1fr 1fr}.flowSelection span{grid-column:1/-1}
+  .flowSelection{grid-template-columns:1fr 1fr}.flowSelectionDate{grid-column:1/-1}.paymentModePicker{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){
   .flowBars i,.financeApp .primary:before,.financeApp .goldButton:before,.financeApp .quickSave:before,.financeApp .paidButton:before,.financeApp .quickCaptureFab:before{animation:none}

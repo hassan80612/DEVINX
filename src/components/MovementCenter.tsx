@@ -245,7 +245,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     searchData.purchases.forEach(p=>{
       const remaining=(p.card_installments||[]).reduce((sum,i)=>{
         const linked=searchCardPaidMap.get(i.id)||0;
-        const paid=i.paid_at&&linked===0?Number(i.amount_minor):Math.min(Number(i.amount_minor),linked);
+        const paid=i.paid_at?Number(i.amount_minor):Math.min(Number(i.amount_minor),linked);
         return sum+Math.max(0,Number(i.amount_minor)-paid);
       },0);
       const open=remaining>0;
@@ -329,7 +329,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     return purchases.flatMap(p=>(p.card_installments||[])
       .map(i=>{
         const linked=paidMap.get(i.id)||0;
-        const paid=i.paid_at&&linked===0?Number(i.amount_minor):Math.min(Number(i.amount_minor),linked);
+        const paid=i.paid_at?Number(i.amount_minor):Math.min(Number(i.amount_minor),linked);
         const remaining=Math.max(0,Number(i.amount_minor)-paid);
         const dueDate=i.due_date||cardDueDate(i.billing_month,p.credit_cards?.due_day??null);
         const dueMonth=dueDate.slice(0,7)+'-01';
@@ -341,9 +341,9 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   },[purchases,cardItemPays]);
 
 
-  async function syncCardInstallmentStatus(s:ReturnType<typeof createClient>,userId:string,installmentId:string){
+  async function syncCardInstallmentStatus(s:ReturnType<typeof createClient>,userId:string,installmentId:string,preserveSettled=false){
     const[instResult,paymentsResult]=await Promise.all([
-      s.from('card_installments').select('amount_minor').eq('id',installmentId).eq('user_id',userId).maybeSingle(),
+      s.from('card_installments').select('amount_minor,paid_at').eq('id',installmentId).eq('user_id',userId).maybeSingle(),
       s.from('transactions').select('amount_minor,occurred_on').eq('user_id',userId).eq('source_type','card_installment_payment').eq('source_id',installmentId)
     ]);
     if(instResult.error||!instResult.data)return instResult.error||new Error('installment not found');
@@ -351,7 +351,8 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     const payments=(paymentsResult.data||[]) as {amount_minor:number;occurred_on:string}[];
     const total=payments.reduce((sum,item)=>sum+Number(item.amount_minor),0);
     const latest=[...payments].sort((a,b)=>String(b.occurred_on).localeCompare(String(a.occurred_on)))[0]?.occurred_on;
-    const paidAt=total>=Number(instResult.data.amount_minor)&&latest?new Date(latest+'T12:00:00').toISOString():null;
+    const keepDiscountSettlement=preserveSettled&&!!instResult.data.paid_at&&total>0;
+    const paidAt=(total>=Number(instResult.data.amount_minor)||keepDiscountSettlement)&&latest?new Date(latest+'T12:00:00').toISOString():null;
     const{error}=await s.from('card_installments').update({paid_at:paidAt}).eq('id',installmentId).eq('user_id',userId);
     return error;
   }
@@ -392,7 +393,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
         const valid=await validateCardInstallmentPayment(s,user.id,x.source_id,x.id,value);
         if(!valid.ok){setNotice(valid.error?t('common.errorSave'):t('cards.paymentTooHigh'));return}
         ({error}=await s.from('transactions').update({amount_minor:value,occurred_on:editDate}).eq('id',x.id).eq('user_id',user.id));
-        if(!error)error=await syncCardInstallmentStatus(s,user.id,x.source_id);
+        if(!error)error=await syncCardInstallmentStatus(s,user.id,x.source_id,true);
       }else({error}=await s.from('transactions').update({amount_minor:value,occurred_on:editDate,description:editDescription.trim()||null,category_id:editCategory}).eq('id',x.id).eq('user_id',user.id));
     }else if(editing.kind==='bill-payment'){
       const x=editing.raw as RecPay;({error}=await s.from('recurring_bill_payments').update({amount_minor:minor(editAmount),paid_on:editDate,paid_at:new Date(editDate+'T12:00:00').toISOString()}).eq('id',x.id).eq('user_id',user.id));
@@ -415,22 +416,21 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   }
 
   async function removeRow(row:CashRow){
-    if(!confirm(t('move.deleteConfirm')))return;
-    const s=createClient();let error:any=null;
+    if(!confirm(row.kind==='card-payment'?t('move.reopenConfirm'):t('move.deleteConfirm')))return;
+    const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;let error:any=null;
     if(row.kind==='tx'){
       const x=row.raw as Tx;
       if(x.source_type==='debt_payment'&&x.source_id)({error}=await s.rpc('delete_debt_payment',{p_payment_id:x.source_id}));
       else if(x.source_type==='card_installment_payment'&&x.source_id){
-        const{data:{user}}=await s.auth.getUser();if(!user)return;
         ({error}=await s.from('transactions').delete().eq('id',x.id).eq('user_id',user.id));
         if(!error)error=await syncCardInstallmentStatus(s,user.id,x.source_id);
-      }else({error}=await s.from('transactions').delete().eq('id',x.id));
+      }else({error}=await s.from('transactions').delete().eq('id',x.id).eq('user_id',user.id));
     }else if(row.kind==='bill-payment'){
-      const x=row.raw as RecPay;({error}=await s.from('recurring_bill_payments').delete().eq('id',x.id));
+      const x=row.raw as RecPay;({error}=await s.from('recurring_bill_payments').delete().eq('id',x.id).eq('user_id',user.id));
     }else if(row.kind==='card-payment'){
-      if(!confirm(t('move.reopenConfirm')))return;const x=row.raw as CardPay;({error}=await s.rpc('reopen_card_bill',{p_payment_id:x.id}));
+      const x=row.raw as CardPay;({error}=await s.rpc('reopen_card_bill',{p_payment_id:x.id}));
     }else{
-      const x=row.raw as Work;({error}=await s.from('work_sessions').delete().eq('id',x.id));
+      const x=row.raw as Work;({error}=await s.from('work_sessions').delete().eq('id',x.id).eq('user_id',user.id));
     }
     if(error){setNotice(t('common.errorDelete'));return}
     notifyFinanceUpdated();await load(false);

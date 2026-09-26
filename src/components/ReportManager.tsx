@@ -60,7 +60,7 @@ function monthKeysBetween(start:string,end:string){
   return out;
 }
 
-export function ReportManager(){
+export function ReportManager({focus}:{focus?:{start:string;end:string;flow:Flow;token:number}|null}){
   const{t,currency,date}=useI18n();
   const[period,setPeriod]=useState<Period>('6');
   const[flow,setFlow]=useState<Flow>('all');
@@ -90,6 +90,7 @@ export function ReportManager(){
   const bounds=useMemo(()=>periodBounds(period,from,to),[period,from,to]);
 
   useEffect(()=>{(async()=>{
+    if(focus)return;
     const s=createClient();
     const{data:{user}}=await s.auth.getUser();
     if(!user)return;
@@ -99,6 +100,11 @@ export function ReportManager(){
     setPeriod(preferred);
     try{localStorage.setItem('devinx_history_period',String(months||6))}catch{}
   })()},[]);
+
+  useEffect(()=>{
+    if(!focus)return;
+    setPeriod('custom');setFrom(focus.start);setTo(focus.end);setFlow(focus.flow);setCategoryFilter('all');setSourceFilter('all');setSearch('');
+  },[focus?.token]);
 
   async function load(show=true){
     if(show)setLoading(true);

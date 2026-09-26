@@ -45,6 +45,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   const[sectionReady,setSectionReady]=useState(false);
   const initialPreferencesApplied=useRef(false);
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
+  const[reportFocus,setReportFocus]=useState<{start:string;end:string;flow:'all'|'income'|'expense';token:number}|null>(null);
   const access=initialAccess;
 
   useEffect(()=>{
@@ -106,6 +107,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   };
 
   function openCapture(mode:CaptureMode){setCapture(current=>({id:current.id+1,mode}))}
+  function openReport(range:{start:string;end:string;flow:'all'|'income'|'expense'}){setReportFocus(current=>({...range,token:(current?.token||0)+1}));setSection('reports')}
   function navigate(target:string){
     if(target==='income'||target==='expense'){openCapture(target);return}
     const allowed:Section[]=['home','movements','work','plan','more','cards','bills','reserves','reports','spend','categories','settings','master'];
@@ -140,7 +142,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
             <button type="button" className="homeActionCard card" onClick={()=>setSection('cards')}><span className="homeActionCardTop"><i>▣</i><b>{t('home.card')}</b></span><small>{t('home.cardDesc')}</small></button>
           </div>
         </section>
-        <DashboardOverview/>
+        <DashboardOverview onOpenReport={openReport}/>
       </>}
 
       {section==='movements'&&<MovementCenter onNavigate={navigate}/>}
@@ -164,7 +166,7 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
       {section==='cards'&&<CardManager onNavigate={navigate}/>}
       {section==='bills'&&<RecurringManager onNavigate={navigate}/>} 
       {section==='reserves'&&<ReserveManager/>}
-      {section==='reports'&&<ReportManager/>}
+      {section==='reports'&&<ReportManager focus={reportFocus}/>}
       {section==='spend'&&<SpendCheck/>}
       {section==='categories'&&<CategoryManager/>}
       {section==='settings'&&<PreferencesManager/>}
