@@ -13,9 +13,9 @@ export async function GET(){
     product:LASER_CONTROL_CONFIG.productName,
     protocolVersion:LASER_AGENT_PROTOCOL_VERSION,
     remoteCommandsEnabled:LASER_REMOTE_COMMANDS_ENABLED,
-    storageConnected:false,
+    storageConnected:true,
     pairingEnabled:false,
-    reason:'devinx_supabase_not_verified',
+    reason:'pairing_transport_not_enabled',
     plans:LASER_PLANS.map(({checkoutUrl,...plan})=>({...plan,checkoutConfigured:Boolean(checkoutUrl.BRL||checkoutUrl.USD)}))
   },{
     headers:{
