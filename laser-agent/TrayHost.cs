@@ -42,10 +42,10 @@ internal sealed class TrayHost : IDisposable
         var refresh = new ToolStripMenuItem("Atualizar agora");
         refresh.Click += (_, _) => RefreshRequested?.Invoke();
 
-        var arm = new ToolStripMenuItem("Permitir controle por toque (5 min)");
+        var arm = new ToolStripMenuItem("Permitir controles remotos (5 min)");
         arm.Click += (_, _) => ControlArmRequested?.Invoke(true);
 
-        var disarm = new ToolStripMenuItem("Bloquear controle por toque");
+        var disarm = new ToolStripMenuItem("Bloquear controles remotos");
         disarm.Click += (_, _) => ControlArmRequested?.Invoke(false);
 
         var exit = new ToolStripMenuItem("Sair");
@@ -85,19 +85,12 @@ internal sealed class TrayHost : IDisposable
     {
         var safe = string.IsNullOrWhiteSpace(text) ? "DevinX Laser Agent" : text.Trim();
         if (safe.Length > 63) safe = safe[..63];
-
-        _sync?.Post(_ =>
-        {
-            if (_icon is not null) _icon.Text = safe;
-        }, null);
+        _sync?.Post(_ => { if (_icon is not null) _icon.Text = safe; }, null);
     }
 
     public void ShowInfo(string title, string text)
     {
-        _sync?.Post(_ =>
-        {
-            _icon?.ShowBalloonTip(3500, title, text, ToolTipIcon.Info);
-        }, null);
+        _sync?.Post(_ => _icon?.ShowBalloonTip(3500, title, text, ToolTipIcon.Info), null);
     }
 
     private static void OpenDashboard()
