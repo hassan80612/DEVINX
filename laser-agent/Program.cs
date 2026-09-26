@@ -11,6 +11,21 @@ internal static class Program
         Console.WriteLine("Remote machine commands are OFF.");
         Console.WriteLine();
 
+        var identity = AgentIdentityStore.GetOrCreate();
+        Console.WriteLine("Agent device: " + identity.DeviceId);
+        Console.WriteLine("Agent fingerprint: " + identity.PublicKeyFingerprint);
+
+        if (args.Contains("--pair-devinx", StringComparer.OrdinalIgnoreCase))
+        {
+            var proof = PairingProofFactory.Create(TimeSpan.FromMinutes(5));
+            Console.WriteLine();
+            Console.WriteLine("DevinX pairing code: " + proof.PairingCode);
+            Console.WriteLine("Expires (UTC): " + proof.ExpiresAt.ToString("O"));
+            Console.WriteLine("Signed pairing proof created locally; safe foundation does not upload it.");
+        }
+
+        Console.WriteLine();
+
         using var rest = new LightBurnRestClient();
         if (await rest.IsAvailableAsync())
         {
