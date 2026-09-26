@@ -673,7 +673,7 @@ select option{background:var(--surface-1);color:var(--text)}
 .ledgerSign.minus{background:rgb(var(--negative-rgb) / .10);color:var(--negative)}
 
 .searchStatus.realized{background:rgb(var(--info-rgb) / .11);color:var(--info);border:1px solid rgb(var(--info-rgb) / .18)}
-.searchStatus.pending{background:rgb(var(--negative-rgb) / .09);color:#ffaaa3;border:1px solid rgb(var(--negative-rgb) / .18)}
+.searchStatus.pending{background:rgb(var(--negative-rgb) / .09);color:var(--negative);border:1px solid rgb(var(--negative-rgb) / .18)}
 .searchStatus.planned{background:rgb(var(--accent-rgb) / .11);color:var(--accent-strong);border:1px solid rgb(var(--accent-rgb) / .18)}
 .movementGlobalActions button{background:var(--surface-3);border:1px solid var(--border)}
 
