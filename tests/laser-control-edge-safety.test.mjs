@@ -34,3 +34,19 @@ test('edge functions do not hardcode a secret key',async()=>{
     assert.doesNotMatch(source,/service_role\s*[:=]\s*['"][A-Za-z0-9_.-]+/);
   }
 });
+
+
+test('heartbeat uses stored device key and anti-replay sequence',async()=>{
+  const source=await readFile('supabase/functions/laser-agent-heartbeat/index.ts','utf8');
+  assert.match(source,/laser_internal_device_auth_context/);
+  assert.match(source,/verifyHeartbeatSignature/);
+  assert.match(source,/last_sequence/);
+  assert.match(source,/laser_internal_accept_telemetry/);
+});
+
+test('master device list requires authenticated admin',async()=>{
+  const source=await readFile('supabase/functions/laser-master-devices/index.ts','utf8');
+  assert.match(source,/auth:"user"/);
+  assert.match(source,/devinx_admin_users/);
+  assert.match(source,/laser_internal_admin_list_devices/);
+});
