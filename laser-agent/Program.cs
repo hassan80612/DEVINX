@@ -34,7 +34,19 @@ internal static class Program
             Console.WriteLine();
             Console.WriteLine("DevinX pairing code: " + proof.PairingCode);
             Console.WriteLine("Expires (UTC): " + proof.ExpiresAt.ToString("O"));
-            Console.WriteLine("Signed pairing proof created locally; safe foundation does not upload it.");
+
+            using var pairingClient = new DevinXPairingClient();
+            try
+            {
+                var result = await pairingClient.PublishAsync(proof);
+                Console.WriteLine(result.Accepted
+                    ? "Pairing offer securely published. Enter the code in the DevinX master panel."
+                    : "Pairing offer rejected: " + result.Reason);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Could not publish pairing offer: " + ex.Message);
+            }
         }
 
         Console.WriteLine();
