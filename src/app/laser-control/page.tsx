@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import {notFound} from 'next/navigation';
-import {LaserControlLanding} from '@/components/LaserControlLanding';\nimport {LaserControlMasterPanel} from '@/components/LaserControlMasterPanel';
+import {LaserControlLanding} from '@/components/LaserControlLanding';
+import {LaserControlMasterPanel} from '@/components/LaserControlMasterPanel';
 import {getLaserControlMasterSession} from '@/features/laser-control/server/master';
 
 export const dynamic='force-dynamic';
@@ -15,5 +16,8 @@ export default async function LaserControlPage(){
   const session=await getLaserControlMasterSession();
   if(!session)notFound();
 
-  return <>\n    <LaserControlMasterPanel/>\n    <LaserControlLanding/>\n  </>;
+  return <>
+    <LaserControlMasterPanel/>
+    <LaserControlLanding/>
+  </>;
 }
