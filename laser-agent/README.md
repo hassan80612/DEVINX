@@ -1,74 +1,85 @@
 # DevinX Laser Agent
 
-Esta pasta é propositalmente independente do build Next.js/Vercel.
+O Agent roda localmente no Windows e faz a ponte segura entre o DevinX e o LightBurn.
 
-## Estado atual
+## Uso normal
 
-O Agent está em **safe foundation**. Nenhum comando remoto de máquina é aceito.
+O usuário não precisa de PowerShell.
 
-Ele possui dois adaptadores locais:
+1. Dê dois cliques em `DevinXLaserAgent.exe`.
+2. Na primeira vez, o Agent abre o DevinX e pede apenas **Vincular este PC**.
+3. Depois do vínculo, o Agent fica na bandeja do Windows.
+4. O Agent registra inicialização automática para o usuário atual do Windows.
+5. O LightBurn é monitorado localmente e o estado é enviado ao DevinX apenas quando muda ou em keep-alive periódico.
 
-### LightBurn 2.2 REST
-- detecta a API oficial em `127.0.0.1:19520`;
-- pareia localmente por `POST /api/connect`;
-- solicita somente capacidades `state` e `project`;
-- o próprio LightBurn exibe uma janela de consentimento no PC;
-- o segredo retornado fica criptografado para o usuário atual do Windows via DPAPI;
-- lê status, projeto e snapshot de estado;
-- não expõe o segredo ao site DevinX.
+Se o Agent já estiver rodando e o usuário abrir o EXE novamente, o painel `https://devinx.com.br/laser-control` é aberto em vez de criar outra instância.
 
-Para solicitar o pareamento local:
+## Bandeja do Windows
 
+O menu da bandeja oferece:
+- **Abrir Laser Control**
+- **Atualizar agora**
+- **Sair**
+
+Fechar a janela do navegador não encerra o Agent. O Agent continua em segundo plano até o usuário escolher **Sair** ou encerrar a sessão do Windows.
+
+## LightBurn
+
+### REST compatível
+Quando houver REST API compatível e autorização local salva:
+- usa `127.0.0.1:19520`;
+- lê estado/projeto;
+- o segredo fica protegido por DPAPI no Windows;
+- o segredo nunca é enviado ao DevinX.
+
+Pareamento REST técnico:
 ```powershell
 DevinXLaserAgent.exe --pair-rest
 ```
 
-### LightBurn UDP legado
-Se a REST API não estiver disponível:
-- envia somente `PING` e `STATUS` para `127.0.0.1:19840`;
-- escuta a resposta em `127.0.0.1:19841`;
-- nenhum comando de execução é enviado.
+### UDP legado
+Quando REST não estiver disponível:
+- usa apenas `PING` e `STATUS` em localhost;
+- nunca envia comando físico;
+- resposta ambígua `!` é tratada como **unknown**, não como “gravando”.
 
-## O que propositalmente não existe
+## Frequência
 
+- leitura local aproximada: 15 s;
+- envio imediato quando um estado relevante muda, respeitando limite mínimo;
+- keep-alive: 60 s;
+- nova tentativa após erro de rede: 30 s.
+
+Isso mantém o card online sem criar polling agressivo na Vercel.
+
+## Segurança
+
+Continuam inexistentes nesta versão:
 - START remoto;
 - STOP remoto;
 - PAUSE remoto;
 - FRAME remoto;
-- controle de mouse ou teclado;
-- shell / PowerShell / cmd;
+- mouse/teclado;
+- shell;
 - desktop remoto;
-- acesso irrestrito a arquivos;
-- porta inbound aberta no roteador.
+- porta inbound no roteador.
 
-A documentação pública atual da REST API 1.0 do LightBurn 2.2 oferece principalmente estado, projeto e upload/open de arquivos. O UDP documentado oferece START, mas não fornece um conjunto simétrico documentado de Stop/Pause/Frame. Por isso o Agent não habilita execução remota nesta fase.
+O Agent usa identidade criptográfica própria por dispositivo e heartbeats assinados.
 
-## Segurança
+## Modo técnico
 
-O segredo REST do LightBurn nunca deve ser enviado ao DevinX. Ele autentica somente chamadas do Agent para o LightBurn em localhost.
-
-A autenticação futura entre **Agent ↔ DevinX** será uma credencial separada, revogável e vinculada ao dispositivo.
-
-## Build
-
-Requer .NET 8 SDK no Windows:
-
+Mantido apenas para suporte/desenvolvimento:
 ```powershell
-dotnet restore .\laser-agent\DevinXLaserAgent.csproj
-dotnet run --project .\laser-agent\DevinXLaserAgent.csproj
+DevinXLaserAgent.exe --pair-devinx
+DevinXLaserAgent.exe --heartbeat-once
+DevinXLaserAgent.exe --json-status
+DevinXLaserAgent.exe --pair-rest
 ```
 
-O instalador, tray UI, atualização assinada e transporte remoto serão adicionados somente depois que o banco correto do DevinX e o fluxo de pareamento do produto estiverem validados.
-
-
-## Limpeza / rollback local
-
-Durante desenvolvimento, o estado local pode ser apagado explicitamente com:
+## Limpeza local
 
 ```powershell
 DevinXLaserAgent.exe --reset-local-state --confirm-reset
 ```
 
-Isso remove `%LOCALAPPDATA%\DevinXLaserAgent`, incluindo identidade do Agent e segredo de pareamento REST do LightBurn. A confirmação dupla é intencional para evitar limpeza acidental.
-
-O desinstalador futuro deverá executar a mesma rotina somente quando o usuário escolher remover também os dados locais.
+A limpeza remove o estado em `%LOCALAPPDATA%\DevinXLaserAgent` e também o registro de inicialização automática do Agent.

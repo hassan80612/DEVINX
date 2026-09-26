@@ -11,6 +11,8 @@ internal static class AgentLocalState
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("The Agent is Windows-only.");
 
+        StartupRegistration.Remove();
+
         if (!Directory.Exists(DirectoryPath))return;
 
         Directory.Delete(DirectoryPath, recursive:true);
