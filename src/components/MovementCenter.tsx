@@ -449,15 +449,40 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     setPurchaseEdit(null);notifyFinanceUpdated();await load(false);
   }
   async function deletePurchase(p:Purchase){
-    if(!confirm(t('move.purchaseDeleteConfirm')))return;const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
+    const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
     const installmentIds=(p.card_installments||[]).map(item=>item.id);
+    let linked:any[]=[];
     if(installmentIds.length){
-      const{data:linked,error:linkedError}=await s.from('transactions').select('id').eq('user_id',user.id).eq('source_type','card_installment_payment').in('source_id',installmentIds).limit(1);
-      if(linkedError||linked?.length){setNotice(t('move.paidPurchaseLocked'));return}
+      const{data,error:linkedError}=await s.from('transactions')
+        .select('id,user_id,income_source_id,type,category_id,description,amount_minor,occurred_on,payment_method,is_avoidable,is_recurring,source_type,source_id,created_at')
+        .eq('user_id',user.id).eq('source_type','card_installment_payment').in('source_id',installmentIds);
+      if(linkedError){setNotice(t('common.errorDelete'));return}
+      linked=data||[];
+      const linkedInstallments=new Set(linked.map(item=>item.source_id).filter(Boolean));
+      const hasStatementPayment=(p.card_installments||[]).some(item=>!!item.paid_at&&!linkedInstallments.has(item.id));
+      if(hasStatementPayment){setNotice(t('move.paidPurchaseLocked'));return}
+    }
+    if(!confirm(linked.length?t('move.purchaseDeletePaidConfirm'):t('move.purchaseDeleteConfirm')))return;
+
+    const paidSnapshots=(p.card_installments||[]).filter(item=>!!item.paid_at).map(item=>({id:item.id,paid_at:item.paid_at}));
+    if(linked.length){
+      const{error:paymentDeleteError}=await s.from('transactions').delete().eq('user_id',user.id).in('id',linked.map(item=>item.id));
+      if(paymentDeleteError){setNotice(t('common.errorDelete'));return}
+    }
+    if(paidSnapshots.length){
+      const{error:clearPaidError}=await s.from('card_installments').update({paid_at:null}).eq('user_id',user.id).in('id',paidSnapshots.map(item=>item.id));
+      if(clearPaidError){
+        if(linked.length)await s.from('transactions').insert(linked);
+        setNotice(t('common.errorDelete'));return
+      }
     }
     const{error}=await s.rpc('delete_card_purchase',{p_purchase_id:p.id});
-    if(error){setNotice(t('move.paidPurchaseLocked'));return}
-    notifyFinanceUpdated();await load(false);
+    if(error){
+      if(linked.length)await s.from('transactions').insert(linked);
+      await Promise.all(paidSnapshots.map(item=>s.from('card_installments').update({paid_at:item.paid_at}).eq('id',item.id).eq('user_id',user.id)));
+      setNotice(t('common.errorDelete'));return
+    }
+    setNotice(t('move.purchaseDeleted'));notifyFinanceUpdated();await load(false);
   }
 
   return <div className="movementCenter">
