@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 namespace DevinXLaserAgent;
 
 internal sealed record PairingProof(
+    int Version,
+    string AgentVersion,
     string DeviceId,
     string PublicKeyPem,
     string PublicKeyFingerprint,
@@ -13,6 +15,7 @@ internal sealed record PairingProof(
 
 internal static class PairingProofFactory
 {
+    public const string AgentVersion = "0.1.0";
     private static readonly char[] Alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray();
 
     public static PairingProof Create(TimeSpan lifetime)
@@ -21,10 +24,12 @@ internal static class PairingProofFactory
         var expiresAt = DateTimeOffset.UtcNow.Add(lifetime);
         var nonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
         var code = RandomCode(8);
-        var payload = CanonicalPayload(identity.DeviceId, identity.PublicKeyFingerprint, code, expiresAt, nonce);
+        var payload = CanonicalPayload(identity.DeviceId, identity.PublicKeyFingerprint, AgentVersion, code, expiresAt, nonce);
         var signature = AgentIdentityStore.SignBase64(payload);
 
         return new PairingProof(
+            1,
+            AgentVersion,
             identity.DeviceId,
             identity.PublicKeyPem,
             identity.PublicKeyFingerprint,
@@ -34,8 +39,21 @@ internal static class PairingProofFactory
             signature);
     }
 
-    public static string CanonicalPayload(string deviceId,string fingerprint,string code,DateTimeOffset expiresAt,string nonce) =>
-        string.Join("\n", "devinx-laser-pair-v1", deviceId, fingerprint, code, expiresAt.ToUnixTimeSeconds().ToString(), nonce);
+    public static string CanonicalPayload(
+        string deviceId,
+        string fingerprint,
+        string agentVersion,
+        string code,
+        DateTimeOffset expiresAt,
+        string nonce) =>
+        string.Join("\n",
+            "devinx-laser-pair-v1",
+            deviceId,
+            fingerprint,
+            agentVersion,
+            code,
+            expiresAt.ToUnixTimeSeconds().ToString(),
+            nonce);
 
     private static string RandomCode(int length)
     {
