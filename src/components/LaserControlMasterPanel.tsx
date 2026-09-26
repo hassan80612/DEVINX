@@ -87,6 +87,91 @@ export function LaserControlMasterPanel(){
     return()=>{active=false};
   },[loadDevices]);
 
+  const selectedDevice=useMemo(
+    ()=>devices.find(device=>device.device_id===selectedDeviceId)??null,
+    [devices,selectedDeviceId]
+  );
+
+  useEffect(()=>{
+    if(workspaceTab!=='preview'||!selectedDeviceId)return;
+
+    let mounted=true;
+    let knownVersion=0;
+    setPreviewPending(true);
+    setPreviewUrl('');
+    setPreviewCapturedAt(null);
+    setPreviewMessage('Solicitando a janela do LightBurn ao Agent…');
+
+    const callPreview=async(payload:Record<string,unknown>)=>{
+      const response=await fetch('/api/laser-control/master/preview',{
+        method:'POST',
+        credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload),
+        cache:'no-store'
+      });
+      const data=await response.json();
+      if(!response.ok)throw new Error(String(data?.error||'preview'));
+      return data;
+    };
+
+    const keepSession=async()=>{
+      try{
+        await callPreview({action:'session',deviceId:selectedDeviceId,active:true});
+      }catch{
+        if(mounted){
+          setPreviewPending(false);
+          setPreviewMessage('Não foi possível ativar a visualização.');
+        }
+      }
+    };
+
+    const pollFrame=async()=>{
+      try{
+        const data=await callPreview({action:'meta',deviceId:selectedDeviceId,knownVersion});
+        if(!mounted)return;
+
+        const nextVersion=Number(data?.frameVersion||0);
+        if(data?.signedUrl&&nextVersion>knownVersion){
+          knownVersion=nextVersion;
+          setPreviewUrl(String(data.signedUrl));
+          setPreviewCapturedAt(data?.lastFrameAt??null);
+          setPreviewWidth(Number(data?.width)||null);
+          setPreviewHeight(Number(data?.height)||null);
+          setPreviewPending(false);
+          setPreviewMessage('');
+          return;
+        }
+
+        if(!data?.lastFrameAt)setPreviewMessage('Aguardando o Agent capturar a janela do LightBurn…');
+        else if(!data?.active)setPreviewMessage('Reativando a visualização…');
+      }catch{
+        if(mounted){
+          setPreviewPending(false);
+          setPreviewMessage('Não foi possível atualizar a visualização.');
+        }
+      }
+    };
+
+    void keepSession();
+    void pollFrame();
+    const sessionTimer=window.setInterval(()=>void keepSession(),20_000);
+    const frameTimer=window.setInterval(()=>void pollFrame(),2_500);
+
+    return()=>{
+      mounted=false;
+      window.clearInterval(sessionTimer);
+      window.clearInterval(frameTimer);
+      void fetch('/api/laser-control/master/preview',{
+        method:'POST',
+        credentials:'same-origin',
+        keepalive:true,
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'session',deviceId:selectedDeviceId,active:false})
+      }).catch(()=>undefined);
+    };
+  },[selectedDeviceId,workspaceTab]);
+
   async function claimPairing(event:FormEvent){
     event.preventDefault();
     const code=pairingCode.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
