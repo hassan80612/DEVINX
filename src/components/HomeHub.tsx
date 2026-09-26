@@ -315,7 +315,7 @@ export function HomeHub({laserVisible=true,financeVisible=true}:{laserVisible?:b
       </a>}
     </section>
 
-    <section className={`${styles.products} ${!showStore?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
+    <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
       {financeVisible&&<article className={`${styles.product} ${styles.financeProduct}`}>
         <div className={styles.productGlow}></div>
         <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
