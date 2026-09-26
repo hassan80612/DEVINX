@@ -38,3 +38,10 @@
   .controlStatus{grid-template-columns:1fr 1fr}
   .commandGrid{grid-template-columns:1fr 1fr}
 }
+
+.previewActions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.previewActions button{min-height:34px;padding:7px 11px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:#11151a;color:#c9bec2;font-size:8px;font-weight:900;cursor:pointer}.previewActions .touchButton{border-color:rgba(202,122,150,.28);color:#d6a1b4}.previewActions .touchEnabledButton{border-color:rgba(105,219,166,.42);background:#10251c;color:#91e0ba;box-shadow:0 0 18px rgba(89,196,145,.12)}.previewActions button:disabled{opacity:.55;cursor:wait}
+.previewSurface{position:relative;background:#050607;border-radius:12px;overflow:hidden}.previewOverlay{position:absolute;z-index:3;left:10px;right:10px;top:10px;display:flex;justify-content:space-between;align-items:center;pointer-events:none}.previewOverlay span{padding:5px 8px;border-radius:999px;background:rgba(5,7,8,.76);backdrop-filter:blur(6px);color:#a7d9c1;font-size:7px;font-weight:950;letter-spacing:.08em}.previewOverlay button{pointer-events:auto;min-height:32px;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(7,9,10,.82);color:#fff;font-size:8px;font-weight:900}
+.previewSurfaceFullscreen{width:100vw;height:100dvh;border-radius:0;background:#000}.previewSurfaceFullscreen .previewFrame{width:100vw;height:100dvh;min-height:100dvh;border:0;border-radius:0}.previewSurfaceFullscreen .previewFrame img{width:100vw;height:100dvh;max-height:none;object-fit:contain}
+.previewInteractive{cursor:pointer;touch-action:manipulation}.touchNotice{margin-top:9px;padding:9px 11px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:#0d1013;color:#b7aaaf;font-size:8px;line-height:1.45}
+.previewFrame img{user-select:none;-webkit-user-drag:none}
+@media(max-width:620px){.previewActions{width:100%;justify-content:stretch}.previewActions button{flex:1}.previewSurfaceFullscreen .previewOverlay{top:max(10px,env(safe-area-inset-top));left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right))}}

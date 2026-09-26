@@ -1,6 +1,6 @@
 'use client';
 
-import {FormEvent,useCallback,useEffect,useMemo,useState} from 'react';
+import {FormEvent,PointerEvent as ReactPointerEvent,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import styles from './LaserControlMasterPanel.module.css';
 
 type Status={
@@ -50,6 +50,11 @@ export function LaserControlMasterPanel(){
   const[previewWidth,setPreviewWidth]=useState<number|null>(null);
   const[previewHeight,setPreviewHeight]=useState<number|null>(null);
   const[previewPending,setPreviewPending]=useState(false);
+  const[touchEnabled,setTouchEnabled]=useState(false);
+  const[touchPending,setTouchPending]=useState(false);
+  const[touchNotice,setTouchNotice]=useState('');
+  const[isFullscreen,setIsFullscreen]=useState(false);
+  const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
 
   const loadDevices=useCallback(async()=>{
     setDevicesPending(true);
@@ -92,32 +97,42 @@ export function LaserControlMasterPanel(){
     [devices,selectedDeviceId]
   );
 
+  const callPreviewApi=useCallback(async(payload:Record<string,unknown>)=>{
+    const response=await fetch('/api/laser-control/master/preview',{
+      method:'POST',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+      cache:'no-store'
+    });
+    const data=await response.json();
+    if(!response.ok)throw Object.assign(new Error(String(data?.error||data?.reason||'preview')),{data});
+    return data;
+  },[]);
+
+  useEffect(()=>{
+    const onFullscreen=()=>setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange',onFullscreen);
+    return()=>document.removeEventListener('fullscreenchange',onFullscreen);
+  },[]);
+
   useEffect(()=>{
     if(workspaceTab!=='preview'||!selectedDeviceId)return;
 
     let mounted=true;
-    let knownVersion=0;
+    let signedUrl='';
     setPreviewPending(true);
     setPreviewUrl('');
     setPreviewCapturedAt(null);
     setPreviewMessage('Solicitando a janela do LightBurn ao Agent…');
-
-    const callPreview=async(payload:Record<string,unknown>)=>{
-      const response=await fetch('/api/laser-control/master/preview',{
-        method:'POST',
-        credentials:'same-origin',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(payload),
-        cache:'no-store'
-      });
-      const data=await response.json();
-      if(!response.ok)throw new Error(String(data?.error||'preview'));
-      return data;
-    };
+    setTouchEnabled(false);
+    setTouchNotice('');
 
     const keepSession=async()=>{
       try{
-        await callPreview({action:'session',deviceId:selectedDeviceId,active:true});
+        const data=await callPreviewApi({action:'session',deviceId:selectedDeviceId,active:true});
+        if(!mounted)return;
+        if(data?.signedUrl)signedUrl=String(data.signedUrl);
       }catch{
         if(mounted){
           setPreviewPending(false);
@@ -126,42 +141,25 @@ export function LaserControlMasterPanel(){
       }
     };
 
-    const pollFrame=async()=>{
-      try{
-        const data=await callPreview({action:'meta',deviceId:selectedDeviceId,knownVersion});
-        if(!mounted)return;
-
-        const nextVersion=Number(data?.frameVersion||0);
-        if(data?.signedUrl&&nextVersion>knownVersion){
-          knownVersion=nextVersion;
-          setPreviewUrl(String(data.signedUrl));
-          setPreviewCapturedAt(data?.lastFrameAt??null);
-          setPreviewWidth(Number(data?.width)||null);
-          setPreviewHeight(Number(data?.height)||null);
-          setPreviewPending(false);
-          setPreviewMessage('');
-          return;
-        }
-
-        if(!data?.lastFrameAt)setPreviewMessage('Aguardando o Agent capturar a janela do LightBurn…');
-        else if(!data?.active)setPreviewMessage('Reativando a visualização…');
-      }catch{
-        if(mounted){
-          setPreviewPending(false);
-          setPreviewMessage('Não foi possível atualizar a visualização.');
-        }
-      }
-    };
-
     void keepSession();
-    void pollFrame();
     const sessionTimer=window.setInterval(()=>void keepSession(),20_000);
-    const frameTimer=window.setInterval(()=>void pollFrame(),2_500);
+    const imageTimer=window.setInterval(()=>{
+      if(!mounted||!signedUrl)return;
+      const separator=signedUrl.includes('?')?'&':'?';
+      setPreviewUrl(signedUrl+separator+'v='+Date.now());
+    },700);
 
     return()=>{
       mounted=false;
       window.clearInterval(sessionTimer);
-      window.clearInterval(frameTimer);
+      window.clearInterval(imageTimer);
+      void fetch('/api/laser-control/master/preview',{
+        method:'POST',
+        credentials:'same-origin',
+        keepalive:true,
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'touch',deviceId:selectedDeviceId,enabled:false})
+      }).catch(()=>undefined);
       void fetch('/api/laser-control/master/preview',{
         method:'POST',
         credentials:'same-origin',
@@ -170,7 +168,77 @@ export function LaserControlMasterPanel(){
         body:JSON.stringify({action:'session',deviceId:selectedDeviceId,active:false})
       }).catch(()=>undefined);
     };
-  },[selectedDeviceId,workspaceTab]);
+  },[selectedDeviceId,workspaceTab,callPreviewApi]);
+
+  async function toggleTouchControl(){
+    if(!selectedDeviceId||touchPending)return;
+    setTouchPending(true);
+    setTouchNotice('');
+    try{
+      const data=await callPreviewApi({
+        action:'touch',
+        deviceId:selectedDeviceId,
+        enabled:!touchEnabled
+      });
+      setTouchEnabled(Boolean(data?.enabled));
+      setTouchNotice(data?.enabled
+        ?'Controle por toque ativo por esta sessão.'
+        :'Controle por toque desligado.');
+    }catch(error){
+      const reason=(error as {data?:{reason?:string}})?.data?.reason;
+      if(reason==='local_arm_required'){
+        setTouchEnabled(false);
+        setTouchNotice('No PC, abra o ícone do DevinX Agent e escolha “Permitir controle por toque (5 min)”.');
+      }else{
+        setTouchNotice('Não foi possível alterar o controle por toque.');
+      }
+    }finally{
+      setTouchPending(false);
+    }
+  }
+
+  async function sendPreviewTap(event:ReactPointerEvent<HTMLImageElement>){
+    if(!touchEnabled||!selectedDeviceId||touchPending)return;
+    event.preventDefault();
+
+    const image=event.currentTarget;
+    const rect=image.getBoundingClientRect();
+    const naturalWidth=image.naturalWidth||1;
+    const naturalHeight=image.naturalHeight||1;
+    const scale=Math.min(rect.width/naturalWidth,rect.height/naturalHeight);
+    const renderedWidth=naturalWidth*scale;
+    const renderedHeight=naturalHeight*scale;
+    const offsetX=(rect.width-renderedWidth)/2;
+    const offsetY=(rect.height-renderedHeight)/2;
+    const localX=event.clientX-rect.left-offsetX;
+    const localY=event.clientY-rect.top-offsetY;
+    if(localX<0||localY<0||localX>renderedWidth||localY>renderedHeight)return;
+
+    const x=localX/renderedWidth;
+    const y=localY/renderedHeight;
+    setTouchPending(true);
+    try{
+      await callPreviewApi({action:'tap',deviceId:selectedDeviceId,x,y});
+      setTouchNotice('Toque enviado.');
+    }catch{
+      setTouchEnabled(false);
+      setTouchNotice('O toque foi bloqueado. Reative a permissão no Agent.');
+    }finally{
+      setTouchPending(false);
+    }
+  }
+
+  async function toggleFullscreen(){
+    try{
+      if(document.fullscreenElement){
+        await document.exitFullscreen();
+      }else{
+        await previewSurfaceRef.current?.requestFullscreen();
+      }
+    }catch{
+      setTouchNotice('O navegador não permitiu tela cheia.');
+    }
+  }
 
   async function claimPairing(event:FormEvent){
     event.preventDefault();
@@ -380,25 +448,59 @@ export function LaserControlMasterPanel(){
         {workspaceTab==='preview'&&<div className={styles.previewPane}>
           <div className={styles.previewTitle}>
             <div>
-              <small>LIGHTBURN · SOMENTE LEITURA</small>
+              <small>LIGHTBURN · VISUALIZAÇÃO REMOTA</small>
               <b>Janela do LightBurn</b>
             </div>
-            <span>{previewCapturedAt?'Imagem '+new Date(previewCapturedAt).toLocaleTimeString('pt-BR'):'Aguardando imagem'}</span>
+            <div className={styles.previewActions}>
+              <button type="button" onClick={()=>void toggleFullscreen()}>
+                {isFullscreen?'Sair da tela cheia':'Tela cheia'}
+              </button>
+              <button
+                type="button"
+                className={touchEnabled?styles.touchEnabledButton:styles.touchButton}
+                onClick={()=>void toggleTouchControl()}
+                disabled={touchPending}
+              >
+                {touchPending?'Aguarde…':touchEnabled?'Toque: LIGADO':'Controle por toque'}
+              </button>
+            </div>
           </div>
 
-          <div className={styles.previewFrame}>
-            {previewUrl
-              ?<img src={previewUrl} alt="Prévia remota da janela do LightBurn"/>
-              :<div className={styles.previewEmpty}>
-                <strong>{selectedDevice.lightburn_online===false?'LightBurn está fechado':'Preparando visualização…'}</strong>
-                <span>{previewMessage}</span>
-                {previewPending&&<i>Conectando ao Agent</i>}
-              </div>}
+          <div ref={previewSurfaceRef} className={[styles.previewSurface,isFullscreen?styles.previewSurfaceFullscreen:''].filter(Boolean).join(' ')}>
+            <div className={styles.previewOverlay}>
+              <span>{touchEnabled?'TOQUE REMOTO ATIVO':'VISUALIZAÇÃO'}</span>
+              {isFullscreen&&<button type="button" onClick={()=>void toggleFullscreen()}>Fechar</button>}
+            </div>
+            <div className={styles.previewFrame}>
+              {previewUrl
+                ?<img
+                    src={previewUrl}
+                    alt="Prévia remota da janela do LightBurn"
+                    onPointerDown={event=>void sendPreviewTap(event)}
+                    onLoad={event=>{
+                      setPreviewPending(false);
+                      setPreviewMessage('');
+                      setPreviewCapturedAt(new Date().toISOString());
+                      setPreviewWidth(event.currentTarget.naturalWidth||null);
+                      setPreviewHeight(event.currentTarget.naturalHeight||null);
+                    }}
+                    onError={()=>{
+                      if(!previewCapturedAt)setPreviewMessage('Aguardando o primeiro quadro do Agent…');
+                    }}
+                    className={touchEnabled?styles.previewInteractive:''}
+                  />
+                :<div className={styles.previewEmpty}>
+                  <strong>{selectedDevice.lightburn_online===false?'LightBurn está fechado':'Preparando visualização…'}</strong>
+                  <span>{previewMessage}</span>
+                  {previewPending&&<i>Conectando ao Agent</i>}
+                </div>}
+            </div>
           </div>
 
+          {touchNotice&&<div className={styles.touchNotice}>{touchNotice}</div>}
           <div className={styles.previewFoot}>
-            <span>{previewWidth&&previewHeight?previewWidth+' × '+previewHeight+'px':'A imagem é enviada apenas enquanto esta aba está aberta.'}</span>
-            <b>Sem mouse · sem teclado · só a janela do LightBurn</b>
+            <span>{previewWidth&&previewHeight?previewWidth+' × '+previewHeight+'px · atualização rápida':'A imagem é enviada apenas enquanto esta aba está aberta.'}</span>
+            <b>{touchEnabled?'Cada toque é enviado somente para a janela do LightBurn.':'Toque remoto fica bloqueado até você habilitar.'}</b>
           </div>
         </div>}
 
@@ -419,7 +521,7 @@ export function LaserControlMasterPanel(){
 
           <div className={styles.controlWarning}>
             <b>Controle físico ainda travado</b>
-            <span>A aba de controle já está separada. Start, Stop, Pause e Frame só serão ativados quando houver um caminho suportado e seguro pelo LightBurn.</span>
+            <span>Start, Stop, Pause e Frame continuam sem API pública suportada. Para este teste, use a aba Visualização e habilite o controle por toque para operar a própria janela do LightBurn.</span>
           </div>
         </div>}
       </section>}
