@@ -3,7 +3,8 @@ import {createServerSupabaseClient} from '@/lib/supabase/server';
 const ALLOWED_FUNCTIONS=new Set([
   'laser-master-pairing-claim',
   'laser-master-devices',
-  'laser-master-device-access'
+  'laser-master-device-access',
+  'laser-master-preview'
 ]);
 
 export async function invokeLaserMasterFunction(slug:string,body:Record<string,unknown>){
