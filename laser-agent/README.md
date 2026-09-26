@@ -59,3 +59,16 @@ dotnet run --project .\laser-agent\DevinXLaserAgent.csproj
 ```
 
 O instalador, tray UI, atualização assinada e transporte remoto serão adicionados somente depois que o banco correto do DevinX e o fluxo de pareamento do produto estiverem validados.
+
+
+## Limpeza / rollback local
+
+Durante desenvolvimento, o estado local pode ser apagado explicitamente com:
+
+```powershell
+DevinXLaserAgent.exe --reset-local-state --confirm-reset
+```
+
+Isso remove `%LOCALAPPDATA%\DevinXLaserAgent`, incluindo identidade do Agent e segredo de pareamento REST do LightBurn. A confirmação dupla é intencional para evitar limpeza acidental.
+
+O desinstalador futuro deverá executar a mesma rotina somente quando o usuário escolher remover também os dados locais.
