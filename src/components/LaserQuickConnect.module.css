@@ -1,0 +1,9 @@
+.page{min-height:100vh;display:grid;place-items:center;padding:24px;background:#090b0e;color:#f4f5f6;font-family:Arial,sans-serif}
+.card{width:min(520px,100%);padding:28px;border:1px solid rgba(100,190,160,.24);border-radius:24px;background:linear-gradient(180deg,rgba(18,28,28,.96),rgba(9,12,15,.98));box-shadow:0 22px 70px rgba(0,0,0,.38)}
+.badge{display:inline-block;padding:7px 10px;border-radius:999px;border:1px solid rgba(109,209,175,.28);color:#8bd6bc;font-size:11px;font-weight:800;letter-spacing:.12em}
+.card h1{font-size:30px;line-height:1.05;margin:22px 0 10px}.card p{color:#aeb7b4;line-height:1.55;margin:0 0 20px}
+.device{padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.025);display:grid;gap:7px}
+.device small{color:#7d918a;font-size:10px;font-weight:800;letter-spacing:.1em}.device strong{font-size:18px}.device span{color:#8c9995;font-size:12px}
+.primary{width:100%;margin-top:18px;padding:15px;border:0;border-radius:14px;background:#d9e9e3;color:#0d1714;font-weight:900;font-size:15px;cursor:pointer}.primary:disabled{opacity:.65;cursor:wait}
+.success,.error{margin-top:14px;padding:12px 14px;border-radius:12px;font-size:13px}.success{background:rgba(56,170,125,.12);border:1px solid rgba(56,170,125,.25);color:#a8e8cf}.error{background:rgba(190,75,75,.12);border:1px solid rgba(190,75,75,.25);color:#efb2b2}
+.link{display:block;margin-top:16px;text-align:center;color:#b9c9c4;text-decoration:none;font-size:13px}.safe{display:block;margin-top:18px;text-align:center;color:#66736f;font-size:9px;letter-spacing:.08em}
