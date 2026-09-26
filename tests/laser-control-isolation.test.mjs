@@ -30,3 +30,10 @@ test('Remote command dispatch remains hard-disabled in foundation',async()=>{
   const source=await readFile('src/features/laser-control/protocol.ts','utf8');
   assert.match(source,/LASER_REMOTE_COMMANDS_ENABLED=false/);
 });
+
+
+test('master surface is disabled in production unless explicitly enabled',async()=>{
+  const source=await readFile('src/features/laser-control/server/master.ts','utf8');
+  assert.match(source,/VERCEL_ENV==='preview'/);
+  assert.match(source,/LASER_CONTROL_MASTER_ENABLED==='true'/);
+});
