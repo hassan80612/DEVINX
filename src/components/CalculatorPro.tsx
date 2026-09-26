@@ -344,6 +344,41 @@ export function ProCalculator({variant='floating'}:{variant?:'floating'|'embedde
     try{localStorage.removeItem(WORKSPACE_KEY)}catch{}
   }
 
+  useEffect(()=>{
+    const active=variant==='embedded'||open;
+    if(!active)return;
+
+    function onKeyDown(event:KeyboardEvent){
+      const target=event.target as HTMLElement|null;
+      const typingTarget=target instanceof HTMLInputElement||target instanceof HTMLTextAreaElement||target instanceof HTMLSelectElement||Boolean(target?.isContentEditable);
+      if(typingTarget)return;
+
+      if(event.key==='Escape'){
+        if(variant==='floating')setOpen(false);
+        return;
+      }
+
+      if(mode!=='scientific')return;
+
+      const key=event.key;
+      if(/^\d$/.test(key)){event.preventDefault();inputDigit(key);return}
+      if(key==='.'||key===','){event.preventDefault();inputDecimal();return}
+      if(key==='+'){event.preventDefault();chooseOperator('+');return}
+      if(key==='-'){event.preventDefault();chooseOperator('-');return}
+      if(key==='*'||key==='x'||key==='X'){event.preventDefault();chooseOperator('×');return}
+      if(key==='/'){event.preventDefault();chooseOperator('÷');return}
+      if(key==='^'){event.preventDefault();chooseOperator('^');return}
+      if(key==='Enter'||key==='='){event.preventDefault();equals();return}
+      if(key==='Backspace'){event.preventDefault();backspace();return}
+      if(key==='Delete'){event.preventDefault();clearScientific();return}
+      if(key==='%'){event.preventDefault();percent()}
+    }
+
+    window.addEventListener('keydown',onKeyDown);
+    return()=>window.removeEventListener('keydown',onKeyDown);
+  },[mode,open,variant,sci]);
+
+
   const financeToolLabel=(tool:FinanceTool)=>t('calculator.'+tool);
   const metricLabel=(key:string)=>t('calculator.'+key);
 
