@@ -7,8 +7,6 @@ internal static class Program
 {
     public static async Task Main(string[] args)
     {
-        Console.Title = "DevinX Laser Agent";
-
         using var singleInstance = new SingleInstanceGuard();
         if (!singleInstance.IsPrimary)
         {
@@ -30,9 +28,12 @@ internal static class Program
             return;
         }
 
-        var identity = AgentIdentityStore.GetOrCreate();
         var backgroundMode = args.Contains("--background", StringComparer.OrdinalIgnoreCase);
         var guidedMode = args.Length == 0 || backgroundMode;
+        if (!guidedMode)
+            ConsoleHost.AttachForTechnicalMode();
+
+        var identity = AgentIdentityStore.GetOrCreate();
 
         if (guidedMode)
         {
