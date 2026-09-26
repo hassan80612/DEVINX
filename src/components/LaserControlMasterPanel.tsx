@@ -312,7 +312,7 @@ export function LaserControlMasterPanel(){
 
       <div className={styles.devices}>
         {devices.length===0&&<div className={styles.emptyDevice}>Nenhum PC vinculado ainda.</div>}
-        {devices.map(device=><article className={styles.deviceCard} key={device.device_id}>
+        {devices.map(device=><article className={[styles.deviceCard,selectedDeviceId===device.device_id?styles.selectedDevice:''].filter(Boolean).join(' ')} key={device.device_id}>
           <div className={styles.deviceTop}>
             <div>
               <span className={online(device)?styles.onlineDot:styles.offlineDot}></span>
@@ -333,6 +333,11 @@ export function LaserControlMasterPanel(){
             <span>{device.last_seen_at?`Último contato: ${new Date(device.last_seen_at).toLocaleString('pt-BR')}`:'Sem heartbeat ainda'}</span>
           </div>
           <div className={styles.deviceActions}>
+            <button
+              type="button"
+              className={styles.openDeviceButton}
+              onClick={()=>setSelectedDeviceId(device.device_id)}
+            >{selectedDeviceId===device.device_id?'Selecionado':'Abrir painel'}</button>
             <span>Status: <b>{device.device_status}</b></span>
             <button
               type="button"
@@ -347,6 +352,77 @@ export function LaserControlMasterPanel(){
           </div>
         </article>)}
       </div>
+
+      {selectedDevice&&<section className={styles.workspace}>
+        <div className={styles.workspaceHead}>
+          <div>
+            <small>PAINEL DO PC</small>
+            <strong>{selectedDevice.display_name}</strong>
+          </div>
+          <span className={online(selectedDevice)?styles.workspaceOnline:styles.workspaceOffline}>
+            {online(selectedDevice)?'ONLINE':'OFFLINE'}
+          </span>
+        </div>
+
+        <div className={styles.workspaceTabs}>
+          <button
+            type="button"
+            className={workspaceTab==='preview'?styles.activeWorkspaceTab:''}
+            onClick={()=>setWorkspaceTab('preview')}
+          >Visualização</button>
+          <button
+            type="button"
+            className={workspaceTab==='control'?styles.activeWorkspaceTab:''}
+            onClick={()=>setWorkspaceTab('control')}
+          >Controle</button>
+        </div>
+
+        {workspaceTab==='preview'&&<div className={styles.previewPane}>
+          <div className={styles.previewTitle}>
+            <div>
+              <small>LIGHTBURN · SOMENTE LEITURA</small>
+              <b>Janela do LightBurn</b>
+            </div>
+            <span>{previewCapturedAt?'Imagem '+new Date(previewCapturedAt).toLocaleTimeString('pt-BR'):'Aguardando imagem'}</span>
+          </div>
+
+          <div className={styles.previewFrame}>
+            {previewUrl
+              ?<img src={previewUrl} alt="Prévia remota da janela do LightBurn"/>
+              :<div className={styles.previewEmpty}>
+                <strong>{selectedDevice.lightburn_online===false?'LightBurn está fechado':'Preparando visualização…'}</strong>
+                <span>{previewMessage}</span>
+                {previewPending&&<i>Conectando ao Agent</i>}
+              </div>}
+          </div>
+
+          <div className={styles.previewFoot}>
+            <span>{previewWidth&&previewHeight?previewWidth+' × '+previewHeight+'px':'A imagem é enviada apenas enquanto esta aba está aberta.'}</span>
+            <b>Sem mouse · sem teclado · só a janela do LightBurn</b>
+          </div>
+        </div>}
+
+        {workspaceTab==='control'&&<div className={styles.controlPane}>
+          <div className={styles.controlStatus}>
+            <article><small>PC</small><strong>{online(selectedDevice)?'Online':'Offline'}</strong></article>
+            <article><small>LIGHTBURN</small><strong>{selectedDevice.lightburn_online===true?'Conectado':selectedDevice.lightburn_online===false?'Offline':'—'}</strong></article>
+            <article><small>MÁQUINA</small><strong>{selectedDevice.machine_connected===true?'Conectada':selectedDevice.machine_connected===false?'Desconectada':'—'}</strong></article>
+            <article><small>JOB</small><strong>{selectedDevice.job_state||'—'}</strong></article>
+          </div>
+
+          <div className={styles.commandGrid}>
+            <button type="button" disabled><span>▣</span><b>Frame</b><small>bloqueado</small></button>
+            <button type="button" disabled><span>▶</span><b>Iniciar</b><small>bloqueado</small></button>
+            <button type="button" disabled><span>Ⅱ</span><b>Pausar</b><small>bloqueado</small></button>
+            <button type="button" disabled className={styles.stopCommand}><span>■</span><b>Parar</b><small>bloqueado</small></button>
+          </div>
+
+          <div className={styles.controlWarning}>
+            <b>Controle físico ainda travado</b>
+            <span>A aba de controle já está separada. Start, Stop, Pause e Frame só serão ativados quando houver um caminho suportado e seguro pelo LightBurn.</span>
+          </div>
+        </div>}
+      </section>}
 
       <div className={styles.testGuide}>
         <small>COMO TESTAR</small>
