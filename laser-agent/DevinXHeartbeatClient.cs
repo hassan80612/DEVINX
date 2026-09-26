@@ -60,18 +60,33 @@ internal sealed class DevinXHeartbeatClient : IDisposable
                 var reason = errorJson.RootElement.TryGetProperty("reason", out var element)
                     ? element.GetString()
                     : "request_failed";
-                return new HeartbeatResult(false, reason ?? "request_failed");
+                return new HeartbeatResult(false, reason ?? "request_failed", false, null);
             }
             catch
             {
-                return new HeartbeatResult(false, "request_failed");
+                return new HeartbeatResult(false, "request_failed", false, null);
             }
         }
 
-        return new HeartbeatResult(true, null);
+        try
+        {
+            using var json = JsonDocument.Parse(body);
+            var previewActive = json.RootElement.TryGetProperty("previewActive", out var p) && p.GetBoolean();
+            DateTimeOffset? previewUntil = null;
+            if (json.RootElement.TryGetProperty("previewUntil", out var u)
+                && u.ValueKind == JsonValueKind.String
+                && DateTimeOffset.TryParse(u.GetString(), out var parsed))
+                previewUntil = parsed;
+
+            return new HeartbeatResult(true, null, previewActive, previewUntil);
+        }
+        catch
+        {
+            return new HeartbeatResult(true, null, false, null);
+        }
     }
 
     public void Dispose() => _http.Dispose();
 }
 
-internal sealed record HeartbeatResult(bool Accepted, string? Reason);
+internal sealed record HeartbeatResult(bool Accepted,string? Reason,bool PreviewActive,DateTimeOffset? PreviewUntil);
