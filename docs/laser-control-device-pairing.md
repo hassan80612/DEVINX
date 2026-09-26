@@ -1,54 +1,55 @@
 # DevinX Laser Control — device pairing lifecycle
 
-Status: **contract ready / network pairing disabled**
+Status: **master-only pairing active / machine commands disabled**
 
 ## Goal
 
-Pair one Windows Agent to one DevinX account without a reusable shared code.
+Pair one Windows Agent to one DevinX account without a reusable shared password.
 
-## Intended flow
+## Current flow
 
-1. Agent creates or loads its permanent ECDSA P-256 device identity.
+1. Agent creates or loads its permanent ECDSA P-256 identity.
 2. Agent generates an 8-character pairing code and signed proof valid for 5 minutes.
-3. Agent sends the signed pairing offer outbound to DevinX over HTTPS.
-4. DevinX verifies:
-   - payload shape;
-   - signature;
-   - public-key fingerprint;
-   - 5-minute expiry;
-   - nonce not previously consumed;
-   - rate limits.
-5. Agent receives only an opaque pending-offer ID. It still has no account access.
-6. Logged-in user types the short code on the DevinX Laser Control page.
-7. Server checks the user's Laser entitlement and device quota.
-8. If quota allows, the pending offer is atomically claimed by that user.
-9. The short code and nonce become permanently unusable.
-10. Server issues a revocable Agent credential tied to:
-    - user ID;
-    - device ID;
-    - public-key fingerprint;
-    - protocol version.
-11. Future Agent requests prove possession of the private device key.
+3. Agent sends the signed offer outbound over HTTPS to the Supabase Edge Function `laser-agent-pairing-offer`.
+4. The function verifies payload, ECDSA signature, public-key fingerprint, expiry and rate limits.
+5. Only HMAC hashes of the short code, nonce and source IP are persisted in the private `devinx_laser` schema.
+6. The master types the short code in the hidden Laser Control page.
+7. `laser-master-pairing-claim` requires a valid DevinX user session and confirms the user is a DevinX admin.
+8. The service-role-only database RPC atomically consumes the offer and creates the device.
+9. The Agent polls `laser-agent-pairing-status` with the same signed temporary proof and confirms when the PC is linked.
+10. Future Agent authentication uses proof of possession of the permanent private ECDSA key. No reusable DevinX device password is issued.
 
 ## Anti-sharing rules
 
 - short code is not a password;
 - code expires after 5 minutes;
-- code can be consumed once;
-- pairing proof has a unique nonce;
-- each plan has server-enforced PC/device limits;
-- active command session count is server-enforced;
-- removing a PC revokes its Agent credential;
-- changing plan changes quotas without changing the Agent identity;
-- IP address is telemetry only, never the license key.
+- offer is consumed once;
+- pairing proof includes a unique nonce;
+- the private Agent key never leaves Windows;
+- server stores only the public key;
+- PC/device limits are enforced server-side;
+- active operator limits are server-side;
+- IP address is rate-limit telemetry only, never the license key;
+- removing/revoking a PC will invalidate future signed sessions;
+- changing plan does not change the physical Agent identity.
 
-## Current routes
+## Active network surfaces
 
-- `POST /api/laser-control/agent/pairing-offer`
-  - currently returns 503 by design.
-- `POST /api/laser-control/master/claim-pairing`
-  - master-gated and currently returns 503 by design.
-- `POST /api/laser-control/master/verify-pairing`
-  - validates a signed proof but does not persist or activate anything.
+- Supabase Edge Function `laser-agent-pairing-offer`
+  - public endpoint by necessity;
+  - accepts only correctly signed temporary pairing offers;
+  - cannot control a laser.
+- Supabase Edge Function `laser-agent-pairing-status`
+  - accepts the same signed, unexpired temporary proof;
+  - returns only pairing state.
+- Supabase Edge Function `laser-master-pairing-claim`
+  - requires a valid DevinX user token;
+  - additionally requires DevinX admin membership;
+  - currently used only by the hidden master page.
+- Next route `/api/laser-control/master/verify-pairing`
+  - development-only master diagnostic;
+  - verifies a proof without persisting anything.
 
-The 503 stubs are deliberate fail-closed behavior. They reserve the API shape without pretending storage is ready.
+## Machine safety boundary
+
+Pairing is not machine authorization. `LASER_REMOTE_COMMANDS_ENABLED=false` remains the global hard-off. No Start, Stop, Pause or Frame request is dispatched by this pairing flow.
