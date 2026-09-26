@@ -18,6 +18,7 @@ function first(value:string|string[]|undefined){return Array.isArray(value)?valu
 export default async function EntrarPage({searchParams}:{searchParams:Promise<{next?:string|string[];erro?:string|string[];trial?:string|string[];acesso?:string|string[]}>}){
   const params=await searchParams;
   const trial=first(params.trial);
+  const nextPath=safePath(params.next);
   const supabase=await createServerSupabaseClient();
   const{data}=await supabase.auth.getClaims();
 
@@ -25,7 +26,7 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
     if(trial==='claim')return <TrialActivation/>;
     const{data:accessData}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
-    if(access?.allowed)redirect('/painel');
+    if(access?.allowed)redirect(nextPath||'/painel');
     return <AccessGateCard/>;
   }
 
@@ -33,5 +34,5 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
     ?'Esse link de recuperação é inválido ou expirou. Solicite um novo.'
     :'';
 
-  return <AuthForm nextPath={safePath(params.next)} initialError={initialError} initialTrial={trial==='1'}/>;
+  return <AuthForm nextPath={nextPath} initialError={initialError} initialTrial={trial==='1'}/>;
 }
