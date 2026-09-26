@@ -1,6 +1,6 @@
 'use client';
 
-import {FormEvent,PointerEvent as ReactPointerEvent,useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {FormEvent,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import styles from './LaserControlMasterPanel.module.css';
 
 type Status={
@@ -50,14 +50,15 @@ export function LaserControlMasterPanel(){
   const[previewWidth,setPreviewWidth]=useState<number|null>(null);
   const[previewHeight,setPreviewHeight]=useState<number|null>(null);
   const[previewPending,setPreviewPending]=useState(false);
-  const[touchEnabled,setTouchEnabled]=useState(false);
-  const[touchPending,setTouchPending]=useState(false);
-  const[touchNotice,setTouchNotice]=useState('');
   const[isFullscreen,setIsFullscreen]=useState(false);
+  const[commandPending,setCommandPending]=useState<'frame'|'start'|'pause'|'stop'|null>(null);
+  const[commandNotice,setCommandNotice]=useState('');
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
+  const previewBaseUrlRef=useRef('');
+  const previewTimerRef=useRef<number|null>(null);
 
-  const loadDevices=useCallback(async()=>{
-    setDevicesPending(true);
+  const loadDevices=useCallback(async(quiet=false)=>{
+    if(!quiet)setDevicesPending(true);
     try{
       const response=await fetch('/api/laser-control/master/devices',{
         method:'POST',
@@ -73,9 +74,9 @@ export function LaserControlMasterPanel(){
         return list.find(device=>device.device_status==='active')?.device_id??list[0]?.device_id??null;
       });
     }catch{
-      setPairingNotice('Não foi possível carregar os PCs vinculados.');
+      if(!quiet)setPairingNotice('Não foi possível carregar os PCs vinculados.');
     }finally{
-      setDevicesPending(false);
+      if(!quiet)setDevicesPending(false);
     }
   },[]);
 
@@ -89,13 +90,22 @@ export function LaserControlMasterPanel(){
       .then(data=>{if(active)setStatus(data)})
       .catch(()=>{if(active)setError(true)});
     void loadDevices();
-    return()=>{active=false};
+    const deviceTimer=window.setInterval(()=>void loadDevices(true),3_000);
+    return()=>{
+      active=false;
+      window.clearInterval(deviceTimer);
+    };
   },[loadDevices]);
 
   const selectedDevice=useMemo(
     ()=>devices.find(device=>device.device_id===selectedDeviceId)??null,
     [devices,selectedDeviceId]
   );
+
+  const armed=useMemo(()=>{
+    if(!selectedDevice?.remote_control_enabled||!selectedDevice.local_arm_until)return false;
+    return Date.parse(selectedDevice.local_arm_until)>Date.now();
+  },[selectedDevice]);
 
   const callPreviewApi=useCallback(async(payload:Record<string,unknown>)=>{
     const response=await fetch('/api/laser-control/master/preview',{
@@ -110,6 +120,16 @@ export function LaserControlMasterPanel(){
     return data;
   },[]);
 
+  const schedulePreviewFrame=useCallback((ms:number)=>{
+    if(previewTimerRef.current!==null)window.clearTimeout(previewTimerRef.current);
+    previewTimerRef.current=window.setTimeout(()=>{
+      const base=previewBaseUrlRef.current;
+      if(!base)return;
+      const separator=base.includes('?')?'&':'?';
+      setPreviewUrl(base+separator+'frame='+Date.now());
+    },ms);
+  },[]);
+
   useEffect(()=>{
     const onFullscreen=()=>setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange',onFullscreen);
@@ -120,19 +140,20 @@ export function LaserControlMasterPanel(){
     if(workspaceTab!=='preview'||!selectedDeviceId)return;
 
     let mounted=true;
-    let signedUrl='';
     setPreviewPending(true);
     setPreviewUrl('');
     setPreviewCapturedAt(null);
     setPreviewMessage('Solicitando a janela do LightBurn ao Agent…');
-    setTouchEnabled(false);
-    setTouchNotice('');
+    previewBaseUrlRef.current='';
 
     const keepSession=async()=>{
       try{
         const data=await callPreviewApi({action:'session',deviceId:selectedDeviceId,active:true});
         if(!mounted)return;
-        if(data?.signedUrl)signedUrl=String(data.signedUrl);
+        if(data?.signedUrl){
+          previewBaseUrlRef.current=String(data.signedUrl);
+          schedulePreviewFrame(0);
+        }
       }catch{
         if(mounted){
           setPreviewPending(false);
@@ -143,23 +164,15 @@ export function LaserControlMasterPanel(){
 
     void keepSession();
     const sessionTimer=window.setInterval(()=>void keepSession(),20_000);
-    const imageTimer=window.setInterval(()=>{
-      if(!mounted||!signedUrl)return;
-      const separator=signedUrl.includes('?')?'&':'?';
-      setPreviewUrl(signedUrl+separator+'v='+Date.now());
-    },700);
 
     return()=>{
       mounted=false;
       window.clearInterval(sessionTimer);
-      window.clearInterval(imageTimer);
-      void fetch('/api/laser-control/master/preview',{
-        method:'POST',
-        credentials:'same-origin',
-        keepalive:true,
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'touch',deviceId:selectedDeviceId,enabled:false})
-      }).catch(()=>undefined);
+      if(previewTimerRef.current!==null){
+        window.clearTimeout(previewTimerRef.current);
+        previewTimerRef.current=null;
+      }
+      previewBaseUrlRef.current='';
       void fetch('/api/laser-control/master/preview',{
         method:'POST',
         credentials:'same-origin',
@@ -168,75 +181,99 @@ export function LaserControlMasterPanel(){
         body:JSON.stringify({action:'session',deviceId:selectedDeviceId,active:false})
       }).catch(()=>undefined);
     };
-  },[selectedDeviceId,workspaceTab,callPreviewApi]);
-
-  async function toggleTouchControl(){
-    if(!selectedDeviceId||touchPending)return;
-    setTouchPending(true);
-    setTouchNotice('');
-    try{
-      const data=await callPreviewApi({
-        action:'touch',
-        deviceId:selectedDeviceId,
-        enabled:!touchEnabled
-      });
-      setTouchEnabled(Boolean(data?.enabled));
-      setTouchNotice(data?.enabled
-        ?'Controle por toque ativo por esta sessão.'
-        :'Controle por toque desligado.');
-    }catch(error){
-      const reason=(error as {data?:{reason?:string}})?.data?.reason;
-      if(reason==='local_arm_required'){
-        setTouchEnabled(false);
-        setTouchNotice('No PC, abra o ícone do DevinX Agent e escolha “Permitir controle por toque (5 min)”.');
-      }else{
-        setTouchNotice('Não foi possível alterar o controle por toque.');
-      }
-    }finally{
-      setTouchPending(false);
-    }
-  }
-
-  async function sendPreviewTap(event:ReactPointerEvent<HTMLImageElement>){
-    if(!touchEnabled||!selectedDeviceId||touchPending)return;
-    event.preventDefault();
-
-    const image=event.currentTarget;
-    const rect=image.getBoundingClientRect();
-    const naturalWidth=image.naturalWidth||1;
-    const naturalHeight=image.naturalHeight||1;
-    const scale=Math.min(rect.width/naturalWidth,rect.height/naturalHeight);
-    const renderedWidth=naturalWidth*scale;
-    const renderedHeight=naturalHeight*scale;
-    const offsetX=(rect.width-renderedWidth)/2;
-    const offsetY=(rect.height-renderedHeight)/2;
-    const localX=event.clientX-rect.left-offsetX;
-    const localY=event.clientY-rect.top-offsetY;
-    if(localX<0||localY<0||localX>renderedWidth||localY>renderedHeight)return;
-
-    const x=localX/renderedWidth;
-    const y=localY/renderedHeight;
-    setTouchPending(true);
-    try{
-      await callPreviewApi({action:'tap',deviceId:selectedDeviceId,x,y});
-      setTouchNotice('Toque enviado.');
-    }catch{
-      setTouchEnabled(false);
-      setTouchNotice('O toque foi bloqueado. Reative a permissão no Agent.');
-    }finally{
-      setTouchPending(false);
-    }
-  }
+  },[selectedDeviceId,workspaceTab,callPreviewApi,schedulePreviewFrame]);
 
   async function toggleFullscreen(){
     try{
-      if(document.fullscreenElement){
-        await document.exitFullscreen();
-      }else{
-        await previewSurfaceRef.current?.requestFullscreen();
-      }
+      if(document.fullscreenElement)await document.exitFullscreen();
+      else await previewSurfaceRef.current?.requestFullscreen();
     }catch{
-      setTouchNotice('O navegador não permitiu tela cheia.');
+      setPreviewMessage('O navegador não permitiu tela cheia.');
+    }
+  }
+
+  async function sendCommand(command:'frame'|'start'|'pause'|'stop'){
+    if(!selectedDevice||commandPending)return;
+    if(!armed){
+      setCommandNotice('No PC, abra o ícone do DevinX Agent e escolha “Permitir controles remotos (5 min)”.');
+      return;
+    }
+
+    if(command==='start'){
+      const confirmed=window.confirm('Iniciar a gravação agora? Confirme somente com a máquina supervisionada e pronta.');
+      if(!confirmed)return;
+    }
+
+    setCommandPending(command);
+    setCommandNotice('Enviando comando…');
+
+    try{
+      const response=await fetch('/api/laser-control/master/command',{
+        method:'POST',
+        credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          action:'send',
+          deviceId:selectedDevice.device_id,
+          command,
+          idempotencyKey:crypto.randomUUID()
+        }),
+        cache:'no-store'
+      });
+      const data=await response.json();
+
+      if(!response.ok){
+        const messages:Record<string,string>={
+          remote_control_not_armed:'Os controles não estão liberados no Agent.',
+          machine_not_connected:'A máquina não está conectada.',
+          machine_not_idle:'A máquina precisa estar parada para esse comando.',
+          not_running:'Não há gravação em andamento para pausar.'
+        };
+        setCommandNotice(messages[String(data?.error)]||'O comando foi bloqueado.');
+        return;
+      }
+
+      const commandId=String(data?.commandId||'');
+      if(!commandId){
+        setCommandNotice('O comando não recebeu confirmação do servidor.');
+        return;
+      }
+
+      for(let attempt=0;attempt<28;attempt++){
+        await new Promise(resolve=>window.setTimeout(resolve,250));
+        const statusResponse=await fetch('/api/laser-control/master/command',{
+          method:'POST',
+          credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({action:'status',commandId}),
+          cache:'no-store'
+        });
+        const statusData=await statusResponse.json();
+        if(!statusResponse.ok)continue;
+
+        if(statusData?.status==='acknowledged'){
+          setCommandNotice(
+            command==='start'?'Iniciar executado pelo LightBurn.'
+            :command==='pause'?'Pausar executado.'
+            :command==='stop'?'Parar enviado ao LightBurn.'
+            :'Frame seleção executado.'
+          );
+          await loadDevices(true);
+          return;
+        }
+
+        if(statusData?.status==='rejected'||statusData?.status==='expired'){
+          setCommandNotice('Comando não executado: '+String(statusData?.rejectionReason||statusData?.status));
+          await loadDevices(true);
+          return;
+        }
+      }
+
+      setCommandNotice('O Agent recebeu o pedido, mas a confirmação demorou além do esperado.');
+    }catch{
+      setCommandNotice('Falha de comunicação ao enviar o comando.');
+    }finally{
+      setCommandPending(null);
     }
   }
 
