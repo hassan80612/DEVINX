@@ -1,0 +1,103 @@
+# Laser Control — rollback contract
+
+## Palavra-chave operacional
+
+Quando o proprietário disser **"rollback do Laser Control"**, o objetivo é remover integralmente o trabalho iniciado nesta feature e restaurar o DevinX sem resíduos do módulo.
+
+## Âncora pré-Laser Control
+
+- Branch imutável de referência: `rollback/pre-laser-control-2026-09-26`
+- Commit pré-feature: `67297839f3814814b2bb22628414c90c1ece4779`
+- Feature: `feature/laser-control-foundation`
+- Pull request: `#35`
+
+A branch de rollback foi criada diretamente do commit base original da feature.
+
+## Situação no momento deste registro
+
+A fundação começou somente com arquivos novos. Hoje os arquivos pré-existentes alterados intencionalmente são `tsconfig.json` (separação do typecheck Deno/Next) e `src/components/AdminMaster.tsx` (entrada master-only do Laser Control). A âncora pré-Laser continua sendo a referência exata para restaurá-los.
+
+Isso significa que, enquanto o PR não for mesclado, rollback = abandonar/fechar o PR e remover a branch da feature. Produção permanece exatamente como estava.
+
+## Se futuramente houver merge
+
+Manter todo o Laser Control no mesmo PR até o primeiro lançamento. O rollback de código deve ser feito revertendo o merge/PR do Laser Control, nunca resetando a branch principal para trás, para não apagar trabalhos posteriores não relacionados.
+
+Depois do revert:
+1. confirmar build do DevinX;
+2. confirmar que nenhuma rota `/laser-control` existe;
+3. confirmar que nenhuma navegação pública contém Laser Control;
+4. confirmar que workflows exclusivos do Agent foram removidos;
+5. executar o rollback de banco somente se a migration correspondente tiver sido aplicada;
+6. revogar credenciais/tokens de Agents já pareados;
+7. remover qualquer deployment/alias específico criado para Laser Control, se houver.
+
+## Banco
+
+As migrations do Laser Control foram aplicadas ao Supabase correto do DevinX, mas continuam isoladas no schema privado `devinx_laser`, sem acesso direto para `anon` ou `authenticated`.
+
+Rollback correspondente:
+`supabase/rollback/20260926173715_laser_control_foundation_private_schema.down.sql`
+
+Migrations aplicadas: `20260926173715 laser_control_foundation_private_schema`, `20260926173813 laser_control_fk_indexes` e `20260926174153 laser_control_pairing_schema_refinement` e `20260926174502 laser_control_keypair_device_auth` e `20260926174632 laser_control_internal_pairing_rpcs`.\n\nRollbacks granulares: `supabase/rollback/20260926173813_laser_control_fk_indexes.down.sql` e `supabase/rollback/20260926174153_laser_control_pairing_schema_refinement.down.sql` e `supabase/rollback/20260926174502_laser_control_keypair_device_auth.down.sql` e `supabase/rollback/20260926174632_laser_control_internal_pairing_rpcs.down.sql`.\n\nRegra obrigatória: toda futura migration do Laser Control precisa vir acompanhada de instruções de rollback no mesmo PR antes de ser aplicada.
+
+## Agent Windows
+
+Antes do primeiro instalador público, o Agent precisa possuir desinstalação que remova:
+- executável/serviço/tray app;
+- inicialização automática;
+- credencial DevinX do dispositivo;
+- segredo local LightBurn;
+- chave privada e identidade do Agent;
+- arquivos em `%LOCALAPPDATA%\DevinXLaserAgent`.
+
+Nenhum desses dados existe no PC do usuário enquanto o Agent não for instalado.
+
+## Regra de isolamento
+
+Não adicionar links públicos, cards, menus ou CTAs do Laser Control antes da autorização explícita de lançamento.
+
+A rota de desenvolvimento deve permanecer master-only e noindex.
+
+## Proibição
+
+Nunca usar o branch de rollback como área de desenvolvimento. Ele é apenas uma fotografia pré-feature.
+
+
+## Edge Functions do Laser Control
+
+Funções atualmente implantadas no Supabase do DevinX:
+- `laser-agent-pairing-offer`
+- `laser-agent-pairing-status`
+- `laser-master-pairing-claim`
+- `laser-agent-heartbeat`
+- `laser-master-devices`
+- `laser-master-device-access`
+
+Em um rollback completo, elas fazem parte do escopo e devem ser removidas/desativadas junto com o schema e o código. Antes da remoção, se necessário, pode-se publicar temporariamente um handler de bloqueio que responde HTTP 410 para cortar tráfego imediatamente.
+
+A pasta `supabase/rollback/functions/` contém o handler de bloqueio de emergência. Ele é fallback operacional, não substitui a remoção definitiva das funções em um rollback completo.
+
+
+## Telemetria assinada
+
+Migrations reais adicionais:
+- `20260926175918 laser_control_signed_telemetry_foundation` — fonte canônica `device_state` + sequência anti-replay;
+- `20260926182613 laser_control_signed_heartbeat_foundation` — camada temporária duplicada;
+- `20260926182805 laser_control_telemetry_consolidation` — remove a duplicação e mantém uma única telemetria.
+
+O estado final correto é: `device_state` + `laser_internal_accept_telemetry`. A migration 182613 permanece no histórico apenas porque foi aplicada; seus objetos redundantes foram removidos em 182805.
+
+
+### Estado final da telemetria
+- `laser-agent-heartbeat` aceita somente envelope assinado pelo par de chaves do Agent;
+- `last_sequence` impede replay;
+- `device_state` guarda apenas o snapshot atual, sem histórico de heartbeat;
+- `laser-master-devices` exige sessão de usuário + membership admin;
+- nenhuma dessas funções autoriza comandos físicos.
+
+
+Migration adicional aplicada: `20260926183437 laser_control_master_device_revocation`, com rollback em `supabase/rollback/20260926183437_laser_control_master_device_revocation.down.sql`.
+
+
+Antes do instalador comercial, mover o código do Agent para um repositório privado; o repositório DEVINX atual é público. Isso não altera o rollback: a branch pré-Laser continua sendo a âncora do site.

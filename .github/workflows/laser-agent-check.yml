@@ -1,0 +1,85 @@
+name: Laser Agent Check
+
+on:
+  push:
+    branches:
+      - feature/laser-control-foundation
+    paths:
+      - 'laser-agent/**'
+      - '.github/workflows/laser-agent-check.yml'
+  pull_request:
+    paths:
+      - 'laser-agent/**'
+      - '.github/workflows/laser-agent-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-agent:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore .\laser-agent\DevinXLaserAgent.csproj
+
+      - name: Build
+        run: dotnet build .\laser-agent\DevinXLaserAgent.csproj -c Release --no-restore
+
+      - name: Pairing endpoint rejects unsigned payload
+        shell: pwsh
+        run: |
+          $url = 'https://jubiwhtnhxluetzkzomm.supabase.co/functions/v1/laser-agent-pairing-offer'
+          $status = curl.exe -sS -o pairing-negative.json -w "%{http_code}" -X POST $url -H "Content-Type: application/json" --data "{}"
+          if ($status -ne '400') {
+            Write-Host "Unexpected HTTP status: $status"
+            Get-Content pairing-negative.json
+            exit 1
+          }
+          $body = Get-Content pairing-negative.json -Raw
+          if ($body -notmatch 'protocol_version') {
+            Write-Host "Endpoint did not reject the unsigned payload for the expected reason."
+            Write-Host $body
+            exit 1
+          }
+
+
+      - name: Heartbeat endpoint rejects unsigned payload
+        shell: pwsh
+        run: |
+          $url = 'https://jubiwhtnhxluetzkzomm.supabase.co/functions/v1/laser-agent-heartbeat'
+          $status = curl.exe -sS -o heartbeat-negative.json -w "%{http_code}" -X POST $url -H "Content-Type: application/json" --data "{}"
+          if ($status -ne '400') {
+            Write-Host "Unexpected HTTP status: $status"
+            Get-Content heartbeat-negative.json
+            exit 1
+          }
+          $body = Get-Content heartbeat-negative.json -Raw
+          if ($body -notmatch 'protocol_version') {
+            Write-Host "Heartbeat endpoint did not reject the unsigned payload for the expected reason."
+            Write-Host $body
+            exit 1
+          }
+
+
+      - name: Publish test Agent
+        run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish
+
+      - name: Upload test Agent
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevinX-Laser-Agent-win-x64
+          path: |
+            .\laser-agent\publish\DevinXLaserAgent.exe
+            .\laser-agent\README.md
+          if-no-files-found: error
+          retention-days: 14

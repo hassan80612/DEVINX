@@ -1,0 +1,175 @@
+using System.Text.Json;
+
+namespace DevinXLaserAgent;
+
+internal static class Program
+{
+    public static async Task Main(string[] args)
+    {
+        Console.Title = "DevinX Laser Agent";
+        Console.WriteLine("DevinX Laser Agent — safe foundation");
+        Console.WriteLine("Remote machine commands are OFF.");
+        Console.WriteLine();
+
+        if (args.Contains("--reset-local-state", StringComparer.OrdinalIgnoreCase))
+        {
+            if (!args.Contains("--confirm-reset", StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("Refused. Add --confirm-reset to permanently remove local Agent identity and LightBurn pairing.");
+                return;
+            }
+
+            AgentLocalState.ResetAll();
+            Console.WriteLine("Local DevinX Laser Agent state removed.");
+            return;
+        }
+
+        var identity = AgentIdentityStore.GetOrCreate();
+        Console.WriteLine("Agent device: " + identity.DeviceId);
+        Console.WriteLine("Agent fingerprint: " + identity.PublicKeyFingerprint);
+
+        if (args.Contains("--pair-devinx", StringComparer.OrdinalIgnoreCase))
+        {
+            var proof = PairingProofFactory.Create(TimeSpan.FromMinutes(5));
+            Console.WriteLine();
+            Console.WriteLine("DevinX pairing code: " + proof.PairingCode);
+            Console.WriteLine("Expires (UTC): " + proof.ExpiresAt.ToString("O"));
+
+            using var pairingClient = new DevinXPairingClient();
+            try
+            {
+                var result = await pairingClient.PublishAsync(proof);
+                if (!result.Accepted)
+                {
+                    Console.WriteLine("Pairing offer rejected: " + result.Reason);
+                }
+                else
+                {
+                    Console.WriteLine("Pairing offer securely published. Enter the code in the DevinX master panel.");
+                    Console.WriteLine("Waiting for the account to claim this PC...");
+
+                    while (DateTimeOffset.UtcNow < proof.ExpiresAt)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5));
+                        var status = await pairingClient.GetStatusAsync(proof);
+                        if (status.Paired)
+                        {
+                            Console.WriteLine("PC linked to DevinX successfully.");
+                            break;
+                        }
+                        if (!status.OfferPending)
+                        {
+                            Console.WriteLine("Pairing offer is no longer pending.");
+                            break;
+                        }
+                    }
+
+                    if (DateTimeOffset.UtcNow >= proof.ExpiresAt)
+                        Console.WriteLine("Pairing code expired. Run --pair-devinx again to generate a new code.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Could not publish pairing offer: " + ex.Message);
+            }
+        }
+
+        Console.WriteLine();
+
+        using var rest = new LightBurnRestClient();
+        if (await rest.IsAvailableAsync())
+        {
+            Console.WriteLine("LightBurn REST API: AVAILABLE");
+
+            if (args.Contains("--pair-rest", StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine("A LightBurn consent dialog should appear on this PC.");
+                try
+                {
+                    var secret = await rest.PairReadOnlyAsync();
+                    SecureSecretStore.Save(secret);
+                    Console.WriteLine("Read-only LightBurn pairing saved securely for this Windows user.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Pairing failed: " + ex.Message);
+                }
+            }
+
+            var storedSecret = SecureSecretStore.Load();
+            if (!string.IsNullOrWhiteSpace(storedSecret))
+            {
+                var status = await rest.GetStatusJsonAsync(storedSecret);
+                if (status is null)
+                {
+                    Console.WriteLine("Stored LightBurn pairing is no longer authorized.");
+                }
+                else
+                {
+                    Console.WriteLine("LightBurn REST pairing: AUTHORIZED");
+                    PrintCompact("Status", status);
+                    var project = await rest.GetProjectJsonAsync(storedSecret);
+                    if (project is not null)PrintCompact("Project", project);
+                    var poll = await rest.GetPollSnapshotJsonAsync(storedSecret);
+                    var telemetry = AgentTelemetryFactory.FromRest(identity, status, project, poll);
+                    if (args.Contains("--json-status", StringComparer.OrdinalIgnoreCase))
+                        Console.WriteLine("Telemetry: " + JsonSerializer.Serialize(telemetry));
+                    await SendHeartbeatIfRequestedAsync(args, identity, telemetry);
+                }
+            }
+            else
+            {
+                Console.WriteLine("LightBurn REST pairing: NOT PAIRED");
+                Console.WriteLine("Run with --pair-rest to request read-only pairing.");
+            }
+        }
+        else
+        {
+            Console.WriteLine("LightBurn REST API: NOT AVAILABLE");
+            Console.WriteLine("Trying legacy UDP diagnostics on localhost...");
+            var udp = new LightBurnUdpClient();
+            var ping = await udp.PingAsync();
+            Console.WriteLine("LightBurn UDP: " + ((ping.Received && ping.Response == "OK") ? "ONLINE" : "OFFLINE") + " (" + ping.Response + ")");
+            if (ping.Received)
+            {
+                var status = await udp.StatusAsync();
+                Console.WriteLine("Laser status: " + (status.Response == "OK" ? "IDLE" : status.Response == "!" ? "BUSY OR UNAVAILABLE" : status.Response));
+                var telemetry = AgentTelemetryFactory.FromLegacyUdp(identity, ping, status);
+                if (args.Contains("--json-status", StringComparer.OrdinalIgnoreCase))
+                    Console.WriteLine("Telemetry: " + JsonSerializer.Serialize(telemetry));
+                await SendHeartbeatIfRequestedAsync(args, identity, telemetry);
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("No Start, Stop, Pause, Frame, mouse, keyboard, shell, or remote desktop capability exists in this build.");
+    }
+
+    private static async Task SendHeartbeatIfRequestedAsync(string[] args,AgentIdentity identity,AgentTelemetry telemetry)
+    {
+        if(!args.Contains("--heartbeat-once",StringComparer.OrdinalIgnoreCase))return;
+
+        using var heartbeat=new DevinXHeartbeatClient();
+        try
+        {
+            var result=await heartbeat.SendAsync(identity,telemetry);
+            Console.WriteLine(result.Accepted
+                ?"DevinX heartbeat accepted."
+                :"DevinX heartbeat rejected: "+result.Reason);
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine("Could not send DevinX heartbeat: "+ex.Message);
+        }
+    }
+
+    private static void PrintCompact(string label, string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            Console.WriteLine(label + ": " + JsonSerializer.Serialize(doc.RootElement));
+        }
+        catch { Console.WriteLine(label + ": received"); }
+    }
+}
