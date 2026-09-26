@@ -1,0 +1,1 @@
+-- Gating refinement is folded into 20260926223558 for clean installs.\n-- Live production received the same stricter idle/running checks in this migration version.\n

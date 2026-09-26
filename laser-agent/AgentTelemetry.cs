@@ -70,7 +70,12 @@ internal static class AgentTelemetryFactory
     public static AgentTelemetry FromLegacyUdp(AgentIdentity identity,LightBurnReply ping,LightBurnReply? status)
     {
         var online=ping.Received&&ping.Response=="OK";
-        var state=status?.Response=="OK"?"idle":"unknown";
+        var state=status?.Response switch
+        {
+            "OK" => "idle",
+            "!" => "busy",
+            _ => "unknown"
+        };
 
         return new AgentTelemetry(
             1,

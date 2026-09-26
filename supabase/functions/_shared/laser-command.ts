@@ -16,56 +16,58 @@ function pemSpki(pem:string){
   return base64Bytes(body);
 }
 
-export type AgentControlEnvelope={
+export type CommandEnvelope={
   deviceId:string;
   publicKeyFingerprint:string;
   sentAt:number;
   nonce:string;
-  action:"poll"|"arm";
+  action:"arm"|"poll"|"ack";
   enabled?:boolean;
-  afterSeq?:number;
+  commandId?:string;
+  ok?:boolean;
+  reason?:string;
   signatureBase64:string;
 };
 
-export function validateAgentControlEnvelope(e:AgentControlEnvelope){
+export function validate(e:CommandEnvelope){
   if(!UUID.test(e.deviceId))return "device_id";
   if(!HEX64.test(e.publicKeyFingerprint))return "fingerprint";
   if(!Number.isSafeInteger(e.sentAt)||Math.abs(Math.floor(Date.now()/1000)-e.sentAt)>60)return "sent_at";
   if(!NONCE.test(e.nonce))return "nonce";
-  if(e.action!=="poll"&&e.action!=="arm")return "action";
-  if(e.action==="poll"&&(!Number.isSafeInteger(e.afterSeq)||Number(e.afterSeq)<0))return "after_seq";
+  if(!["arm","poll","ack"].includes(e.action))return "action";
   if(e.action==="arm"&&typeof e.enabled!=="boolean")return "enabled";
+  if(e.action==="ack"&&(!UUID.test(String(e.commandId||""))||typeof e.ok!=="boolean"))return "ack";
   if(typeof e.signatureBase64!=="string"||e.signatureBase64.length<60||e.signatureBase64.length>128)return "signature";
+  if(e.reason&&e.reason.length>160)return "reason";
   return null;
 }
 
-export function canonicalAgentControl(e:AgentControlEnvelope){
+export function canonical(e:CommandEnvelope){
   return [
-    "devinx-laser-preview-control-v1",
+    "devinx-laser-command-v1",
     e.deviceId,
     e.publicKeyFingerprint,
     String(e.sentAt),
     e.nonce,
     e.action,
     e.action==="arm"?(e.enabled?"1":"0"):"",
-    e.action==="poll"?String(e.afterSeq??0):""
+    e.action==="ack"?String(e.commandId||""):"",
+    e.action==="ack"?(e.ok?"1":"0"):"",
+    e.action==="ack"?String(e.reason||""):""
   ].join("\n");
 }
 
-export async function verifyAgentControlSignature(e:AgentControlEnvelope,publicKeyPem:string){
+export async function verify(e:CommandEnvelope,publicKeyPem:string){
   try{
     const key=await crypto.subtle.importKey(
-      "spki",
-      pemSpki(publicKeyPem),
-      {name:"ECDSA",namedCurve:"P-256"},
-      false,
-      ["verify"]
+      "spki",pemSpki(publicKeyPem),
+      {name:"ECDSA",namedCurve:"P-256"},false,["verify"]
     );
     return await crypto.subtle.verify(
       {name:"ECDSA",hash:"SHA-256"},
       key,
       base64Bytes(e.signatureBase64),
-      encoder.encode(canonicalAgentControl(e))
+      encoder.encode(canonical(e))
     );
   }catch{return false}
 }

@@ -16,11 +16,13 @@ internal sealed class LightBurnUdpClient
     public Task<LightBurnReply> StatusAsync(CancellationToken cancellationToken = default) =>
         SendAsync("STATUS", cancellationToken);
 
+    public Task<LightBurnReply> StartAsync(CancellationToken cancellationToken = default) =>
+        SendAsync("START", cancellationToken);
+
     private static async Task<LightBurnReply> SendAsync(string command, CancellationToken cancellationToken)
     {
-        // Safe foundation: only documented diagnostic commands are allowed.
-        if (command is not ("PING" or "STATUS"))
-            throw new InvalidOperationException("Command is not allowed by the safe foundation Agent.");
+        if (command is not ("PING" or "STATUS" or "START"))
+            throw new InvalidOperationException("Command is not allowed by this Agent.");
 
         using var receiver = new UdpClient(new IPEndPoint(Loopback, ResponsePort));
         using var sender = new UdpClient();
