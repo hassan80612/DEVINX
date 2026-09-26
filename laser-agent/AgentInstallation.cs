@@ -81,7 +81,8 @@ internal static class AgentInstallation
             {
                 try
                 {
-                    if(!File.Delete(file))
+                    File.Delete(file);
+                    if(File.Exists(file))
                         MoveFileEx(file,null,MovefileDelayUntilReboot);
                 }
                 catch
