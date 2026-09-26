@@ -62,3 +62,15 @@ A rota de desenvolvimento deve permanecer master-only e noindex.
 ## Proibição
 
 Nunca usar o branch de rollback como área de desenvolvimento. Ele é apenas uma fotografia pré-feature.
+
+
+## Edge Functions do Laser Control
+
+Funções atualmente implantadas no Supabase do DevinX:
+- `laser-agent-pairing-offer`
+- `laser-agent-pairing-status`
+- `laser-master-pairing-claim`
+
+Em um rollback completo, elas fazem parte do escopo e devem ser removidas/desativadas junto com o schema e o código. Antes da remoção, se necessário, pode-se publicar temporariamente um handler de bloqueio que responde HTTP 410 para cortar tráfego imediatamente.
+
+A pasta `supabase/rollback/functions/` contém o handler de bloqueio de emergência. Ele é fallback operacional, não substitui a remoção definitiva das funções em um rollback completo.
