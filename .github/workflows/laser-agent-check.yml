@@ -74,12 +74,27 @@ jobs:
       - name: Publish test Agent
         run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish
 
-      - name: Upload test Agent
+      - name: Upload self-contained Agent
         uses: actions/upload-artifact@v4
         with:
           name: DevinX-Laser-Agent-win-x64
           path: |
             .\laser-agent\publish\DevinXLaserAgent.exe
             .\laser-agent\README.md
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish compact web package
+        shell: pwsh
+        run: |
+          dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained false -o .\laser-agent\web-publish
+          Copy-Item .\laser-agent\README.md .\laser-agent\web-publish\LEIA-ME.txt
+          Compress-Archive -Path .\laser-agent\web-publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.0.zip -Force
+
+      - name: Upload compact web package
+        uses: actions/upload-artifact@v4
+        with:
+          name: DevinX-Laser-Agent-web
+          path: .\laser-agent\DevinX-Laser-Agent-1.0.0.zip
           if-no-files-found: error
           retention-days: 14
