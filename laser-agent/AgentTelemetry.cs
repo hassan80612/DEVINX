@@ -31,14 +31,14 @@ internal static class AgentTelemetryFactory
             if(doc.RootElement.TryGetProperty("connected",out var c)&&c.ValueKind is JsonValueKind.True or JsonValueKind.False)
                 connected=c.GetBoolean();
             if(doc.RootElement.TryGetProperty("device_name",out var dn)&&dn.ValueKind==JsonValueKind.String)
-                deviceName=dn.GetString();
+                deviceName=Limit(dn.GetString(),160);
         }
 
         if(!string.IsNullOrWhiteSpace(projectJson))
         {
             using var doc=JsonDocument.Parse(projectJson);
             if(doc.RootElement.TryGetProperty("filename",out var file)&&file.ValueKind==JsonValueKind.String)
-                projectFile=file.GetString();
+                projectFile=Limit(file.GetString(),500);
         }
 
         if(!string.IsNullOrWhiteSpace(pollJson))
@@ -47,7 +47,7 @@ internal static class AgentTelemetryFactory
             if(doc.RootElement.TryGetProperty("job",out var job))
             {
                 if(job.TryGetProperty("state",out var s)&&s.ValueKind==JsonValueKind.String)
-                    jobState=s.GetString()??"unknown";
+                    jobState=NormalizeJobState(s.GetString());
                 if(job.TryGetProperty("progress",out var p)&&p.ValueKind==JsonValueKind.Number&&p.TryGetDouble(out var value))
                     progress=Math.Clamp(value,0,100);
             }
@@ -84,5 +84,24 @@ internal static class AgentTelemetryFactory
             null,
             null,
             DateTimeOffset.UtcNow);
+    }
+
+    private static string NormalizeJobState(string? value) =>
+        value?.Trim().ToLowerInvariant() switch
+        {
+            "idle" => "idle",
+            "running" => "running",
+            "run" => "running",
+            "paused" => "paused",
+            "pause" => "paused",
+            "busy" => "busy",
+            _ => "unknown"
+        };
+
+    private static string? Limit(string? value,int maxLength)
+    {
+        if(string.IsNullOrWhiteSpace(value))return null;
+        var trimmed=value.Trim();
+        return trimmed.Length<=maxLength?trimmed:trimmed[..maxLength];
     }
 }
