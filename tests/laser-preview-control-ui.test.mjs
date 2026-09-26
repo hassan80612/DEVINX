@@ -10,26 +10,30 @@ test('Laser preview uses same-origin master endpoint',async()=>{
   assert.match(route,/laser-master-preview/);
 });
 
-test('Laser workspace has separate Visualização and Controle tabs',async()=>{
+test('Laser workspace keeps Visualização and Controle separate',async()=>{
   const panel=await readFile('src/components/LaserControlMasterPanel.tsx','utf8');
   assert.match(panel,/>Visualização<\/button>/);
   assert.match(panel,/>Controle<\/button>/);
-  assert.match(panel,/LIGHTBURN · VISUALIZAÇÃO REMOTA/);
-});
-
-test('fullscreen and touch control are exposed without direct Edge calls',async()=>{
-  const panel=await readFile('src/components/LaserControlMasterPanel.tsx','utf8');
+  assert.match(panel,/LIGHTBURN · AO VIVO/);
   assert.match(panel,/Tela cheia/);
-  assert.match(panel,/Controle por toque/);
-  assert.match(panel,/action:'tap'/);
-  assert.doesNotMatch(panel,/laser-agent-preview-control/);
 });
 
-test('physical controls remain disabled',async()=>{
+test('touch experiment is removed',async()=>{
   const panel=await readFile('src/components/LaserControlMasterPanel.tsx','utf8');
-  for(const label of ['Frame','Iniciar','Pausar','Parar']){
-    assert.match(panel,new RegExp('disabled[^>]*>[^<]*<span>[^<]*<\\/span><b>'+label+'<\\/b>'));
-  }
+  const route=await readFile('src/app/api/laser-control/master/preview/route.ts','utf8');
+  assert.doesNotMatch(panel,/Controle por toque/);
+  assert.doesNotMatch(panel,/action:'tap'/);
+  assert.doesNotMatch(route,/action==='touch'/);
+  assert.doesNotMatch(route,/action==='tap'/);
+});
+
+test('dedicated controls use same-origin command route',async()=>{
+  const panel=await readFile('src/components/LaserControlMasterPanel.tsx','utf8');
+  const route=await readFile('src/app/api/laser-control/master/command/route.ts','utf8');
+  assert.match(panel,/\/api\/laser-control\/master\/command/);
+  for(const label of ['Frame seleção','Iniciar','Pausar','Parar'])assert.match(panel,new RegExp(label));
+  assert.match(route,/laser-master-command/);
+  assert.doesNotMatch(panel,/functions\/v1\/laser-master-command/);
 });
 
 test('preview session stops when viewer leaves the tab',async()=>{
