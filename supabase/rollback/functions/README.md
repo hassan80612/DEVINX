@@ -4,10 +4,12 @@ Escopo:
 - laser-agent-pairing-offer
 - laser-agent-pairing-status
 - laser-master-pairing-claim
+- laser-agent-heartbeat
+- laser-master-devices
 
 Rollback completo:
-1. bloquear imediatamente as funções (handler HTTP 410) se houver tráfego;
-2. remover as três Edge Functions do projeto Supabase;
+1. bloquear imediatamente as funções com o handler HTTP 410 se houver tráfego;
+2. remover as cinco Edge Functions do projeto Supabase;
 3. aplicar o rollback do schema `devinx_laser`;
 4. confirmar que nenhuma função Laser aparece na listagem de Edge Functions;
 5. confirmar que nenhuma tabela/schema Laser permanece;
