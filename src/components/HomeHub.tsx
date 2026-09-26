@@ -171,12 +171,12 @@ const COPY={
 } as const;
 
 const LASER_SOON={
-  "pt-BR":{title:"Laser Control",status:"Em breve",text:"Controle e monitoramento do LightBurn pelo celular."},
-  en:{title:"Laser Control",status:"Coming soon",text:"Monitor and control LightBurn from your phone."},
-  es:{title:"Laser Control",status:"Próximamente",text:"Control y monitoreo de LightBurn desde el móvil."},
-  fr:{title:"Laser Control",status:"Bientôt",text:"Contrôle et suivi de LightBurn depuis le mobile."},
-  de:{title:"Laser Control",status:"Demnächst",text:"LightBurn vom Smartphone überwachen und steuern."},
-  ar:{title:"Laser Control",status:"قريباً",text:"مراقبة LightBurn والتحكم به من الهاتف."}
+  "pt-BR":{title:"Laser Control",status:"Conhecer",text:"Veja e controle seu LightBurn pelo celular ou por outro computador."},
+  en:{title:"Laser Control",status:"Explore",text:"View and control LightBurn from your phone or another computer."},
+  es:{title:"Laser Control",status:"Conocer",text:"Visualiza y controla LightBurn desde el móvil u otro ordenador."},
+  fr:{title:"Laser Control",status:"Découvrir",text:"Affichez et contrôlez LightBurn depuis votre téléphone ou un autre ordinateur."},
+  de:{title:"Laser Control",status:"Entdecken",text:"LightBurn vom Smartphone oder einem anderen Computer aus anzeigen und steuern."},
+  ar:{title:"Laser Control",status:"اكتشف",text:"شاهد LightBurn وتحكم به من الهاتف أو من كمبيوتر آخر."}
 } as const;
 
 const FINANCE_FEATURES={
