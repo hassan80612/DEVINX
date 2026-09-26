@@ -39,9 +39,34 @@ internal static class Program
             try
             {
                 var result = await pairingClient.PublishAsync(proof);
-                Console.WriteLine(result.Accepted
-                    ? "Pairing offer securely published. Enter the code in the DevinX master panel."
-                    : "Pairing offer rejected: " + result.Reason);
+                if (!result.Accepted)
+                {
+                    Console.WriteLine("Pairing offer rejected: " + result.Reason);
+                }
+                else
+                {
+                    Console.WriteLine("Pairing offer securely published. Enter the code in the DevinX master panel.");
+                    Console.WriteLine("Waiting for the account to claim this PC...");
+
+                    while (DateTimeOffset.UtcNow < proof.ExpiresAt)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5));
+                        var status = await pairingClient.GetStatusAsync(proof);
+                        if (status.Paired)
+                        {
+                            Console.WriteLine("PC linked to DevinX successfully.");
+                            break;
+                        }
+                        if (!status.OfferPending)
+                        {
+                            Console.WriteLine("Pairing offer is no longer pending.");
+                            break;
+                        }
+                    }
+
+                    if (DateTimeOffset.UtcNow >= proof.ExpiresAt)
+                        Console.WriteLine("Pairing code expired. Run --pair-devinx again to generate a new code.");
+                }
             }
             catch (Exception ex)
             {
