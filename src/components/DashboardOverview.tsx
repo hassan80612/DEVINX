@@ -63,7 +63,7 @@ function monthDistance(from:string,to:string){
 }
 function moneyMinor(raw:string){return Math.round((Number(String(raw||'').replace(/\./g,'').replace(',','.'))||0)*100)}
 
-export function DashboardOverview(){
+export function DashboardOverview({onOpenReport}:{onOpenReport?:(range:{start:string;end:string;flow:'all'|'income'|'expense'})=>void}){
   const{t,currency,date}=useI18n();
   const[tx,setTx]=useState<Tx[]>([]);
   const[work,setWork]=useState<Work[]>([]);
@@ -233,7 +233,7 @@ export function DashboardOverview(){
     cardItemPays.forEach(item=>{if(item.source_id)paid.set(item.source_id,(paid.get(item.source_id)||0)+Number(item.amount_minor))});
     return new Map(cardInst.map(item=>{
       const linked=paid.get(item.id)||0;
-      const remaining=item.paid_at&&linked===0?0:Math.max(0,Number(item.amount_minor)-linked);
+      const remaining=item.paid_at?0:Math.max(0,Number(item.amount_minor)-linked);
       return[item.id,remaining] as const;
     }));
   },[cardInst,cardItemPays]);
@@ -325,7 +325,7 @@ export function DashboardOverview(){
   },[commitmentMonth,bills,billPays,billOverrides,cardInst,cardRemainingById,futurePlans,futureSettlements,reserveEntries]);
 
   const flowChart=useMemo(()=>{
-    type FlowRow={key:string;start:string;income:number;out:number};
+    type FlowRow={key:string;start:string;end:string;income:number;out:number};
     const today=localDateISO();
     const start=chartStart(chartPeriod);
     let rows:FlowRow[]=[];
@@ -335,14 +335,14 @@ export function DashboardOverview(){
     if(chartPeriod==='3d'||chartPeriod==='7d'||chartPeriod==='1m'){
       const count=chartPeriod==='3d'?3:chartPeriod==='7d'?7:30;
       const days=Array.from({length:count},(_,index)=>shiftISO(today,-(count-1-index)));
-      rows=days.map(day=>({key:day,start:day,income:0,out:0}));
+      rows=days.map(day=>({key:day,start:day,end:day,income:0,out:0}));
       bucket=value=>value;
       labelEvery=chartPeriod==='1m'?5:1;
     }else if(chartPeriod==='3m'){
       const count=13;
       rows=Array.from({length:count},(_,index)=>{
         const startOfWeek=shiftISO(start,index*7);
-        return{key:'w'+index,start:startOfWeek,income:0,out:0};
+        return{key:'w'+index,start:startOfWeek,end:shiftISO(startOfWeek,6)>today?today:shiftISO(startOfWeek,6),income:0,out:0};
       });
       bucket=value=>'w'+Math.min(count-1,Math.max(0,Math.floor(dayDiff(start,value)/7)));
     }else{
@@ -350,7 +350,7 @@ export function DashboardOverview(){
       const startDate=new Date(start+'T12:00:00');
       rows=Array.from({length:count},(_,index)=>{
         const month=localDateISO(new Date(startDate.getFullYear(),startDate.getMonth()+index,1));
-        return{key:month.slice(0,7),start:month,income:0,out:0};
+        return{key:month.slice(0,7),start:month,end:monthEnd(month)>today?today:monthEnd(month),income:0,out:0};
       });
       bucket=value=>value.slice(0,7);
     }
@@ -784,7 +784,7 @@ export function DashboardOverview(){
           </button>)}
         </div>
       </div>
-      {selectedFlowRow?<div className="flowSelection"><span>{date(selectedFlowRow.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'long',year:'numeric'}:{day:'2-digit',month:'short',year:'numeric'})}</span><b className="positive">+ {currency(selectedFlowRow.income)}</b><b>− {currency(selectedFlowRow.out)}</b></div>:<small className="flowTapHint">{t('dashboard.chartTap')}</small>}
+      {selectedFlowRow?<div className="flowSelection"><button type="button" className="flowSelectionDate" onClick={()=>onOpenReport?.({start:selectedFlowRow.start,end:selectedFlowRow.end,flow:'all'})}><span>{date(selectedFlowRow.start,chartPeriod==='6m'||chartPeriod==='12m'?{month:'long',year:'numeric'}:{day:'2-digit',month:'short',year:'numeric'})}{selectedFlowRow.end!==selectedFlowRow.start?' — '+date(selectedFlowRow.end,{day:'2-digit',month:'short'}):''}</span><small>{t('nav.reports')}</small></button><button type="button" className="flowSelectionValue positive" onClick={()=>onOpenReport?.({start:selectedFlowRow.start,end:selectedFlowRow.end,flow:'income'})}>+ {currency(selectedFlowRow.income)}<small>{t('dashboard.entered')}</small></button><button type="button" className="flowSelectionValue negative" onClick={()=>onOpenReport?.({start:selectedFlowRow.start,end:selectedFlowRow.end,flow:'expense'})}>− {currency(selectedFlowRow.out)}<small>{t('dashboard.spent')}</small></button></div>:<small className="flowTapHint">{t('dashboard.chartTap')}</small>}
     </section>
   </div>;
 }
