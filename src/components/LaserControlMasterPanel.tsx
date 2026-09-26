@@ -340,8 +340,24 @@ export function LaserControlMasterPanel(){
 
   const online=(device:LaserDevice)=>{
     if(!device.last_seen_at)return false;
-    return Date.now()-Date.parse(device.last_seen_at)<90_000;
+    return Date.now()-Date.parse(device.last_seen_at)<15_000;
   };
+
+  const canStart=Boolean(armed&&selectedDevice&&online(selectedDevice)
+    &&selectedDevice.lightburn_online===true
+    &&selectedDevice.machine_connected===true
+    &&selectedDevice.job_state==='idle');
+
+  const canPause=Boolean(armed&&selectedDevice&&online(selectedDevice)
+    &&selectedDevice.lightburn_online===true
+    &&selectedDevice.machine_connected===true
+    &&['running','busy'].includes(selectedDevice.job_state||''));
+
+  const canStop=Boolean(armed&&selectedDevice&&online(selectedDevice)
+    &&selectedDevice.lightburn_online===true
+    &&selectedDevice.machine_connected===true);
+
+  const canFrame=canStart;
 
   return <section className={styles.panel}>
     <div className={styles.head}>
@@ -485,46 +501,38 @@ export function LaserControlMasterPanel(){
         {workspaceTab==='preview'&&<div className={styles.previewPane}>
           <div className={styles.previewTitle}>
             <div>
-              <small>LIGHTBURN · VISUALIZAÇÃO REMOTA</small>
-              <b>Janela do LightBurn</b>
+              <small>LIGHTBURN · AO VIVO</small>
+              <b>Janela completa do LightBurn</b>
             </div>
             <div className={styles.previewActions}>
               <button type="button" onClick={()=>void toggleFullscreen()}>
                 {isFullscreen?'Sair da tela cheia':'Tela cheia'}
-              </button>
-              <button
-                type="button"
-                className={touchEnabled?styles.touchEnabledButton:styles.touchButton}
-                onClick={()=>void toggleTouchControl()}
-                disabled={touchPending}
-              >
-                {touchPending?'Aguarde…':touchEnabled?'Toque: LIGADO':'Controle por toque'}
               </button>
             </div>
           </div>
 
           <div ref={previewSurfaceRef} className={[styles.previewSurface,isFullscreen?styles.previewSurfaceFullscreen:''].filter(Boolean).join(' ')}>
             <div className={styles.previewOverlay}>
-              <span>{touchEnabled?'TOQUE REMOTO ATIVO':'VISUALIZAÇÃO'}</span>
+              <span>AO VIVO</span>
               {isFullscreen&&<button type="button" onClick={()=>void toggleFullscreen()}>Fechar</button>}
             </div>
             <div className={styles.previewFrame}>
               {previewUrl
                 ?<img
                     src={previewUrl}
-                    alt="Prévia remota da janela do LightBurn"
-                    onPointerDown={event=>void sendPreviewTap(event)}
+                    alt="Janela remota do LightBurn"
                     onLoad={event=>{
                       setPreviewPending(false);
                       setPreviewMessage('');
                       setPreviewCapturedAt(new Date().toISOString());
                       setPreviewWidth(event.currentTarget.naturalWidth||null);
                       setPreviewHeight(event.currentTarget.naturalHeight||null);
+                      schedulePreviewFrame(160);
                     }}
                     onError={()=>{
                       if(!previewCapturedAt)setPreviewMessage('Aguardando o primeiro quadro do Agent…');
+                      schedulePreviewFrame(450);
                     }}
-                    className={touchEnabled?styles.previewInteractive:''}
                   />
                 :<div className={styles.previewEmpty}>
                   <strong>{selectedDevice.lightburn_online===false?'LightBurn está fechado':'Preparando visualização…'}</strong>
@@ -534,10 +542,9 @@ export function LaserControlMasterPanel(){
             </div>
           </div>
 
-          {touchNotice&&<div className={styles.touchNotice}>{touchNotice}</div>}
           <div className={styles.previewFoot}>
-            <span>{previewWidth&&previewHeight?previewWidth+' × '+previewHeight+'px · atualização rápida':'A imagem é enviada apenas enquanto esta aba está aberta.'}</span>
-            <b>{touchEnabled?'Cada toque é enviado somente para a janela do LightBurn.':'Toque remoto fica bloqueado até você habilitar.'}</b>
+            <span>{previewWidth&&previewHeight?previewWidth+' × '+previewHeight+'px · atualização contínua':'A imagem é enviada apenas enquanto esta aba está aberta.'}</span>
+            <b>{previewCapturedAt?'Último quadro no celular: '+new Date(previewCapturedAt).toLocaleTimeString('pt-BR'):'—'}</b>
           </div>
         </div>}
 
@@ -549,16 +556,32 @@ export function LaserControlMasterPanel(){
             <article><small>JOB</small><strong>{selectedDevice.job_state||'—'}</strong></article>
           </div>
 
-          <div className={styles.commandGrid}>
-            <button type="button" disabled><span>▣</span><b>Frame</b><small>bloqueado</small></button>
-            <button type="button" disabled><span>▶</span><b>Iniciar</b><small>bloqueado</small></button>
-            <button type="button" disabled><span>Ⅱ</span><b>Pausar</b><small>bloqueado</small></button>
-            <button type="button" disabled className={styles.stopCommand}><span>■</span><b>Parar</b><small>bloqueado</small></button>
+          <div className={armed?styles.controlArmed:styles.controlLocked}>
+            <b>{armed?'CONTROLES LIBERADOS':'CONTROLES BLOQUEADOS'}</b>
+            <span>{armed&&selectedDevice.local_arm_until
+              ?'Liberados até '+new Date(selectedDevice.local_arm_until).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+              :'No PC: ícone do DevinX Agent → “Permitir controles remotos (5 min)”'}</span>
           </div>
 
+          <div className={styles.commandGrid}>
+            <button type="button" disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
+              <span>▣</span><b>Frame seleção</b><small>{commandPending==='frame'?'enviando…':canFrame?'pronto':'bloqueado'}</small>
+            </button>
+            <button type="button" disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
+              <span>▶</span><b>Iniciar</b><small>{commandPending==='start'?'enviando…':canStart?'pronto':'bloqueado'}</small>
+            </button>
+            <button type="button" disabled={!canPause||commandPending!==null} onClick={()=>void sendCommand('pause')}>
+              <span>Ⅱ</span><b>Pausar</b><small>{commandPending==='pause'?'enviando…':canPause?'pronto':'bloqueado'}</small>
+            </button>
+            <button type="button" disabled={!canStop||commandPending!==null} className={styles.stopCommand} onClick={()=>void sendCommand('stop')}>
+              <span>■</span><b>Parar</b><small>{commandPending==='stop'?'enviando…':canStop?'pronto':'bloqueado'}</small>
+            </button>
+          </div>
+
+          {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
           <div className={styles.controlWarning}>
-            <b>Controle físico ainda travado</b>
-            <span>Start, Stop, Pause e Frame continuam sem API pública suportada. Para este teste, use a aba Visualização e habilite o controle por toque para operar a própria janela do LightBurn.</span>
+            <b>Teste controlado</b>
+            <span>Iniciar usa o comando UDP oficial START. Pausar e Parar usam os atalhos documentados do LightBurn. Frame usa “Frame Selection”. A liberação expira automaticamente.</span>
           </div>
         </div>}
       </section>}
@@ -571,7 +594,7 @@ export function LaserControlMasterPanel(){
           <li><b>3.</b><span>O Agent abre o DevinX no navegador. Clique em “Vincular este PC”.</span></li>
           <li><b>4.</b><span>Depois disso, o Agent envia o estado do LightBurn automaticamente. O modo manual fica só para suporte.</span></li>
         </ol>
-        <p>Nesta versão de teste não existe Start, Stop, Pause ou Frame remoto. O objetivo é validar pareamento e monitoramento antes de liberar qualquer comando físico.</p>
+        <p>Para testar os controles, abra o ícone do Agent no PC e libere os controles remotos por 5 minutos. A autorização expira sozinha.</p>
       </div>
 
       <div className={styles.flow}>
@@ -579,8 +602,8 @@ export function LaserControlMasterPanel(){
       </div>
 
       <div className={styles.rules}>
-        <b>Travas desta fase</b>
-        <p>Pareamento e telemetria estão ativos somente para desenvolvimento master. Checkout e todos os comandos físicos do laser continuam desligados.</p>
+        <b>Controle temporário</b>
+        <p>Os comandos expiram em segundos e só são aceitos enquanto a autorização local do Agent estiver válida.</p>
       </div>
     </>}
   </section>;
