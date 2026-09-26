@@ -39,11 +39,7 @@ body:before{
 .landingPreview,.deepDiveCard,.landingFeatureGrid article,
 .cashSummary,.ledgerRow,.pendingRow,.workSessionCard,.cardNumbers>div,
 .statementList button,.payBillAmount,.categoryList article,.categoryChips span,
-.switchRow,.adminUser,.diagGrid article,.commitmentDouble article{
-  background:linear-gradient(145deg,var(--surface),var(--card2));
-  border-color:var(--border);
-  box-shadow:var(--shadow);
-}
+.switchRow,.adminUser,.diagGrid article,.commitmentDouble article{background:var(--finance-card-bg);border-color:var(--border);box-shadow:var(--shadow-sm)}
 
 .primary,.goldButton,.quickCaptureFab,.paidButton{
   background:linear-gradient(180deg,#f3d47c 0%,#dfb34b 45%,#ad741e 100%);
@@ -106,18 +102,10 @@ select option{background:var(--surface-0);color:var(--text)}
 .instantPanel:before,.dailyReserveCard:before,.reserveHero:before,.reserveGoalCard:before,.landingPlanRibbon:before{
   background:linear-gradient(90deg,transparent,rgba(230,187,87,.4),transparent);
 }
-.instantPanel:after{background:radial-gradient(circle,rgba(227,180,75,.055),transparent 62%)}.organizeGrid>button,.quickCaptureSheet,.modalCard{
-  background:linear-gradient(145deg,var(--surface-2),var(--surface-0));
-  border-color:rgba(207,165,69,.14);
-  box-shadow:inset 0 1px 0 rgba(255,244,206,.02),0 8px 18px rgba(0,0,0,.2);
-}.organizeGrid>button>span,.categoryIcon{
+.instantPanel:after{background:radial-gradient(circle,rgba(227,180,75,.055),transparent 62%)}.organizeGrid>button,.quickCaptureSheet,.modalCard{background:var(--finance-card-bg);border-color:var(--border);box-shadow:var(--shadow-sm)}.organizeGrid>button>span,.categoryIcon{
   color:var(--gold);
 }
-.organizeGrid>button>span,.categoryIcon,.reserveRow>span,.deepDiveIcon{
-  background:linear-gradient(145deg,#403114,#171108);
-  border-color:rgba(218,174,72,.16);
-  box-shadow:none;
-}
+.organizeGrid>button>span,.categoryIcon,.reserveRow>span,.deepDiveIcon{background:var(--finance-soft-accent-bg);border-color:var(--border);color:var(--finance-accent-text);box-shadow:none}
 
 .dashboardMetrics article{
   background:linear-gradient(145deg,var(--surface-1),var(--surface-0));
@@ -417,10 +405,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.025)
 }
 .quickCaptureTabs button:hover{border-color:rgba(218,177,80,.22);color:#d7b960}
-.quickCaptureTabs button.active{
-  border-color:rgba(232,190,89,.34);background:linear-gradient(180deg,#292116,#151109);
-  color:#e8c76e;box-shadow:inset 0 3px 8px rgba(0,0,0,.30),0 0 15px rgba(218,177,78,.055)
-}
+.quickCaptureTabs button.active{border-color:var(--border-accent);background:var(--finance-soft-accent-bg);color:var(--finance-accent-text);box-shadow:none}
 
 
 /* Home quick actions — richer premium hierarchy */
@@ -443,16 +428,10 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
   box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 16px 34px rgba(0,0,0,.24)
 }
 .subscriptionPlanCard:before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(226,185,88,.45),transparent)}
-.subscriptionPlanCard.featured{
-  border-color:rgba(235,194,96,.48);
-  background:
-    radial-gradient(circle at 88% 4%,rgba(235,191,86,.17),transparent 34%),
-    linear-gradient(145deg,#1d1a12,#0f0d09 60%,#080806);
-  box-shadow:inset 0 1px 0 rgba(255,246,205,.08),0 20px 42px rgba(0,0,0,.31),0 0 28px rgba(218,175,78,.07)
-}
+.subscriptionPlanCard.featured{border-color:var(--border-accent);background:radial-gradient(circle at 88% 4%,rgb(var(--accent-rgb) / .10),transparent 34%),var(--finance-card-bg);box-shadow:var(--shadow-md)}
 .subscriptionPlanTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .subscriptionPlanTop small{display:block;color:#a99561;font-size:8px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
-.subscriptionPlanTop h3{margin:5px 0 0;font-size:18px;color:#f7f4ed;letter-spacing:-.02em}
+.subscriptionPlanTop h3{margin:5px 0 0;font-size:18px;color:var(--text);letter-spacing:-.02em}
 .subscriptionSaving{flex:0 0 auto;padding:5px 8px;border:1px solid rgba(89,213,156,.22);border-radius:999px;background:rgba(57,171,121,.07);color:#70dca8;font-size:8px;font-weight:900;white-space:nowrap}
 .subscriptionPlanPrice{display:flex;align-items:baseline;gap:7px;margin-top:20px}
 .subscriptionPlanPrice strong{font-size:27px;line-height:1;color:#efd071;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
@@ -464,11 +443,11 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
 .subscriptionPlanCard.featured .subscriptionPlanCta{box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 8px 20px rgba(150,96,18,.16)}
 .subscriptionPlans.compact{display:grid;gap:11px}
 .subscriptionPlansCompactTitle{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding-top:3px}
-.subscriptionPlansCompactTitle b{color:#f2efe8;font-size:12px}
+.subscriptionPlansCompactTitle b{color:var(--text);font-size:12px}
 .subscriptionPlansCompactTitle small{color:#7f827d;font-size:8px}
 .subscriptionPlans.compact .subscriptionPlanGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .subscriptionPlans.compact .subscriptionPlanCard{min-height:215px;padding:14px;border-radius:15px}
-.subscriptionPlans.compact .subscriptionPlanTop h3{font-size:15px}
+.subscriptionPlans.compact .subscriptionPlanTop h3{margin:5px 0 0;font-size:18px;color:var(--text);letter-spacing:-.02em}
 .subscriptionPlans.compact .subscriptionPlanPrice{margin-top:14px}
 .subscriptionPlans.compact .subscriptionPlanPrice strong{font-size:22px}
 .subscriptionPlans.compact .subscriptionPlanMeta{margin:11px 0 13px}
@@ -503,7 +482,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
 .futurePlanCard{overflow:hidden;border:1px solid rgba(211,170,73,.17);border-radius:15px;background:linear-gradient(145deg,var(--surface-2),var(--surface-0));box-shadow:0 9px 20px rgba(0,0,0,.19),inset 0 1px 0 rgba(255,255,255,.025)}
 .futurePlanCard.income{border-color:rgb(var(--positive-rgb) / .18)}.futurePlanCard.overdue{border-color:rgba(238,157,78,.35)}
 .futurePlanHead{width:100%;display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:12px;border:0;background:transparent;color:var(--text);text-align:left}
-.futurePlanIcon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;border:1px solid rgba(214,173,76,.20);background:#15191d;color:#e4c36b;font-size:20px;font-weight:900}
+.futurePlanIcon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;border:1px solid var(--border);background:var(--finance-card-inset);color:var(--finance-accent-text);font-size:20px;font-weight:900}
 .futurePlanCard.income .futurePlanIcon{color:var(--positive);border-color:rgb(var(--positive-rgb) / .22);background:rgb(var(--positive-rgb) / .08)}
 .futurePlanHead small,.futurePlanHead h3{display:block}.futurePlanHead small{color:#858880;font-size:7px;text-transform:uppercase;letter-spacing:.08em}.futurePlanHead h3{margin:3px 0 0;font-size:13px;color:var(--text)}.futurePlanHead strong{font-size:12px;font-variant-numeric:tabular-nums}.futurePlanHead>i{font-style:normal;color:#b9984f}
 .futurePlanBody{display:grid;gap:11px;padding:0 12px 13px;border-top:1px solid rgba(214,172,75,.10)}
@@ -619,11 +598,7 @@ button[aria-busy="true"]{cursor:progress;pointer-events:none}
 .homeActionCard.card:before{background:var(--accent)}
 .homeActionCard:hover{background:linear-gradient(145deg,var(--surface-3),var(--surface-2));border-color:var(--border-accent)}
 
-.organizeGrid>button,.quickCaptureSheet,.modalCard{
-  background:linear-gradient(145deg,var(--surface-3),var(--surface-1));
-  border-color:var(--border);
-  box-shadow:var(--shadow-sm);
-}
+.organizeGrid>button,.quickCaptureSheet,.modalCard{background:var(--finance-card-bg);border-color:var(--border);box-shadow:var(--shadow-sm)}
 .organizeGrid>button:hover{background:linear-gradient(145deg,var(--surface-hover),var(--surface-2));border-color:var(--border-strong)}
 
 .primary,.goldButton,.quickSave,.paidButton,.dailyGoalButton,.billPayPrimary,.subscriptionPlanCta{
@@ -766,13 +741,7 @@ select option{background:var(--surface-1);color:var(--text)}
 .calculatorModeTabs button{border:1px solid transparent;background:transparent;color:var(--text-muted);font-weight:900}
 .calculatorModeTabs button.active{border-color:rgb(var(--accent-rgb) / .28);background:linear-gradient(145deg,rgb(var(--accent-rgb) / .14),rgb(var(--info-rgb) / .06));color:var(--accent-strong);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
 
-.scientificDisplay{
-  border:1px solid rgb(var(--info-rgb) / .22);
-  background:
-    radial-gradient(circle at 88% 0%,rgb(var(--info-rgb) / .12),transparent 40%),
-    linear-gradient(145deg,#0b1c21,var(--surface-1));
-  box-shadow:inset 0 0 30px rgba(0,0,0,.24),0 10px 26px rgba(0,0,0,.18)
-}
+.scientificDisplay{border:1px solid rgb(var(--info-rgb) / .22);background:radial-gradient(circle at 88% 0%,rgb(var(--info-rgb) / .10),transparent 40%),var(--finance-card-soft-bg);box-shadow:var(--shadow-sm)}
 .scientificDisplay>div{color:var(--text-muted);font-size:9px;font-weight:800}
 .scientificDisplay>div span{color:var(--accent-strong);font-weight:950}
 .scientificDisplay strong{color:var(--text);font-weight:720;text-shadow:0 0 18px rgb(var(--info-rgb) / .08)}
@@ -882,24 +851,15 @@ select option{background:var(--surface-1);color:var(--text)}
 .financeApp[data-theme="light"] .statementItems button,
 .financeApp[data-theme="light"] .tagRow button{color:var(--text)}
 .financeApp[data-theme="light"] .dailyGoalModeTabs button{color:var(--text-muted)}
-.financeApp[data-theme="light"] .dailyGoalModeTabs button.active{
-  background:linear-gradient(145deg,#fff7df,var(--surface-1));
-  color:var(--accent-dark);
-}
+.financeApp[data-theme="light"] .dailyGoalModeTabs button.active{border-color:var(--border-accent);background:var(--finance-soft-accent-bg);color:var(--finance-accent-text)}
 .financeApp[data-theme="light"] .quickCaptureTabs button{color:var(--text-muted)}
-.financeApp[data-theme="light"] .quickCaptureTabs button.active{
-  background:linear-gradient(180deg,#fff6db,#f1e3bb);
-  color:var(--accent-dark);
-}
-.financeApp[data-theme="light"] .scientificDisplay{
-  background:linear-gradient(145deg,#f8fbfc,var(--surface-1));
-  box-shadow:inset 0 0 24px rgba(40,70,84,.06),var(--shadow-sm);
-}
+.financeApp[data-theme="light"] .quickCaptureTabs button.active{border-color:var(--border-accent);background:var(--finance-soft-accent-bg);color:var(--finance-accent-text);box-shadow:none}
+.financeApp[data-theme="light"] .scientificDisplay{border:1px solid rgb(var(--info-rgb) / .22);background:radial-gradient(circle at 88% 0%,rgb(var(--info-rgb) / .10),transparent 40%),var(--finance-card-soft-bg);box-shadow:var(--shadow-sm)}
 .financeApp[data-theme="light"] .calculatorModeTabs{background:var(--surface-1)}
-.financeApp[data-theme="light"] .scientificKeys .fn{background:linear-gradient(145deg,#eef7fa,var(--surface-2))}
+.financeApp[data-theme="light"] .scientificKeys .fn{background:rgb(var(--info-rgb) / .08);color:var(--info);border-color:rgb(var(--info-rgb) / .15)}
 .financeApp[data-theme="light"] .scientificKeys .memory{background:linear-gradient(145deg,#eff7ee,var(--surface-2));color:#39734d}
 .financeApp[data-theme="light"] .scientificKeys .operator{background:linear-gradient(145deg,#fff6dc,var(--surface-2));color:var(--accent-dark)}
-.financeApp[data-theme="light"] .scientificKeys .clear{background:linear-gradient(145deg,#fff0ef,var(--surface-2));color:var(--negative)}
+.financeApp[data-theme="light"] .scientificKeys .clear{background:rgb(var(--negative-rgb) / .08);color:var(--negative);border-color:rgb(var(--negative-rgb) / .22)}
 
 .financeApp[data-theme="light"] .homeSummaryCard{background:var(--finance-card-bg);border-color:var(--border);box-shadow:var(--shadow-sm)}
 .financeApp[data-theme="light"] .homeSummaryHeader b{color:var(--text-soft)}
