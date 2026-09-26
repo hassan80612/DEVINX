@@ -529,7 +529,7 @@ export function LaserControlWorkspace(){
 
         <div
           ref={previewSurfaceRef}
-          className={styles.previewSurface}
+          className={[styles.previewSurface,fullscreen&&inputReady?styles.remoteControlSurface:''].filter(Boolean).join(' ')}
           tabIndex={0}
           onKeyDown={event=>handleKey(event,'keydown')}
           onKeyUp={event=>handleKey(event,'keyup')}
@@ -540,6 +540,11 @@ export function LaserControlWorkspace(){
                 <button onClick={()=>setZoom(value=>Math.max(.75,value-.25))}>−</button>
                 <button onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button>
                 <button onClick={()=>setZoom(value=>Math.min(3,value+.25))}>＋</button>
+              </div>
+              <div className={styles.orientation}>
+                <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>Auto</button>
+                <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>↔</button>
+                <button className={orientation==='portrait'?styles.on:''} onClick={()=>void setOrientationMode('portrait')}>↕</button>
               </div>
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
@@ -554,7 +559,9 @@ export function LaserControlWorkspace(){
             ref={imageRef}
             src={frameSrc}
             alt="Janela ao vivo do LightBurn"
-            style={{transform:`scale(${zoom})`}}
+            style={fullscreen
+              ?{width:`${zoom*100}%`,maxWidth:'none',maxHeight:'none'}
+              :{transform:`scale(${zoom})`}}
             className={inputReady&&fullscreen?styles.remoteImageActive:styles.remoteImage}
             onPointerDown={event=>handlePointer(event,'pointerdown')}
             onPointerUp={event=>handlePointer(event,'pointerup')}
@@ -609,7 +616,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>DevinX Laser Agent 1.0</h3><p>Instala no usuário do Windows, inicia sozinho e pode ser removido pela própria bandeja.</p></div>
-          <a href="/downloads/DevinX-Laser-Agent-1.0.0.zip" download>Baixar Agent</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.0/DevinX-Laser-Agent-1.0.0.zip" download>Baixar Agent</a>
         </div>
 
         <div className={styles.guideSteps}>
