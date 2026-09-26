@@ -16,26 +16,28 @@ Deno.serve(async(req)=>{
   const ctx=await requireLaserMaster(req);
   if(!ctx)return json({error:"not_found"},404);
 
-  let body:{action?:string;deviceId?:string;command?:string;commandId?:string;idempotencyKey?:string};
+  let body:{action?:string;deviceId?:string;sessionId?:string;command?:string;commandId?:string;idempotencyKey?:string};
   try{body=await req.json()}catch{return json({error:"invalid_json"},400)}
 
   if(body.action==="send"){
     const deviceId=String(body.deviceId||"");
+    const sessionId=String(body.sessionId||"");
     const command=String(body.command||"");
     const idempotencyKey=String(body.idempotencyKey||"");
-    if(!UUID.test(deviceId)||!UUID.test(idempotencyKey)||!ALLOWED.has(command))
+    if(!UUID.test(deviceId)||!UUID.test(sessionId)||!UUID.test(idempotencyKey)||!ALLOWED.has(command))
       return json({error:"invalid_command"},400);
 
-    const{data,error}=await ctx.admin.rpc("laser_internal_enqueue_command",{
+    const{data,error}=await ctx.admin.rpc("laser_internal_enqueue_session_command",{
       p_user_id:ctx.userId,
+      p_session_id:sessionId,
       p_device_id:deviceId,
       p_command_type:command,
       p_idempotency_key:idempotencyKey
     });
     if(error){
       const message=String(error.message||"");
-      if(message.includes("remote_control_not_armed"))
-        return json({error:"remote_control_not_armed"},409);
+      if(message.includes("remote_session_not_found"))
+        return json({error:"remote_session_not_found"},409);
       if(message.includes("machine_not_connected"))
         return json({error:"machine_not_connected"},409);
       if(message.includes("machine_not_idle"))
