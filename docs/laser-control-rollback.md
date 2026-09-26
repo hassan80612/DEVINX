@@ -39,7 +39,7 @@ As migrations do Laser Control foram aplicadas ao Supabase correto do DevinX, ma
 Rollback correspondente:
 `supabase/rollback/20260926173715_laser_control_foundation_private_schema.down.sql`
 
-Migrations aplicadas: `20260926173715 laser_control_foundation_private_schema`, `20260926173813 laser_control_fk_indexes` e `20260926174153 laser_control_pairing_schema_refinement` e `20260926174502 laser_control_keypair_device_auth`.\n\nRollbacks granulares: `supabase/rollback/20260926173813_laser_control_fk_indexes.down.sql` e `supabase/rollback/20260926174153_laser_control_pairing_schema_refinement.down.sql` e `supabase/rollback/20260926174502_laser_control_keypair_device_auth.down.sql`.\n\nRegra obrigatória: toda futura migration do Laser Control precisa vir acompanhada de instruções de rollback no mesmo PR antes de ser aplicada.
+Migrations aplicadas: `20260926173715 laser_control_foundation_private_schema`, `20260926173813 laser_control_fk_indexes` e `20260926174153 laser_control_pairing_schema_refinement` e `20260926174502 laser_control_keypair_device_auth` e `20260926174632 laser_control_internal_pairing_rpcs`.\n\nRollbacks granulares: `supabase/rollback/20260926173813_laser_control_fk_indexes.down.sql` e `supabase/rollback/20260926174153_laser_control_pairing_schema_refinement.down.sql` e `supabase/rollback/20260926174502_laser_control_keypair_device_auth.down.sql` e `supabase/rollback/20260926174632_laser_control_internal_pairing_rpcs.down.sql`.\n\nRegra obrigatória: toda futura migration do Laser Control precisa vir acompanhada de instruções de rollback no mesmo PR antes de ser aplicada.
 
 ## Agent Windows
 
