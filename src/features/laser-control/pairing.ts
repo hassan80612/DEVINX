@@ -3,6 +3,7 @@ export const LASER_PAIRING_CODE_PATTERN=/^[A-HJ-NP-Z2-9]{8}$/;
 
 export type LaserPairingProof={
   version:typeof LASER_PAIRING_VERSION;
+  agentVersion:string;
   deviceId:string;
   publicKeyPem:string;
   publicKeyFingerprint:string;
