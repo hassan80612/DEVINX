@@ -51,7 +51,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                     {
                         broadcast=new{ack=false,self=false},
                         presence=new{enabled=false},
-                        private=false
+                        @private=false
                     }
                 },
                 joinRef:"1",
@@ -100,7 +100,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
     {
         await SendEnvelopeAsync(
             "broadcast",
-            new{type="broadcast",event=eventName,payload},
+            new{type="broadcast",@event=eventName,payload},
             joinRef:"1",
             reference:Interlocked.Increment(ref _ref).ToString(),
             cancellationToken);
