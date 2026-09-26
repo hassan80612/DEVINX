@@ -59,6 +59,7 @@ export function DebtManager(){
   const[notice,setNotice]=useState('');
   const[paying,setPaying]=useState<Debt|null>(null);
   const[paymentAmount,setPaymentAmount]=useState('');
+  const[paymentMode,setPaymentMode]=useState<'partial'|'settle'>('partial');
   const[paymentMethod,setPaymentMethod]=useState('pix');
   const[paymentDate,setPaymentDate]=useState(localDateISO());
   const[saving,setSaving]=useState(false);
@@ -123,6 +124,7 @@ export function DebtManager(){
 
   function openPay(d:Debt){
     setPaying(d);
+    setPaymentMode('partial');
     setPaymentAmount(d.installment_minor?String(Number(d.installment_minor)/100).replace('.',','):'');
     setPaymentMethod('pix');
     setPaymentDate(localDateISO());
@@ -142,10 +144,17 @@ export function DebtManager(){
       p_paid_on:paymentDate,
       p_payment_method:paymentMethod
     });
+    if(error){setSaving(false);setNotice(t('common.errorSave'));return}
+    const settlesWithDiscount=paymentMode==='settle'&&value<Number(paying.outstanding_minor);
+    if(settlesWithDiscount){
+      const{data:{user}}=await s.auth.getUser();
+      if(!user){setSaving(false);return}
+      const{error:settleError}=await s.from('debts').update({outstanding_minor:0,installments_remaining:0,is_active:false}).eq('id',paying.id).eq('user_id',user.id);
+      if(settleError){setSaving(false);setNotice(t('common.errorSave'));return}
+    }
     setSaving(false);
-    if(error){setNotice(t('common.errorSave'));return}
-    setPaying(null);
-    setNotice(t('debts.paymentSaved'));
+    setPaying(null);setPaymentMode('partial');
+    setNotice(settlesWithDiscount?t('payment.discountSettled'):t('debts.paymentSaved'));
     notifyFinanceUpdated();
     await load();
   }
@@ -275,6 +284,7 @@ export function DebtManager(){
     {paying&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPaying(null)}}><form className="modalCard" onSubmit={pay}>
       <div className="modalHead"><h2>{paying.name}</h2><button type="button" onClick={()=>setPaying(null)}>×</button></div>
       <label>{t('debts.paidValue')}<input value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)} inputMode="decimal" required/></label>
+      <div className="paymentModePicker" role="group" aria-label={t('payment.mode')}><button type="button" className={paymentMode==='partial'?'active':''} onClick={()=>setPaymentMode('partial')}><b>{t('payment.partial')}</b><small>{t('payment.partialHelp')}</small></button><button type="button" className={paymentMode==='settle'?'active':''} onClick={()=>setPaymentMode('settle')}><b>{t('payment.settle')}</b><small>{t('payment.settleHelp')}</small></button></div>
       <label>{t('common.date')}<input type="date" value={paymentDate} onChange={e=>setPaymentDate(e.target.value)} required/></label>
       <label>{t('common.payment')}<select value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value)}><option value="pix">Pix</option><option value="cash">{t('debts.cash')}</option><option value="debit">{t('debts.debit')}</option></select></label>
       <p className="formHint">{t('debts.paymentHelp')}</p>
