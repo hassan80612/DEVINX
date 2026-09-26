@@ -32,8 +32,15 @@ test('Remote command dispatch remains hard-disabled in foundation',async()=>{
 });
 
 
-test('master surface is disabled in production unless explicitly enabled',async()=>{
+test('master surface is always server-gated by authenticated admin access',async()=>{
   const source=await readFile('src/features/laser-control/server/master.ts','utf8');
-  assert.match(source,/VERCEL_ENV==='preview'/);
-  assert.match(source,/LASER_CONTROL_MASTER_ENABLED==='true'/);
+  assert.match(source,/get_devinx_access_status/);
+  assert.match(source,/access\?\.is_admin/);
+  assert.doesNotMatch(source,/VERCEL_ENV/);
+});
+
+test('Laser Control is linked only inside AdminMaster',async()=>{
+  const source=await readFile('src/components/AdminMaster.tsx','utf8');
+  assert.match(source,/LaserControlMasterPanel/);
+  assert.match(source,/LASER CONTROL/);
 });
