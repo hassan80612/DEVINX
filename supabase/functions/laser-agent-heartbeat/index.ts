@@ -67,6 +67,17 @@ export default {
     }
 
     if(data!==true)return heartbeatJson({accepted:false,reason:"stale_sequence"},409);
-    return heartbeatJson({accepted:true,sequence:envelope.sequence});
+
+    const{data:previewData,error:previewError}=await ctx.supabaseAdmin.rpc("laser_internal_preview_request_state",{
+      p_device_id:envelope.deviceId
+    });
+    const preview=previewError?null:(Array.isArray(previewData)?previewData[0]:previewData);
+
+    return heartbeatJson({
+      accepted:true,
+      sequence:envelope.sequence,
+      previewActive:Boolean(preview?.active),
+      previewUntil:preview?.requested_until??null
+    });
   })
 };
