@@ -34,12 +34,12 @@ Depois do revert:
 
 ## Banco
 
-A migration atual cria somente o schema privado `devinx_laser`. Ela ainda NÃO foi aplicada.
+As migrations do Laser Control foram aplicadas ao Supabase correto do DevinX, mas continuam isoladas no schema privado `devinx_laser`, sem acesso direto para `anon` ou `authenticated`.
 
 Rollback correspondente:
-`supabase/rollback/20260926170000_laser_control_foundation.down.sql`
+`supabase/rollback/20260926173715_laser_control_foundation_private_schema.down.sql`
 
-Regra obrigatória: toda futura migration do Laser Control precisa vir acompanhada de instruções de rollback no mesmo PR antes de ser aplicada.
+Migrations aplicadas: `20260926173715 laser_control_foundation_private_schema` e `20260926173813 laser_control_fk_indexes`.\n\nRollback granular dos índices: `supabase/rollback/20260926173813_laser_control_fk_indexes.down.sql`.\n\nRegra obrigatória: toda futura migration do Laser Control precisa vir acompanhada de instruções de rollback no mesmo PR antes de ser aplicada.
 
 ## Agent Windows
 
