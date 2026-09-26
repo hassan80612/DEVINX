@@ -42,6 +42,7 @@ export function LaserControlMasterPanel(){
   const[pairingNotice,setPairingNotice]=useState('');
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[devicesPending,setDevicesPending]=useState(false);
+  const[deviceActionId,setDeviceActionId]=useState<string|null>(null);
 
   const loadDevices=useCallback(async()=>{
     setDevicesPending(true);
@@ -96,6 +97,29 @@ export function LaserControlMasterPanel(){
       setPairingNotice('Falha ao comunicar com o serviço de pareamento.');
     }finally{
       setPairingPending(false);
+    }
+  }
+
+  async function changeDeviceAccess(device:LaserDevice){
+    const action=device.device_status==='revoked'?'reactivate':'revoke';
+    setDeviceActionId(device.device_id);
+    setPairingNotice('');
+    try{
+      const{data,error}=await createClient().functions.invoke('laser-master-device-access',{
+        body:{deviceId:device.device_id,action}
+      });
+      if(error||!data?.ok){
+        setPairingNotice('Não foi possível alterar o acesso deste PC.');
+        return;
+      }
+      setPairingNotice(action==='revoke'
+        ?'PC revogado. O Agent perdeu autorização de telemetria e controle futuro.'
+        :'PC reativado. Controle remoto continua desligado.');
+      await loadDevices();
+    }catch{
+      setPairingNotice('Falha ao alterar o acesso do PC.');
+    }finally{
+      setDeviceActionId(null);
     }
   }
 
@@ -189,6 +213,19 @@ export function LaserControlMasterPanel(){
           <div className={styles.deviceFoot}>
             <span>{device.project_file||'Nenhum projeto reportado'}</span>
             <span>{device.last_seen_at?`Último contato: ${new Date(device.last_seen_at).toLocaleString('pt-BR')}`:'Sem heartbeat ainda'}</span>
+          </div>
+          <div className={styles.deviceActions}>
+            <span>Status: <b>{device.device_status}</b></span>
+            <button
+              type="button"
+              className={device.device_status==='revoked'?styles.reactivateButton:styles.revokeButton}
+              disabled={deviceActionId===device.device_id}
+              onClick={()=>void changeDeviceAccess(device)}
+            >
+              {deviceActionId===device.device_id
+                ?'Aplicando…'
+                :device.device_status==='revoked'?'Reativar PC':'Revogar PC'}
+            </button>
           </div>
         </article>)}
       </div>
