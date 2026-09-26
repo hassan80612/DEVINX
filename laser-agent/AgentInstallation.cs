@@ -1,9 +1,15 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace DevinXLaserAgent;
 
 internal static class AgentInstallation
 {
+    private const int MovefileDelayUntilReboot=0x00000004;
+
+    [DllImport("kernel32.dll",SetLastError=true,CharSet=CharSet.Unicode)]
+    private static extern bool MoveFileEx(string existingFile,string? newFile,int flags);
+
     public static readonly string InstallDirectory=Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Programs","DevinX Laser Agent");
@@ -71,16 +77,22 @@ internal static class AgentInstallation
 
         try
         {
-            var quoted=InstallDirectory.Replace(""","""");
-            Process.Start(new ProcessStartInfo
+            foreach(var file in Directory.EnumerateFiles(InstallDirectory))
             {
-                FileName="cmd.exe",
-                Arguments=$"/d /c "timeout /t 2 /nobreak >nul & rmdir /s /q \"{quoted}\""",
-                UseShellExecute=false,
-                CreateNoWindow=true,
-                WindowStyle=ProcessWindowStyle.Hidden
-            });
+                try
+                {
+                    if(!File.Delete(file))
+                        MoveFileEx(file,null,MovefileDelayUntilReboot);
+                }
+                catch
+                {
+                    MoveFileEx(file,null,MovefileDelayUntilReboot);
+                }
+            }
         }
         catch{}
+
+        try{Directory.Delete(InstallDirectory,recursive:false);}
+        catch{MoveFileEx(InstallDirectory,null,MovefileDelayUntilReboot);}
     }
 }
