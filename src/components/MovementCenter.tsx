@@ -416,7 +416,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
   }
 
   async function removeRow(row:CashRow){
-    if(!confirm(t('move.deleteConfirm')))return;
+    if(!confirm(row.kind==='card-payment'?t('move.reopenConfirm'):t('move.deleteConfirm')))return;
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;let error:any=null;
     if(row.kind==='tx'){
       const x=row.raw as Tx;
@@ -428,7 +428,7 @@ export function MovementCenter({onNavigate}:{onNavigate?:(target:string)=>void})
     }else if(row.kind==='bill-payment'){
       const x=row.raw as RecPay;({error}=await s.from('recurring_bill_payments').delete().eq('id',x.id).eq('user_id',user.id));
     }else if(row.kind==='card-payment'){
-      if(!confirm(t('move.reopenConfirm')))return;const x=row.raw as CardPay;({error}=await s.rpc('reopen_card_bill',{p_payment_id:x.id}));
+      const x=row.raw as CardPay;({error}=await s.rpc('reopen_card_bill',{p_payment_id:x.id}));
     }else{
       const x=row.raw as Work;({error}=await s.from('work_sessions').delete().eq('id',x.id).eq('user_id',user.id));
     }
