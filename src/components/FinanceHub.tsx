@@ -13,6 +13,7 @@ import {ProCalculator} from './CalculatorPro';
 import {SUPPORTED_CURRENCIES,type CurrencyCode,useI18n} from '@/i18n/provider';
 import {settleAutomaticFutureIncome} from '@/lib/auto-future-income';
 import {notifyFinanceUpdated} from '@/lib/finance-events';
+import {FINANCE_THEME_EVENT,isFinanceTheme,readFinanceTheme,type FinanceTheme} from '@/lib/finance-theme';
 
 function LazySectionFallback(){return <section className="panel dashboardLoading"><span className="loader"/></section>}
 const MovementCenter=dynamic(()=>import('./MovementCenter').then(module=>module.MovementCenter),{loading:LazySectionFallback});
@@ -42,11 +43,22 @@ function checkoutForLocale(url:string,locale:string){
 export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;initialProfile:ProfilePreferences}){
   const{locale,setLocale,setCurrencyCode,setTimezone,date,t}=useI18n();
   const[section,setSection]=useState<Section>('home');
+  const[theme,setTheme]=useState<FinanceTheme>('dark');
   const[sectionReady,setSectionReady]=useState(false);
   const initialPreferencesApplied=useRef(false);
   const[capture,setCapture]=useState<CaptureRequest>({id:0,mode:'expense'});
   const[reportFocus,setReportFocus]=useState<{start:string;end:string;flow:'all'|'income'|'expense';token:number}|null>(null);
   const access=initialAccess;
+
+  useEffect(()=>{
+    setTheme(readFinanceTheme());
+    const onTheme=(event:Event)=>{
+      const next=(event as CustomEvent<{theme?:unknown}>).detail?.theme;
+      if(isFinanceTheme(next))setTheme(next);
+    };
+    window.addEventListener(FINANCE_THEME_EVENT,onTheme);
+    return()=>window.removeEventListener(FINANCE_THEME_EVENT,onTheme);
+  },[]);
 
   useEffect(()=>{
     try{
@@ -116,9 +128,9 @@ export function FinanceHub({initialAccess,initialProfile}:{initialAccess:Access;
   function backTarget(){return ['cards','bills','reserves','reports','spend','categories','settings','master'].includes(section)?'more':'home'}
   async function signOut(){try{sessionStorage.removeItem('devinx-active-section')}catch{}await createClient().auth.signOut();location.href='/'}
 
-  if(!sectionReady)return <main className="financeApp"><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
+  if(!sectionReady)return <main className="financeApp" data-theme={theme}><section className="centerState"><span className="loader"/><b>{t('common.loading')}</b></section></main>;
 
-  return <main className="financeApp">
+  return <main className="financeApp" data-theme={theme}>
     <IntegrationBootstrap enabled={access.is_admin}/>
     <header className="financeHeader">
       <button className="brand brandButton" onClick={()=>setSection('home')} type="button"><BrandLogo/></button>

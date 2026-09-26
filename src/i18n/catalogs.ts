@@ -1115,12 +1115,19 @@ const deTrial=replace(deCashRelease,{
 'trial.cta':'3 Tage kostenlos testen','trial.title':'3 Tage kostenlos testen','trial.desc':'Nutze alle DevinX-Funktionen 3 Tage kostenlos.','trial.noCard':'Keine Karte. Keine automatische Abbuchung.','trial.start':'Kostenlosen Test starten','trial.created':'Konto erstellt. Bestätige deine E-Mail, um die 3 kostenlosen Tage zu aktivieren.','trial.activating':'Kostenloser Test wird aktiviert...','trial.activatingHelp':'Dieses Gerät wird sicher geprüft.','trial.deviceUsed':'Auf diesem Gerät wurde der kostenlose Test bereits genutzt. Wähle ein Abo, um fortzufahren.','trial.notEligible':'Der kostenlose Test ist nur für neue Konten verfügbar.','trial.disabled':'Der kostenlose Test ist derzeit nicht verfügbar.','trial.active':'KOSTENLOSER TEST','trial.ends':'Endet','access.expiredTitle':'Zugang beendet','access.expiredDesc':'Dein kostenloser Test oder dein Abo ist abgelaufen. Abonniere oder verlängere, um DevinX weiter zu nutzen.','master.sourceTrial':'Kostenloser Test','master.trial':'Tests'
 });
 
+const ptThemeRelease=replace(ptTrial,{'settings.theme':'Tema visual','settings.themeHelp':'Muda somente a aparência do Financeiro. Seus dados e cálculos não são alterados.','settings.themeDark':'Escuro','settings.themeLight':'Claro'});
+const enThemeRelease=replace(enTrial,{'settings.theme':'Visual theme','settings.themeHelp':'Changes only the Finance appearance. Your data and calculations are not changed.','settings.themeDark':'Dark','settings.themeLight':'Light'});
+const esThemeRelease=replace(esTrial,{'settings.theme':'Tema visual','settings.themeHelp':'Cambia solo la apariencia de Finanzas. Tus datos y cálculos no cambian.','settings.themeDark':'Oscuro','settings.themeLight':'Claro'});
+const frThemeRelease=replace(frTrial,{'settings.theme':'Thème visuel','settings.themeHelp':'Modifie uniquement l’apparence des Finances. Vos données et calculs ne changent pas.','settings.themeDark':'Sombre','settings.themeLight':'Clair'});
+const deThemeRelease=replace(deTrial,{'settings.theme':'Darstellung','settings.themeHelp':'Ändert nur die Darstellung der Finanzen. Daten und Berechnungen bleiben unverändert.','settings.themeDark':'Dunkel','settings.themeLight':'Hell'});
+const arThemeRelease=replace(arTrial,{'settings.theme':'المظهر','settings.themeHelp':'يغيّر مظهر القسم المالي فقط، من دون تغيير البيانات أو الحسابات.','settings.themeDark':'داكن','settings.themeLight':'فاتح'});
+
 export const catalogs:Record<Locale,Catalog>={
-  'pt-BR':{...ptTrial,...landingCatalogs['pt-BR']},
-  en:{...enTrial,...landingCatalogs.en},
-  es:{...esTrial,...landingCatalogs.es},
-  fr:{...frTrial,...landingCatalogs.fr},
-  ar:{...arTrial,...landingCatalogs.ar},
-  de:{...deTrial,...landingCatalogs.de},
+  'pt-BR':{...ptThemeRelease,...landingCatalogs['pt-BR']},
+  en:{...enThemeRelease,...landingCatalogs.en},
+  es:{...esThemeRelease,...landingCatalogs.es},
+  fr:{...frThemeRelease,...landingCatalogs.fr},
+  ar:{...arThemeRelease,...landingCatalogs.ar},
+  de:{...deThemeRelease,...landingCatalogs.de},
 };
-export type TranslationKey=keyof typeof ptTrial;
+export type TranslationKey=keyof typeof ptThemeRelease;

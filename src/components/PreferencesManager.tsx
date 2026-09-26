@@ -6,6 +6,7 @@ import {SUPPORTED_CURRENCIES,type CurrencyCode,useI18n} from '@/i18n/provider';
 import {LanguageMenu} from './LanguageMenu';
 import {CalculatorModePreference,ProCalculator} from './CalculatorPro';
 import {isAutoFutureIncomeEnabled,setAutoFutureIncomeEnabled} from '@/lib/auto-future-income';
+import {FINANCE_THEME_EVENT,isFinanceTheme,readFinanceTheme,writeFinanceTheme,type FinanceTheme} from '@/lib/finance-theme';
 
 const HISTORY_PERIODS=[1,3,6,12,24] as const;
 type ChartPeriod='3d'|'7d'|'1m'|'3m'|'6m'|'12m';
@@ -67,6 +68,7 @@ export function PreferencesManager(){
   const[retention,setRetention]=useState(12);
   const[chartPeriod,setChartPeriod]=useState<ChartPeriod>('1m');
   const[autoFutureIncome,setAutoFutureIncome]=useState(false);
+  const[theme,setTheme]=useState<FinanceTheme>('dark');
   const[notice,setNotice]=useState('');
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
@@ -86,6 +88,7 @@ export function PreferencesManager(){
     const{data:{user}}=await s.auth.getUser();
     if(!user){location.href='/entrar';return}
     setAutoFutureIncome(isAutoFutureIncomeEnabled());
+    setTheme(readFinanceTheme());
     const{data}=await s.from('profiles').select('locale,currency_code,timezone,retention_months,dashboard_chart_period').eq('id',user.id).single();
     if(data){
       if(SUPPORTED_CURRENCIES.includes(data.currency_code as CurrencyCode))setCurrencyCode(data.currency_code as CurrencyCode);
@@ -97,6 +100,20 @@ export function PreferencesManager(){
     }
     setLoading(false);
   })()},[]);
+
+  useEffect(()=>{
+    const onTheme=(event:Event)=>{
+      const next=(event as CustomEvent<{theme?:unknown}>).detail?.theme;
+      if(isFinanceTheme(next))setTheme(next);
+    };
+    window.addEventListener(FINANCE_THEME_EVENT,onTheme);
+    return()=>window.removeEventListener(FINANCE_THEME_EVENT,onTheme);
+  },[]);
+
+  function chooseTheme(next:FinanceTheme){
+    setTheme(next);
+    writeFinanceTheme(next);
+  }
 
   async function save(){
     setSaving(true);
@@ -125,6 +142,13 @@ export function PreferencesManager(){
   return <div className="settingsPage">
     <SettingsFoldCard id="general" eyebrow="DEVINX" title={t('settings.title')} summary={generalSummary}>
       <div className="settingsForm settingsFormInner">
+        <div className="themePreference" role="group" aria-label={t('settings.theme')}>
+          <span><b>{t('settings.theme')}</b><small>{t('settings.themeHelp')}</small></span>
+          <div className="themeChoices">
+            <button type="button" className={theme==='dark'?'active':''} aria-pressed={theme==='dark'} onClick={()=>chooseTheme('dark')}><i aria-hidden="true">●</i><span>{t('settings.themeDark')}</span></button>
+            <button type="button" className={theme==='light'?'active':''} aria-pressed={theme==='light'} onClick={()=>chooseTheme('light')}><i aria-hidden="true">○</i><span>{t('settings.themeLight')}</span></button>
+          </div>
+        </div>
         <label>{t('settings.language')}<LanguageMenu fullWidth/><small>{t('settings.languageHelp')}</small></label>
         <label>{t('settings.currency')}
           <select value={currencyCode} onChange={e=>setCurrencyCode(e.target.value as CurrencyCode)}>

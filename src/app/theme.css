@@ -26,7 +26,8 @@ body:before{
     linear-gradient(145deg,var(--canvas-deep),var(--surface-0) 44%,var(--surface-1) 58%,var(--canvas-deep) 100%);
   background-attachment:fixed;
 }
-.financeHeader,.landingTop,.authTop{
+.financeHeader{background:var(--finance-chrome-bg);border-bottom:1px solid var(--finance-chrome-border);box-shadow:var(--finance-chrome-shadow);backdrop-filter:blur(18px)}
+.landingTop,.authTop{
   background:rgba(6,8,11,.965);
   border-bottom:1px solid rgba(215,174,78,.16);
   box-shadow:0 10px 28px rgba(0,0,0,.32);
@@ -63,7 +64,7 @@ body:before{
   color:#d8b761;
 }
 .pendingActions button,.pendingRow>button,.adminActions button{
-  background:#11140f;
+  background:var(--surface-0);
   border:1px solid rgb(var(--accent-rgb) / .17);
   color:var(--accent);
   box-shadow:none;
@@ -126,9 +127,9 @@ select option{background:var(--surface-0);color:var(--text)}
 .dashboardMetrics article:before{background:linear-gradient(180deg,#e9c967,#9d6818)}
 
 .financeBottomNav{
-  border-color:rgba(215,171,70,.16);
-  background:rgba(7,9,12,.965);
-  box-shadow:0 10px 26px rgba(0,0,0,.38);
+  border-color:var(--finance-chrome-border);
+  background:var(--finance-chrome-bg);
+  box-shadow:var(--finance-chrome-shadow);
 }
 .financeBottomNav button{color:#8b8a85}
 .financeBottomNav button.active{
@@ -295,11 +296,11 @@ select option{background:var(--surface-0);color:var(--text)}
 .collapsibleTitleRow{align-items:center}
 .collapseToggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:31px;padding:6px 9px;border:1px solid rgb(var(--accent-rgb) / .19);border-radius:9px;background:var(--surface-0);color:var(--accent);font-size:8px;font-weight:900;white-space:nowrap}
 .collapseToggle span,.collapseToggle i{font-style:normal;font-size:11px}.collapsiblePanel.isCollapsed{padding-bottom:14px}.collapsibleBody{animation:devinxCalcReveal .16s ease-out}
-.dailyGoalModeTabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:12px;padding:4px;border:1px solid rgb(var(--accent-rgb) / .13);border-radius:11px;background:rgba(7,9,12,.68)}
+.dailyGoalModeTabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:12px;padding:4px;border:1px solid rgb(var(--accent-rgb) / .13);border-radius:11px;background:var(--surface-0)}
 .dailyGoalModeTabs button{min-height:34px;border:1px solid transparent;border-radius:8px;background:transparent;color:#858681;font-size:9px;font-weight:900}
 .dailyGoalModeTabs button.active{border-color:rgb(var(--accent-rgb) / .22);background:#17150f;color:#e1c164}
 .manualDailyGoal{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:8px;margin:13px 0}
-.manualDailyGoal label,.manualDailyGoal>div{padding:10px;border:1px solid rgb(var(--accent-rgb) / .14);border-radius:11px;background:rgba(9,11,15,.54)}
+.manualDailyGoal label,.manualDailyGoal>div{padding:10px;border:1px solid rgb(var(--accent-rgb) / .14);border-radius:11px;background:var(--surface-1)}
 .manualDailyGoal label span,.manualDailyGoal small{display:block;margin-bottom:5px;color:#96948c;font-size:8px}
 .manualDailyGoal input{width:100%;min-height:42px;font-size:15px;font-weight:800}
 .manualDailyGoal>div{display:flex;flex-direction:column;justify-content:center}.manualDailyGoal>div b{color:#d9ba62;font-size:17px;font-variant-numeric:tabular-nums}
@@ -313,16 +314,16 @@ select option{background:var(--surface-0);color:var(--text)}
 
 /* Preferences — collapsible premium cards */
 .settingsPage{display:grid;gap:12px}
-.settingsFoldCard{position:relative;overflow:hidden;margin:0;border-color:rgb(var(--accent-rgb) / .18);background:linear-gradient(145deg,#0f1318,var(--surface-0));box-shadow:0 13px 32px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.028)}
+.settingsFoldCard{position:relative;overflow:hidden;margin:0;border-color:rgb(var(--accent-rgb) / .18);background:var(--finance-settings-card);box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.028)}
 .settingsFoldCard:before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:linear-gradient(90deg,transparent,rgb(var(--accent-rgb) / .48),transparent)}
 .settingsFoldCard.isCollapsed{padding-bottom:14px}
 .settingsFoldHead{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .settingsFoldHead>div small{display:block;color:#b9994d;font-size:8px;font-weight:900;letter-spacing:.13em}
-.settingsFoldHead>div h2{margin:4px 0 0;color:#f2efe8;font-size:18px;letter-spacing:-.02em}
-.settingsFoldSummary{margin-top:10px;padding:9px 10px;border:1px solid rgb(var(--accent-rgb) / .10);border-radius:10px;background:var(--surface-0);color:#8e8f8b;font-size:8px;line-height:1.45}
+.settingsFoldHead>div h2{margin:4px 0 0;color:var(--text);font-size:18px;letter-spacing:-.02em}
+.settingsFoldSummary{margin-top:10px;padding:9px 10px;border:1px solid rgb(var(--accent-rgb) / .10);border-radius:10px;background:var(--surface-0);color:var(--text-muted);font-size:8px;line-height:1.45}
 .settingsFoldBody{margin-top:14px;animation:devinxCalcReveal .16s ease-out}
 .settingsFormInner{gap:14px}
-.settingsFormInner label>small{margin-top:5px;color:#777b77;font-size:8px;line-height:1.45}
+.settingsFormInner label>small{margin-top:5px;color:var(--text-muted);font-size:8px;line-height:1.45}
 .settingsFormInner select{min-height:44px}
 .settingsFormInner>.primary{margin-top:2px}
 @media(max-width:520px){
@@ -817,3 +818,15 @@ select option{background:var(--surface-1);color:var(--text)}
 .calculatorPreferenceChoices button{border:1px solid var(--border);background:var(--surface-2);color:var(--text-muted)}
 .calculatorPreferenceChoices button.active{border-color:var(--border-accent);background:linear-gradient(145deg,rgb(var(--accent-rgb) / .13),var(--surface-3));color:var(--text)}
 .calculatorPreferenceChoices button span{color:var(--accent-strong);font-size:19px}
+
+
+/* Finance theme preference */
+.themePreference{display:grid;gap:9px;padding:12px;border:1px solid var(--border);border-radius:13px;background:var(--surface-1)}
+.themePreference>span{display:grid;gap:3px}
+.themePreference>span b{color:var(--text);font-size:12px}
+.themePreference>span small{color:var(--text-muted);font-size:9px;font-weight:500;line-height:1.45}
+.themeChoices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.themeChoices button{display:flex;align-items:center;gap:8px;min-height:44px;padding:9px 12px;border:1px solid var(--border);border-radius:11px;background:var(--surface-0);color:var(--text-soft);font-weight:850}
+.themeChoices button i{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-style:normal;background:var(--surface-2);color:var(--text-muted)}
+.themeChoices button.active{border-color:var(--border-accent);background:linear-gradient(145deg,rgb(var(--accent-rgb) / .11),var(--surface-0));color:var(--text);box-shadow:inset 0 0 0 1px rgb(var(--accent-rgb) / .05)}
+.themeChoices button.active i{background:var(--button-primary-background);color:var(--accent-ink)}
