@@ -34,7 +34,7 @@ internal static class GuidedPairing
 
         Console.WriteLine();
         Console.WriteLine("Abrindo o DevinX no navegador...");
-        Console.WriteLine("Confirme em "Vincular este PC". Não precisa copiar código.");
+        Console.WriteLine("Confirme em \"Vincular este PC\". Não precisa copiar código.");
 
         try
         {
