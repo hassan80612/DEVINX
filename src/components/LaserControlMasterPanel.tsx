@@ -1,6 +1,6 @@
 'use client';
 
-import {FormEvent,useCallback,useEffect,useState} from 'react';
+import {FormEvent,useCallback,useEffect,useMemo,useState} from 'react';
 import styles from './LaserControlMasterPanel.module.css';
 
 type Status={
@@ -42,6 +42,14 @@ export function LaserControlMasterPanel(){
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[devicesPending,setDevicesPending]=useState(false);
   const[deviceActionId,setDeviceActionId]=useState<string|null>(null);
+  const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
+  const[workspaceTab,setWorkspaceTab]=useState<'preview'|'control'>('preview');
+  const[previewUrl,setPreviewUrl]=useState('');
+  const[previewMessage,setPreviewMessage]=useState('Abra a visualização para solicitar a imagem.');
+  const[previewCapturedAt,setPreviewCapturedAt]=useState<string|null>(null);
+  const[previewWidth,setPreviewWidth]=useState<number|null>(null);
+  const[previewHeight,setPreviewHeight]=useState<number|null>(null);
+  const[previewPending,setPreviewPending]=useState(false);
 
   const loadDevices=useCallback(async()=>{
     setDevicesPending(true);
@@ -53,7 +61,12 @@ export function LaserControlMasterPanel(){
       });
       const data=await response.json();
       if(!response.ok)throw new Error('devices');
-      setDevices(Array.isArray(data?.devices)?data.devices:[]);
+      const list=Array.isArray(data?.devices)?data.devices as LaserDevice[]:[];
+      setDevices(list);
+      setSelectedDeviceId(current=>{
+        if(current&&list.some(device=>device.device_id===current))return current;
+        return list.find(device=>device.device_status==='active')?.device_id??list[0]?.device_id??null;
+      });
     }catch{
       setPairingNotice('Não foi possível carregar os PCs vinculados.');
     }finally{
