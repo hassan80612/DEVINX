@@ -150,8 +150,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--border-accent);box-sh
   --finance-nav-icon:#9b7627;
   --finance-nav-active-bg:linear-gradient(180deg,#fff7df,#efe2bb);
   --finance-card-bg:var(--panel-background);
+  --finance-card-soft-bg:var(--panel-background-soft);
   --finance-card-inset:var(--surface-1);
+  --finance-control-bg:var(--control-background);
   --finance-soft-accent-bg:linear-gradient(145deg,#fff8e4,var(--surface-1));
+  --finance-button-secondary-bg:var(--button-secondary-background);
+  --finance-button-secondary-text:var(--text-soft);
+  --finance-strong-text:var(--text);
+  --finance-accent-text:var(--accent-dark);
   --finance-overlay:rgba(38,53,63,.34);
   --finance-settings-card:linear-gradient(145deg,#ffffff,var(--surface-1));
 }
@@ -166,8 +172,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--border-accent);box-sh
   --finance-nav-icon:#e6bd55;
   --finance-nav-active-bg:linear-gradient(180deg,rgba(112,79,18,.48),rgba(34,27,13,.72));
   --finance-card-bg:var(--panel-background);
+  --finance-card-soft-bg:var(--panel-background-soft);
   --finance-card-inset:var(--surface-0);
+  --finance-control-bg:var(--control-background);
   --finance-soft-accent-bg:linear-gradient(145deg,rgba(81,58,13,.25),var(--surface-0));
+  --finance-button-secondary-bg:var(--button-secondary-background);
+  --finance-button-secondary-text:var(--text-soft);
+  --finance-strong-text:var(--text);
+  --finance-accent-text:var(--accent-strong);
   --finance-overlay:rgba(0,0,0,.68);
   --finance-settings-card:linear-gradient(145deg,#0f1318,var(--surface-0));
 }
