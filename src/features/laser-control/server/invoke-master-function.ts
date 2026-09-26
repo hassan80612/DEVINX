@@ -4,7 +4,8 @@ const ALLOWED_FUNCTIONS=new Set([
   'laser-master-pairing-claim',
   'laser-master-devices',
   'laser-master-device-access',
-  'laser-master-preview'
+  'laser-master-preview',
+  'laser-master-command'
 ]);
 
 export async function invokeLaserMasterFunction(slug:string,body:Record<string,unknown>){
