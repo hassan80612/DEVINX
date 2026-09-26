@@ -34,3 +34,20 @@ jobs:
 
       - name: Build
         run: dotnet build .\laser-agent\DevinXLaserAgent.csproj -c Release --no-restore
+
+      - name: Pairing endpoint rejects unsigned payload
+        shell: pwsh
+        run: |
+          $url = 'https://jubiwhtnhxluetzkzomm.supabase.co/functions/v1/laser-agent-pairing-offer'
+          $status = curl.exe -sS -o pairing-negative.json -w "%{http_code}" -X POST $url -H "Content-Type: application/json" --data "{}"
+          if ($status -ne '400') {
+            Write-Host "Unexpected HTTP status: $status"
+            Get-Content pairing-negative.json
+            exit 1
+          }
+          $body = Get-Content pairing-negative.json -Raw
+          if ($body -notmatch 'protocol_version') {
+            Write-Host "Endpoint did not reject the unsigned payload for the expected reason."
+            Write-Host $body
+            exit 1
+          }
