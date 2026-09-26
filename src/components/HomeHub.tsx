@@ -290,7 +290,7 @@ function FeatureGrid({title,items}:{title:string;items:readonly string[]}){
   </section>;
 }
 
-export function HomeHub(){
+export function HomeHub({laserVisible=true,financeVisible=true}:{laserVisible?:boolean;financeVisible?:boolean}){
   const{locale}=useI18n();
   const activeLocale=(locale in COPY?locale:"pt-BR") as keyof typeof COPY;
   const c=COPY[activeLocale];
@@ -308,15 +308,15 @@ export function HomeHub(){
       <span className={styles.control}><b>{c.control}</b></span>
       <h1>{intl?c.intlChoose:c.choose}</h1>
       <p>{intl?c.intlChooseText:c.chooseText}</p>
-      <div className={styles.laserSoon} aria-label={LASER_SOON[activeLocale].status}>
+      {laserVisible&&<a href="/laser-control/guia" className={styles.laserSoon} aria-label={LASER_SOON[activeLocale].status}>
         <span>{LASER_SOON[activeLocale].title}</span>
         <b>{LASER_SOON[activeLocale].status}</b>
         <small>{LASER_SOON[activeLocale].text}</small>
-      </div>
+      </a>}
     </section>
 
     <section className={`${styles.products} ${!showStore?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
-      <article className={`${styles.product} ${styles.financeProduct}`}>
+      {financeVisible&&<article className={`${styles.product} ${styles.financeProduct}`}>
         <div className={styles.productGlow}></div>
         <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
         <div className={styles.copy}>
@@ -330,10 +330,10 @@ export function HomeHub(){
           <a className={styles.accessButton} href="/entrar">{c.financeLogin} →</a>
         </div>
         <FeatureGrid title={c.financeFeaturesTitle} items={financeFeatures}/>
-      </article>
+      </article>}
 
       {showStore&&<>
-      <div className={styles.or} aria-hidden="true">{c.or}</div>
+      {financeVisible&&<div className={styles.or} aria-hidden="true">{c.or}</div>}
 
       <article className={`${styles.product} ${styles.storeProduct}`}>
         <div className={styles.productGlow}></div>
