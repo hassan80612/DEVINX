@@ -734,3 +734,107 @@ linear-gradient(145deg,var(--surface-0) 0%,var(--surface-1) 38%,var(--surface-1)
 }
 
 .authTrialButton{width:100%;margin:0 0 14px}.authIntro>small{display:block;margin:-8px 0 16px;color:var(--text-muted);font-size:10px}.trialAccessNotice{width:min(1100px,calc(100% - 24px));margin:10px auto 0;padding:9px 12px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid rgb(var(--accent-rgb) / .22);border-radius:12px;background:var(--surface-0);color:var(--text-muted);font-size:10px}.trialAccessNotice b{color:var(--accent);letter-spacing:.08em}.trialAccessNotice span{color:var(--text-soft)}
+
+
+/* Desktop density — professional reading scale. Mobile geometry stays unchanged. */
+@media (min-width:901px){
+  .financeContent{width:min(1120px,100%);padding:30px 26px 40px}
+  .financeHeader{min-height:76px}
+  .financeHeaderMeta small{font-size:11px}
+  .financeHeaderMeta span{font-size:12px}
+  .languageMini{min-width:108px;padding:9px 11px;font-size:12px}
+
+  .sectionTopbar{margin-bottom:22px}
+  .sectionTopbar small{font-size:11px}
+  .sectionTopbar h1{font-size:32px}
+  .backButton{width:44px;height:44px}
+
+  .instantPanel{gap:26px;margin-bottom:18px;padding:30px}
+  .instantPanel small{font-size:11px}
+  .instantPanel h1{font-size:36px}
+  .instantPanel p{font-size:14px;line-height:1.6}
+
+  .dashboardStack,.stackSections{gap:18px}
+  .summaryHero{padding:28px}
+  .summaryHero small{font-size:11px}
+  .summaryHero strong{font-size:40px}
+  .summaryHero span{font-size:13px}
+
+  .dashboardMetrics article{padding:17px 18px}
+  .dashboardMetrics small{font-size:11px}
+  .dashboardMetrics strong{font-size:21px}
+  .dashboardMetrics span{font-size:11px}
+
+  .moduleSummary{padding:23px}
+  .moduleSummary small{font-size:11px}
+  .moduleSummary strong{font-size:24px}
+  .moduleSummary span{font-size:13px;line-height:1.55}
+
+  .organizeGrid{gap:13px}
+  .organizeGrid>button{min-height:118px;padding:19px}
+  .organizeGrid b{font-size:15px}
+  .organizeGrid small{font-size:12px;line-height:1.45}
+
+  .cashSummary{padding:18px}
+  .cashSummary article{padding:14px}
+  .cashSummary small{font-size:11px}
+  .cashSummary strong{font-size:21px}
+  .cashSummary p{font-size:12px}
+
+  .ledgerRow{padding:15px 16px}
+  .ledgerText b{font-size:14px}
+  .ledgerText small{font-size:12px}
+  .ledgerActions button,.pendingActions button,.pendingRow>button{font-size:12px}
+
+  .pendingRow{padding:14px 0}
+  .pendingRow b{font-size:14px}
+  .pendingRow small{font-size:12px}
+
+  .vehicleHero{padding:21px}
+  .vehicleHero small{font-size:11px}
+  .vehicleHero span{font-size:12px}
+
+  .workDayCard{padding:16px}
+  .workDayHead small{font-size:11px}
+  .workDayHead b{font-size:12px}
+  .workDayMetrics small,.workJourneyBreakdown small{font-size:10px}
+  .workDayMetrics b,.workJourneyBreakdown b{font-size:12px}
+  .workDayCashHint{font-size:11px}
+  .workSessionMain small{font-size:11px}
+  .workSessionMain>strong{font-size:15px}
+  .workSessionActions button{font-size:11px}
+
+  .cardIdentity small,.cardNumbers small,.statementHead span{font-size:11px}
+  .cardIdentity span,.recurringCard small,.debtCard small,.debtCard span{font-size:12px}
+  .statementHead b{font-size:15px}
+  .statementHead small{font-size:10px}
+  .statementItems button>span b{font-size:12px}
+  .statementItems button>span small{font-size:10px}
+  .statementItems button>strong{font-size:13px}
+  .statementItems button>em{font-size:10px}
+  .payBillAmount span{font-size:11px}
+
+  .reportTable small,.analysisList small,.categoryList small{font-size:11px}
+  .categoryActions button{font-size:11px}
+  .categoryChips span{font-size:12px}
+
+  .settingsFoldHead>div small{font-size:10px}
+  .settingsFoldHead>div h2{font-size:20px}
+  .settingsFoldSummary{font-size:11px}
+  .settingsFormInner label,.settingsFormInner label>small{font-size:12px}
+  .themePreference>span b{font-size:14px}
+  .themePreference>span small{font-size:11px}
+  .themeChoices button{font-size:13px}
+
+  .premiumFlowHead small{font-size:11px}
+  .flowLegend{font-size:11px}
+  .flowPeriodControl span{font-size:10px}
+  .flowPeriodControl select{font-size:11px}
+  .flowDay small{font-size:9px}
+  .flowSelection{font-size:11px}
+  .flowSelectionDate small,.flowSelectionValue small{font-size:9px}
+  .flowTapHint{font-size:10px}
+
+  .collapseToggle{font-size:10px}
+  .manualDailyGoal label span,.manualDailyGoal small{font-size:10px}
+}

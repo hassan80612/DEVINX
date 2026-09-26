@@ -830,3 +830,80 @@ select option{background:var(--surface-1);color:var(--text)}
 .themeChoices button i{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;font-style:normal;background:var(--surface-2);color:var(--text-muted)}
 .themeChoices button.active{border-color:var(--border-accent);background:linear-gradient(145deg,rgb(var(--accent-rgb) / .11),var(--surface-0));color:var(--text);box-shadow:inset 0 0 0 1px rgb(var(--accent-rgb) / .05)}
 .themeChoices button.active i{background:var(--button-primary-background);color:var(--accent-ink)}
+
+
+/* Light finance theme finishing pass — finance-only, using the same components. */
+.financeApp[data-theme="light"]{
+  background:var(--app-background);
+}
+.financeApp[data-theme="light"]:before{
+  background:
+    radial-gradient(42% 30% at 18% 16%,rgba(255,255,255,.72),transparent 72%),
+    radial-gradient(36% 26% at 76% 72%,rgb(var(--accent-rgb) / .05),transparent 74%);
+  mix-blend-mode:normal;
+  opacity:.75;
+}
+.financeApp[data-theme="light"] .financeHeader{
+  color:#f7faf8;
+}
+.financeApp[data-theme="light"] .financeHeaderMeta span{color:#c4ced3}
+.financeApp[data-theme="light"] .financeBottomNav button{color:#c8ced1}
+.financeApp[data-theme="light"] .financeBottomNav button b{color:#d7dde0}
+.financeApp[data-theme="light"] .financeBottomNav button.active b{color:#fff3c9}
+.financeApp[data-theme="light"] .backButton{color:var(--text)}
+.financeApp[data-theme="light"] .instantPanel,
+.financeApp[data-theme="light"] .summaryHero,
+.financeApp[data-theme="light"] .projectedStrip,
+.financeApp[data-theme="light"] .vehicleHero,
+.financeApp[data-theme="light"] .masterHero,
+.financeApp[data-theme="light"] .reserveHero,
+.financeApp[data-theme="light"] .reserveBalance{
+  box-shadow:var(--shadow-md),inset 0 1px 0 rgba(255,255,255,.85);
+}
+.financeApp[data-theme="light"] .organizeGrid>button,
+.financeApp[data-theme="light"] .quickCaptureSheet,
+.financeApp[data-theme="light"] .modalCard{
+  box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,.85);
+}
+.financeApp[data-theme="light"] .organizeGrid>button{color:var(--text)}
+.financeApp[data-theme="light"] .organizeGrid>button>span,
+.financeApp[data-theme="light"] .categoryIcon,
+.financeApp[data-theme="light"] .reserveRow>span,
+.financeApp[data-theme="light"] .deepDiveIcon{
+  background:linear-gradient(145deg,#fff7df,#efe2bb);
+  color:var(--accent-dark);
+  border-color:rgb(var(--accent-rgb) / .22);
+}
+.financeApp[data-theme="light"] .dashboardMetrics article{
+  box-shadow:var(--shadow-sm);
+}
+.financeApp[data-theme="light"] .workDayCard,
+.financeApp[data-theme="light"] .workDayMetrics>span,
+.financeApp[data-theme="light"] .workJourneyBreakdown>span,
+.financeApp[data-theme="light"] .statementGroup,
+.financeApp[data-theme="light"] .manualDailyGoal label,
+.financeApp[data-theme="light"] .manualDailyGoal>div{
+  background:var(--surface-1);
+}
+.financeApp[data-theme="light"] .statementHead b,
+.financeApp[data-theme="light"] .statementItems button,
+.financeApp[data-theme="light"] .tagRow button{color:var(--text)}
+.financeApp[data-theme="light"] .dailyGoalModeTabs button{color:var(--text-muted)}
+.financeApp[data-theme="light"] .dailyGoalModeTabs button.active{
+  background:linear-gradient(145deg,#fff7df,var(--surface-1));
+  color:var(--accent-dark);
+}
+.financeApp[data-theme="light"] .quickCaptureTabs button{color:var(--text-muted)}
+.financeApp[data-theme="light"] .quickCaptureTabs button.active{
+  background:linear-gradient(180deg,#fff6db,#f1e3bb);
+  color:var(--accent-dark);
+}
+.financeApp[data-theme="light"] .scientificDisplay{
+  background:linear-gradient(145deg,#f8fbfc,var(--surface-1));
+  box-shadow:inset 0 0 24px rgba(40,70,84,.06),var(--shadow-sm);
+}
+.financeApp[data-theme="light"] .calculatorModeTabs{background:var(--surface-1)}
+.financeApp[data-theme="light"] .scientificKeys .fn{background:linear-gradient(145deg,#eef7fa,var(--surface-2))}
+.financeApp[data-theme="light"] .scientificKeys .memory{background:linear-gradient(145deg,#eff7ee,var(--surface-2));color:#39734d}
+.financeApp[data-theme="light"] .scientificKeys .operator{background:linear-gradient(145deg,#fff6dc,var(--surface-2));color:var(--accent-dark)}
+.financeApp[data-theme="light"] .scientificKeys .clear{background:linear-gradient(145deg,#fff0ef,var(--surface-2));color:var(--negative)}
