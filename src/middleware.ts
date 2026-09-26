@@ -57,8 +57,9 @@ export async function middleware(request:NextRequest){
   if(!claims){
     const url=request.nextUrl.clone();
     url.pathname='/entrar';
+    const requestedPath=pathname+request.nextUrl.search;
     url.search='';
-    url.searchParams.set('next',pathname);
+    url.searchParams.set('next',requestedPath);
     return copySessionCookies(response,NextResponse.redirect(url));
   }
 

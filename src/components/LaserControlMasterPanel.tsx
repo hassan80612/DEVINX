@@ -1,7 +1,6 @@
 'use client';
 
 import {FormEvent,useCallback,useEffect,useState} from 'react';
-import {createClient} from '@/lib/supabase/client';
 import styles from './LaserControlMasterPanel.module.css';
 
 type Status={
@@ -47,8 +46,13 @@ export function LaserControlMasterPanel(){
   const loadDevices=useCallback(async()=>{
     setDevicesPending(true);
     try{
-      const{data,error}=await createClient().functions.invoke('laser-master-devices',{body:{}});
-      if(error)throw error;
+      const response=await fetch('/api/laser-control/master/devices',{
+        method:'POST',
+        credentials:'same-origin',
+        cache:'no-store'
+      });
+      const data=await response.json();
+      if(!response.ok)throw new Error('devices');
       setDevices(Array.isArray(data?.devices)?data.devices:[]);
     }catch{
       setPairingNotice('Não foi possível carregar os PCs vinculados.');
@@ -81,10 +85,14 @@ export function LaserControlMasterPanel(){
     setPairingPending(true);
     setPairingNotice('');
     try{
-      const{data,error}=await createClient().functions.invoke('laser-master-pairing-claim',{
-        body:{pairingCode:code,displayName:deviceName.trim()||'PC Oficina'}
+      const response=await fetch('/api/laser-control/master/claim',{
+        method:'POST',
+        credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({pairingCode:code,displayName:deviceName.trim()||'PC Oficina'})
       });
-      if(error||!data?.claimed){
+      const data=await response.json();
+      if(!response.ok||!data?.claimed){
         setPairingNotice(data?.reason==='not_found_or_expired'
           ?'Código não encontrado ou expirado. Gere outro no Agent.'
           :'Não foi possível vincular este PC.');
@@ -105,10 +113,14 @@ export function LaserControlMasterPanel(){
     setDeviceActionId(device.device_id);
     setPairingNotice('');
     try{
-      const{data,error}=await createClient().functions.invoke('laser-master-device-access',{
-        body:{deviceId:device.device_id,action}
+      const response=await fetch('/api/laser-control/master/device-access',{
+        method:'POST',
+        credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({deviceId:device.device_id,action})
       });
-      if(error||!data?.ok){
+      const data=await response.json();
+      if(!response.ok||!data?.ok){
         setPairingNotice('Não foi possível alterar o acesso deste PC.');
         return;
       }
@@ -161,11 +173,18 @@ export function LaserControlMasterPanel(){
         </article>
       </div>
 
+      <div className={styles.pairNotice}>
+        <b>Conexão simples</b><br/>
+        No PC, abra o novo DevinX Laser Agent com dois cliques. Ele abre a confirmação no navegador sozinho.
+      </div>
+
+      <details>
+      <summary>Modo manual de suporte</summary>
       <form className={styles.pairForm} onSubmit={claimPairing}>
         <div>
-          <small>VINCULAR PC DE TESTE</small>
-          <b>Digite o código exibido pelo Agent</b>
-          <span>Esta área só existe para o master durante o desenvolvimento.</span>
+          <small>VINCULAR MANUALMENTE</small>
+          <b>Use somente se a abertura automática falhar</b>
+          <span>O código manual fica como fallback técnico.</span>
         </div>
         <label>
           <span>Nome do PC</span>
@@ -185,6 +204,7 @@ export function LaserControlMasterPanel(){
         </label>
         <button type="submit" disabled={pairingPending}>{pairingPending?'Vinculando…':'Vincular PC'}</button>
       </form>
+      </details>
       {pairingNotice&&<div className={styles.pairNotice}>{pairingNotice}</div>}
 
       <div className={styles.devicesHead}>
@@ -233,10 +253,10 @@ export function LaserControlMasterPanel(){
       <div className={styles.testGuide}>
         <small>COMO TESTAR</small>
         <ol>
-          <li><b>1.</b><span>Abra o LightBurn no PC.</span></li>
-          <li><b>2.</b><span>Execute <code>DevinXLaserAgent.exe --pair-devinx</code>, copie o código e use “Vincular PC” acima.</span></li>
-          <li><b>3.</b><span>Rode <code>DevinXLaserAgent.exe --heartbeat-once</code> e clique em “Atualizar” para ver o estado. Se a REST API não existir, o Agent usa o diagnóstico UDP legado.</span></li>
-          <li><b>4.</b><span>Em LightBurn com REST API compatível, rode também <code>DevinXLaserAgent.exe --pair-rest</code> uma vez para liberar telemetria mais rica de projeto/progresso.</span></li>
+          <li><b>1.</b><span>Abra o LightBurn.</span></li>
+          <li><b>2.</b><span>Dê dois cliques no DevinX Laser Agent.</span></li>
+          <li><b>3.</b><span>O Agent abre o DevinX no navegador. Clique em “Vincular este PC”.</span></li>
+          <li><b>4.</b><span>Depois disso, o Agent envia o estado do LightBurn automaticamente. O modo manual fica só para suporte.</span></li>
         </ol>
         <p>Nesta versão de teste não existe Start, Stop, Pause ou Frame remoto. O objetivo é validar pareamento e monitoramento antes de liberar qualquer comando físico.</p>
       </div>
