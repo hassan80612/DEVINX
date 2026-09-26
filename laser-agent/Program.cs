@@ -60,6 +60,10 @@ internal static class Program
                     PrintCompact("Status", status);
                     var project = await rest.GetProjectJsonAsync(storedSecret);
                     if (project is not null)PrintCompact("Project", project);
+                    var poll = await rest.GetPollSnapshotJsonAsync(storedSecret);
+                    var telemetry = AgentTelemetryFactory.FromRest(identity, status, project, poll);
+                    if (args.Contains("--json-status", StringComparer.OrdinalIgnoreCase))
+                        Console.WriteLine("Telemetry: " + JsonSerializer.Serialize(telemetry));
                 }
             }
             else
@@ -79,6 +83,9 @@ internal static class Program
             {
                 var status = await udp.StatusAsync();
                 Console.WriteLine("Laser status: " + (status.Response == "OK" ? "IDLE" : status.Response == "!" ? "BUSY OR UNAVAILABLE" : status.Response));
+                var telemetry = AgentTelemetryFactory.FromLegacyUdp(identity, ping, status);
+                if (args.Contains("--json-status", StringComparer.OrdinalIgnoreCase))
+                    Console.WriteLine("Telemetry: " + JsonSerializer.Serialize(telemetry));
             }
         }
 
