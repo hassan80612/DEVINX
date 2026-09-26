@@ -34,7 +34,7 @@ internal static class AgentIdentityStore
 
         var identity = new AgentIdentity(
             Guid.NewGuid().ToString("D"),
-            PemEncoding.Write("PUBLIC KEY", publicKey),
+            new string(PemEncoding.Write("PUBLIC KEY", publicKey)),
             Convert.ToHexString(SHA256.HashData(publicKey)).ToLowerInvariant());
 
         File.WriteAllText(IdentityPath, JsonSerializer.Serialize(identity, new JsonSerializerOptions { WriteIndented = true }));
