@@ -74,3 +74,13 @@ Funções atualmente implantadas no Supabase do DevinX:
 Em um rollback completo, elas fazem parte do escopo e devem ser removidas/desativadas junto com o schema e o código. Antes da remoção, se necessário, pode-se publicar temporariamente um handler de bloqueio que responde HTTP 410 para cortar tráfego imediatamente.
 
 A pasta `supabase/rollback/functions/` contém o handler de bloqueio de emergência. Ele é fallback operacional, não substitui a remoção definitiva das funções em um rollback completo.
+
+
+## Telemetria assinada
+
+Migrations reais adicionais:
+- `20260926175918 laser_control_signed_telemetry_foundation` — fonte canônica `device_state` + sequência anti-replay;
+- `20260926182613 laser_control_signed_heartbeat_foundation` — camada temporária duplicada;
+- `20260926182805 laser_control_telemetry_consolidation` — remove a duplicação e mantém uma única telemetria.
+
+O estado final correto é: `device_state` + `laser_internal_accept_telemetry`. A migration 182613 permanece no histórico apenas porque foi aplicada; seus objetos redundantes foram removidos em 182805.
