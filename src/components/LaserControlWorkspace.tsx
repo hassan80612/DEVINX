@@ -309,7 +309,7 @@ export function LaserControlWorkspace(){
     });
   }
 
-  function pointerCoordinates(event:ReactPointerEvent<HTMLImageElement>){
+  function pointerCoordinates(event:{currentTarget:HTMLImageElement;clientX:number;clientY:number}){
     const rect=event.currentTarget.getBoundingClientRect();
     if(rect.width<=0||rect.height<=0)return null;
     const x=(event.clientX-rect.left)/rect.width;
