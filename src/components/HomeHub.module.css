@@ -202,7 +202,7 @@
 }
 
 .laserSoon{
-  width:min(560px,100%);margin:22px auto 0;padding:11px 14px;
+  width:min(560px,100%);margin:22px auto 0;padding:11px 14px;text-decoration:none;cursor:pointer;
   display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:9px;
   border:1px solid rgba(151,62,92,.28);border-radius:14px;
   background:linear-gradient(135deg,rgba(42,16,26,.44),rgba(8,27,27,.36));
