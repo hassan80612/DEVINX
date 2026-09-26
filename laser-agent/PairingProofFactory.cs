@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
-using System.Text;
 
 namespace DevinXLaserAgent;
 
 internal sealed record PairingProof(
     string DeviceId,
+    string PublicKeyPem,
     string PublicKeyFingerprint,
     string PairingCode,
     DateTimeOffset ExpiresAt,
@@ -26,6 +26,7 @@ internal static class PairingProofFactory
 
         return new PairingProof(
             identity.DeviceId,
+            identity.PublicKeyPem,
             identity.PublicKeyFingerprint,
             code,
             expiresAt,
