@@ -50,7 +50,7 @@ internal static class AgentIdentityStore
         {
             using var key = ECDsa.Create();
             key.ImportPkcs8PrivateKey(privateKey, out _);
-            var signature = key.SignData(Encoding.UTF8.GetBytes(payload), HashAlgorithmName.SHA256);
+            var signature = key.SignData(Encoding.UTF8.GetBytes(payload), HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
             return Convert.ToBase64String(signature);
         }
         finally { CryptographicOperations.ZeroMemory(privateKey); }
