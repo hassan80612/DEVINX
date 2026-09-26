@@ -1,6 +1,13 @@
 import {createServerSupabaseClient} from '@/lib/supabase/server';
 
+function laserMasterSurfaceEnabled(){
+  if(process.env.VERCEL_ENV==='preview')return true;
+  return process.env.LASER_CONTROL_MASTER_ENABLED==='true';
+}
+
 export async function getLaserControlMasterSession(){
+  if(!laserMasterSurfaceEnabled())return null;
+
   const supabase=await createServerSupabaseClient();
   const{data:claimsData,error:claimsError}=await supabase.auth.getClaims();
   const userId=claimsData?.claims?.sub;
