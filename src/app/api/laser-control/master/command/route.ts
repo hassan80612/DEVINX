@@ -7,6 +7,7 @@ export async function POST(request:Request){
   let body:{
     action?:string;
     deviceId?:string;
+    sessionId?:string;
     command?:string;
     commandId?:string;
     idempotencyKey?:string;
@@ -18,13 +19,15 @@ export async function POST(request:Request){
   let payload:Record<string,unknown>;
   if(body.action==='send'){
     const deviceId=String(body.deviceId||'');
+    const sessionId=String(body.sessionId||'');
     const command=String(body.command||'');
     const idempotencyKey=String(body.idempotencyKey||'');
     if(!/^[0-9a-f-]{36}$/i.test(deviceId)
-      || !/^[0-9a-f-]{36}$/i.test(idempotencyKey)
-      || !['start','pause','stop','frame'].includes(command))
+      ||!/^[0-9a-f-]{36}$/i.test(sessionId)
+      ||!/^[0-9a-f-]{36}$/i.test(idempotencyKey)
+      ||!['start','pause','stop','frame'].includes(command))
       return NextResponse.json({error:'invalid_command'},{status:400});
-    payload={action:'send',deviceId,command,idempotencyKey};
+    payload={action:'send',deviceId,sessionId,command,idempotencyKey};
   }else if(body.action==='status'){
     const commandId=String(body.commandId||'');
     if(!/^[0-9a-f-]{36}$/i.test(commandId))
