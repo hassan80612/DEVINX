@@ -22,7 +22,7 @@ export function LaserControlLanding(){
     </header>
 
     <section className={styles.hero}>
-      <div className={styles.heroCopy}>
+      <div className={styles.heroCopy}>\n        <div className={styles.masterOnly}>MASTER ONLY · SAFE MODE · REMOTE COMMANDS OFF</div>
         <span className={styles.eyebrow}>{c.eyebrow}</span>
         <h1>{c.title}<br/><em>{c.accent}</em></h1>
         <p>{c.lead}</p>
@@ -47,10 +47,10 @@ export function LaserControlLanding(){
           <span>{c.ready}</span>
         </div>
         <div className={styles.commandGrid}>
-          <button type="button" className={styles.frameButton}>{c.frame}</button>
+          <button type="button" className={styles.frameButton} disabled>{c.frame}</button>
           <button type="button" className={styles.startButton} disabled>{c.start}<small> 🔒</small></button>
-          <button type="button" className={styles.pauseButton}>{c.pause}</button>
-          <button type="button" className={styles.stopButton}>{c.stop}</button>
+          <button type="button" className={styles.pauseButton} disabled>{c.pause}</button>
+          <button type="button" className={styles.stopButton} disabled>{c.stop}</button>
         </div>
         <div className={styles.armNote}><b>{c.protectedStart}</b><span>{c.localArm}</span></div>
       </div>
