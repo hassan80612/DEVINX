@@ -2,13 +2,13 @@ import type {Metadata} from 'next';
 import {notFound} from 'next/navigation';
 import {getPublicSiteVisibility} from '@/features/site-visibility/server';
 import {getLaserMasterAccess} from '@/features/laser-control/server/master-access';
-import styles from './page.module.css';
+import {LaserGuideContent} from './LaserGuideContent';
 
 export const dynamic='force-dynamic';
 
 export const metadata:Metadata={
   title:'Laser Control | DevinX',
-  description:'Controle e monitoramento do LightBurn com o DevinX Laser Agent.'
+  description:'Guia completo do DevinX Laser Control e do DevinX Laser Agent para LightBurn.'
 };
 
 export default async function LaserGuidePage(){
@@ -17,49 +17,5 @@ export default async function LaserGuidePage(){
     const access=await getLaserMasterAccess();
     if(!access.allowed)notFound();
   }
-
-  return <main className={styles.page}>
-    <section className={styles.hero}>
-      <small>DEVINX LASER CONTROL</small>
-      <h1>Seu LightBurn conectado ao DevinX.</h1>
-      <p>Veja a janela do LightBurn em tempo real, acompanhe a máquina e use controles remotos a partir do celular ou de outro computador.</p>
-      <div className={styles.actions}>
-        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.26/DevinX-Laser-Agent-1.0.26.zip" download>Baixar Agent para Windows</a>
-        <a className={styles.secondary} href="/laser-control">Abrir Laser Control</a>
-      </div>
-    </section>
-
-    <section className={styles.block}>
-      <h2>Instalação passo a passo</h2>
-      <div className={styles.grid}>
-        <article><b>1 · Baixe</b><p>Baixe o ZIP do Agent em um PC Windows 10/11 de 64 bits.</p></article>
-        <article><b>2 · Extraia</b><p>Clique com o botão direito no ZIP e escolha <strong>Extrair tudo</strong>. Não execute o programa de dentro do ZIP.</p></article>
-        <article><b>3 · Abra</b><p>Dê dois cliques em <strong>DevinXLaserAgent.exe</strong>. O Agent instala os arquivos no seu usuário do Windows e passa a iniciar automaticamente.</p></article>
-        <article><b>4 · Vincule</b><p>O navegador abre o DevinX. Confirme o vínculo deste PC uma única vez. Depois disso o vínculo fica salvo.</p></article>
-        <article><b>5 · Abra o LightBurn</b><p>Abra o LightBurn normalmente. O Agent detecta o programa, a máquina e o estado do trabalho.</p></article>
-        <article><b>6 · Controle</b><p>Abra o Laser Control no celular ou em outro computador. Na mentoria, o código vale 30 minutos e, depois da conexão, a sessão pode durar até 6 horas.</p></article>
-      </div>
-    </section>
-
-    <section className={styles.block}>
-      <h2>Camadas e parâmetros</h2>
-      <p>O Agent 1.0.26 lê os controles que o LightBurn expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Quando uma versão não expõe os valores, use Editar na tela para ampliar a imagem e tocar no campo com o teclado do celular.</p>
-    </section>
-
-    <section className={styles.block}>
-      <h2>Como funciona o controle remoto</h2>
-      <p>Na tela Ao vivo você pode usar zoom, alternar a orientação e entrar em tela cheia. Mouse e teclado podem controlar a janela do LightBurn quando você habilita o controle remoto; toque na imagem funciona na tela cheia. Os controles de camada continuam acessíveis abaixo da imagem em tela cheia. Frame / Encerrar usa F1 no Galvo; Frame Diodo tenta o botão Frame da janela Laser. Iniciar, Pausar e Parar ficam abaixo da imagem.</p>
-      <p>O botão Iniciar pede confirmação antes de executar. A supervisão da máquina, intertravamentos e botão de emergência continuam independentes do DevinX.</p>
-    </section>
-
-    <section className={styles.block}>
-      <h2>Desinstalar</h2>
-      <p>Clique na seta de ícones perto do relógio do Windows, abra o menu do <strong>DevinX Laser Agent</strong> e escolha <strong>Desinstalar DevinX Laser Agent</strong>. O Agent remove a inicialização automática, o vínculo local e os arquivos instalados.</p>
-    </section>
-
-    <section className={styles.block}>
-      <h2>Aviso do Windows</h2>
-      <p>O instalador comercial assinado pela Microsoft Store pode ser publicado sem comprar certificado. Enquanto o Agent estiver em distribuição direta e sem certificado pago, o Windows pode exibir um aviso de Editor desconhecido/SmartScreen. O Agent não exige privilégios de administrador.</p>
-    </section>
-  </main>;
+  return <LaserGuideContent/>;
 }
