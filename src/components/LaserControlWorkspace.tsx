@@ -65,6 +65,7 @@ export function LaserControlWorkspace(){
   const[inputPending,setInputPending]=useState(false);
   const[commandPending,setCommandPending]=useState<LaserCommand|null>(null);
   const[commandNotice,setCommandNotice]=useState('');
+  const[framingEngaged,setFramingEngaged]=useState(false);
   const[pairingCode,setPairingCode]=useState('');
   const[deviceName,setDeviceName]=useState('PC Oficina');
   const[pairingPending,setPairingPending]=useState(false);
@@ -248,7 +249,9 @@ export function LaserControlWorkspace(){
     const handle=()=>{
       const isFull=Boolean(document.fullscreenElement);
       setFullscreen(isFull);
-      if(!isFull&&sessionRef.current?.remoteInputEnabled){
+      if(isFull){
+        if(!sessionRef.current?.remoteInputEnabled)void enableRemoteInput();
+      }else if(sessionRef.current?.remoteInputEnabled){
         void disableRemoteInput();
       }
     };
@@ -286,7 +289,7 @@ export function LaserControlWorkspace(){
 
   async function enableRemoteInput(){
     const current=sessionRef.current;
-    if(!current||!fullscreen)return;
+    if(!current||!document.fullscreenElement)return;
     setInputPending(true);
     setInputReady(false);
     try{
@@ -610,6 +613,7 @@ export function LaserControlWorkspace(){
         if(!check.ok)continue;
 
         if(result?.status==='acknowledged'){
+          if(command==='frame')setFramingEngaged(value=>!value);
           setCommandNotice(
             command==='start'?'Iniciar executado.'
             :command==='pause'?'Pausar executado.'
@@ -666,7 +670,7 @@ export function LaserControlWorkspace(){
     &&selectedDevice.job_state==='idle');
   const canFrame=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
-    &&['idle','framing'].includes(selectedDevice.job_state||''));
+    &&((selectedDevice.job_state==='idle')||framingEngaged));
   const canPause=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.machine_connected===true
     &&['running','busy'].includes(selectedDevice.job_state||''));
@@ -808,7 +812,7 @@ export function LaserControlWorkspace(){
       {tab==='control'&&<div className={styles.controlPane}>
         <div className={styles.commandGrid}>
           <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
-            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?(selectedDevice?.job_state==='framing'?'Encerrar framing':'Abrir Live Framing'):'Aguardando máquina parada'}</small>
+            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?(framingEngaged?'Encerrar framing':'Abrir Live Framing'):'Aguardando máquina parada'}</small>
           </button>
           <button disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
             <i>▶</i><b>Iniciar</b><small>{canStart?'Pronto':'Aguardando máquina parada'}</small>
