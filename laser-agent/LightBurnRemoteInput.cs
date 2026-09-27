@@ -4,63 +4,61 @@ namespace DevinXLaserAgent;
 
 internal static class LightBurnRemoteInput
 {
-    private const uint WmMouseMove=0x0200;
-    private const uint WmLButtonDown=0x0201;
-    private const uint WmLButtonUp=0x0202;
-    private const uint WmLButtonDblClk=0x0203;
-    private const uint WmRButtonDown=0x0204;
-    private const uint WmRButtonUp=0x0205;
-    private const uint WmMouseWheel=0x020A;
-    private const uint WmKeyDown=0x0100;
-    private const uint WmKeyUp=0x0101;
-    private const uint WmChar=0x0102;
-    private const int MkLButton=0x0001;
-    private const int MkRButton=0x0002;
-    private const uint CwpSkipInvisible=0x0001;
-    private const uint CwpSkipDisabled=0x0002;
+    private const uint InputMouse=0;
+    private const uint InputKeyboard=1;
+
+    private const uint MouseeventfLeftDown=0x0002;
+    private const uint MouseeventfLeftUp=0x0004;
+    private const uint MouseeventfRightDown=0x0008;
+    private const uint MouseeventfRightUp=0x0010;
+    private const uint MouseeventfWheel=0x0800;
+
+    private const uint KeyeventfKeyup=0x0002;
+    private const uint KeyeventfUnicode=0x0004;
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct Point{public int X;public int Y;}
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct GuiThreadInfo
+    private struct MouseInput
     {
-        public int cbSize;
-        public int flags;
-        public IntPtr hwndActive;
-        public IntPtr hwndFocus;
-        public IntPtr hwndCapture;
-        public IntPtr hwndMenuOwner;
-        public IntPtr hwndMoveSize;
-        public IntPtr hwndCaret;
-        public Rect rcCaret;
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct Rect{public int Left,Top,Right,Bottom;}
+    private struct KeyboardInput
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
 
-    [DllImport("user32.dll")]
-    private static extern bool ScreenToClient(IntPtr hWnd,ref Point point);
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HardwareInput
+    {
+        public uint uMsg;
+        public ushort wParamL;
+        public ushort wParamH;
+    }
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr WindowFromPoint(Point point);
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputUnion
+    {
+        [FieldOffset(0)] public MouseInput mi;
+        [FieldOffset(0)] public KeyboardInput ki;
+        [FieldOffset(0)] public HardwareInput hi;
+    }
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetAncestor(IntPtr hWnd,uint gaFlags);
-
-    private const uint GaRoot=2;
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr ChildWindowFromPointEx(IntPtr hWndParent,Point pt,uint flags);
-
-    [DllImport("user32.dll")]
-    private static extern bool PostMessage(IntPtr hWnd,uint msg,IntPtr wParam,IntPtr lParam);
-
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetGUIThreadInfo(uint idThread,ref GuiThreadInfo info);
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Input
+    {
+        public uint type;
+        public InputUnion U;
+    }
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -69,21 +67,21 @@ internal static class LightBurnRemoteInput
     private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
-    private static extern bool SetWindowPos(
-        IntPtr hWnd,IntPtr hWndInsertAfter,int X,int Y,int cx,int cy,uint uFlags);
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
 
     [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc,IntPtr lParam);
 
     [DllImport("user32.dll")]
-    private static extern bool IsIconic(IntPtr hWnd);
+    private static extern bool IsWindowVisible(IntPtr hWnd);
 
-    private static readonly IntPtr HwndTopmost=new(-1);
-    private static readonly IntPtr HwndNoTopmost=new(-2);
-    private const uint SwpNoMove=0x0002;
-    private const uint SwpNoSize=0x0001;
-    private const uint SwpShowWindow=0x0040;
-    private const int SwRestore=9;
+    [DllImport("user32.dll")]
+    private static extern bool SetCursorPos(int x,int y);
+
+    [DllImport("user32.dll",SetLastError=true)]
+    private static extern uint SendInput(uint nInputs,Input[] pInputs,int cbSize);
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd,IntPtr lParam);
 
     public static bool Apply(RealtimeRemoteInput input)
     {
@@ -94,179 +92,206 @@ internal static class LightBurnRemoteInput
 
         return input.Type switch
         {
-            "pointermove" => Mouse(main,input,WmMouseMove,0),
-            "pointerdown" => Mouse(main,input,input.Button==2?WmRButtonDown:WmLButtonDown,input.Button==2?MkRButton:MkLButton),
-            "pointerup" => Mouse(main,input,input.Button==2?WmRButtonUp:WmLButtonUp,0),
-            "doubleclick" => Mouse(main,input,WmLButtonDblClk,MkLButton),
-            "wheel" => Wheel(main,input),
-            "keydown" => Keyboard(main,input,true),
-            "keyup" => Keyboard(main,input,false),
-            "text" => Text(main,input.Key),
-            _ => false
+            "pointermove"=>MovePointer(main,input),
+            "pointerdown"=>PointerButton(main,input,true),
+            "pointerup"=>PointerButton(main,input,false),
+            "doubleclick"=>DoubleClick(main,input),
+            "wheel"=>Wheel(main,input),
+            "keydown"=>Keyboard(main,input,true),
+            "keyup"=>Keyboard(main,input,false),
+            "text"=>Text(main,input.Key),
+            _=>false
         };
     }
 
     public static bool FocusLightBurn()
     {
         var main=LightBurnWindowCapture.FindLightBurnWindow();
-        return main!=IntPtr.Zero&&SetForegroundWindow(main);
-    }
-
-    public static bool SetSessionLock(bool enabled)
-    {
-        if(!OperatingSystem.IsWindows())return false;
-        var main=LightBurnWindowCapture.FindLightBurnWindow();
         if(main==IntPtr.Zero)return false;
-
-        if(enabled&&IsIconic(main))ShowWindow(main,SwRestore);
-
-        var ok=SetWindowPos(
-            main,
-            enabled?HwndTopmost:HwndNoTopmost,
-            0,0,0,0,
-            SwpNoMove|SwpNoSize|(enabled?SwpShowWindow:0));
-
-        if(enabled)SetForegroundWindow(main);
-        return ok;
+        return SetForegroundWindow(FindInteractiveWindow(main));
     }
 
-    private static bool Mouse(IntPtr main,RealtimeRemoteInput input,uint message,int buttonMask)
+    // Compatibility shim for older Agent code paths. Session control must never
+    // pin LightBurn above the user's other applications.
+    public static bool SetSessionLock(bool enabled)=>true;
+
+    private static bool MovePointer(IntPtr main,RealtimeRemoteInput input)
     {
-        if(!TryScreenPoint(main,input,out var screen))return false;
+        if(!TryScreenPoint(main,input,out var x,out var y))return false;
+        return SetCursorPos(x,y);
+    }
 
-        var target=FindTargetAtPoint(main,screen);
-        if(target==IntPtr.Zero)return false;
+    private static bool PointerButton(IntPtr main,RealtimeRemoteInput input,bool down)
+    {
+        if(!TryScreenPoint(main,input,out var x,out var y))return false;
 
-        if(message is WmLButtonDown or WmRButtonDown or WmLButtonDblClk)
+        var target=FindInteractiveWindow(main);
+        SetForegroundWindow(target);
+        if(!SetCursorPos(x,y))return false;
+
+        var right=input.Button==2;
+        var flag=right
+            ?(down?MouseeventfRightDown:MouseeventfRightUp)
+            :(down?MouseeventfLeftDown:MouseeventfLeftUp);
+
+        return SendMouse(flag,0);
+    }
+
+    private static bool DoubleClick(IntPtr main,RealtimeRemoteInput input)
+    {
+        if(!TryScreenPoint(main,input,out var x,out var y))return false;
+
+        var target=FindInteractiveWindow(main);
+        SetForegroundWindow(target);
+        if(!SetCursorPos(x,y))return false;
+
+        var inputs=new[]
         {
-            var root=GetAncestor(target,GaRoot);
-            if(root!=IntPtr.Zero)SetForegroundWindow(root);
-        }
-
-        var client=screen;
-        if(!ScreenToClient(target,ref client))return false;
-        return PostMessage(target,message,(IntPtr)buttonMask,MakeLParam(client.X,client.Y));
+            Mouse(MouseeventfLeftDown,0),
+            Mouse(MouseeventfLeftUp,0),
+            Mouse(MouseeventfLeftDown,0),
+            Mouse(MouseeventfLeftUp,0)
+        };
+        return SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length;
     }
 
     private static bool Wheel(IntPtr main,RealtimeRemoteInput input)
     {
-        if(!TryScreenPoint(main,input,out var screen))return false;
+        if(!TryScreenPoint(main,input,out var x,out var y))return false;
 
-        var target=FindTargetAtPoint(main,screen);
-        if(target==IntPtr.Zero)return false;
-        var delta=(short)Math.Clamp((int)Math.Round(-input.DeltaY),-120,120);
-        if(delta==0)delta=(short)(input.DeltaY>0?-120:120);
+        var target=FindInteractiveWindow(main);
+        SetForegroundWindow(target);
+        if(!SetCursorPos(x,y))return false;
 
-        var wParam=(IntPtr)((delta&0xFFFF)<<16);
-        return PostMessage(target,WmMouseWheel,wParam,MakeLParam(screen.X,screen.Y));
-    }
-
-    private static bool TryScreenPoint(IntPtr main,RealtimeRemoteInput input,out Point screen)
-    {
-        screen=default;
-        if(!input.X.HasValue||!input.Y.HasValue)return false;
-        if(!LightBurnWindowCapture.TryGetPhysicalBounds(main,out var left,out var top,out var width,out var height))
-            return false;
-
-        screen=new Point
-        {
-            X=left+Math.Clamp((int)Math.Round(Math.Clamp(input.X.Value,0,1)*(width-1)),0,width-1),
-            Y=top+Math.Clamp((int)Math.Round(Math.Clamp(input.Y.Value,0,1)*(height-1)),0,height-1)
-        };
-        return true;
-    }
-
-    private static IntPtr FindTargetAtPoint(IntPtr main,Point screen)
-    {
-        // First ask Windows which visible LightBurn window is actually under the point.
-        // This catches top-level dialogs such as Galvo "Live Framing".
-        var top=WindowFromPoint(screen);
-        if(top!=IntPtr.Zero&&BelongsToSameProcess(main,top))
-            return top;
-
-        // Fallback to the child hierarchy of the main LightBurn window.
-        var current=main;
-        for(var depth=0;depth<10;depth++)
-        {
-            var local=screen;
-            if(!ScreenToClient(current,ref local))break;
-            var child=ChildWindowFromPointEx(current,local,CwpSkipInvisible|CwpSkipDisabled);
-            if(child==IntPtr.Zero||child==current||!BelongsToSameProcess(main,child))break;
-            current=child;
-        }
-        return current;
+        var delta=(int)Math.Round(-input.DeltaY);
+        delta=Math.Clamp(delta,-120,120);
+        if(delta==0)delta=input.DeltaY>0?-120:120;
+        return SendMouse(MouseeventfWheel,unchecked((uint)delta));
     }
 
     private static bool Keyboard(IntPtr main,RealtimeRemoteInput input,bool down)
     {
-        var target=FocusedWindowFor(main);
+        var target=FindInteractiveWindow(main);
+        SetForegroundWindow(target);
+
         var vk=VirtualKey(input.Code,input.Key);
         if(vk==0)return false;
 
-        var message=down?WmKeyDown:WmKeyUp;
-        var ok=true;
-
+        var list=new List<Input>();
         if(down)
         {
-            if(input.Ctrl)ok&=PostMessage(target,WmKeyDown,(IntPtr)0x11,IntPtr.Zero);
-            if(input.Shift)ok&=PostMessage(target,WmKeyDown,(IntPtr)0x10,IntPtr.Zero);
-            if(input.Alt)ok&=PostMessage(target,WmKeyDown,(IntPtr)0x12,IntPtr.Zero);
+            if(input.Ctrl)list.Add(Key(0x11,false));
+            if(input.Shift)list.Add(Key(0x10,false));
+            if(input.Alt)list.Add(Key(0x12,false));
         }
 
-        ok&=PostMessage(target,message,(IntPtr)vk,IntPtr.Zero);
+        list.Add(Key((ushort)vk,!down));
 
         if(!down)
         {
-            if(input.Alt)ok&=PostMessage(target,WmKeyUp,(IntPtr)0x12,IntPtr.Zero);
-            if(input.Shift)ok&=PostMessage(target,WmKeyUp,(IntPtr)0x10,IntPtr.Zero);
-            if(input.Ctrl)ok&=PostMessage(target,WmKeyUp,(IntPtr)0x11,IntPtr.Zero);
+            if(input.Alt)list.Add(Key(0x12,true));
+            if(input.Shift)list.Add(Key(0x10,true));
+            if(input.Ctrl)list.Add(Key(0x11,true));
         }
 
-        return ok;
+        var inputs=list.ToArray();
+        return SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length;
     }
 
     private static bool Text(IntPtr main,string? text)
     {
         if(string.IsNullOrEmpty(text))return false;
-        var target=FocusedWindowFor(main);
-        var ok=true;
-        foreach(var ch in text.Take(16))
-            ok&=PostMessage(target,WmChar,(IntPtr)ch,IntPtr.Zero);
-        return ok;
-    }
 
-    private static IntPtr FocusedWindowFor(IntPtr main)
-    {
-        var foreground=GetForegroundWindow();
-        if(foreground!=IntPtr.Zero&&BelongsToSameProcess(main,foreground))
+        var target=FindInteractiveWindow(main);
+        SetForegroundWindow(target);
+
+        var inputs=new List<Input>();
+        foreach(var ch in text.Take(32))
         {
-            var thread=GetWindowThreadProcessId(foreground,out _);
-            var info=new GuiThreadInfo{cbSize=Marshal.SizeOf<GuiThreadInfo>()};
-            if(thread!=0&&GetGUIThreadInfo(thread,ref info)
-               &&info.hwndFocus!=IntPtr.Zero
-               &&BelongsToSameProcess(main,info.hwndFocus))
-                return info.hwndFocus;
-            return foreground;
+            inputs.Add(Unicode(ch,false));
+            inputs.Add(Unicode(ch,true));
         }
 
-        var mainThread=GetWindowThreadProcessId(main,out _);
-        var mainInfo=new GuiThreadInfo{cbSize=Marshal.SizeOf<GuiThreadInfo>()};
-        if(mainThread!=0&&GetGUIThreadInfo(mainThread,ref mainInfo)
-           &&mainInfo.hwndFocus!=IntPtr.Zero
-           &&BelongsToSameProcess(main,mainInfo.hwndFocus))
-            return mainInfo.hwndFocus;
-        return main;
+        var array=inputs.ToArray();
+        return SendInput((uint)array.Length,array,Marshal.SizeOf<Input>())==array.Length;
     }
 
-    private static bool BelongsToSameProcess(IntPtr main,IntPtr candidate)
+    private static bool TryScreenPoint(IntPtr main,RealtimeRemoteInput input,out int x,out int y)
+    {
+        x=y=0;
+        if(!input.X.HasValue||!input.Y.HasValue)return false;
+        if(!LightBurnWindowCapture.TryGetPhysicalBounds(main,out var left,out var top,out var width,out var height))
+            return false;
+
+        x=left+Math.Clamp((int)Math.Round(Math.Clamp(input.X.Value,0,1)*(width-1)),0,width-1);
+        y=top+Math.Clamp((int)Math.Round(Math.Clamp(input.Y.Value,0,1)*(height-1)),0,height-1);
+        return true;
+    }
+
+    private static IntPtr FindInteractiveWindow(IntPtr main)
     {
         GetWindowThreadProcessId(main,out var mainPid);
-        GetWindowThreadProcessId(candidate,out var candidatePid);
-        return mainPid!=0&&mainPid==candidatePid;
+        if(mainPid==0)return main;
+
+        var foreground=GetForegroundWindow();
+        if(foreground!=IntPtr.Zero)
+        {
+            GetWindowThreadProcessId(foreground,out var foregroundPid);
+            if(foregroundPid==mainPid)return foreground;
+        }
+
+        IntPtr candidate=IntPtr.Zero;
+        EnumWindows((window,_)=>{
+            if(window==main||!IsWindowVisible(window))return true;
+            GetWindowThreadProcessId(window,out var pid);
+            if(pid==mainPid)
+            {
+                candidate=window;
+                return false;
+            }
+            return true;
+        },IntPtr.Zero);
+
+        return candidate!=IntPtr.Zero?candidate:main;
     }
 
-    private static IntPtr MakeLParam(int x,int y)=>
-        (IntPtr)(((y&0xFFFF)<<16)|(x&0xFFFF));
+    private static bool SendMouse(uint flags,uint data)
+    {
+        var input=Mouse(flags,data);
+        return SendInput(1,[input],Marshal.SizeOf<Input>())==1;
+    }
+
+    private static Input Mouse(uint flags,uint data)=>new()
+    {
+        type=InputMouse,
+        U=new InputUnion
+        {
+            mi=new MouseInput{dwFlags=flags,mouseData=data}
+        }
+    };
+
+    private static Input Key(ushort key,bool up)=>new()
+    {
+        type=InputKeyboard,
+        U=new InputUnion
+        {
+            ki=new KeyboardInput{wVk=key,dwFlags=up?KeyeventfKeyup:0}
+        }
+    };
+
+    private static Input Unicode(char ch,bool up)=>new()
+    {
+        type=InputKeyboard,
+        U=new InputUnion
+        {
+            ki=new KeyboardInput
+            {
+                wVk=0,
+                wScan=ch,
+                dwFlags=KeyeventfUnicode|(up?KeyeventfKeyup:0)
+            }
+        }
+    };
 
     private static int VirtualKey(string? code,string? key)
     {
