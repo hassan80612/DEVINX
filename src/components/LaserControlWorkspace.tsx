@@ -97,7 +97,8 @@ export function LaserControlWorkspace(){
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
-  const[controlDrawerOpen,setControlDrawerOpen]=useState(false);
+  const[controlDrawerOpen,setControlDrawerOpen]=useState(true);
+  const[toolPanelOpen,setToolPanelOpen]=useState(false);
   const[controlSnapshot,setControlSnapshot]=useState<LightBurnControlSnapshot|null>(null);
   const[controlDrafts,setControlDrafts]=useState<Record<string,string>>({});
   const[controlPending,setControlPending]=useState<string|null>(null);
@@ -972,14 +973,32 @@ export function LaserControlWorkspace(){
   }
 
   function openControlDrawer(){
-    setTab('control');
+    setTab('live');
     setControlDrawerOpen(true);
     if(!inputReady&&!inputPending)void enableRemoteInput();
   }
 
   function closeControlDrawer(){
-    setControlDrawerOpen(false);
+    setControlDrawerOpen(true);
     setTab('live');
+  }
+
+  function openLayerPanel(){
+    setToolPanelOpen(true);
+    if(!inputReady&&!inputPending){
+      void enableRemoteInput();
+      window.setTimeout(()=>refreshParameters(),650);
+    }else{
+      refreshParameters();
+    }
+  }
+
+  async function openToolDialog(
+    id:string,
+    shortcut:{key:string;code:string;ctrl?:boolean;shift?:boolean;alt?:boolean}
+  ){
+    setToolPanelOpen(true);
+    await runShortcut(id,shortcut);
   }
 
   async function claimPairing(event:FormEvent){
@@ -1148,28 +1167,13 @@ export function LaserControlWorkspace(){
         <span><small>{t('laser.progress')}</small><b>{selectedDevice.progress_permille==null?'—':(selectedDevice.progress_permille/10).toFixed(1)+'%'}</b></span>
       </div>
 
-      <div className={styles.tabs} role="tablist" aria-label="Laser Control">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab==='live'}
-          className={tab==='live'?styles.activeTab:''}
-          onClick={()=>{setTab('live');setControlDrawerOpen(false)}}
-        ><span className={styles.tabIcon}>◉</span><span>{t('laser.tabLive')}</span></button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab==='control'}
-          className={tab==='control'?styles.activeTab:''}
-          onClick={openControlDrawer}
-        ><span className={styles.tabIcon}>⌘</span><span>{t('laser.tabControl')}</span></button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab==='agent'}
-          className={tab==='agent'?styles.activeTab:''}
-          onClick={()=>setTab('agent')}
-        ><span className={styles.tabIcon}>⚙</span><span>{t('laser.tabAgent')}</span></button>
+      <div className={styles.simpleModeBar}>
+        <button type="button" className={tab!=='agent'?styles.simpleModeActive:''} onClick={()=>setTab('live')}>
+          ◉ Operar
+        </button>
+        <button type="button" className={tab==='agent'?styles.simpleModeActive:''} onClick={()=>setTab('agent')}>
+          ⚙ {t('laser.tabAgent')}
+        </button>
       </div>
 
       {tab!=='agent'&&<div className={styles.livePane}>
@@ -1283,17 +1287,7 @@ export function LaserControlWorkspace(){
         </div>
 
         <section className={styles.controlDrawer}>
-          <button
-            type="button"
-            className={styles.drawerToggle}
-            aria-expanded={controlDrawerOpen}
-            onClick={()=>controlDrawerOpen?closeControlDrawer():openControlDrawer()}
-          >
-            <span><i>⌘</i><b>{t('laser.controlsTitle')}</b><small>{t('laser.controlsHelp')}</small></span>
-            <strong>{controlDrawerOpen?t('laser.controlsCollapse'):t('laser.controlsExpand')}</strong>
-          </button>
-
-          {controlDrawerOpen&&<div className={styles.controlDrawerBody}>
+          <div className={styles.controlDrawerBody}>
 
         <div className={styles.commandGrid}>
           <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
@@ -1311,7 +1305,15 @@ export function LaserControlWorkspace(){
         </div>
         {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
 
+        <div className={styles.primaryActionBar}>
+          <button type="button" onClick={openLayerPanel}><i>◫</i><span>Camada / valores</span></button>
+          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('rotary',{key:'r',code:'KeyR',ctrl:true,shift:true})}><i>⟳</i><span>Rotativo</span></button>
+          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('adjust-image',{key:'i',code:'KeyI',alt:true})}><i>◐</i><span>Ajustar imagem</span></button>
+          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('trace',{key:'t',code:'KeyT',alt:true})}><i>⌇</i><span>Rastrear</span></button>
+          <button type="button" onClick={()=>setToolPanelOpen(value=>!value)}><i>⋯</i><span>{toolPanelOpen?'Fechar painel':'Mais'}</span></button>
+        </div>
 
+        {(toolPanelOpen||activeDialogTool||Boolean(controlSnapshot))&&<div className={styles.contextPanel}>
         <section className={styles.parameterDock}>
           <div className={styles.parameterHead}>
             <div>
@@ -1407,7 +1409,7 @@ export function LaserControlWorkspace(){
 
 
             <details className={styles.extraTools}>
-              <summary>{t('laser.extraTools')}</summary>
+              <summary>Mais ferramentas</summary>
         <section className={styles.quickSection}>
           <div className={styles.sectionHeading}>
             <div><small>LIGHTBURN</small><h3>{t('laser.quickTools')}</h3></div>
@@ -1453,6 +1455,7 @@ export function LaserControlWorkspace(){
 
 
             </details>
+        </div>}
         <div className={styles.controlDetail}>
           <b>SAFE CONTROL</b>
           <p>{t('laser.commandSafety')}</p>
@@ -1463,7 +1466,7 @@ export function LaserControlWorkspace(){
           <span>{t('laser.inputHint')}</span>
         </div>
 
-          </div>}
+          </div>
         </section>
       </div>}
 
