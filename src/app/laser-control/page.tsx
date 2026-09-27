@@ -20,7 +20,7 @@ export default async function LaserControlPage(){
   return <main style={{
     minHeight:'100vh',
     padding:'20px 0 48px',
-    background:'radial-gradient(circle at 16% 0%,rgba(67,112,148,.16),transparent 34%), radial-gradient(circle at 88% 8%,rgba(95,86,156,.10),transparent 30%), linear-gradient(180deg,#0d151f 0%,#09111a 58%,#0c141d 100%)'
+    background:'radial-gradient(circle at 14% -4%,rgba(121,190,224,.22),transparent 34%), radial-gradient(circle at 90% 3%,rgba(145,129,214,.14),transparent 31%), linear-gradient(180deg,#344655 0%,#2a3b49 55%,#304250 100%)'
   }}>
     {access.isAdmin&&<div style={{width:'min(1720px,calc(100% - 24px))',margin:'0 auto'}}>
       <SiteVisibilityAdminCard/>

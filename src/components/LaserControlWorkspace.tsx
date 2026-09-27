@@ -76,6 +76,7 @@ export function LaserControlWorkspace(){
   const[mentorCode,setMentorCode]=useState('');
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
+  const[toolPending,setToolPending]=useState<string|null>(null);
 
   const channelRef=useRef<any>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
@@ -103,6 +104,7 @@ export function LaserControlWorkspace(){
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
   const fullscreenAutoInputRef=useRef(false);
+  const inputReadyRef=useRef(false);
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -170,6 +172,7 @@ export function LaserControlWorkspace(){
         sessionRef.current=next;
         setSession(next);
         setRealtimeStatus('connecting');
+        inputReadyRef.current=false;
         setInputReady(false);
       }catch{
         if(active)setRealtimeStatus('error');
@@ -205,6 +208,7 @@ export function LaserControlWorkspace(){
       setSession(null);
       setFrameSrc('');
       resetZoom();
+      inputReadyRef.current=false;
       setInputReady(false);
       setRealtimeStatus('idle');
     };
@@ -238,8 +242,12 @@ export function LaserControlWorkspace(){
       })
       .on('broadcast',{event:'agent_state'},({payload}:any)=>{
         if(payload?.token!==session.frameToken)return;
-        if(payload?.state==='control-ready')setInputReady(true);
+        if(payload?.state==='control-ready'){
+          inputReadyRef.current=true;
+          setInputReady(true);
+        }
         if(payload?.state==='preview-ready'){
+          inputReadyRef.current=false;
           setInputReady(false);
           setRealtimeStatus(current=>current==='live'?'live':'connecting');
         }
@@ -312,6 +320,7 @@ export function LaserControlWorkspace(){
     const current=sessionRef.current;
     if(!current)return;
     setInputPending(true);
+    inputReadyRef.current=false;
     setInputReady(false);
     try{
       const data=await postSession({action:'input',sessionId:current.sessionId,enabled:true});
@@ -335,9 +344,11 @@ export function LaserControlWorkspace(){
       const next={...current,...data,inputToken:null,remoteInputEnabled:false} as RemoteSession;
       sessionRef.current=next;
       setSession(next);
+      inputReadyRef.current=false;
       setInputReady(false);
       setNotice(t('laser.inputBlocked'));
     }catch{
+      inputReadyRef.current=false;
       setInputReady(false);
     }finally{
       setInputPending(false);
@@ -346,12 +357,56 @@ export function LaserControlWorkspace(){
 
   function sendRemoteInput(payload:Record<string,unknown>){
     const current=sessionRef.current;
-    if(!inputReady||!current?.inputToken||!channelRef.current)return;
+    if(!inputReadyRef.current||!current?.inputToken||!channelRef.current)return;
     void channelRef.current.send({
       type:'broadcast',
       event:'remote_input',
       payload:{token:current.inputToken,...payload}
     });
+  }
+
+  async function ensureInputReady(){
+    if(inputReadyRef.current)return true;
+    const current=sessionRef.current;
+    if(!current)return false;
+
+    if(!current.remoteInputEnabled){
+      await enableRemoteInput();
+    }
+
+    for(let i=0;i<30;i++){
+      if(inputReadyRef.current)return true;
+      await new Promise(resolve=>window.setTimeout(resolve,100));
+    }
+    return false;
+  }
+
+  async function runShortcut(
+    id:string,
+    shortcut:{key:string;code:string;ctrl?:boolean;shift?:boolean;alt?:boolean}
+  ){
+    if(toolPending)return;
+    setToolPending(id);
+    try{
+      if(!await ensureInputReady()){
+        setNotice(t('laser.quickNeedControl'));
+        return;
+      }
+      const payload={
+        key:shortcut.key,
+        code:shortcut.code,
+        ctrl:Boolean(shortcut.ctrl),
+        shift:Boolean(shortcut.shift),
+        alt:Boolean(shortcut.alt),
+        meta:false
+      };
+      sendRemoteInput({type:'keydown',...payload});
+      await new Promise(resolve=>window.setTimeout(resolve,55));
+      sendRemoteInput({type:'keyup',...payload});
+      setNotice(t('laser.quickSent'));
+    }finally{
+      setToolPending(null);
+    }
   }
 
   function pointerCoordinatesFromClient(clientX:number,clientY:number){
@@ -933,6 +988,50 @@ export function LaserControlWorkspace(){
           </button>
         </div>
         {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
+
+        <section className={styles.quickSection}>
+          <div className={styles.sectionHeading}>
+            <div><small>LIGHTBURN</small><h3>{t('laser.quickTools')}</h3></div>
+            <p>{t('laser.quickHelp')}</p>
+          </div>
+
+          <div className={styles.quickGroups}>
+            <article className={styles.quickGroup}>
+              <header><b>{t('laser.projectTools')}</b><span>{t('laser.projectToolsHint')}</span></header>
+              <div className={styles.quickGrid}>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('select',{key:'a',code:'KeyA',ctrl:true})}><i>⌁</i><span>{t('laser.selectAll')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('save',{key:'s',code:'KeyS',ctrl:true})}><i>▣</i><span>{t('laser.saveProject')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('preview',{key:'p',code:'KeyP',alt:true})}><i>◉</i><span>{t('laser.previewProject')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('import',{key:'i',code:'KeyI',ctrl:true})}><i>↥</i><span>{t('laser.importPc')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('undo',{key:'z',code:'KeyZ',ctrl:true})}><i>↶</i><span>{t('laser.undo')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('redo',{key:'z',code:'KeyZ',ctrl:true,shift:true})}><i>↷</i><span>{t('laser.redo')}</span></button>
+              </div>
+            </article>
+
+            <article className={styles.quickGroup}>
+              <header><b>{t('laser.transformTools')}</b><span>{t('laser.transformToolsHint')}</span></header>
+              <div className={styles.quickGrid}>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('flip-h',{key:'h',code:'KeyH',ctrl:true,shift:true})}><i>↔</i><span>{t('laser.flipH')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('flip-v',{key:'v',code:'KeyV',ctrl:true,shift:true})}><i>↕</i><span>{t('laser.flipV')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('center',{key:'p',code:'KeyP'})}><i>⊙</i><span>{t('laser.centerPage')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('left',{key:'ArrowLeft',code:'ArrowLeft'})}><i>←</i><span>{t('laser.moveLeft')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('right',{key:'ArrowRight',code:'ArrowRight'})}><i>→</i><span>{t('laser.moveRight')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('up',{key:'ArrowUp',code:'ArrowUp'})}><i>↑</i><span>{t('laser.moveUp')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('down',{key:'ArrowDown',code:'ArrowDown'})}><i>↓</i><span>{t('laser.moveDown')}</span></button>
+              </div>
+            </article>
+
+            <article className={styles.quickGroup}>
+              <header><b>{t('laser.imageTools')}</b><span>{t('laser.imageToolsHint')}</span></header>
+              <div className={styles.quickGrid}>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('trace',{key:'t',code:'KeyT',alt:true})}><i>⌇</i><span>{t('laser.traceImage')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('adjust-image',{key:'i',code:'KeyI',alt:true})}><i>◐</i><span>{t('laser.adjustImage')}</span></button>
+                <button disabled={toolPending!==null} onClick={()=>void runShortcut('rotary',{key:'r',code:'KeyR',ctrl:true,shift:true})}><i>⟳</i><span>{t('laser.rotarySetup')}</span></button>
+              </div>
+            </article>
+          </div>
+        </section>
+
         <div className={styles.controlDetail}>
           <b>SAFE CONTROL</b>
           <p>{t('laser.commandSafety')}</p>
