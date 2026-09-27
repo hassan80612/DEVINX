@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 using UIA=Interop.UIAutomationClient;
 
 namespace DevinXLaserAgent;
@@ -15,6 +16,7 @@ internal sealed record LightBurnControlBridgeResult(
 
 internal static class LightBurnControlBridge
 {
+    private const int InvokePatternId=10000;
     private const int ValuePatternId=10002;
     private const int RangeValuePatternId=10003;
     private const int SelectionItemPatternId=10010;
@@ -47,15 +49,36 @@ internal static class LightBurnControlBridge
         new("overscan","Overscan","toggle",["Overscanning","Overscan"]),
         new("crossHatch","Cross-hatch","toggle",["Cross-Hatch","Cross Hatch","Hachura cruzada","Tramado cruzado"]),
         new("airAssist","Air Assist","toggle",["Air Assist","Assistência de ar","Asistencia de aire"]),
-        new("output","Saída","toggle",["Output","Saída","Salida","Sortie","Ausgabe"])
+        new("output","Saída","toggle",["Output","Saída","Salida","Sortie","Ausgabe"]),
+        new("rotaryEnabled","Ativar rotativo","toggle",["Enable Rotary","Enable Rotary Mode","Rotary Enable","Ativar rotativo","Habilitar rotativo"]),
+        new("stepsPerRotation","Passos por rotação","number",["Steps Per Rotation","Steps per rev","Passos por rotação","Pasos por rotación"]),
+        new("mmPerRotation","MM por rotação","number",["MM Per Rotation","mm per rotation","MM/Rotation","MM por rotação"]),
+        new("rollerDiameter","Diâmetro do rolete","number",["Roller Diameter","Diâmetro do rolete","Diámetro del rodillo"]),
+        new("objectDiameter","Diâmetro do objeto","number",["Object Diameter","Diâmetro do objeto","Diámetro del objeto"]),
+        new("circumference","Circunferência","number",["Circumference","Circunferência","Circunferencia"]),
+        new("splitSize","Tamanho do split","number",["Split Size","Split size","Tamanho do split"]),
+        new("overlap","Sobreposição","number",["Overlap","Sobreposição","Superposición"]),
+        new("minSpeed","Velocidade mínima","number",["Min Speed","Minimum Speed","Velocidade mínima"]),
+        new("maxSpeed","Velocidade máxima","number",["Max Speed","Maximum Speed","Velocidade máxima"]),
+        new("accelerationTime","Aceleração","number",["Acceleration Time","Acceleration","Tempo de aceleração"]),
+        new("returnSpeed","Velocidade de retorno","number",["Return Speed","Velocidade de retorno"]),
+        new("outputCenter","Centro de saída","number",["Output Center","Centro de saída"]),
+        new("reverseRotary","Inverter direção","toggle",["Reverse Rotary Direction","Reverse Direction","Inverter direção"]),
+        new("returnToStart","Retornar ao início","toggle",["Return to Starting Point","Return to Start","Retornar ao início"])
     ];
 
     private static readonly dynamic Automation=new UIA.CUIAutomation8();
 
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x,int y);
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags,uint dx,uint dy,uint data,UIntPtr extra);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd,uint msg,IntPtr wParam,IntPtr lParam);
     private const uint LeftDown=0x0002;
     private const uint LeftUp=0x0004;
+    private const uint WmKeyDown=0x0100;
+    private const uint WmKeyUp=0x0101;
+    private const int VkEscape=0x1B;
 
     public static LightBurnControlBridgeResult Inspect()
     {
@@ -64,15 +87,19 @@ internal static class LightBurnControlBridge
             var root=GetRoot();
             if(root is null)return Fail("lightburn_window_not_found");
             var nodes=ReadNodes(root);
-            var layers=FindLayers(nodes);
-            var fields=Specs
+            var uiLayers=FindLayers(nodes);
+            var uiFields=Specs
                 .Select(spec=>BuildField(spec,nodes))
                 .Where(field=>field is not null)
                 .Select(field=>field!)
                 .ToArray();
             string? title=null;
             try{title=Convert.ToString(((dynamic)root).CurrentName);}catch{}
-            return new(true,null,new(title,layers,fields));
+
+            var api=TryReadApiSnapshot();
+            var layers=api?.Layers is {Length:>0}?api.Layers:uiLayers;
+            var fields=MergeFields(api?.Fields??Array.Empty<LightBurnControlField>(),uiFields);
+            return new(true,null,new(title??api?.WindowTitle,layers,fields));
         }
         catch(COMException){return Fail("lightburn_ui_changed");}
         catch(Exception ex){return Fail("inspect_error:"+ex.GetType().Name);}
@@ -152,12 +179,63 @@ internal static class LightBurnControlBridge
         catch(Exception ex){return Fail("layer_editor_error:"+ex.GetType().Name);}
     }
 
+    public static LightBurnControlBridgeResult DialogAction(string action)
+    {
+        try
+        {
+            var root=GetRoot();
+            if(root is null)return Fail("lightburn_window_not_found");
+            var nodes=ReadNodes(root);
+            var aliases=action switch
+            {
+                "confirm"=>new[]{"OK","Apply","Aplicar","Aceptar"},
+                "cancel"=>new[]{"Cancel","Cancelar"},
+                "close"=>new[]{"Close","Fechar","Cerrar"},
+                _=>Array.Empty<string>()
+            };
+            foreach(var alias in aliases)
+            {
+                var node=nodes.FirstOrDefault(x=>Normalize(x.Name)==Normalize(alias));
+                if(node is not null&&(Invoke(node.Element)||Click(node,false)))
+                {
+                    Thread.Sleep(180);
+                    return Inspect();
+                }
+            }
+
+            var hwnd=GetActiveLightBurnWindow();
+            if(hwnd!=IntPtr.Zero&&action is "cancel" or "close")
+            {
+                var down=PostMessage(hwnd,WmKeyDown,(IntPtr)VkEscape,IntPtr.Zero);
+                var up=PostMessage(hwnd,WmKeyUp,(IntPtr)VkEscape,IntPtr.Zero);
+                if(down||up)
+                {
+                    Thread.Sleep(150);
+                    return Inspect();
+                }
+            }
+            return Fail("dialog_action_not_found");
+        }
+        catch(Exception ex){return Fail("dialog_action_error:"+ex.GetType().Name);}
+    }
+
     private static object? GetRoot()
     {
-        var hwnd=LightBurnWindowCapture.FindLightBurnWindow();
+        var hwnd=GetActiveLightBurnWindow();
         if(hwnd==IntPtr.Zero)return null;
         try{return Automation.ElementFromHandle(hwnd);}
         catch{return null;}
+    }
+
+    private static IntPtr GetActiveLightBurnWindow()
+    {
+        var main=LightBurnWindowCapture.FindLightBurnWindow();
+        if(main==IntPtr.Zero)return IntPtr.Zero;
+        var foreground=GetForegroundWindow();
+        if(foreground==IntPtr.Zero)return main;
+        GetWindowThreadProcessId(main,out var mainPid);
+        GetWindowThreadProcessId(foreground,out var foregroundPid);
+        return mainPid!=0&&foregroundPid==mainPid?foreground:main;
     }
 
     private static List<Node> ReadNodes(object rootObject)
@@ -262,6 +340,18 @@ internal static class LightBurnControlBridge
     {
         try{return ((dynamic)element).GetCurrentPattern(patternId);}
         catch{return null;}
+    }
+
+    private static bool Invoke(object element)
+    {
+        try
+        {
+            var invoke=Pattern(element,InvokePatternId);
+            if(invoke is null)return false;
+            ((dynamic)invoke).Invoke();
+            return true;
+        }
+        catch{return false;}
     }
 
     private static string? ReadValue(object element)
@@ -451,6 +541,107 @@ internal static class LightBurnControlBridge
         }
         return true;
     }
+
+    private static LightBurnControlSnapshot? TryReadApiSnapshot()
+    {
+        try
+        {
+            var secret=SecureSecretStore.Load();
+            if(string.IsNullOrWhiteSpace(secret))return null;
+            using var rest=new LightBurnRestClient();
+            using var cts=new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var layersJson=rest.GetLayersJsonAsync(secret,cts.Token).GetAwaiter().GetResult();
+            var cutsJson=rest.GetCutsJsonAsync(secret,cts.Token).GetAwaiter().GetResult();
+            if(string.IsNullOrWhiteSpace(layersJson))return null;
+
+            using var layersDoc=JsonDocument.Parse(layersJson);
+            var root=layersDoc.RootElement;
+            var active=root.TryGetProperty("active_index",out var activeEl)&&activeEl.TryGetInt32(out var ai)?ai:-1;
+            var layers=new List<LightBurnControlLayer>();
+            if(root.TryGetProperty("layers",out var array)&&array.ValueKind==JsonValueKind.Array)
+            {
+                foreach(var item in array.EnumerateArray())
+                {
+                    if(!item.TryGetProperty("index",out var indexEl)||!indexEl.TryGetInt32(out var index))continue;
+                    var inUse=item.TryGetProperty("in_use",out var useEl)&&useEl.ValueKind==JsonValueKind.True;
+                    if(!inUse&&index!=active)continue;
+                    var id=LayerId(index);
+                    var name=item.TryGetProperty("name",out var nameEl)&&nameEl.ValueKind==JsonValueKind.String
+                        ?nameEl.GetString():"";
+                    var label=string.IsNullOrWhiteSpace(name)||string.Equals(name,id,StringComparison.OrdinalIgnoreCase)
+                        ?id:$"{id} · {name}";
+                    layers.Add(new(id,label,index==active));
+                }
+            }
+
+            var fields=new List<LightBurnControlField>();
+            if(active>=0&&!string.IsNullOrWhiteSpace(cutsJson))
+            {
+                using var cutsDoc=JsonDocument.Parse(cutsJson);
+                if(cutsDoc.RootElement.TryGetProperty("cuts",out var cuts)&&cuts.ValueKind==JsonValueKind.Array)
+                {
+                    foreach(var cut in cuts.EnumerateArray())
+                    {
+                        if(!cut.TryGetProperty("layer_index",out var layerEl)||!layerEl.TryGetInt32(out var layer)||layer!=active)continue;
+                        if(!cut.TryGetProperty("params",out var p)||p.ValueKind!=JsonValueKind.Object)break;
+                        AddNumber(fields,p,"speed","speed","Velocidade");
+                        AddNumber(fields,p,"max_power","powerMax","Potência");
+                        AddNumber(fields,p,"min_power","powerMin","Potência mín.");
+                        AddNumber(fields,p,"num_passes","passes","Passes");
+                        AddNumber(fields,p,"frequency","frequency","Frequência");
+                        AddToggle(fields,p,"cross_hatch","crossHatch","Cross-hatch");
+                        break;
+                    }
+                }
+            }
+            return new("LightBurn",layers.ToArray(),fields.ToArray());
+        }
+        catch{return null;}
+    }
+
+    private static LightBurnControlField[] MergeFields(
+        LightBurnControlField[] api,
+        LightBurnControlField[] ui)
+    {
+        var map=new Dictionary<string,LightBurnControlField>(StringComparer.Ordinal);
+        foreach(var field in api)map[field.Key]=field;
+        foreach(var field in ui)
+        {
+            if(map.TryGetValue(field.Key,out var existing))
+            {
+                map[field.Key]=field with
+                {
+                    Value=field.Value??existing.Value,
+                    Checked=field.Checked??existing.Checked
+                };
+            }
+            else map[field.Key]=field;
+        }
+        return map.Values.ToArray();
+    }
+
+    private static void AddNumber(
+        List<LightBurnControlField> fields,JsonElement p,string jsonKey,string key,string label)
+    {
+        if(!p.TryGetProperty(jsonKey,out var el)||el.ValueKind!=JsonValueKind.Number)return;
+        fields.Add(new(key,label,"number",el.ToString(),null,false));
+    }
+
+    private static void AddToggle(
+        List<LightBurnControlField> fields,JsonElement p,string jsonKey,string key,string label)
+    {
+        if(!p.TryGetProperty(jsonKey,out var el)||el.ValueKind is not (JsonValueKind.True or JsonValueKind.False))return;
+        fields.Add(new(key,label,"toggle",null,el.GetBoolean(),false));
+    }
+
+    private static string LayerId(int index)=>
+        index switch
+        {
+            >=0 and <=29=>$"C{index:00}",
+            30=>"T1",
+            31=>"T2",
+            _=>$"L{index}"
+        };
 
     private static LightBurnControlBridgeResult Fail(string reason)=>new(false,reason,null);
 }
