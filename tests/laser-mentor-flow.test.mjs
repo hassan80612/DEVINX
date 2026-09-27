@@ -21,7 +21,8 @@ test('mobile touch works on the normal preview while keyboard stays manual',asyn
   assert.match(panel,/sendRemoteInput\(\{type:'doubleclick'/);
   const doubleTap=panel.slice(panel.indexOf("if(isDouble)"),panel.indexOf("if(isDouble)")+260);
   assert.doesNotMatch(doubleTap,/openMobileKeyboard/);
-  assert.doesNotMatch(panel,/sendRemoteKey\('Enter','Enter'\).*sendMobileEdit/s);
+  const sendEdit=panel.slice(panel.indexOf('function sendMobileEdit()'),panel.indexOf('function closeActiveDialog()'));
+  assert.doesNotMatch(sendEdit,/Enter/);
 });
 
 test('Laser workspace is translated through DevinX i18n',async()=>{
