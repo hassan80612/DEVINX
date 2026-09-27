@@ -57,6 +57,23 @@ internal static class LightBurnRemoteInput
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(
+        IntPtr hWnd,IntPtr hWndInsertAfter,int X,int Y,int cx,int cy,uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    private static readonly IntPtr HwndTopmost=new(-1);
+    private static readonly IntPtr HwndNoTopmost=new(-2);
+    private const uint SwpNoMove=0x0002;
+    private const uint SwpNoSize=0x0001;
+    private const uint SwpShowWindow=0x0040;
+    private const int SwRestore=9;
+
     public static bool Apply(RealtimeRemoteInput input)
     {
         if(!OperatingSystem.IsWindows())return false;
@@ -87,6 +104,24 @@ internal static class LightBurnRemoteInput
     {
         var main=LightBurnWindowCapture.FindLightBurnWindow();
         return main!=IntPtr.Zero&&SetForegroundWindow(main);
+    }
+
+    public static bool SetSessionLock(bool enabled)
+    {
+        if(!OperatingSystem.IsWindows())return false;
+        var main=LightBurnWindowCapture.FindLightBurnWindow();
+        if(main==IntPtr.Zero)return false;
+
+        if(enabled&&IsIconic(main))ShowWindow(main,SwRestore);
+
+        var ok=SetWindowPos(
+            main,
+            enabled?HwndTopmost:HwndNoTopmost,
+            0,0,0,0,
+            SwpNoMove|SwpNoSize|(enabled?SwpShowWindow:0));
+
+        if(enabled)SetForegroundWindow(main);
+        return ok;
     }
 
     private static bool Mouse(IntPtr main,RealtimeRemoteInput input,uint message,int buttonMask)

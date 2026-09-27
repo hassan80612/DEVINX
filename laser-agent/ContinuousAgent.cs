@@ -67,6 +67,7 @@ internal sealed class ContinuousAgent
                 await realtime.DisposeAsync();
                 realtime=null;
             }
+            LightBurnRemoteInput.SetSessionLock(false);
         }
 
         async Task ExecuteOnceAsync(RemoteCommand command)
@@ -145,6 +146,7 @@ internal sealed class ContinuousAgent
 
                 if(current is not null)
                 {
+                    LightBurnRemoteInput.SetSessionLock(true);
                     realtime=new DevinXRealtimeSession(
                         current,
                         HandleRealtimeCommandAsync,
@@ -174,6 +176,7 @@ internal sealed class ContinuousAgent
             else if(current is not null&&(realtime is null||!realtime.IsConnected))
             {
                 await StopRealtimeAsync();
+                LightBurnRemoteInput.SetSessionLock(true);
                 realtime=new DevinXRealtimeSession(current,HandleRealtimeCommandAsync,HandleRemoteInputAsync);
                 if(await realtime.ConnectAsync(cancellationToken))
                 {
@@ -199,11 +202,18 @@ internal sealed class ContinuousAgent
         string? lastHash=null;
         var lastSent=DateTimeOffset.MinValue;
         long sequence=0;
+        var nextFocusLock=DateTimeOffset.MinValue;
 
         while(!cancellationToken.IsCancellationRequested&&realtime.IsConnected)
         {
             try
             {
+                if(DateTimeOffset.UtcNow>=nextFocusLock)
+                {
+                    LightBurnRemoteInput.SetSessionLock(true);
+                    nextFocusLock=DateTimeOffset.UtcNow.AddSeconds(1);
+                }
+
                 var frame=LightBurnWindowCapture.TryCapture();
                 if(frame is not null)
                 {
