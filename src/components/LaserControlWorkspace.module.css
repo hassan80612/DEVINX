@@ -113,7 +113,6 @@
   .deviceGroup{margin-top:11px}.deviceCard{border-radius:11px}.deviceSelect{padding:10px}.deviceSelect b{font-size:13px}
   .workspace,.workspaceEmpty{border-radius:15px}.workspaceEmpty{min-height:300px}
   .summary{grid-template-columns:1fr 1fr}.summary span{padding:11px 12px}.summary b{font-size:13px}
-  .tabs button{min-height:46px;font-size:11px}
   .livePane,.guide{padding:10px}
   .liveToolbar{align-items:stretch}.zoom,.orientation{flex:1}.orientation button,.zoom button{flex:1}.fullscreenButton{margin-left:0}
   .liveToolbar>.controlOn,.liveToolbar>.controlOff,.fullscreenButton{flex:1 1 45%}
@@ -140,12 +139,6 @@
 @media(max-width:760px){
   .sectionHeading{display:grid;gap:7px;align-items:start}.sectionHeading p{text-align:left;font-size:11px}
   .quickSection{padding:12px;border-radius:14px}
-  .quickGroups{grid-template-columns:1fr}
-  .quickGroup:last-child{grid-column:auto}
-  .quickGroup:last-child .quickGrid,.quickGrid{grid-template-columns:1fr 1fr}
-  .quickGrid button{min-height:52px;padding:8px}
-  .quickGrid i{flex-basis:28px;height:28px;font-size:16px}
-  .quickGrid span{font-size:11px}
 }
 
 
