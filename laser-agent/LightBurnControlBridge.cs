@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using System.Windows.Automation;
+using UIA=Interop.UIAutomationClient;
 
 namespace DevinXLaserAgent;
 
@@ -15,7 +15,23 @@ internal sealed record LightBurnControlBridgeResult(
 
 internal static class LightBurnControlBridge
 {
+    private const int ValuePatternId=10002;
+    private const int RangeValuePatternId=10003;
+    private const int SelectionItemPatternId=10010;
+    private const int TogglePatternId=10015;
+    private const int LegacyPatternId=10018;
+    private const int StateSystemChecked=0x10;
+    private const int SelFlagTakeSelection=0x2;
+
     private sealed record FieldSpec(string Key,string Label,string Kind,string[] Aliases);
+    private sealed record Bounds(double Left,double Top,double Right,double Bottom)
+    {
+        public double Width=>Math.Max(0,Right-Left);
+        public double Height=>Math.Max(0,Bottom-Top);
+        public bool IsEmpty=>Width<=0||Height<=0;
+    }
+    private sealed record Node(
+        object Element,string Name,int ControlType,Bounds Rect,bool Enabled,bool Offscreen);
 
     private static readonly FieldSpec[] Specs=
     [
@@ -34,15 +50,12 @@ internal static class LightBurnControlBridge
         new("output","Saída","toggle",["Output","Saída","Salida","Sortie","Ausgabe"])
     ];
 
-    private sealed record Node(
-        AutomationElement Element,string Name,string Type,System.Windows.Rect Rect,
-        bool Enabled,bool Offscreen);
+    private static readonly dynamic Automation=new UIA.CUIAutomation8();
 
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x,int y);
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags,uint dx,uint dy,uint data,UIntPtr extra);
     private const uint LeftDown=0x0002;
     private const uint LeftUp=0x0004;
-    private const int SelFlagTakeSelection=0x2;
 
     public static LightBurnControlBridgeResult Inspect()
     {
@@ -57,9 +70,11 @@ internal static class LightBurnControlBridge
                 .Where(field=>field is not null)
                 .Select(field=>field!)
                 .ToArray();
-            return new(true,null,new(root.Current.Name,layers,fields));
+            string? title=null;
+            try{title=Convert.ToString(((dynamic)root).CurrentName);}catch{}
+            return new(true,null,new(title,layers,fields));
         }
-        catch(ElementNotAvailableException){return Fail("lightburn_ui_changed");}
+        catch(COMException){return Fail("lightburn_ui_changed");}
         catch(Exception ex){return Fail("inspect_error:"+ex.GetType().Name);}
     }
 
@@ -88,10 +103,10 @@ internal static class LightBurnControlBridge
                 if(!SetValue(target.Element,value.Trim()))return Fail("value_write_failed");
             }
 
-            Thread.Sleep(70);
+            Thread.Sleep(80);
             return Inspect();
         }
-        catch(ElementNotAvailableException){return Fail("lightburn_ui_changed");}
+        catch(COMException){return Fail("lightburn_ui_changed");}
         catch(Exception ex){return Fail("set_error:"+ex.GetType().Name);}
     }
 
@@ -109,15 +124,15 @@ internal static class LightBurnControlBridge
             if(!Select(layer.Element)&&!Click(layer,false))
                 return Fail("layer_select_failed");
 
+            Thread.Sleep(80);
             if(openEditor)
             {
-                Thread.Sleep(90);
                 if(!Click(layer,true))return Fail("layer_editor_open_failed");
-                Thread.Sleep(180);
+                Thread.Sleep(220);
             }
             return Inspect();
         }
-        catch(ElementNotAvailableException){return Fail("lightburn_ui_changed");}
+        catch(COMException){return Fail("lightburn_ui_changed");}
         catch(Exception ex){return Fail("layer_error:"+ex.GetType().Name);}
     }
 
@@ -128,41 +143,51 @@ internal static class LightBurnControlBridge
             var root=GetRoot();
             if(root is null)return Fail("lightburn_window_not_found");
             var nodes=ReadNodes(root);
-            var selected=FindLayerNode(nodes,null,selectedOnly:true);
+            var selected=FindLayerNode(nodes,null,true);
             if(selected is null)return Fail("selected_layer_not_found");
             if(!Click(selected,true))return Fail("layer_editor_open_failed");
-            Thread.Sleep(180);
+            Thread.Sleep(220);
             return Inspect();
         }
         catch(Exception ex){return Fail("layer_editor_error:"+ex.GetType().Name);}
     }
 
-    private static AutomationElement? GetRoot()
+    private static object? GetRoot()
     {
         var hwnd=LightBurnWindowCapture.FindLightBurnWindow();
-        return hwnd==IntPtr.Zero?null:AutomationElement.FromHandle(hwnd);
+        if(hwnd==IntPtr.Zero)return null;
+        try{return Automation.ElementFromHandle(hwnd);}
+        catch{return null;}
     }
 
-    private static List<Node> ReadNodes(AutomationElement root)
+    private static List<Node> ReadNodes(object rootObject)
     {
         var result=new List<Node>();
-        AutomationElementCollection all;
-        try{all=root.FindAll(TreeScope.Descendants,Condition.TrueCondition);}
-        catch{return result;}
-
-        var limit=Math.Min(all.Count,3000);
-        for(var i=0;i<limit;i++)
+        try
         {
-            try
+            dynamic root=rootObject;
+            dynamic condition=Automation.CreateTrueCondition();
+            dynamic all=root.FindAll(UIA.TreeScope.TreeScope_Descendants,condition);
+            var length=Math.Min(Convert.ToInt32(all.Length),3000);
+            for(var i=0;i<length;i++)
             {
-                var e=all[i];
-                var name=(e.Current.Name??"").Trim();
-                var type=e.Current.ControlType?.ProgrammaticName??"";
-                var rect=e.Current.BoundingRectangle;
-                result.Add(new(e,name,type,rect,e.Current.IsEnabled,e.Current.IsOffscreen));
+                try
+                {
+                    dynamic e=all.GetElement(i);
+                    string name=(Convert.ToString(e.CurrentName)??"").Trim();
+                    int controlType=Convert.ToInt32(e.CurrentControlType);
+                    bool enabled=Convert.ToBoolean(e.CurrentIsEnabled);
+                    bool offscreen=Convert.ToBoolean(e.CurrentIsOffscreen);
+                    dynamic r=e.CurrentBoundingRectangle;
+                    var rect=new Bounds(
+                        Convert.ToDouble(r.left),Convert.ToDouble(r.top),
+                        Convert.ToDouble(r.right),Convert.ToDouble(r.bottom));
+                    result.Add(new Node((object)e,name,controlType,rect,enabled,offscreen));
+                }
+                catch{}
             }
-            catch{}
         }
+        catch{}
         return result;
     }
 
@@ -183,10 +208,9 @@ internal static class LightBurnControlBridge
 
     private static Node? FindFieldElement(FieldSpec spec,List<Node> nodes)
     {
-        var writable=nodes.Where(IsInteractive).ToArray();
+        var interactive=nodes.Where(IsInteractive).ToArray();
 
-        // Best case: Qt exposes the field's accessible name directly.
-        var direct=writable
+        var direct=interactive
             .Select(node=>(node,score:AliasScore(node.Name,spec.Aliases)))
             .Where(x=>x.score>0)
             .OrderByDescending(x=>x.score)
@@ -194,7 +218,6 @@ internal static class LightBurnControlBridge
             .FirstOrDefault();
         if(direct.node is not null)return direct.node;
 
-        // Common Qt layout: a static label followed by an unnamed edit/spin box.
         foreach(var label in nodes
             .Select(node=>(node,score:AliasScore(node.Name,spec.Aliases)))
             .Where(x=>x.score>0&&!IsInteractive(x.node))
@@ -202,7 +225,7 @@ internal static class LightBurnControlBridge
         {
             if(label.node.Rect.IsEmpty)continue;
             var centerY=label.node.Rect.Top+label.node.Rect.Height/2;
-            var candidate=writable
+            var candidate=interactive
                 .Where(x=>!x.Rect.IsEmpty&&!x.Offscreen)
                 .Where(x=>x.Rect.Left>=label.node.Rect.Left-8)
                 .Where(x=>Math.Abs((x.Rect.Top+x.Rect.Height/2)-centerY)<=36)
@@ -212,7 +235,6 @@ internal static class LightBurnControlBridge
                 .FirstOrDefault();
             if(candidate.node is not null)return candidate.node;
         }
-
         return null;
     }
 
@@ -231,123 +253,122 @@ internal static class LightBurnControlBridge
         return best;
     }
 
-    private static string Normalize(string value)=>
-        Regex.Replace(value.Trim().ToLowerInvariant(),@"\s+"," ");
+    private static string Normalize(string value)=>Regex.Replace(value.Trim().ToLowerInvariant(),@"\s+"," ");
 
-    private static bool IsInteractive(Node node)
+    private static bool IsInteractive(Node node)=>
+        !node.Offscreen&&(CanSetValue(node.Element)||CanToggle(node.Element));
+
+    private static object? Pattern(object element,int patternId)
     {
-        if(node.Offscreen)return false;
-        if(node.Type.EndsWith(".Edit",StringComparison.Ordinal)
-           ||node.Type.EndsWith(".Spinner",StringComparison.Ordinal)
-           ||node.Type.EndsWith(".CheckBox",StringComparison.Ordinal)
-           ||node.Type.EndsWith(".ComboBox",StringComparison.Ordinal))
-            return true;
-        return CanSetValue(node.Element)||CanToggle(node.Element);
+        try{return ((dynamic)element).GetCurrentPattern(patternId);}
+        catch{return null;}
     }
 
-    private static string? ReadValue(AutomationElement element)
+    private static string? ReadValue(object element)
     {
         try
         {
-            if(element.TryGetCurrentPattern(ValuePattern.Pattern,out var vp))
-                return ((ValuePattern)vp).Current.Value;
-            if(element.TryGetCurrentPattern(RangeValuePattern.Pattern,out var rp))
-                return ((RangeValuePattern)rp).Current.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            if(element.TryGetCurrentPattern(LegacyIAccessiblePattern.Pattern,out var lp))
-                return ((LegacyIAccessiblePattern)lp).Current.Value;
+            var value=Pattern(element,ValuePatternId);
+            if(value is not null)return Convert.ToString(((dynamic)value).CurrentValue);
+            var range=Pattern(element,RangeValuePatternId);
+            if(range is not null)return Convert.ToDouble(((dynamic)range).CurrentValue)
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var legacy=Pattern(element,LegacyPatternId);
+            if(legacy is not null)return Convert.ToString(((dynamic)legacy).CurrentValue);
         }catch{}
         return null;
     }
 
-    private static bool? ReadToggle(AutomationElement element)
+    private static bool? ReadToggle(object element)
     {
         try
         {
-            if(element.TryGetCurrentPattern(TogglePattern.Pattern,out var tp))
-                return ((TogglePattern)tp).Current.ToggleState==ToggleState.On;
-            if(element.TryGetCurrentPattern(LegacyIAccessiblePattern.Pattern,out var lp))
-            {
-                var state=((LegacyIAccessiblePattern)lp).Current.State;
-                const int StateSystemChecked=0x10;
-                return (state&StateSystemChecked)!=0;
-            }
+            var toggle=Pattern(element,TogglePatternId);
+            if(toggle is not null)return Convert.ToInt32(((dynamic)toggle).CurrentToggleState)==1;
+            var legacy=Pattern(element,LegacyPatternId);
+            if(legacy is not null)
+                return (Convert.ToInt32(((dynamic)legacy).CurrentState)&StateSystemChecked)!=0;
         }catch{}
         return null;
     }
 
-    private static bool CanSetValue(AutomationElement element)
+    private static bool CanSetValue(object element)
     {
         try
         {
-            if(element.TryGetCurrentPattern(ValuePattern.Pattern,out var vp))
-                return !((ValuePattern)vp).Current.IsReadOnly;
-            if(element.TryGetCurrentPattern(RangeValuePattern.Pattern,out var rp))
-                return !((RangeValuePattern)rp).Current.IsReadOnly;
-            if(element.TryGetCurrentPattern(LegacyIAccessiblePattern.Pattern,out _))
-                return true;
-        }catch{}
-        return false;
-    }
-
-    private static bool CanToggle(AutomationElement element)
-    {
-        try
-        {
-            return element.TryGetCurrentPattern(TogglePattern.Pattern,out _)
-                   ||element.TryGetCurrentPattern(LegacyIAccessiblePattern.Pattern,out _);
+            var value=Pattern(element,ValuePatternId);
+            if(value is not null)return !Convert.ToBoolean(((dynamic)value).CurrentIsReadOnly);
+            var range=Pattern(element,RangeValuePatternId);
+            if(range is not null)return !Convert.ToBoolean(((dynamic)range).CurrentIsReadOnly);
+            return Pattern(element,LegacyPatternId) is not null;
         }catch{return false;}
     }
 
-    private static bool SetValue(AutomationElement element,string value)
+    private static bool CanToggle(object element)
+    {
+        try{return Pattern(element,TogglePatternId) is not null||Pattern(element,LegacyPatternId) is not null;}
+        catch{return false;}
+    }
+
+    private static bool SetValue(object element,string value)
     {
         try
         {
-            element.SetFocus();
-            if(element.TryGetCurrentPattern(ValuePattern.Pattern,out var vp))
+            ((dynamic)element).SetFocus();
+            var valuePattern=Pattern(element,ValuePatternId);
+            if(valuePattern is not null)
             {
-                var pattern=(ValuePattern)vp;
-                if(pattern.Current.IsReadOnly)return false;
-                pattern.SetValue(value);
+                dynamic p=valuePattern;
+                if(Convert.ToBoolean(p.CurrentIsReadOnly))return false;
+                p.SetValue(value);
                 return true;
             }
-            if(element.TryGetCurrentPattern(RangeValuePattern.Pattern,out var rp))
+
+            var rangePattern=Pattern(element,RangeValuePatternId);
+            if(rangePattern is not null)
             {
-                var pattern=(RangeValuePattern)rp;
-                if(pattern.Current.IsReadOnly)return false;
+                dynamic p=rangePattern;
+                if(Convert.ToBoolean(p.CurrentIsReadOnly))return false;
                 if(!double.TryParse(value,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var number)
                    &&!double.TryParse(value,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.CurrentCulture,out number))
                     return false;
-                if(number<pattern.Current.Minimum||number>pattern.Current.Maximum)return false;
-                pattern.SetValue(number);
+                var min=Convert.ToDouble(p.CurrentMinimum);
+                var max=Convert.ToDouble(p.CurrentMaximum);
+                if(number<min||number>max)return false;
+                p.SetValue(number);
                 return true;
             }
-            if(element.TryGetCurrentPattern(LegacyIAccessiblePattern.Pattern,out var lp))
+
+            var legacyPattern=Pattern(element,LegacyPatternId);
+            if(legacyPattern is not null)
             {
-                ((LegacyIAccessiblePattern)lp).SetValue(value);
+                ((dynamic)legacyPattern).SetValue(value);
                 return true;
             }
         }catch{}
         return false;
     }
 
-    private static bool SetToggle(AutomationElement element,bool desired)
+    private static bool SetToggle(object element,bool desired)
     {
         try
         {
-            element.SetFocus();
-            if(element.TryGetCurrentPattern(TogglePattern.Pattern,out var tp))
+            ((dynamic)element).SetFocus();
+            var togglePattern=Pattern(element,TogglePatternId);
+            if(togglePattern is not null)
             {
-                var pattern=(TogglePattern)tp;
-                var current=pattern.Current.ToggleState==ToggleState.On;
-                if(current!=desired)pattern.Toggle();
+                dynamic p=togglePattern;
+                var current=Convert.ToInt32(p.CurrentToggleState)==1;
+                if(current!=desired)p.Toggle();
                 return true;
             }
-            if(element.TryGetCurrentPattern(LegacyIAccessiblePattern.Pattern,out var lp))
+
+            var legacyPattern=Pattern(element,LegacyPatternId);
+            if(legacyPattern is not null)
             {
-                var pattern=(LegacyIAccessiblePattern)lp;
-                const int StateSystemChecked=0x10;
-                var current=(pattern.Current.State&StateSystemChecked)!=0;
-                if(current!=desired)pattern.DoDefaultAction();
+                dynamic p=legacyPattern;
+                var current=(Convert.ToInt32(p.CurrentState)&StateSystemChecked)!=0;
+                if(current!=desired)p.DoDefaultAction();
                 return true;
             }
         }catch{}
@@ -362,12 +383,7 @@ internal static class LightBurnControlBridge
             var match=Regex.Match(node.Name,@"(?:^|\b)([CT]\d{2})(?:\b|$)",RegexOptions.IgnoreCase);
             if(!match.Success)continue;
             var id=match.Groups[1].Value.ToUpperInvariant();
-            var selected=false;
-            try
-            {
-                if(node.Element.TryGetCurrentPattern(SelectionItemPattern.Pattern,out var sp))
-                    selected=((SelectionItemPattern)sp).Current.IsSelected;
-            }catch{}
+            var selected=IsSelected(node.Element);
             if(!found.ContainsKey(id)||selected)
                 found[id]=new(id,string.IsNullOrWhiteSpace(node.Name)?id:node.Name,selected);
         }
@@ -382,32 +398,35 @@ internal static class LightBurnControlBridge
             if(!match.Success)continue;
             if(layerId is not null&&!string.Equals(match.Groups[1].Value,layerId,StringComparison.OrdinalIgnoreCase))
                 continue;
-            if(selectedOnly)
-            {
-                try
-                {
-                    if(!node.Element.TryGetCurrentPattern(SelectionItemPattern.Pattern,out var sp)
-                       ||!((SelectionItemPattern)sp).Current.IsSelected)
-                        continue;
-                }catch{continue;}
-            }
+            if(selectedOnly&&!IsSelected(node.Element))continue;
             return node;
         }
         return null;
     }
 
-    private static bool Select(AutomationElement element)
+    private static bool IsSelected(object element)
     {
         try
         {
-            if(element.TryGetCurrentPattern(SelectionItemPattern.Pattern,out var sp))
+            var selection=Pattern(element,SelectionItemPatternId);
+            return selection is not null&&Convert.ToBoolean(((dynamic)selection).CurrentIsSelected);
+        }catch{return false;}
+    }
+
+    private static bool Select(object element)
+    {
+        try
+        {
+            var selection=Pattern(element,SelectionItemPatternId);
+            if(selection is not null)
             {
-                ((SelectionItemPattern)sp).Select();
+                ((dynamic)selection).Select();
                 return true;
             }
-            if(element.TryGetCurrentPattern(LegacyIAccessiblePattern.Pattern,out var lp))
+            var legacy=Pattern(element,LegacyPatternId);
+            if(legacy is not null)
             {
-                ((LegacyIAccessiblePattern)lp).Select(SelFlagTakeSelection);
+                ((dynamic)legacy).Select(SelFlagTakeSelection);
                 return true;
             }
         }catch{}
