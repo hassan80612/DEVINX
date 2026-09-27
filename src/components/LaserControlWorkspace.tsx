@@ -285,7 +285,7 @@ export function LaserControlWorkspace(){
         try{await screenOrientation.lock(orientation)}catch{}
       }
 
-      if(!sessionRef.current?.remoteInputEnabled){
+      if(!inputReady){
         fullscreenAutoInputRef.current=true;
         await enableRemoteInput();
       }
