@@ -178,10 +178,12 @@ internal static class LightBurnCommandExecutor
 
     private static CommandExecutionResult SendShortcut(IntPtr handle,ushort[] keys)
     {
-        // The remote session owns LightBurn focus. Do not jump back to Chrome or
-        // another window after issuing a laser command.
+        // Use the same robust foreground activation used by remote keyboard input.
+        // SetForegroundWindow alone can be ignored by Windows when the browser
+        // currently owns focus.
+        LightBurnRemoteInput.FocusLightBurn();
         SetForegroundWindow(handle);
-        Thread.Sleep(55);
+        Thread.Sleep(80);
 
         var inputs=new List<Input>(keys.Length*2);
         foreach(var key in keys)inputs.Add(Key(key,false));
