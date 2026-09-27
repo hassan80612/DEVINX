@@ -316,7 +316,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
     {
         try
         {
-            var bytes=data.Span;
+            var bytes=data.ToArray();
             if(bytes.Length<5)return;
 
             // Supabase Realtime protocol v2 server broadcast:
@@ -333,16 +333,18 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             var required=offset+topicSize+eventSize+metadataSize;
             if(bytes.Length<required)return;
 
-            var topic=Encoding.UTF8.GetString(bytes.Slice(offset,topicSize));
+            var topic=Encoding.UTF8.GetString(bytes,offset,topicSize);
             offset+=topicSize;
             if(!string.Equals(topic,"realtime:"+_config.Topic,StringComparison.Ordinal))return;
 
-            var userEvent=Encoding.UTF8.GetString(bytes.Slice(offset,eventSize));
+            var userEvent=Encoding.UTF8.GetString(bytes,offset,eventSize);
             offset+=eventSize+metadataSize;
             if(offset>bytes.Length)return;
 
-            var payloadBytes=bytes.Slice(offset).ToArray();
-            if(payloadBytes.Length==0)return;
+            var payloadLength=bytes.Length-offset;
+            if(payloadLength<=0)return;
+            var payloadBytes=new byte[payloadLength];
+            Array.Copy(bytes,offset,payloadBytes,0,payloadLength);
 
             using var payloadDoc=JsonDocument.Parse(payloadBytes);
             if(payloadDoc.RootElement.ValueKind!=JsonValueKind.Object)return;
