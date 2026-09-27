@@ -321,3 +321,40 @@
   .mobileKeyboard,.mobileKeyboardHidden{grid-template-columns:minmax(0,1fr) auto}
   .mobileKeyboard button:last-child,.mobileKeyboardHidden button:last-child{grid-column:1/-1;min-height:36px}
 }
+
+
+/* Simplified operating surface: live view + commands + one contextual panel */
+.simpleModeBar{
+  display:flex;justify-content:flex-end;gap:7px;padding:8px 10px;
+  border-bottom:1px solid rgba(255,255,255,.08);background:rgba(29,43,54,.52)
+}
+.simpleModeBar button{
+  min-height:36px;padding:7px 11px;border:1px solid rgba(215,237,255,.16);border-radius:10px;
+  background:#34495a;color:#cbd8e5;font-size:11px;font-weight:900;cursor:pointer
+}
+.simpleModeBar .simpleModeActive{
+  border-color:rgba(94,231,255,.48);background:linear-gradient(180deg,#547083,#344a5a);color:#effcff
+}
+.primaryActionBar{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:8px
+}
+.primaryActionBar button{
+  min-height:54px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 9px;
+  border:1px solid rgba(215,237,255,.16);border-radius:11px;
+  background:linear-gradient(145deg,#4c6578,#344b5c);color:#f5fbff;font-size:11px;font-weight:900;cursor:pointer
+}
+.primaryActionBar button:disabled{opacity:.45;cursor:wait}
+.primaryActionBar i{font-style:normal;color:#bff6ff;font-size:17px}
+.contextPanel{
+  margin-top:8px;padding:8px;border:1px solid rgba(123,228,255,.18);border-radius:14px;
+  background:rgba(27,42,54,.48)
+}
+.contextPanel .parameterDock{margin-top:0}
+.contextPanel .extraTools{margin-top:8px}
+@media(max-width:760px){
+  .simpleModeBar{padding:7px 9px}
+  .primaryActionBar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .primaryActionBar button{min-height:48px;font-size:10px}
+  .primaryActionBar button:last-child{grid-column:1/-1;min-height:40px}
+  .contextPanel{padding:7px}
+}
