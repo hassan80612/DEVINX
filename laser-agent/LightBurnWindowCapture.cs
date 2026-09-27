@@ -13,6 +13,7 @@ internal static class LightBurnWindowCapture
     private struct Rect{public int Left,Top,Right,Bottom;}
 
     private const int DwmwaExtendedFrameBounds=9;
+    private const uint PwRenderFullContent=0x00000002;
     private const int MaxJpegBytes=165_000;
 
     [DllImport("dwmapi.dll")]
@@ -28,6 +29,15 @@ internal static class LightBurnWindowCapture
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
+
+    [DllImport("user32.dll",SetLastError=true)]
+    private static extern bool PrintWindow(IntPtr hWnd,IntPtr hdcBlt,uint nFlags);
+
     public static CapturedPreview? TryCapture()
     {
         if(!OperatingSystem.IsWindows())return null;
@@ -38,10 +48,31 @@ internal static class LightBurnWindowCapture
         if(width<200||height<150||width>10000||height>10000)return null;
 
         using var source=new Bitmap(width,height,PixelFormat.Format24bppRgb);
+        var foreground=GetForegroundWindow();
+        var sameProcess=BelongsToSameProcess(handle,foreground);
+
         try
         {
             using var graphics=Graphics.FromImage(source);
-            graphics.CopyFromScreen(left,top,0,0,new Size(width,height),CopyPixelOperation.SourceCopy);
+
+            if(sameProcess)
+            {
+                // Fast path: preserve the existing low-latency screen capture while
+                // LightBurn (or one of its dialogs) is the foreground application.
+                graphics.CopyFromScreen(left,top,0,0,new Size(width,height),CopyPixelOperation.SourceCopy);
+            }
+            else
+            {
+                // Background path: capture the LightBurn HWND itself instead of
+                // whatever app the user is currently using. This avoids the DevinX
+                // mirror loop without forcing LightBurn on top of the desktop.
+                var hdc=graphics.GetHdc();
+                try
+                {
+                    if(!PrintWindow(handle,hdc,PwRenderFullContent))return null;
+                }
+                finally{graphics.ReleaseHdc(hdc);}
+            }
         }
         catch{return null;}
 
@@ -114,6 +145,14 @@ internal static class LightBurnWindowCapture
         left=rect.Left;
         top=rect.Top;
         return width>0&&height>0;
+    }
+
+    private static bool BelongsToSameProcess(IntPtr main,IntPtr candidate)
+    {
+        if(main==IntPtr.Zero||candidate==IntPtr.Zero)return false;
+        GetWindowThreadProcessId(main,out var mainPid);
+        GetWindowThreadProcessId(candidate,out var candidatePid);
+        return mainPid!=0&&mainPid==candidatePid;
     }
 
     public static IntPtr FindLightBurnWindow()

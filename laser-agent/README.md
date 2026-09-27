@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.5
+# DevinX Laser Agent 1.0.6
 
 Agent Windows do DevinX Laser Control.
 
