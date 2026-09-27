@@ -1,8 +1,10 @@
 "use client";
 
+import {useEffect,useState} from "react";
 import {BrandLogo} from "@/components/BrandLogo";
 import {LanguageMenu} from "@/components/LanguageMenu";
 import {useI18n} from "@/i18n/provider";
+import {createClient} from "@/lib/supabase/client";
 import styles from "./HomeHub.module.css";
 
 const COPY={
@@ -290,8 +292,27 @@ function FeatureGrid({title,items}:{title:string;items:readonly string[]}){
   </section>;
 }
 
-export function HomeHub({laserVisible=true,financeVisible=true}:{laserVisible?:boolean;financeVisible?:boolean}){
+export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:initialFinanceVisible=true}:{laserVisible?:boolean;financeVisible?:boolean}={}){
   const{locale}=useI18n();
+  const[visibility,setVisibility]=useState({laser:initialLaserVisible,finance:initialFinanceVisible});
+
+  useEffect(()=>{
+    let active=true;
+    const supabase=createClient();
+    void supabase.rpc('get_public_site_visibility').then((result:{data?:unknown;error?:unknown})=>{
+      if(!active||result.error)return;
+      const data=result.data as {laser_public_visible?:boolean|null;finance_public_visible?:boolean|null}|Array<{laser_public_visible?:boolean|null;finance_public_visible?:boolean|null}>|null|undefined;
+      const row=Array.isArray(data)?data[0]:data;
+      setVisibility({
+        laser:Boolean(row?.laser_public_visible),
+        finance:row?.finance_public_visible!==false
+      });
+    });
+    return()=>{active=false};
+  },[]);
+
+  const laserVisible=visibility.laser;
+  const financeVisible=visibility.finance;
   const activeLocale=(locale in COPY?locale:"pt-BR") as keyof typeof COPY;
   const c=COPY[activeLocale];
   const showStore=locale==="pt-BR";
