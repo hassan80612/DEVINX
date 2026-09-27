@@ -42,3 +42,14 @@ test('leaving fullscreen keeps remote input enabled and simple touch uses one cl
   assert.doesNotMatch(exit,/disableRemoteInput/);
   assert.match(panel,/sendRemoteInput\(\{type:'click',\.\.\.point,button:0\}\)/);
 });
+
+
+test('visible Laser workspace actions use i18n and mobile help matches normal-view touch',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const laser=await readFile('src/i18n/laser.ts','utf8');
+  for(const key of ['laser.operate','laser.frameDiode','laser.moreTools','laser.keyboardPlaceholder','laser.startConfirm']){
+    assert.match(panel,new RegExp(key.replace('.','\\.')));
+    assert.equal((laser.match(new RegExp("'"+key.replace('.','\\.')+"'","g"))||[]).length,6);
+  }
+  assert.doesNotMatch(laser,/celular usa tela cheia para toque|mobile uses fullscreen touch|móvil usa toque en pantalla completa/);
+});

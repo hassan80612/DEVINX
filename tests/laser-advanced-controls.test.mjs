@@ -12,9 +12,8 @@ test('Laser Control uses Agent 1.0.27 for advanced controls',async()=>{
   assert.match(panel,/dialog_confirm/);
   assert.match(panel,/dialog_cancel/);
   assert.match(panel,/dialog_close/);
-  assert.match(panel,/select_layer/);
-  assert.match(panel,/open_layer/);
-  assert.match(css,/\.parameterDock/);
+  assert.doesNotMatch(panel,/select_layer|open_layer|refreshParameters|openLayerPanel/);
+  assert.doesNotMatch(css,/\.parameterDock|\.parameterGrid|\.layerBar/);
   assert.match(i18n,/DevinX Laser Agent 1\.0\.27/);
 });
 
@@ -123,12 +122,11 @@ test('live D-pad is beside the preview and Agent focuses the LightBurn workspace
   assert.doesNotMatch(input,/workspace_postmessage/);
 });
 
-test('layer selection is never invented when LightBurn does not report an active layer',async()=>{
+test('legacy layer editor stays out of the live frontend',async()=>{
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   assert.doesNotMatch(bridge,/layers\.Length==1&&!layers\[0\]\.Selected/);
-  assert.match(panel,/laser\.paramsChooseLayer/);
-  assert.match(panel,/openCurrentLayerEditor/);
+  assert.doesNotMatch(panel,/controlSnapshot|controlDrafts|openCurrentLayerEditor|selectLayer/);
 });
 
 
@@ -180,4 +178,16 @@ test('mobile pinch is incremental and cannot turn the remaining finger into a wi
   assert.match(panel,/Math\.max\(\.9,Math\.min\(1\.1,distance\/previous\)\)/);
   assert.doesNotMatch(panel,/zoomOrigin/);
   assert.match(panel,/transformOrigin:'center center'/);
+});
+
+
+test('Laser workspace has no dead layer panel state and no hidden parameter refresh after dialog actions',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
+  assert.doesNotMatch(panel,/controlDrawerOpen|controlSnapshot|controlDrafts|controlError|refreshParameters/);
+  assert.doesNotMatch(css,/\.parameterDock|\.parameterGrid|\.parameterField|\.layerBar/);
+  const close=panel.slice(panel.indexOf('function closeActiveDialog'),panel.indexOf('function confirmActiveDialog'));
+  const confirm=panel.slice(panel.indexOf('function confirmActiveDialog'),panel.indexOf('function sendFrameGantryRequest'));
+  assert.doesNotMatch(close,/control_request|inspect/);
+  assert.doesNotMatch(confirm,/control_request|inspect/);
 });

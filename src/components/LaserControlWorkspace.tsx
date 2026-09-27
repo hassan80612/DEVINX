@@ -48,32 +48,13 @@ type RemoteSession={
 type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
-type LightBurnControlField={
-  key:string;
-  label:string;
-  kind:'number'|'toggle';
-  value:string|null;
-  checked:boolean|null;
-  writable:boolean;
-};
-type LightBurnControlLayer={
-  id:string;
-  label:string;
-  selected:boolean;
-};
-type LightBurnControlSnapshot={
-  windowTitle:string|null;
-  layers:LightBurnControlLayer[];
-  fields:LightBurnControlField[];
-};
-
 export function LaserControlWorkspace(){
   const{t}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
   const[loading,setLoading]=useState(true);
   const[notice,setNotice]=useState('');
-  const[tab,setTab]=useState<'live'|'control'|'agent'>('live');
+  const[tab,setTab]=useState<'live'|'agent'>('live');
 
   const[session,setSession]=useState<RemoteSession|null>(null);
   const[realtimeStatus,setRealtimeStatus]=useState<'idle'|'connecting'|'live'|'error'>('idle');
@@ -98,12 +79,8 @@ export function LaserControlWorkspace(){
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
-  const[controlDrawerOpen,setControlDrawerOpen]=useState(true);
   const[toolPanelOpen,setToolPanelOpen]=useState(false);
-  const[controlSnapshot,setControlSnapshot]=useState<LightBurnControlSnapshot|null>(null);
-  const[controlDrafts,setControlDrafts]=useState<Record<string,string>>({});
   const[controlPending,setControlPending]=useState<string|null>(null);
-  const[controlError,setControlError]=useState('');
   const[activeDialogTool,setActiveDialogTool]=useState<string|null>(null);
   const[mobileEditOpen,setMobileEditOpen]=useState(false);
   const[mobileEditValue,setMobileEditValue]=useState('');
@@ -138,7 +115,6 @@ export function LaserControlWorkspace(){
   const mobileKeyboardRef=useRef<HTMLInputElement|null>(null);
   const inputReadyRef=useRef(false);
   const controlPendingRef=useRef<string|null>(null);
-  const controlActionRef=useRef('');
   const pendingInputResultsRef=useRef(new Map<string,(result:{ok:boolean;reason:string|null})=>void>());
 
   const loadDevices=useCallback(async(quiet=false)=>{
@@ -193,10 +169,6 @@ export function LaserControlWorkspace(){
     return Date.now()-Date.parse(device.last_seen_at)<25_000;
   };
 
-  const supportsAdvancedControls=(version:string|null)=>{
-    const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=17);
-  };
   const supportsAgent21=(version:string|null)=>{
     const match=/^1\.0\.(\d+)/.exec(version||'');
     return Boolean(match&&Number(match[1])>=21);
@@ -205,7 +177,6 @@ export function LaserControlWorkspace(){
     const match=/^1\.0\.(\d+)/.exec(version||'');
     return Boolean(match&&Number(match[1])>=24);
   };
-  const advancedControlsReady=Boolean(selectedDevice&&supportsAdvancedControls(selectedDevice.agent_version));
   const latestAgentReady=Boolean(selectedDevice&&supportsAgent21(selectedDevice.agent_version));
   const workspaceKeysReady=Boolean(selectedDevice&&supportsAgent24(selectedDevice.agent_version));
 
@@ -271,10 +242,7 @@ export function LaserControlWorkspace(){
       }
       setSession(null);
       setFrameSrc('');
-      setControlSnapshot(null);
-      setControlDrafts({});
       setControlPending(null);
-      setControlError('');
       resetZoom();
       inputReadyRef.current=false;
       setInputReady(false);
@@ -331,57 +299,19 @@ export function LaserControlWorkspace(){
       .on('broadcast',{event:'control_result'},({payload}:any)=>{
         if(payload?.token!==session.frameToken)return;
         const requestId=String(payload?.requestId||'');
-        const action=controlPendingRef.current===requestId?controlActionRef.current:'';
-        if(controlPendingRef.current===requestId)controlPendingRef.current=null;
+        if(controlPendingRef.current!==requestId)return;
+        controlPendingRef.current=null;
         setControlPending(current=>current===requestId?null:current);
 
         if(!payload?.ok){
           const reason=String(payload?.reason||'');
-          setControlError(
-            /frame_button_not_found/.test(reason)
-              ?t('laser.frameGantryMissing')
-              :/selected_layer_not_found|layer_not_found/.test(reason)
-              ?t('laser.paramsNoLayer')
-              :/field_not_found/.test(reason)
-                ?t('laser.paramsNotFound')
-                :t('laser.paramsReadFail')
-          );
+          setNotice(/frame_button_not_found/.test(reason)
+            ?t('laser.frameGantryMissing')
+            :t('laser.quickFailed'));
           return;
         }
 
-        if(action==='frame_gantry'){
-          setNotice(t('laser.frameGantrySent'));
-          setControlError('');
-          return;
-        }
-
-        const raw=payload?.snapshot;
-        if(!raw)return;
-        const rawLayers=Array.isArray(raw?.layers)?raw.layers:Array.isArray(raw?.Layers)?raw.Layers:[];
-        const rawFields=Array.isArray(raw?.fields)?raw.fields:Array.isArray(raw?.Fields)?raw.Fields:[];
-        const snapshot:LightBurnControlSnapshot={
-          windowTitle:String(raw?.windowTitle??raw?.WindowTitle??'')||null,
-          layers:rawLayers.map((layer:any)=>({
-            id:String(layer?.id??layer?.Id??''),
-            label:String(layer?.label??layer?.Label??layer?.id??layer?.Id??''),
-            selected:Boolean(layer?.selected??layer?.Selected)
-          })).filter((layer:LightBurnControlLayer)=>layer.id),
-          fields:rawFields.map((field:any)=>({
-            key:String(field?.key??field?.Key??''),
-            label:String(field?.label??field?.Label??field?.key??field?.Key??''),
-            kind:String(field?.kind??field?.Kind)==='toggle'?'toggle':'number',
-            value:field?.value??field?.Value??null,
-            checked:field?.checked??field?.Checked??null,
-            writable:Boolean(field?.writable??field?.Writable)
-          })).filter((field:LightBurnControlField)=>field.key)
-        };
-
-        setControlError('');
-        setControlSnapshot(snapshot);
-        const nextDrafts:Record<string,string>={};
-        for(const field of snapshot.fields)
-          if(field.kind==='number')nextDrafts[field.key]=field.value??'';
-        setControlDrafts(nextDrafts);
+        setNotice(t('laser.frameGantrySent'));
       })
       .subscribe((status:string)=>{
         if(status==='SUBSCRIBED')setRealtimeStatus(current=>current==='live'?'live':'connecting');
@@ -585,102 +515,46 @@ export function LaserControlWorkspace(){
   function closeActiveDialog(){
     sendRemoteKey('Escape','Escape');
     setActiveDialogTool(null);
-    window.setTimeout(()=>refreshParameters(),300);
   }
 
   function confirmActiveDialog(){
     sendRemoteKey('Enter','Enter');
     setActiveDialogTool(null);
-    window.setTimeout(()=>refreshParameters(),300);
   }
 
-  function sendControlRequest(
-    action:'inspect'|'set'|'select_layer'|'open_layer'|'dialog_confirm'|'dialog_cancel'|'dialog_close'|'frame_gantry',
-    extra:Record<string,unknown>={}
-  ){
-    if(!advancedControlsReady){
-      setControlError(t('laser.paramsAgentUpdate'));
+  function sendFrameGantryRequest(){
+    if(!latestAgentReady){
+      setNotice(t('laser.agentUpdateRequired'));
       return;
     }
     const current=sessionRef.current;
     if(!inputReadyRef.current||!current?.inputToken||!channelRef.current){
-      setControlError(t('laser.paramsNeedControl'));
+      setNotice(t('laser.quickNeedControl'));
       return;
     }
     const requestId=crypto.randomUUID();
     controlPendingRef.current=requestId;
-    controlActionRef.current=action;
     setControlPending(requestId);
-    setControlError('');
     void channelRef.current.send({
       type:'broadcast',
       event:'control_request',
-      payload:{token:current.inputToken,requestId,action,...extra}
+      payload:{token:current.inputToken,requestId,action:'frame_gantry'}
     });
     window.setTimeout(()=>{
       if(controlPendingRef.current!==requestId)return;
       controlPendingRef.current=null;
       setControlPending(current=>current===requestId?null:current);
-      setControlError(t('laser.paramsTimeout'));
+      setNotice(t('laser.quickFailed'));
     },4_500);
-  }
-
-  function refreshParameters(){
-    sendControlRequest('inspect');
   }
 
   async function frameGantry(){
     if(!canOperate||!latestAgentReady)return;
     if(!await ensureInputReady()){
-      setControlError(t('laser.paramsNeedControl'));
+      setNotice(t('laser.quickNeedControl'));
       return;
     }
-    sendControlRequest('frame_gantry');
-  }
-
-  function setNumericParameter(field:LightBurnControlField){
-    const value=(controlDrafts[field.key]??'').trim();
-    if(!value)return;
-    sendControlRequest('set',{field:field.key,value});
-  }
-
-  function setToggleParameter(field:LightBurnControlField,checked:boolean){
-    sendControlRequest('set',{field:field.key,toggle:checked});
-  }
-
-  function selectLayer(layerId:string){
-    if(!layerId)return;
-    sendControlRequest('select_layer',{layer:layerId});
-  }
-
-  function openLayerEditor(layerId?:string){
-    if(!layerId){
-      setControlError(t('laser.paramsChooseLayer'));
-      return;
-    }
-    setActiveDialogTool('layer');
-    sendControlRequest('open_layer',{layer:layerId});
-  }
-
-  function openCurrentLayerEditor(){
-    const selected=controlSnapshot?.layers.find(layer=>layer.selected);
-    if(!selected){
-      setControlError(t('laser.paramsChooseLayer'));
-      return;
-    }
-    openLayerEditor(selected.id);
-  }
-
-  function confirmDialog(){
-    sendControlRequest('dialog_confirm');
-  }
-
-  function cancelDialog(){
-    sendControlRequest('dialog_cancel');
-  }
-
-  function closeDialog(){
-    sendControlRequest('dialog_close');
+    sendFrameGantryRequest();
   }
 
   async function ensureInputReady(){
@@ -1032,7 +906,7 @@ export function LaserControlWorkspace(){
     if(!selectedDevice||commandPending)return;
 
     if(command==='start'){
-      if(!window.confirm('Iniciar a gravação agora? Confirme somente com a máquina pronta e supervisionada.'))return;
+      if(!window.confirm(t('laser.startConfirm')))return;
     }
 
     setCommandPending(command);
@@ -1076,7 +950,7 @@ export function LaserControlWorkspace(){
 
       const commandId=String(data?.commandId||'');
       if(!commandId){
-        setCommandNotice('Comando sem confirmação.');
+        setCommandNotice(t('laser.commandNoConfirm'));
         return;
       }
 
@@ -1104,7 +978,7 @@ export function LaserControlWorkspace(){
           return;
         }
         if(result?.status==='rejected'||result?.status==='expired'){
-          setCommandNotice('Não executado: '+String(result?.rejectionReason||result?.status));
+          setCommandNotice(t('laser.commandBlocked'));
           await loadDevices(true);
           return;
         }
@@ -1118,23 +992,6 @@ export function LaserControlWorkspace(){
       setCommandPending(null);
       void loadDevices(true);
     }
-  }
-
-  function openControlDrawer(){
-    setTab('live');
-    setControlDrawerOpen(true);
-    if(!inputReady&&!inputPending)void enableRemoteInput();
-  }
-
-  function closeControlDrawer(){
-    setControlDrawerOpen(true);
-    setTab('live');
-  }
-
-  async function openLayerPanel(){
-    setToolPanelOpen(true);
-    if(await ensureInputReady())refreshParameters();
-    else setControlError(t('laser.paramsNeedControl'));
   }
 
   async function editParametersOnScreen(){
@@ -1166,14 +1023,14 @@ export function LaserControlWorkspace(){
       });
       const data=await response.json();
       if(!response.ok||!data?.claimed){
-        setNotice(data?.reason==='not_found_or_expired'?'Código expirado ou não encontrado.':'Não foi possível vincular o PC.');
+        setNotice(data?.reason==='not_found_or_expired'?t('laser.pairCodeExpired'):t('laser.pairFail'));
         return;
       }
       setPairingCode('');
       setNotice(t('laser.pcLinked'));
       await loadDevices();
     }catch{
-      setNotice('Falha ao vincular o PC.');
+      setNotice(t('laser.pairFail'));
     }finally{
       setPairingPending(false);
     }
@@ -1423,11 +1280,11 @@ export function LaserControlWorkspace(){
                 }
               }}
               onKeyUp={event=>event.stopPropagation()}
-              aria-label="Digitar no LightBurn"
-              placeholder="Digite valor ou texto"
+              aria-label={t('laser.keyboardAria')}
+              placeholder={t('laser.keyboardPlaceholder')}
             />
-            <button type="button" onClick={sendMobileEdit} disabled={!mobileEditValue}>Enviar</button>
-            <button type="button" onClick={closeMobileKeyboard}>Cancelar</button>
+            <button type="button" onClick={sendMobileEdit} disabled={!mobileEditValue}>{t('laser.send')}</button>
+            <button type="button" onClick={closeMobileKeyboard}>{t('laser.cancel')}</button>
           </div>
         </div>
 
@@ -1448,7 +1305,7 @@ export function LaserControlWorkspace(){
           <div className={styles.liveDialogActions}>
             <button type="button" disabled={!inputReady} onClick={openMobileKeyboard}>⌨ {t('laser.keyboard')}</button>
             {activeDialogTool&&<>
-              <button type="button" className={styles.dialogOk} disabled={!inputReady} onClick={confirmActiveDialog}>OK / Enter</button>
+              <button type="button" className={styles.dialogOk} disabled={!inputReady} onClick={confirmActiveDialog}>{t('laser.okEnter')}</button>
               <button type="button" className={styles.dialogClose} disabled={!inputReady} onClick={closeActiveDialog}>{t('laser.closeEsc')}</button>
             </>}
           </div>
@@ -1474,17 +1331,17 @@ export function LaserControlWorkspace(){
         {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
 
         <div className={styles.primaryActionBar}>
-          <button type="button" disabled={!canOperate||!latestAgentReady||Boolean(controlPending)} onClick={()=>void frameGantry()} title={!latestAgentReady?t('laser.paramsAgentUpdate'):undefined}><i>▣</i><span>Frame Diodo</span></button>
-          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('rotary',{key:'r',code:'KeyR',ctrl:true,shift:true})}><i>⟳</i><span>Rotativo</span></button>
-          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('adjust-image',{key:'i',code:'KeyI',alt:true})}><i>◐</i><span>Ajustar imagem</span></button>
-          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('trace',{key:'t',code:'KeyT',alt:true})}><i>⌇</i><span>Rastrear</span></button>
-          <button type="button" onClick={()=>setToolPanelOpen(value=>!value)}><i>⋯</i><span>{toolPanelOpen?'Fechar painel':'Mais'}</span></button>
+          <button type="button" disabled={!canOperate||!latestAgentReady||Boolean(controlPending)} onClick={()=>void frameGantry()} title={!latestAgentReady?t('laser.agentUpdateRequired'):undefined}><i>▣</i><span>{t('laser.frameDiode')}</span></button>
+          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('rotary',{key:'r',code:'KeyR',ctrl:true,shift:true})}><i>⟳</i><span>{t('laser.rotarySetup')}</span></button>
+          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('adjust-image',{key:'i',code:'KeyI',alt:true})}><i>◐</i><span>{t('laser.adjustImage')}</span></button>
+          <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('trace',{key:'t',code:'KeyT',alt:true})}><i>⌇</i><span>{t('laser.traceImage')}</span></button>
+          <button type="button" onClick={()=>setToolPanelOpen(value=>!value)}><i>⋯</i><span>{toolPanelOpen?t('laser.closePanel'):t('laser.more')}</span></button>
         </div>
 
         {toolPanelOpen&&<div className={styles.contextPanel}>
           <section className={styles.quickSection}>
             <div className={styles.sectionHeading}>
-              <div><small>LIGHTBURN</small><h3>Mais ferramentas</h3></div>
+              <div><small>LIGHTBURN</small><h3>{t('laser.moreTools')}</h3></div>
             </div>
             <div className={styles.moreToolsGrid}>
               <button type="button" disabled={toolPending!==null} onClick={()=>void runShortcut('select',{key:'a',code:'KeyA',ctrl:true})}><i>⌁</i><span>{t('laser.selectAll')}</span></button>
@@ -1495,7 +1352,7 @@ export function LaserControlWorkspace(){
           </section>
         </div>}
         <div className={styles.controlDetail}>
-          <b>SAFE CONTROL</b>
+          <b>{t('laser.safeControl')}</b>
           <p>{t('laser.commandSafety')}</p>
         </div>
 
