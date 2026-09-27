@@ -1348,10 +1348,7 @@ export function LaserControlWorkspace(){
           <button
             className={inputReady?styles.controlOn:styles.controlOff}
             disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
-            onClick={()=>{
-              fullscreenAutoInputRef.current=false;
-              void (inputReady?disableRemoteInput():enableRemoteInput());
-            }}
+            onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
           >{
             inputPending?t('laser.remoteActivating')
             :inputReady?t('laser.remoteOn')
@@ -1378,10 +1375,7 @@ export function LaserControlWorkspace(){
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
                 disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
-                onClick={()=>{
-                  fullscreenAutoInputRef.current=false;
-                  void (inputReady?disableRemoteInput():enableRemoteInput());
-                }}
+                onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
               >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
               <button onClick={openMobileKeyboard} disabled={!inputReady}>⌨</button>
               {activeDialogTool&&<>
