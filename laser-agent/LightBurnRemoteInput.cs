@@ -21,6 +21,8 @@ internal static class LightBurnRemoteInput
     private const uint WmLButtonDblClk=0x0203;
     private const uint WmRButtonDown=0x0204;
     private const uint WmRButtonUp=0x0205;
+    private const uint WmKeyDown=0x0100;
+    private const uint WmKeyUp=0x0101;
     private const uint MkLButton=0x0001;
     private const uint MkRButton=0x0002;
     private const uint GaRoot=2;
@@ -157,6 +159,8 @@ internal static class LightBurnRemoteInput
                 "wheel"=>Wheel(main,input),
                 "keydown"=>Keyboard(main,input,true),
                 "keyup"=>Keyboard(main,input,false),
+                "workspacekeydown"=>WorkspaceKeyboard(main,input,true),
+                "workspacekeyup"=>WorkspaceKeyboard(main,input,false),
                 "text"=>Text(main,input.Key),
                 _=>new(false,"unsupported_input",null,null)
             };
@@ -287,6 +291,25 @@ internal static class LightBurnRemoteInput
         return SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length
             ?new(true,"sendinput_key",null,null)
             :new(false,"windows_key_injection_failed",null,null);
+    }
+
+    private static RemoteInputApplyResult WorkspaceKeyboard(
+        IntPtr main,RealtimeRemoteInput input,bool down)
+    {
+        if(!ActivateWindow(main))
+            return new(false,"workspace_focus_failed",null,null);
+
+        var vk=VirtualKey(input.Code,input.Key);
+        if(vk==0)return new(false,"unsupported_key",null,null);
+
+        var message=down?WmKeyDown:WmKeyUp;
+        if(PostMessage(main,message,(IntPtr)vk,IntPtr.Zero))
+            return new(true,"workspace_postmessage",null,null);
+
+        var single=new[]{Key((ushort)vk,!down)};
+        return SendInput(1,single,Marshal.SizeOf<Input>())==1
+            ?new(true,"workspace_sendinput_fallback",null,null)
+            :new(false,"workspace_key_failed",null,null);
     }
 
     private static RemoteInputApplyResult Text(IntPtr main,string? text)

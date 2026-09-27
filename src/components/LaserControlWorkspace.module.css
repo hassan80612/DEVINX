@@ -81,15 +81,6 @@
 .previewSurface:focus{border-color:rgba(94,231,255,.36)}
 .previewSurface:fullscreen{width:100vw;height:100dvh;max-height:none;border:0;border-radius:0;background:#000;overflow:hidden;align-items:center;justify-content:center}
 .previewSurface:fullscreen.remoteControlSurface{overflow:hidden;align-items:center;justify-content:center}
-.livePane:fullscreen{width:100vw;height:100dvh;padding:8px;overflow-y:auto;overscroll-behavior:contain;background:#101b24;color:#f4f8ff}
-.livePane:fullscreen .liveToolbar,.livePane:fullscreen .frameInfo{display:none}
-.livePane:fullscreen .previewSurface{position:sticky;z-index:4;top:0;min-height:0;height:56dvh;max-height:56dvh;flex:0 0 auto;border-radius:8px}
-.livePane:fullscreen .remoteImage,.livePane:fullscreen .remoteImageActive{max-height:56dvh;touch-action:none}
-.livePane:fullscreen .controlDrawer{margin-top:8px}
-.livePane:fullscreen .parameterDock{scroll-margin-top:56dvh}
-.livePane:fullscreen .fullscreenControls{flex-wrap:wrap;justify-content:flex-end;max-height:48%;overflow-y:auto}
-.livePane:fullscreen .fullscreenControls button{min-height:34px;padding:5px 8px}
-@media(max-width:760px){.livePane:fullscreen .previewSurface{height:48dvh;max-height:48dvh}.livePane:fullscreen .remoteImage,.livePane:fullscreen .remoteImageActive{max-height:48dvh}.livePane:fullscreen .parameterDock{scroll-margin-top:48dvh}}
 .remoteImage,.remoteImageActive{display:block;width:auto;height:auto;max-width:100%;max-height:80vh;object-fit:contain;transform-origin:center center;user-select:none;-webkit-user-drag:none}
 .remoteImageActive{cursor:crosshair}
 .previewSurface:fullscreen .remoteImage,.previewSurface:fullscreen .remoteImageActive{max-width:100vw;max-height:100dvh;will-change:transform}
@@ -367,4 +358,41 @@
   .primaryActionBar button{min-height:48px;font-size:10px}
   .primaryActionBar button:last-child{grid-column:1/-1;min-height:40px}
   .contextPanel{padding:7px}
+}
+
+
+/* Live controls stay next to the preview instead of being buried in More tools. */
+.liveControlRail{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin:6px 0 10px;padding:9px 10px;border:1px solid rgba(211,235,255,.16);
+  border-radius:13px;background:rgba(31,47,59,.48)
+}
+.dPad{
+  flex:0 0 auto;display:grid;grid-template-columns:42px 42px 42px;grid-template-rows:38px 38px 38px;
+  gap:4px;grid-template-areas:". up ." "left center right" ". down ."
+}
+.dPad button{
+  min-width:0;min-height:0;border:1px solid rgba(111,230,255,.30);border-radius:10px;
+  background:linear-gradient(145deg,#4c6578,#314757);color:#e9fbff;font-size:20px;font-weight:950;
+  cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.10)
+}
+.dPad button:disabled{opacity:.38;cursor:not-allowed}
+.dPadUp{grid-area:up}.dPadLeft{grid-area:left}.dPadCenter{grid-area:center}.dPadRight{grid-area:right}.dPadDown{grid-area:down}
+.dPadCenter{font-size:17px!important;color:#bff6ff!important}
+.liveDialogActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
+.liveDialogActions button{
+  min-height:40px;padding:7px 11px;border:1px solid rgba(174,208,243,.16);border-radius:10px;
+  background:linear-gradient(145deg,#4b6274,#304555);color:#f4fbff;font-size:11px;font-weight:900;cursor:pointer
+}
+.liveDialogActions button:disabled{opacity:.4;cursor:not-allowed}
+.previewSurface:fullscreen .fullscreenControls{
+  top:max(8px,env(safe-area-inset-top));left:auto;right:max(8px,env(safe-area-inset-right));
+  max-width:min(92vw,620px);padding:5px;border-radius:10px;background:rgba(5,10,14,.42);backdrop-filter:blur(5px)
+}
+.previewSurface:fullscreen .fullscreenControls button{min-height:32px;padding:5px 8px}
+@media(max-width:760px){
+  .liveControlRail{align-items:center;gap:10px;padding:8px}
+  .dPad{grid-template-columns:38px 38px 38px;grid-template-rows:34px 34px 34px}
+  .liveDialogActions{flex:1;display:grid;grid-template-columns:1fr}
+  .liveDialogActions button{min-height:36px;font-size:10px}
 }

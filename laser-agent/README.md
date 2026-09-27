@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.22
+# DevinX Laser Agent 1.0.23
 
 Agent Windows do DevinX Laser Control.
 
@@ -115,3 +115,7 @@ O Agent identifica respostas de atalhos pelo requestId, captura janelas do Light
 
 ## 1.0.22 — leitura de diálogos do LightBurn antigo
 Quando o navegador assume o foco, a inspeção usa a mesma janela do LightBurn já capturada pela transmissão, inclusive a janela de rotativo. A leitura de nós UIA preserva nomes mesmo quando widgets Qt não oferecem geometria no formato esperado e reconhece células 00–29 na lista Cuts/Layers. Se o LightBurn ainda não expuser valores à acessibilidade, a interface permite ampliar a área e editar diretamente na imagem com o teclado do celular. A disponibilidade de cada controle depende da interface da versão instalada.
+
+
+## 1.0.23 — foco do workspace e mentoria móvel
+As setas do DevinX agora têm um caminho dedicado que ativa a janela principal do LightBurn e envia a tecla diretamente ao workspace, evitando que um campo ou diálogo capture o movimento. A tela ao vivo normal aceita toque, duplo toque envia duplo clique real e abre o teclado do celular, e a seleção de camada nunca é presumida quando a versão do LightBurn não expõe o estado ativo.

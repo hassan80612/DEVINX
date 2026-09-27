@@ -108,7 +108,6 @@ export function LaserControlWorkspace(){
   const[mobileEditValue,setMobileEditValue]=useState('');
 
   const channelRef=useRef<any>(null);
-  const livePaneRef=useRef<HTMLDivElement|null>(null);
   const parameterDockRef=useRef<HTMLElement|null>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
   const imageRef=useRef<HTMLImageElement|null>(null);
@@ -201,8 +200,13 @@ export function LaserControlWorkspace(){
     const match=/^1\.0\.(\d+)/.exec(version||'');
     return Boolean(match&&Number(match[1])>=21);
   };
+  const supportsAgent23=(version:string|null)=>{
+    const match=/^1\.0\.(\d+)/.exec(version||'');
+    return Boolean(match&&Number(match[1])>=23);
+  };
   const advancedControlsReady=Boolean(selectedDevice&&supportsAdvancedControls(selectedDevice.agent_version));
   const latestAgentReady=Boolean(selectedDevice&&supportsAgent21(selectedDevice.agent_version));
+  const workspaceKeysReady=Boolean(selectedDevice&&supportsAgent23(selectedDevice.agent_version));
 
   const postSession=useCallback(async(payload:Record<string,unknown>)=>{
     const response=await fetch('/api/laser-control/master/remote-session',{
@@ -408,7 +412,7 @@ export function LaserControlWorkspace(){
 
   async function enterFullscreen(){
     try{
-      await livePaneRef.current?.requestFullscreen();
+      await previewSurfaceRef.current?.requestFullscreen();
       setFullscreen(true);
       previewSurfaceRef.current?.focus();
 
@@ -662,11 +666,26 @@ export function LaserControlWorkspace(){
   }
 
   function selectLayer(layerId:string){
+    if(!layerId)return;
     sendControlRequest('select_layer',{layer:layerId});
   }
 
   function openLayerEditor(layerId?:string){
-    sendControlRequest('open_layer',layerId?{layer:layerId}:{});
+    if(!layerId){
+      setControlError(t('laser.paramsChooseLayer'));
+      return;
+    }
+    setActiveDialogTool('layer');
+    sendControlRequest('open_layer',{layer:layerId});
+  }
+
+  function openCurrentLayerEditor(){
+    const selected=controlSnapshot?.layers.find(layer=>layer.selected);
+    if(!selected){
+      setControlError(t('laser.paramsChooseLayer'));
+      return;
+    }
+    openLayerEditor(selected.id);
   }
 
   function confirmDialog(){
@@ -736,6 +755,32 @@ export function LaserControlWorkspace(){
     }
   }
 
+  async function runWorkspaceKey(id:string,key:string,code:string){
+    if(toolPending)return;
+    setToolPending(id);
+    try{
+      if(!workspaceKeysReady){
+        setNotice(t('laser.workspaceAgentUpdate'));
+        return;
+      }
+      if(!await ensureInputReady()){
+        setNotice(t('laser.quickNeedControl'));
+        return;
+      }
+      const payload={key,code,ctrl:false,shift:false,alt:false,meta:false};
+      const receipt=await sendVerifiedInput({type:'workspacekeydown',...payload});
+      if(!receipt.ok){
+        setNotice(t('laser.quickFailed'));
+        return;
+      }
+      await new Promise(resolve=>window.setTimeout(resolve,65));
+      sendRemoteInput({type:'workspacekeyup',...payload});
+      setNotice(t('laser.quickSent'));
+    }finally{
+      setToolPending(null);
+    }
+  }
+
   function pointerCoordinatesFromClient(clientX:number,clientY:number){
     const image=imageRef.current;
     if(!image)return null;
@@ -782,8 +827,6 @@ export function LaserControlWorkspace(){
     event:ReactPointerEvent<HTMLImageElement>,
     type:'pointerdown'|'pointerup'|'pointermove'|'pointercancel'
   ){
-    if(event.pointerType==='touch'&&!document.fullscreenElement)return;
-
     if(event.pointerType!=='touch'){
       if(!inputReady)return;
       const point=pointerCoordinates(event);
@@ -926,12 +969,13 @@ export function LaserControlWorkspace(){
           &&now-last.at<330
           &&Math.hypot(event.clientX-last.clientX,event.clientY-last.clientY)<28);
 
-        sendRemoteInput({type:'pointerdown',...point,button:0});
-        sendRemoteInput({type:'pointerup',...point,button:0});
         if(isDouble){
+          sendRemoteInput({type:'doubleclick',...point,button:0});
           lastTapRef.current=null;
           openMobileKeyboard();
         }else{
+          sendRemoteInput({type:'pointerdown',...point,button:0});
+          sendRemoteInput({type:'pointerup',...point,button:0});
           lastTapRef.current={at:now,clientX:event.clientX,clientY:event.clientY};
         }
       }
@@ -1264,13 +1308,8 @@ export function LaserControlWorkspace(){
         </button>
       </div>
 
-      {tab!=='agent'&&<div className={styles.livePane} ref={livePaneRef}>
+      {tab!=='agent'&&<div className={styles.livePane}>
         <div className={styles.liveToolbar}>
-          <div className={styles.zoom}>
-            <button onClick={()=>setZoom(value=>Math.max(.75,Math.round((value-.25)*100)/100))}>−</button>
-            <button title={t('laser.zoomReset')} onClick={resetZoom}>{Math.round(zoom*100)}%</button>
-            <button onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.25)*100)/100))}>＋</button>
-          </div>
           <div className={styles.orientation}>
             <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>{t('laser.auto')}</button>
             <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>{t('laser.landscape')}</button>
@@ -1301,11 +1340,6 @@ export function LaserControlWorkspace(){
         >
           <div className={styles.fullscreenControls}>
             {fullscreen&&<>
-              <div className={styles.zoom}>
-                <button onClick={()=>setZoom(value=>Math.max(.75,value-.25))}>−</button>
-                <button onClick={resetZoom}>{Math.round(zoom*100)}%</button>
-                <button onClick={()=>setZoom(value=>Math.min(3,value+.25))}>＋</button>
-              </div>
               <div className={styles.orientation}>
                 <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>{t('laser.auto')}</button>
                 <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>{t('laser.landscape')}</button>
@@ -1319,10 +1353,11 @@ export function LaserControlWorkspace(){
                   void (inputReady?disableRemoteInput():enableRemoteInput());
                 }}
               >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
-              <button onClick={()=>void openLayerPanel().then(()=>window.requestAnimationFrame(()=>parameterDockRef.current?.scrollIntoView({behavior:'smooth',block:'start'})))}>Camadas</button>
-              <button onClick={openMobileKeyboard} disabled={!inputReady}>Teclado</button>
-              <button className={styles.dialogOk} onClick={confirmActiveDialog} disabled={!inputReady}>OK</button>
-              <button className={styles.dialogClose} onClick={closeActiveDialog} disabled={!inputReady}>ESC</button>
+              <button onClick={openMobileKeyboard} disabled={!inputReady}>⌨</button>
+              {activeDialogTool&&<>
+                <button className={styles.dialogOk} onClick={confirmActiveDialog} disabled={!inputReady}>OK</button>
+                <button className={styles.dialogClose} onClick={closeActiveDialog} disabled={!inputReady}>ESC</button>
+              </>}
               <button onClick={()=>void exitFullscreen()}>{t('laser.fullscreenClose')}</button>
             </>}
           </div>
@@ -1376,6 +1411,23 @@ export function LaserControlWorkspace(){
           <span>{frameAt?new Date(frameAt).toLocaleTimeString():'—'}</span>
         </div>
 
+        <div className={styles.liveControlRail}>
+          <div className={styles.dPad} aria-label={t('laser.moveSelection')}>
+            <button className={styles.dPadUp} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-up','ArrowUp','ArrowUp')}>↑</button>
+            <button className={styles.dPadLeft} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-left','ArrowLeft','ArrowLeft')}>←</button>
+            <button className={styles.dPadCenter} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('center','p','KeyP')}>⊙</button>
+            <button className={styles.dPadRight} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-right','ArrowRight','ArrowRight')}>→</button>
+            <button className={styles.dPadDown} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-down','ArrowDown','ArrowDown')}>↓</button>
+          </div>
+          <div className={styles.liveDialogActions}>
+            <button type="button" disabled={!inputReady} onClick={openMobileKeyboard}>⌨ {t('laser.keyboard')}</button>
+            {activeDialogTool&&<>
+              <button type="button" className={styles.dialogOk} disabled={!inputReady} onClick={confirmActiveDialog}>OK / Enter</button>
+              <button type="button" className={styles.dialogClose} disabled={!inputReady} onClick={closeActiveDialog}>{t('laser.closeEsc')}</button>
+            </>}
+          </div>
+        </div>
+
         <section className={styles.controlDrawer}>
           <div className={styles.controlDrawerBody}>
 
@@ -1421,7 +1473,7 @@ export function LaserControlWorkspace(){
                 disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)}
                 onClick={()=>controlSnapshot?.layers.length===0
                   ?void editParametersOnScreen()
-                  :openLayerEditor(controlSnapshot?.layers?.find(layer=>layer.selected)?.id)}
+                  :openCurrentLayerEditor()}
               >{controlSnapshot?.layers.length===0?t('laser.paramsVisualEdit'):t('laser.paramsOpenLayer')}</button>
               {(activeDialogTool||(controlSnapshot?.windowTitle&&controlSnapshot.windowTitle!=='LightBurn'))&&<>
                 <button type="button" onClick={confirmActiveDialog}>OK / Enter</button>
@@ -1432,7 +1484,7 @@ export function LaserControlWorkspace(){
 
           {!advancedControlsReady?<div className={styles.parameterGate}>
             <b>{t('laser.paramsAgentUpdate')}</b>
-            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.22/DevinX-Laser-Agent-1.0.22.zip">{t('laser.download')}</a>
+            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.23/DevinX-Laser-Agent-1.0.23.zip">{t('laser.download')}</a>
           </div>:!inputReady&&<div className={styles.parameterGate}>
             <b>{t('laser.paramsNeedControl')}</b>
             <button
@@ -1452,6 +1504,7 @@ export function LaserControlWorkspace(){
                   disabled={Boolean(controlPending)||controlSnapshot.layers.length===0}
                 >
                   {controlSnapshot.layers.length===0&&<option value="">{t('laser.paramsNoLayer')}</option>}
+                  {controlSnapshot.layers.length>0&&!controlSnapshot.layers.some(layer=>layer.selected)&&<option value="">{t('laser.paramsChooseLayer')}</option>}
                   {controlSnapshot.layers.map(layer=><option key={layer.id} value={layer.id}>{layer.label}</option>)}
                 </select>
               </label>
@@ -1528,11 +1581,6 @@ export function LaserControlWorkspace(){
               <div className={styles.quickGrid}>
                 <button disabled={toolPending!==null} onClick={()=>void runShortcut('flip-h',{key:'h',code:'KeyH',ctrl:true,shift:true})}><i>↔</i><span>{t('laser.flipH')}</span></button>
                 <button disabled={toolPending!==null} onClick={()=>void runShortcut('flip-v',{key:'v',code:'KeyV',ctrl:true,shift:true})}><i>↕</i><span>{t('laser.flipV')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('center',{key:'p',code:'KeyP'})}><i>⊙</i><span>{t('laser.centerPage')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('left',{key:'ArrowLeft',code:'ArrowLeft'})}><i>←</i><span>{t('laser.moveLeft')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('right',{key:'ArrowRight',code:'ArrowRight'})}><i>→</i><span>{t('laser.moveRight')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('up',{key:'ArrowUp',code:'ArrowUp'})}><i>↑</i><span>{t('laser.moveUp')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('down',{key:'ArrowDown',code:'ArrowDown'})}><i>↓</i><span>{t('laser.moveDown')}</span></button>
               </div>
             </article>
 
@@ -1567,7 +1615,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.22/DevinX-Laser-Agent-1.0.22.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.23/DevinX-Laser-Agent-1.0.23.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

@@ -205,16 +205,6 @@ internal static class LightBurnControlBridge
             var selected=FindLayerNode(nodes,null,true);
             if(selected is null&&!string.IsNullOrWhiteSpace(LastLayerId))
                 selected=FindLayerNode(nodes,LastLayerId);
-            if(selected is null)
-            {
-                var unique=nodes
-                    .Select(node=>(node,id:LayerIdFromNode(node)??CutRowLayerId(node)))
-                    .Where(x=>x.id is not null)
-                    .GroupBy(x=>x.id!,StringComparer.OrdinalIgnoreCase)
-                    .Select(group=>group.OrderByDescending(x=>IsSelected(x.node.Element)).First().node)
-                    .ToArray();
-                if(unique.Length==1)selected=unique[0];
-            }
             if(selected is null)return Fail("selected_layer_not_found");
             if(!Click(selected,true))return Fail("layer_editor_open_failed");
             Thread.Sleep(220);
@@ -745,15 +735,8 @@ internal static class LightBurnControlBridge
     }
 
     private static LightBurnControlLayer[] SortedLayers(
-        Dictionary<string,LightBurnControlLayer> found)
-    {
-        var layers=found.Values.OrderBy(LayerSortKey).ToArray();
-        // One discovered row is necessarily the active layer in this project.
-        // Some Qt versions do not expose their selection state through UIA.
-        if(layers.Length==1&&!layers[0].Selected)
-            layers[0]=layers[0] with {Selected=true};
-        return layers;
-    }
+        Dictionary<string,LightBurnControlLayer> found)=>
+        found.Values.OrderBy(LayerSortKey).ToArray();
 
     private static int LayerSortKey(LightBurnControlLayer layer)
     {
