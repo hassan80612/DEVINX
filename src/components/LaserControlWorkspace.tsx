@@ -104,7 +104,6 @@ export function LaserControlWorkspace(){
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
   const fullscreenAutoInputRef=useRef(false);
-  const inputReadyRef=useRef(false);
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -172,7 +171,6 @@ export function LaserControlWorkspace(){
         sessionRef.current=next;
         setSession(next);
         setRealtimeStatus('connecting');
-        inputReadyRef.current=false;
         setInputReady(false);
       }catch{
         if(active)setRealtimeStatus('error');
@@ -208,7 +206,6 @@ export function LaserControlWorkspace(){
       setSession(null);
       setFrameSrc('');
       resetZoom();
-      inputReadyRef.current=false;
       setInputReady(false);
       setRealtimeStatus('idle');
     };
@@ -243,11 +240,9 @@ export function LaserControlWorkspace(){
       .on('broadcast',{event:'agent_state'},({payload}:any)=>{
         if(payload?.token!==session.frameToken)return;
         if(payload?.state==='control-ready'){
-          inputReadyRef.current=true;
           setInputReady(true);
         }
         if(payload?.state==='preview-ready'){
-          inputReadyRef.current=false;
           setInputReady(false);
           setRealtimeStatus(current=>current==='live'?'live':'connecting');
         }
@@ -282,6 +277,14 @@ export function LaserControlWorkspace(){
       await previewSurfaceRef.current?.requestFullscreen();
       setFullscreen(true);
       previewSurfaceRef.current?.focus();
+
+      const screenOrientation=(screen.orientation as any);
+      if(orientation==='auto'){
+        if(typeof screenOrientation?.unlock==='function')screenOrientation.unlock();
+      }else if(typeof screenOrientation?.lock==='function'){
+        try{await screenOrientation.lock(orientation)}catch{}
+      }
+
       if(!sessionRef.current?.remoteInputEnabled){
         fullscreenAutoInputRef.current=true;
         await enableRemoteInput();
@@ -309,6 +312,7 @@ export function LaserControlWorkspace(){
         if(typeof screenOrientation?.unlock==='function')screenOrientation.unlock();
         return;
       }
+      if(!document.fullscreenElement)return;
       if(typeof screenOrientation?.lock==='function')
         await screenOrientation.lock(mode);
     }catch{
@@ -320,7 +324,6 @@ export function LaserControlWorkspace(){
     const current=sessionRef.current;
     if(!current)return;
     setInputPending(true);
-    inputReadyRef.current=false;
     setInputReady(false);
     try{
       const data=await postSession({action:'input',sessionId:current.sessionId,enabled:true});
@@ -344,11 +347,9 @@ export function LaserControlWorkspace(){
       const next={...current,...data,inputToken:null,remoteInputEnabled:false} as RemoteSession;
       sessionRef.current=next;
       setSession(next);
-      inputReadyRef.current=false;
       setInputReady(false);
       setNotice(t('laser.inputBlocked'));
     }catch{
-      inputReadyRef.current=false;
       setInputReady(false);
     }finally{
       setInputPending(false);
@@ -357,7 +358,7 @@ export function LaserControlWorkspace(){
 
   function sendRemoteInput(payload:Record<string,unknown>){
     const current=sessionRef.current;
-    if(!inputReadyRef.current||!current?.inputToken||!channelRef.current)return;
+    if(!inputReady||!current?.inputToken||!channelRef.current)return;
     void channelRef.current.send({
       type:'broadcast',
       event:'remote_input',
@@ -365,33 +366,17 @@ export function LaserControlWorkspace(){
     });
   }
 
-  async function ensureInputReady(){
-    if(inputReadyRef.current)return true;
-    const current=sessionRef.current;
-    if(!current)return false;
-
-    if(!current.remoteInputEnabled){
-      await enableRemoteInput();
-    }
-
-    for(let i=0;i<30;i++){
-      if(inputReadyRef.current)return true;
-      await new Promise(resolve=>window.setTimeout(resolve,100));
-    }
-    return false;
-  }
-
   async function runShortcut(
     id:string,
     shortcut:{key:string;code:string;ctrl?:boolean;shift?:boolean;alt?:boolean}
   ){
     if(toolPending)return;
+    if(!inputReady){
+      setNotice(t('laser.quickNeedControl'));
+      return;
+    }
     setToolPending(id);
     try{
-      if(!await ensureInputReady()){
-        setNotice(t('laser.quickNeedControl'));
-        return;
-      }
       const payload={
         key:shortcut.key,
         code:shortcut.code,
@@ -926,6 +911,11 @@ export function LaserControlWorkspace(){
                 <button onClick={()=>setZoom(value=>Math.max(.75,value-.25))}>−</button>
                 <button onClick={resetZoom}>{Math.round(zoom*100)}%</button>
                 <button onClick={()=>setZoom(value=>Math.min(3,value+.25))}>＋</button>
+              </div>
+              <div className={styles.orientation}>
+                <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>{t('laser.auto')}</button>
+                <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>{t('laser.landscape')}</button>
+                <button className={orientation==='portrait'?styles.on:''} onClick={()=>void setOrientationMode('portrait')}>{t('laser.portrait')}</button>
               </div>
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
