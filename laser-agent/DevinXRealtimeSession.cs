@@ -212,9 +212,15 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                 }
                 while(!result.EndOfMessage);
 
-                if(result.MessageType!=WebSocketMessageType.Text)continue;
-                var json=Encoding.UTF8.GetString(stream.GetBuffer(),0,(int)stream.Length);
-                await HandleMessageAsync(json);
+                if(result.MessageType==WebSocketMessageType.Text)
+                {
+                    var json=Encoding.UTF8.GetString(stream.GetBuffer(),0,(int)stream.Length);
+                    await HandleMessageAsync(json);
+                }
+                else if(result.MessageType==WebSocketMessageType.Binary)
+                {
+                    await HandleBinaryMessageAsync(stream.GetBuffer().AsMemory(0,(int)stream.Length));
+                }
             }
             catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){return;}
             catch(Exception ex)
@@ -298,63 +304,109 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                ||payload.ValueKind!=JsonValueKind.Object)
                 return;
 
-            if(userEvent=="command")
-            {
-                var token=payload.TryGetProperty("token",out var tokenEl)?tokenEl.GetString():"";
-                if(!CryptographicOperations.FixedTimeEquals(
-                    Encoding.UTF8.GetBytes(token??""),
-                    Encoding.UTF8.GetBytes(_config.ControlToken)))
-                    return;
-
-                var id=payload.TryGetProperty("commandId",out var idEl)?idEl.GetString():null;
-                var command=payload.TryGetProperty("command",out var cmdEl)?cmdEl.GetString():null;
-                DateTimeOffset? expires=null;
-                if(payload.TryGetProperty("expiresAt",out var expEl)
-                   &&expEl.ValueKind==JsonValueKind.String
-                   &&DateTimeOffset.TryParse(expEl.GetString(),out var parsed))
-                    expires=parsed;
-
-                if(!string.IsNullOrWhiteSpace(id)&&!string.IsNullOrWhiteSpace(command))
-                    await _onCommand(new RealtimeCommand(token??"",id!,command!,expires));
-                return;
-            }
-
-            if(userEvent=="remote_input")
-            {
-                var access=AccessSnapshot();
-                if(!access.Enabled||string.IsNullOrWhiteSpace(access.Token))return;
-                var token=payload.TryGetProperty("token",out var tokenEl)?tokenEl.GetString():"";
-                if(!CryptographicOperations.FixedTimeEquals(
-                    Encoding.UTF8.GetBytes(token??""),
-                    Encoding.UTF8.GetBytes(access.Token!)))
-                    return;
-
-                static double? Number(JsonElement p,string name)=>
-                    p.TryGetProperty(name,out var e)&&e.TryGetDouble(out var v)?v:null;
-                static bool Bool(JsonElement p,string name)=>
-                    p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.True;
-                static string? String(JsonElement p,string name)=>
-                    p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.String?e.GetString():null;
-
-                await _onInput(new RealtimeRemoteInput(
-                    token??"",
-                    String(payload,"type")??"",
-                    Number(payload,"x"),
-                    Number(payload,"y"),
-                    payload.TryGetProperty("button",out var b)&&b.TryGetInt32(out var bv)?bv:0,
-                    Number(payload,"deltaY")??0,
-                    String(payload,"key"),
-                    String(payload,"code"),
-                    Bool(payload,"ctrl"),
-                    Bool(payload,"shift"),
-                    Bool(payload,"alt"),
-                    Bool(payload,"meta")));
-            }
+            await HandleBroadcastAsync(userEvent,payload);
         }
         catch(Exception ex)
         {
             LastError=ex.GetType().Name;
         }
+    }
+
+    private async Task HandleBinaryMessageAsync(ReadOnlyMemory<byte> data)
+    {
+        try
+        {
+            var bytes=data.Span;
+            if(bytes.Length<5)return;
+
+            // Supabase Realtime protocol v2 server broadcast:
+            // [0x04, topicSize, eventSize, metadataSize, payloadEncoding, ...]
+            if(bytes[0]!=0x04)return;
+
+            var topicSize=bytes[1];
+            var eventSize=bytes[2];
+            var metadataSize=bytes[3];
+            var payloadEncoding=bytes[4];
+            if(payloadEncoding!=1)return;
+
+            var offset=5;
+            var required=offset+topicSize+eventSize+metadataSize;
+            if(bytes.Length<required)return;
+
+            var topic=Encoding.UTF8.GetString(bytes.Slice(offset,topicSize));
+            offset+=topicSize;
+            if(!string.Equals(topic,"realtime:"+_config.Topic,StringComparison.Ordinal))return;
+
+            var userEvent=Encoding.UTF8.GetString(bytes.Slice(offset,eventSize));
+            offset+=eventSize+metadataSize;
+            if(offset>bytes.Length)return;
+
+            var payloadBytes=bytes.Slice(offset).ToArray();
+            if(payloadBytes.Length==0)return;
+
+            using var payloadDoc=JsonDocument.Parse(payloadBytes);
+            if(payloadDoc.RootElement.ValueKind!=JsonValueKind.Object)return;
+            await HandleBroadcastAsync(userEvent,payloadDoc.RootElement);
+        }
+        catch(Exception ex)
+        {
+            LastError="binary:"+ex.GetType().Name;
+        }
+    }
+
+    private async Task HandleBroadcastAsync(string? userEvent,JsonElement payload)
+    {
+        if(userEvent=="command")
+        {
+            var token=payload.TryGetProperty("token",out var tokenEl)?tokenEl.GetString():"";
+            if(!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(token??""),
+                Encoding.UTF8.GetBytes(_config.ControlToken)))
+                return;
+
+            var id=payload.TryGetProperty("commandId",out var idEl)?idEl.GetString():null;
+            var command=payload.TryGetProperty("command",out var cmdEl)?cmdEl.GetString():null;
+            DateTimeOffset? expires=null;
+            if(payload.TryGetProperty("expiresAt",out var expEl)
+               &&expEl.ValueKind==JsonValueKind.String
+               &&DateTimeOffset.TryParse(expEl.GetString(),out var parsed))
+                expires=parsed;
+
+            if(!string.IsNullOrWhiteSpace(id)&&!string.IsNullOrWhiteSpace(command))
+                await _onCommand(new RealtimeCommand(token??"",id!,command!,expires));
+            return;
+        }
+
+        if(userEvent!="remote_input")return;
+
+        var access=AccessSnapshot();
+        if(!access.Enabled||string.IsNullOrWhiteSpace(access.Token))return;
+        var inputToken=payload.TryGetProperty("token",out var inputTokenEl)?inputTokenEl.GetString():"";
+        if(!CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(inputToken??""),
+            Encoding.UTF8.GetBytes(access.Token!)))
+            return;
+
+        static double? Number(JsonElement p,string name)=>
+            p.TryGetProperty(name,out var e)&&e.TryGetDouble(out var v)?v:null;
+        static bool Bool(JsonElement p,string name)=>
+            p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.True;
+        static string? String(JsonElement p,string name)=>
+            p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.String?e.GetString():null;
+
+        await _onInput(new RealtimeRemoteInput(
+            inputToken??"",
+            String(payload,"type")??"",
+            Number(payload,"x"),
+            Number(payload,"y"),
+            payload.TryGetProperty("button",out var b)&&b.TryGetInt32(out var bv)?bv:0,
+            Number(payload,"deltaY")??0,
+            String(payload,"key"),
+            String(payload,"code"),
+            Bool(payload,"ctrl"),
+            Bool(payload,"shift"),
+            Bool(payload,"alt"),
+            Bool(payload,"meta")));
     }
 
     private async Task HeartbeatLoopAsync(CancellationToken cancellationToken)
