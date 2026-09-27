@@ -65,8 +65,6 @@ export function LaserControlWorkspace(){
   const[inputPending,setInputPending]=useState(false);
   const[commandPending,setCommandPending]=useState<LaserCommand|null>(null);
   const[commandNotice,setCommandNotice]=useState('');
-  const[framingEngaged,setFramingEngaged]=useState(false);
-  const[realtimeEpoch,setRealtimeEpoch]=useState(0);
   const[pairingCode,setPairingCode]=useState('');
   const[deviceName,setDeviceName]=useState('PC Oficina');
   const[pairingPending,setPairingPending]=useState(false);
@@ -76,8 +74,6 @@ export function LaserControlWorkspace(){
   const imageRef=useRef<HTMLImageElement|null>(null);
   const sessionRef=useRef<RemoteSession|null>(null);
   const lastFrameSeqRef=useRef(0);
-  const lastFrameAtRef=useRef(0);
-  const lastRealtimeRecoveryRef=useRef(0);
   const lastPointerMoveRef=useRef(0);
   const touchPointsRef=useRef(new Map<number,{x:number;y:number}>());
   const touchGestureRef=useRef<{
@@ -225,7 +221,6 @@ export function LaserControlWorkspace(){
         setFrameSrc('data:image/jpeg;base64,'+jpeg);
         setFrameSize(`${Number(payload?.width||0)} × ${Number(payload?.height||0)}`);
         const receivedAt=Date.now();
-        lastFrameAtRef.current=receivedAt;
         setFrameAt(receivedAt);
         setFrameLatency(Math.max(0,receivedAt-capturedAt));
         setRealtimeStatus('live');
@@ -248,63 +243,36 @@ export function LaserControlWorkspace(){
       if(channelRef.current===channel)channelRef.current=null;
       void supabase.removeChannel(channel);
     };
-  },[session?.topic,session?.frameToken,realtimeEpoch]);
-
-  useEffect(()=>{
-    if(!session?.topic)return;
-    const timer=window.setInterval(()=>{
-      if(document.visibilityState!=='visible')return;
-      const last=lastFrameAtRef.current;
-      if(!last||Date.now()-last<6_000)return;
-      if(Date.now()-lastRealtimeRecoveryRef.current<5_000)return;
-      lastRealtimeRecoveryRef.current=Date.now();
-      setRealtimeStatus('connecting');
-      setRealtimeEpoch(value=>value+1);
-    },1_500);
-    return()=>window.clearInterval(timer);
-  },[session?.topic]);
+  },[session?.topic,session?.frameToken]);
 
   useEffect(()=>{
     const handle=()=>{
       const isFull=Boolean(document.fullscreenElement);
       setFullscreen(isFull);
-      if(isFull){
-        lastFrameAtRef.current=Date.now();
-        lastRealtimeRecoveryRef.current=Date.now();
-        setRealtimeStatus('connecting');
-        setRealtimeEpoch(value=>value+1);
-        if(!sessionRef.current?.remoteInputEnabled)void enableRemoteInput();
-      }else if(sessionRef.current?.remoteInputEnabled){
+      if(!isFull&&sessionRef.current?.remoteInputEnabled)
         void disableRemoteInput();
-      }
-    };
-    const visible=()=>{
-      if(document.visibilityState==='visible'&&sessionRef.current){
-        lastFrameAtRef.current=Date.now();
-        lastRealtimeRecoveryRef.current=Date.now();
-        setRealtimeStatus('connecting');
-        setRealtimeEpoch(value=>value+1);
-      }
     };
     document.addEventListener('fullscreenchange',handle);
-    document.addEventListener('visibilitychange',visible);
-    return()=>{
-      document.removeEventListener('fullscreenchange',handle);
-      document.removeEventListener('visibilitychange',visible);
-    };
+    return()=>document.removeEventListener('fullscreenchange',handle);
   },[]);
 
   async function enterFullscreen(){
     try{
       await previewSurfaceRef.current?.requestFullscreen();
+      setFullscreen(true);
       previewSurfaceRef.current?.focus();
+      if(!sessionRef.current?.remoteInputEnabled)
+        await enableRemoteInput();
     }catch{
       setNotice('O navegador não permitiu tela cheia.');
     }
   }
 
   async function exitFullscreen(){
-    try{if(document.fullscreenElement)await document.exitFullscreen()}catch{}
+    try{
+      if(sessionRef.current?.remoteInputEnabled)await disableRemoteInput();
+      if(document.fullscreenElement)await document.exitFullscreen();
+    }catch{}
   }
 
   async function setOrientationMode(mode:OrientationMode){
@@ -360,7 +328,7 @@ export function LaserControlWorkspace(){
 
   function sendRemoteInput(payload:Record<string,unknown>){
     const current=sessionRef.current;
-    if(!fullscreen||!inputReady||!current?.inputToken||!channelRef.current)return;
+    if(!document.fullscreenElement||!inputReady||!current?.inputToken||!channelRef.current)return;
     void channelRef.current.send({
       type:'broadcast',
       event:'remote_input',
@@ -414,7 +382,7 @@ export function LaserControlWorkspace(){
     event:ReactPointerEvent<HTMLImageElement>,
     type:'pointerdown'|'pointerup'|'pointermove'|'pointercancel'
   ){
-    if(!fullscreen)return;
+    if(!document.fullscreenElement)return;
 
     if(event.pointerType!=='touch'){
       if(!inputReady)return;
@@ -573,7 +541,7 @@ export function LaserControlWorkspace(){
   }
 
   function handleWheel(event:ReactWheelEvent<HTMLImageElement>){
-    if(!fullscreen||!inputReady)return;
+    if(!document.fullscreenElement||!inputReady)return;
     const rect=event.currentTarget.getBoundingClientRect();
     if(rect.width<=0||rect.height<=0)return;
     const x=(event.clientX-rect.left)/rect.width;
@@ -584,7 +552,7 @@ export function LaserControlWorkspace(){
   }
 
   function handleKey(event:ReactKeyboardEvent<HTMLDivElement>,type:'keydown'|'keyup'){
-    if(!fullscreen||!inputReady)return;
+    if(!document.fullscreenElement||!inputReady)return;
     if(['F5','F11','F12'].includes(event.code))return;
     event.preventDefault();
     sendRemoteInput({
@@ -648,7 +616,6 @@ export function LaserControlWorkspace(){
         if(!check.ok)continue;
 
         if(result?.status==='acknowledged'){
-          if(command==='frame')setFramingEngaged(value=>!value);
           setCommandNotice(
             command==='start'?'Iniciar executado.'
             :command==='pause'?'Pausar executado.'
@@ -704,7 +671,8 @@ export function LaserControlWorkspace(){
     &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
     &&selectedDevice.job_state==='idle');
   const canFrame=Boolean(selectedDevice&&online(selectedDevice)
-    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true);
+    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
+    &&['idle','framing'].includes(selectedDevice.job_state||''));
   const canPause=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.machine_connected===true
     &&['running','busy'].includes(selectedDevice.job_state||''));
@@ -819,7 +787,7 @@ export function LaserControlWorkspace(){
             onPointerCancel={event=>handlePointer(event,'pointercancel')}
             onContextMenu={event=>event.preventDefault()}
             onDoubleClick={event=>{
-              if(!fullscreen||!inputReady)return;
+              if(!document.fullscreenElement||!inputReady)return;
               const point=pointerCoordinates(event);
               if(point)sendRemoteInput({type:'doubleclick',...point,button:0});
             }}
@@ -846,7 +814,7 @@ export function LaserControlWorkspace(){
       {tab==='control'&&<div className={styles.controlPane}>
         <div className={styles.commandGrid}>
           <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
-            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?'Alterna o Live Framing':'Máquina indisponível'}</small>
+            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?(selectedDevice?.job_state==='framing'?'Encerrar framing':'Abrir Live Framing'):'Aguardando máquina parada'}</small>
           </button>
           <button disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
             <i>▶</i><b>Iniciar</b><small>{canStart?'Pronto':'Aguardando máquina parada'}</small>
