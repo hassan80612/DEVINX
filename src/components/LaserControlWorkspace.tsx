@@ -217,6 +217,7 @@ export function LaserControlWorkspace(){
         sessionRef.current=next;
         setSession(next);
         setRealtimeStatus('connecting');
+        inputReadyRef.current=false;
         setInputReady(false);
       }catch{
         if(active)setRealtimeStatus('error');
@@ -256,6 +257,7 @@ export function LaserControlWorkspace(){
       setControlPending(null);
       setControlError('');
       resetZoom();
+      inputReadyRef.current=false;
       setInputReady(false);
       setRealtimeStatus('idle');
     };
@@ -290,9 +292,11 @@ export function LaserControlWorkspace(){
       .on('broadcast',{event:'agent_state'},({payload}:any)=>{
         if(payload?.token!==session.frameToken)return;
         if(payload?.state==='control-ready'){
+          inputReadyRef.current=true;
           setInputReady(true);
         }
         if(payload?.state==='preview-ready'){
+          inputReadyRef.current=false;
           setInputReady(false);
           setRealtimeStatus(current=>current==='live'?'live':'connecting');
         }
@@ -431,6 +435,7 @@ export function LaserControlWorkspace(){
       return;
     }
     setInputPending(true);
+    inputReadyRef.current=false;
     setInputReady(false);
     try{
       const data=await postSession({action:'input',sessionId:current.sessionId,enabled:true});
@@ -454,9 +459,11 @@ export function LaserControlWorkspace(){
       const next={...current,...data,inputToken:null,remoteInputEnabled:false} as RemoteSession;
       sessionRef.current=next;
       setSession(next);
+      inputReadyRef.current=false;
       setInputReady(false);
       setNotice(t('laser.inputBlocked'));
     }catch{
+      inputReadyRef.current=false;
       setInputReady(false);
     }finally{
       setInputPending(false);
@@ -482,7 +489,7 @@ export function LaserControlWorkspace(){
       return;
     }
     const current=sessionRef.current;
-    if(!inputReady||!current?.inputToken||!channelRef.current){
+    if(!inputReadyRef.current||!current?.inputToken||!channelRef.current){
       setControlError(t('laser.paramsNeedControl'));
       return;
     }
