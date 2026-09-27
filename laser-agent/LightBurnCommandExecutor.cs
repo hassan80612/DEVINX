@@ -8,6 +8,7 @@ internal static class LightBurnCommandExecutor
     private const ushort VkControl=0x11;
     private const ushort VkPause=0x13;
     private const ushort VkF1=0x70;
+    private const ushort VkEscape=0x1B;
     private const uint KeyeventfKeyup=0x0002;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -57,6 +58,20 @@ internal static class LightBurnCommandExecutor
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc,IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
+
+    [DllImport("user32.dll",CharSet=CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hWnd,System.Text.StringBuilder lpString,int nMaxCount);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    private delegate bool EnumWindowsProc(IntPtr hWnd,IntPtr lParam);
+
     [DllImport("user32.dll",SetLastError=true)]
     private static extern uint SendInput(uint nInputs,Input[] pInputs,int cbSize);
 
@@ -83,12 +98,45 @@ internal static class LightBurnCommandExecutor
 
         return command switch
         {
-            // Galvo/Fiber framing is the LightBurn Live Framing command (F1).
-            "frame"=>SendShortcut(handle,[VkF1]),
+            // Galvo/Fiber: F1 opens Live Framing. If it is already open,
+            // Esc closes/stops the framing window instead of opening another one.
+            "frame"=>ToggleGalvoFraming(handle),
             "pause"=>SendShortcut(handle,[VkPause]),
             "stop"=>SendShortcut(handle,[VkControl,VkPause]),
             _=>new CommandExecutionResult(false,"unsupported_command")
         };
+    }
+
+    private static CommandExecutionResult ToggleGalvoFraming(IntPtr main)
+    {
+        var framing=FindFramingWindow(main);
+        return framing!=IntPtr.Zero
+            ?SendShortcut(framing,[VkEscape])
+            :SendShortcut(main,[VkF1]);
+    }
+
+    private static IntPtr FindFramingWindow(IntPtr main)
+    {
+        GetWindowThreadProcessId(main,out var mainPid);
+        if(mainPid==0)return IntPtr.Zero;
+
+        IntPtr found=IntPtr.Zero;
+        EnumWindows((window,_)=>{
+            if(window==main||!IsWindowVisible(window))return true;
+            GetWindowThreadProcessId(window,out var pid);
+            if(pid!=mainPid)return true;
+
+            var title=new System.Text.StringBuilder(256);
+            GetWindowText(window,title,title.Capacity);
+            var text=title.ToString();
+            if(text.Contains("framing",StringComparison.OrdinalIgnoreCase))
+            {
+                found=window;
+                return false;
+            }
+            return true;
+        },IntPtr.Zero);
+        return found;
     }
 
     private static CommandExecutionResult SendShortcut(IntPtr handle,ushort[] keys)

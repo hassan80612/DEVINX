@@ -43,6 +43,14 @@ internal static class LightBurnRemoteInput
     private static extern bool ScreenToClient(IntPtr hWnd,ref Point point);
 
     [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(Point point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr hWnd,uint gaFlags);
+
+    private const uint GaRoot=2;
+
+    [DllImport("user32.dll")]
     private static extern IntPtr ChildWindowFromPointEx(IntPtr hWndParent,Point pt,uint flags);
 
     [DllImport("user32.dll")]
@@ -56,6 +64,9 @@ internal static class LightBurnRemoteInput
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
     private static extern bool SetWindowPos(
@@ -80,11 +91,6 @@ internal static class LightBurnRemoteInput
 
         var main=LightBurnWindowCapture.FindLightBurnWindow();
         if(main==IntPtr.Zero)return false;
-
-        // Remote control belongs to LightBurn only. Never target whichever unrelated
-        // window happens to cover the same screen coordinate.
-        if(input.Type is "pointerdown" or "doubleclick" or "keydown" or "text")
-            SetForegroundWindow(main);
 
         return input.Type switch
         {
@@ -138,7 +144,8 @@ internal static class LightBurnRemoteInput
     {
         if(!TryScreenPoint(main,input,out var screen))return false;
 
-        var target=FindDeepestChildAtPoint(main,screen);
+        var target=FindTargetAtPoint(main,screen);
+        if(target==IntPtr.Zero)return false;
         var delta=(short)Math.Clamp((int)Math.Round(-input.DeltaY),-120,120);
         if(delta==0)delta=(short)(input.DeltaY>0?-120:120);
 
@@ -161,8 +168,15 @@ internal static class LightBurnRemoteInput
         return true;
     }
 
-    private static IntPtr FindDeepestChildAtPoint(IntPtr main,Point screen)
+    private static IntPtr FindTargetAtPoint(IntPtr main,Point screen)
     {
+        // First ask Windows which visible LightBurn window is actually under the point.
+        // This catches top-level dialogs such as Galvo "Live Framing".
+        var top=WindowFromPoint(screen);
+        if(top!=IntPtr.Zero&&BelongsToSameProcess(main,top))
+            return top;
+
+        // Fallback to the child hierarchy of the main LightBurn window.
         var current=main;
         for(var depth=0;depth<10;depth++)
         {
@@ -215,12 +229,24 @@ internal static class LightBurnRemoteInput
 
     private static IntPtr FocusedWindowFor(IntPtr main)
     {
-        var thread=GetWindowThreadProcessId(main,out _);
-        var info=new GuiThreadInfo{cbSize=Marshal.SizeOf<GuiThreadInfo>()};
-        if(thread!=0&&GetGUIThreadInfo(thread,ref info)
-           &&info.hwndFocus!=IntPtr.Zero
-           &&BelongsToSameProcess(main,info.hwndFocus))
-            return info.hwndFocus;
+        var foreground=GetForegroundWindow();
+        if(foreground!=IntPtr.Zero&&BelongsToSameProcess(main,foreground))
+        {
+            var thread=GetWindowThreadProcessId(foreground,out _);
+            var info=new GuiThreadInfo{cbSize=Marshal.SizeOf<GuiThreadInfo>()};
+            if(thread!=0&&GetGUIThreadInfo(thread,ref info)
+               &&info.hwndFocus!=IntPtr.Zero
+               &&BelongsToSameProcess(main,info.hwndFocus))
+                return info.hwndFocus;
+            return foreground;
+        }
+
+        var mainThread=GetWindowThreadProcessId(main,out _);
+        var mainInfo=new GuiThreadInfo{cbSize=Marshal.SizeOf<GuiThreadInfo>()};
+        if(mainThread!=0&&GetGUIThreadInfo(mainThread,ref mainInfo)
+           &&mainInfo.hwndFocus!=IntPtr.Zero
+           &&BelongsToSameProcess(main,mainInfo.hwndFocus))
+            return mainInfo.hwndFocus;
         return main;
     }
 
