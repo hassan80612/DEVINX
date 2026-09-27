@@ -48,6 +48,25 @@ type RemoteSession={
 type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
+type LightBurnControlField={
+  key:string;
+  label:string;
+  kind:'number'|'toggle';
+  value:string|null;
+  checked:boolean|null;
+  writable:boolean;
+};
+type LightBurnControlLayer={
+  id:string;
+  label:string;
+  selected:boolean;
+};
+type LightBurnControlSnapshot={
+  windowTitle:string|null;
+  layers:LightBurnControlLayer[];
+  fields:LightBurnControlField[];
+};
+
 export function LaserControlWorkspace(){
   const{t}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
@@ -77,6 +96,10 @@ export function LaserControlWorkspace(){
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
+  const[controlSnapshot,setControlSnapshot]=useState<LightBurnControlSnapshot|null>(null);
+  const[controlDrafts,setControlDrafts]=useState<Record<string,string>>({});
+  const[controlPending,setControlPending]=useState<string|null>(null);
+  const[controlError,setControlError]=useState('');
 
   const channelRef=useRef<any>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
@@ -205,6 +228,10 @@ export function LaserControlWorkspace(){
       }
       setSession(null);
       setFrameSrc('');
+      setControlSnapshot(null);
+      setControlDrafts({});
+      setControlPending(null);
+      setControlError('');
       resetZoom();
       setInputReady(false);
       setRealtimeStatus('idle');
@@ -247,6 +274,23 @@ export function LaserControlWorkspace(){
           setRealtimeStatus(current=>current==='live'?'live':'connecting');
         }
       })
+      .on('broadcast',{event:'control_result'},({payload}:any)=>{
+        if(payload?.token!==session.frameToken)return;
+        const requestId=String(payload?.requestId||'');
+        setControlPending(current=>current===requestId?null:current);
+        if(!payload?.ok){
+          setControlError(String(payload?.reason||t('laser.paramsReadFail')));
+          return;
+        }
+        const snapshot=payload?.snapshot as LightBurnControlSnapshot|undefined;
+        if(!snapshot)return;
+        setControlError('');
+        setControlSnapshot(snapshot);
+        const nextDrafts:Record<string,string>={};
+        for(const field of Array.isArray(snapshot.fields)?snapshot.fields:[])
+          if(field.kind==='number')nextDrafts[field.key]=field.value??'';
+        setControlDrafts(nextDrafts);
+      })
       .subscribe((status:string)=>{
         if(status==='SUBSCRIBED')setRealtimeStatus(current=>current==='live'?'live':'connecting');
         if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')setRealtimeStatus('error');
@@ -257,7 +301,13 @@ export function LaserControlWorkspace(){
       if(channelRef.current===channel)channelRef.current=null;
       void supabase.removeChannel(channel);
     };
-  },[session?.topic,session?.frameToken]);
+  },[session?.topic,session?.frameToken,t]);
+
+  useEffect(()=>{
+    if(!inputReady||!channelRef.current)return;
+    const timer=window.setTimeout(()=>refreshParameters(),180);
+    return()=>window.clearTimeout(timer);
+  },[inputReady,selectedDeviceId]);
 
   useEffect(()=>{
     const handle=()=>{
@@ -364,6 +414,47 @@ export function LaserControlWorkspace(){
       event:'remote_input',
       payload:{token:current.inputToken,...payload}
     });
+  }
+
+  function sendControlRequest(
+    action:'inspect'|'set'|'select_layer'|'open_layer',
+    extra:Record<string,unknown>={}
+  ){
+    const current=sessionRef.current;
+    if(!inputReady||!current?.inputToken||!channelRef.current){
+      setControlError(t('laser.paramsNeedControl'));
+      return;
+    }
+    const requestId=crypto.randomUUID();
+    setControlPending(requestId);
+    setControlError('');
+    void channelRef.current.send({
+      type:'broadcast',
+      event:'control_request',
+      payload:{token:current.inputToken,requestId,action,...extra}
+    });
+  }
+
+  function refreshParameters(){
+    sendControlRequest('inspect');
+  }
+
+  function setNumericParameter(field:LightBurnControlField){
+    const value=(controlDrafts[field.key]??'').trim();
+    if(!value)return;
+    sendControlRequest('set',{field:field.key,value});
+  }
+
+  function setToggleParameter(field:LightBurnControlField,checked:boolean){
+    sendControlRequest('set',{field:field.key,toggle:checked});
+  }
+
+  function selectLayer(layerId:string){
+    sendControlRequest('select_layer',{layer:layerId});
+  }
+
+  function openLayerEditor(layerId?:string){
+    sendControlRequest('open_layer',layerId?{layer:layerId}:{});
   }
 
   async function runShortcut(
@@ -974,6 +1065,92 @@ export function LaserControlWorkspace(){
           <span>{frameAt?new Date(frameAt).toLocaleTimeString():'—'}</span>
         </div>
 
+        <section className={styles.parameterDock}>
+          <div className={styles.parameterHead}>
+            <div>
+              <small>LIGHTBURN · CUTS / LAYERS</small>
+              <h3>{t('laser.paramsTitle')}</h3>
+              <p>{t('laser.paramsHelp')}</p>
+            </div>
+            <div className={styles.parameterActions}>
+              <button type="button" disabled={!inputReady||Boolean(controlPending)} onClick={refreshParameters}>
+                {controlPending?t('laser.paramsReading'):t('laser.paramsRefresh')}
+              </button>
+              <button
+                type="button"
+                disabled={!inputReady||Boolean(controlPending)}
+                onClick={()=>openLayerEditor(controlSnapshot?.layers?.find(layer=>layer.selected)?.id)}
+              >{t('laser.paramsOpenLayer')}</button>
+            </div>
+          </div>
+
+          {!inputReady&&<div className={styles.parameterGate}>
+            <b>{t('laser.paramsNeedControl')}</b>
+            <button
+              type="button"
+              disabled={inputPending}
+              onClick={()=>{fullscreenAutoInputRef.current=false;void enableRemoteInput()}}
+            >{inputPending?t('laser.remoteActivating'):t('laser.remoteOff')}</button>
+          </div>}
+
+          {inputReady&&controlSnapshot&&<>
+            <div className={styles.layerBar}>
+              <label>
+                <span>{t('laser.paramsLayer')}</span>
+                <select
+                  value={controlSnapshot.layers.find(layer=>layer.selected)?.id??''}
+                  onChange={event=>selectLayer(event.target.value)}
+                  disabled={Boolean(controlPending)||controlSnapshot.layers.length===0}
+                >
+                  {controlSnapshot.layers.length===0&&<option value="">{t('laser.paramsNoLayer')}</option>}
+                  {controlSnapshot.layers.map(layer=><option key={layer.id} value={layer.id}>{layer.label}</option>)}
+                </select>
+              </label>
+              <small>{controlSnapshot.windowTitle||'LightBurn'}</small>
+            </div>
+
+            {controlSnapshot.fields.length>0?<div className={styles.parameterGrid}>
+              {controlSnapshot.fields.map(field=><div className={styles.parameterField} key={field.key}>
+                <label>{field.label}</label>
+                {field.kind==='toggle'?<button
+                  type="button"
+                  className={field.checked?styles.toggleOn:styles.toggleOff}
+                  disabled={!field.writable||Boolean(controlPending)}
+                  onClick={()=>setToggleParameter(field,!Boolean(field.checked))}
+                ><i></i><span>{field.checked?t('laser.paramsOn'):t('laser.paramsOff')}</span></button>:<div className={styles.numberEditor}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={controlDrafts[field.key]??field.value??''}
+                    disabled={!field.writable||Boolean(controlPending)}
+                    onChange={event=>setControlDrafts(current=>({...current,[field.key]:event.target.value}))}
+                    onKeyDown={event=>{
+                      if(event.key==='Enter'){
+                        event.preventDefault();
+                        setNumericParameter(field);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!field.writable||Boolean(controlPending)}
+                    onClick={()=>setNumericParameter(field)}
+                  >{t('laser.paramsApply')}</button>
+                </div>}
+              </div>)}
+            </div>:<div className={styles.parameterEmpty}>
+              <b>{t('laser.paramsNotFound')}</b>
+              <span>{t('laser.paramsNotFoundHelp')}</span>
+            </div>}
+          </>}
+
+          {inputReady&&!controlSnapshot&&!controlPending&&<div className={styles.parameterEmpty}>
+            <b>{t('laser.paramsReady')}</b>
+            <span>{t('laser.paramsReadyHelp')}</span>
+          </div>}
+          {controlError&&<div className={styles.parameterError}>{controlError}</div>}
+        </section>
+
         <div className={styles.controlHint}>
           <b>{t('laser.inputTitle')}</b>
           <span>{t('laser.inputHint')}</span>
@@ -1049,7 +1226,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.13/DevinX-Laser-Agent-1.0.13.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.14/DevinX-Laser-Agent-1.0.14.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

@@ -24,7 +24,7 @@ export default async function LaserGuidePage(){
       <h1>Seu LightBurn conectado ao DevinX.</h1>
       <p>Veja a janela do LightBurn em tempo real, acompanhe a máquina e use controles remotos a partir do celular ou de outro computador.</p>
       <div className={styles.actions}>
-        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.13/DevinX-Laser-Agent-1.0.13.zip" download>Baixar Agent para Windows</a>
+        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.14/DevinX-Laser-Agent-1.0.14.zip" download>Baixar Agent para Windows</a>
         <a className={styles.secondary} href="/laser-control">Abrir Laser Control</a>
       </div>
     </section>
@@ -39,6 +39,11 @@ export default async function LaserGuidePage(){
         <article><b>5 · Abra o LightBurn</b><p>Abra o LightBurn normalmente. O Agent detecta o programa, a máquina e o estado do trabalho.</p></article>
         <article><b>6 · Controle</b><p>Abra o Laser Control no celular ou em outro computador. Na mentoria, o código vale 30 minutos e, depois da conexão, a sessão pode durar até 6 horas.</p></article>
       </div>
+    </section>
+
+    <section className={styles.block}>
+      <h2>Camadas e parâmetros</h2>
+      <p>O Agent 1.0.14 lê os controles que o LightBurn realmente expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Fiber/Galvo e Diodo mostram apenas os campos disponíveis para aquele LightBurn e aquela camada.</p>
     </section>
 
     <section className={styles.block}>
