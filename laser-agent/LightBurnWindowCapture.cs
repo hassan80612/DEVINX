@@ -13,6 +13,7 @@ internal static class LightBurnWindowCapture
     private struct Rect{public int Left,Top,Right,Bottom;}
 
     private const int DwmwaExtendedFrameBounds=9;
+    private const uint PwRenderFullContent=0x00000002;
     private const int MaxJpegBytes=165_000;
 
     [DllImport("dwmapi.dll")]
@@ -28,6 +29,12 @@ internal static class LightBurnWindowCapture
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
 
+    [DllImport("user32.dll",SetLastError=true)]
+    private static extern bool PrintWindow(IntPtr hWnd,IntPtr hdcBlt,uint nFlags);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
     public static CapturedPreview? TryCapture()
     {
         if(!OperatingSystem.IsWindows())return null;
@@ -38,12 +45,33 @@ internal static class LightBurnWindowCapture
         if(width<200||height<150||width>10000||height>10000)return null;
 
         using var source=new Bitmap(width,height,PixelFormat.Format24bppRgb);
+
+        // Capture the LightBurn HWND itself. Unlike CopyFromScreen, PrintWindow does not
+        // capture Chrome/DevinX just because it happens to cover LightBurn.
+        var captured=false;
         try
         {
             using var graphics=Graphics.FromImage(source);
-            graphics.CopyFromScreen(left,top,0,0,new Size(width,height),CopyPixelOperation.SourceCopy);
+            var hdc=graphics.GetHdc();
+            try{captured=PrintWindow(handle,hdc,PwRenderFullContent);}
+            finally{graphics.ReleaseHdc(hdc);}
         }
-        catch{return null;}
+        catch{captured=false;}
+
+        // Conservative fallback: screen-copy is safe only while LightBurn is the
+        // foreground window. This prevents the DevinX "infinite mirror" feedback loop.
+        if(!captured&&GetForegroundWindow()==handle)
+        {
+            try
+            {
+                using var graphics=Graphics.FromImage(source);
+                graphics.CopyFromScreen(left,top,0,0,new Size(width,height),CopyPixelOperation.SourceCopy);
+                captured=true;
+            }
+            catch{captured=false;}
+        }
+
+        if(!captured)return null;
 
         var encoded=EncodeAdaptive(source);
         if(encoded is null)return null;
@@ -123,10 +151,8 @@ internal static class LightBurnWindowCapture
             try
             {
                 var name=process.ProcessName;
-                var title=process.MainWindowTitle;
                 if(process.MainWindowHandle!=IntPtr.Zero
-                   &&(name.Equals("LightBurn",StringComparison.OrdinalIgnoreCase)
-                      ||title.Contains("LightBurn",StringComparison.OrdinalIgnoreCase)))
+                   &&name.StartsWith("LightBurn",StringComparison.OrdinalIgnoreCase))
                     return process.MainWindowHandle;
             }
             catch{}

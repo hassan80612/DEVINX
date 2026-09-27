@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace DevinXLaserAgent;
@@ -17,6 +16,8 @@ internal static class LightBurnRemoteInput
     private const uint WmChar=0x0102;
     private const int MkLButton=0x0001;
     private const int MkRButton=0x0002;
+    private const uint CwpSkipInvisible=0x0001;
+    private const uint CwpSkipDisabled=0x0002;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Point{public int X;public int Y;}
@@ -39,10 +40,10 @@ internal static class LightBurnRemoteInput
     private struct Rect{public int Left,Top,Right,Bottom;}
 
     [DllImport("user32.dll")]
-    private static extern IntPtr WindowFromPoint(Point point);
+    private static extern bool ScreenToClient(IntPtr hWnd,ref Point point);
 
     [DllImport("user32.dll")]
-    private static extern bool ScreenToClient(IntPtr hWnd,ref Point point);
+    private static extern IntPtr ChildWindowFromPointEx(IntPtr hWndParent,Point pt,uint flags);
 
     [DllImport("user32.dll")]
     private static extern bool PostMessage(IntPtr hWnd,uint msg,IntPtr wParam,IntPtr lParam);
@@ -76,46 +77,63 @@ internal static class LightBurnRemoteInput
 
     private static bool Mouse(IntPtr main,RealtimeRemoteInput input,uint message,int buttonMask)
     {
-        if(!input.X.HasValue||!input.Y.HasValue)return false;
-        if(!LightBurnWindowCapture.TryGetPhysicalBounds(main,out var left,out var top,out var width,out var height))
-            return false;
+        if(!TryScreenPoint(main,input,out var screen))return false;
 
-        var nx=Math.Clamp(input.X.Value,0,1);
-        var ny=Math.Clamp(input.Y.Value,0,1);
-        var screen=new Point
-        {
-            X=left+Math.Clamp((int)Math.Round(nx*(width-1)),0,width-1),
-            Y=top+Math.Clamp((int)Math.Round(ny*(height-1)),0,height-1)
-        };
-
-        var target=WindowFromPoint(screen);
-        if(target==IntPtr.Zero||!BelongsToSameProcess(main,target))return false;
-
+        var target=FindDeepestChildAtPoint(main,screen);
         var client=screen;
         if(!ScreenToClient(target,ref client))return false;
-        var lParam=(IntPtr)((client.Y<<16)|(client.X&0xFFFF));
-        return PostMessage(target,message,(IntPtr)buttonMask,lParam);
+
+        return PostMessage(target,message,(IntPtr)buttonMask,MakeLParam(client.X,client.Y));
     }
 
     private static bool Wheel(IntPtr main,RealtimeRemoteInput input)
     {
+        if(!TryScreenPoint(main,input,out var screen))return false;
+
+        var target=FindDeepestChildAtPoint(main,screen);
+        var delta=(short)Math.Clamp((int)Math.Round(-input.DeltaY),-120,120);
+        if(delta==0)delta=(short)(input.DeltaY>0?-120:120);
+
+        var wParam=(IntPtr)((delta&0xFFFF)<<16);
+        return PostMessage(target,WmMouseWheel,wParam,MakeLParam(screen.X,screen.Y));
+    }
+
+    private static bool TryScreenPoint(IntPtr main,RealtimeRemoteInput input,out Point screen)
+    {
+        screen=default;
         if(!input.X.HasValue||!input.Y.HasValue)return false;
         if(!LightBurnWindowCapture.TryGetPhysicalBounds(main,out var left,out var top,out var width,out var height))
             return false;
 
-        var screen=new Point
+        screen=new Point
         {
             X=left+Math.Clamp((int)Math.Round(Math.Clamp(input.X.Value,0,1)*(width-1)),0,width-1),
             Y=top+Math.Clamp((int)Math.Round(Math.Clamp(input.Y.Value,0,1)*(height-1)),0,height-1)
         };
-        var target=WindowFromPoint(screen);
-        if(target==IntPtr.Zero||!BelongsToSameProcess(main,target))return false;
+        return true;
+    }
 
-        var delta=(short)Math.Clamp((int)Math.Round(-input.DeltaY),-120,120);
-        if(delta==0)delta=(short)(input.DeltaY>0?-120:120);
-        var wParam=(IntPtr)((delta&0xFFFF)<<16);
-        var lParam=(IntPtr)((screen.Y<<16)|(screen.X&0xFFFF));
-        return PostMessage(target,WmMouseWheel,wParam,lParam);
+    private static IntPtr FindDeepestChildAtPoint(IntPtr main,Point screen)
+    {
+        var current=main;
+
+        // Resolve children from the LightBurn HWND hierarchy itself. This remains valid
+        // even when Chrome or another unrelated application visually covers LightBurn.
+        for(var depth=0;depth<10;depth++)
+        {
+            var local=screen;
+            if(!ScreenToClient(current,ref local))break;
+
+            var child=ChildWindowFromPointEx(
+                current,local,CwpSkipInvisible|CwpSkipDisabled);
+
+            if(child==IntPtr.Zero||child==current||!BelongsToSameProcess(main,child))
+                break;
+
+            current=child;
+        }
+
+        return current;
     }
 
     private static bool Keyboard(IntPtr main,RealtimeRemoteInput input,bool down)
@@ -173,6 +191,9 @@ internal static class LightBurnRemoteInput
         GetWindowThreadProcessId(candidate,out var candidatePid);
         return mainPid!=0&&mainPid==candidatePid;
     }
+
+    private static IntPtr MakeLParam(int x,int y)=>
+        (IntPtr)(((y&0xFFFF)<<16)|(x&0xFFFF));
 
     private static int VirtualKey(string? code,string? key)
     {
