@@ -101,6 +101,15 @@ internal static class LightBurnControlBridge
             var api=TryReadApiSnapshot();
             var layers=api?.Layers is {Length:>0}?api.Layers:uiLayers;
             var fields=MergeFields(api?.Fields??Array.Empty<LightBurnControlField>(),uiFields);
+
+            // LightBurn 1.7 Galvo may owner-draw the layer row without exposing it
+            // through ControlView. If fields are visible but no layer row is exposed,
+            // show C00 as a safe default rather than an empty selector. The user can
+            // still use the live view + mobile keyboard for any other layer.
+            if(layers.Length==0&&fields.Any(field=>
+                field.Key is "speed" or "powerMax" or "passes" or "frequency"))
+                layers=[new("C00","C00",true)];
+
             return new(true,null,new(title??api?.WindowTitle,layers,fields));
         }
         catch(COMException){return Fail("lightburn_ui_changed");}
@@ -308,7 +317,91 @@ internal static class LightBurnControlBridge
             }
         }
         catch{}
+
+        ReadRawNodes(rootObject,result);
         return result;
+    }
+
+    private static void ReadRawNodes(object rootObject,List<Node> result)
+    {
+        try
+        {
+            dynamic walker=Automation.RawViewWalker;
+            var queue=new Queue<object>();
+            var first=walker.GetFirstChildElement((dynamic)rootObject);
+            if(first is not null)queue.Enqueue((object)first);
+
+            var visited=0;
+            while(queue.Count>0&&visited<5000)
+            {
+                var current=queue.Dequeue();
+                visited++;
+                AppendRawNode(current,result);
+
+                try
+                {
+                    var child=walker.GetFirstChildElement((dynamic)current);
+                    if(child is not null)queue.Enqueue((object)child);
+                }catch{}
+
+                try
+                {
+                    var sibling=walker.GetNextSiblingElement((dynamic)current);
+                    if(sibling is not null)queue.Enqueue((object)sibling);
+                }catch{}
+            }
+        }
+        catch{}
+    }
+
+    private static void AppendRawNode(object element,List<Node> result)
+    {
+        try
+        {
+            dynamic e=element;
+            string name=(Convert.ToString(e.CurrentName)??"").Trim();
+            int controlType=Convert.ToInt32(e.CurrentControlType);
+            bool enabled=Convert.ToBoolean(e.CurrentIsEnabled);
+            bool offscreen=Convert.ToBoolean(e.CurrentIsOffscreen);
+            dynamic r=e.CurrentBoundingRectangle;
+            var rect=new Bounds(
+                Convert.ToDouble(r.left),Convert.ToDouble(r.top),
+                Convert.ToDouble(r.right),Convert.ToDouble(r.bottom));
+
+            var searchParts=new List<string>();
+            if(!string.IsNullOrWhiteSpace(name))searchParts.Add(name);
+            try
+            {
+                var automationId=(Convert.ToString(e.CurrentAutomationId)??"").Trim();
+                if(!string.IsNullOrWhiteSpace(automationId))searchParts.Add(automationId);
+            }catch{}
+            try
+            {
+                var help=(Convert.ToString(e.CurrentHelpText)??"").Trim();
+                if(!string.IsNullOrWhiteSpace(help))searchParts.Add(help);
+            }catch{}
+            try
+            {
+                var legacy=Pattern(element,LegacyPatternId);
+                if(legacy is not null)
+                {
+                    var legacyName=(Convert.ToString(((dynamic)legacy).CurrentName)??"").Trim();
+                    var legacyValue=(Convert.ToString(((dynamic)legacy).CurrentValue)??"").Trim();
+                    if(!string.IsNullOrWhiteSpace(legacyName))searchParts.Add(legacyName);
+                    if(!string.IsNullOrWhiteSpace(legacyValue))searchParts.Add(legacyValue);
+                }
+            }catch{}
+
+            var searchText=string.Join(" ",searchParts.Distinct(StringComparer.OrdinalIgnoreCase));
+            var duplicate=result.Any(node=>
+                node.ControlType==controlType
+                &&Math.Abs(node.Rect.Left-rect.Left)<1
+                &&Math.Abs(node.Rect.Top-rect.Top)<1
+                &&string.Equals(node.SearchText,searchText,StringComparison.OrdinalIgnoreCase));
+            if(!duplicate)
+                result.Add(new Node(element,name,searchText,controlType,rect,enabled,offscreen));
+        }
+        catch{}
     }
 
     private static LightBurnControlField? BuildField(FieldSpec spec,List<Node> nodes)

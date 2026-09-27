@@ -297,7 +297,7 @@ internal static class LightBurnRemoteInput
         ActivateWindow(target);
 
         var inputs=new List<Input>();
-        foreach(var ch in text.Take(32))
+        foreach(var ch in text.Take(256))
         {
             inputs.Add(Unicode(ch,false));
             inputs.Add(Unicode(ch,true));

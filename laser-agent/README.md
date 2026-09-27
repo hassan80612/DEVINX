@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.18
+# DevinX Laser Agent 1.0.19
 
 Agent Windows do DevinX Laser Control.
 
@@ -96,3 +96,10 @@ Quando a API local do LightBurn estiver disponível e ainda não houver autoriza
 
 ## 1.0.18 — LightBurn 1.7.x / Galvo
 A leitura por acessibilidade agora reconhece C00/T00 também por dados legados do Qt, considera seleção/foco do MSAA e localiza editores numéricos dos dois lados do rótulo. Isso cobre o layout do LightBurn 1.7.08 em que os valores do rotativo ficam à esquerda de “passos por rotação”, “diâmetro”, “circunferência” e velocidades.
+
+
+## 1.0.19 — mentoria móvel completa
+- Duplo toque em um campo na tela remota abre o teclado do celular no DevinX; o texto/valor é enviado ao campo focado no LightBurn.
+- Janelas abertas por Preview, Importar, Rastrear, Ajustar imagem e Rotativo ganham OK/Enter e Fechar/Esc no controle remoto e na tela cheia.
+- Frame/Iniciar/Pausar/Parar têm recuperação automática de estado e não exigem atualizar a página se uma confirmação atrasar.
+- A inspeção de camadas/campos usa também Raw UIA + Legacy/MSAA para widgets Qt owner-drawn do LightBurn 1.7.

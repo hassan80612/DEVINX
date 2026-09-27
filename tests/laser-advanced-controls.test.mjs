@@ -2,20 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser Control uses Agent 1.0.18 for advanced controls',async()=>{
+test('Laser Control uses Agent 1.0.19 for advanced controls',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   const i18n=await readFile('src/i18n/laser.ts','utf8');
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
-  assert.match(panel,/laser-agent-v1\.0\.18/);
+  assert.match(panel,/laser-agent-v1\.0\.19/);
   assert.match(panel,/dialog_confirm/);
   assert.match(panel,/dialog_cancel/);
   assert.match(panel,/dialog_close/);
   assert.match(panel,/select_layer/);
   assert.match(panel,/open_layer/);
   assert.match(css,/\.parameterDock/);
-  assert.match(i18n,/DevinX Laser Agent 1\.0\.18/);
+  assert.match(i18n,/DevinX Laser Agent 1\.0\.19/);
 });
 
 test('Laser command buttons are not blocked by cached job state',async()=>{
@@ -44,7 +44,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.0\.18"/);
+  assert.match(pairing,/AgentVersion = "1\.0\.19"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
@@ -70,4 +70,27 @@ test('Laser Control does not expose raw Agent reason codes to the operator',asyn
   assert.match(panel,/selected_layer_not_found\|layer_not_found/);
   assert.match(panel,/laser\.paramsNoLayer/);
   assert.doesNotMatch(panel,/setControlError\(String\(payload\?\.reason/);
+});
+
+
+test('mobile mentoring keyboard and dialog controls stay available over live preview',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
+  assert.match(panel,/mobileKeyboardRef/);
+  assert.match(panel,/openMobileKeyboard/);
+  assert.match(panel,/type:'text',key:value/);
+  assert.match(panel,/Fechar \/ Esc/);
+  assert.match(panel,/OK \/ Enter/);
+  assert.match(panel,/pendingGuard/);
+  assert.match(css,/\.mobileKeyboard/);
+});
+
+test('Agent inspects LightBurn raw UIA tree for Qt owner-drawn controls',async()=>{
+  const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
+  assert.match(bridge,/RawViewWalker/);
+  assert.match(bridge,/ReadRawNodes/);
+  assert.match(bridge,/AppendRawNode/);
+  assert.match(bridge,/fields\.Any\(field=>/);
+  const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
+  assert.match(input,/text\.Take\(256\)/);
 });

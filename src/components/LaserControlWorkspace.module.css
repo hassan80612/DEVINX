@@ -296,3 +296,28 @@
   .controlDrawerBody{padding:9px;gap:9px}
   .extraTools summary{padding:11px 12px;font-size:11px}
 }
+
+
+/* Remote dialogs and mobile software keyboard */
+.dialogOk{border-color:rgba(101,239,180,.48)!important;color:#dfffee!important}
+.dialogClose{border-color:rgba(255,109,126,.48)!important;color:#ffd6dc!important}
+.mobileKeyboard,.mobileKeyboardHidden{
+  position:absolute;z-index:20;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));
+  bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px;
+  padding:9px;border:1px solid rgba(111,230,255,.42);border-radius:13px;
+  background:rgba(20,32,42,.96);box-shadow:0 14px 40px rgba(0,0,0,.42)
+}
+.mobileKeyboardHidden{opacity:0;pointer-events:none;transform:translateY(12px)}
+.mobileKeyboard input,.mobileKeyboardHidden input{
+  min-width:0;height:44px;padding:0 12px;border:1px solid rgba(210,235,255,.28);border-radius:10px;
+  background:#f7fbff;color:#0a1118;font-size:16px;font-weight:800;outline:none
+}
+.mobileKeyboard button,.mobileKeyboardHidden button{
+  min-height:44px;padding:0 12px;border:1px solid rgba(111,230,255,.35);border-radius:10px;
+  background:linear-gradient(180deg,#72eaff,#35b7d4);color:#06141b;font-weight:950
+}
+.mobileKeyboard button:last-child{border-color:rgba(255,109,126,.38);background:#41212a;color:#ffd9df}
+@media(max-width:620px){
+  .mobileKeyboard,.mobileKeyboardHidden{grid-template-columns:minmax(0,1fr) auto}
+  .mobileKeyboard button:last-child,.mobileKeyboardHidden button:last-child{grid-column:1/-1;min-height:36px}
+}

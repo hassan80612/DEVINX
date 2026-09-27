@@ -102,6 +102,9 @@ export function LaserControlWorkspace(){
   const[controlDrafts,setControlDrafts]=useState<Record<string,string>>({});
   const[controlPending,setControlPending]=useState<string|null>(null);
   const[controlError,setControlError]=useState('');
+  const[activeDialogTool,setActiveDialogTool]=useState<string|null>(null);
+  const[mobileEditOpen,setMobileEditOpen]=useState(false);
+  const[mobileEditValue,setMobileEditValue]=useState('');
 
   const channelRef=useRef<any>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
@@ -129,6 +132,7 @@ export function LaserControlWorkspace(){
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
   const fullscreenAutoInputRef=useRef(false);
+  const mobileKeyboardRef=useRef<HTMLInputElement|null>(null);
   const inputReadyRef=useRef(false);
   const controlPendingRef=useRef<string|null>(null);
 
@@ -487,6 +491,59 @@ export function LaserControlWorkspace(){
     });
   }
 
+  function sendRemoteKey(
+    key:string,code:string,
+    modifiers:{ctrl?:boolean;shift?:boolean;alt?:boolean;meta?:boolean}={}
+  ){
+    const payload={
+      key,code,
+      ctrl:Boolean(modifiers.ctrl),shift:Boolean(modifiers.shift),
+      alt:Boolean(modifiers.alt),meta:Boolean(modifiers.meta)
+    };
+    sendRemoteInput({type:'keydown',...payload});
+    window.setTimeout(()=>sendRemoteInput({type:'keyup',...payload}),45);
+  }
+
+  function openMobileKeyboard(){
+    if(!inputReadyRef.current)return;
+    setMobileEditValue('');
+    setMobileEditOpen(true);
+    const input=mobileKeyboardRef.current;
+    if(input){
+      input.value='';
+      input.focus({preventScroll:true});
+      input.select();
+    }
+  }
+
+  function closeMobileKeyboard(){
+    setMobileEditOpen(false);
+    mobileKeyboardRef.current?.blur();
+  }
+
+  function sendMobileEdit(){
+    const value=mobileEditValue;
+    if(!value)return;
+    sendRemoteKey('a','KeyA',{ctrl:true});
+    window.setTimeout(()=>{
+      sendRemoteInput({type:'text',key:value});
+      window.setTimeout(()=>sendRemoteKey('Enter','Enter'),55);
+    },70);
+    closeMobileKeyboard();
+  }
+
+  function closeActiveDialog(){
+    sendRemoteKey('Escape','Escape');
+    setActiveDialogTool(null);
+    window.setTimeout(()=>refreshParameters(),300);
+  }
+
+  function confirmActiveDialog(){
+    sendRemoteKey('Enter','Enter');
+    setActiveDialogTool(null);
+    window.setTimeout(()=>refreshParameters(),300);
+  }
+
   function sendControlRequest(
     action:'inspect'|'set'|'select_layer'|'open_layer'|'dialog_confirm'|'dialog_cancel'|'dialog_close',
     extra:Record<string,unknown>={}
@@ -585,8 +642,11 @@ export function LaserControlWorkspace(){
       await new Promise(resolve=>window.setTimeout(resolve,80));
       sendRemoteInput({type:'keyup',...payload});
       setNotice(t('laser.quickSent'));
+      if(['preview','import','trace','adjust-image','rotary'].includes(id)){
+        setActiveDialogTool(id);
+      }
       if(['trace','adjust-image','rotary'].includes(id)){
-        await new Promise(resolve=>window.setTimeout(resolve,420));
+        await new Promise(resolve=>window.setTimeout(resolve,650));
         refreshParameters();
       }
     }finally{
@@ -786,7 +846,12 @@ export function LaserControlWorkspace(){
 
         sendRemoteInput({type:'pointerdown',...point,button:0});
         sendRemoteInput({type:'pointerup',...point,button:0});
-        lastTapRef.current=isDouble?null:{at:now,clientX:event.clientX,clientY:event.clientY};
+        if(isDouble){
+          lastTapRef.current=null;
+          openMobileKeyboard();
+        }else{
+          lastTapRef.current={at:now,clientX:event.clientX,clientY:event.clientY};
+        }
       }
     }
 
@@ -823,6 +888,10 @@ export function LaserControlWorkspace(){
 
     setCommandPending(command);
     setCommandNotice(t('laser.sent'));
+    const pendingGuard=window.setTimeout(()=>{
+      setCommandPending(null);
+      void loadDevices(true);
+    },12_000);
 
     try{
       const current=await refreshRemoteSession();
@@ -896,7 +965,9 @@ export function LaserControlWorkspace(){
     }catch{
       setCommandNotice(t('laser.commandFail'));
     }finally{
+      window.clearTimeout(pendingGuard);
       setCommandPending(null);
+      void loadDevices(true);
     }
   }
 
@@ -991,7 +1062,7 @@ export function LaserControlWorkspace(){
   }
 
   const canOperate=Boolean(selectedDevice&&online(selectedDevice)
-    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true);
+    &&selectedDevice.lightburn_online===true);
   const canStart=canOperate;
   const canFrame=canOperate;
   const canPause=canOperate;
@@ -1156,6 +1227,10 @@ export function LaserControlWorkspace(){
                   void (inputReady?disableRemoteInput():enableRemoteInput());
                 }}
               >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
+              {activeDialogTool&&<>
+                <button className={styles.dialogOk} onClick={confirmActiveDialog}>OK</button>
+                <button className={styles.dialogClose} onClick={closeActiveDialog}>ESC</button>
+              </>}
               <button onClick={()=>void exitFullscreen()}>{t('laser.fullscreenClose')}</button>
             </>}
           </div>
@@ -1179,6 +1254,26 @@ export function LaserControlWorkspace(){
             <b>{selectedDevice.lightburn_online===false?t('laser.previewOpen'):t('laser.previewWaiting')}</b>
             <span>{t('laser.previewHelp')}</span>
           </div>}
+          <div className={mobileEditOpen?styles.mobileKeyboard:styles.mobileKeyboardHidden}>
+            <input
+              ref={mobileKeyboardRef}
+              type="text"
+              inputMode="text"
+              enterKeyHint="done"
+              value={mobileEditValue}
+              onChange={event=>setMobileEditValue(event.target.value)}
+              onKeyDown={event=>{
+                if(event.key==='Enter'){
+                  event.preventDefault();
+                  sendMobileEdit();
+                }
+              }}
+              aria-label="Digitar no LightBurn"
+              placeholder="Digite valor ou texto"
+            />
+            <button type="button" onClick={sendMobileEdit} disabled={!mobileEditValue}>Enviar</button>
+            <button type="button" onClick={closeMobileKeyboard}>Cancelar</button>
+          </div>
         </div>
 
         <div className={styles.frameInfo}>
@@ -1233,17 +1328,16 @@ export function LaserControlWorkspace(){
                 disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)}
                 onClick={()=>openLayerEditor(controlSnapshot?.layers?.find(layer=>layer.selected)?.id)}
               >{t('laser.paramsOpenLayer')}</button>
-              {controlSnapshot?.windowTitle&&controlSnapshot.windowTitle!=='LightBurn'&&<>
-                <button type="button" disabled={Boolean(controlPending)} onClick={confirmDialog}>OK / Aplicar</button>
-                <button type="button" disabled={Boolean(controlPending)} onClick={cancelDialog}>Cancelar</button>
-                <button type="button" disabled={Boolean(controlPending)} onClick={closeDialog}>Fechar</button>
+              {(activeDialogTool||(controlSnapshot?.windowTitle&&controlSnapshot.windowTitle!=='LightBurn'))&&<>
+                <button type="button" onClick={confirmActiveDialog}>OK / Enter</button>
+                <button type="button" onClick={closeActiveDialog}>Fechar / Esc</button>
               </>}
             </div>
           </div>
 
           {!advancedControlsReady?<div className={styles.parameterGate}>
             <b>{t('laser.paramsAgentUpdate')}</b>
-            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.18/DevinX-Laser-Agent-1.0.18.zip">{t('laser.download')}</a>
+            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.19/DevinX-Laser-Agent-1.0.19.zip">{t('laser.download')}</a>
           </div>:!inputReady&&<div className={styles.parameterGate}>
             <b>{t('laser.paramsNeedControl')}</b>
             <button
@@ -1376,7 +1470,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.18/DevinX-Laser-Agent-1.0.18.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.19/DevinX-Laser-Agent-1.0.19.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>
