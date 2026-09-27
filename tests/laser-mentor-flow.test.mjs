@@ -18,7 +18,7 @@ test('desktop input can be enabled without fullscreen while touch stays fullscre
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   assert.match(panel,/refreshRemoteSession/);
   assert.match(panel,/if\(event\.pointerType==='touch'&&!document\.fullscreenElement\)return;/);
-  assert.match(panel,/if\(!inputReady\|\|!current\?\.inputToken\|\|!channelRef\.current\)return;/);
+  assert.match(panel,/if\(!inputReadyRef\.current\|\|!current\?\.inputToken\|\|!channelRef\.current\)return;/);
   assert.doesNotMatch(panel,/sendRemoteInput\(\{type:'doubleclick'/);
 });
 
