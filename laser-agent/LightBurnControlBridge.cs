@@ -74,8 +74,6 @@ internal static class LightBurnControlBridge
 
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x,int y);
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags,uint dx,uint dy,uint data,UIntPtr extra);
-    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
-    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
     [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd,uint msg,IntPtr wParam,IntPtr lParam);
     private const uint LeftDown=0x0002;
     private const uint LeftUp=0x0004;
@@ -210,7 +208,7 @@ internal static class LightBurnControlBridge
             if(selected is null)
             {
                 var unique=nodes
-                    .Select(node=>(node,id:LayerIdFromNode(node)))
+                    .Select(node=>(node,id:LayerIdFromNode(node)??CutRowLayerId(node)))
                     .Where(x=>x.id is not null)
                     .GroupBy(x=>x.id!,StringComparer.OrdinalIgnoreCase)
                     .Select(group=>group.OrderByDescending(x=>IsSelected(x.node.Element)).First().node)
@@ -306,11 +304,10 @@ internal static class LightBurnControlBridge
     {
         var main=LightBurnWindowCapture.FindLightBurnWindow();
         if(main==IntPtr.Zero)return IntPtr.Zero;
-        var foreground=GetForegroundWindow();
-        if(foreground==IntPtr.Zero)return main;
-        GetWindowThreadProcessId(main,out var mainPid);
-        GetWindowThreadProcessId(foreground,out var foregroundPid);
-        return mainPid!=0&&foregroundPid==mainPid?foreground:main;
+        // The phone/browser becomes foreground when the operator requests an
+        // inspection. Use the same remembered LightBurn dialog as the preview.
+        return LightBurnWindowCapture.TryGetInteractionBounds(main,out var target,
+            out _,out _,out _,out _)?target:main;
     }
 
     private static List<Node> ReadNodes(object rootObject)
@@ -331,10 +328,7 @@ internal static class LightBurnControlBridge
                     int controlType=Convert.ToInt32(e.CurrentControlType);
                     bool enabled=Convert.ToBoolean(e.CurrentIsEnabled);
                     bool offscreen=Convert.ToBoolean(e.CurrentIsOffscreen);
-                    dynamic r=e.CurrentBoundingRectangle;
-                    var rect=new Bounds(
-                        Convert.ToDouble(r.left),Convert.ToDouble(r.top),
-                        Convert.ToDouble(r.right),Convert.ToDouble(r.bottom));
+                    var rect=ReadBounds((object)e);
 
                     var searchParts=new List<string>();
                     if(!string.IsNullOrWhiteSpace(name))searchParts.Add(name);
@@ -417,10 +411,7 @@ internal static class LightBurnControlBridge
             int controlType=Convert.ToInt32(e.CurrentControlType);
             bool enabled=Convert.ToBoolean(e.CurrentIsEnabled);
             bool offscreen=Convert.ToBoolean(e.CurrentIsOffscreen);
-            dynamic r=e.CurrentBoundingRectangle;
-            var rect=new Bounds(
-                Convert.ToDouble(r.left),Convert.ToDouble(r.top),
-                Convert.ToDouble(r.right),Convert.ToDouble(r.bottom));
+            var rect=ReadBounds(element);
 
             var searchParts=new List<string>();
             if(!string.IsNullOrWhiteSpace(name))searchParts.Add(name);
@@ -456,6 +447,37 @@ internal static class LightBurnControlBridge
                 result.Add(new Node(element,name,searchText,controlType,rect,enabled,offscreen));
         }
         catch{}
+    }
+
+    private static Bounds ReadBounds(object element)
+    {
+        try
+        {
+            object value=((dynamic)element).CurrentBoundingRectangle;
+            if(value is System.Drawing.Rectangle rect)
+                return new(rect.Left,rect.Top,rect.Right,rect.Bottom);
+            if(value is Array coords&&coords.Length>=4)
+                return new(Convert.ToDouble(coords.GetValue(0)),Convert.ToDouble(coords.GetValue(1)),
+                    Convert.ToDouble(coords.GetValue(2)),Convert.ToDouble(coords.GetValue(3)));
+            try
+            {
+                dynamic bounds=value;
+                return new(Convert.ToDouble(bounds.left),Convert.ToDouble(bounds.top),
+                    Convert.ToDouble(bounds.right),Convert.ToDouble(bounds.bottom));
+            }
+            catch
+            {
+                dynamic bounds=value;
+                return new(Convert.ToDouble(bounds.Left),Convert.ToDouble(bounds.Top),
+                    Convert.ToDouble(bounds.Right),Convert.ToDouble(bounds.Bottom));
+            }
+        }
+        catch
+        {
+            // Keep the node's accessible name when a Qt proxy cannot provide
+            // geometry. Otherwise every layer in that tree silently disappears.
+            return new(0,0,0,0);
+        }
     }
 
     private static LightBurnControlField? BuildField(FieldSpec spec,List<Node> nodes)
@@ -691,7 +713,21 @@ internal static class LightBurnControlBridge
                 found[id]=new(id,id,selected);
         }
 
-        if(found.Count>0)return found.Values.OrderBy(LayerSortKey).ToArray();
+        if(found.Count>0)return SortedLayers(found);
+
+        // LightBurn 1.7 can expose a Cuts/Layers cell only as "00" instead of
+        // "C00". Accept those cells in the upper right layer list, never a
+        // similarly numbered setting elsewhere in the window.
+        foreach(var node in nodes)
+        {
+            var id=CutRowLayerId(node);
+            if(id is null)continue;
+            var selected=IsSelected(node.Element)
+                ||(!string.IsNullOrWhiteSpace(LastLayerId)
+                    &&string.Equals(id,LastLayerId,StringComparison.OrdinalIgnoreCase));
+            if(!found.ContainsKey(id)||selected)found[id]=new(id,id,selected);
+        }
+        if(found.Count>0)return SortedLayers(found);
 
         // Some LightBurn builds owner-draw Cuts/Layers and expose only the Color
         // Palette. In that case enumerate visible palette cells so the operator can
@@ -705,7 +741,18 @@ internal static class LightBurnControlBridge
             found[id]=new(id,id,selected);
         }
 
-        return found.Values.OrderBy(LayerSortKey).ToArray();
+        return SortedLayers(found);
+    }
+
+    private static LightBurnControlLayer[] SortedLayers(
+        Dictionary<string,LightBurnControlLayer> found)
+    {
+        var layers=found.Values.OrderBy(LayerSortKey).ToArray();
+        // One discovered row is necessarily the active layer in this project.
+        // Some Qt versions do not expose their selection state through UIA.
+        if(layers.Length==1&&!layers[0].Selected)
+            layers[0]=layers[0] with {Selected=true};
+        return layers;
     }
 
     private static int LayerSortKey(LightBurnControlLayer layer)
@@ -720,7 +767,7 @@ internal static class LightBurnControlBridge
     {
         foreach(var node in nodes)
         {
-            var id=LayerIdFromNode(node);
+            var id=LayerIdFromNode(node)??CutRowLayerId(node);
             if(id is null)continue;
             if(layerId is not null&&!string.Equals(id,layerId,StringComparison.OrdinalIgnoreCase))
                 continue;
@@ -734,6 +781,21 @@ internal static class LightBurnControlBridge
     {
         var match=Regex.Match(node.SearchText,@"(?:^|\b)(C\d{2}|T1|T2)(?:\b|$)",RegexOptions.IgnoreCase);
         return match.Success?match.Groups[1].Value.ToUpperInvariant():null;
+    }
+
+    private static string? CutRowLayerId(Node node)
+    {
+        if(node.Rect.IsEmpty||node.Offscreen||node.Rect.Width>65||node.Rect.Height>38)
+            return null;
+        var match=Regex.Match(node.Name.Trim(),@"^(0\d|[12]\d)$");
+        if(!match.Success)return null;
+        var main=LightBurnWindowCapture.FindLightBurnWindow();
+        if(main==IntPtr.Zero||!LightBurnWindowCapture.TryGetPhysicalBounds(main,
+            out var left,out var top,out var width,out var height))return null;
+        if(node.Rect.Left<left+width*.68||node.Rect.Left>left+width*.95
+           ||node.Rect.Top<top+height*.07||node.Rect.Bottom>top+height*.36)
+            return null;
+        return "C"+match.Groups[1].Value;
     }
 
     private static Node? FindPaletteLayerNode(List<Node> nodes,string layerId)=>
