@@ -7,7 +7,14 @@ internal static class Program
 {
     public static async Task Main(string[] args)
     {
+        AgentRuntime.Configure(args);
         DpiAwareness.Initialize();
+
+        if(AgentRuntime.MentorMode)
+        {
+            await MentorMode.RunAsync();
+            return;
+        }
 
         if (AgentInstallation.TryInstallAndRelaunch(args))
             return;

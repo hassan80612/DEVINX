@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.11
+# DevinX Laser Agent 1.0.12
 
 Agent Windows do DevinX Laser Control.
 
@@ -62,3 +62,13 @@ Opções de suporte continuam disponíveis:
 - `--reset-local-state --confirm-reset`
 
 O modo normal não abre console.
+
+
+## Mentoria temporária
+No pacote existe **INICIAR-MENTORIA.cmd**. Este modo não instala o Agent, não entra na inicialização do Windows e usa identidade/estado separados do Agent permanente.
+
+1. Extraia o ZIP.
+2. Abra `INICIAR-MENTORIA.cmd`.
+3. Envie ao professor o código de 8 caracteres exibido.
+4. Quando o professor encerrar a sessão, o acesso é revogado e o Agent temporário fecha.
+5. O vínculo permanente do computador, se existir, não é alterado.

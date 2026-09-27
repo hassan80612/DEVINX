@@ -2,10 +2,8 @@ namespace DevinXLaserAgent;
 
 internal static class AgentPairingStateStore
 {
-    private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DevinXLaserAgent");
-    private static readonly string PairingStatePath = Path.Combine(DirectoryPath, "paired-device.txt");
+    private static string DirectoryPath => AgentRuntime.StateDirectory;
+    private static string PairingStatePath => Path.Combine(DirectoryPath, "paired-device.txt");
 
     public static bool IsPaired(string deviceId)
     {

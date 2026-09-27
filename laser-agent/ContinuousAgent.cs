@@ -15,11 +15,13 @@ internal sealed class ContinuousAgent
     private readonly TrayHost _tray;
     private readonly SemaphoreSlim _refreshSignal=new(0,1);
     private readonly ConcurrentDictionary<string,DateTimeOffset> _seenCommands=new();
+    private readonly bool _temporarySession;
 
-    public ContinuousAgent(AgentIdentity identity,TrayHost tray)
+    public ContinuousAgent(AgentIdentity identity,TrayHost tray,bool temporarySession=false)
     {
         _identity=identity;
         _tray=tray;
+        _temporarySession=temporarySession;
         _tray.RefreshRequested+=RequestRefresh;
     }
 
@@ -38,7 +40,19 @@ internal sealed class ContinuousAgent
         var telemetryTask=RunTelemetryLoopAsync(linked.Token);
         var remoteTask=RunRemoteLoopAsync(linked.Token);
 
-        try{await Task.WhenAll(telemetryTask,remoteTask);}
+        try
+        {
+            if(_temporarySession)
+            {
+                await Task.WhenAny(telemetryTask,remoteTask);
+                linked.Cancel();
+                try{await Task.WhenAll(telemetryTask,remoteTask);}catch(OperationCanceledException){}
+            }
+            else
+            {
+                await Task.WhenAll(telemetryTask,remoteTask);
+            }
+        }
         finally{linked.Cancel();}
     }
 
@@ -126,6 +140,8 @@ internal sealed class ContinuousAgent
 
             if(!poll.Ok)
             {
+                if(_temporarySession&&poll.Reason is "device_not_active" or "unknown_device")
+                    break;
                 await DelaySafe(TimeSpan.FromSeconds(2),cancellationToken);
                 continue;
             }

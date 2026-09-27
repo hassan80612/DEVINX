@@ -2,16 +2,14 @@ namespace DevinXLaserAgent;
 
 internal static class AgentLocalState
 {
-    private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DevinXLaserAgent");
+    private static string DirectoryPath => AgentRuntime.StateDirectory;
 
     public static void ResetAll()
     {
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("The Agent is Windows-only.");
 
-        StartupRegistration.Remove();
+        if(!AgentRuntime.MentorMode)StartupRegistration.Remove();
 
         if (!Directory.Exists(DirectoryPath))return;
 

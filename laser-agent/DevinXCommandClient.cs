@@ -22,7 +22,7 @@ internal sealed class DevinXCommandClient : IDisposable
             identity,"poll",null,null,null,
             knownSessionId,knownRevision,cancellationToken);
 
-        return new AgentPollResult(response.Ok,response.Session,response.Command);
+        return new AgentPollResult(response.Ok,response.Session,response.Command,response.Reason);
     }
 
     public async Task<bool> AckAsync(
@@ -98,7 +98,19 @@ internal sealed class DevinXCommandClient : IDisposable
 
         using var httpResponse=await _http.PostAsync(CommandUri,content,cancellationToken);
         var body=await httpResponse.Content.ReadAsStringAsync(cancellationToken);
-        if(!httpResponse.IsSuccessStatusCode)return CommandResponse.Failed;
+        if(!httpResponse.IsSuccessStatusCode)
+        {
+            string? failureReason=null;
+            try
+            {
+                using var errorJson=JsonDocument.Parse(body);
+                failureReason=errorJson.RootElement.TryGetProperty("reason",out var reasonEl)
+                    ?reasonEl.GetString()
+                    :errorJson.RootElement.TryGetProperty("error",out var errorEl)?errorEl.GetString():null;
+            }
+            catch{}
+            return CommandResponse.Failed(failureReason??"request_failed");
+        }
 
         try
         {
@@ -154,11 +166,11 @@ internal sealed class DevinXCommandClient : IDisposable
                     command=new RemoteCommand(id!,type!,expires);
             }
 
-            return new CommandResponse(responseOk,session,command);
+            return new CommandResponse(responseOk,session,command,null);
         }
         catch
         {
-            return CommandResponse.Failed;
+            return CommandResponse.Failed("invalid_response");
         }
     }
 
@@ -167,8 +179,9 @@ internal sealed class DevinXCommandClient : IDisposable
     private sealed record CommandResponse(
         bool Ok,
         RemoteSessionConfig? Session,
-        RemoteCommand? Command)
+        RemoteCommand? Command,
+        string? Reason)
     {
-        public static readonly CommandResponse Failed=new(false,null,null);
+        public static CommandResponse Failed(string reason)=>new(false,null,null,reason);
     }
 }

@@ -11,13 +11,15 @@ internal sealed class TrayHost : IDisposable
     private readonly CancellationTokenSource _exit=new();
     private SynchronizationContext? _sync;
     private NotifyIcon? _icon;
+    private readonly bool _mentorMode;
 
     public CancellationToken ExitToken=>_exit.Token;
     public event Action? RefreshRequested;
     public event Action? UninstallRequested;
 
-    public TrayHost()
+    public TrayHost(bool mentorMode=false)
     {
+        _mentorMode=mentorMode;
         _thread=new Thread(RunUi)
         {
             IsBackground=true,
@@ -43,11 +45,13 @@ internal sealed class TrayHost : IDisposable
         var refresh=new ToolStripMenuItem("Atualizar agora");
         refresh.Click+=(_,_)=>RefreshRequested?.Invoke();
 
-        var uninstall=new ToolStripMenuItem("Desinstalar DevinX Laser Agent");
+        var uninstall=new ToolStripMenuItem(_mentorMode?"Encerrar mentoria":"Desinstalar DevinX Laser Agent");
         uninstall.Click+=(_,_)=>
         {
             var result=MessageBox.Show(
-                "Remover o DevinX Laser Agent deste computador?\n\nO vínculo, a inicialização automática e os arquivos locais serão removidos.",
+                _mentorMode
+                    ?"Encerrar agora a sessão temporária de mentoria?\n\nO acesso remoto será revogado e este Agent temporário será fechado."
+                    :"Remover o DevinX Laser Agent deste computador?\n\nO vínculo, a inicialização automática e os arquivos locais serão removidos.",
                 "DevinX Laser Agent",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
@@ -58,7 +62,7 @@ internal sealed class TrayHost : IDisposable
         var exit=new ToolStripMenuItem("Sair");
         exit.Click+=(_,_)=>RequestExit();
 
-        menu.Items.Add(open);
+        if(!_mentorMode)menu.Items.Add(open);
         menu.Items.Add(refresh);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(uninstall);
@@ -69,10 +73,10 @@ internal sealed class TrayHost : IDisposable
         {
             Visible=true,
             Icon=SystemIcons.Application,
-            Text="DevinX Laser Agent",
+            Text=_mentorMode?"DevinX Mentoria":"DevinX Laser Agent",
             ContextMenuStrip=menu
         };
-        _icon.DoubleClick+=(_,_)=>OpenDashboard();
+        if(!_mentorMode)_icon.DoubleClick+=(_,_)=>OpenDashboard();
 
         _ready.TrySetResult();
         Application.Run();

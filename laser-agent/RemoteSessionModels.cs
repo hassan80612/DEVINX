@@ -18,7 +18,8 @@ internal sealed record RemoteCommand(
 internal sealed record AgentPollResult(
     bool Ok,
     RemoteSessionConfig? Session,
-    RemoteCommand? Command);
+    RemoteCommand? Command,
+    string? Reason);
 
 internal sealed record RealtimeRemoteInput(
     string Token,

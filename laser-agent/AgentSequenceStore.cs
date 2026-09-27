@@ -3,10 +3,8 @@ namespace DevinXLaserAgent;
 internal static class AgentSequenceStore
 {
     private static readonly object Sync = new();
-    private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DevinXLaserAgent");
-    private static readonly string SequencePath = Path.Combine(DirectoryPath, "heartbeat-sequence.txt");
+    private static string DirectoryPath => AgentRuntime.StateDirectory;
+    private static string SequencePath => Path.Combine(DirectoryPath, "heartbeat-sequence.txt");
 
     public static long Next()
     {

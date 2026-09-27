@@ -5,11 +5,8 @@ namespace DevinXLaserAgent;
 
 internal static class SecureSecretStore
 {
-    private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DevinXLaserAgent");
-
-    private static readonly string SecretPath = Path.Combine(DirectoryPath, "lightburn-rest.secret");
+    private static string DirectoryPath => AgentRuntime.StateDirectory;
+    private static string SecretPath => Path.Combine(DirectoryPath, "lightburn-rest.secret");
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("DevinX-Laser-Agent-LightBurn-v1");
 
     public static bool Exists => File.Exists(SecretPath);

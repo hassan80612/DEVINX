@@ -8,9 +8,7 @@ internal sealed record AgentIdentity(string DeviceId, string PublicKeyPem, strin
 
 internal static class AgentIdentityStore
 {
-    private static readonly string DirectoryPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "DevinXLaserAgent");
+    private static string DirectoryPath => AgentRuntime.StateDirectory;
     private static readonly string IdentityPath = Path.Combine(DirectoryPath, "agent-identity.json");
     private static readonly string PrivateKeyPath = Path.Combine(DirectoryPath, "agent-private-key.bin");
     private static readonly byte[] Entropy = Encoding.UTF8.GetBytes("DevinX-Laser-Agent-Identity-v1");
