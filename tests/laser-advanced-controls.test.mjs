@@ -2,20 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser Control uses Agent 1.0.19 for advanced controls',async()=>{
+test('Laser Control uses Agent 1.0.20 for advanced controls',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   const i18n=await readFile('src/i18n/laser.ts','utf8');
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
-  assert.match(panel,/laser-agent-v1\.0\.19/);
+  assert.match(panel,/laser-agent-v1\.0\.20/);
   assert.match(panel,/dialog_confirm/);
   assert.match(panel,/dialog_cancel/);
   assert.match(panel,/dialog_close/);
   assert.match(panel,/select_layer/);
   assert.match(panel,/open_layer/);
   assert.match(css,/\.parameterDock/);
-  assert.match(i18n,/DevinX Laser Agent 1\.0\.19/);
+  assert.match(i18n,/DevinX Laser Agent 1\.0\.20/);
 });
 
 test('Laser command buttons are not blocked by cached job state',async()=>{
@@ -44,7 +44,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.0\.19"/);
+  assert.match(pairing,/AgentVersion = "1\.0\.20"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
@@ -93,4 +93,16 @@ test('Agent inspects LightBurn raw UIA tree for Qt owner-drawn controls',async()
   assert.match(bridge,/fields\.Any\(field=>/);
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(input,/text\.Take\(256\)/);
+});
+
+
+test('layer discovery remains available across dialog and owner-drawn LightBurn layouts',async()=>{
+  const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
+  assert.match(bridge,/GetMainRoot/);
+  assert.match(bridge,/FindPaletteLayerNode/);
+  assert.match(bridge,/PaletteLayerIdFromNode/);
+  assert.match(bridge,/NearMainWindowEdge/);
+  assert.match(bridge,/ClearWorkspaceSelection/);
+  assert.match(bridge,/C\\d\{2\}\|T1\|T2/);
+  assert.doesNotMatch(bridge,/show C00 as a safe default/);
 });

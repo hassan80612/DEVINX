@@ -70,6 +70,7 @@ internal static class LightBurnControlBridge
     ];
 
     private static readonly dynamic Automation=new UIA.CUIAutomation8();
+    private static string? LastLayerId;
 
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x,int y);
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags,uint dx,uint dy,uint data,UIntPtr extra);
@@ -89,7 +90,14 @@ internal static class LightBurnControlBridge
             var root=GetRoot();
             if(root is null)return Fail("lightburn_window_not_found");
             var nodes=ReadNodes(root);
-            var uiLayers=FindLayers(nodes);
+
+            // Dialogs such as Rotary Setup / Cut Settings become the foreground root.
+            // Layers, however, belong to the main LightBurn window, so discover them
+            // independently to keep the layer picker alive while a dialog is open.
+            var mainRoot=GetMainRoot();
+            var layerNodes=mainRoot is null?nodes:ReadNodes(mainRoot);
+            var uiLayers=FindLayers(layerNodes);
+
             var uiFields=Specs
                 .Select(spec=>BuildField(spec,nodes))
                 .Where(field=>field is not null)
@@ -101,14 +109,6 @@ internal static class LightBurnControlBridge
             var api=TryReadApiSnapshot();
             var layers=api?.Layers is {Length:>0}?api.Layers:uiLayers;
             var fields=MergeFields(api?.Fields??Array.Empty<LightBurnControlField>(),uiFields);
-
-            // LightBurn 1.7 Galvo may owner-draw the layer row without exposing it
-            // through ControlView. If fields are visible but no layer row is exposed,
-            // show C00 as a safe default rather than an empty selector. The user can
-            // still use the live view + mobile keyboard for any other layer.
-            if(layers.Length==0&&fields.Any(field=>
-                field.Key is "speed" or "powerMax" or "passes" or "frequency"))
-                layers=[new("C00","C00",true)];
 
             return new(true,null,new(title??api?.WindowTitle,layers,fields));
         }
@@ -152,20 +152,43 @@ internal static class LightBurnControlBridge
     {
         try
         {
-            var root=GetRoot();
+            var root=GetMainRoot();
             if(root is null)return Fail("lightburn_window_not_found");
             var nodes=ReadNodes(root);
             var layer=FindLayerNode(nodes,layerId);
+            var paletteFallback=false;
+            if(layer is null)
+            {
+                layer=FindPaletteLayerNode(nodes,layerId);
+                paletteFallback=layer is not null;
+            }
             if(layer is null)return Fail("layer_not_found");
             if(!layer.Enabled)return Fail("layer_disabled");
 
-            if(!Select(layer.Element)&&!Click(layer,false))
+            if(paletteFallback)
+            {
+                // Clicking the palette with no shapes selected changes the active
+                // drawing layer without reassigning existing artwork.
+                ClearWorkspaceSelection();
+                if(!Click(layer,false))return Fail("layer_select_failed");
+            }
+            else if(!Select(layer.Element)&&!Click(layer,false))
                 return Fail("layer_select_failed");
 
-            Thread.Sleep(80);
+            LastLayerId=layerId.ToUpperInvariant();
+            Thread.Sleep(100);
             if(openEditor)
             {
-                if(!Click(layer,true))return Fail("layer_editor_open_failed");
+                // A palette cell is not the Cuts/Layers row. Re-scan the main window
+                // after activating the layer and open the row if this version exposes it.
+                if(paletteFallback)
+                {
+                    var refreshed=ReadNodes(root);
+                    var row=FindLayerNode(refreshed,layerId);
+                    if(row is null)return Inspect();
+                    if(!Click(row,true))return Fail("layer_editor_open_failed");
+                }
+                else if(!Click(layer,true))return Fail("layer_editor_open_failed");
                 Thread.Sleep(220);
             }
             return Inspect();
@@ -178,10 +201,12 @@ internal static class LightBurnControlBridge
     {
         try
         {
-            var root=GetRoot();
+            var root=GetMainRoot();
             if(root is null)return Fail("lightburn_window_not_found");
             var nodes=ReadNodes(root);
             var selected=FindLayerNode(nodes,null,true);
+            if(selected is null&&!string.IsNullOrWhiteSpace(LastLayerId))
+                selected=FindLayerNode(nodes,LastLayerId);
             if(selected is null)
             {
                 var unique=nodes
@@ -243,6 +268,14 @@ internal static class LightBurnControlBridge
     private static object? GetRoot()
     {
         var hwnd=GetActiveLightBurnWindow();
+        if(hwnd==IntPtr.Zero)return null;
+        try{return Automation.ElementFromHandle(hwnd);}
+        catch{return null;}
+    }
+
+    private static object? GetMainRoot()
+    {
+        var hwnd=LightBurnWindowCapture.FindLightBurnWindow();
         if(hwnd==IntPtr.Zero)return null;
         try{return Automation.ElementFromHandle(hwnd);}
         catch{return null;}
@@ -631,11 +664,35 @@ internal static class LightBurnControlBridge
         {
             var id=LayerIdFromNode(node);
             if(id is null)continue;
-            var selected=IsSelected(node.Element);
+            var selected=IsSelected(node.Element)
+                ||(!string.IsNullOrWhiteSpace(LastLayerId)&&string.Equals(id,LastLayerId,StringComparison.OrdinalIgnoreCase));
             if(!found.ContainsKey(id)||selected)
                 found[id]=new(id,id,selected);
         }
-        return found.Values.OrderBy(x=>x.Id).ToArray();
+
+        if(found.Count>0)return found.Values.OrderBy(LayerSortKey).ToArray();
+
+        // Some LightBurn builds owner-draw Cuts/Layers and expose only the Color
+        // Palette. In that case enumerate visible palette cells so the operator can
+        // still choose a layer from DevinX instead of seeing an empty selector.
+        foreach(var node in nodes)
+        {
+            var id=PaletteLayerIdFromNode(node);
+            if(id is null)continue;
+            var selected=!string.IsNullOrWhiteSpace(LastLayerId)
+                &&string.Equals(id,LastLayerId,StringComparison.OrdinalIgnoreCase);
+            found[id]=new(id,id,selected);
+        }
+
+        return found.Values.OrderBy(LayerSortKey).ToArray();
+    }
+
+    private static int LayerSortKey(LightBurnControlLayer layer)
+    {
+        if(layer.Id.StartsWith("C",StringComparison.OrdinalIgnoreCase)
+           &&int.TryParse(layer.Id.AsSpan(1),out var number))
+            return number;
+        return layer.Id.Equals("T1",StringComparison.OrdinalIgnoreCase)?1001:1002;
     }
 
     private static Node? FindLayerNode(List<Node> nodes,string? layerId,bool selectedOnly=false)
@@ -654,8 +711,52 @@ internal static class LightBurnControlBridge
 
     private static string? LayerIdFromNode(Node node)
     {
-        var match=Regex.Match(node.SearchText,@"(?:^|\b)([CT]\d{2})(?:\b|$)",RegexOptions.IgnoreCase);
+        var match=Regex.Match(node.SearchText,@"(?:^|\b)(C\d{2}|T1|T2)(?:\b|$)",RegexOptions.IgnoreCase);
         return match.Success?match.Groups[1].Value.ToUpperInvariant():null;
+    }
+
+    private static Node? FindPaletteLayerNode(List<Node> nodes,string layerId)=>
+        nodes.FirstOrDefault(node=>string.Equals(
+            PaletteLayerIdFromNode(node),layerId,StringComparison.OrdinalIgnoreCase));
+
+    private static string? PaletteLayerIdFromNode(Node node)
+    {
+        if(node.Rect.IsEmpty||node.Offscreen)return null;
+        if(node.Rect.Width<8||node.Rect.Height<8||node.Rect.Width>80||node.Rect.Height>80)return null;
+        if(!NearMainWindowEdge(node.Rect))return null;
+
+        var text=Normalize(node.SearchText);
+        foreach(Match match in Regex.Matches(text,@"(?:^|\b)(\d{2}|t1|t2)(?:\b|$)",RegexOptions.IgnoreCase))
+        {
+            var token=match.Groups[1].Value.ToUpperInvariant();
+            if(token is "T1" or "T2")return token;
+            if(int.TryParse(token,out var index)&&index is>=0 and<=29)return $"C{index:00}";
+        }
+        return null;
+    }
+
+    private static bool NearMainWindowEdge(Bounds rect)
+    {
+        var hwnd=LightBurnWindowCapture.FindLightBurnWindow();
+        if(hwnd==IntPtr.Zero)return false;
+        if(!LightBurnWindowCapture.TryGetPhysicalBounds(hwnd,out var left,out var top,out var width,out var height))
+            return false;
+        var right=left+width;
+        var bottom=top+height;
+        return Math.Abs(rect.Left-left)<100
+            ||Math.Abs(rect.Right-right)<100
+            ||Math.Abs(rect.Top-top)<100
+            ||Math.Abs(rect.Bottom-bottom)<100;
+    }
+
+    private static void ClearWorkspaceSelection()
+    {
+        var hwnd=LightBurnWindowCapture.FindLightBurnWindow();
+        if(hwnd==IntPtr.Zero)return;
+        LightBurnRemoteInput.FocusLightBurn();
+        PostMessage(hwnd,WmKeyDown,(IntPtr)VkEscape,IntPtr.Zero);
+        PostMessage(hwnd,WmKeyUp,(IntPtr)VkEscape,IntPtr.Zero);
+        Thread.Sleep(55);
     }
 
     private static bool IsSelected(object element)

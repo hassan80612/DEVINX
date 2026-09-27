@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.19
+# DevinX Laser Agent 1.0.20
 
 Agent Windows do DevinX Laser Control.
 
@@ -103,3 +103,7 @@ A leitura por acessibilidade agora reconhece C00/T00 também por dados legados d
 - Janelas abertas por Preview, Importar, Rastrear, Ajustar imagem e Rotativo ganham OK/Enter e Fechar/Esc no controle remoto e na tela cheia.
 - Frame/Iniciar/Pausar/Parar têm recuperação automática de estado e não exigem atualizar a página se uma confirmação atrasar.
 - A inspeção de camadas/campos usa também Raw UIA + Legacy/MSAA para widgets Qt owner-drawn do LightBurn 1.7.
+
+
+## 1.0.20 — compatibilidade adaptativa de camadas
+O Agent não depende de um número de versão específico do LightBurn. Ele tenta, nesta ordem: REST quando disponível, ControlView UIA, Raw UIA, Legacy/MSAA e, se a lista Cuts/Layers for owner-drawn, a Color Palette 00–29/T1/T2. A janela principal é inspecionada separadamente dos diálogos, então abrir Rotativo ou Cut Settings não faz a camada desaparecer. O seletor do DevinX permite escolher uma camada detectada; quando só a paleta estiver acessível, o Agent limpa a seleção de formas antes do clique para evitar reatribuir arte existente.
