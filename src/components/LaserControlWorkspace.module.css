@@ -396,3 +396,26 @@
   .liveDialogActions{flex:1;display:grid;grid-template-columns:1fr}
   .liveDialogActions button{min-height:36px;font-size:10px}
 }
+
+
+/* Compact top actions and local pan for zoomed preview */
+.iconActions{display:flex;gap:5px}
+.iconActions button{
+  width:38px;height:38px;padding:0;border:1px solid rgba(174,208,243,.14);border-radius:10px;
+  background:var(--metal);color:#d8f8ff;font-size:18px;font-weight:950;cursor:pointer
+}
+.iconActions button:disabled{opacity:.4;cursor:wait}
+.remoteImageActive{touch-action:none;will-change:transform}
+.moreToolsGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.moreToolsGrid button{
+  min-height:54px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 9px;
+  border:1px solid rgba(215,237,255,.16);border-radius:11px;
+  background:linear-gradient(145deg,#4c6578,#344b5c);color:#f5fbff;font-size:11px;font-weight:900;cursor:pointer
+}
+.moreToolsGrid i{font-style:normal;color:#bff6ff;font-size:18px}
+@media(max-width:760px){
+  .liveToolbar{gap:6px}
+  .zoom button,.iconActions button{width:34px;min-width:34px;height:34px;min-height:34px;padding:0}
+  .iconActions{order:3;width:100%;justify-content:flex-start}
+  .moreToolsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

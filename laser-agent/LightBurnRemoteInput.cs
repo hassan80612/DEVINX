@@ -299,16 +299,16 @@ internal static class LightBurnRemoteInput
         if(!ActivateWindow(main))
             return new(false,"workspace_focus_failed",null,null);
 
+        Thread.Sleep(35);
         var vk=VirtualKey(input.Code,input.Key);
         if(vk==0)return new(false,"unsupported_key",null,null);
 
-        var message=down?WmKeyDown:WmKeyUp;
-        if(PostMessage(main,message,(IntPtr)vk,IntPtr.Zero))
-            return new(true,"workspace_postmessage",null,null);
-
+        // Qt/LightBurn often ignores WM_KEYDOWN posted to the top-level window.
+        // SendInput follows the real keyboard path after the LightBurn workspace
+        // is brought to the foreground and focused.
         var single=new[]{Key((ushort)vk,!down)};
         return SendInput(1,single,Marshal.SizeOf<Input>())==1
-            ?new(true,"workspace_sendinput_fallback",null,null)
+            ?new(true,"workspace_sendinput",null,null)
             :new(false,"workspace_key_failed",null,null);
     }
 

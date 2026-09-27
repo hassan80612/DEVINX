@@ -83,6 +83,7 @@ export function LaserControlWorkspace(){
   const[frameAt,setFrameAt]=useState<number|null>(null);
   const[zoom,setZoom]=useState(1);
   const[zoomOrigin,setZoomOrigin]=useState({x:.5,y:.5});
+  const[pan,setPan]=useState({x:0,y:0});
   const[orientation,setOrientation]=useState<OrientationMode>('auto');
   const[fullscreen,setFullscreen]=useState(false);
   const[inputReady,setInputReady]=useState(false);
@@ -108,7 +109,6 @@ export function LaserControlWorkspace(){
   const[mobileEditValue,setMobileEditValue]=useState('');
 
   const channelRef=useRef<any>(null);
-  const parameterDockRef=useRef<HTMLElement|null>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
   const imageRef=useRef<HTMLImageElement|null>(null);
   const sessionRef=useRef<RemoteSession|null>(null);
@@ -126,11 +126,13 @@ export function LaserControlWorkspace(){
     remoteDown:boolean;
     moved:boolean;
     rightClickSent:boolean;
+    startPanX:number;
+    startPanY:number;
     longPressTimer:number|undefined;
   }>({
     pinching:false,startDistance:0,startZoom:1,singlePointerId:null,
     startClientX:0,startClientY:0,startPoint:null,
-    remoteDown:false,moved:false,rightClickSent:false,longPressTimer:undefined
+    remoteDown:false,moved:false,rightClickSent:false,startPanX:0,startPanY:0,longPressTimer:undefined
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
   const fullscreenAutoInputRef=useRef(false);
@@ -200,13 +202,13 @@ export function LaserControlWorkspace(){
     const match=/^1\.0\.(\d+)/.exec(version||'');
     return Boolean(match&&Number(match[1])>=21);
   };
-  const supportsAgent23=(version:string|null)=>{
+  const supportsAgent24=(version:string|null)=>{
     const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=23);
+    return Boolean(match&&Number(match[1])>=24);
   };
   const advancedControlsReady=Boolean(selectedDevice&&supportsAdvancedControls(selectedDevice.agent_version));
   const latestAgentReady=Boolean(selectedDevice&&supportsAgent21(selectedDevice.agent_version));
-  const workspaceKeysReady=Boolean(selectedDevice&&supportsAgent23(selectedDevice.agent_version));
+  const workspaceKeysReady=Boolean(selectedDevice&&supportsAgent24(selectedDevice.agent_version));
 
   const postSession=useCallback(async(payload:Record<string,unknown>)=>{
     const response=await fetch('/api/laser-control/master/remote-session',{
@@ -591,10 +593,7 @@ export function LaserControlWorkspace(){
     const value=mobileEditValue;
     if(!value)return;
     sendRemoteKey('a','KeyA',{ctrl:true});
-    window.setTimeout(()=>{
-      sendRemoteInput({type:'text',key:value});
-      window.setTimeout(()=>sendRemoteKey('Enter','Enter'),55);
-    },70);
+    window.setTimeout(()=>sendRemoteInput({type:'text',key:value}),70);
     closeMobileKeyboard();
   }
 
@@ -647,7 +646,6 @@ export function LaserControlWorkspace(){
 
   async function frameGantry(){
     if(!canOperate||!latestAgentReady)return;
-    setToolPanelOpen(true);
     if(!await ensureInputReady()){
       setControlError(t('laser.paramsNeedControl'));
       return;
@@ -746,10 +744,6 @@ export function LaserControlWorkspace(){
       if(['preview','import','trace','adjust-image','rotary'].includes(id)){
         setActiveDialogTool(id);
       }
-      if(['trace','adjust-image','rotary'].includes(id)){
-        await new Promise(resolve=>window.setTimeout(resolve,650));
-        refreshParameters();
-      }
     }finally{
       setToolPending(null);
     }
@@ -818,8 +812,31 @@ export function LaserControlWorkspace(){
     gesture.rightClickSent=false;
   }
 
+  function clampPan(nextX:number,nextY:number,nextZoom=zoom){
+    const image=imageRef.current;
+    const surface=previewSurfaceRef.current;
+    if(!image||!surface||nextZoom<=1)return{x:0,y:0};
+    const baseWidth=image.offsetWidth||image.getBoundingClientRect().width/nextZoom;
+    const baseHeight=image.offsetHeight||image.getBoundingClientRect().height/nextZoom;
+    const maxX=Math.max(0,(baseWidth*nextZoom-surface.clientWidth)/2);
+    const maxY=Math.max(0,(baseHeight*nextZoom-surface.clientHeight)/2);
+    return{x:Math.max(-maxX,Math.min(maxX,nextX)),y:Math.max(-maxY,Math.min(maxY,nextY))};
+  }
+
+  function setPreviewZoom(next:number){
+    const value=Math.min(4,Math.max(1,Math.round(next*100)/100));
+    setZoom(value);
+    if(value<=1){
+      setPan({x:0,y:0});
+      setZoomOrigin({x:.5,y:.5});
+    }else{
+      setPan(current=>clampPan(current.x,current.y,value));
+    }
+  }
+
   function resetZoom(){
     setZoom(1);
+    setPan({x:0,y:0});
     setZoomOrigin({x:.5,y:.5});
   }
 
@@ -864,9 +881,11 @@ export function LaserControlWorkspace(){
         gesture.remoteDown=false;
         gesture.moved=false;
         gesture.rightClickSent=false;
+        gesture.startPanX=pan.x;
+        gesture.startPanY=pan.y;
         clearLongPress();
 
-        if(inputReady&&point){
+        if(inputReady&&point&&zoom<=1){
           gesture.longPressTimer=window.setTimeout(()=>{
             const current=touchGestureRef.current;
             if(current.pinching||current.moved||current.singlePointerId!==event.pointerId||!current.startPoint)return;
@@ -902,7 +921,10 @@ export function LaserControlWorkspace(){
         const dy=values[0].y-values[1].y;
         const distance=Math.max(1,Math.hypot(dx,dy));
         const next=Math.min(4,Math.max(1,gesture.startZoom*(distance/gesture.startDistance)));
-        setZoom(Math.round(next*100)/100);
+        const normalized=Math.round(next*100)/100;
+        setZoom(normalized);
+        if(normalized<=1)setPan({x:0,y:0});
+        else setPan(current=>clampPan(current.x,current.y,normalized));
         return;
       }
 
@@ -914,6 +936,15 @@ export function LaserControlWorkspace(){
         if(moved){
           gesture.moved=true;
           clearLongPress();
+        }
+
+        if(gesture.moved&&zoom>1){
+          const next=clampPan(
+            gesture.startPanX+(event.clientX-gesture.startClientX),
+            gesture.startPanY+(event.clientY-gesture.startClientY)
+          );
+          setPan(next);
+          return;
         }
 
         if(inputReady&&gesture.moved){
@@ -958,6 +989,11 @@ export function LaserControlWorkspace(){
       return;
     }
 
+    if(gesture.moved&&zoom>1){
+      resetTouchGesture();
+      return;
+    }
+
     const point=pointerCoordinates(event);
     if(inputReady&&point){
       if(gesture.remoteDown){
@@ -972,7 +1008,6 @@ export function LaserControlWorkspace(){
         if(isDouble){
           sendRemoteInput({type:'doubleclick',...point,button:0});
           lastTapRef.current=null;
-          openMobileKeyboard();
         }else{
           sendRemoteInput({type:'pointerdown',...point,button:0});
           sendRemoteInput({type:'pointerup',...point,button:0});
@@ -1129,7 +1164,6 @@ export function LaserControlWorkspace(){
     id:string,
     shortcut:{key:string;code:string;ctrl?:boolean;shift?:boolean;alt?:boolean}
   ){
-    setToolPanelOpen(true);
     await runShortcut(id,shortcut);
   }
 
@@ -1310,6 +1344,18 @@ export function LaserControlWorkspace(){
 
       {tab!=='agent'&&<div className={styles.livePane}>
         <div className={styles.liveToolbar}>
+          <div className={styles.zoom}>
+            <button type="button" aria-label="Reduzir zoom" onClick={()=>setPreviewZoom(zoom-.25)}>−</button>
+            <button type="button" title={t('laser.zoomReset')} onClick={resetZoom}>{Math.round(zoom*100)}%</button>
+            <button type="button" aria-label="Aumentar zoom" onClick={()=>setPreviewZoom(zoom+.25)}>＋</button>
+          </div>
+          <div className={styles.iconActions} aria-label={t('laser.projectTools')}>
+            <button type="button" title={t('laser.saveProject')} aria-label={t('laser.saveProject')} disabled={toolPending!==null} onClick={()=>void runShortcut('save',{key:'s',code:'KeyS',ctrl:true})}>▣</button>
+            <button type="button" title={t('laser.undo')} aria-label={t('laser.undo')} disabled={toolPending!==null} onClick={()=>void runShortcut('undo',{key:'z',code:'KeyZ',ctrl:true})}>↶</button>
+            <button type="button" title={t('laser.redo')} aria-label={t('laser.redo')} disabled={toolPending!==null} onClick={()=>void runShortcut('redo',{key:'z',code:'KeyZ',ctrl:true,shift:true})}>↷</button>
+            <button type="button" title={t('laser.importPc')} aria-label={t('laser.importPc')} disabled={toolPending!==null} onClick={()=>void runShortcut('import',{key:'i',code:'KeyI',ctrl:true})}>↥</button>
+            <button type="button" title={t('laser.previewProject')} aria-label={t('laser.previewProject')} disabled={toolPending!==null} onClick={()=>void runShortcut('preview',{key:'p',code:'KeyP',alt:true})}>◉</button>
+          </div>
           <div className={styles.orientation}>
             <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>{t('laser.auto')}</button>
             <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>{t('laser.landscape')}</button>
@@ -1366,9 +1412,10 @@ export function LaserControlWorkspace(){
             ref={imageRef}
             src={frameSrc}
             alt="LightBurn"
-            style={fullscreen
-              ?{transform:`scale(${zoom})`,transformOrigin:`${zoomOrigin.x*100}% ${zoomOrigin.y*100}%`}
-              :{transform:`scale(${zoom})`,transformOrigin:'center center'}}
+            style={{
+              transform:`translate3d(${pan.x}px,${pan.y}px,0) scale(${zoom})`,
+              transformOrigin:fullscreen?`${zoomOrigin.x*100}% ${zoomOrigin.y*100}%`:'center center'
+            }}
             className={inputReady?styles.remoteImageActive:styles.remoteImage}
             onPointerDown={event=>handlePointer(event,'pointerdown')}
             onPointerUp={event=>handlePointer(event,'pointerup')}
@@ -1448,7 +1495,6 @@ export function LaserControlWorkspace(){
         {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
 
         <div className={styles.primaryActionBar}>
-          <button type="button" onClick={openLayerPanel}><i>◫</i><span>Camada / valores</span></button>
           <button type="button" disabled={!canOperate||!latestAgentReady||Boolean(controlPending)} onClick={()=>void frameGantry()} title={!latestAgentReady?t('laser.paramsAgentUpdate'):undefined}><i>▣</i><span>Frame Diodo</span></button>
           <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('rotary',{key:'r',code:'KeyR',ctrl:true,shift:true})}><i>⟳</i><span>Rotativo</span></button>
           <button type="button" disabled={toolPending!==null} onClick={()=>void openToolDialog('adjust-image',{key:'i',code:'KeyI',alt:true})}><i>◐</i><span>Ajustar imagem</span></button>
@@ -1456,147 +1502,18 @@ export function LaserControlWorkspace(){
           <button type="button" onClick={()=>setToolPanelOpen(value=>!value)}><i>⋯</i><span>{toolPanelOpen?'Fechar painel':'Mais'}</span></button>
         </div>
 
-        {(toolPanelOpen||activeDialogTool||Boolean(controlSnapshot))&&<div className={styles.contextPanel}>
-        <section className={styles.parameterDock} ref={parameterDockRef}>
-          <div className={styles.parameterHead}>
-            <div>
-              <small>LIGHTBURN · CUTS / LAYERS</small>
-              <h3>{t('laser.paramsTitle')}</h3>
-              <p>{t('laser.paramsHelp')}</p>
+        {toolPanelOpen&&<div className={styles.contextPanel}>
+          <section className={styles.quickSection}>
+            <div className={styles.sectionHeading}>
+              <div><small>LIGHTBURN</small><h3>Mais ferramentas</h3></div>
             </div>
-            <div className={styles.parameterActions}>
-              <button type="button" disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)} onClick={refreshParameters}>
-                {controlPending?t('laser.paramsReading'):t('laser.paramsRefresh')}
-              </button>
-              <button
-                type="button"
-                disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)}
-                onClick={()=>controlSnapshot?.layers.length===0
-                  ?void editParametersOnScreen()
-                  :openCurrentLayerEditor()}
-              >{controlSnapshot?.layers.length===0?t('laser.paramsVisualEdit'):t('laser.paramsOpenLayer')}</button>
-              {(activeDialogTool||(controlSnapshot?.windowTitle&&controlSnapshot.windowTitle!=='LightBurn'))&&<>
-                <button type="button" onClick={confirmActiveDialog}>OK / Enter</button>
-                <button type="button" onClick={closeActiveDialog}>Fechar / Esc</button>
-              </>}
+            <div className={styles.moreToolsGrid}>
+              <button type="button" disabled={toolPending!==null} onClick={()=>void runShortcut('select',{key:'a',code:'KeyA',ctrl:true})}><i>⌁</i><span>{t('laser.selectAll')}</span></button>
+              <button type="button" disabled={toolPending!==null} onClick={()=>void runShortcut('flip-h',{key:'h',code:'KeyH',ctrl:true,shift:true})}><i>↔</i><span>{t('laser.flipH')}</span></button>
+              <button type="button" disabled={toolPending!==null} onClick={()=>void runShortcut('flip-v',{key:'v',code:'KeyV',ctrl:true,shift:true})}><i>↕</i><span>{t('laser.flipV')}</span></button>
+              <button type="button" onClick={()=>void editParametersOnScreen()}><i>⌕</i><span>{t('laser.paramsVisualEdit')}</span></button>
             </div>
-          </div>
-
-          {!advancedControlsReady?<div className={styles.parameterGate}>
-            <b>{t('laser.paramsAgentUpdate')}</b>
-            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.23/DevinX-Laser-Agent-1.0.23.zip">{t('laser.download')}</a>
-          </div>:!inputReady&&<div className={styles.parameterGate}>
-            <b>{t('laser.paramsNeedControl')}</b>
-            <button
-              type="button"
-              disabled={inputPending}
-              onClick={()=>{fullscreenAutoInputRef.current=false;void enableRemoteInput()}}
-            >{inputPending?t('laser.remoteActivating'):t('laser.remoteOff')}</button>
-          </div>}
-
-          {advancedControlsReady&&inputReady&&controlSnapshot&&<>
-            <div className={styles.layerBar}>
-              <label>
-                <span>{t('laser.paramsLayer')}</span>
-                <select
-                  value={controlSnapshot.layers.find(layer=>layer.selected)?.id??''}
-                  onChange={event=>selectLayer(event.target.value)}
-                  disabled={Boolean(controlPending)||controlSnapshot.layers.length===0}
-                >
-                  {controlSnapshot.layers.length===0&&<option value="">{t('laser.paramsNoLayer')}</option>}
-                  {controlSnapshot.layers.length>0&&!controlSnapshot.layers.some(layer=>layer.selected)&&<option value="">{t('laser.paramsChooseLayer')}</option>}
-                  {controlSnapshot.layers.map(layer=><option key={layer.id} value={layer.id}>{layer.label}</option>)}
-                </select>
-              </label>
-              <small>{controlSnapshot.windowTitle||'LightBurn'}</small>
-            </div>
-
-            {controlSnapshot.fields.length>0?<div className={styles.parameterGrid}>
-              {controlSnapshot.fields.map(field=><div className={styles.parameterField} key={field.key}>
-                <label>{field.label}</label>
-                {field.kind==='toggle'?<button
-                  type="button"
-                  className={field.checked?styles.toggleOn:styles.toggleOff}
-                  disabled={!field.writable||Boolean(controlPending)}
-                  onClick={()=>setToggleParameter(field,!Boolean(field.checked))}
-                ><i></i><span>{field.checked?t('laser.paramsOn'):t('laser.paramsOff')}</span></button>:<div className={styles.numberEditor}>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={controlDrafts[field.key]??field.value??''}
-                    disabled={!field.writable||Boolean(controlPending)}
-                    onChange={event=>setControlDrafts(current=>({...current,[field.key]:event.target.value}))}
-                    onKeyDown={event=>{
-                      if(event.key==='Enter'){
-                        event.preventDefault();
-                        setNumericParameter(field);
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={!field.writable||Boolean(controlPending)}
-                    onClick={()=>setNumericParameter(field)}
-                  >{t('laser.paramsApply')}</button>
-                </div>}
-              </div>)}
-            </div>:<div className={styles.parameterEmpty}>
-              <b>{t('laser.paramsNotFound')}</b>
-              <span>{t('laser.paramsVisualHelp')}</span>
-              <button type="button" onClick={()=>void editParametersOnScreen()}>{t('laser.paramsVisualEdit')}</button>
-            </div>}
-          </>}
-
-          {advancedControlsReady&&inputReady&&!controlSnapshot&&!controlPending&&<div className={styles.parameterEmpty}>
-            <b>{t('laser.paramsReady')}</b>
-            <span>{t('laser.paramsReadyHelp')}</span>
-          </div>}
-          {controlError&&<div className={styles.parameterError}>{controlError}</div>}
-        </section>
-
-
-            <details className={styles.extraTools}>
-              <summary>Mais ferramentas</summary>
-        <section className={styles.quickSection}>
-          <div className={styles.sectionHeading}>
-            <div><small>LIGHTBURN</small><h3>{t('laser.quickTools')}</h3></div>
-            <p>{t('laser.quickHelp')}</p>
-          </div>
-
-          <div className={styles.quickGroups}>
-            <article className={styles.quickGroup}>
-              <header><b>{t('laser.projectTools')}</b><span>{t('laser.projectToolsHint')}</span></header>
-              <div className={styles.quickGrid}>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('select',{key:'a',code:'KeyA',ctrl:true})}><i>⌁</i><span>{t('laser.selectAll')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('save',{key:'s',code:'KeyS',ctrl:true})}><i>▣</i><span>{t('laser.saveProject')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('preview',{key:'p',code:'KeyP',alt:true})}><i>◉</i><span>{t('laser.previewProject')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('import',{key:'i',code:'KeyI',ctrl:true})}><i>↥</i><span>{t('laser.importPc')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('undo',{key:'z',code:'KeyZ',ctrl:true})}><i>↶</i><span>{t('laser.undo')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('redo',{key:'z',code:'KeyZ',ctrl:true,shift:true})}><i>↷</i><span>{t('laser.redo')}</span></button>
-              </div>
-            </article>
-
-            <article className={styles.quickGroup}>
-              <header><b>{t('laser.transformTools')}</b><span>{t('laser.transformToolsHint')}</span></header>
-              <div className={styles.quickGrid}>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('flip-h',{key:'h',code:'KeyH',ctrl:true,shift:true})}><i>↔</i><span>{t('laser.flipH')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('flip-v',{key:'v',code:'KeyV',ctrl:true,shift:true})}><i>↕</i><span>{t('laser.flipV')}</span></button>
-              </div>
-            </article>
-
-            <article className={styles.quickGroup}>
-              <header><b>{t('laser.imageTools')}</b><span>{t('laser.imageToolsHint')}</span></header>
-              <div className={styles.quickGrid}>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('trace',{key:'t',code:'KeyT',alt:true})}><i>⌇</i><span>{t('laser.traceImage')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('adjust-image',{key:'i',code:'KeyI',alt:true})}><i>◐</i><span>{t('laser.adjustImage')}</span></button>
-                <button disabled={toolPending!==null} onClick={()=>void runShortcut('rotary',{key:'r',code:'KeyR',ctrl:true,shift:true})}><i>⟳</i><span>{t('laser.rotarySetup')}</span></button>
-              </div>
-            </article>
-          </div>
-        </section>
-
-
-            </details>
+          </section>
         </div>}
         <div className={styles.controlDetail}>
           <b>SAFE CONTROL</b>
@@ -1615,7 +1532,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.23/DevinX-Laser-Agent-1.0.23.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.24/DevinX-Laser-Agent-1.0.24.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

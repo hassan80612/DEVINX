@@ -14,12 +14,14 @@ test('mentor connection is code-only, temporary and server-gated',async()=>{
   assert.match(invoke,/get_laser_access_status/);
 });
 
-test('mobile touch works on the normal preview and double tap opens editing',async()=>{
+test('mobile touch works on the normal preview while keyboard stays manual',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   assert.match(panel,/refreshRemoteSession/);
   assert.doesNotMatch(panel,/event\.pointerType==='touch'&&!document\.fullscreenElement/);
   assert.match(panel,/sendRemoteInput\(\{type:'doubleclick'/);
-  assert.match(panel,/openMobileKeyboard\(\)/);
+  const doubleTap=panel.slice(panel.indexOf("if(isDouble)"),panel.indexOf("if(isDouble)")+260);
+  assert.doesNotMatch(doubleTap,/openMobileKeyboard/);
+  assert.doesNotMatch(panel,/sendRemoteKey\('Enter','Enter'\).*sendMobileEdit/s);
 });
 
 test('Laser workspace is translated through DevinX i18n',async()=>{
