@@ -24,7 +24,7 @@ export default async function LaserGuidePage(){
       <h1>Seu LightBurn conectado ao DevinX.</h1>
       <p>Veja a janela do LightBurn em tempo real, acompanhe a máquina e use controles remotos a partir do celular ou de outro computador.</p>
       <div className={styles.actions}>
-        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.5/DevinX-Laser-Agent-1.0.5.zip" download>Baixar Agent para Windows</a>
+        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.6/DevinX-Laser-Agent-1.0.6.zip" download>Baixar Agent para Windows</a>
         <a className={styles.secondary} href="/laser-control">Abrir Laser Control</a>
       </div>
     </section>

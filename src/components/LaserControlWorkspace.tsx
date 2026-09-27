@@ -833,8 +833,8 @@ export function LaserControlWorkspace(){
 
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
-          <div><small>WINDOWS 10/11 · 64 BITS</small><h3>DevinX Laser Agent 1.0.5</h3><p>Instala no usuário do Windows, inicia sozinho e pode ser removido pela própria bandeja.</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.5/DevinX-Laser-Agent-1.0.5.zip" download>Baixar Agent</a>
+          <div><small>WINDOWS 10/11 · 64 BITS</small><h3>DevinX Laser Agent 1.0.6</h3><p>Instala no usuário do Windows, inicia sozinho e pode ser removido pela própria bandeja.</p></div>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.6/DevinX-Laser-Agent-1.0.6.zip" download>Baixar Agent</a>
         </div>
 
         <div className={styles.guideSteps}>
