@@ -43,7 +43,7 @@ export default async function LaserGuidePage(){
 
     <section className={styles.block}>
       <h2>Camadas e parâmetros</h2>
-      <p>O Agent 1.0.22 lê os controles que o LightBurn realmente expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Fiber/Galvo e Diodo mostram apenas os campos disponíveis para aquele LightBurn e aquela camada.</p>
+      <p>O Agent 1.0.22 lê os controles que o LightBurn expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Quando uma versão não expõe os valores, use Editar na tela para ampliar a imagem e tocar no campo com o teclado do celular.</p>
     </section>
 
     <section className={styles.block}>
