@@ -58,6 +58,7 @@ export function LaserControlWorkspace(){
   const[frameLatency,setFrameLatency]=useState<number|null>(null);
   const[frameAt,setFrameAt]=useState<number|null>(null);
   const[zoom,setZoom]=useState(1);
+  const[zoomOrigin,setZoomOrigin]=useState({x:.5,y:.5});
   const[orientation,setOrientation]=useState<OrientationMode>('auto');
   const[fullscreen,setFullscreen]=useState(false);
   const[inputReady,setInputReady]=useState(false);
@@ -74,6 +75,25 @@ export function LaserControlWorkspace(){
   const sessionRef=useRef<RemoteSession|null>(null);
   const lastFrameSeqRef=useRef(0);
   const lastPointerMoveRef=useRef(0);
+  const touchPointsRef=useRef(new Map<number,{x:number;y:number}>());
+  const touchGestureRef=useRef<{
+    pinching:boolean;
+    startDistance:number;
+    startZoom:number;
+    singlePointerId:number|null;
+    startClientX:number;
+    startClientY:number;
+    startPoint:{x:number;y:number}|null;
+    remoteDown:boolean;
+    moved:boolean;
+    rightClickSent:boolean;
+    longPressTimer:number|undefined;
+  }>({
+    pinching:false,startDistance:0,startZoom:1,singlePointerId:null,
+    startClientX:0,startClientY:0,startPoint:null,
+    remoteDown:false,moved:false,rightClickSent:false,longPressTimer:undefined
+  });
+  const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -173,6 +193,7 @@ export function LaserControlWorkspace(){
       }
       setSession(null);
       setFrameSrc('');
+      resetZoom();
       setInputReady(false);
       setRealtimeStatus('idle');
     };
@@ -309,30 +330,208 @@ export function LaserControlWorkspace(){
     });
   }
 
-  function pointerCoordinates(event:{currentTarget:HTMLImageElement;clientX:number;clientY:number}){
-    const rect=event.currentTarget.getBoundingClientRect();
+  function pointerCoordinatesFromClient(clientX:number,clientY:number){
+    const image=imageRef.current;
+    if(!image)return null;
+    const rect=image.getBoundingClientRect();
     if(rect.width<=0||rect.height<=0)return null;
-    const x=(event.clientX-rect.left)/rect.width;
-    const y=(event.clientY-rect.top)/rect.height;
+    const x=(clientX-rect.left)/rect.width;
+    const y=(clientY-rect.top)/rect.height;
     if(x<0||x>1||y<0||y>1)return null;
     return{x,y};
   }
 
-  function handlePointer(event:ReactPointerEvent<HTMLImageElement>,type:'pointerdown'|'pointerup'|'pointermove'){
-    if(!fullscreen||!inputReady)return;
-    const point=pointerCoordinates(event);
-    if(!point)return;
-    if(type==='pointermove'){
-      const now=performance.now();
-      if(now-lastPointerMoveRef.current<33)return;
-      lastPointerMoveRef.current=now;
+  function pointerCoordinates(event:{clientX:number;clientY:number}){
+    return pointerCoordinatesFromClient(event.clientX,event.clientY);
+  }
+
+  function clearLongPress(){
+    const gesture=touchGestureRef.current;
+    if(gesture.longPressTimer!==undefined){
+      window.clearTimeout(gesture.longPressTimer);
+      gesture.longPressTimer=undefined;
     }
+  }
+
+  function resetTouchGesture(){
+    clearLongPress();
+    touchPointsRef.current.clear();
+    const gesture=touchGestureRef.current;
+    gesture.pinching=false;
+    gesture.startDistance=0;
+    gesture.startZoom=zoom;
+    gesture.singlePointerId=null;
+    gesture.startPoint=null;
+    gesture.remoteDown=false;
+    gesture.moved=false;
+    gesture.rightClickSent=false;
+  }
+
+  function resetZoom(){
+    setZoom(1);
+    setZoomOrigin({x:.5,y:.5});
+  }
+
+  function handlePointer(
+    event:ReactPointerEvent<HTMLImageElement>,
+    type:'pointerdown'|'pointerup'|'pointermove'|'pointercancel'
+  ){
+    if(!fullscreen)return;
+
+    if(event.pointerType!=='touch'){
+      if(!inputReady)return;
+      const point=pointerCoordinates(event);
+      if(!point)return;
+      if(type==='pointermove'){
+        const now=performance.now();
+        if(now-lastPointerMoveRef.current<33)return;
+        lastPointerMoveRef.current=now;
+      }
+      if(type==='pointercancel')return;
+      event.preventDefault();
+      if(type==='pointerdown'){
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        previewSurfaceRef.current?.focus();
+      }
+      sendRemoteInput({type,...point,button:event.button});
+      return;
+    }
+
     event.preventDefault();
+    const touches=touchPointsRef.current;
+    const gesture=touchGestureRef.current;
+
     if(type==='pointerdown'){
       event.currentTarget.setPointerCapture?.(event.pointerId);
-      previewSurfaceRef.current?.focus();
+      touches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+
+      if(touches.size===1){
+        const point=pointerCoordinates(event);
+        gesture.pinching=false;
+        gesture.singlePointerId=event.pointerId;
+        gesture.startClientX=event.clientX;
+        gesture.startClientY=event.clientY;
+        gesture.startPoint=point;
+        gesture.remoteDown=false;
+        gesture.moved=false;
+        gesture.rightClickSent=false;
+        clearLongPress();
+
+        if(inputReady&&point){
+          gesture.longPressTimer=window.setTimeout(()=>{
+            const current=touchGestureRef.current;
+            if(current.pinching||current.moved||current.singlePointerId!==event.pointerId||!current.startPoint)return;
+            sendRemoteInput({type:'pointerdown',...current.startPoint,button:2});
+            sendRemoteInput({type:'pointerup',...current.startPoint,button:2});
+            current.rightClickSent=true;
+          },560);
+        }
+      }else if(touches.size===2){
+        clearLongPress();
+        const values=[...touches.values()];
+        const dx=values[0].x-values[1].x;
+        const dy=values[0].y-values[1].y;
+        gesture.pinching=true;
+        gesture.startDistance=Math.max(1,Math.hypot(dx,dy));
+        gesture.startZoom=zoom;
+        gesture.remoteDown=false;
+
+        const midX=(values[0].x+values[1].x)/2;
+        const midY=(values[0].y+values[1].y)/2;
+        const point=pointerCoordinatesFromClient(midX,midY);
+        if(point)setZoomOrigin(point);
+      }
+      return;
     }
-    sendRemoteInput({type,...point,button:event.button});
+
+    if(type==='pointermove'){
+      touches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+
+      if(gesture.pinching&&touches.size>=2){
+        const values=[...touches.values()];
+        const dx=values[0].x-values[1].x;
+        const dy=values[0].y-values[1].y;
+        const distance=Math.max(1,Math.hypot(dx,dy));
+        const next=Math.min(4,Math.max(1,gesture.startZoom*(distance/gesture.startDistance)));
+        setZoom(Math.round(next*100)/100);
+        return;
+      }
+
+      if(gesture.singlePointerId===event.pointerId&&!gesture.rightClickSent){
+        const moved=Math.hypot(
+          event.clientX-gesture.startClientX,
+          event.clientY-gesture.startClientY
+        )>8;
+        if(moved){
+          gesture.moved=true;
+          clearLongPress();
+        }
+
+        if(inputReady&&gesture.moved){
+          const point=pointerCoordinates(event);
+          if(!point)return;
+          if(!gesture.remoteDown&&gesture.startPoint){
+            sendRemoteInput({type:'pointerdown',...gesture.startPoint,button:0});
+            gesture.remoteDown=true;
+          }
+          const now=performance.now();
+          if(now-lastPointerMoveRef.current>=33){
+            lastPointerMoveRef.current=now;
+            sendRemoteInput({type:'pointermove',...point,button:0});
+          }
+        }
+      }
+      return;
+    }
+
+    const wasPinching=gesture.pinching;
+    touches.delete(event.pointerId);
+
+    if(type==='pointercancel'){
+      if(gesture.remoteDown&&gesture.startPoint&&inputReady)
+        sendRemoteInput({type:'pointerup',...gesture.startPoint,button:0});
+      resetTouchGesture();
+      return;
+    }
+
+    if(wasPinching){
+      clearLongPress();
+      if(touches.size<2)gesture.pinching=false;
+      if(touches.size===0)resetTouchGesture();
+      return;
+    }
+
+    if(gesture.singlePointerId!==event.pointerId)return;
+    clearLongPress();
+
+    if(gesture.rightClickSent){
+      resetTouchGesture();
+      return;
+    }
+
+    const point=pointerCoordinates(event);
+    if(inputReady&&point){
+      if(gesture.remoteDown){
+        sendRemoteInput({type:'pointerup',...point,button:0});
+      }else if(!gesture.moved){
+        const now=Date.now();
+        const last=lastTapRef.current;
+        const isDouble=Boolean(last
+          &&now-last.at<330
+          &&Math.hypot(event.clientX-last.clientX,event.clientY-last.clientY)<28);
+
+        if(isDouble){
+          sendRemoteInput({type:'doubleclick',...point,button:0});
+          lastTapRef.current=null;
+        }else{
+          sendRemoteInput({type:'pointerdown',...point,button:0});
+          sendRemoteInput({type:'pointerup',...point,button:0});
+          lastTapRef.current={at:now,clientX:event.clientX,clientY:event.clientY};
+        }
+      }
+    }
+
+    resetTouchGesture();
   }
 
   function handleWheel(event:ReactWheelEvent<HTMLImageElement>){
@@ -516,7 +715,7 @@ export function LaserControlWorkspace(){
         <div className={styles.liveToolbar}>
           <div className={styles.zoom}>
             <button onClick={()=>setZoom(value=>Math.max(.75,Math.round((value-.25)*100)/100))}>−</button>
-            <button onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button>
+            <button onClick={resetZoom}>{Math.round(zoom*100)}%</button>
             <button onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.25)*100)/100))}>＋</button>
           </div>
           <div className={styles.orientation}>
@@ -538,7 +737,7 @@ export function LaserControlWorkspace(){
             {fullscreen&&<>
               <div className={styles.zoom}>
                 <button onClick={()=>setZoom(value=>Math.max(.75,value-.25))}>−</button>
-                <button onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button>
+                <button onClick={resetZoom}>{Math.round(zoom*100)}%</button>
                 <button onClick={()=>setZoom(value=>Math.min(3,value+.25))}>＋</button>
               </div>
               <div className={styles.orientation}>
@@ -560,12 +759,20 @@ export function LaserControlWorkspace(){
             src={frameSrc}
             alt="Janela ao vivo do LightBurn"
             style={fullscreen
-              ?{width:`${zoom*100}%`,maxWidth:'none',maxHeight:'none'}
-              :{transform:`scale(${zoom})`}}
+              ?{
+                transform:`scale(${zoom})`,
+                transformOrigin:`${zoomOrigin.x*100}% ${zoomOrigin.y*100}%`
+              }
+              :{
+                transform:`scale(${zoom})`,
+                transformOrigin:'center center'
+              }}
             className={inputReady&&fullscreen?styles.remoteImageActive:styles.remoteImage}
             onPointerDown={event=>handlePointer(event,'pointerdown')}
             onPointerUp={event=>handlePointer(event,'pointerup')}
             onPointerMove={event=>handlePointer(event,'pointermove')}
+            onPointerCancel={event=>handlePointer(event,'pointercancel')}
+            onContextMenu={event=>event.preventDefault()}
             onDoubleClick={event=>{
               if(!fullscreen||!inputReady)return;
               const point=pointerCoordinates(event);
@@ -587,7 +794,7 @@ export function LaserControlWorkspace(){
 
         <div className={styles.controlHint}>
           <b>Controle por toque/mouse</b>
-          <span>Fica disponível somente em tela cheia. Saiu da tela cheia ou da sessão, o controle é bloqueado automaticamente.</span>
+          <span>Em tela cheia: 1 toque clica, toque duplo abre/ativa, segurar faz clique direito, arrastar move no LightBurn e a pinça com 2 dedos amplia exatamente a área sob seus dedos.</span>
         </div>
       </div>}
 
