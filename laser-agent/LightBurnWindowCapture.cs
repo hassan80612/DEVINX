@@ -15,6 +15,7 @@ internal static class LightBurnWindowCapture
     private const int DwmwaExtendedFrameBounds=9;
     private const uint PwRenderFullContent=0x00000002;
     private const int MaxJpegBytes=165_000;
+    private static IntPtr _lastDialog=IntPtr.Zero;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmGetWindowAttribute(
@@ -28,6 +29,9 @@ internal static class LightBurnWindowCapture
 
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
@@ -44,7 +48,7 @@ internal static class LightBurnWindowCapture
 
         var handle=FindLightBurnWindow();
         if(handle==IntPtr.Zero||IsIconic(handle)||!IsWindowVisible(handle))return null;
-        if(!TryGetPhysicalBounds(handle,out var left,out var top,out var width,out var height))return null;
+        if(!TryGetInteractionBounds(handle,out var captureHandle,out var left,out var top,out var width,out var height))return null;
         if(width<200||height<150||width>10000||height>10000)return null;
 
         using var source=new Bitmap(width,height,PixelFormat.Format24bppRgb);
@@ -69,7 +73,7 @@ internal static class LightBurnWindowCapture
                 var hdc=graphics.GetHdc();
                 try
                 {
-                    if(!PrintWindow(handle,hdc,PwRenderFullContent))return null;
+                    if(!PrintWindow(captureHandle,hdc,PwRenderFullContent))return null;
                 }
                 finally{graphics.ReleaseHdc(hdc);}
             }
@@ -145,6 +149,41 @@ internal static class LightBurnWindowCapture
         left=rect.Left;
         top=rect.Top;
         return width>0&&height>0;
+    }
+
+    // A modal window can sit outside the main window. Capture that window on its
+    // own so the same normalized coordinates are used by remote pointer input.
+    // Never include the desktop between two windows in the stream.
+    public static bool TryGetInteractionBounds(
+        IntPtr main,out IntPtr target,
+        out int left,out int top,out int width,out int height)
+    {
+        target=main;
+        if(!TryGetPhysicalBounds(main,out left,out top,out width,out height))return false;
+
+        var foreground=GetForegroundWindow();
+        if(foreground!=main&&IsWindow(foreground)
+           &&BelongsToSameProcess(main,foreground)
+           &&IsWindowVisible(foreground)&&!IsIconic(foreground))
+            Interlocked.Exchange(ref _lastDialog,foreground);
+
+        var dialog=Interlocked.CompareExchange(ref _lastDialog,IntPtr.Zero,IntPtr.Zero);
+        if(dialog==main||!IsWindow(dialog)||!BelongsToSameProcess(main,dialog)
+           ||!IsWindowVisible(dialog)||IsIconic(dialog))
+        {
+            Interlocked.Exchange(ref _lastDialog,IntPtr.Zero);
+            return true;
+        }
+        if(!TryGetPhysicalBounds(dialog,out var dialogLeft,out var dialogTop,
+            out var dialogWidth,out var dialogHeight)
+           ||dialogWidth<100||dialogHeight<70)return true;
+
+        target=dialog;
+        left=dialogLeft;
+        top=dialogTop;
+        width=dialogWidth;
+        height=dialogHeight;
+        return true;
     }
 
     private static bool BelongsToSameProcess(IntPtr main,IntPtr candidate)

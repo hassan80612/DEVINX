@@ -33,7 +33,8 @@ internal sealed record RealtimeRemoteInput(
     bool Ctrl,
     bool Shift,
     bool Alt,
-    bool Meta);
+    bool Meta,
+    string? RequestId);
 
 internal sealed record RealtimeCommand(
     string Token,

@@ -135,6 +135,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
 
     public async Task SendInputResultAsync(
         string inputType,
+        string? requestId,
         RemoteInputApplyResult result,
         CancellationToken cancellationToken)
     {
@@ -143,6 +144,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         {
             token=_config.FrameToken,
             type=inputType,
+            requestId,
             ok=result.Ok,
             reason=result.Reason,
             x=result.X,
@@ -469,7 +471,8 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             Bool(payload,"ctrl"),
             Bool(payload,"shift"),
             Bool(payload,"alt"),
-            Bool(payload,"meta")));
+            Bool(payload,"meta"),
+            String(payload,"requestId")));
     }
 
     private async Task HeartbeatLoopAsync(CancellationToken cancellationToken)

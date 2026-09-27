@@ -265,6 +265,27 @@ internal static class LightBurnControlBridge
         catch(Exception ex){return Fail("dialog_action_error:"+ex.GetType().Name);}
     }
 
+    public static LightBurnControlBridgeResult FrameGantry()
+    {
+        try
+        {
+            var root=GetMainRoot();
+            if(root is null)return Fail("lightburn_window_not_found");
+            // Gantry machines expose Frame in LightBurn's Laser panel; F1 is the
+            // Galvo Live Framing shortcut and must never be used as its fallback.
+            var frame=ReadNodes(root).FirstOrDefault(node=>
+                node.ControlType==50000&&node.Enabled&&!node.Offscreen
+                &&!node.Rect.IsEmpty
+                &&new[]{"frame","enquadrar","encuadrar","cadrer"}
+                    .Contains(Normalize(node.Name)));
+            if(frame is null)return Fail("frame_button_not_found");
+            if(!Invoke(frame.Element)&&!Click(frame,false))return Fail("frame_button_failed");
+            return new(true,"frame_button_sent",null);
+        }
+        catch(COMException){return Fail("lightburn_ui_changed");}
+        catch(Exception ex){return Fail("frame_error:"+ex.GetType().Name);}
+    }
+
     private static object? GetRoot()
     {
         var hwnd=GetActiveLightBurnWindow();
