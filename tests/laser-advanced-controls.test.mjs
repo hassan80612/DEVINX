@@ -82,7 +82,7 @@ test('mobile mentoring keyboard and dialog controls stay available over live pre
   assert.match(panel,/mobileKeyboardRef/);
   assert.match(panel,/openMobileKeyboard/);
   assert.match(panel,/type:'text',key:value/);
-  assert.match(panel,/Fechar \/ Esc/);
+  assert.match(panel,/laser\.closeEsc/);
   assert.match(panel,/OK \/ Enter/);
   assert.match(panel,/pendingGuard/);
   assert.match(css,/\.mobileKeyboard/);
