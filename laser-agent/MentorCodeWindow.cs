@@ -40,7 +40,7 @@ internal sealed class MentorCodeWindow:IDisposable
             ForeColor=Color.FromArgb(114,225,255),Font=new Font("Segoe UI",10,FontStyle.Bold)
         };
         var hint=new Label{
-            Text="Envie este código ao professor. Só o código é necessário.",
+            Text="Envie este código ao professor. Válido por 30 minutos.",
             Left=32,Top=66,Width=440,Height=28,ForeColor=Color.FromArgb(190,199,212)
         };
         var codeLabel=new Label{
@@ -57,7 +57,7 @@ internal sealed class MentorCodeWindow:IDisposable
         copy.Click+=(_,_)=>{try{Clipboard.SetText(code);}catch{}};
 
         _status=new Label{
-            Text="Aguardando o professor conectar…",Left=32,Top=255,Width=440,Height=32,
+            Text="Aguardando o professor conectar… Sessão: até 6 horas.",Left=32,Top=255,Width=440,Height=32,
             ForeColor=Color.FromArgb(141,151,166)
         };
         form.Controls.AddRange([title,hint,codeLabel,copy,_status]);

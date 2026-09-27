@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.12
+# DevinX Laser Agent 1.0.13
 
 Agent Windows do DevinX Laser Control.
 
@@ -69,6 +69,6 @@ No pacote existe **INICIAR-MENTORIA.cmd**. Este modo não instala o Agent, não 
 
 1. Extraia o ZIP.
 2. Abra `INICIAR-MENTORIA.cmd`.
-3. Envie ao professor o código de 8 caracteres exibido.
+3. Envie ao professor o código de 8 caracteres exibido. O código vale 30 minutos e, após a conexão, a sessão pode durar até 6 horas.
 4. Quando o professor encerrar a sessão, o acesso é revogado e o Agent temporário fecha.
 5. O vínculo permanente do computador, se existir, não é alterado.

@@ -9,7 +9,7 @@ internal static class MentorMode
         try{AgentLocalState.ResetAll();}catch{}
 
         var identity=AgentIdentityStore.GetOrCreate();
-        var proof=MentorProofFactory.Create(TimeSpan.FromMinutes(5));
+        var proof=MentorProofFactory.Create(TimeSpan.FromMinutes(30));
 
         using var pairing=new DevinXMentorPairingClient();
         PairingOfferResult offered;
