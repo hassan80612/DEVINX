@@ -2,20 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser Control uses Agent 1.0.25 for advanced controls',async()=>{
+test('Laser Control uses Agent 1.0.24 for advanced controls',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   const i18n=await readFile('src/i18n/laser.ts','utf8');
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
-  assert.match(panel,/laser-agent-v1\.0\.25/);
+  assert.match(panel,/laser-agent-v1\.0\.24/);
   assert.match(panel,/dialog_confirm/);
   assert.match(panel,/dialog_cancel/);
   assert.match(panel,/dialog_close/);
   assert.match(panel,/select_layer/);
   assert.match(panel,/open_layer/);
   assert.match(css,/\.parameterDock/);
-  assert.match(i18n,/DevinX Laser Agent 1\.0\.25/);
+  assert.match(i18n,/DevinX Laser Agent 1\.0\.24/);
 });
 
 test('Laser command buttons are not blocked by cached job state',async()=>{
@@ -48,7 +48,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.0\.25"/);
+  assert.match(pairing,/AgentVersion = "1\.0\.24"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
@@ -153,24 +153,4 @@ test('layer parameter panel and duplicate rotary trace adjust controls are remov
   assert.equal(rotary,1);
   assert.equal(trace,1);
   assert.equal(adjust,1);
-});
-
-
-test('text editing preserves Qt child focus and pointer follows the displayed frame',async()=>{
-  const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
-  const capture=await readFile('laser-agent/LightBurnWindowCapture.cs','utf8');
-  assert.match(input,/EnsureTypingFocus/);
-  assert.match(input,/sendinput_second_click/);
-  assert.doesNotMatch(input,/sendinput_double/);
-  assert.match(input,/TryGetLastCapturedBounds/);
-  assert.match(capture,/TryGetLastCapturedBounds/);
-  assert.match(capture,/PrintWindow\(captureHandle/);
-  assert.match(capture,/_lastCapturedTarget/);
-});
-
-test('text input does not reactivate the LightBurn top-level window when an editor already has focus',async()=>{
-  const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
-  const typing=input.slice(input.indexOf('private static bool EnsureTypingFocus'),input.indexOf('private static bool EnsureLightBurnAtPoint'));
-  assert.match(typing,/BelongsToLightBurn\(main,foreground\)/);
-  assert.match(typing,/return true/);
 });

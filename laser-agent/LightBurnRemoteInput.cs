@@ -227,23 +227,23 @@ internal static class LightBurnRemoteInput
         if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
             return new(false,reason,x,y);
 
-        // The browser has already sent the first click of the double-tap.
-        // Sending two more complete clicks here produced a triple-click in
-        // LightBurn and often missed text-edit mode. Send only the second click;
-        // Windows/Qt recognizes the pair using the normal system double-click timing.
         var inputs=new[]
         {
+            Mouse(MouseeventfLeftDown,0),
+            Mouse(MouseeventfLeftUp,0),
             Mouse(MouseeventfLeftDown,0),
             Mouse(MouseeventfLeftUp,0)
         };
         if(SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length)
-            return new(true,"sendinput_second_click",x,y);
+            return new(true,"sendinput_double",x,y);
 
         var ok=PostPointer(target,WmLButtonDown,MkLButton,x,y)
+               &&PostPointer(target,WmLButtonUp,0,x,y)
+               &&PostPointer(target,WmLButtonDblClk,MkLButton,x,y)
                &&PostPointer(target,WmLButtonUp,0,x,y);
         return ok
-            ?new(true,"postmessage_second_click_fallback",x,y)
-            :new(false,"windows_second_click_injection_failed",x,y);
+            ?new(true,"postmessage_double_fallback",x,y)
+            :new(false,"windows_doubleclick_injection_failed",x,y);
     }
 
     private static RemoteInputApplyResult Wheel(IntPtr main,RealtimeRemoteInput input)
@@ -264,8 +264,8 @@ internal static class LightBurnRemoteInput
 
     private static RemoteInputApplyResult Keyboard(IntPtr main,RealtimeRemoteInput input,bool down)
     {
-        if(!EnsureTypingFocus(main))
-            return new(false,"keyboard_focus_failed",null,null);
+        var target=FindInteractiveWindow(main);
+        ActivateWindow(target);
 
         var vk=VirtualKey(input.Code,input.Key);
         if(vk==0)return new(false,"unsupported_key",null,null);
@@ -315,8 +315,9 @@ internal static class LightBurnRemoteInput
     private static RemoteInputApplyResult Text(IntPtr main,string? text)
     {
         if(string.IsNullOrEmpty(text))return new(false,"empty_text",null,null);
-        if(!EnsureTypingFocus(main))
-            return new(false,"text_focus_failed",null,null);
+
+        var target=FindInteractiveWindow(main);
+        ActivateWindow(target);
 
         var inputs=new List<Input>();
         foreach(var ch in text.Take(256))
@@ -331,30 +332,14 @@ internal static class LightBurnRemoteInput
             :new(false,"windows_text_injection_failed",null,null);
     }
 
-    private static bool EnsureTypingFocus(IntPtr main)
-    {
-        var foreground=GetForegroundWindow();
-        if(foreground!=IntPtr.Zero&&BelongsToLightBurn(main,foreground))
-        {
-            // Do not call SetFocus on the top-level window here. Qt may currently
-            // have an inline text editor or a dialog edit control focused.
-            return true;
-        }
-
-        var target=FindInteractiveWindow(main);
-        return ActivateWindow(target);
-    }
-
     private static bool EnsureLightBurnAtPoint(
         IntPtr main,int x,int y,out IntPtr target,out string reason)
     {
         target=IntPtr.Zero;
         reason="target_not_lightburn";
 
-        if(!LightBurnWindowCapture.TryGetLastCapturedBounds(main,out var preferred,
-            out _,out _,out _,out _))
-            LightBurnWindowCapture.TryGetInteractionBounds(main,out preferred,
-                out _,out _,out _,out _);
+        LightBurnWindowCapture.TryGetInteractionBounds(main,out var preferred,
+            out _,out _,out _,out _);
         if(preferred==IntPtr.Zero)preferred=main;
         ActivateWindow(preferred);
         SetWindowPos(preferred,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
@@ -415,10 +400,7 @@ internal static class LightBurnRemoteInput
     {
         x=y=0;
         if(!input.X.HasValue||!input.Y.HasValue)return false;
-        if(!LightBurnWindowCapture.TryGetLastCapturedBounds(
-                main,out _,out var left,out var top,out var width,out var height)
-           &&!LightBurnWindowCapture.TryGetInteractionBounds(
-                main,out _,out left,out top,out width,out height))
+        if(!LightBurnWindowCapture.TryGetInteractionBounds(main,out _,out var left,out var top,out var width,out var height))
             return false;
 
         x=left+Math.Clamp((int)Math.Round(Math.Clamp(input.X.Value,0,1)*(width-1)),0,width-1);
