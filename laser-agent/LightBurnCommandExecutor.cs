@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace DevinXLaserAgent;
@@ -7,9 +6,8 @@ internal static class LightBurnCommandExecutor
 {
     private const uint InputKeyboard=1;
     private const ushort VkControl=0x11;
-    private const ushort VkShift=0x10;
     private const ushort VkPause=0x13;
-    private const ushort VkA=0x41;
+    private const ushort VkF1=0x70;
     private const uint KeyeventfKeyup=0x0002;
 
     [StructLayout(LayoutKind.Sequential)]
@@ -57,9 +55,6 @@ internal static class LightBurnCommandExecutor
     }
 
     [DllImport("user32.dll")]
-    private static extern IntPtr GetForegroundWindow();
-
-    [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("user32.dll",SetLastError=true)]
@@ -75,6 +70,7 @@ internal static class LightBurnCommandExecutor
     {
         if(command=="start")
         {
+            LightBurnRemoteInput.FocusLightBurn();
             var reply=await udp.StartAsync(cancellationToken);
             if(!reply.Received)return new(false,"lightburn_no_reply");
             return reply.Response=="OK"
@@ -87,16 +83,18 @@ internal static class LightBurnCommandExecutor
 
         return command switch
         {
+            // Galvo/Fiber framing is the LightBurn Live Framing command (F1).
+            "frame"=>SendShortcut(handle,[VkF1]),
             "pause"=>SendShortcut(handle,[VkPause]),
             "stop"=>SendShortcut(handle,[VkControl,VkPause]),
-            "frame"=>SendShortcut(handle,[VkControl,VkShift,VkA]),
             _=>new CommandExecutionResult(false,"unsupported_command")
         };
     }
 
     private static CommandExecutionResult SendShortcut(IntPtr handle,ushort[] keys)
     {
-        var previous=GetForegroundWindow();
+        // The remote session owns LightBurn focus. Do not jump back to Chrome or
+        // another window after issuing a laser command.
         SetForegroundWindow(handle);
         Thread.Sleep(55);
 
@@ -106,11 +104,8 @@ internal static class LightBurnCommandExecutor
 
         var sent=SendInput((uint)inputs.Count,inputs.ToArray(),Marshal.SizeOf<Input>());
         Thread.Sleep(55);
-
-        if(previous!=IntPtr.Zero&&previous!=handle)SetForegroundWindow(previous);
         if(sent==inputs.Count)return new(true,null);
 
-        // Fallback for systems where SendInput is filtered but the LightBurn window accepts posted keys.
         var fallback=true;
         foreach(var key in keys)fallback&=PostMessage(handle,0x0100,(IntPtr)key,IntPtr.Zero);
         for(var i=keys.Length-1;i>=0;i--)fallback&=PostMessage(handle,0x0101,(IntPtr)keys[i],IntPtr.Zero);

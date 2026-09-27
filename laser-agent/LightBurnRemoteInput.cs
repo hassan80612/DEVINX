@@ -54,12 +54,20 @@ internal static class LightBurnRemoteInput
     [DllImport("user32.dll")]
     private static extern bool GetGUIThreadInfo(uint idThread,ref GuiThreadInfo info);
 
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
     public static bool Apply(RealtimeRemoteInput input)
     {
         if(!OperatingSystem.IsWindows())return false;
 
         var main=LightBurnWindowCapture.FindLightBurnWindow();
         if(main==IntPtr.Zero)return false;
+
+        // Remote control belongs to LightBurn only. Never target whichever unrelated
+        // window happens to cover the same screen coordinate.
+        if(input.Type is "pointerdown" or "doubleclick" or "keydown" or "text")
+            SetForegroundWindow(main);
 
         return input.Type switch
         {
@@ -75,6 +83,12 @@ internal static class LightBurnRemoteInput
         };
     }
 
+    public static bool FocusLightBurn()
+    {
+        var main=LightBurnWindowCapture.FindLightBurnWindow();
+        return main!=IntPtr.Zero&&SetForegroundWindow(main);
+    }
+
     private static bool Mouse(IntPtr main,RealtimeRemoteInput input,uint message,int buttonMask)
     {
         if(!TryScreenPoint(main,input,out var screen))return false;
@@ -82,7 +96,6 @@ internal static class LightBurnRemoteInput
         var target=FindDeepestChildAtPoint(main,screen);
         var client=screen;
         if(!ScreenToClient(target,ref client))return false;
-
         return PostMessage(target,message,(IntPtr)buttonMask,MakeLParam(client.X,client.Y));
     }
 
@@ -116,23 +129,14 @@ internal static class LightBurnRemoteInput
     private static IntPtr FindDeepestChildAtPoint(IntPtr main,Point screen)
     {
         var current=main;
-
-        // Resolve children from the LightBurn HWND hierarchy itself. This remains valid
-        // even when Chrome or another unrelated application visually covers LightBurn.
         for(var depth=0;depth<10;depth++)
         {
             var local=screen;
             if(!ScreenToClient(current,ref local))break;
-
-            var child=ChildWindowFromPointEx(
-                current,local,CwpSkipInvisible|CwpSkipDisabled);
-
-            if(child==IntPtr.Zero||child==current||!BelongsToSameProcess(main,child))
-                break;
-
+            var child=ChildWindowFromPointEx(current,local,CwpSkipInvisible|CwpSkipDisabled);
+            if(child==IntPtr.Zero||child==current||!BelongsToSameProcess(main,child))break;
             current=child;
         }
-
         return current;
     }
 
