@@ -75,7 +75,7 @@ internal static class LightBurnRemoteInput
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);
 
-    [DllImport("user32.dll")]
+    [DllImport("kernel32.dll")]
     private static extern uint GetCurrentThreadId();
 
     [DllImport("user32.dll")]
