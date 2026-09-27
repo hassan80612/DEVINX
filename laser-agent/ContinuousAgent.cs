@@ -65,7 +65,12 @@ internal sealed class ContinuousAgent
             if(cancellationToken.IsCancellationRequested)return;
 
             using var rest=new LightBurnRestClient();
-            if(!await rest.IsAvailableAsync(cancellationToken))return;
+            // The Agent usually starts with Windows, before LightBurn is opened.
+            // Wait for REST-capable versions without prompting on older versions.
+            while(!cancellationToken.IsCancellationRequested
+                  &&!await rest.IsAvailableAsync(cancellationToken))
+                await DelaySafe(TimeSpan.FromSeconds(15),cancellationToken);
+            if(cancellationToken.IsCancellationRequested)return;
 
             var secret=SecureSecretStore.Load();
             if(!string.IsNullOrWhiteSpace(secret))
@@ -196,6 +201,7 @@ internal sealed class ContinuousAgent
                         "dialog_confirm"=>LightBurnControlBridge.DialogAction("confirm"),
                         "dialog_cancel"=>LightBurnControlBridge.DialogAction("cancel"),
                         "dialog_close"=>LightBurnControlBridge.DialogAction("close"),
+                        "frame_gantry"=>LightBurnControlBridge.FrameGantry(),
                         _=>new LightBurnControlBridgeResult(false,"unsupported_control_action",null)
                     });
 
@@ -239,7 +245,7 @@ internal sealed class ContinuousAgent
             var result=LightBurnRemoteInput.Apply(input);
             if(input.Type!="pointermove"&&realtime is not null&&realtime.IsConnected)
             {
-                try{await realtime.SendInputResultAsync(input.Type,result,cancellationToken);}
+                try{await realtime.SendInputResultAsync(input.Type,input.RequestId,result,cancellationToken);}
                 catch{}
             }
         }

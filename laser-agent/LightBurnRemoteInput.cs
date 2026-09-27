@@ -315,8 +315,11 @@ internal static class LightBurnRemoteInput
         target=IntPtr.Zero;
         reason="target_not_lightburn";
 
-        ActivateWindow(main);
-        SetWindowPos(main,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
+        LightBurnWindowCapture.TryGetInteractionBounds(main,out var preferred,
+            out _,out _,out _,out _);
+        if(preferred==IntPtr.Zero)preferred=main;
+        ActivateWindow(preferred);
+        SetWindowPos(preferred,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
         SetCursorPos(x,y);
         Thread.Sleep(35);
 
@@ -339,8 +342,8 @@ internal static class LightBurnRemoteInput
                 }
             }
 
-            ActivateWindow(main);
-            SetWindowPos(main,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
+            ActivateWindow(preferred);
+            SetWindowPos(preferred,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
             SetCursorPos(x,y);
             Thread.Sleep(45);
         }
@@ -374,7 +377,7 @@ internal static class LightBurnRemoteInput
     {
         x=y=0;
         if(!input.X.HasValue||!input.Y.HasValue)return false;
-        if(!LightBurnWindowCapture.TryGetPhysicalBounds(main,out var left,out var top,out var width,out var height))
+        if(!LightBurnWindowCapture.TryGetInteractionBounds(main,out _,out var left,out var top,out var width,out var height))
             return false;
 
         x=left+Math.Clamp((int)Math.Round(Math.Clamp(input.X.Value,0,1)*(width-1)),0,width-1);

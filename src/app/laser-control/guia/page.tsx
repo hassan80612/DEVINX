@@ -24,7 +24,7 @@ export default async function LaserGuidePage(){
       <h1>Seu LightBurn conectado ao DevinX.</h1>
       <p>Veja a janela do LightBurn em tempo real, acompanhe a máquina e use controles remotos a partir do celular ou de outro computador.</p>
       <div className={styles.actions}>
-        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.15/DevinX-Laser-Agent-1.0.15.zip" download>Baixar Agent para Windows</a>
+        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.21/DevinX-Laser-Agent-1.0.21.zip" download>Baixar Agent para Windows</a>
         <a className={styles.secondary} href="/laser-control">Abrir Laser Control</a>
       </div>
     </section>
@@ -43,12 +43,12 @@ export default async function LaserGuidePage(){
 
     <section className={styles.block}>
       <h2>Camadas e parâmetros</h2>
-      <p>O Agent 1.0.15 lê os controles que o LightBurn realmente expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Fiber/Galvo e Diodo mostram apenas os campos disponíveis para aquele LightBurn e aquela camada.</p>
+      <p>O Agent 1.0.21 lê os controles que o LightBurn realmente expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Fiber/Galvo e Diodo mostram apenas os campos disponíveis para aquele LightBurn e aquela camada.</p>
     </section>
 
     <section className={styles.block}>
       <h2>Como funciona o controle remoto</h2>
-      <p>Na tela Ao vivo você pode usar zoom de 75% a 300%, alternar entre orientação automática, horizontal e vertical e entrar em tela cheia. O controle por toque, mouse e teclado só pode ser habilitado dentro da tela cheia e é limitado à janela do LightBurn. A aba Controle traz Frame seleção, Iniciar, Pausar e Parar.</p>
+      <p>Na tela Ao vivo você pode usar zoom, alternar a orientação e entrar em tela cheia. Mouse e teclado podem controlar a janela do LightBurn quando você habilita o controle remoto; toque na imagem funciona na tela cheia. Os controles de camada continuam acessíveis abaixo da imagem em tela cheia. Frame / Encerrar usa F1 no Galvo; Frame Diodo tenta o botão Frame da janela Laser. Iniciar, Pausar e Parar ficam abaixo da imagem.</p>
       <p>O botão Iniciar pede confirmação antes de executar. A supervisão da máquina, intertravamentos e botão de emergência continuam independentes do DevinX.</p>
     </section>
 
