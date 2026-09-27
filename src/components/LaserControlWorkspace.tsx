@@ -186,7 +186,7 @@ export function LaserControlWorkspace(){
 
   const supportsAdvancedControls=(version:string|null)=>{
     const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=15);
+    return Boolean(match&&Number(match[1])>=16);
   };
   const advancedControlsReady=Boolean(selectedDevice&&supportsAdvancedControls(selectedDevice.agent_version));
 
@@ -474,7 +474,7 @@ export function LaserControlWorkspace(){
   }
 
   function sendControlRequest(
-    action:'inspect'|'set'|'select_layer'|'open_layer',
+    action:'inspect'|'set'|'select_layer'|'open_layer'|'dialog_confirm'|'dialog_cancel'|'dialog_close',
     extra:Record<string,unknown>={}
   ){
     if(!advancedControlsReady){
@@ -523,6 +523,18 @@ export function LaserControlWorkspace(){
 
   function openLayerEditor(layerId?:string){
     sendControlRequest('open_layer',layerId?{layer:layerId}:{});
+  }
+
+  function confirmDialog(){
+    sendControlRequest('dialog_confirm');
+  }
+
+  function cancelDialog(){
+    sendControlRequest('dialog_cancel');
+  }
+
+  function closeDialog(){
+    sendControlRequest('dialog_close');
   }
 
   async function ensureInputReady(){
@@ -836,7 +848,7 @@ export function LaserControlWorkspace(){
         return;
       }
 
-      for(let i=0;i<70;i++){
+      for(let i=0;i<100;i++){
         await new Promise(resolve=>window.setTimeout(resolve,100));
         const check=await fetch('/api/laser-control/master/command',{
           method:'POST',credentials:'same-origin',
@@ -1207,12 +1219,17 @@ export function LaserControlWorkspace(){
                 disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)}
                 onClick={()=>openLayerEditor(controlSnapshot?.layers?.find(layer=>layer.selected)?.id)}
               >{t('laser.paramsOpenLayer')}</button>
+              {controlSnapshot?.windowTitle&&controlSnapshot.windowTitle!=='LightBurn'&&<>
+                <button type="button" disabled={Boolean(controlPending)} onClick={confirmDialog}>OK / Aplicar</button>
+                <button type="button" disabled={Boolean(controlPending)} onClick={cancelDialog}>Cancelar</button>
+                <button type="button" disabled={Boolean(controlPending)} onClick={closeDialog}>Fechar</button>
+              </>}
             </div>
           </div>
 
           {!advancedControlsReady?<div className={styles.parameterGate}>
             <b>{t('laser.paramsAgentUpdate')}</b>
-            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.15/DevinX-Laser-Agent-1.0.15.zip">{t('laser.download')}</a>
+            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.16/DevinX-Laser-Agent-1.0.16.zip">{t('laser.download')}</a>
           </div>:!inputReady&&<div className={styles.parameterGate}>
             <b>{t('laser.paramsNeedControl')}</b>
             <button
@@ -1345,7 +1362,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.15/DevinX-Laser-Agent-1.0.15.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.16/DevinX-Laser-Agent-1.0.16.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>
