@@ -15,6 +15,26 @@ internal static class LightBurnRemoteInput
 
     private const uint KeyeventfKeyup=0x0002;
     private const uint KeyeventfUnicode=0x0004;
+    private const uint WmMouseMove=0x0200;
+    private const uint WmLButtonDown=0x0201;
+    private const uint WmLButtonUp=0x0202;
+    private const uint WmLButtonDblClk=0x0203;
+    private const uint WmRButtonDown=0x0204;
+    private const uint WmRButtonUp=0x0205;
+    private const uint MkLButton=0x0001;
+    private const uint MkRButton=0x0002;
+    private const uint GaRoot=2;
+    private const uint SwpNoMove=0x0002;
+    private const uint SwpNoSize=0x0001;
+    private const uint SwpShowWindow=0x0040;
+    private static readonly IntPtr HwndTop=IntPtr.Zero;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Point
+    {
+        public int X;
+        public int Y;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MouseInput
@@ -98,30 +118,53 @@ internal static class LightBurnRemoteInput
     [DllImport("user32.dll")]
     private static extern bool SetCursorPos(int x,int y);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(Point point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr hWnd,uint gaFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool ScreenToClient(IntPtr hWnd,ref Point point);
+
+    [DllImport("user32.dll",SetLastError=true)]
+    private static extern bool PostMessage(IntPtr hWnd,uint msg,IntPtr wParam,IntPtr lParam);
+
+    [DllImport("user32.dll",SetLastError=true)]
+    private static extern bool SetWindowPos(
+        IntPtr hWnd,IntPtr hWndInsertAfter,int x,int y,int cx,int cy,uint uFlags);
+
     [DllImport("user32.dll",SetLastError=true)]
     private static extern uint SendInput(uint nInputs,Input[] pInputs,int cbSize);
 
     private delegate bool EnumWindowsProc(IntPtr hWnd,IntPtr lParam);
 
-    public static bool Apply(RealtimeRemoteInput input)
+    public static RemoteInputApplyResult Apply(RealtimeRemoteInput input)
     {
-        if(!OperatingSystem.IsWindows())return false;
+        if(!OperatingSystem.IsWindows())return new(false,"windows_required",null,null);
 
         var main=LightBurnWindowCapture.FindLightBurnWindow();
-        if(main==IntPtr.Zero)return false;
+        if(main==IntPtr.Zero)return new(false,"lightburn_window_not_found",null,null);
 
-        return input.Type switch
+        try
         {
-            "pointermove"=>MovePointer(main,input),
-            "pointerdown"=>PointerButton(main,input,true),
-            "pointerup"=>PointerButton(main,input,false),
-            "doubleclick"=>DoubleClick(main,input),
-            "wheel"=>Wheel(main,input),
-            "keydown"=>Keyboard(main,input,true),
-            "keyup"=>Keyboard(main,input,false),
-            "text"=>Text(main,input.Key),
-            _=>false
-        };
+            return input.Type switch
+            {
+                "pointermove"=>MovePointer(main,input),
+                "pointerdown"=>PointerButton(main,input,true),
+                "pointerup"=>PointerButton(main,input,false),
+                "doubleclick"=>DoubleClick(main,input),
+                "wheel"=>Wheel(main,input),
+                "keydown"=>Keyboard(main,input,true),
+                "keyup"=>Keyboard(main,input,false),
+                "text"=>Text(main,input.Key),
+                _=>new(false,"unsupported_input",null,null)
+            };
+        }
+        catch(Exception ex)
+        {
+            return new(false,"input_error:"+ex.GetType().Name,null,null);
+        }
     }
 
     public static bool FocusLightBurn()
@@ -135,35 +178,50 @@ internal static class LightBurnRemoteInput
     // pin LightBurn above the user's other applications.
     public static bool SetSessionLock(bool enabled)=>true;
 
-    private static bool MovePointer(IntPtr main,RealtimeRemoteInput input)
+    private static RemoteInputApplyResult MovePointer(IntPtr main,RealtimeRemoteInput input)
     {
-        if(!TryScreenPoint(main,input,out var x,out var y))return false;
-        return SetCursorPos(x,y);
+        if(!TryScreenPoint(main,input,out var x,out var y))
+            return new(false,"invalid_coordinates",x,y);
+
+        if(!SetCursorPos(x,y))
+            return new(false,"cursor_move_failed",x,y);
+
+        return new(true,"cursor_moved",x,y);
     }
 
-    private static bool PointerButton(IntPtr main,RealtimeRemoteInput input,bool down)
+    private static RemoteInputApplyResult PointerButton(IntPtr main,RealtimeRemoteInput input,bool down)
     {
-        if(!TryScreenPoint(main,input,out var x,out var y))return false;
+        if(!TryScreenPoint(main,input,out var x,out var y))
+            return new(false,"invalid_coordinates",x,y);
 
-        var target=FindInteractiveWindow(main);
-        ActivateWindow(target);
-        if(!SetCursorPos(x,y))return false;
+        if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
+            return new(false,reason,x,y);
 
         var right=input.Button==2;
         var flag=right
             ?(down?MouseeventfRightDown:MouseeventfRightUp)
             :(down?MouseeventfLeftDown:MouseeventfLeftUp);
 
-        return SendMouse(flag,0);
+        if(SendMouse(flag,0))
+            return new(true,"sendinput",x,y);
+
+        var msg=right
+            ?(down?WmRButtonDown:WmRButtonUp)
+            :(down?WmLButtonDown:WmLButtonUp);
+        var keyState=down?(right?MkRButton:MkLButton):0u;
+
+        return PostPointer(target,msg,keyState,x,y)
+            ?new(true,"postmessage_fallback",x,y)
+            :new(false,"windows_mouse_injection_failed",x,y);
     }
 
-    private static bool DoubleClick(IntPtr main,RealtimeRemoteInput input)
+    private static RemoteInputApplyResult DoubleClick(IntPtr main,RealtimeRemoteInput input)
     {
-        if(!TryScreenPoint(main,input,out var x,out var y))return false;
+        if(!TryScreenPoint(main,input,out var x,out var y))
+            return new(false,"invalid_coordinates",x,y);
 
-        var target=FindInteractiveWindow(main);
-        ActivateWindow(target);
-        if(!SetCursorPos(x,y))return false;
+        if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
+            return new(false,reason,x,y);
 
         var inputs=new[]
         {
@@ -172,30 +230,41 @@ internal static class LightBurnRemoteInput
             Mouse(MouseeventfLeftDown,0),
             Mouse(MouseeventfLeftUp,0)
         };
-        return SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length;
+        if(SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length)
+            return new(true,"sendinput_double",x,y);
+
+        var ok=PostPointer(target,WmLButtonDown,MkLButton,x,y)
+               &&PostPointer(target,WmLButtonUp,0,x,y)
+               &&PostPointer(target,WmLButtonDblClk,MkLButton,x,y)
+               &&PostPointer(target,WmLButtonUp,0,x,y);
+        return ok
+            ?new(true,"postmessage_double_fallback",x,y)
+            :new(false,"windows_doubleclick_injection_failed",x,y);
     }
 
-    private static bool Wheel(IntPtr main,RealtimeRemoteInput input)
+    private static RemoteInputApplyResult Wheel(IntPtr main,RealtimeRemoteInput input)
     {
-        if(!TryScreenPoint(main,input,out var x,out var y))return false;
+        if(!TryScreenPoint(main,input,out var x,out var y))
+            return new(false,"invalid_coordinates",x,y);
 
-        var target=FindInteractiveWindow(main);
-        ActivateWindow(target);
-        if(!SetCursorPos(x,y))return false;
+        if(!EnsureLightBurnAtPoint(main,x,y,out _,out var reason))
+            return new(false,reason,x,y);
 
         var delta=(int)Math.Round(-input.DeltaY);
         delta=Math.Clamp(delta,-120,120);
         if(delta==0)delta=input.DeltaY>0?-120:120;
-        return SendMouse(MouseeventfWheel,unchecked((uint)delta));
+        return SendMouse(MouseeventfWheel,unchecked((uint)delta))
+            ?new(true,"sendinput_wheel",x,y)
+            :new(false,"windows_wheel_injection_failed",x,y);
     }
 
-    private static bool Keyboard(IntPtr main,RealtimeRemoteInput input,bool down)
+    private static RemoteInputApplyResult Keyboard(IntPtr main,RealtimeRemoteInput input,bool down)
     {
         var target=FindInteractiveWindow(main);
         ActivateWindow(target);
 
         var vk=VirtualKey(input.Code,input.Key);
-        if(vk==0)return false;
+        if(vk==0)return new(false,"unsupported_key",null,null);
 
         var list=new List<Input>();
         if(down)
@@ -215,12 +284,14 @@ internal static class LightBurnRemoteInput
         }
 
         var inputs=list.ToArray();
-        return SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length;
+        return SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length
+            ?new(true,"sendinput_key",null,null)
+            :new(false,"windows_key_injection_failed",null,null);
     }
 
-    private static bool Text(IntPtr main,string? text)
+    private static RemoteInputApplyResult Text(IntPtr main,string? text)
     {
-        if(string.IsNullOrEmpty(text))return false;
+        if(string.IsNullOrEmpty(text))return new(false,"empty_text",null,null);
 
         var target=FindInteractiveWindow(main);
         ActivateWindow(target);
@@ -233,7 +304,70 @@ internal static class LightBurnRemoteInput
         }
 
         var array=inputs.ToArray();
-        return SendInput((uint)array.Length,array,Marshal.SizeOf<Input>())==array.Length;
+        return SendInput((uint)array.Length,array,Marshal.SizeOf<Input>())==array.Length
+            ?new(true,"sendinput_text",null,null)
+            :new(false,"windows_text_injection_failed",null,null);
+    }
+
+    private static bool EnsureLightBurnAtPoint(
+        IntPtr main,int x,int y,out IntPtr target,out string reason)
+    {
+        target=IntPtr.Zero;
+        reason="target_not_lightburn";
+
+        ActivateWindow(main);
+        SetWindowPos(main,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
+        SetCursorPos(x,y);
+        Thread.Sleep(35);
+
+        for(var attempt=0;attempt<2;attempt++)
+        {
+            var hit=WindowFromPoint(new Point{X=x,Y=y});
+            if(hit!=IntPtr.Zero&&BelongsToLightBurn(main,hit))
+            {
+                target=hit;
+                return true;
+            }
+
+            if(hit!=IntPtr.Zero)
+            {
+                var root=GetAncestor(hit,GaRoot);
+                if(root!=IntPtr.Zero&&BelongsToLightBurn(main,root))
+                {
+                    target=hit;
+                    return true;
+                }
+            }
+
+            ActivateWindow(main);
+            SetWindowPos(main,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
+            SetCursorPos(x,y);
+            Thread.Sleep(45);
+        }
+
+        return false;
+    }
+
+    private static bool BelongsToLightBurn(IntPtr main,IntPtr candidate)
+    {
+        if(main==IntPtr.Zero||candidate==IntPtr.Zero)return false;
+        GetWindowThreadProcessId(main,out var mainPid);
+        GetWindowThreadProcessId(candidate,out var candidatePid);
+        if(mainPid!=0&&candidatePid==mainPid)return true;
+
+        var root=GetAncestor(candidate,GaRoot);
+        if(root==IntPtr.Zero)return false;
+        GetWindowThreadProcessId(root,out var rootPid);
+        return mainPid!=0&&rootPid==mainPid;
+    }
+
+    private static bool PostPointer(IntPtr target,uint message,uint keyState,int screenX,int screenY)
+    {
+        if(target==IntPtr.Zero)return false;
+        var point=new Point{X=screenX,Y=screenY};
+        if(!ScreenToClient(target,ref point))return false;
+        var packed=(point.Y<<16)|(point.X&0xFFFF);
+        return PostMessage(target,message,(IntPtr)keyState,(IntPtr)packed);
     }
 
     private static bool TryScreenPoint(IntPtr main,RealtimeRemoteInput input,out int x,out int y)
@@ -373,3 +507,6 @@ internal static class LightBurnRemoteInput
         return 0;
     }
 }
+
+
+internal sealed record RemoteInputApplyResult(bool Ok,string Reason,int? X,int? Y);

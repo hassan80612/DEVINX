@@ -99,10 +99,14 @@ internal sealed class ContinuousAgent
             await ExecuteOnceAsync(new RemoteCommand(command.CommandId,command.Command,command.ExpiresAt));
         }
 
-        Task HandleRemoteInputAsync(RealtimeRemoteInput input)
+        async Task HandleRemoteInputAsync(RealtimeRemoteInput input)
         {
-            LightBurnRemoteInput.Apply(input);
-            return Task.CompletedTask;
+            var result=LightBurnRemoteInput.Apply(input);
+            if(input.Type!="pointermove"&&realtime is not null&&realtime.IsConnected)
+            {
+                try{await realtime.SendInputResultAsync(input.Type,result,cancellationToken);}
+                catch{}
+            }
         }
 
         while(!cancellationToken.IsCancellationRequested)

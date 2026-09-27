@@ -130,6 +130,24 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         },cancellationToken);
     }
 
+    public async Task SendInputResultAsync(
+        string inputType,
+        RemoteInputApplyResult result,
+        CancellationToken cancellationToken)
+    {
+        if(!IsConnected)return;
+        await SendBroadcastAsync("input_result",new
+        {
+            token=_config.FrameToken,
+            type=inputType,
+            ok=result.Ok,
+            reason=result.Reason,
+            x=result.X,
+            y=result.Y,
+            at=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        },cancellationToken);
+    }
+
     private Task SendBroadcastAsync(string eventName,object payload,CancellationToken cancellationToken)=>
         SendEnvelopeAsync(
             "broadcast",
