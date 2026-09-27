@@ -135,7 +135,6 @@ export function LaserControlWorkspace(){
     remoteDown:false,moved:false,rightClickSent:false,startPanX:0,startPanY:0,longPressTimer:undefined
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
-  const fullscreenAutoInputRef=useRef(false);
   const mobileKeyboardRef=useRef<HTMLInputElement|null>(null);
   const inputReadyRef=useRef(false);
   const controlPendingRef=useRef<string|null>(null);
@@ -400,14 +399,7 @@ export function LaserControlWorkspace(){
   },[session?.topic,session?.frameToken,t]);
 
   useEffect(()=>{
-    const handle=()=>{
-      const isFull=Boolean(document.fullscreenElement);
-      setFullscreen(isFull);
-      if(!isFull&&fullscreenAutoInputRef.current&&sessionRef.current?.remoteInputEnabled){
-        fullscreenAutoInputRef.current=false;
-        void disableRemoteInput();
-      }
-    };
+    const handle=()=>setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange',handle);
     return()=>document.removeEventListener('fullscreenchange',handle);
   },[]);
@@ -425,10 +417,7 @@ export function LaserControlWorkspace(){
         try{await screenOrientation.lock(orientation)}catch{}
       }
 
-      if(!inputReady){
-        fullscreenAutoInputRef.current=true;
-        await enableRemoteInput();
-      }
+      if(!inputReady)await enableRemoteInput();
     }catch{
       setNotice(t('laser.fullscreenDenied'));
     }
@@ -436,10 +425,6 @@ export function LaserControlWorkspace(){
 
   async function exitFullscreen(){
     try{
-      if(fullscreenAutoInputRef.current&&sessionRef.current?.remoteInputEnabled){
-        fullscreenAutoInputRef.current=false;
-        await disableRemoteInput();
-      }
       if(document.fullscreenElement)await document.exitFullscreen();
     }catch{}
   }
@@ -1009,8 +994,7 @@ export function LaserControlWorkspace(){
           sendRemoteInput({type:'doubleclick',...point,button:0});
           lastTapRef.current=null;
         }else{
-          sendRemoteInput({type:'pointerdown',...point,button:0});
-          sendRemoteInput({type:'pointerup',...point,button:0});
+          sendRemoteInput({type:'click',...point,button:0});
           lastTapRef.current={at:now,clientX:event.clientX,clientY:event.clientY};
         }
       }
@@ -1532,7 +1516,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.24/DevinX-Laser-Agent-1.0.24.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.26/DevinX-Laser-Agent-1.0.26.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

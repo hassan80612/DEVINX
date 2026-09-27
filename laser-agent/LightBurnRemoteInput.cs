@@ -155,6 +155,7 @@ internal static class LightBurnRemoteInput
                 "pointermove"=>MovePointer(main,input),
                 "pointerdown"=>PointerButton(main,input,true),
                 "pointerup"=>PointerButton(main,input,false),
+                "click"=>Click(main,input),
                 "doubleclick"=>DoubleClick(main,input),
                 "wheel"=>Wheel(main,input),
                 "keydown"=>Keyboard(main,input,true),
@@ -217,6 +218,32 @@ internal static class LightBurnRemoteInput
         return PostPointer(target,msg,keyState,x,y)
             ?new(true,"postmessage_fallback",x,y)
             :new(false,"windows_mouse_injection_failed",x,y);
+    }
+
+    private static RemoteInputApplyResult Click(IntPtr main,RealtimeRemoteInput input)
+    {
+        if(!TryScreenPoint(main,input,out var x,out var y))
+            return new(false,"invalid_coordinates",x,y);
+
+        if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
+            return new(false,reason,x,y);
+
+        var right=input.Button==2;
+        var inputs=right
+            ?new[]{Mouse(MouseeventfRightDown,0),Mouse(MouseeventfRightUp,0)}
+            :new[]{Mouse(MouseeventfLeftDown,0),Mouse(MouseeventfLeftUp,0)};
+
+        if(SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length)
+            return new(true,"sendinput_click",x,y);
+
+        var down=right?WmRButtonDown:WmLButtonDown;
+        var up=right?WmRButtonUp:WmLButtonUp;
+        var keyState=right?MkRButton:MkLButton;
+        var ok=PostPointer(target,down,keyState,x,y)
+               &&PostPointer(target,up,0,x,y);
+        return ok
+            ?new(true,"postmessage_click_fallback",x,y)
+            :new(false,"windows_click_injection_failed",x,y);
     }
 
     private static RemoteInputApplyResult DoubleClick(IntPtr main,RealtimeRemoteInput input)

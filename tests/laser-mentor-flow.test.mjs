@@ -33,3 +33,12 @@ test('Laser workspace is translated through DevinX i18n',async()=>{
   assert.match(catalogs,/laserCatalogs/);
   for(const locale of ["'pt-BR'","en:","es:","fr:","de:","ar:"])assert.ok(laser.includes(locale));
 });
+
+
+test('leaving fullscreen keeps remote input enabled and simple touch uses one click message',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  assert.doesNotMatch(panel,/fullscreenAutoInputRef/);
+  const exit=panel.slice(panel.indexOf('async function exitFullscreen()'),panel.indexOf('async function setOrientationMode'));
+  assert.doesNotMatch(exit,/disableRemoteInput/);
+  assert.match(panel,/sendRemoteInput\(\{type:'click',\.\.\.point,button:0\}\)/);
+});
