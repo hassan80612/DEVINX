@@ -82,8 +82,8 @@ export function LaserControlWorkspace(){
   const[frameLatency,setFrameLatency]=useState<number|null>(null);
   const[frameAt,setFrameAt]=useState<number|null>(null);
   const[zoom,setZoom]=useState(1);
-  const[zoomOrigin,setZoomOrigin]=useState({x:.5,y:.5});
   const[pan,setPan]=useState({x:0,y:0});
+  const zoomRef=useRef(1);
   const[orientation,setOrientation]=useState<OrientationMode>('auto');
   const[fullscreen,setFullscreen]=useState(false);
   const[inputReady,setInputReady]=useState(false);
@@ -117,8 +117,8 @@ export function LaserControlWorkspace(){
   const touchPointsRef=useRef(new Map<number,{x:number;y:number}>());
   const touchGestureRef=useRef<{
     pinching:boolean;
-    startDistance:number;
-    startZoom:number;
+    lastPinchDistance:number;
+    suppressAfterPinch:boolean;
     singlePointerId:number|null;
     startClientX:number;
     startClientY:number;
@@ -130,7 +130,7 @@ export function LaserControlWorkspace(){
     startPanY:number;
     longPressTimer:number|undefined;
   }>({
-    pinching:false,startDistance:0,startZoom:1,singlePointerId:null,
+    pinching:false,lastPinchDistance:0,suppressAfterPinch:false,singlePointerId:null,
     startClientX:0,startClientY:0,startPoint:null,
     remoteDown:false,moved:false,rightClickSent:false,startPanX:0,startPanY:0,longPressTimer:undefined
   });
@@ -788,8 +788,8 @@ export function LaserControlWorkspace(){
     touchPointsRef.current.clear();
     const gesture=touchGestureRef.current;
     gesture.pinching=false;
-    gesture.startDistance=0;
-    gesture.startZoom=zoom;
+    gesture.lastPinchDistance=0;
+    gesture.suppressAfterPinch=false;
     gesture.singlePointerId=null;
     gesture.startPoint=null;
     gesture.remoteDown=false;
@@ -810,19 +810,19 @@ export function LaserControlWorkspace(){
 
   function setPreviewZoom(next:number){
     const value=Math.min(4,Math.max(1,Math.round(next*100)/100));
+    zoomRef.current=value;
     setZoom(value);
     if(value<=1){
       setPan({x:0,y:0});
-      setZoomOrigin({x:.5,y:.5});
     }else{
       setPan(current=>clampPan(current.x,current.y,value));
     }
   }
 
   function resetZoom(){
+    zoomRef.current=1;
     setZoom(1);
     setPan({x:0,y:0});
-    setZoomOrigin({x:.5,y:.5});
   }
 
   function handlePointer(
@@ -885,14 +885,9 @@ export function LaserControlWorkspace(){
         const dx=values[0].x-values[1].x;
         const dy=values[0].y-values[1].y;
         gesture.pinching=true;
-        gesture.startDistance=Math.max(1,Math.hypot(dx,dy));
-        gesture.startZoom=zoom;
+        gesture.suppressAfterPinch=true;
+        gesture.lastPinchDistance=Math.max(24,Math.hypot(dx,dy));
         gesture.remoteDown=false;
-
-        const midX=(values[0].x+values[1].x)/2;
-        const midY=(values[0].y+values[1].y)/2;
-        const point=pointerCoordinatesFromClient(midX,midY);
-        if(point)setZoomOrigin(point);
       }
       return;
     }
@@ -904,14 +899,19 @@ export function LaserControlWorkspace(){
         const values=[...touches.values()];
         const dx=values[0].x-values[1].x;
         const dy=values[0].y-values[1].y;
-        const distance=Math.max(1,Math.hypot(dx,dy));
-        const next=Math.min(4,Math.max(1,gesture.startZoom*(distance/gesture.startDistance)));
-        const normalized=Math.round(next*100)/100;
+        const distance=Math.max(24,Math.hypot(dx,dy));
+        const previous=Math.max(24,gesture.lastPinchDistance||distance);
+        const ratio=Math.max(.9,Math.min(1.1,distance/previous));
+        gesture.lastPinchDistance=distance;
+        const normalized=Math.min(4,Math.max(1,Math.round(zoomRef.current*ratio*100)/100));
+        zoomRef.current=normalized;
         setZoom(normalized);
         if(normalized<=1)setPan({x:0,y:0});
         else setPan(current=>clampPan(current.x,current.y,normalized));
         return;
       }
+
+      if(gesture.suppressAfterPinch)return;
 
       if(gesture.singlePointerId===event.pointerId&&!gesture.rightClickSent){
         const moved=Math.hypot(
@@ -949,7 +949,7 @@ export function LaserControlWorkspace(){
       return;
     }
 
-    const wasPinching=gesture.pinching;
+    const wasPinching=gesture.pinching||gesture.suppressAfterPinch;
     touches.delete(event.pointerId);
 
     if(type==='pointercancel'){
@@ -1392,7 +1392,7 @@ export function LaserControlWorkspace(){
             alt="LightBurn"
             style={{
               transform:`translate3d(${pan.x}px,${pan.y}px,0) scale(${zoom})`,
-              transformOrigin:fullscreen?`${zoomOrigin.x*100}% ${zoomOrigin.y*100}%`:'center center'
+              transformOrigin:'center center'
             }}
             className={inputReady?styles.remoteImageActive:styles.remoteImage}
             onPointerDown={event=>handlePointer(event,'pointerdown')}
@@ -1510,7 +1510,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.26/DevinX-Laser-Agent-1.0.26.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.27/DevinX-Laser-Agent-1.0.27.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

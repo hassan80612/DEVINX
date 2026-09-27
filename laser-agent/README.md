@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.26
+# DevinX Laser Agent 1.0.27
 
 Agent Windows do DevinX Laser Control.
 
@@ -127,3 +127,7 @@ As setas do D-pad agora passam pelo caminho real de teclado do Windows depois de
 
 ## 1.0.26 — toque rápido fora da tela cheia
 O controle remoto não é mais desligado automaticamente ao sair da tela cheia. O toque simples no celular é enviado como um único comando de clique ao Agent, que injeta pressionar/soltar em uma única operação no Windows, reduzindo a latência sem alterar as setas, o zoom ou a lógica de edição de texto.
+
+
+## 1.0.27 — toque alinhado e zoom estável
+O ponteiro remoto usa os limites exatos da última imagem transmitida para manter os botões das bordas, topo e lateral do LightBurn alinhados ao toque. O caminho de clique não adiciona espera fixa quando o LightBurn já está no ponto correto. No celular, a pinça usa variação incremental limitada, mantém origem central estável e ignora o dedo restante até os dois dedos serem levantados, eliminando saltos e arrastos involuntários após o zoom.

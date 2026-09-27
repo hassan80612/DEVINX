@@ -365,16 +365,18 @@ internal static class LightBurnRemoteInput
         target=IntPtr.Zero;
         reason="target_not_lightburn";
 
-        LightBurnWindowCapture.TryGetInteractionBounds(main,out var preferred,
-            out _,out _,out _,out _);
+        if(!LightBurnWindowCapture.TryGetLastCapturedBounds(main,out var preferred,
+            out _,out _,out _,out _))
+            LightBurnWindowCapture.TryGetInteractionBounds(main,out preferred,
+                out _,out _,out _,out _);
         if(preferred==IntPtr.Zero)preferred=main;
         ActivateWindow(preferred);
         SetWindowPos(preferred,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
         SetCursorPos(x,y);
-        Thread.Sleep(35);
 
-        for(var attempt=0;attempt<2;attempt++)
+        for(var attempt=0;attempt<3;attempt++)
         {
+            if(attempt>0)Thread.Sleep(20);
             var hit=WindowFromPoint(new Point{X=x,Y=y});
             if(hit!=IntPtr.Zero&&BelongsToLightBurn(main,hit))
             {
@@ -395,7 +397,6 @@ internal static class LightBurnRemoteInput
             ActivateWindow(preferred);
             SetWindowPos(preferred,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
             SetCursorPos(x,y);
-            Thread.Sleep(45);
         }
 
         return false;
@@ -427,7 +428,10 @@ internal static class LightBurnRemoteInput
     {
         x=y=0;
         if(!input.X.HasValue||!input.Y.HasValue)return false;
-        if(!LightBurnWindowCapture.TryGetInteractionBounds(main,out _,out var left,out var top,out var width,out var height))
+        if(!LightBurnWindowCapture.TryGetLastCapturedBounds(
+                main,out _,out var left,out var top,out var width,out var height)
+           &&!LightBurnWindowCapture.TryGetInteractionBounds(
+                main,out _,out left,out top,out width,out height))
             return false;
 
         x=left+Math.Clamp((int)Math.Round(Math.Clamp(input.X.Value,0,1)*(width-1)),0,width-1);
