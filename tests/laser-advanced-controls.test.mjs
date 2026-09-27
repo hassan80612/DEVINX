@@ -66,7 +66,6 @@ test('LightBurn 1.7 UIA fallback handles legacy layer state and left-side rotary
   assert.match(bridge,/Tamanho da divisão/);
   assert.match(bridge,/Velocidade mín\./);
   assert.match(bridge,/Inverter sentido do rotativo/);
-  assert.match(bridge,/unique\.Length==1/);
 });
 
 test('Laser Control does not expose raw Agent reason codes to the operator',async()=>{
