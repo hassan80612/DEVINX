@@ -1074,6 +1074,13 @@ export function LaserControlWorkspace(){
     else setControlError(t('laser.paramsNeedControl'));
   }
 
+  async function editParametersOnScreen(){
+    setZoom(2.5);
+    setZoomOrigin(activeDialogTool?{x:.5,y:.5}:{x:.86,y:.28});
+    if(!document.fullscreenElement)await enterFullscreen();
+    previewSurfaceRef.current?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
   async function openToolDialog(
     id:string,
     shortcut:{key:string;code:string;ctrl?:boolean;shift?:boolean;alt?:boolean}
@@ -1412,8 +1419,10 @@ export function LaserControlWorkspace(){
               <button
                 type="button"
                 disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)}
-                onClick={()=>openLayerEditor(controlSnapshot?.layers?.find(layer=>layer.selected)?.id)}
-              >{t('laser.paramsOpenLayer')}</button>
+                onClick={()=>controlSnapshot?.layers.length===0
+                  ?void editParametersOnScreen()
+                  :openLayerEditor(controlSnapshot?.layers?.find(layer=>layer.selected)?.id)}
+              >{controlSnapshot?.layers.length===0?t('laser.paramsVisualEdit'):t('laser.paramsOpenLayer')}</button>
               {(activeDialogTool||(controlSnapshot?.windowTitle&&controlSnapshot.windowTitle!=='LightBurn'))&&<>
                 <button type="button" onClick={confirmActiveDialog}>OK / Enter</button>
                 <button type="button" onClick={closeActiveDialog}>Fechar / Esc</button>
@@ -1423,7 +1432,7 @@ export function LaserControlWorkspace(){
 
           {!advancedControlsReady?<div className={styles.parameterGate}>
             <b>{t('laser.paramsAgentUpdate')}</b>
-            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.21/DevinX-Laser-Agent-1.0.21.zip">{t('laser.download')}</a>
+            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.22/DevinX-Laser-Agent-1.0.22.zip">{t('laser.download')}</a>
           </div>:!inputReady&&<div className={styles.parameterGate}>
             <b>{t('laser.paramsNeedControl')}</b>
             <button
@@ -1480,7 +1489,8 @@ export function LaserControlWorkspace(){
               </div>)}
             </div>:<div className={styles.parameterEmpty}>
               <b>{t('laser.paramsNotFound')}</b>
-              <span>{t('laser.paramsNotFoundHelp')}</span>
+              <span>{t('laser.paramsVisualHelp')}</span>
+              <button type="button" onClick={()=>void editParametersOnScreen()}>{t('laser.paramsVisualEdit')}</button>
             </div>}
           </>}
 
@@ -1557,7 +1567,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.21/DevinX-Laser-Agent-1.0.21.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.22/DevinX-Laser-Agent-1.0.22.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>
