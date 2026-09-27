@@ -16,6 +16,13 @@ internal static class LightBurnWindowCapture
     private const uint PwRenderFullContent=0x00000002;
     private const int MaxJpegBytes=165_000;
     private static IntPtr _lastDialog=IntPtr.Zero;
+    private static readonly object LastCaptureGate=new();
+    private static IntPtr _lastCapturedTarget=IntPtr.Zero;
+    private static int _lastCapturedLeft;
+    private static int _lastCapturedTop;
+    private static int _lastCapturedWidth;
+    private static int _lastCapturedHeight;
+    private static DateTimeOffset _lastCapturedAtUtc=DateTimeOffset.MinValue;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmGetWindowAttribute(
@@ -58,31 +65,33 @@ internal static class LightBurnWindowCapture
         try
         {
             using var graphics=Graphics.FromImage(source);
+            var printed=false;
+            var hdc=graphics.GetHdc();
+            try{printed=PrintWindow(captureHandle,hdc,PwRenderFullContent);}
+            finally{graphics.ReleaseHdc(hdc);}
 
-            if(sameProcess)
+            if(!printed)
             {
-                // Fast path: preserve the existing low-latency screen capture while
-                // LightBurn (or one of its dialogs) is the foreground application.
+                if(!sameProcess)return null;
                 graphics.CopyFromScreen(left,top,0,0,new Size(width,height),CopyPixelOperation.SourceCopy);
-            }
-            else
-            {
-                // Background path: capture the LightBurn HWND itself instead of
-                // whatever app the user is currently using. This avoids the DevinX
-                // mirror loop without forcing LightBurn on top of the desktop.
-                var hdc=graphics.GetHdc();
-                try
-                {
-                    if(!PrintWindow(captureHandle,hdc,PwRenderFullContent))return null;
-                }
-                finally{graphics.ReleaseHdc(hdc);}
             }
         }
         catch{return null;}
 
         var encoded=EncodeAdaptive(source);
         if(encoded is null)return null;
-        return new CapturedPreview(encoded.Value.Bytes,encoded.Value.Width,encoded.Value.Height,DateTimeOffset.UtcNow);
+
+        var capturedAt=DateTimeOffset.UtcNow;
+        lock(LastCaptureGate)
+        {
+            _lastCapturedTarget=captureHandle;
+            _lastCapturedLeft=left;
+            _lastCapturedTop=top;
+            _lastCapturedWidth=width;
+            _lastCapturedHeight=height;
+            _lastCapturedAtUtc=capturedAt;
+        }
+        return new CapturedPreview(encoded.Value.Bytes,encoded.Value.Width,encoded.Value.Height,capturedAt);
     }
 
     private static (byte[] Bytes,int Width,int Height)? EncodeAdaptive(Bitmap source)
@@ -127,6 +136,34 @@ internal static class LightBurnWindowCapture
         parameters.Param[0]=new EncoderParameter(System.Drawing.Imaging.Encoder.Quality,quality);
         bitmap.Save(stream,codec,parameters);
         return stream.ToArray();
+    }
+
+    public static bool TryGetLastCapturedBounds(
+        IntPtr main,out IntPtr target,
+        out int left,out int top,out int width,out int height)
+    {
+        target=IntPtr.Zero;
+        left=top=width=height=0;
+
+        lock(LastCaptureGate)
+        {
+            if(_lastCapturedTarget==IntPtr.Zero
+               ||DateTimeOffset.UtcNow-_lastCapturedAtUtc>TimeSpan.FromSeconds(2))
+                return false;
+
+            target=_lastCapturedTarget;
+            left=_lastCapturedLeft;
+            top=_lastCapturedTop;
+            width=_lastCapturedWidth;
+            height=_lastCapturedHeight;
+        }
+
+        if(!IsWindow(target)||!IsWindowVisible(target)||IsIconic(target)
+           ||!BelongsToSameProcess(main,target)
+           ||width<=0||height<=0)
+            return false;
+
+        return true;
     }
 
     public static bool TryGetPhysicalBounds(

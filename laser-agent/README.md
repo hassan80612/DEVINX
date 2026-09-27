@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.24
+# DevinX Laser Agent 1.0.25
 
 Agent Windows do DevinX Laser Control.
 
@@ -123,3 +123,7 @@ As setas do DevinX agora têm um caminho dedicado que ativa a janela principal d
 
 ## 1.0.24 — setas reais e controle móvel limpo
 As setas do D-pad agora passam pelo caminho real de teclado do Windows depois de ativar e focar a janela principal do LightBurn, evitando o PostMessage que builds Qt podem ignorar. A interface móvel mantém teclado manual, zoom com botões e gesto, pan local da imagem ampliada e elimina duplicações do painel.
+
+
+## 1.0.25 — edição de texto e coordenadas estáveis
+O duplo toque remoto passa a completar apenas o segundo clique, evitando o triplo clique que impedia a entrada confiável no modo de edição de texto do LightBurn. Teclas e texto preservam o foco do editor/controle filho quando o LightBurn já está em primeiro plano. O ponteiro usa os limites exatos da última imagem realmente capturada, evitando que um diálogo ou mudança de foco remapeie o toque para outra região da tela. A captura prioriza PrintWindow para não transmitir overlays do Windows por cima do LightBurn.

@@ -24,7 +24,7 @@ export default async function LaserGuidePage(){
       <h1>Seu LightBurn conectado ao DevinX.</h1>
       <p>Veja a janela do LightBurn em tempo real, acompanhe a máquina e use controles remotos a partir do celular ou de outro computador.</p>
       <div className={styles.actions}>
-        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.24/DevinX-Laser-Agent-1.0.24.zip" download>Baixar Agent para Windows</a>
+        <a className={styles.primary} href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.25/DevinX-Laser-Agent-1.0.25.zip" download>Baixar Agent para Windows</a>
         <a className={styles.secondary} href="/laser-control">Abrir Laser Control</a>
       </div>
     </section>
@@ -43,7 +43,7 @@ export default async function LaserGuidePage(){
 
     <section className={styles.block}>
       <h2>Camadas e parâmetros</h2>
-      <p>O Agent 1.0.24 lê os controles que o LightBurn expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Quando uma versão não expõe os valores, use Editar na tela para ampliar a imagem e tocar no campo com o teclado do celular.</p>
+      <p>O Agent 1.0.25 lê os controles que o LightBurn expõe no Windows. No painel Ao vivo, os parâmetros detectados aparecem com o valor atual e podem ser editados e aplicados diretamente. Quando uma versão não expõe os valores, use Editar na tela para ampliar a imagem e tocar no campo com o teclado do celular.</p>
     </section>
 
     <section className={styles.block}>
