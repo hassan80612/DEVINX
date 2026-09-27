@@ -1138,8 +1138,9 @@ export function LaserControlWorkspace(){
   }
 
   async function editParametersOnScreen(){
+    zoomRef.current=2.5;
     setZoom(2.5);
-    setZoomOrigin(activeDialogTool?{x:.5,y:.5}:{x:.86,y:.28});
+    setPan({x:0,y:0});
     if(!document.fullscreenElement)await enterFullscreen();
     previewSurfaceRef.current?.scrollIntoView({behavior:'smooth',block:'start'});
   }
