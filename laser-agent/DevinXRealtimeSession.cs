@@ -12,6 +12,10 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         new($"wss://jubiwhtnhxluetzkzomm.supabase.co/realtime/v1/websocket?apikey={Uri.EscapeDataString(PublishableKey)}&vsn=2.0.0&log_level=info");
 
     private readonly RemoteSessionConfig _config;
+    private readonly object _accessSync=new();
+    private bool _remoteInputEnabled;
+    private string? _inputToken;
+    private long _revision;
     private readonly Func<RealtimeCommand,Task> _onCommand;
     private readonly Func<RealtimeRemoteInput,Task> _onInput;
     private readonly ClientWebSocket _socket=new();
@@ -28,14 +32,39 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         Func<RealtimeRemoteInput,Task> onInput)
     {
         _config=config;
+        _remoteInputEnabled=config.RemoteInputEnabled;
+        _inputToken=config.InputToken;
+        _revision=config.Revision;
         _onCommand=onCommand;
         _onInput=onInput;
     }
 
     public bool IsConnected=>_socket.State==WebSocketState.Open&&_joined.Task.IsCompletedSuccessfully;
     public string SessionId=>_config.Id;
-    public long Revision=>_config.Revision;
+    public long Revision{get{lock(_accessSync)return _revision;}}
     public string? LastError{get;private set;}
+
+    public bool UpdateAccess(RemoteSessionConfig config)
+    {
+        if(config.Id!=_config.Id
+           ||config.Topic!=_config.Topic
+           ||config.FrameToken!=_config.FrameToken
+           ||config.ControlToken!=_config.ControlToken)
+            return false;
+
+        lock(_accessSync)
+        {
+            _remoteInputEnabled=config.RemoteInputEnabled;
+            _inputToken=config.InputToken;
+            _revision=config.Revision;
+        }
+        return true;
+    }
+
+    private (bool Enabled,string? Token) AccessSnapshot()
+    {
+        lock(_accessSync)return(_remoteInputEnabled,_inputToken);
+    }
 
     public async Task<bool> ConnectAsync(CancellationToken cancellationToken)
     {
@@ -274,11 +303,12 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
 
             if(userEvent=="remote_input")
             {
-                if(!_config.RemoteInputEnabled||string.IsNullOrWhiteSpace(_config.InputToken))return;
+                var access=AccessSnapshot();
+                if(!access.Enabled||string.IsNullOrWhiteSpace(access.Token))return;
                 var token=payload.TryGetProperty("token",out var tokenEl)?tokenEl.GetString():"";
                 if(!CryptographicOperations.FixedTimeEquals(
                     Encoding.UTF8.GetBytes(token??""),
-                    Encoding.UTF8.GetBytes(_config.InputToken!)))
+                    Encoding.UTF8.GetBytes(access.Token!)))
                     return;
 
                 static double? Number(JsonElement p,string name)=>

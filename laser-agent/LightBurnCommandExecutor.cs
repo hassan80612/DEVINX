@@ -12,6 +12,8 @@ internal static class LightBurnCommandExecutor
     private const uint KeyeventfKeyup=0x0002;
     private static int _framingOpenedByAgent=0;
 
+    public static bool IsFramingActive=>Volatile.Read(ref _framingOpenedByAgent)==1;
+
     [StructLayout(LayoutKind.Sequential)]
     private struct Input
     {
@@ -86,6 +88,7 @@ internal static class LightBurnCommandExecutor
     {
         if(command=="start")
         {
+            Volatile.Write(ref _framingOpenedByAgent,0);
             LightBurnRemoteInput.FocusLightBurn();
             var reply=await udp.StartAsync(cancellationToken);
             if(!reply.Received)return new(false,"lightburn_no_reply");
@@ -103,25 +106,49 @@ internal static class LightBurnCommandExecutor
             // Esc closes/stops the framing window instead of opening another one.
             "frame"=>ToggleGalvoFraming(handle),
             "pause"=>SendShortcut(handle,[VkPause]),
-            "stop"=>SendShortcut(handle,[VkControl,VkPause]),
+            "stop"=>IsFramingActive?CloseGalvoFraming(handle):SendShortcut(handle,[VkControl,VkPause]),
             _=>new CommandExecutionResult(false,"unsupported_command")
         };
     }
 
     private static CommandExecutionResult ToggleGalvoFraming(IntPtr main)
     {
-        var opened=Volatile.Read(ref _framingOpenedByAgent)==1;
-        if(!opened)
+        if(!IsFramingActive)
         {
             var result=SendShortcut(main,[VkF1]);
-            if(result.Ok)Volatile.Write(ref _framingOpenedByAgent,1);
-            return result;
+            if(!result.Ok)return result;
+            Volatile.Write(ref _framingOpenedByAgent,1);
+            return new(true,"framing_opened");
         }
 
+        return CloseGalvoFraming(main);
+    }
+
+    private static CommandExecutionResult CloseGalvoFraming(IntPtr main)
+    {
         var target=FindActiveLightBurnWindow(main);
-        var close=SendShortcut(target,[VkEscape]);
-        if(close.Ok)Volatile.Write(ref _framingOpenedByAgent,0);
-        return close;
+        SetForegroundWindow(target);
+        Thread.Sleep(40);
+
+        var sent=SendShortcut(target,[VkEscape]).Ok;
+        var posted=false;
+
+        GetWindowThreadProcessId(main,out var mainPid);
+        if(mainPid!=0)
+        {
+            EnumWindows((window,_)=>{
+                if(!IsWindowVisible(window))return true;
+                GetWindowThreadProcessId(window,out var pid);
+                if(pid!=mainPid)return true;
+                posted|=PostMessage(window,0x0100,(IntPtr)VkEscape,IntPtr.Zero);
+                posted|=PostMessage(window,0x0101,(IntPtr)VkEscape,IntPtr.Zero);
+                return true;
+            },IntPtr.Zero);
+        }
+
+        if(!sent&&!posted)return new(false,"windows_input_failed");
+        Volatile.Write(ref _framingOpenedByAgent,0);
+        return new(true,"framing_closed");
     }
 
     private static IntPtr FindActiveLightBurnWindow(IntPtr main)

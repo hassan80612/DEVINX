@@ -114,6 +114,7 @@ internal static class AgentTelemetryFactory
             "paused" => "paused",
             "pause" => "paused",
             "busy" => "busy",
+            "framing" => "framing",
             _ => "unknown"
         };
 

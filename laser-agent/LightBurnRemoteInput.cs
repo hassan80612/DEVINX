@@ -64,6 +64,26 @@ internal static class LightBurnRemoteInput
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
+    private static extern IntPtr SetFocus(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool BringWindowToTop(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd,int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    private static extern bool AttachThreadInput(uint idAttach,uint idAttachTo,bool fAttach);
+
+    private const int SwRestore=9;
+
+    [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
@@ -108,7 +128,7 @@ internal static class LightBurnRemoteInput
     {
         var main=LightBurnWindowCapture.FindLightBurnWindow();
         if(main==IntPtr.Zero)return false;
-        return SetForegroundWindow(FindInteractiveWindow(main));
+        return ActivateWindow(FindInteractiveWindow(main));
     }
 
     // Compatibility shim for older Agent code paths. Session control must never
@@ -126,7 +146,7 @@ internal static class LightBurnRemoteInput
         if(!TryScreenPoint(main,input,out var x,out var y))return false;
 
         var target=FindInteractiveWindow(main);
-        SetForegroundWindow(target);
+        ActivateWindow(target);
         if(!SetCursorPos(x,y))return false;
 
         var right=input.Button==2;
@@ -142,7 +162,7 @@ internal static class LightBurnRemoteInput
         if(!TryScreenPoint(main,input,out var x,out var y))return false;
 
         var target=FindInteractiveWindow(main);
-        SetForegroundWindow(target);
+        ActivateWindow(target);
         if(!SetCursorPos(x,y))return false;
 
         var inputs=new[]
@@ -160,7 +180,7 @@ internal static class LightBurnRemoteInput
         if(!TryScreenPoint(main,input,out var x,out var y))return false;
 
         var target=FindInteractiveWindow(main);
-        SetForegroundWindow(target);
+        ActivateWindow(target);
         if(!SetCursorPos(x,y))return false;
 
         var delta=(int)Math.Round(-input.DeltaY);
@@ -172,7 +192,7 @@ internal static class LightBurnRemoteInput
     private static bool Keyboard(IntPtr main,RealtimeRemoteInput input,bool down)
     {
         var target=FindInteractiveWindow(main);
-        SetForegroundWindow(target);
+        ActivateWindow(target);
 
         var vk=VirtualKey(input.Code,input.Key);
         if(vk==0)return false;
@@ -203,7 +223,7 @@ internal static class LightBurnRemoteInput
         if(string.IsNullOrEmpty(text))return false;
 
         var target=FindInteractiveWindow(main);
-        SetForegroundWindow(target);
+        ActivateWindow(target);
 
         var inputs=new List<Input>();
         foreach(var ch in text.Take(32))
@@ -226,6 +246,37 @@ internal static class LightBurnRemoteInput
         x=left+Math.Clamp((int)Math.Round(Math.Clamp(input.X.Value,0,1)*(width-1)),0,width-1);
         y=top+Math.Clamp((int)Math.Round(Math.Clamp(input.Y.Value,0,1)*(height-1)),0,height-1);
         return true;
+    }
+
+    private static bool ActivateWindow(IntPtr target)
+    {
+        if(target==IntPtr.Zero)return false;
+        if(IsIconic(target))ShowWindow(target,SwRestore);
+
+        var currentThread=GetCurrentThreadId();
+        var foreground=GetForegroundWindow();
+        var foregroundThread=foreground==IntPtr.Zero?0:GetWindowThreadProcessId(foreground,out _);
+        var targetThread=GetWindowThreadProcessId(target,out _);
+
+        var attachedForeground=false;
+        var attachedTarget=false;
+        try
+        {
+            if(foregroundThread!=0&&foregroundThread!=currentThread)
+                attachedForeground=AttachThreadInput(currentThread,foregroundThread,true);
+            if(targetThread!=0&&targetThread!=currentThread&&targetThread!=foregroundThread)
+                attachedTarget=AttachThreadInput(currentThread,targetThread,true);
+
+            BringWindowToTop(target);
+            var foregroundSet=SetForegroundWindow(target);
+            SetFocus(target);
+            return foregroundSet||GetForegroundWindow()==target;
+        }
+        finally
+        {
+            if(attachedTarget)AttachThreadInput(currentThread,targetThread,false);
+            if(attachedForeground)AttachThreadInput(currentThread,foregroundThread,false);
+        }
     }
 
     private static IntPtr FindInteractiveWindow(IntPtr main)

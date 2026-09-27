@@ -133,12 +133,20 @@ internal sealed class ContinuousAgent
                 catch{}
             }
 
-            var sessionChanged=
+            var sessionIdentityChanged=
                 (current is null)!=(poll.Session is null)
                 ||(current is not null&&poll.Session is not null
-                    &&(current.Id!=poll.Session.Id||current.Revision!=poll.Session.Revision));
+                    &&(current.Id!=poll.Session.Id
+                       ||current.Topic!=poll.Session.Topic
+                       ||current.FrameToken!=poll.Session.FrameToken
+                       ||current.ControlToken!=poll.Session.ControlToken));
 
-            if(sessionChanged)
+            var accessChanged=
+                !sessionIdentityChanged
+                &&current is not null&&poll.Session is not null
+                &&current.Revision!=poll.Session.Revision;
+
+            if(sessionIdentityChanged)
             {
                 await StopRealtimeAsync();
                 current=poll.Session;
@@ -169,6 +177,19 @@ internal sealed class ContinuousAgent
                         await realtime.DisposeAsync();
                         realtime=null;
                     }
+                }
+            }
+            else if(accessChanged&&poll.Session is not null)
+            {
+                current=poll.Session;
+                if(realtime is not null&&realtime.IsConnected&&realtime.UpdateAccess(current))
+                {
+                    _tray.SetStatus(current.RemoteInputEnabled
+                        ?"DevinX Laser Agent — controle remoto ativo"
+                        :"DevinX Laser Agent — transmissão ao vivo");
+                    await realtime.SendAgentStateAsync(
+                        current.RemoteInputEnabled?"control-ready":"preview-ready",
+                        cancellationToken);
                 }
             }
             else if(current is not null&&(realtime is null||!realtime.IsConnected))
@@ -251,7 +272,14 @@ internal sealed class ContinuousAgent
             var now=DateTimeOffset.UtcNow;
             if(now>=nextCapture)
             {
-                try{telemetry=await CaptureTelemetryAsync(rest,udp,cancellationToken);}
+                try
+                {
+                    telemetry=await CaptureTelemetryAsync(rest,udp,cancellationToken);
+                    if(LightBurnCommandExecutor.IsFramingActive
+                       &&telemetry.LightBurnOnline
+                       &&telemetry.DeviceConnected)
+                        telemetry=telemetry with{JobState="framing"};
+                }
                 catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
                 catch{telemetry=AgentTelemetryFactory.Offline(_identity);}
                 nextCapture=DateTimeOffset.UtcNow+TelemetryInterval;
