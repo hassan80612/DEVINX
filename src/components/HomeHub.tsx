@@ -171,12 +171,12 @@ const COPY={
 } as const;
 
 const LASER_SOON={
-  "pt-BR":{title:"Laser Control",status:"Em breve",text:"Controle e monitoramento do LightBurn pelo celular."},
-  en:{title:"Laser Control",status:"Coming soon",text:"Monitor and control LightBurn from your phone."},
-  es:{title:"Laser Control",status:"Próximamente",text:"Control y monitoreo de LightBurn desde el móvil."},
-  fr:{title:"Laser Control",status:"Bientôt",text:"Contrôle et suivi de LightBurn depuis le mobile."},
-  de:{title:"Laser Control",status:"Demnächst",text:"LightBurn vom Smartphone überwachen und steuern."},
-  ar:{title:"Laser Control",status:"قريباً",text:"مراقبة LightBurn والتحكم به من الهاتف."}
+  "pt-BR":{title:"Laser Control",status:"Conhecer",text:"Veja e controle seu LightBurn pelo celular ou por outro computador."},
+  en:{title:"Laser Control",status:"Explore",text:"View and control LightBurn from your phone or another computer."},
+  es:{title:"Laser Control",status:"Conocer",text:"Visualiza y controla LightBurn desde el móvil u otro ordenador."},
+  fr:{title:"Laser Control",status:"Découvrir",text:"Affichez et contrôlez LightBurn depuis votre téléphone ou un autre ordinateur."},
+  de:{title:"Laser Control",status:"Entdecken",text:"LightBurn vom Smartphone oder einem anderen Computer aus anzeigen und steuern."},
+  ar:{title:"Laser Control",status:"اكتشف",text:"شاهد LightBurn وتحكم به من الهاتف أو من كمبيوتر آخر."}
 } as const;
 
 const FINANCE_FEATURES={
@@ -290,7 +290,7 @@ function FeatureGrid({title,items}:{title:string;items:readonly string[]}){
   </section>;
 }
 
-export function HomeHub(){
+export function HomeHub({laserVisible=true,financeVisible=true}:{laserVisible?:boolean;financeVisible?:boolean}){
   const{locale}=useI18n();
   const activeLocale=(locale in COPY?locale:"pt-BR") as keyof typeof COPY;
   const c=COPY[activeLocale];
@@ -308,15 +308,15 @@ export function HomeHub(){
       <span className={styles.control}><b>{c.control}</b></span>
       <h1>{intl?c.intlChoose:c.choose}</h1>
       <p>{intl?c.intlChooseText:c.chooseText}</p>
-      <div className={styles.laserSoon} aria-label={LASER_SOON[activeLocale].status}>
+      {laserVisible&&<a href="/laser-control/guia" className={styles.laserSoon} aria-label={LASER_SOON[activeLocale].status}>
         <span>{LASER_SOON[activeLocale].title}</span>
         <b>{LASER_SOON[activeLocale].status}</b>
         <small>{LASER_SOON[activeLocale].text}</small>
-      </div>
+      </a>}
     </section>
 
-    <section className={`${styles.products} ${!showStore?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
-      <article className={`${styles.product} ${styles.financeProduct}`}>
+    <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
+      {financeVisible&&<article className={`${styles.product} ${styles.financeProduct}`}>
         <div className={styles.productGlow}></div>
         <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
         <div className={styles.copy}>
@@ -330,10 +330,10 @@ export function HomeHub(){
           <a className={styles.accessButton} href="/entrar">{c.financeLogin} →</a>
         </div>
         <FeatureGrid title={c.financeFeaturesTitle} items={financeFeatures}/>
-      </article>
+      </article>}
 
       {showStore&&<>
-      <div className={styles.or} aria-hidden="true">{c.or}</div>
+      {financeVisible&&<div className={styles.or} aria-hidden="true">{c.or}</div>}
 
       <article className={`${styles.product} ${styles.storeProduct}`}>
         <div className={styles.productGlow}></div>
