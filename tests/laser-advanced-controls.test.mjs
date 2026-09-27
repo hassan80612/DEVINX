@@ -10,11 +10,11 @@ test('Laser Control exposes live layer parameters through Agent 1.0.15',async()=
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
   assert.match(panel,/laser\.paramsTitle/);
-  assert.match(panel,/laser-agent-v1\.0\.14/);
+  assert.match(panel,/laser-agent-v1\.0\.15/);
   assert.match(panel,/select_layer/);
   assert.match(panel,/open_layer/);
   assert.match(css,/\.parameterDock/);
-  assert.match(i18n,/DevinX Laser Agent 1\.0\.14/);
+  assert.match(i18n,/DevinX Laser Agent 1\.0\.15/);
 });
 
 test('Laser Control navigation tabs render as explicit buttons',async()=>{
