@@ -39,6 +39,7 @@ internal sealed class ContinuousAgent
         using var linked=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var telemetryTask=RunTelemetryLoopAsync(linked.Token);
         var remoteTask=RunRemoteLoopAsync(linked.Token);
+        var restAccessTask=EnsureLightBurnRestAccessAsync(linked.Token);
 
         try
         {
@@ -46,14 +47,56 @@ internal sealed class ContinuousAgent
             {
                 await Task.WhenAny(telemetryTask,remoteTask);
                 linked.Cancel();
-                try{await Task.WhenAll(telemetryTask,remoteTask);}catch(OperationCanceledException){}
+                try{await Task.WhenAll(telemetryTask,remoteTask,restAccessTask);}catch(OperationCanceledException){}
             }
             else
             {
-                await Task.WhenAll(telemetryTask,remoteTask);
+                await Task.WhenAll(telemetryTask,remoteTask,restAccessTask);
             }
         }
         finally{linked.Cancel();}
+    }
+
+    private async Task EnsureLightBurnRestAccessAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await DelaySafe(TimeSpan.FromSeconds(2),cancellationToken);
+            if(cancellationToken.IsCancellationRequested)return;
+
+            using var rest=new LightBurnRestClient();
+            if(!await rest.IsAvailableAsync(cancellationToken))return;
+
+            var secret=SecureSecretStore.Load();
+            if(!string.IsNullOrWhiteSpace(secret))
+            {
+                var status=await rest.GetStatusJsonAsync(secret,cancellationToken);
+                if(status is not null)return;
+                SecureSecretStore.Delete();
+            }
+
+            _tray.SetStatus("DevinX Laser Agent — autorize a leitura no LightBurn");
+            _tray.ShowInfo(
+                "DevinX Laser Agent",
+                "Confirme uma vez no LightBurn o acesso de leitura do DevinX. Isso libera camadas e parâmetros no controle remoto.");
+
+            using var timeout=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(35));
+            var pairedSecret=await rest.PairReadOnlyAsync(timeout.Token);
+            if(string.IsNullOrWhiteSpace(pairedSecret))return;
+
+            SecureSecretStore.Save(pairedSecret);
+            _tray.ShowInfo(
+                "DevinX Laser Agent",
+                "LightBurn autorizado. Camadas e parâmetros avançados estão disponíveis.");
+            RequestRefresh();
+        }
+        catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){}
+        catch
+        {
+            // REST is an enhancement. UDP commands and remote control continue
+            // working even if the user declines or this LightBurn build lacks REST.
+        }
     }
 
     private async Task RunRemoteLoopAsync(CancellationToken cancellationToken)

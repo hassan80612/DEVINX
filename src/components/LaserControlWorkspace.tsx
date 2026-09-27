@@ -186,7 +186,7 @@ export function LaserControlWorkspace(){
 
   const supportsAdvancedControls=(version:string|null)=>{
     const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=16);
+    return Boolean(match&&Number(match[1])>=17);
   };
   const advancedControlsReady=Boolean(selectedDevice&&supportsAdvancedControls(selectedDevice.agent_version));
 
@@ -1236,7 +1236,7 @@ export function LaserControlWorkspace(){
 
           {!advancedControlsReady?<div className={styles.parameterGate}>
             <b>{t('laser.paramsAgentUpdate')}</b>
-            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.16/DevinX-Laser-Agent-1.0.16.zip">{t('laser.download')}</a>
+            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.17/DevinX-Laser-Agent-1.0.17.zip">{t('laser.download')}</a>
           </div>:!inputReady&&<div className={styles.parameterGate}>
             <b>{t('laser.paramsNeedControl')}</b>
             <button
@@ -1369,7 +1369,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.16/DevinX-Laser-Agent-1.0.16.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.17/DevinX-Laser-Agent-1.0.17.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

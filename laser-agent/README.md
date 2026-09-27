@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.16
+# DevinX Laser Agent 1.0.17
 
 Agent Windows do DevinX Laser Control.
 
@@ -88,3 +88,7 @@ A leitura/escrita de parâmetros do LightBurn roda fora do loop Realtime. Um pai
 - Camadas são lidas pela API local do LightBurn quando disponível.
 - Rotativo, camada e outros diálogos podem expor campos editáveis no painel DevinX, com ações de aplicar, cancelar e fechar.
 - A release publicada é imutável: a mesma versão não é sobrescrita por novos builds.
+
+
+## 1.0.17 — autorização automática de leitura do LightBurn
+Quando a API local do LightBurn estiver disponível e ainda não houver autorização salva, o Agent solicita a permissão de leitura automaticamente uma única vez. O usuário confirma no próprio LightBurn. Depois disso, a autorização fica protegida no Windows e o Agent passa a ler camadas e parâmetros pela API local, mantendo UDP como fallback para comandos e versões sem REST.
