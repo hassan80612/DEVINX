@@ -134,7 +134,15 @@ internal static class LightBurnRemoteInput
     {
         if(!TryScreenPoint(main,input,out var screen))return false;
 
-        var target=FindDeepestChildAtPoint(main,screen);
+        var target=FindTargetAtPoint(main,screen);
+        if(target==IntPtr.Zero)return false;
+
+        if(message is WmLButtonDown or WmRButtonDown or WmLButtonDblClk)
+        {
+            var root=GetAncestor(target,GaRoot);
+            if(root!=IntPtr.Zero)SetForegroundWindow(root);
+        }
+
         var client=screen;
         if(!ScreenToClient(target,ref client))return false;
         return PostMessage(target,message,(IntPtr)buttonMask,MakeLParam(client.X,client.Y));
