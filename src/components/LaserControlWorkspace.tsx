@@ -109,7 +109,7 @@ export function LaserControlWorkspace(){
 
   const channelRef=useRef<any>(null);
   const livePaneRef=useRef<HTMLDivElement|null>(null);
-  const controlDrawerRef=useRef<HTMLElement|null>(null);
+  const parameterDockRef=useRef<HTMLElement|null>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
   const imageRef=useRef<HTMLImageElement|null>(null);
   const sessionRef=useRef<RemoteSession|null>(null);
@@ -1312,7 +1312,7 @@ export function LaserControlWorkspace(){
                   void (inputReady?disableRemoteInput():enableRemoteInput());
                 }}
               >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
-              <button onClick={()=>void openLayerPanel().then(()=>controlDrawerRef.current?.scrollIntoView({behavior:'smooth',block:'end'}))}>Camadas</button>
+              <button onClick={()=>void openLayerPanel().then(()=>window.requestAnimationFrame(()=>parameterDockRef.current?.scrollIntoView({behavior:'smooth',block:'start'})))}>Camadas</button>
               <button onClick={openMobileKeyboard} disabled={!inputReady}>Teclado</button>
               <button className={styles.dialogOk} onClick={confirmActiveDialog} disabled={!inputReady}>OK</button>
               <button className={styles.dialogClose} onClick={closeActiveDialog} disabled={!inputReady}>ESC</button>
@@ -1369,7 +1369,7 @@ export function LaserControlWorkspace(){
           <span>{frameAt?new Date(frameAt).toLocaleTimeString():'—'}</span>
         </div>
 
-        <section className={styles.controlDrawer} ref={controlDrawerRef}>
+        <section className={styles.controlDrawer}>
           <div className={styles.controlDrawerBody}>
 
         <div className={styles.commandGrid}>
@@ -1398,7 +1398,7 @@ export function LaserControlWorkspace(){
         </div>
 
         {(toolPanelOpen||activeDialogTool||Boolean(controlSnapshot))&&<div className={styles.contextPanel}>
-        <section className={styles.parameterDock}>
+        <section className={styles.parameterDock} ref={parameterDockRef}>
           <div className={styles.parameterHead}>
             <div>
               <small>LIGHTBURN · CUTS / LAYERS</small>
