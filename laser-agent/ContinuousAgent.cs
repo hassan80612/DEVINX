@@ -104,7 +104,19 @@ internal sealed class ContinuousAgent
                 result=new CommandExecutionResult(false,"agent_error:"+ex.GetType().Name);
             }
 
-            await commandClient.AckAsync(_identity,command.Id,result.Ok,result.Reason,cancellationToken);
+            var acknowledged=false;
+            for(var attempt=0;attempt<4&&!acknowledged;attempt++)
+            {
+                try
+                {
+                    acknowledged=await commandClient.AckAsync(
+                        _identity,command.Id,result.Ok,result.Reason,cancellationToken);
+                }
+                catch when(attempt<3)
+                {
+                    await DelaySafe(TimeSpan.FromMilliseconds(180*(attempt+1)),cancellationToken);
+                }
+            }
             RequestRefresh();
         }
 
@@ -138,6 +150,9 @@ internal sealed class ContinuousAgent
                         "open_layer"=>string.IsNullOrWhiteSpace(request.Layer)
                             ?LightBurnControlBridge.OpenSelectedLayer()
                             :LightBurnControlBridge.SelectLayer(request.Layer!,true),
+                        "dialog_confirm"=>LightBurnControlBridge.DialogAction("confirm"),
+                        "dialog_cancel"=>LightBurnControlBridge.DialogAction("cancel"),
+                        "dialog_close"=>LightBurnControlBridge.DialogAction("close"),
                         _=>new LightBurnControlBridgeResult(false,"unsupported_control_action",null)
                     });
 
