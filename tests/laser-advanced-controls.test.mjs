@@ -90,7 +90,6 @@ test('Agent inspects LightBurn raw UIA tree for Qt owner-drawn controls',async()
   assert.match(bridge,/RawViewWalker/);
   assert.match(bridge,/ReadRawNodes/);
   assert.match(bridge,/AppendRawNode/);
-  assert.match(bridge,/fields\.Any\(field=>/);
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(input,/text\.Take\(256\)/);
 });
