@@ -664,7 +664,9 @@ export function LaserControlWorkspace(){
   const canStart=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
     &&selectedDevice.job_state==='idle');
-  const canFrame=canStart;
+  const canFrame=Boolean(selectedDevice&&online(selectedDevice)
+    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
+    &&['idle','framing'].includes(selectedDevice.job_state||''));
   const canPause=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.machine_connected===true
     &&['running','busy'].includes(selectedDevice.job_state||''));
@@ -806,7 +808,7 @@ export function LaserControlWorkspace(){
       {tab==='control'&&<div className={styles.controlPane}>
         <div className={styles.commandGrid}>
           <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
-            <i>▣</i><b>Frame seleção</b><small>{canFrame?'Pronto':'Aguardando máquina parada'}</small>
+            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?(selectedDevice?.job_state==='framing'?'Encerrar framing':'Abrir Live Framing'):'Aguardando máquina parada'}</small>
           </button>
           <button disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
             <i>▶</i><b>Iniciar</b><small>{canStart?'Pronto':'Aguardando máquina parada'}</small>
