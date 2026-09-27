@@ -1177,7 +1177,7 @@ export function LaserControlWorkspace(){
 
       <div className={styles.simpleModeBar}>
         <button type="button" className={tab!=='agent'?styles.simpleModeActive:''} onClick={()=>setTab('live')}>
-          ◉ Operar
+          ◉ {t('laser.operate')}
         </button>
         <button type="button" className={tab==='agent'?styles.simpleModeActive:''} onClick={()=>setTab('agent')}>
           ⚙ {t('laser.tabAgent')}
@@ -1187,9 +1187,9 @@ export function LaserControlWorkspace(){
       {tab!=='agent'&&<div className={styles.livePane}>
         <div className={styles.liveToolbar}>
           <div className={styles.zoom}>
-            <button type="button" aria-label="Reduzir zoom" onClick={()=>setPreviewZoom(zoom-.25)}>−</button>
+            <button type="button" aria-label={t('laser.zoomOut')} onClick={()=>setPreviewZoom(zoom-.25)}>−</button>
             <button type="button" title={t('laser.zoomReset')} onClick={resetZoom}>{Math.round(zoom*100)}%</button>
-            <button type="button" aria-label="Aumentar zoom" onClick={()=>setPreviewZoom(zoom+.25)}>＋</button>
+            <button type="button" aria-label={t('laser.zoomIn')} onClick={()=>setPreviewZoom(zoom+.25)}>＋</button>
           </div>
           <div className={styles.iconActions} aria-label={t('laser.projectTools')}>
             <button type="button" title={t('laser.saveProject')} aria-label={t('laser.saveProject')} disabled={toolPending!==null} onClick={()=>void runShortcut('save',{key:'s',code:'KeyS',ctrl:true})}>▣</button>
