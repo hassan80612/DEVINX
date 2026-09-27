@@ -10,6 +10,7 @@ internal static class LightBurnCommandExecutor
     private const ushort VkF1=0x70;
     private const ushort VkEscape=0x1B;
     private const uint KeyeventfKeyup=0x0002;
+    private static int _framingOpenedByAgent=0;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Input
@@ -59,13 +60,13 @@ internal static class LightBurnCommandExecutor
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
     private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc,IntPtr lParam);
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
-
-    [DllImport("user32.dll",CharSet=CharSet.Unicode)]
-    private static extern int GetWindowText(IntPtr hWnd,System.Text.StringBuilder lpString,int nMaxCount);
 
     [DllImport("user32.dll")]
     private static extern bool IsWindowVisible(IntPtr hWnd);
@@ -109,34 +110,43 @@ internal static class LightBurnCommandExecutor
 
     private static CommandExecutionResult ToggleGalvoFraming(IntPtr main)
     {
-        var framing=FindFramingWindow(main);
-        return framing!=IntPtr.Zero
-            ?SendShortcut(framing,[VkEscape])
-            :SendShortcut(main,[VkF1]);
+        var opened=Volatile.Read(ref _framingOpenedByAgent)==1;
+        if(!opened)
+        {
+            var result=SendShortcut(main,[VkF1]);
+            if(result.Ok)Volatile.Write(ref _framingOpenedByAgent,1);
+            return result;
+        }
+
+        var target=FindActiveLightBurnWindow(main);
+        var close=SendShortcut(target,[VkEscape]);
+        if(close.Ok)Volatile.Write(ref _framingOpenedByAgent,0);
+        return close;
     }
 
-    private static IntPtr FindFramingWindow(IntPtr main)
+    private static IntPtr FindActiveLightBurnWindow(IntPtr main)
     {
         GetWindowThreadProcessId(main,out var mainPid);
-        if(mainPid==0)return IntPtr.Zero;
+        var foreground=GetForegroundWindow();
+        if(foreground!=IntPtr.Zero)
+        {
+            GetWindowThreadProcessId(foreground,out var foregroundPid);
+            if(mainPid!=0&&foregroundPid==mainPid)return foreground;
+        }
 
-        IntPtr found=IntPtr.Zero;
+        IntPtr candidate=IntPtr.Zero;
         EnumWindows((window,_)=>{
             if(window==main||!IsWindowVisible(window))return true;
             GetWindowThreadProcessId(window,out var pid);
-            if(pid!=mainPid)return true;
-
-            var title=new System.Text.StringBuilder(256);
-            GetWindowText(window,title,title.Capacity);
-            var text=title.ToString();
-            if(text.Contains("framing",StringComparison.OrdinalIgnoreCase))
+            if(pid==mainPid)
             {
-                found=window;
+                candidate=window;
                 return false;
             }
             return true;
         },IntPtr.Zero);
-        return found;
+
+        return candidate!=IntPtr.Zero?candidate:main;
     }
 
     private static CommandExecutionResult SendShortcut(IntPtr handle,ushort[] keys)
