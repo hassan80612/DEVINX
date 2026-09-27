@@ -66,6 +66,7 @@ export function LaserControlWorkspace(){
   const[commandPending,setCommandPending]=useState<LaserCommand|null>(null);
   const[commandNotice,setCommandNotice]=useState('');
   const[framingEngaged,setFramingEngaged]=useState(false);
+  const[realtimeEpoch,setRealtimeEpoch]=useState(0);
   const[pairingCode,setPairingCode]=useState('');
   const[deviceName,setDeviceName]=useState('PC Oficina');
   const[pairingPending,setPairingPending]=useState(false);
@@ -75,6 +76,8 @@ export function LaserControlWorkspace(){
   const imageRef=useRef<HTMLImageElement|null>(null);
   const sessionRef=useRef<RemoteSession|null>(null);
   const lastFrameSeqRef=useRef(0);
+  const lastFrameAtRef=useRef(0);
+  const lastRealtimeRecoveryRef=useRef(0);
   const lastPointerMoveRef=useRef(0);
   const touchPointsRef=useRef(new Map<number,{x:number;y:number}>());
   const touchGestureRef=useRef<{
@@ -221,8 +224,10 @@ export function LaserControlWorkspace(){
         const capturedAt=Number(payload?.capturedAt||Date.now());
         setFrameSrc('data:image/jpeg;base64,'+jpeg);
         setFrameSize(`${Number(payload?.width||0)} × ${Number(payload?.height||0)}`);
-        setFrameAt(Date.now());
-        setFrameLatency(Math.max(0,Date.now()-capturedAt));
+        const receivedAt=Date.now();
+        lastFrameAtRef.current=receivedAt;
+        setFrameAt(receivedAt);
+        setFrameLatency(Math.max(0,receivedAt-capturedAt));
         setRealtimeStatus('live');
       })
       .on('broadcast',{event:'agent_state'},({payload}:any)=>{
@@ -243,21 +248,51 @@ export function LaserControlWorkspace(){
       if(channelRef.current===channel)channelRef.current=null;
       void supabase.removeChannel(channel);
     };
-  },[session?.topic,session?.frameToken]);
+  },[session?.topic,session?.frameToken,realtimeEpoch]);
+
+  useEffect(()=>{
+    if(!session?.topic)return;
+    const timer=window.setInterval(()=>{
+      if(document.visibilityState!=='visible')return;
+      const last=lastFrameAtRef.current;
+      if(!last||Date.now()-last<6_000)return;
+      if(Date.now()-lastRealtimeRecoveryRef.current<5_000)return;
+      lastRealtimeRecoveryRef.current=Date.now();
+      setRealtimeStatus('connecting');
+      setRealtimeEpoch(value=>value+1);
+    },1_500);
+    return()=>window.clearInterval(timer);
+  },[session?.topic]);
 
   useEffect(()=>{
     const handle=()=>{
       const isFull=Boolean(document.fullscreenElement);
       setFullscreen(isFull);
       if(isFull){
+        lastFrameAtRef.current=Date.now();
+        lastRealtimeRecoveryRef.current=Date.now();
+        setRealtimeStatus('connecting');
+        setRealtimeEpoch(value=>value+1);
         if(!sessionRef.current?.remoteInputEnabled)void enableRemoteInput();
       }else if(sessionRef.current?.remoteInputEnabled){
         void disableRemoteInput();
       }
     };
+    const visible=()=>{
+      if(document.visibilityState==='visible'&&sessionRef.current){
+        lastFrameAtRef.current=Date.now();
+        lastRealtimeRecoveryRef.current=Date.now();
+        setRealtimeStatus('connecting');
+        setRealtimeEpoch(value=>value+1);
+      }
+    };
     document.addEventListener('fullscreenchange',handle);
-    return()=>document.removeEventListener('fullscreenchange',handle);
-  });
+    document.addEventListener('visibilitychange',visible);
+    return()=>{
+      document.removeEventListener('fullscreenchange',handle);
+      document.removeEventListener('visibilitychange',visible);
+    };
+  },[]);
 
   async function enterFullscreen(){
     try{
@@ -669,8 +704,7 @@ export function LaserControlWorkspace(){
     &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
     &&selectedDevice.job_state==='idle');
   const canFrame=Boolean(selectedDevice&&online(selectedDevice)
-    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
-    &&((selectedDevice.job_state==='idle')||framingEngaged));
+    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true);
   const canPause=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.machine_connected===true
     &&['running','busy'].includes(selectedDevice.job_state||''));
@@ -812,7 +846,7 @@ export function LaserControlWorkspace(){
       {tab==='control'&&<div className={styles.controlPane}>
         <div className={styles.commandGrid}>
           <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
-            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?(framingEngaged?'Encerrar framing':'Abrir Live Framing'):'Aguardando máquina parada'}</small>
+            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?'Alterna o Live Framing':'Máquina indisponível'}</small>
           </button>
           <button disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
             <i>▶</i><b>Iniciar</b><small>{canStart?'Pronto':'Aguardando máquina parada'}</small>
