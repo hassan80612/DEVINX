@@ -1,4 +1,5 @@
 import {landingCatalogs} from './landing';
+import {laserCatalogs} from './laser';
 
 export const locales=['pt-BR','en','es','fr','ar','de'] as const;
 export type Locale=(typeof locales)[number];
@@ -1123,11 +1124,11 @@ const deThemeRelease=replace(deTrial,{'settings.theme':'Darstellung','settings.t
 const arThemeRelease=replace(arTrial,{'settings.theme':'المظهر','settings.themeHelp':'يغيّر مظهر القسم المالي فقط، من دون تغيير البيانات أو الحسابات.','settings.themeDark':'داكن','settings.themeLight':'فاتح'});
 
 export const catalogs:Record<Locale,Catalog>={
-  'pt-BR':{...ptThemeRelease,...landingCatalogs['pt-BR']},
-  en:{...enThemeRelease,...landingCatalogs.en},
-  es:{...esThemeRelease,...landingCatalogs.es},
-  fr:{...frThemeRelease,...landingCatalogs.fr},
-  ar:{...arThemeRelease,...landingCatalogs.ar},
-  de:{...deThemeRelease,...landingCatalogs.de},
+  'pt-BR':{...ptThemeRelease,...landingCatalogs['pt-BR'],...laserCatalogs['pt-BR']},
+  en:{...enThemeRelease,...landingCatalogs.en,...laserCatalogs.en},
+  es:{...esThemeRelease,...landingCatalogs.es,...laserCatalogs.es},
+  fr:{...frThemeRelease,...landingCatalogs.fr,...laserCatalogs.fr},
+  ar:{...arThemeRelease,...landingCatalogs.ar,...laserCatalogs.ar},
+  de:{...deThemeRelease,...landingCatalogs.de,...laserCatalogs.de},
 };
 export type TranslationKey=keyof typeof ptThemeRelease;

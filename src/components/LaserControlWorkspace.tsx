@@ -13,6 +13,7 @@ import {
 } from 'react';
 import {createClient} from '@/lib/supabase/client';
 import styles from './LaserControlWorkspace.module.css';
+import {useI18n} from '@/i18n/provider';
 
 type LaserDevice={
   device_id:string;
@@ -28,6 +29,9 @@ type LaserDevice={
   progress_permille:number|null;
   project_file:string|null;
   captured_at:string|null;
+  connection_mode:'owned'|'mentor'|null;
+  access_expires_at:string|null;
+  mentor_session_id:string|null;
 };
 
 type RemoteSession={
@@ -45,6 +49,7 @@ type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
 export function LaserControlWorkspace(){
+  const{t}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
   const[loading,setLoading]=useState(true);
@@ -68,6 +73,9 @@ export function LaserControlWorkspace(){
   const[pairingCode,setPairingCode]=useState('');
   const[deviceName,setDeviceName]=useState('PC Oficina');
   const[pairingPending,setPairingPending]=useState(false);
+  const[mentorCode,setMentorCode]=useState('');
+  const[mentorPending,setMentorPending]=useState(false);
+  const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
 
   const channelRef=useRef<any>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
@@ -94,6 +102,7 @@ export function LaserControlWorkspace(){
     remoteDown:false,moved:false,rightClickSent:false,longPressTimer:undefined
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
+  const fullscreenAutoInputRef=useRef(false);
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -110,11 +119,11 @@ export function LaserControlWorkspace(){
         return list.find(device=>device.device_status==='active')?.device_id??list[0]?.device_id??null;
       });
     }catch{
-      if(!quiet)setNotice('Não foi possível carregar os PCs vinculados.');
+      if(!quiet)setNotice(t('laser.loadFail'));
     }finally{
       if(!quiet)setLoading(false);
     }
-  },[]);
+  },[t]);
 
   useEffect(()=>{
     void loadDevices();
@@ -126,6 +135,8 @@ export function LaserControlWorkspace(){
     ()=>devices.find(device=>device.device_id===selectedDeviceId)??null,
     [devices,selectedDeviceId]
   );
+  const ownedDevices=useMemo(()=>devices.filter(device=>device.connection_mode!=='mentor'),[devices]);
+  const mentorDevices=useMemo(()=>devices.filter(device=>device.connection_mode==='mentor'),[devices]);
 
   const online=(device:LaserDevice)=>{
     if(!device.last_seen_at)return false;
@@ -249,8 +260,10 @@ export function LaserControlWorkspace(){
     const handle=()=>{
       const isFull=Boolean(document.fullscreenElement);
       setFullscreen(isFull);
-      if(!isFull&&sessionRef.current?.remoteInputEnabled)
+      if(!isFull&&fullscreenAutoInputRef.current&&sessionRef.current?.remoteInputEnabled){
+        fullscreenAutoInputRef.current=false;
         void disableRemoteInput();
+      }
     };
     document.addEventListener('fullscreenchange',handle);
     return()=>document.removeEventListener('fullscreenchange',handle);
@@ -261,16 +274,21 @@ export function LaserControlWorkspace(){
       await previewSurfaceRef.current?.requestFullscreen();
       setFullscreen(true);
       previewSurfaceRef.current?.focus();
-      if(!sessionRef.current?.remoteInputEnabled)
+      if(!sessionRef.current?.remoteInputEnabled){
+        fullscreenAutoInputRef.current=true;
         await enableRemoteInput();
+      }
     }catch{
-      setNotice('O navegador não permitiu tela cheia.');
+      setNotice(t('laser.fullscreenDenied'));
     }
   }
 
   async function exitFullscreen(){
     try{
-      if(sessionRef.current?.remoteInputEnabled)await disableRemoteInput();
+      if(fullscreenAutoInputRef.current&&sessionRef.current?.remoteInputEnabled){
+        fullscreenAutoInputRef.current=false;
+        await disableRemoteInput();
+      }
       if(document.fullscreenElement)await document.exitFullscreen();
     }catch{}
   }
@@ -286,13 +304,13 @@ export function LaserControlWorkspace(){
       if(typeof screenOrientation?.lock==='function')
         await screenOrientation.lock(mode);
     }catch{
-      setNotice('Seu navegador não permitiu travar a orientação. Você ainda pode girar o aparelho normalmente.');
+      setNotice(t('laser.orientationDenied'));
     }
   }
 
   async function enableRemoteInput(){
     const current=sessionRef.current;
-    if(!current||!document.fullscreenElement)return;
+    if(!current)return;
     setInputPending(true);
     setInputReady(false);
     try{
@@ -300,9 +318,9 @@ export function LaserControlWorkspace(){
       const next={...current,...data,remoteInputEnabled:Boolean(data?.enabled)} as RemoteSession;
       sessionRef.current=next;
       setSession(next);
-      setNotice('Controle remoto ativando…');
+      setNotice(t('laser.remoteActivating'));
     }catch{
-      setNotice('Não foi possível ativar o controle remoto.');
+      setNotice(t('laser.inputFailed'));
     }finally{
       setInputPending(false);
     }
@@ -318,7 +336,7 @@ export function LaserControlWorkspace(){
       sessionRef.current=next;
       setSession(next);
       setInputReady(false);
-      setNotice('Controle remoto bloqueado.');
+      setNotice(t('laser.inputBlocked'));
     }catch{
       setInputReady(false);
     }finally{
@@ -328,7 +346,7 @@ export function LaserControlWorkspace(){
 
   function sendRemoteInput(payload:Record<string,unknown>){
     const current=sessionRef.current;
-    if(!document.fullscreenElement||!inputReady||!current?.inputToken||!channelRef.current)return;
+    if(!inputReady||!current?.inputToken||!channelRef.current)return;
     void channelRef.current.send({
       type:'broadcast',
       event:'remote_input',
@@ -382,7 +400,7 @@ export function LaserControlWorkspace(){
     event:ReactPointerEvent<HTMLImageElement>,
     type:'pointerdown'|'pointerup'|'pointermove'|'pointercancel'
   ){
-    if(!document.fullscreenElement)return;
+    if(event.pointerType==='touch'&&!document.fullscreenElement)return;
 
     if(event.pointerType!=='touch'){
       if(!inputReady)return;
@@ -526,14 +544,9 @@ export function LaserControlWorkspace(){
           &&now-last.at<330
           &&Math.hypot(event.clientX-last.clientX,event.clientY-last.clientY)<28);
 
-        if(isDouble){
-          sendRemoteInput({type:'doubleclick',...point,button:0});
-          lastTapRef.current=null;
-        }else{
-          sendRemoteInput({type:'pointerdown',...point,button:0});
-          sendRemoteInput({type:'pointerup',...point,button:0});
-          lastTapRef.current={at:now,clientX:event.clientX,clientY:event.clientY};
-        }
+        sendRemoteInput({type:'pointerdown',...point,button:0});
+        sendRemoteInput({type:'pointerup',...point,button:0});
+        lastTapRef.current=isDouble?null:{at:now,clientX:event.clientX,clientY:event.clientY};
       }
     }
 
@@ -541,7 +554,7 @@ export function LaserControlWorkspace(){
   }
 
   function handleWheel(event:ReactWheelEvent<HTMLImageElement>){
-    if(!document.fullscreenElement||!inputReady)return;
+    if(!inputReady)return;
     const rect=event.currentTarget.getBoundingClientRect();
     if(rect.width<=0||rect.height<=0)return;
     const x=(event.clientX-rect.left)/rect.width;
@@ -552,7 +565,7 @@ export function LaserControlWorkspace(){
   }
 
   function handleKey(event:ReactKeyboardEvent<HTMLDivElement>,type:'keydown'|'keyup'){
-    if(!document.fullscreenElement||!inputReady)return;
+    if(!inputReady)return;
     if(['F5','F11','F12'].includes(event.code))return;
     event.preventDefault();
     sendRemoteInput({
@@ -570,7 +583,7 @@ export function LaserControlWorkspace(){
     }
 
     setCommandPending(command);
-    setCommandNotice('Enviando…');
+    setCommandNotice(t('laser.sent'));
 
     try{
       const response=await fetch('/api/laser-control/master/command',{
@@ -589,12 +602,12 @@ export function LaserControlWorkspace(){
 
       if(!response.ok){
         const labels:Record<string,string>={
-          remote_session_not_found:'A sessão remota expirou. Reconectando…',
-          machine_not_connected:'A máquina não está conectada.',
-          machine_not_idle:'A máquina precisa estar parada para esse comando.',
-          not_running:'Não há gravação em andamento para pausar.'
+          remote_session_not_found:t('laser.sessionExpired'),
+          machine_not_connected:t('laser.unavailable'),
+          machine_not_idle:t('laser.waitIdle'),
+          not_running:t('laser.noJob')
         };
-        setCommandNotice(labels[String(data?.error)]||'O comando foi bloqueado.');
+        setCommandNotice(labels[String(data?.error)]||t('laser.commandBlocked'));
         return;
       }
 
@@ -617,10 +630,10 @@ export function LaserControlWorkspace(){
 
         if(result?.status==='acknowledged'){
           setCommandNotice(
-            command==='start'?'Iniciar executado.'
-            :command==='pause'?'Pausar executado.'
-            :command==='stop'?'Parar executado.'
-            :'Frame alternado.'
+            command==='start'?t('laser.startDone')
+            :command==='pause'?t('laser.pauseDone')
+            :command==='stop'?t('laser.stopDone')
+            :t('laser.frameDone')
           );
           await loadDevices(true);
           return;
@@ -632,9 +645,9 @@ export function LaserControlWorkspace(){
         }
       }
 
-      setCommandNotice('O comando foi enviado, mas a confirmação não chegou a tempo.');
+      setCommandNotice(t('laser.commandNoConfirm'));
     }catch{
-      setCommandNotice('Falha de comunicação.');
+      setCommandNotice(t('laser.commandFail'));
     }finally{
       setCommandPending(null);
     }
@@ -643,7 +656,7 @@ export function LaserControlWorkspace(){
   async function claimPairing(event:FormEvent){
     event.preventDefault();
     const code=pairingCode.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
-    if(code.length!==8){setNotice('Digite o código de 8 caracteres.');return}
+    if(code.length!==8){setNotice(t('laser.invalidCode'));return}
 
     setPairingPending(true);
     try{
@@ -658,12 +671,64 @@ export function LaserControlWorkspace(){
         return;
       }
       setPairingCode('');
-      setNotice('PC vinculado.');
+      setNotice(t('laser.pcLinked'));
       await loadDevices();
     }catch{
       setNotice('Falha ao vincular o PC.');
     }finally{
       setPairingPending(false);
+    }
+  }
+
+  async function claimMentor(event:FormEvent){
+    event.preventDefault();
+    const code=mentorCode.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
+    if(code.length!==8){setNotice(t('laser.invalidCode'));return}
+    setMentorPending(true);
+    try{
+      const response=await fetch('/api/laser-control/mentor',{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'claim',code}),
+        cache:'no-store'
+      });
+      const data=await response.json();
+      if(!response.ok||!data?.claimed){
+        const reason=String(data?.reason||'');
+        setNotice(
+          reason==='mentor_entitlement_required'?t('laser.mentorNoAccess')
+          :reason==='concurrent_limit'?t('laser.mentorLimit')
+          :t('laser.mentorExpired')
+        );
+        return;
+      }
+      setMentorCode('');
+      setNotice(t('laser.mentorConnected'));
+      await loadDevices();
+      if(data?.deviceId)setSelectedDeviceId(String(data.deviceId));
+    }catch{
+      setNotice(t('laser.commandFail'));
+    }finally{
+      setMentorPending(false);
+    }
+  }
+
+  async function closeMentor(sessionId:string){
+    if(!sessionId||mentorClosingId)return;
+    setMentorClosingId(sessionId);
+    try{
+      const response=await fetch('/api/laser-control/mentor',{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'close',sessionId}),
+        cache:'no-store'
+      });
+      if(response.ok){
+        if(selectedDevice?.mentor_session_id===sessionId)setSelectedDeviceId(null);
+        await loadDevices();
+      }
+    }finally{
+      setMentorClosingId(null);
     }
   }
 
@@ -679,64 +744,123 @@ export function LaserControlWorkspace(){
   const canStop=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true);
 
+  function deviceCard(device:LaserDevice){
+    const mentor=device.connection_mode==='mentor';
+    return <div key={device.device_id} className={styles.deviceCard} data-selected={selectedDeviceId===device.device_id} data-mode={mentor?'mentor':'owned'}>
+      <button className={styles.deviceSelect} type="button" onClick={()=>setSelectedDeviceId(device.device_id)}>
+        <i data-online={online(device)}></i>
+        <span>
+          <b>{device.display_name}</b>
+          <small>Agent {device.agent_version||'—'} · {online(device)?'online':'offline'}</small>
+          {mentor&&<em>{t('laser.mentorActive')}</em>}
+        </span>
+      </button>
+      {mentor&&device.mentor_session_id&&<button
+        className={styles.mentorEnd}
+        type="button"
+        disabled={mentorClosingId===device.mentor_session_id}
+        onClick={()=>void closeMentor(device.mentor_session_id!)}
+      >{mentorClosingId===device.mentor_session_id?t('laser.mentorClosing'):t('laser.mentorClose')}</button>}
+    </div>
+  }
+
   return <section className={styles.shell}>
     <div className={styles.top}>
       <div>
-        <small>DEVINX LASER CONTROL</small>
-        <h2>LightBurn remoto</h2>
-        <p>Imagem ao vivo e controles passam por sessão temporária. Nenhum quadro é salvo continuamente no banco.</p>
+        <small>{t('laser.eyebrow')}</small>
+        <h2>{t('laser.title')}</h2>
+        <p>{t('laser.desc')}</p>
       </div>
       <div className={styles.liveBadge} data-live={realtimeStatus==='live'}>
-        <i></i>{realtimeStatus==='live'?'AO VIVO':realtimeStatus==='connecting'?'CONECTANDO':realtimeStatus==='error'?'SEM CANAL':'AGUARDANDO'}
+        <i></i>{
+          realtimeStatus==='live'?t('laser.live')
+          :realtimeStatus==='connecting'?t('laser.connecting')
+          :realtimeStatus==='error'?t('laser.error')
+          :t('laser.waiting')
+        }
       </div>
     </div>
 
-    <div className={styles.deviceStrip}>
-      {loading&&<span>Carregando PCs…</span>}
-      {!loading&&devices.length===0&&<span>Nenhum PC vinculado.</span>}
-      {devices.map(device=><button
-        key={device.device_id}
-        type="button"
-        className={selectedDeviceId===device.device_id?styles.selectedDevice:''}
-        onClick={()=>setSelectedDeviceId(device.device_id)}
-      >
-        <i data-online={online(device)}></i>
-        <span><b>{device.display_name}</b><small>Agent {device.agent_version||'—'} · {online(device)?'online':'offline'}</small></span>
-      </button>)}
-    </div>
+    <aside className={styles.deviceStrip}>
+      <form className={styles.mentorConnect} onSubmit={claimMentor}>
+        <span>{t('laser.mentoring')}</span>
+        <b>{t('laser.mentorTitle')}</b>
+        <p>{t('laser.mentorDesc')}</p>
+        <div>
+          <input
+            value={mentorCode}
+            onChange={event=>setMentorCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8))}
+            maxLength={8}
+            inputMode="text"
+            autoCapitalize="characters"
+            placeholder="ABCD2345"
+            aria-label={t('laser.mentorCode')}
+          />
+          <button disabled={mentorPending||mentorCode.length!==8}>
+            {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
+          </button>
+        </div>
+      </form>
 
-    {selectedDevice&&<div className={styles.workspace}>
+      <div className={styles.deviceGroup}>
+        <div className={styles.groupTitle}><span>{t('laser.mine')}</span><small>{ownedDevices.length}</small></div>
+        {loading&&<span className={styles.emptyDevice}>…</span>}
+        {!loading&&ownedDevices.length===0&&<span className={styles.emptyDevice}>{t('laser.noPc')}</span>}
+        {ownedDevices.map(deviceCard)}
+      </div>
+
+      <div className={styles.deviceGroup}>
+        <div className={styles.groupTitle}><span>{t('laser.mentoring')}</span><small>{mentorDevices.length}</small></div>
+        {!loading&&mentorDevices.length===0&&<span className={styles.emptyDevice}>{t('laser.noMentor')}</span>}
+        {mentorDevices.map(deviceCard)}
+      </div>
+    </aside>
+
+    {selectedDevice?<div className={styles.workspace}>
       <div className={styles.summary}>
-        <span><small>LightBurn</small><b>{selectedDevice.lightburn_online===true?'Conectado':selectedDevice.lightburn_online===false?'Fechado':'—'}</b></span>
-        <span><small>Máquina</small><b>{selectedDevice.machine_connected===true?(selectedDevice.machine_name||'Conectada'):selectedDevice.machine_connected===false?'Desconectada':'—'}</b></span>
-        <span><small>Job</small><b>{selectedDevice.job_state||'—'}</b></span>
-        <span><small>Progresso</small><b>{selectedDevice.progress_permille==null?'—':(selectedDevice.progress_permille/10).toFixed(1)+'%'}</b></span>
+        <span><small>{t('laser.lightburn')}</small><b>{selectedDevice.lightburn_online===true?t('laser.connected'):selectedDevice.lightburn_online===false?t('laser.closed'):'—'}</b></span>
+        <span><small>{t('laser.machine')}</small><b>{selectedDevice.machine_connected===true?(selectedDevice.machine_name||t('laser.connected')):selectedDevice.machine_connected===false?t('laser.disconnected'):'—'}</b></span>
+        <span><small>{t('laser.job')}</small><b>{selectedDevice.job_state||'—'}</b></span>
+        <span><small>{t('laser.progress')}</small><b>{selectedDevice.progress_permille==null?'—':(selectedDevice.progress_permille/10).toFixed(1)+'%'}</b></span>
       </div>
 
       <div className={styles.tabs}>
-        <button className={tab==='live'?styles.activeTab:''} onClick={()=>setTab('live')}>Ao vivo</button>
-        <button className={tab==='control'?styles.activeTab:''} onClick={()=>setTab('control')}>Controle</button>
-        <button className={tab==='agent'?styles.activeTab:''} onClick={()=>setTab('agent')}>Agent & guia</button>
+        <button className={tab==='live'?styles.activeTab:''} onClick={()=>setTab('live')}>{t('laser.tabLive')}</button>
+        <button className={tab==='control'?styles.activeTab:''} onClick={()=>setTab('control')}>{t('laser.tabControl')}</button>
+        <button className={tab==='agent'?styles.activeTab:''} onClick={()=>setTab('agent')}>{t('laser.tabAgent')}</button>
       </div>
 
       {tab==='live'&&<div className={styles.livePane}>
         <div className={styles.liveToolbar}>
           <div className={styles.zoom}>
             <button onClick={()=>setZoom(value=>Math.max(.75,Math.round((value-.25)*100)/100))}>−</button>
-            <button onClick={resetZoom}>{Math.round(zoom*100)}%</button>
+            <button title={t('laser.zoomReset')} onClick={resetZoom}>{Math.round(zoom*100)}%</button>
             <button onClick={()=>setZoom(value=>Math.min(3,Math.round((value+.25)*100)/100))}>＋</button>
           </div>
           <div className={styles.orientation}>
-            <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>Auto</button>
-            <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>Horizontal</button>
-            <button className={orientation==='portrait'?styles.on:''} onClick={()=>void setOrientationMode('portrait')}>Vertical</button>
+            <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>{t('laser.auto')}</button>
+            <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>{t('laser.landscape')}</button>
+            <button className={orientation==='portrait'?styles.on:''} onClick={()=>void setOrientationMode('portrait')}>{t('laser.portrait')}</button>
           </div>
-          <button className={styles.fullscreenButton} onClick={()=>void enterFullscreen()}>Tela cheia</button>
+          <button
+            className={inputReady?styles.controlOn:styles.controlOff}
+            disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
+            onClick={()=>{
+              fullscreenAutoInputRef.current=false;
+              void (inputReady?disableRemoteInput():enableRemoteInput());
+            }}
+          >{
+            inputPending?t('laser.remoteActivating')
+            :inputReady?t('laser.remoteOn')
+            :session?.remoteInputEnabled?t('laser.remoteConnecting')
+            :t('laser.remoteOff')
+          }</button>
+          <button className={styles.fullscreenButton} onClick={()=>void enterFullscreen()}>{t('laser.fullscreen')}</button>
         </div>
 
         <div
           ref={previewSurfaceRef}
-          className={[styles.previewSurface,fullscreen&&inputReady?styles.remoteControlSurface:''].filter(Boolean).join(' ')}
+          className={[styles.previewSurface,inputReady?styles.remoteControlSurface:''].filter(Boolean).join(' ')}
           tabIndex={0}
           onKeyDown={event=>handleKey(event,'keydown')}
           onKeyUp={event=>handleKey(event,'keyup')}
@@ -748,128 +872,105 @@ export function LaserControlWorkspace(){
                 <button onClick={resetZoom}>{Math.round(zoom*100)}%</button>
                 <button onClick={()=>setZoom(value=>Math.min(3,value+.25))}>＋</button>
               </div>
-              <div className={styles.orientation}>
-                <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>Auto</button>
-                <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>↔</button>
-                <button className={orientation==='portrait'?styles.on:''} onClick={()=>void setOrientationMode('portrait')}>↕</button>
-              </div>
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
                 disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
-                onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
-              >{
-                inputPending?'Ativando…'
-                :inputReady?'Controle: LIGADO'
-                :session?.remoteInputEnabled?'Conectando controle…'
-                :'CONTROLE DESLIGADO · ativar'
-              }</button>
-              <button onClick={()=>void exitFullscreen()}>Fechar</button>
+                onClick={()=>{
+                  fullscreenAutoInputRef.current=false;
+                  void (inputReady?disableRemoteInput():enableRemoteInput());
+                }}
+              >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
+              <button onClick={()=>void exitFullscreen()}>{t('laser.fullscreenClose')}</button>
             </>}
           </div>
 
           {frameSrc?<img
             ref={imageRef}
             src={frameSrc}
-            alt="Janela ao vivo do LightBurn"
+            alt="LightBurn"
             style={fullscreen
-              ?{
-                transform:`scale(${zoom})`,
-                transformOrigin:`${zoomOrigin.x*100}% ${zoomOrigin.y*100}%`
-              }
-              :{
-                transform:`scale(${zoom})`,
-                transformOrigin:'center center'
-              }}
-            className={inputReady&&fullscreen?styles.remoteImageActive:styles.remoteImage}
+              ?{transform:`scale(${zoom})`,transformOrigin:`${zoomOrigin.x*100}% ${zoomOrigin.y*100}%`}
+              :{transform:`scale(${zoom})`,transformOrigin:'center center'}}
+            className={inputReady?styles.remoteImageActive:styles.remoteImage}
             onPointerDown={event=>handlePointer(event,'pointerdown')}
             onPointerUp={event=>handlePointer(event,'pointerup')}
             onPointerMove={event=>handlePointer(event,'pointermove')}
             onPointerCancel={event=>handlePointer(event,'pointercancel')}
             onContextMenu={event=>event.preventDefault()}
-            onDoubleClick={event=>{
-              if(!document.fullscreenElement||!inputReady)return;
-              const point=pointerCoordinates(event);
-              if(point)sendRemoteInput({type:'doubleclick',...point,button:0});
-            }}
             onWheel={handleWheel}
             draggable={false}
           />:<div className={styles.previewEmpty}>
-            <b>{selectedDevice.lightburn_online===false?'Abra o LightBurn no PC da máquina':'Conectando à tela do LightBurn…'}</b>
-            <span>O primeiro quadro aparece assim que o Agent entra na sessão Realtime.</span>
+            <b>{selectedDevice.lightburn_online===false?t('laser.previewOpen'):t('laser.previewWaiting')}</b>
+            <span>{t('laser.previewHelp')}</span>
           </div>}
         </div>
 
         <div className={styles.frameInfo}>
           <span>{frameSize||'—'}</span>
-          <span>{frameLatency==null?'latência —':`latência ~${frameLatency} ms`}</span>
-          <span>{frameAt?new Date(frameAt).toLocaleTimeString('pt-BR'):'—'}</span>
+          <span>{frameLatency==null?'—':`${t('laser.latency')} ~${frameLatency} ms`}</span>
+          <span>{frameAt?new Date(frameAt).toLocaleTimeString():'—'}</span>
         </div>
 
         <div className={styles.controlHint}>
-          <b>Controle por toque/mouse</b>
-          <span>Em tela cheia: 1 toque clica, toque duplo abre/ativa, segurar faz clique direito, arrastar move no LightBurn e a pinça com 2 dedos amplia exatamente a área sob seus dedos.</span>
+          <b>{t('laser.inputTitle')}</b>
+          <span>{t('laser.inputHint')}</span>
         </div>
       </div>}
 
       {tab==='control'&&<div className={styles.controlPane}>
         <div className={styles.commandGrid}>
           <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
-            <i>▣</i><b>Frame / Encerrar</b><small>{canFrame?(selectedDevice?.job_state==='framing'?'Encerrar framing':'Abrir Live Framing'):'Aguardando máquina parada'}</small>
+            <i>▣</i><b>{t('laser.frame')}</b><small>{canFrame?(selectedDevice?.job_state==='framing'?t('laser.frameClose'):t('laser.frameOpen')):t('laser.waitIdle')}</small>
           </button>
           <button disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
-            <i>▶</i><b>Iniciar</b><small>{canStart?'Pronto':'Aguardando máquina parada'}</small>
+            <i>▶</i><b>{t('laser.start')}</b><small>{canStart?t('laser.ready'):t('laser.waitIdle')}</small>
           </button>
           <button disabled={!canPause||commandPending!==null} onClick={()=>void sendCommand('pause')}>
-            <i>Ⅱ</i><b>Pausar</b><small>{canPause?'Pronto':'Sem job em andamento'}</small>
+            <i>Ⅱ</i><b>{t('laser.pause')}</b><small>{canPause?t('laser.ready'):t('laser.noJob')}</small>
           </button>
           <button className={styles.stop} disabled={!canStop||commandPending!==null} onClick={()=>void sendCommand('stop')}>
-            <i>■</i><b>Parar</b><small>{canStop?'Pronto':'Máquina indisponível'}</small>
+            <i>■</i><b>{t('laser.stop')}</b><small>{canStop?t('laser.ready'):t('laser.unavailable')}</small>
           </button>
         </div>
         {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
         <div className={styles.controlDetail}>
-          <b>Resposta rápida + confirmação</b>
-          <p>O pedido é registrado, enviado pelo canal Realtime e confirmado pelo Agent. Se o canal cair, a fila curta continua servindo como fallback sem executar o mesmo comando duas vezes.</p>
+          <b>SAFE CONTROL</b>
+          <p>{t('laser.commandSafety')}</p>
         </div>
       </div>}
 
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
-          <div><small>WINDOWS 10/11 · 64 BITS</small><h3>DevinX Laser Agent 1.0.11</h3><p>Instala no usuário do Windows, inicia sozinho e pode ser removido pela própria bandeja.</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.11/DevinX-Laser-Agent-1.0.11.zip" download>Baixar Agent</a>
+          <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.12/DevinX-Laser-Agent-1.0.12.zip" download>{t('laser.download')}</a>
         </div>
+
+        <div className={styles.agentModes}>
+          <article><i>∞</i><div><b>{t('laser.permanentTitle')}</b><p>{t('laser.permanentDesc')}</p></div></article>
+          <article><i>⌁</i><div><b>{t('laser.temporaryTitle')}</b><p>{t('laser.temporaryDesc')}</p></div></article>
+        </div>
+        <div className={styles.licenseNote}>{t('laser.agentSafety')}</div>
 
         <div className={styles.guideSteps}>
-          <article><b>1. Baixe e extraia</b><p>Baixe o ZIP, clique com o botão direito e escolha Extrair tudo. Não execute o EXE de dentro do ZIP.</p></article>
-          <article><b>2. Abra o Agent</b><p>Dê dois cliques em DevinXLaserAgent.exe. Na primeira execução ele copia os arquivos para a pasta local do usuário e passa a iniciar com o Windows.</p></article>
-          <article><b>3. Vincule o PC</b><p>O navegador abre a página de vínculo do DevinX. Confirme o PC uma única vez. O vínculo fica salvo.</p></article>
-          <article><b>4. Abra o LightBurn</b><p>Use o LightBurn normalmente no PC da máquina. O Agent detecta quando ele abre, fecha ou muda de estado.</p></article>
-          <article><b>5. Controle à distância</b><p>No Laser Control escolha o PC. Em Ao vivo você vê a janela, usa zoom/orientação e, em tela cheia, pode habilitar toque/mouse/teclado. A aba Controle tem os botões dedicados.</p></article>
-          <article><b>6. Para remover</b><p>No Windows, clique no ícone do DevinX Laser Agent perto do relógio e escolha Desinstalar DevinX Laser Agent. Ele remove inicialização automática, vínculo e arquivos locais.</p></article>
+          <article><b>{t('laser.guide1t')}</b><p>{t('laser.guide1d')}</p></article>
+          <article><b>{t('laser.guide2t')}</b><p>{t('laser.guide2d')}</p></article>
+          <article><b>{t('laser.guide3t')}</b><p>{t('laser.guide3d')}</p></article>
+          <article><b>{t('laser.guide4t')}</b><p>{t('laser.guide4d')}</p></article>
+          <article><b>{t('laser.guide5t')}</b><p>{t('laser.guide5d')}</p></article>
+          <article><b>{t('laser.guide6t')}</b><p>{t('laser.guide6d')}</p></article>
         </div>
 
-        <details>
-          <summary>Windows mostrou aviso de segurança?</summary>
-          <p>Enquanto o Agent for distribuído fora da Microsoft Store e sem certificado pago, o Windows pode mostrar Editor desconhecido/SmartScreen. O DevinX não exige administrador. Para evitar custo de certificado, a distribuição assinada pela Microsoft Store fica como etapa de publicação, sem alterar o funcionamento do Agent.</p>
-        </details>
-        <details>
-          <summary>Agent não apareceu perto do relógio</summary>
-          <p>Abra a seta de ícones ocultos da barra do Windows. Se ele não estiver ali, execute DevinXLaserAgent.exe novamente. Um segundo clique não cria outro Agent: apenas abre o Laser Control.</p>
-        </details>
-        <details>
-          <summary>Imagem não aparece</summary>
-          <p>Confirme que o LightBurn está aberto e visível no PC da máquina. O Agent transmite somente a janela do LightBurn e encerra a transmissão quando a sessão remota fecha.</p>
-        </details>
-
         <details className={styles.manualPair}>
-          <summary>Vínculo manual de suporte</summary>
+          <summary>{t('laser.permanentTitle')} · {t('laser.pair')}</summary>
           <form onSubmit={claimPairing}>
-            <label>Nome do PC<input value={deviceName} onChange={event=>setDeviceName(event.target.value)} maxLength={80}/></label>
-            <label>Código<input value={pairingCode} onChange={event=>setPairingCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8))} maxLength={8} placeholder="ABCD2345"/></label>
-            <button disabled={pairingPending}>{pairingPending?'Vinculando…':'Vincular'}</button>
+            <label>{t('laser.pairName')}<input value={deviceName} onChange={event=>setDeviceName(event.target.value)} maxLength={80}/></label>
+            <label>{t('laser.pairCode')}<input value={pairingCode} onChange={event=>setPairingCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8))} maxLength={8} placeholder="ABCD2345"/></label>
+            <button disabled={pairingPending}>{pairingPending?t('laser.pairing'):t('laser.pair')}</button>
           </form>
         </details>
       </div>}
+    </div>:<div className={styles.workspaceEmpty}>
+      <div><small>{t('laser.eyebrow')}</small><b>{t('laser.previewWaiting')}</b><span>{t('laser.noPc')}</span></div>
     </div>}
 
     {notice&&<div className={styles.notice}>{notice}</div>}

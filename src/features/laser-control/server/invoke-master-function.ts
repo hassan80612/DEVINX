@@ -6,7 +6,8 @@ const ALLOWED_FUNCTIONS=new Set([
   'laser-master-device-access',
   'laser-master-preview',
   'laser-master-command',
-  'laser-master-remote-session'
+  'laser-master-remote-session',
+  'laser-mentor-session'
 ]);
 
 export async function invokeLaserMasterFunction(slug:string,body:Record<string,unknown>){
@@ -17,9 +18,10 @@ export async function invokeLaserMasterFunction(slug:string,body:Record<string,u
   const userId=claimsData?.claims?.sub;
   if(claimsError||!userId)return {ok:false,status:401,data:{error:'unauthorized'}};
 
-  const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
+  const{data:accessData,error:accessError}=await supabase.rpc('get_laser_access_status');
   const access=Array.isArray(accessData)?accessData[0]:accessData;
-  if(accessError||!access?.allowed||!access?.is_admin)return {ok:false,status:404,data:{error:'not_found'}};
+  const laserAllowed=Boolean(access?.is_admin||access?.owner_access||access?.mentor_access);
+  if(accessError||!laserAllowed)return {ok:false,status:404,data:{error:'not_found'}};
 
   // getClaims() above is the authorization check. getSession() is used only
   // to retrieve the already-validated access token for the Edge Function hop.

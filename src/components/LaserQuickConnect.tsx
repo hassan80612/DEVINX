@@ -3,8 +3,10 @@
 import {useState} from 'react';
 import Link from 'next/link';
 import styles from './LaserQuickConnect.module.css';
+import {useI18n} from '@/i18n/provider';
 
 export function LaserQuickConnect({code,deviceName}:{code:string;deviceName:string}){
+  const{t}=useI18n();
   const[pending,setPending]=useState(false);
   const[done,setDone]=useState(false);
   const[message,setMessage]=useState('');
@@ -23,14 +25,14 @@ export function LaserQuickConnect({code,deviceName}:{code:string;deviceName:stri
       const data=await response.json();
       if(!response.ok||!data?.claimed){
         setMessage(data?.reason==='not_found_or_expired'
-          ?'A solicitação expirou. Feche esta página e abra o Agent novamente.'
-          :'Não foi possível vincular este PC.');
+          ?t('laser.mentorExpired')
+          :t('laser.commandFail'));
         return;
       }
       setDone(true);
-      setMessage('PC vinculado com sucesso. Você já pode voltar ao Laser Control.');
+      setMessage(t('laser.pcLinked'));
     }catch{
-      setMessage('Falha de conexão. Tente novamente.');
+      setMessage(t('laser.commandFail'));
     }finally{
       setPending(false);
     }
@@ -38,25 +40,23 @@ export function LaserQuickConnect({code,deviceName}:{code:string;deviceName:stri
 
   return <main className={styles.page}>
     <section className={styles.card}>
-      <span className={styles.badge}>DEVINX LASER CONTROL</span>
-      <h1>{done?'PC conectado':'Vincular este PC?'}</h1>
-      <p>{done
-        ?'O Agent recebeu autorização da sua conta Master.'
-        :'O DevinX encontrou uma solicitação do Agent neste computador.'}</p>
+      <span className={styles.badge}>{t('laser.eyebrow')}</span>
+      <h1>{done?t('laser.pcLinked'):t('laser.pair')}</h1>
+      <p>{t('laser.permanentDesc')}</p>
 
       <div className={styles.device}>
-        <small>COMPUTADOR</small>
+        <small>PC</small>
         <strong>{deviceName}</strong>
-        <span>O acesso pode ser revogado depois pela sua Master.</span>
+        <span>{t('laser.agentSafety')}</span>
       </div>
 
       {!done&&<button className={styles.primary} type="button" onClick={()=>void connect()} disabled={pending}>
-        {pending?'Vinculando…':'Vincular este PC'}
+        {pending?t('laser.pairing'):t('laser.pair')}
       </button>}
 
       {message&&<div className={done?styles.success:styles.error}>{message}</div>}
-      <Link className={styles.link} href="/laser-control">Abrir painel Laser Control</Link>
-      <small className={styles.safe}>SAFE MODE · comandos físicos continuam desligados</small>
+      <Link className={styles.link} href="/laser-control">{t('laser.title')}</Link>
+      <small className={styles.safe}>SAFE MODE · {t('laser.commandSafety')}</small>
     </section>
   </main>;
 }
