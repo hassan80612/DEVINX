@@ -9,7 +9,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
 {
     private const string PublishableKey="sb_publishable_sZoXI7Qxu35geVcMN1p-4A_d4ojgA8s";
     private static readonly Uri RealtimeBase=
-        new($"wss://jubiwhtnhxluetzkzomm.supabase.co/realtime/v1/websocket?apikey={Uri.EscapeDataString(PublishableKey)}&vsn=1.0.0");
+        new($"wss://jubiwhtnhxluetzkzomm.supabase.co/realtime/v1/websocket?apikey={Uri.EscapeDataString(PublishableKey)}&vsn=2.0.0&log_level=info");
 
     private readonly RemoteSessionConfig _config;
     private readonly Func<RealtimeCommand,Task> _onCommand;
@@ -35,14 +35,17 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
     public bool IsConnected=>_socket.State==WebSocketState.Open&&_joined.Task.IsCompletedSuccessfully;
     public string SessionId=>_config.Id;
     public long Revision=>_config.Revision;
+    public string? LastError{get;private set;}
 
     public async Task<bool> ConnectAsync(CancellationToken cancellationToken)
     {
         using var linked=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken,_stop.Token);
         try
         {
+            LastError=null;
             await _socket.ConnectAsync(RealtimeBase,linked.Token);
             _receiveTask=ReceiveLoopAsync(_stop.Token);
+
             await SendEnvelopeAsync(
                 "phx_join",
                 new
@@ -50,7 +53,8 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                     config=new
                     {
                         broadcast=new{ack=false,self=false},
-                        presence=new{enabled=false},
+                        presence=new{enabled=false,key=""},
+                        postgres_changes=Array.Empty<object>(),
                         @private=false
                     }
                 },
@@ -64,8 +68,9 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             _heartbeatTask=HeartbeatLoopAsync(_stop.Token);
             return true;
         }
-        catch
+        catch(Exception ex)
         {
+            LastError=ex.GetType().Name;
             return false;
         }
     }
@@ -96,15 +101,13 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         },cancellationToken);
     }
 
-    private async Task SendBroadcastAsync(string eventName,object payload,CancellationToken cancellationToken)
-    {
-        await SendEnvelopeAsync(
+    private Task SendBroadcastAsync(string eventName,object payload,CancellationToken cancellationToken)=>
+        SendEnvelopeAsync(
             "broadcast",
             new{type="broadcast",@event=eventName,payload},
             joinRef:"1",
             reference:Interlocked.Increment(ref _ref).ToString(),
             cancellationToken);
-    }
 
     private async Task SendEnvelopeAsync(
         string eventName,
@@ -114,13 +117,16 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         if(_socket.State!=WebSocketState.Open)return;
-        var message=JsonSerializer.Serialize(new
+
+        // Supabase Realtime uses the Phoenix v2 serializer by default in current clients:
+        // [join_ref, ref, topic, event, payload].
+        var message=JsonSerializer.Serialize(new object?[]
         {
-            topic="realtime:"+_config.Topic,
-            @event=eventName,
-            payload,
-            @ref=reference,
-            join_ref=joinRef
+            joinRef,
+            reference,
+            "realtime:"+_config.Topic,
+            eventName,
+            payload
         });
 
         var bytes=Encoding.UTF8.GetBytes(message);
@@ -164,8 +170,9 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                 await HandleMessageAsync(json);
             }
             catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){return;}
-            catch
+            catch(Exception ex)
             {
+                LastError=ex.GetType().Name;
                 return;
             }
         }
@@ -177,26 +184,70 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         {
             using var doc=JsonDocument.Parse(json);
             var root=doc.RootElement;
-            var eventName=root.TryGetProperty("event",out var ev)?ev.GetString():null;
+
+            string? eventName;
+            string? reference;
+            JsonElement messagePayload;
+
+            if(root.ValueKind==JsonValueKind.Array)
+            {
+                var parts=root.EnumerateArray().ToArray();
+                if(parts.Length<5)return;
+                reference=parts[1].ValueKind switch
+                {
+                    JsonValueKind.String=>parts[1].GetString(),
+                    JsonValueKind.Number=>parts[1].ToString(),
+                    _=>null
+                };
+                eventName=parts[3].ValueKind==JsonValueKind.String?parts[3].GetString():null;
+                messagePayload=parts[4];
+            }
+            else if(root.ValueKind==JsonValueKind.Object)
+            {
+                eventName=root.TryGetProperty("event",out var ev)?ev.GetString():null;
+                reference=root.TryGetProperty("ref",out var rf)
+                    ?rf.ValueKind==JsonValueKind.String?rf.GetString():rf.ToString()
+                    :null;
+                if(!root.TryGetProperty("payload",out messagePayload))return;
+            }
+            else return;
 
             if(eventName=="phx_reply")
             {
-                var reference=root.TryGetProperty("ref",out var rf)?rf.GetString():null;
                 if(reference=="1"
-                   &&root.TryGetProperty("payload",out var reply)
-                   &&reply.TryGetProperty("status",out var status)
-                   &&status.GetString()=="ok")
-                    _joined.TrySetResult(true);
+                   &&messagePayload.ValueKind==JsonValueKind.Object
+                   &&messagePayload.TryGetProperty("status",out var status))
+                {
+                    if(status.GetString()=="ok")
+                    {
+                        _joined.TrySetResult(true);
+                    }
+                    else
+                    {
+                        var reason="join_rejected";
+                        if(messagePayload.TryGetProperty("response",out var response)
+                           &&response.ValueKind==JsonValueKind.Object
+                           &&response.TryGetProperty("reason",out var reasonEl)
+                           &&reasonEl.ValueKind==JsonValueKind.String)
+                            reason=reasonEl.GetString()??reason;
+                        LastError=reason;
+                        _joined.TrySetException(new InvalidOperationException(reason));
+                    }
+                }
                 return;
             }
 
-            if(eventName!="broadcast"
-               ||!root.TryGetProperty("payload",out var broadcast)
-               ||broadcast.ValueKind!=JsonValueKind.Object)
+            if(eventName=="phx_error"||eventName=="phx_close")
+            {
+                LastError=eventName;
+                return;
+            }
+
+            if(eventName!="broadcast"||messagePayload.ValueKind!=JsonValueKind.Object)
                 return;
 
-            var userEvent=broadcast.TryGetProperty("event",out var userEv)?userEv.GetString():null;
-            if(!broadcast.TryGetProperty("payload",out var payload)
+            var userEvent=messagePayload.TryGetProperty("event",out var userEv)?userEv.GetString():null;
+            if(!messagePayload.TryGetProperty("payload",out var payload)
                ||payload.ValueKind!=JsonValueKind.Object)
                 return;
 
@@ -252,9 +303,9 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                     Bool(payload,"meta")));
             }
         }
-        catch
+        catch(Exception ex)
         {
-            // Malformed or unrelated Realtime messages are ignored.
+            LastError=ex.GetType().Name;
         }
     }
 
@@ -266,13 +317,13 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             {
                 await Task.Delay(TimeSpan.FromSeconds(25),cancellationToken);
                 if(cancellationToken.IsCancellationRequested)return;
-                var message=JsonSerializer.Serialize(new
+                var message=JsonSerializer.Serialize(new object?[]
                 {
-                    topic="phoenix",
-                    @event="heartbeat",
-                    payload=new{},
-                    @ref=Interlocked.Increment(ref _ref).ToString(),
-                    join_ref=(string?)null
+                    null,
+                    Interlocked.Increment(ref _ref).ToString(),
+                    "phoenix",
+                    "heartbeat",
+                    new{}
                 });
                 var bytes=Encoding.UTF8.GetBytes(message);
                 await _sendLock.WaitAsync(cancellationToken);
@@ -285,7 +336,11 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
                 finally{_sendLock.Release();}
             }
             catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){return;}
-            catch{return;}
+            catch(Exception ex)
+            {
+                LastError=ex.GetType().Name;
+                return;
+            }
         }
     }
 

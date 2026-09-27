@@ -165,6 +165,7 @@ internal sealed class ContinuousAgent
                     }
                     else
                     {
+                        _tray.SetStatus("DevinX Laser Agent — Realtime indisponível ("+(realtime.LastError??"erro")+")");
                         await realtime.DisposeAsync();
                         realtime=null;
                     }
@@ -181,6 +182,7 @@ internal sealed class ContinuousAgent
                 }
                 else
                 {
+                    _tray.SetStatus("DevinX Laser Agent — Realtime indisponível ("+(realtime.LastError??"erro")+")");
                     await realtime.DisposeAsync();
                     realtime=null;
                 }
