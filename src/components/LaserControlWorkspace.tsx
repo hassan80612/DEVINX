@@ -96,6 +96,7 @@ export function LaserControlWorkspace(){
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
+  const[controlDrawerOpen,setControlDrawerOpen]=useState(false);
   const[controlSnapshot,setControlSnapshot]=useState<LightBurnControlSnapshot|null>(null);
   const[controlDrafts,setControlDrafts]=useState<Record<string,string>>({});
   const[controlPending,setControlPending]=useState<string|null>(null);
@@ -127,6 +128,7 @@ export function LaserControlWorkspace(){
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
   const fullscreenAutoInputRef=useRef(false);
+  const controlPendingRef=useRef<string|null>(null);
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -166,6 +168,12 @@ export function LaserControlWorkspace(){
     if(!device.last_seen_at)return false;
     return Date.now()-Date.parse(device.last_seen_at)<25_000;
   };
+
+  const supportsAdvancedControls=(version:string|null)=>{
+    const match=/^1\.0\.(\d+)/.exec(version||'');
+    return Boolean(match&&Number(match[1])>=15);
+  };
+  const advancedControlsReady=Boolean(selectedDevice&&supportsAdvancedControls(selectedDevice.agent_version));
 
   const postSession=useCallback(async(payload:Record<string,unknown>)=>{
     const response=await fetch('/api/laser-control/master/remote-session',{
@@ -277,17 +285,39 @@ export function LaserControlWorkspace(){
       .on('broadcast',{event:'control_result'},({payload}:any)=>{
         if(payload?.token!==session.frameToken)return;
         const requestId=String(payload?.requestId||'');
+        if(controlPendingRef.current===requestId)controlPendingRef.current=null;
         setControlPending(current=>current===requestId?null:current);
+
         if(!payload?.ok){
           setControlError(String(payload?.reason||t('laser.paramsReadFail')));
           return;
         }
-        const snapshot=payload?.snapshot as LightBurnControlSnapshot|undefined;
-        if(!snapshot)return;
+
+        const raw=payload?.snapshot;
+        if(!raw)return;
+        const rawLayers=Array.isArray(raw?.layers)?raw.layers:Array.isArray(raw?.Layers)?raw.Layers:[];
+        const rawFields=Array.isArray(raw?.fields)?raw.fields:Array.isArray(raw?.Fields)?raw.Fields:[];
+        const snapshot:LightBurnControlSnapshot={
+          windowTitle:String(raw?.windowTitle??raw?.WindowTitle??'')||null,
+          layers:rawLayers.map((layer:any)=>({
+            id:String(layer?.id??layer?.Id??''),
+            label:String(layer?.label??layer?.Label??layer?.id??layer?.Id??''),
+            selected:Boolean(layer?.selected??layer?.Selected)
+          })).filter((layer:LightBurnControlLayer)=>layer.id),
+          fields:rawFields.map((field:any)=>({
+            key:String(field?.key??field?.Key??''),
+            label:String(field?.label??field?.Label??field?.key??field?.Key??''),
+            kind:String(field?.kind??field?.Kind)==='toggle'?'toggle':'number',
+            value:field?.value??field?.Value??null,
+            checked:field?.checked??field?.Checked??null,
+            writable:Boolean(field?.writable??field?.Writable)
+          })).filter((field:LightBurnControlField)=>field.key)
+        };
+
         setControlError('');
         setControlSnapshot(snapshot);
         const nextDrafts:Record<string,string>={};
-        for(const field of Array.isArray(snapshot.fields)?snapshot.fields:[])
+        for(const field of snapshot.fields)
           if(field.kind==='number')nextDrafts[field.key]=field.value??'';
         setControlDrafts(nextDrafts);
       })
@@ -302,12 +332,6 @@ export function LaserControlWorkspace(){
       void supabase.removeChannel(channel);
     };
   },[session?.topic,session?.frameToken,t]);
-
-  useEffect(()=>{
-    if(!inputReady||!channelRef.current)return;
-    const timer=window.setTimeout(()=>refreshParameters(),180);
-    return()=>window.clearTimeout(timer);
-  },[inputReady,selectedDeviceId]);
 
   useEffect(()=>{
     const handle=()=>{
@@ -370,9 +394,27 @@ export function LaserControlWorkspace(){
     }
   }
 
+  async function refreshRemoteSession(){
+    if(!selectedDeviceId)return null;
+    try{
+      const data=await postSession({action:'renew',deviceId:selectedDeviceId});
+      const current=sessionRef.current;
+      const next={...current,...data} as RemoteSession;
+      sessionRef.current=next;
+      setSession(next);
+      return next;
+    }catch{
+      return null;
+    }
+  }
+
   async function enableRemoteInput(){
-    const current=sessionRef.current;
-    if(!current)return;
+    let current=sessionRef.current;
+    if(!current)current=await refreshRemoteSession();
+    if(!current){
+      setNotice(t('laser.sessionExpired'));
+      return;
+    }
     setInputPending(true);
     setInputReady(false);
     try{
@@ -420,12 +462,17 @@ export function LaserControlWorkspace(){
     action:'inspect'|'set'|'select_layer'|'open_layer',
     extra:Record<string,unknown>={}
   ){
+    if(!advancedControlsReady){
+      setControlError(t('laser.paramsAgentUpdate'));
+      return;
+    }
     const current=sessionRef.current;
     if(!inputReady||!current?.inputToken||!channelRef.current){
       setControlError(t('laser.paramsNeedControl'));
       return;
     }
     const requestId=crypto.randomUUID();
+    controlPendingRef.current=requestId;
     setControlPending(requestId);
     setControlError('');
     void channelRef.current.send({
@@ -433,6 +480,12 @@ export function LaserControlWorkspace(){
       event:'control_request',
       payload:{token:current.inputToken,requestId,action,...extra}
     });
+    window.setTimeout(()=>{
+      if(controlPendingRef.current!==requestId)return;
+      controlPendingRef.current=null;
+      setControlPending(current=>current===requestId?null:current);
+      setControlError(t('laser.paramsTimeout'));
+    },4_500);
   }
 
   function refreshParameters(){
@@ -706,8 +759,7 @@ export function LaserControlWorkspace(){
   }
 
   async function sendCommand(command:LaserCommand){
-    const current=sessionRef.current;
-    if(!selectedDevice||!current||commandPending)return;
+    if(!selectedDevice||commandPending)return;
 
     if(command==='start'){
       if(!window.confirm('Iniciar a gravação agora? Confirme somente com a máquina pronta e supervisionada.'))return;
@@ -717,6 +769,12 @@ export function LaserControlWorkspace(){
     setCommandNotice(t('laser.sent'));
 
     try{
+      const current=await refreshRemoteSession();
+      if(!current){
+        setCommandNotice(t('laser.sessionExpired'));
+        return;
+      }
+
       const response=await fetch('/api/laser-control/master/command',{
         method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
@@ -782,6 +840,17 @@ export function LaserControlWorkspace(){
     }finally{
       setCommandPending(null);
     }
+  }
+
+  function openControlDrawer(){
+    setTab('control');
+    setControlDrawerOpen(true);
+    if(!inputReady&&!inputPending)void enableRemoteInput();
+  }
+
+  function closeControlDrawer(){
+    setControlDrawerOpen(false);
+    setTab('live');
   }
 
   async function claimPairing(event:FormEvent){
@@ -961,14 +1030,14 @@ export function LaserControlWorkspace(){
           role="tab"
           aria-selected={tab==='live'}
           className={tab==='live'?styles.activeTab:''}
-          onClick={()=>setTab('live')}
+          onClick={()=>{setTab('live');setControlDrawerOpen(false)}}
         ><span className={styles.tabIcon}>◉</span><span>{t('laser.tabLive')}</span></button>
         <button
           type="button"
           role="tab"
           aria-selected={tab==='control'}
           className={tab==='control'?styles.activeTab:''}
-          onClick={()=>setTab('control')}
+          onClick={openControlDrawer}
         ><span className={styles.tabIcon}>⌘</span><span>{t('laser.tabControl')}</span></button>
         <button
           type="button"
@@ -979,7 +1048,7 @@ export function LaserControlWorkspace(){
         ><span className={styles.tabIcon}>⚙</span><span>{t('laser.tabAgent')}</span></button>
       </div>
 
-      {tab==='live'&&<div className={styles.livePane}>
+      {tab!=='agent'&&<div className={styles.livePane}>
         <div className={styles.liveToolbar}>
           <div className={styles.zoom}>
             <button onClick={()=>setZoom(value=>Math.max(.75,Math.round((value-.25)*100)/100))}>−</button>
@@ -1065,6 +1134,36 @@ export function LaserControlWorkspace(){
           <span>{frameAt?new Date(frameAt).toLocaleTimeString():'—'}</span>
         </div>
 
+        <section className={styles.controlDrawer}>
+          <button
+            type="button"
+            className={styles.drawerToggle}
+            aria-expanded={controlDrawerOpen}
+            onClick={()=>controlDrawerOpen?closeControlDrawer():openControlDrawer()}
+          >
+            <span><i>⌘</i><b>{t('laser.controlsTitle')}</b><small>{t('laser.controlsHelp')}</small></span>
+            <strong>{controlDrawerOpen?t('laser.controlsCollapse'):t('laser.controlsExpand')}</strong>
+          </button>
+
+          {controlDrawerOpen&&<div className={styles.controlDrawerBody}>
+
+        <div className={styles.commandGrid}>
+          <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
+            <i>▣</i><b>{t('laser.frame')}</b><small>{canFrame?(selectedDevice?.job_state==='framing'?t('laser.frameClose'):t('laser.frameOpen')):t('laser.waitIdle')}</small>
+          </button>
+          <button disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
+            <i>▶</i><b>{t('laser.start')}</b><small>{canStart?t('laser.ready'):t('laser.waitIdle')}</small>
+          </button>
+          <button disabled={!canPause||commandPending!==null} onClick={()=>void sendCommand('pause')}>
+            <i>Ⅱ</i><b>{t('laser.pause')}</b><small>{canPause?t('laser.ready'):t('laser.noJob')}</small>
+          </button>
+          <button className={styles.stop} disabled={!canStop||commandPending!==null} onClick={()=>void sendCommand('stop')}>
+            <i>■</i><b>{t('laser.stop')}</b><small>{canStop?t('laser.ready'):t('laser.unavailable')}</small>
+          </button>
+        </div>
+        {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
+
+
         <section className={styles.parameterDock}>
           <div className={styles.parameterHead}>
             <div>
@@ -1073,18 +1172,21 @@ export function LaserControlWorkspace(){
               <p>{t('laser.paramsHelp')}</p>
             </div>
             <div className={styles.parameterActions}>
-              <button type="button" disabled={!inputReady||Boolean(controlPending)} onClick={refreshParameters}>
+              <button type="button" disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)} onClick={refreshParameters}>
                 {controlPending?t('laser.paramsReading'):t('laser.paramsRefresh')}
               </button>
               <button
                 type="button"
-                disabled={!inputReady||Boolean(controlPending)}
+                disabled={!advancedControlsReady||!inputReady||Boolean(controlPending)}
                 onClick={()=>openLayerEditor(controlSnapshot?.layers?.find(layer=>layer.selected)?.id)}
               >{t('laser.paramsOpenLayer')}</button>
             </div>
           </div>
 
-          {!inputReady&&<div className={styles.parameterGate}>
+          {!advancedControlsReady?<div className={styles.parameterGate}>
+            <b>{t('laser.paramsAgentUpdate')}</b>
+            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.15/DevinX-Laser-Agent-1.0.15.zip">{t('laser.download')}</a>
+          </div>:!inputReady&&<div className={styles.parameterGate}>
             <b>{t('laser.paramsNeedControl')}</b>
             <button
               type="button"
@@ -1093,7 +1195,7 @@ export function LaserControlWorkspace(){
             >{inputPending?t('laser.remoteActivating'):t('laser.remoteOff')}</button>
           </div>}
 
-          {inputReady&&controlSnapshot&&<>
+          {advancedControlsReady&&inputReady&&controlSnapshot&&<>
             <div className={styles.layerBar}>
               <label>
                 <span>{t('laser.paramsLayer')}</span>
@@ -1144,36 +1246,16 @@ export function LaserControlWorkspace(){
             </div>}
           </>}
 
-          {inputReady&&!controlSnapshot&&!controlPending&&<div className={styles.parameterEmpty}>
+          {advancedControlsReady&&inputReady&&!controlSnapshot&&!controlPending&&<div className={styles.parameterEmpty}>
             <b>{t('laser.paramsReady')}</b>
             <span>{t('laser.paramsReadyHelp')}</span>
           </div>}
           {controlError&&<div className={styles.parameterError}>{controlError}</div>}
         </section>
 
-        <div className={styles.controlHint}>
-          <b>{t('laser.inputTitle')}</b>
-          <span>{t('laser.inputHint')}</span>
-        </div>
-      </div>}
 
-      {tab==='control'&&<div className={styles.controlPane}>
-        <div className={styles.commandGrid}>
-          <button disabled={!canFrame||commandPending!==null} onClick={()=>void sendCommand('frame')}>
-            <i>▣</i><b>{t('laser.frame')}</b><small>{canFrame?(selectedDevice?.job_state==='framing'?t('laser.frameClose'):t('laser.frameOpen')):t('laser.waitIdle')}</small>
-          </button>
-          <button disabled={!canStart||commandPending!==null} onClick={()=>void sendCommand('start')}>
-            <i>▶</i><b>{t('laser.start')}</b><small>{canStart?t('laser.ready'):t('laser.waitIdle')}</small>
-          </button>
-          <button disabled={!canPause||commandPending!==null} onClick={()=>void sendCommand('pause')}>
-            <i>Ⅱ</i><b>{t('laser.pause')}</b><small>{canPause?t('laser.ready'):t('laser.noJob')}</small>
-          </button>
-          <button className={styles.stop} disabled={!canStop||commandPending!==null} onClick={()=>void sendCommand('stop')}>
-            <i>■</i><b>{t('laser.stop')}</b><small>{canStop?t('laser.ready'):t('laser.unavailable')}</small>
-          </button>
-        </div>
-        {commandNotice&&<div className={styles.commandNotice}>{commandNotice}</div>}
-
+            <details className={styles.extraTools}>
+              <summary>{t('laser.extraTools')}</summary>
         <section className={styles.quickSection}>
           <div className={styles.sectionHeading}>
             <div><small>LIGHTBURN</small><h3>{t('laser.quickTools')}</h3></div>
@@ -1217,16 +1299,26 @@ export function LaserControlWorkspace(){
           </div>
         </section>
 
+
+            </details>
         <div className={styles.controlDetail}>
           <b>SAFE CONTROL</b>
           <p>{t('laser.commandSafety')}</p>
         </div>
+
+        <div className={styles.controlHint}>
+          <b>{t('laser.inputTitle')}</b>
+          <span>{t('laser.inputHint')}</span>
+        </div>
+
+          </div>}
+        </section>
       </div>}
 
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.14/DevinX-Laser-Agent-1.0.14.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.15/DevinX-Laser-Agent-1.0.15.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>
