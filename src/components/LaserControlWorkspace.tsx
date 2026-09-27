@@ -614,7 +614,7 @@ export function LaserControlWorkspace(){
             command==='start'?'Iniciar executado.'
             :command==='pause'?'Pausar executado.'
             :command==='stop'?'Parar executado.'
-            :'Frame seleção executado.'
+            :'Frame alternado.'
           );
           await loadDevices(true);
           return;
@@ -747,9 +747,14 @@ export function LaserControlWorkspace(){
               </div>
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
-                disabled={inputPending}
-                onClick={()=>void (session?.remoteInputEnabled?disableRemoteInput():enableRemoteInput())}
-              >{inputPending?'Ativando…':inputReady?'Controle: LIGADO':'Habilitar controle'}</button>
+                disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
+                onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
+              >{
+                inputPending?'Ativando…'
+                :inputReady?'Controle: LIGADO'
+                :session?.remoteInputEnabled?'Conectando controle…'
+                :'CONTROLE DESLIGADO · ativar'
+              }</button>
               <button onClick={()=>void exitFullscreen()}>Fechar</button>
             </>}
           </div>
@@ -822,8 +827,8 @@ export function LaserControlWorkspace(){
 
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
-          <div><small>WINDOWS 10/11 · 64 BITS</small><h3>DevinX Laser Agent 1.0.4</h3><p>Instala no usuário do Windows, inicia sozinho e pode ser removido pela própria bandeja.</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.4/DevinX-Laser-Agent-1.0.4.zip" download>Baixar Agent</a>
+          <div><small>WINDOWS 10/11 · 64 BITS</small><h3>DevinX Laser Agent 1.0.5</h3><p>Instala no usuário do Windows, inicia sozinho e pode ser removido pela própria bandeja.</p></div>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.5/DevinX-Laser-Agent-1.0.5.zip" download>Baixar Agent</a>
         </div>
 
         <div className={styles.guideSteps}>
