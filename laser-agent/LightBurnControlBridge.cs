@@ -22,6 +22,8 @@ internal static class LightBurnControlBridge
     private const int SelectionItemPatternId=10010;
     private const int TogglePatternId=10015;
     private const int LegacyPatternId=10018;
+    private const int StateSystemSelected=0x2;
+    private const int StateSystemFocused=0x4;
     private const int StateSystemChecked=0x10;
     private const int SelFlagTakeSelection=0x2;
 
@@ -33,7 +35,7 @@ internal static class LightBurnControlBridge
         public bool IsEmpty=>Width<=0||Height<=0;
     }
     private sealed record Node(
-        object Element,string Name,int ControlType,Bounds Rect,bool Enabled,bool Offscreen);
+        object Element,string Name,string SearchText,int ControlType,Bounds Rect,bool Enabled,bool Offscreen);
 
     private static readonly FieldSpec[] Specs=
     [
@@ -56,15 +58,15 @@ internal static class LightBurnControlBridge
         new("rollerDiameter","Diâmetro do rolete","number",["Roller Diameter","Diâmetro do rolete","Diámetro del rodillo"]),
         new("objectDiameter","Diâmetro do objeto","number",["Object Diameter","Diâmetro do objeto","Diámetro del objeto"]),
         new("circumference","Circunferência","number",["Circumference","Circunferência","Circunferencia"]),
-        new("splitSize","Tamanho do split","number",["Split Size","Split size","Tamanho do split"]),
+        new("splitSize","Tamanho da divisão","number",["Split Size","Split size","Tamanho do split","Tamanho da divisão"]),
         new("overlap","Sobreposição","number",["Overlap","Sobreposição","Superposición"]),
-        new("minSpeed","Velocidade mínima","number",["Min Speed","Minimum Speed","Velocidade mínima"]),
-        new("maxSpeed","Velocidade máxima","number",["Max Speed","Maximum Speed","Velocidade máxima"]),
+        new("minSpeed","Velocidade mínima","number",["Min Speed","Minimum Speed","Velocidade mínima","Velocidade mín.","Velocidade min."]),
+        new("maxSpeed","Velocidade máxima","number",["Max Speed","Maximum Speed","Velocidade máxima","Velocidade máx.","Velocidade max."]),
         new("accelerationTime","Aceleração","number",["Acceleration Time","Acceleration","Tempo de aceleração"]),
-        new("returnSpeed","Velocidade de retorno","number",["Return Speed","Velocidade de retorno"]),
+        new("returnSpeed","Velocidade de retorno","number",["Return Speed","Velocidade de retorno","Veloc. de retorno"]),
         new("outputCenter","Centro de saída","number",["Output Center","Centro de saída"]),
-        new("reverseRotary","Inverter direção","toggle",["Reverse Rotary Direction","Reverse Direction","Inverter direção"]),
-        new("returnToStart","Retornar ao início","toggle",["Return to Starting Point","Return to Start","Retornar ao início"])
+        new("reverseRotary","Inverter direção","toggle",["Reverse Rotary Direction","Reverse Direction","Inverter direção","Inverter sentido do rotativo","Inverter sentido"]),
+        new("returnToStart","Retornar ao início","toggle",["Return to Starting Point","Return to Start","Retornar ao início","Retornar ao ponto de partida"])
     ];
 
     private static readonly dynamic Automation=new UIA.CUIAutomation8();
@@ -171,6 +173,16 @@ internal static class LightBurnControlBridge
             if(root is null)return Fail("lightburn_window_not_found");
             var nodes=ReadNodes(root);
             var selected=FindLayerNode(nodes,null,true);
+            if(selected is null)
+            {
+                var unique=nodes
+                    .Select(node=>(node,id:LayerIdFromNode(node)))
+                    .Where(x=>x.id is not null)
+                    .GroupBy(x=>x.id!,StringComparer.OrdinalIgnoreCase)
+                    .Select(group=>group.OrderByDescending(x=>IsSelected(x.node.Element)).First().node)
+                    .ToArray();
+                if(unique.Length==1)selected=unique[0];
+            }
             if(selected is null)return Fail("selected_layer_not_found");
             if(!Click(selected,true))return Fail("layer_editor_open_failed");
             Thread.Sleep(220);
@@ -260,7 +272,37 @@ internal static class LightBurnControlBridge
                     var rect=new Bounds(
                         Convert.ToDouble(r.left),Convert.ToDouble(r.top),
                         Convert.ToDouble(r.right),Convert.ToDouble(r.bottom));
-                    result.Add(new Node((object)e,name,controlType,rect,enabled,offscreen));
+
+                    var searchParts=new List<string>();
+                    if(!string.IsNullOrWhiteSpace(name))searchParts.Add(name);
+                    try
+                    {
+                        var automationId=(Convert.ToString(e.CurrentAutomationId)??"").Trim();
+                        if(!string.IsNullOrWhiteSpace(automationId))searchParts.Add(automationId);
+                    }catch{}
+                    try
+                    {
+                        var help=(Convert.ToString(e.CurrentHelpText)??"").Trim();
+                        if(!string.IsNullOrWhiteSpace(help))searchParts.Add(help);
+                    }catch{}
+
+                    if(string.IsNullOrWhiteSpace(name)||controlType is 50004 or 50007 or 50016 or 50020 or 50025 or 50029 or 50036)
+                    {
+                        try
+                        {
+                            var legacy=Pattern((object)e,LegacyPatternId);
+                            if(legacy is not null)
+                            {
+                                var legacyName=(Convert.ToString(((dynamic)legacy).CurrentName)??"").Trim();
+                                var legacyValue=(Convert.ToString(((dynamic)legacy).CurrentValue)??"").Trim();
+                                if(!string.IsNullOrWhiteSpace(legacyName))searchParts.Add(legacyName);
+                                if(!string.IsNullOrWhiteSpace(legacyValue))searchParts.Add(legacyValue);
+                            }
+                        }catch{}
+                    }
+
+                    var searchText=string.Join(" ",searchParts.Distinct(StringComparer.OrdinalIgnoreCase));
+                    result.Add(new Node((object)e,name,searchText,controlType,rect,enabled,offscreen));
                 }
                 catch{}
             }
@@ -289,7 +331,7 @@ internal static class LightBurnControlBridge
         var interactive=nodes.Where(IsInteractive).ToArray();
 
         var direct=interactive
-            .Select(node=>(node,score:AliasScore(node.Name,spec.Aliases)))
+            .Select(node=>(node,score:AliasScore(node.SearchText,spec.Aliases)))
             .Where(x=>x.score>0)
             .OrderByDescending(x=>x.score)
             .ThenBy(x=>x.node.Offscreen)
@@ -297,7 +339,7 @@ internal static class LightBurnControlBridge
         if(direct.node is not null)return direct.node;
 
         foreach(var label in nodes
-            .Select(node=>(node,score:AliasScore(node.Name,spec.Aliases)))
+            .Select(node=>(node,score:AliasScore(node.SearchText,spec.Aliases)))
             .Where(x=>x.score>0&&!IsInteractive(x.node))
             .OrderByDescending(x=>x.score))
         {
@@ -305,10 +347,17 @@ internal static class LightBurnControlBridge
             var centerY=label.node.Rect.Top+label.node.Rect.Height/2;
             var candidate=interactive
                 .Where(x=>!x.Rect.IsEmpty&&!x.Offscreen)
-                .Where(x=>x.Rect.Left>=label.node.Rect.Left-8)
-                .Where(x=>Math.Abs((x.Rect.Top+x.Rect.Height/2)-centerY)<=36)
-                .Select(x=>(node:x,dist:Math.Abs(x.Rect.Left-label.node.Rect.Right)+Math.Abs((x.Rect.Top+x.Rect.Height/2)-centerY)*4))
-                .Where(x=>x.dist<650)
+                .Select(x=>{
+                    var y=Math.Abs((x.Rect.Top+x.Rect.Height/2)-centerY);
+                    var gap=x.Rect.Right<label.node.Rect.Left
+                        ?label.node.Rect.Left-x.Rect.Right
+                        :label.node.Rect.Right<x.Rect.Left
+                            ?x.Rect.Left-label.node.Rect.Right
+                            :0;
+                    var controlPenalty=x.ControlType is 50004 or 50016 or 50003?0:40;
+                    return(node:x,y,gap,dist:gap+y*4+controlPenalty);
+                })
+                .Where(x=>x.y<=42&&x.gap<=320)
                 .OrderBy(x=>x.dist)
                 .FirstOrDefault();
             if(candidate.node is not null)return candidate.node;
@@ -333,8 +382,25 @@ internal static class LightBurnControlBridge
 
     private static string Normalize(string value)=>Regex.Replace(value.Trim().ToLowerInvariant(),@"\s+"," ");
 
-    private static bool IsInteractive(Node node)=>
-        !node.Offscreen&&(CanSetValue(node.Element)||CanToggle(node.Element));
+    private static bool IsInteractive(Node node)
+    {
+        if(node.Offscreen||!node.Enabled)return false;
+        if(Pattern(node.Element,ValuePatternId) is not null)return true;
+        if(Pattern(node.Element,RangeValuePatternId) is not null)return true;
+        if(Pattern(node.Element,TogglePatternId) is not null)return true;
+
+        var legacy=Pattern(node.Element,LegacyPatternId);
+        if(legacy is null)return false;
+
+        return node.ControlType is
+            50000 or // button
+            50002 or // checkbox
+            50003 or // combo
+            50004 or // edit
+            50013 or // radio
+            50016 or // spinner
+            50025;   // custom Qt editor
+    }
 
     private static object? Pattern(object element,int patternId)
     {
@@ -470,12 +536,11 @@ internal static class LightBurnControlBridge
         var found=new Dictionary<string,LightBurnControlLayer>(StringComparer.OrdinalIgnoreCase);
         foreach(var node in nodes)
         {
-            var match=Regex.Match(node.Name,@"(?:^|\b)([CT]\d{2})(?:\b|$)",RegexOptions.IgnoreCase);
-            if(!match.Success)continue;
-            var id=match.Groups[1].Value.ToUpperInvariant();
+            var id=LayerIdFromNode(node);
+            if(id is null)continue;
             var selected=IsSelected(node.Element);
             if(!found.ContainsKey(id)||selected)
-                found[id]=new(id,string.IsNullOrWhiteSpace(node.Name)?id:node.Name,selected);
+                found[id]=new(id,id,selected);
         }
         return found.Values.OrderBy(x=>x.Id).ToArray();
     }
@@ -484,9 +549,9 @@ internal static class LightBurnControlBridge
     {
         foreach(var node in nodes)
         {
-            var match=Regex.Match(node.Name,@"(?:^|\b)([CT]\d{2})(?:\b|$)",RegexOptions.IgnoreCase);
-            if(!match.Success)continue;
-            if(layerId is not null&&!string.Equals(match.Groups[1].Value,layerId,StringComparison.OrdinalIgnoreCase))
+            var id=LayerIdFromNode(node);
+            if(id is null)continue;
+            if(layerId is not null&&!string.Equals(id,layerId,StringComparison.OrdinalIgnoreCase))
                 continue;
             if(selectedOnly&&!IsSelected(node.Element))continue;
             return node;
@@ -494,13 +559,28 @@ internal static class LightBurnControlBridge
         return null;
     }
 
+    private static string? LayerIdFromNode(Node node)
+    {
+        var match=Regex.Match(node.SearchText,@"(?:^|\b)([CT]\d{2})(?:\b|$)",RegexOptions.IgnoreCase);
+        return match.Success?match.Groups[1].Value.ToUpperInvariant():null;
+    }
+
     private static bool IsSelected(object element)
     {
         try
         {
             var selection=Pattern(element,SelectionItemPatternId);
-            return selection is not null&&Convert.ToBoolean(((dynamic)selection).CurrentIsSelected);
-        }catch{return false;}
+            if(selection is not null&&Convert.ToBoolean(((dynamic)selection).CurrentIsSelected))
+                return true;
+
+            var legacy=Pattern(element,LegacyPatternId);
+            if(legacy is not null)
+            {
+                var state=Convert.ToInt32(((dynamic)legacy).CurrentState);
+                return (state&(StateSystemSelected|StateSystemFocused))!=0;
+            }
+        }catch{}
+        return false;
     }
 
     private static bool Select(object element)

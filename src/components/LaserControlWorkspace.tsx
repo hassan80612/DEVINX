@@ -308,7 +308,14 @@ export function LaserControlWorkspace(){
         setControlPending(current=>current===requestId?null:current);
 
         if(!payload?.ok){
-          setControlError(String(payload?.reason||t('laser.paramsReadFail')));
+          const reason=String(payload?.reason||'');
+          setControlError(
+            /selected_layer_not_found|layer_not_found/.test(reason)
+              ?t('laser.paramsNoLayer')
+              :/field_not_found/.test(reason)
+                ?t('laser.paramsNotFound')
+                :t('laser.paramsReadFail')
+          );
           return;
         }
 
@@ -1236,7 +1243,7 @@ export function LaserControlWorkspace(){
 
           {!advancedControlsReady?<div className={styles.parameterGate}>
             <b>{t('laser.paramsAgentUpdate')}</b>
-            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.17/DevinX-Laser-Agent-1.0.17.zip">{t('laser.download')}</a>
+            <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.18/DevinX-Laser-Agent-1.0.18.zip">{t('laser.download')}</a>
           </div>:!inputReady&&<div className={styles.parameterGate}>
             <b>{t('laser.paramsNeedControl')}</b>
             <button
@@ -1369,7 +1376,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.17/DevinX-Laser-Agent-1.0.17.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.18/DevinX-Laser-Agent-1.0.18.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

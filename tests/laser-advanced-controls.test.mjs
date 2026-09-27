@@ -2,20 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser Control uses Agent 1.0.17 for advanced controls',async()=>{
+test('Laser Control uses Agent 1.0.18 for advanced controls',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   const i18n=await readFile('src/i18n/laser.ts','utf8');
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
-  assert.match(panel,/laser-agent-v1\.0\.17/);
+  assert.match(panel,/laser-agent-v1\.0\.18/);
   assert.match(panel,/dialog_confirm/);
   assert.match(panel,/dialog_cancel/);
   assert.match(panel,/dialog_close/);
   assert.match(panel,/select_layer/);
   assert.match(panel,/open_layer/);
   assert.match(css,/\.parameterDock/);
-  assert.match(i18n,/DevinX Laser Agent 1\.0\.17/);
+  assert.match(i18n,/DevinX Laser Agent 1\.0\.18/);
 });
 
 test('Laser command buttons are not blocked by cached job state',async()=>{
@@ -44,9 +44,30 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.0\.17"/);
+  assert.match(pairing,/AgentVersion = "1\.0\.18"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
   assert.doesNotMatch(workflow,/--clobber/);
+});
+
+
+test('LightBurn 1.7 UIA fallback handles legacy layer state and left-side rotary editors',async()=>{
+  const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
+  assert.match(bridge,/StateSystemSelected=0x2/);
+  assert.match(bridge,/StateSystemFocused=0x4/);
+  assert.match(bridge,/LayerIdFromNode/);
+  assert.match(bridge,/node\.SearchText/);
+  assert.match(bridge,/x\.Rect\.Right<label\.node\.Rect\.Left/);
+  assert.match(bridge,/Tamanho da divisão/);
+  assert.match(bridge,/Velocidade mín\./);
+  assert.match(bridge,/Inverter sentido do rotativo/);
+  assert.match(bridge,/unique\.Length==1/);
+});
+
+test('Laser Control does not expose raw Agent reason codes to the operator',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  assert.match(panel,/selected_layer_not_found\|layer_not_found/);
+  assert.match(panel,/laser\.paramsNoLayer/);
+  assert.doesNotMatch(panel,/setControlError\(String\(payload\?\.reason/);
 });

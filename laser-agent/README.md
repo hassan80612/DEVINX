@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.17
+# DevinX Laser Agent 1.0.18
 
 Agent Windows do DevinX Laser Control.
 
@@ -92,3 +92,7 @@ A leitura/escrita de parâmetros do LightBurn roda fora do loop Realtime. Um pai
 
 ## 1.0.17 — autorização automática de leitura do LightBurn
 Quando a API local do LightBurn estiver disponível e ainda não houver autorização salva, o Agent solicita a permissão de leitura automaticamente uma única vez. O usuário confirma no próprio LightBurn. Depois disso, a autorização fica protegida no Windows e o Agent passa a ler camadas e parâmetros pela API local, mantendo UDP como fallback para comandos e versões sem REST.
+
+
+## 1.0.18 — LightBurn 1.7.x / Galvo
+A leitura por acessibilidade agora reconhece C00/T00 também por dados legados do Qt, considera seleção/foco do MSAA e localiza editores numéricos dos dois lados do rótulo. Isso cobre o layout do LightBurn 1.7.08 em que os valores do rotativo ficam à esquerda de “passos por rotação”, “diâmetro”, “circunferência” e velocidades.
