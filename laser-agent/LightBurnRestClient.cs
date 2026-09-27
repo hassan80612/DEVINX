@@ -61,6 +61,12 @@ internal sealed class LightBurnRestClient : IDisposable
     public async Task<string?> GetPollSnapshotJsonAsync(string secret, CancellationToken cancellationToken = default) =>
         await GetAuthenticatedJsonAsync("api/events/poll", secret, cancellationToken);
 
+    public async Task<string?> GetLayersJsonAsync(string secret, CancellationToken cancellationToken = default) =>
+        await GetAuthenticatedJsonAsync("api/layers", secret, cancellationToken);
+
+    public async Task<string?> GetCutsJsonAsync(string secret, CancellationToken cancellationToken = default) =>
+        await GetAuthenticatedJsonAsync("api/cuts", secret, cancellationToken);
+
     private async Task<string?> GetAuthenticatedJsonAsync(string path, string secret, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
