@@ -129,6 +129,7 @@ export function LaserControlWorkspace(){
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
   const fullscreenAutoInputRef=useRef(false);
+  const inputReadyRef=useRef(false);
   const controlPendingRef=useRef<string|null>(null);
 
   const loadDevices=useCallback(async(quiet=false)=>{
@@ -157,6 +158,10 @@ export function LaserControlWorkspace(){
     const timer=window.setInterval(()=>void loadDevices(true),2_000);
     return()=>window.clearInterval(timer);
   },[loadDevices]);
+
+  useEffect(()=>{
+    inputReadyRef.current=inputReady;
+  },[inputReady]);
 
   const selectedDevice=useMemo(
     ()=>devices.find(device=>device.device_id===selectedDeviceId)??null,
@@ -460,7 +465,7 @@ export function LaserControlWorkspace(){
 
   function sendRemoteInput(payload:Record<string,unknown>){
     const current=sessionRef.current;
-    if(!inputReady||!current?.inputToken||!channelRef.current)return;
+    if(!inputReadyRef.current||!current?.inputToken||!channelRef.current)return;
     void channelRef.current.send({
       type:'broadcast',
       event:'remote_input',
@@ -520,17 +525,28 @@ export function LaserControlWorkspace(){
     sendControlRequest('open_layer',layerId?{layer:layerId}:{});
   }
 
+  async function ensureInputReady(){
+    if(inputReadyRef.current)return true;
+    if(inputPending)return false;
+    await enableRemoteInput();
+    for(let i=0;i<45;i++){
+      if(inputReadyRef.current)return true;
+      await new Promise(resolve=>window.setTimeout(resolve,100));
+    }
+    return false;
+  }
+
   async function runShortcut(
     id:string,
     shortcut:{key:string;code:string;ctrl?:boolean;shift?:boolean;alt?:boolean}
   ){
     if(toolPending)return;
-    if(!inputReady){
-      setNotice(t('laser.quickNeedControl'));
-      return;
-    }
     setToolPending(id);
     try{
+      if(!await ensureInputReady()){
+        setNotice(t('laser.quickNeedControl'));
+        return;
+      }
       const payload={
         key:shortcut.key,
         code:shortcut.code,
@@ -540,9 +556,13 @@ export function LaserControlWorkspace(){
         meta:false
       };
       sendRemoteInput({type:'keydown',...payload});
-      await new Promise(resolve=>window.setTimeout(resolve,55));
+      await new Promise(resolve=>window.setTimeout(resolve,80));
       sendRemoteInput({type:'keyup',...payload});
       setNotice(t('laser.quickSent'));
+      if(['trace','adjust-image','rotary'].includes(id)){
+        await new Promise(resolve=>window.setTimeout(resolve,420));
+        refreshParameters();
+      }
     }finally{
       setToolPending(null);
     }
@@ -816,7 +836,7 @@ export function LaserControlWorkspace(){
         return;
       }
 
-      for(let i=0;i<35;i++){
+      for(let i=0;i<70;i++){
         await new Promise(resolve=>window.setTimeout(resolve,100));
         const check=await fetch('/api/laser-control/master/command',{
           method:'POST',credentials:'same-origin',
@@ -944,17 +964,12 @@ export function LaserControlWorkspace(){
     }
   }
 
-  const canStart=Boolean(selectedDevice&&online(selectedDevice)
-    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
-    &&selectedDevice.job_state==='idle');
-  const canFrame=Boolean(selectedDevice&&online(selectedDevice)
-    &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true
-    &&(['idle','framing'].includes(selectedDevice.job_state||'')||framingEngaged));
-  const canPause=Boolean(selectedDevice&&online(selectedDevice)
-    &&selectedDevice.machine_connected===true
-    &&['running','busy'].includes(selectedDevice.job_state||''));
-  const canStop=Boolean(selectedDevice&&online(selectedDevice)
+  const canOperate=Boolean(selectedDevice&&online(selectedDevice)
     &&selectedDevice.lightburn_online===true&&selectedDevice.machine_connected===true);
+  const canStart=canOperate;
+  const canFrame=canOperate;
+  const canPause=canOperate;
+  const canStop=canOperate;
 
   function deviceCard(device:LaserDevice){
     const mentor=device.connection_mode==='mentor';
