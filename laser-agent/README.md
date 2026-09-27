@@ -1,4 +1,4 @@
-# DevinX Laser Agent 1.0.14
+# DevinX Laser Agent 1.0.15
 
 Agent Windows do DevinX Laser Control.
 
@@ -76,3 +76,7 @@ No pacote existe **INICIAR-MENTORIA.cmd**. Este modo não instala o Agent, não 
 
 ## Controles avançados do LightBurn
 O Agent 1.0.14 usa a árvore de acessibilidade do Windows do próprio LightBurn para descobrir camadas e campos editáveis. O painel web só mostra parâmetros realmente detectados, lê o valor atual e escreve o valor digitado. Isso evita coordenadas fixas e campos de enfeite.
+
+
+## 1.0.15 — isolamento dos controles avançados
+A leitura/escrita de parâmetros do LightBurn roda fora do loop Realtime. Um painel de camada que demore ou trave não pode bloquear Frame, Iniciar, Parar, transmissão ou controle remoto. A leitura tem timeout de 3 segundos e apenas uma operação avançada é executada por vez.

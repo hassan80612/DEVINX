@@ -157,13 +157,33 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         CancellationToken cancellationToken)
     {
         if(!IsConnected)return;
+        var snapshot=result.Snapshot is null?null:new
+        {
+            windowTitle=result.Snapshot.WindowTitle,
+            layers=result.Snapshot.Layers.Select(layer=>new
+            {
+                id=layer.Id,
+                label=layer.Label,
+                selected=layer.Selected
+            }).ToArray(),
+            fields=result.Snapshot.Fields.Select(field=>new
+            {
+                key=field.Key,
+                label=field.Label,
+                kind=field.Kind,
+                value=field.Value,
+                @checked=field.Checked,
+                writable=field.Writable
+            }).ToArray()
+        };
+
         await SendBroadcastAsync("control_result",new
         {
             token=_config.FrameToken,
             requestId,
             ok=result.Ok,
             reason=result.Reason,
-            snapshot=result.Snapshot,
+            snapshot,
             at=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         },cancellationToken);
     }
@@ -428,9 +448,12 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             var requestId=String(payload,"requestId");
             var action=String(payload,"action");
             if(string.IsNullOrWhiteSpace(requestId)||string.IsNullOrWhiteSpace(action))return;
-            await _onControl(new RealtimeControlRequest(
+            var request=new RealtimeControlRequest(
                 inputToken??"",requestId!,action!,
-                String(payload,"field"),String(payload,"value"),toggle,String(payload,"layer")));
+                String(payload,"field"),String(payload,"value"),toggle,String(payload,"layer"));
+            _=Task.Run(async()=>{
+                try{await _onControl(request);}catch{}
+            });
             return;
         }
 

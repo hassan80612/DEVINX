@@ -113,30 +113,65 @@ internal sealed class ContinuousAgent
             await ExecuteOnceAsync(new RemoteCommand(command.CommandId,command.Command,command.ExpiresAt));
         }
 
+        var controlBridgeGate=new SemaphoreSlim(1,1);
+
         async Task HandleControlRequestAsync(RealtimeControlRequest request)
         {
             LightBurnControlBridgeResult result;
-            try
+            var releaseGate=false;
+
+            if(!await controlBridgeGate.WaitAsync(0))
             {
-                result=request.Action switch
-                {
-                    "inspect"=>LightBurnControlBridge.Inspect(),
-                    "set"=>LightBurnControlBridge.SetField(request.Field??"",request.Value,request.Toggle),
-                    "select_layer"=>LightBurnControlBridge.SelectLayer(request.Layer??"",false),
-                    "open_layer"=>string.IsNullOrWhiteSpace(request.Layer)
-                        ?LightBurnControlBridge.OpenSelectedLayer()
-                        :LightBurnControlBridge.SelectLayer(request.Layer!,true),
-                    _=>new LightBurnControlBridgeResult(false,"unsupported_control_action",null)
-                };
+                result=new LightBurnControlBridgeResult(false,"control_busy",null);
             }
-            catch(Exception ex)
+            else
             {
-                result=new LightBurnControlBridgeResult(false,"control_error:"+ex.GetType().Name,null);
+                releaseGate=true;
+                Task<LightBurnControlBridgeResult>? work=null;
+                try
+                {
+                    work=Task.Run(()=>request.Action switch
+                    {
+                        "inspect"=>LightBurnControlBridge.Inspect(),
+                        "set"=>LightBurnControlBridge.SetField(request.Field??"",request.Value,request.Toggle),
+                        "select_layer"=>LightBurnControlBridge.SelectLayer(request.Layer??"",false),
+                        "open_layer"=>string.IsNullOrWhiteSpace(request.Layer)
+                            ?LightBurnControlBridge.OpenSelectedLayer()
+                            :LightBurnControlBridge.SelectLayer(request.Layer!,true),
+                        _=>new LightBurnControlBridgeResult(false,"unsupported_control_action",null)
+                    });
+
+                    var completed=await Task.WhenAny(work,Task.Delay(TimeSpan.FromSeconds(3)));
+                    if(completed==work)
+                    {
+                        result=await work;
+                    }
+                    else
+                    {
+                        result=new LightBurnControlBridgeResult(false,"control_timeout",null);
+                        releaseGate=false;
+                        _=work.ContinueWith(_=>{
+                            try{controlBridgeGate.Release();}catch{}
+                        },TaskScheduler.Default);
+                    }
+                }
+                catch(Exception ex)
+                {
+                    result=new LightBurnControlBridgeResult(false,"control_error:"+ex.GetType().Name,null);
+                }
+                finally
+                {
+                    if(releaseGate)
+                    {
+                        try{controlBridgeGate.Release();}catch{}
+                    }
+                }
             }
 
-            if(realtime is not null&&realtime.IsConnected)
+            var target=realtime;
+            if(target is not null&&target.IsConnected)
             {
-                try{await realtime.SendControlResultAsync(request.RequestId,result,cancellationToken);}
+                try{await target.SendControlResultAsync(request.RequestId,result,cancellationToken);}
                 catch{}
             }
         }
