@@ -113,6 +113,34 @@ internal sealed class ContinuousAgent
             await ExecuteOnceAsync(new RemoteCommand(command.CommandId,command.Command,command.ExpiresAt));
         }
 
+        async Task HandleControlRequestAsync(RealtimeControlRequest request)
+        {
+            LightBurnControlBridgeResult result;
+            try
+            {
+                result=request.Action switch
+                {
+                    "inspect"=>LightBurnControlBridge.Inspect(),
+                    "set"=>LightBurnControlBridge.SetField(request.Field??"",request.Value,request.Toggle),
+                    "select_layer"=>LightBurnControlBridge.SelectLayer(request.Layer??"",false),
+                    "open_layer"=>string.IsNullOrWhiteSpace(request.Layer)
+                        ?LightBurnControlBridge.OpenSelectedLayer()
+                        :LightBurnControlBridge.SelectLayer(request.Layer!,true),
+                    _=>new LightBurnControlBridgeResult(false,"unsupported_control_action",null)
+                };
+            }
+            catch(Exception ex)
+            {
+                result=new LightBurnControlBridgeResult(false,"control_error:"+ex.GetType().Name,null);
+            }
+
+            if(realtime is not null&&realtime.IsConnected)
+            {
+                try{await realtime.SendControlResultAsync(request.RequestId,result,cancellationToken);}
+                catch{}
+            }
+        }
+
         async Task HandleRemoteInputAsync(RealtimeRemoteInput input)
         {
             var result=LightBurnRemoteInput.Apply(input);
@@ -176,7 +204,8 @@ internal sealed class ContinuousAgent
                     realtime=new DevinXRealtimeSession(
                         current,
                         HandleRealtimeCommandAsync,
-                        HandleRemoteInputAsync);
+                        HandleRemoteInputAsync,
+                        HandleControlRequestAsync);
 
                     var connected=await realtime.ConnectAsync(cancellationToken);
                     if(connected)
@@ -215,7 +244,7 @@ internal sealed class ContinuousAgent
             else if(current is not null&&(realtime is null||!realtime.IsConnected))
             {
                 await StopRealtimeAsync();
-                realtime=new DevinXRealtimeSession(current,HandleRealtimeCommandAsync,HandleRemoteInputAsync);
+                realtime=new DevinXRealtimeSession(current,HandleRealtimeCommandAsync,HandleRemoteInputAsync,HandleControlRequestAsync);
                 if(await realtime.ConnectAsync(cancellationToken))
                 {
                     frameCts=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

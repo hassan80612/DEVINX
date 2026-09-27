@@ -40,3 +40,13 @@ internal sealed record RealtimeCommand(
     string CommandId,
     string Command,
     DateTimeOffset? ExpiresAt);
+
+
+internal sealed record RealtimeControlRequest(
+    string Token,
+    string RequestId,
+    string Action,
+    string? Field,
+    string? Value,
+    bool? Toggle,
+    string? Layer);

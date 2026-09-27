@@ -82,13 +82,13 @@ jobs:
           @echo off
           start "" "%~dp0DevinXLaserAgent.exe" --mentor
           '@ | Set-Content -Path .\laser-agent\publish\INICIAR-MENTORIA.cmd -Encoding ASCII
-          Compress-Archive -Path .\laser-agent\publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.13.zip -Force
+          Compress-Archive -Path .\laser-agent\publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.14.zip -Force
 
       - name: Upload self-contained Agent
         uses: actions/upload-artifact@v4
         with:
           name: DevinX-Laser-Agent-win-x64
-          path: .\laser-agent\DevinX-Laser-Agent-1.0.13.zip
+          path: .\laser-agent\DevinX-Laser-Agent-1.0.14.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -101,13 +101,13 @@ jobs:
           @echo off
           start "" "%~dp0DevinXLaserAgent.exe" --mentor
           '@ | Set-Content -Path .\laser-agent\web-publish\INICIAR-MENTORIA.cmd -Encoding ASCII
-          Compress-Archive -Path .\laser-agent\web-publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.13-compact.zip -Force
+          Compress-Archive -Path .\laser-agent\web-publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.14-compact.zip -Force
 
       - name: Upload compact web package
         uses: actions/upload-artifact@v4
         with:
           name: DevinX-Laser-Agent-web
-          path: .\laser-agent\DevinX-Laser-Agent-1.0.13-compact.zip
+          path: .\laser-agent\DevinX-Laser-Agent-1.0.14-compact.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -117,9 +117,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'laser-agent-v1.0.13'
+          $tag = 'laser-agent-v1.0.14'
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title 'DevinX Laser Agent 1.0.13' --notes 'DevinX Laser Agent 1.0.13 para Windows 10/11 x64.'
+            gh release create $tag --title 'DevinX Laser Agent 1.0.14' --notes 'DevinX Laser Agent 1.0.14 para Windows 10/11 x64.'
           }
-          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.13.zip --clobber
+          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.14.zip --clobber

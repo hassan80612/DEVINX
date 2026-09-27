@@ -18,6 +18,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
     private long _revision;
     private readonly Func<RealtimeCommand,Task> _onCommand;
     private readonly Func<RealtimeRemoteInput,Task> _onInput;
+    private readonly Func<RealtimeControlRequest,Task>? _onControl;
     private readonly ClientWebSocket _socket=new();
     private readonly SemaphoreSlim _sendLock=new(1,1);
     private readonly CancellationTokenSource _stop=new();
@@ -29,7 +30,8 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
     public DevinXRealtimeSession(
         RemoteSessionConfig config,
         Func<RealtimeCommand,Task> onCommand,
-        Func<RealtimeRemoteInput,Task> onInput)
+        Func<RealtimeRemoteInput,Task> onInput,
+        Func<RealtimeControlRequest,Task>? onControl=null)
     {
         _config=config;
         _remoteInputEnabled=config.RemoteInputEnabled;
@@ -37,6 +39,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         _revision=config.Revision;
         _onCommand=onCommand;
         _onInput=onInput;
+        _onControl=onControl;
     }
 
     public bool IsConnected=>_socket.State==WebSocketState.Open&&_joined.Task.IsCompletedSuccessfully;
@@ -144,6 +147,23 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             reason=result.Reason,
             x=result.X,
             y=result.Y,
+            at=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        },cancellationToken);
+    }
+
+    public async Task SendControlResultAsync(
+        string requestId,
+        LightBurnControlBridgeResult result,
+        CancellationToken cancellationToken)
+    {
+        if(!IsConnected)return;
+        await SendBroadcastAsync("control_result",new
+        {
+            token=_config.FrameToken,
+            requestId,
+            ok=result.Ok,
+            reason=result.Reason,
+            snapshot=result.Snapshot,
             at=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         },cancellationToken);
     }
@@ -379,7 +399,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             return;
         }
 
-        if(userEvent!="remote_input")return;
+        if(userEvent!="remote_input"&&userEvent!="control_request")return;
 
         var access=AccessSnapshot();
         if(!access.Enabled||string.IsNullOrWhiteSpace(access.Token))return;
@@ -395,6 +415,24 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.True;
         static string? String(JsonElement p,string name)=>
             p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.String?e.GetString():null;
+
+        if(userEvent=="control_request")
+        {
+            if(_onControl is null)return;
+            bool? toggle=null;
+            if(payload.TryGetProperty("toggle",out var toggleEl))
+            {
+                if(toggleEl.ValueKind==JsonValueKind.True)toggle=true;
+                else if(toggleEl.ValueKind==JsonValueKind.False)toggle=false;
+            }
+            var requestId=String(payload,"requestId");
+            var action=String(payload,"action");
+            if(string.IsNullOrWhiteSpace(requestId)||string.IsNullOrWhiteSpace(action))return;
+            await _onControl(new RealtimeControlRequest(
+                inputToken??"",requestId!,action!,
+                String(payload,"field"),String(payload,"value"),toggle,String(payload,"layer")));
+            return;
+        }
 
         await _onInput(new RealtimeRemoteInput(
             inputToken??"",
