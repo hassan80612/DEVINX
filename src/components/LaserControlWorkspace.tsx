@@ -864,10 +864,28 @@ export function LaserControlWorkspace(){
         <span><small>{t('laser.progress')}</small><b>{selectedDevice.progress_permille==null?'—':(selectedDevice.progress_permille/10).toFixed(1)+'%'}</b></span>
       </div>
 
-      <div className={styles.tabs}>
-        <button className={tab==='live'?styles.activeTab:''} onClick={()=>setTab('live')}>{t('laser.tabLive')}</button>
-        <button className={tab==='control'?styles.activeTab:''} onClick={()=>setTab('control')}>{t('laser.tabControl')}</button>
-        <button className={tab==='agent'?styles.activeTab:''} onClick={()=>setTab('agent')}>{t('laser.tabAgent')}</button>
+      <div className={styles.tabs} role="tablist" aria-label="Laser Control">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab==='live'}
+          className={tab==='live'?styles.activeTab:''}
+          onClick={()=>setTab('live')}
+        ><span className={styles.tabIcon}>◉</span><span>{t('laser.tabLive')}</span></button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab==='control'}
+          className={tab==='control'?styles.activeTab:''}
+          onClick={()=>setTab('control')}
+        ><span className={styles.tabIcon}>⌘</span><span>{t('laser.tabControl')}</span></button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab==='agent'}
+          className={tab==='agent'?styles.activeTab:''}
+          onClick={()=>setTab('agent')}
+        ><span className={styles.tabIcon}>⚙</span><span>{t('laser.tabAgent')}</span></button>
       </div>
 
       {tab==='live'&&<div className={styles.livePane}>
@@ -1031,7 +1049,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.12/DevinX-Laser-Agent-1.0.12.zip" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.13/DevinX-Laser-Agent-1.0.13.zip" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>
