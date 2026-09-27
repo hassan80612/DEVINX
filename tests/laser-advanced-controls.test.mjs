@@ -67,11 +67,10 @@ test('LightBurn 1.7 UIA fallback handles legacy layer state and left-side rotary
   assert.match(bridge,/Inverter sentido do rotativo/);
 });
 
-test('Laser Control does not expose raw Agent reason codes to the operator',async()=>{
+test('Laser Control does not expose retired layer errors or raw Agent reasons to the operator',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
-  assert.match(panel,/selected_layer_not_found\|layer_not_found/);
-  assert.match(panel,/laser\.paramsNoLayer/);
-  assert.doesNotMatch(panel,/setControlError\(String\(payload\?\.reason/);
+  assert.doesNotMatch(panel,/selected_layer_not_found|layer_not_found|laser\.paramsNoLayer/);
+  assert.doesNotMatch(panel,/setNotice\([^\n]*payload\?\.reason/);
 });
 
 
