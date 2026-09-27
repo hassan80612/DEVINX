@@ -9,9 +9,9 @@ test('Laser Control uses Agent 1.0.27 for advanced controls',async()=>{
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
   assert.match(panel,/laser-agent-v1\.0\.27/);
-  assert.match(panel,/dialog_confirm/);
-  assert.match(panel,/dialog_cancel/);
-  assert.match(panel,/dialog_close/);
+  assert.doesNotMatch(panel,/dialog_confirm|dialog_cancel|dialog_close/);
+  assert.match(panel,/sendRemoteKey\('Enter','Enter'\)/);
+  assert.match(panel,/sendRemoteKey\('Escape','Escape'\)/);
   assert.doesNotMatch(panel,/select_layer|open_layer|refreshParameters|openLayerPanel/);
   assert.doesNotMatch(css,/\.parameterDock|\.parameterGrid|\.layerBar/);
   assert.match(i18n,/DevinX Laser Agent 1\.0\.27/);
