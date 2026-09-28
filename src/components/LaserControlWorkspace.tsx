@@ -507,12 +507,53 @@ export function LaserControlWorkspace(){
     mobileKeyboardRef.current?.blur();
   }
 
-  function sendMobileEdit(){
+  async function sendMobileEdit(){
     const value=mobileEditValue;
     if(!value)return;
-    sendRemoteKey('a','KeyA',{ctrl:true});
-    window.setTimeout(()=>sendRemoteInput({type:'text',key:value}),70);
+    if(!await ensureInputReady()){
+      setNotice(t('laser.quickNeedControl'));
+      return;
+    }
+
+    const selectAll={key:'a',code:'KeyA',ctrl:true,shift:false,alt:false,meta:false};
+    const down=await sendVerifiedInput({type:'keydown',...selectAll});
+    if(!down.ok){setNotice(t('laser.quickFailed'));return;}
+    await new Promise(resolve=>window.setTimeout(resolve,90));
+
+    const up=await sendVerifiedInput({type:'keyup',...selectAll});
+    if(!up.ok){setNotice(t('laser.quickFailed'));return;}
+    await new Promise(resolve=>window.setTimeout(resolve,120));
+
+    const typed=await sendVerifiedInput({type:'text',key:value});
+    if(!typed.ok){setNotice(t('laser.quickFailed'));return;}
     closeMobileKeyboard();
+  }
+
+  async function recenterLightBurnView(){
+    resetZoom();
+    if(toolPending)return;
+    setToolPending('recenter-view');
+    try{
+      if(!await ensureInputReady()){
+        setNotice(t('laser.quickNeedControl'));
+        return;
+      }
+
+      const escape={key:'Escape',code:'Escape',ctrl:false,shift:false,alt:false,meta:false};
+      await sendVerifiedInput({type:'keydown',...escape});
+      await sendVerifiedInput({type:'keyup',...escape});
+      await new Promise(resolve=>window.setTimeout(resolve,90));
+
+      const zoomPage={key:'0',code:'Digit0',ctrl:true,shift:false,alt:false,meta:false};
+      const down=await sendVerifiedInput({type:'keydown',...zoomPage});
+      if(!down.ok){setNotice(t('laser.quickFailed'));return;}
+      const up=await sendVerifiedInput({type:'keyup',...zoomPage});
+      if(!up.ok){setNotice(t('laser.quickFailed'));return;}
+
+      setNotice(t('laser.viewCentered'));
+    }finally{
+      setToolPending(null);
+    }
   }
 
   function closeActiveDialog(){
@@ -1336,7 +1377,7 @@ export function LaserControlWorkspace(){
           <div className={styles.dPad} aria-label={t('laser.moveSelection')}>
             <button className={styles.dPadUp} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-up','ArrowUp','ArrowUp')}>↑</button>
             <button className={styles.dPadLeft} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-left','ArrowLeft','ArrowLeft')}>←</button>
-            <button className={styles.dPadCenter} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('center','p','KeyP')}>⊙</button>
+            <button className={styles.dPadCenter} type="button" disabled={toolPending!==null} onClick={()=>void recenterLightBurnView()} title={t('laser.recenterView')} aria-label={t('laser.recenterView')}>⊙</button>
             <button className={styles.dPadRight} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-right','ArrowRight','ArrowRight')}>→</button>
             <button className={styles.dPadDown} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-down','ArrowDown','ArrowDown')}>↓</button>
           </div>
