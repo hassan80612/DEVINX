@@ -33,16 +33,6 @@ function productId(payload:any){
   );
 }
 
-function checkoutCode(payload:any){
-  const raw=String(
-    payload?.checkout_link||
-    payload?.Checkout?.checkout_link||
-    payload?.checkout?.checkout_link||
-    ''
-  ).trim();
-  return raw.replace(/^.*\//,'').split('?')[0]||'';
-}
-
 export async function GET(){
   return NextResponse.json({
     ok:true,
@@ -85,15 +75,7 @@ export async function POST(request:NextRequest){
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
   const tokenHash=createHash('sha256').update(primarySecret||matchingSecret).digest('hex');
-  const offer=checkoutCode(payload);
-  const pcAddonOffer=offer==='IdNEzcp'||offer==='PR4BNpa';
-  const rpcName=pcAddonOffer
-    ?'process_kiwify_laser_pc_addon_webhook'
-    :incomingProductId===LASER_EXTRA_PRODUCT_ID
-      ?'process_kiwify_laser_extra_webhook'
-      :incomingProductId===LASER_INTL_PRODUCT_ID
-        ?'process_kiwify_laser_international_webhook'
-        :'process_kiwify_laser_webhook';
+  const rpcName='process_kiwify_laser_offer_dispatch';
   const{data,error}=await supabase.rpc(rpcName,{
     p_payload:payload,p_token_hash:tokenHash
   });
