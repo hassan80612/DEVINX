@@ -15,7 +15,7 @@ export const metadata:Metadata={
 export default async function LaserControlPage(){
   const access=await getLaserControlAccess();
   if(!access.authenticated)redirect('/entrar?next=/laser-control');
-  if(!access.allowed)notFound();
+  if(!access.allowed)redirect('/laser-control/conhecer?acesso=necessario#planos');
 
   return <main style={{
     minHeight:'100vh',

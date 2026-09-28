@@ -1,7 +1,9 @@
 "use client";
 
+import {useEffect,useState} from "react";
 import {LanguageMenu} from "@/components/LanguageMenu";
 import {useI18n} from "@/i18n/provider";
+import {createClient} from "@/lib/supabase/client";
 import styles from "./LaserLanding.module.css";
 
 const AGENT="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.31/DevinX-Laser-Agent-1.0.31.exe";
@@ -69,13 +71,38 @@ const INTL={
 export function LaserLanding(){
   const{locale}=useI18n();
   const intl=locale!=="pt-BR";
+  const[loggedIn,setLoggedIn]=useState(false);
+  const[accessNotice,setAccessNotice]=useState(false);
+
+  useEffect(()=>{
+    const supabase=createClient();
+    void supabase.auth.getSession().then(({data})=>setLoggedIn(Boolean(data.session)));
+    try{setAccessNotice(new URLSearchParams(window.location.search).get("acesso")==="necessario")}catch{}
+  },[]);
+
+  async function signOutAndSwitch(){
+    await createClient().auth.signOut();
+    window.location.assign("/entrar?next=/laser-control");
+  }
   const c=intl?INTL:BR;
   const supportBody=intl?"Agent version:%0ALightBurn version:%0AWindows:%0AIssue:%0A":"Vers%C3%A3o%20do%20Agent:%0AVers%C3%A3o%20do%20LightBurn:%0AWindows:%0AProblema:%0A";
   return <main className={styles.page} lang={intl?"en":"pt-BR"}>
     <header className={styles.header}>
       <a href="/" className={styles.brand}><b>DX</b><span>DEVINX <em>LASER CONTROL</em></span></a>
-      <nav><a href="/">{c.home}</a><a href="/laser-control/guia">{c.guide}</a><LanguageMenu/></nav>
+      <nav>
+        <a href="/">{c.home}</a>
+        <a href="/laser-control/guia">{c.guide}</a>
+        {loggedIn&&<button className={styles.accountButton} type="button" onClick={()=>void signOutAndSwitch()}>{intl?"Sign out / Switch account":"Sair / Trocar conta"}</button>}
+        <LanguageMenu/>
+      </nav>
     </header>
+    {accessNotice&&<section className={styles.accessNotice}>
+      <div>
+        <b>{intl?"This account does not have Laser Control access yet.":"Esta conta ainda não tem acesso ao Laser Control."}</b>
+        <p>{intl?"Choose a plan below or sign out to enter with another account.":"Escolha um plano abaixo ou saia para entrar com outra conta."}</p>
+      </div>
+      <button type="button" onClick={()=>void signOutAndSwitch()}>{intl?"Sign out / Switch account":"Sair / Trocar conta"}</button>
+    </section>}
     <section className={styles.hero}>
       <div className={styles.heroCopy}>
         <span className={styles.tag}>{c.heroTag}</span><h1>{c.hero1}<br/><em>{c.hero2}</em></h1><p>{c.intro}</p>
