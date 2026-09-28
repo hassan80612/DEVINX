@@ -1,6 +1,6 @@
 "use client";
 
-import {MouseEvent,useEffect,useState} from "react";
+import {useEffect,useState} from "react";
 import {BrandLogo} from "@/components/BrandLogo";
 import {LanguageMenu} from "@/components/LanguageMenu";
 import {LaserHomeCard} from "@/components/LaserHomeCard";
@@ -318,10 +318,6 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
   const intl=locale!=="pt-BR";
   const financeFeatures=FINANCE_FEATURES[activeLocale];
 
-  const jumpTo=(id:string)=>(event:MouseEvent<HTMLAnchorElement>)=>{
-    event.preventDefault();
-    document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
-  };
 
   return <main className={styles.page}>
     <header className={styles.header}>
@@ -335,11 +331,6 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       <p>{intl?c.intlChooseText:c.chooseText}</p>
     </section>
 
-    <nav className={styles.productJumpNav} aria-label={intl?"Product shortcuts":"Atalhos dos produtos"}>
-      {financeVisible&&<a className={`${styles.productJump} ${styles.financeJump}`} href="#financeiro" onClick={jumpTo("financeiro")}>{c.financeJump}</a>}
-      {showStore&&<a className={`${styles.productJump} ${styles.storeJump}`} href="#loja" onClick={jumpTo("loja")}>{c.storeJump}</a>}
-      {laserVisible&&<a className={`${styles.productJump} ${styles.laserJump}`} href="#laser-control" onClick={jumpTo("laser-control")}>{c.laserJump}</a>}
-    </nav>
 
     <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
       {financeVisible&&<article id="financeiro" className={`${styles.product} ${styles.financeProduct}`}>
