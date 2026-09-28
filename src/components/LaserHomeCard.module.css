@@ -12,3 +12,14 @@
 .accessButton{width:min(490px,100%);margin-top:11px;min-height:44px;border:1px solid rgba(224,191,96,.45);background:linear-gradient(180deg,rgba(16,17,19,.72),rgba(6,8,10,.82));color:#f2d776;font-size:11px}
 .featureSection{position:relative;z-index:2;margin-top:27px;padding-top:20px;border-top:1px solid rgba(219,184,83,.18)}.featureTitle{margin-bottom:12px;color:#d6b64f;font-size:9px;font-weight:950;letter-spacing:.13em}.featureGrid{display:grid;grid-template-columns:1fr 1fr;column-gap:18px}.featureLine{min-width:0;display:flex;align-items:center;gap:9px;min-height:38px;border-bottom:1px solid rgba(151,137,91,.14)}.featureLine i{width:5px;height:5px;flex:0 0 auto;transform:rotate(45deg);background:#d8b958;box-shadow:0 0 9px rgba(216,185,88,.34)}.featureLine strong{min-width:0;background:linear-gradient(105deg,#977019 0%,#d6aa38 28%,#ffe58a 47%,#fff6c5 52%,#d2a332 70%,#916817 100%);background-size:240% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;font-size:10.5px;font-weight:900;line-height:1.25;animation:goldTextShine 7.2s linear infinite}
 @keyframes goldTextShine{0%{background-position:130% 0}100%{background-position:-130% 0}}@media(prefers-reduced-motion:reduce){.copy h2,.featureLine strong{animation:none}}@media(max-width:700px){.shell{padding:22px}.independent{align-items:flex-start;flex-direction:column;gap:4px}.independent span{text-align:left}.actions{grid-template-columns:1fr 1fr}.featureGrid{column-gap:12px}.copy h2{font-size:clamp(34px,9vw,48px)}}@media(max-width:460px){.shell{padding:19px 16px;border-radius:20px}.actions{grid-template-columns:1fr}.featureGrid{grid-template-columns:1fr}.copy p{font-size:12px}.featureLine strong{font-size:10px}}
+
+@media(max-width:520px){
+  .shell{width:100%;margin-top:20px;padding:18px 14px;border-radius:19px}
+  .tag{width:100%;box-sizing:border-box;justify-content:flex-start;font-size:7.5px;white-space:normal}
+  .copy h2{font-size:36px;line-height:1.02;letter-spacing:-.045em}
+  .copy p{font-size:12px;line-height:1.55}
+  .actions{grid-template-columns:1fr;gap:8px;margin-top:20px}
+  .primary,.secondary,.accessButton{width:100%;box-sizing:border-box;min-height:50px}
+  .featureGrid{grid-template-columns:1fr}
+  .featureLine{min-height:38px}
+}

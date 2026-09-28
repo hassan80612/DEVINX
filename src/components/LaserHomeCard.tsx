@@ -34,7 +34,7 @@ export function LaserHomeCard(){
       <h2>{c.title}</h2>
       <p>{c.text}</p>
       <div className={styles.actions}>
-        <a className={styles.primary} href="/laser-control/conhecer">{c.primary}</a>
+        <a className={styles.primary} href="/laser-control/conhecer" aria-label={c.primary}>{c.primary}</a>
         <a className={styles.secondary} href="/entrar?next=/laser-control">{c.secondary}</a>
       </div>
       <a className={styles.accessButton} href="/laser-control/guia">{c.guide} →</a>

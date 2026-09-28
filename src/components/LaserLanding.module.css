@@ -31,3 +31,46 @@
   .header nav>a{display:none}.accountButton{display:flex;min-height:36px;padding:7px 9px;font-size:9px}
   .accessNotice{align-items:stretch;flex-direction:column;margin-top:12px}.accessNotice button{width:100%}
 }
+
+@media(max-width:640px){
+  .page{padding:0 12px 32px;background:
+    radial-gradient(circle at 12% -2%,rgba(121,190,224,.20),transparent 30%),
+    radial-gradient(circle at 92% 3%,rgba(145,129,214,.12),transparent 28%),
+    linear-gradient(180deg,#344655 0%,#2a3b49 58%,#304250 100%)}
+  .header{min-height:64px;padding:8px 0;align-items:center}
+  .brand>span{font-size:10px}.brand>b{width:34px;height:34px}
+  .header nav{gap:5px;max-width:62%;justify-content:flex-end}
+  .header nav>a{display:none}
+  .hero{padding:34px 0 26px;gap:22px}
+  .hero h1{font-size:clamp(40px,12.5vw,54px);line-height:.94}
+  .heroCopy>p{font-size:13px;line-height:1.6}
+  .heroActions{display:grid;grid-template-columns:1fr;margin-top:20px}
+  .heroActions a{width:100%;min-height:50px;box-sizing:border-box}
+  .screen{transform:none;border-radius:17px}
+  .screenBody{grid-template-columns:1fr;min-height:280px}
+  .screenBody aside{display:none}
+  .mockLive{padding:12px}
+  .mockCanvas{min-height:190px}
+  .mockCanvas span{font-size:31px}.mockCanvas b{font-size:17px}
+  .mockButtons{grid-template-columns:repeat(2,1fr)}
+  .mockButtons i{padding:10px 5px;font-size:9px}
+  .featureSection,.how,.pricing{padding:34px 0}
+  .sectionHead h2{font-size:31px}
+  .features{grid-template-columns:1fr;gap:8px}
+  .features article{padding:17px}
+  .split{grid-template-columns:1fr;gap:9px}
+  .story{padding:22px}.story h2{font-size:32px}.story p{font-size:12px}
+  .factGrid{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr;gap:7px}
+  .planGrid{grid-template-columns:1fr;gap:9px}
+  .planGrid article{padding:20px}
+  .planGrid h3{font-size:32px}
+  .bottom{padding:20px;align-items:stretch;flex-direction:column}
+  .bottomActions{display:grid;grid-template-columns:1fr;justify-content:stretch}
+  .bottomActions a{display:flex;justify-content:center;min-height:42px;align-items:center}
+}
+@media(max-width:380px){
+  .page{padding-inline:9px}
+  .hero h1{font-size:38px}
+  .tag{font-size:7.5px;letter-spacing:.09em}
+}
