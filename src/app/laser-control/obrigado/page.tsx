@@ -20,7 +20,7 @@ export default function LaserThankYouPage(){
       <small style={{fontWeight:900,letterSpacing:'.14em',color:'#a9e8ff'}}>DEVINX LASER CONTROL</small>
       <h1 style={{margin:'12px 0 10px',fontSize:'clamp(32px,6vw,54px)',lineHeight:1}}>Pagamento recebido.</h1>
       <p style={{margin:0,color:'#c5d7df',fontSize:16,lineHeight:1.65}}>
-        Seu acesso é liberado automaticamente pelo e-mail usado na compra. Se ainda não tiver uma conta DevinX,
+        Seu acesso ou crédito extra é sincronizado automaticamente pelo e-mail usado na compra. Se ainda não tiver uma conta DevinX,
         crie a conta usando o mesmo e-mail da Kiwify.
       </p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,marginTop:24}}>
