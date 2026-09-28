@@ -23,7 +23,7 @@ const INTL={
 export function LaserHomeCard(){
   const{locale}=useI18n();
   const c=locale==="pt-BR"?BR:INTL;
-  return <section className={styles.shell} lang={locale==="pt-BR"?"pt-BR":"en"} aria-label="DevinX Laser Control">
+  return <section id="laser-control" className={styles.shell} lang={locale==="pt-BR"?"pt-BR":"en"} aria-label="DevinX Laser Control">
     <div className={styles.glow} aria-hidden="true"/>
     <div className={styles.independent}>
       <b>{locale==="pt-BR"?"PRODUTO INDEPENDENTE":"INDEPENDENT PRODUCT"}</b>

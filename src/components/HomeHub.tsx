@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect,useState} from "react";
+import {MouseEvent,useEffect,useState} from "react";
 import {BrandLogo} from "@/components/BrandLogo";
 import {LanguageMenu} from "@/components/LanguageMenu";
 import {LaserHomeCard} from "@/components/LaserHomeCard";
@@ -34,7 +34,8 @@ const COPY={
     storeSecondary:"Ver por dentro",
     storeLogin:"Já tenho loja · Entrar",
     storeExample:"Ver vitrine real de exemplo",
-    storeFeaturesTitle:"LOJA · TUDO PARA ORGANIZAR E VENDER"
+    storeFeaturesTitle:"LOJA · TUDO PARA ORGANIZAR E VENDER",
+    financeJump:"Financeiro",storeJump:"Loja",laserJump:"Laser Control"
   },
   en:{
     control:"DEVINX · YOU'RE IN CONTROL",
@@ -61,7 +62,8 @@ const COPY={
     storeSecondary:"See inside",
     storeLogin:"I already have a store · Sign in",
     storeExample:"View real example storefront",
-    storeFeaturesTitle:"STORE · EVERYTHING TO ORGANIZE AND SELL"
+    storeFeaturesTitle:"STORE · EVERYTHING TO ORGANIZE AND SELL",
+    financeJump:"Finance",storeJump:"Store",laserJump:"Laser Control"
   },
   es:{
     control:"DEVINX · TÚ TIENES EL CONTROL",
@@ -88,7 +90,8 @@ const COPY={
     storeSecondary:"Ver por dentro",
     storeLogin:"Ya tengo tienda · Entrar",
     storeExample:"Ver tienda real de ejemplo",
-    storeFeaturesTitle:"TIENDA · TODO PARA ORGANIZAR Y VENDER"
+    storeFeaturesTitle:"TIENDA · TODO PARA ORGANIZAR Y VENDER",
+    financeJump:"Finanzas",storeJump:"Tienda",laserJump:"Laser Control"
   },
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",
@@ -115,7 +118,8 @@ const COPY={
     storeSecondary:"Voir l'intérieur",
     storeLogin:"J'ai déjà une boutique · Connexion",
     storeExample:"Voir une vraie boutique exemple",
-    storeFeaturesTitle:"BOUTIQUE · TOUT POUR ORGANISER ET VENDRE"
+    storeFeaturesTitle:"BOUTIQUE · TOUT POUR ORGANISER ET VENDRE",
+    financeJump:"Finance",storeJump:"Boutique",laserJump:"Laser Control"
   },
   de:{
     control:"DEVINX · DU HAST DIE KONTROLLE",
@@ -142,7 +146,8 @@ const COPY={
     storeSecondary:"Innen ansehen",
     storeLogin:"Ich habe einen Shop · Anmelden",
     storeExample:"Echten Beispiel-Shop ansehen",
-    storeFeaturesTitle:"SHOP · ALLES ZUM ORGANISIEREN UND VERKAUFEN"
+    storeFeaturesTitle:"SHOP · ALLES ZUM ORGANISIEREN UND VERKAUFEN",
+    financeJump:"Finanzen",storeJump:"Shop",laserJump:"Laser Control"
   },
   ar:{
     control:"DEVINX · أنت المتحكم",
@@ -169,7 +174,8 @@ const COPY={
     storeSecondary:"شاهد من الداخل",
     storeLogin:"لدي متجر · دخول",
     storeExample:"عرض متجر حقيقي كمثال",
-    storeFeaturesTitle:"المتجر · كل ما تحتاجه للتنظيم والبيع"
+    storeFeaturesTitle:"المتجر · كل ما تحتاجه للتنظيم والبيع",
+    financeJump:"المالي",storeJump:"المتجر",laserJump:"Laser Control"
   }
 } as const;
 
@@ -312,6 +318,11 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
   const intl=locale!=="pt-BR";
   const financeFeatures=FINANCE_FEATURES[activeLocale];
 
+  const jumpTo=(id:string)=>(event:MouseEvent<HTMLAnchorElement>)=>{
+    event.preventDefault();
+    document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});
+  };
+
   return <main className={styles.page}>
     <header className={styles.header}>
       <a href="/" className={styles.brand}><BrandLogo/></a>
@@ -324,8 +335,14 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       <p>{intl?c.intlChooseText:c.chooseText}</p>
     </section>
 
+    <nav className={styles.productJumpNav} aria-label={intl?"Product shortcuts":"Atalhos dos produtos"}>
+      {financeVisible&&<a className={`${styles.productJump} ${styles.financeJump}`} href="#financeiro" onClick={jumpTo("financeiro")}>{c.financeJump}</a>}
+      {showStore&&<a className={`${styles.productJump} ${styles.storeJump}`} href="#loja" onClick={jumpTo("loja")}>{c.storeJump}</a>}
+      {laserVisible&&<a className={`${styles.productJump} ${styles.laserJump}`} href="#laser-control" onClick={jumpTo("laser-control")}>{c.laserJump}</a>}
+    </nav>
+
     <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
-      {financeVisible&&<article className={`${styles.product} ${styles.financeProduct}`}>
+      {financeVisible&&<article id="financeiro" className={`${styles.product} ${styles.financeProduct}`}>
         <div className={styles.productGlow}></div>
         <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
         <div className={styles.copy}>
@@ -344,7 +361,7 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       {showStore&&<>
       {financeVisible&&<div className={styles.or} aria-hidden="true">{c.or}</div>}
 
-      <article className={`${styles.product} ${styles.storeProduct}`}>
+      <article id="loja" className={`${styles.product} ${styles.storeProduct}`}>
         <div className={styles.productGlow}></div>
         <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
         <div className={styles.copy}>
