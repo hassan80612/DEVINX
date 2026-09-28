@@ -59,7 +59,7 @@ const MOBILE_KEY_ROWS=[
 ] as const;
 
 export function LaserControlWorkspace(){
-  const{t}=useI18n();
+  const{t,locale}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
   const[loading,setLoading]=useState(true);
@@ -128,6 +128,12 @@ export function LaserControlWorkspace(){
   const controlPendingRef=useRef<string|null>(null);
   const pendingInputResultsRef=useRef(new Map<string,(result:{ok:boolean;reason:string|null})=>void>());
   const mobileEditPrepareRef=useRef<Promise<{ok:boolean;reason:string|null}>|null>(null);
+
+  async function signOutLaser(){
+    const supabase=createClient();
+    await supabase.auth.signOut();
+    window.location.assign('/');
+  }
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -1252,13 +1258,21 @@ export function LaserControlWorkspace(){
         <h2>{t('laser.title')}</h2>
         <p>{t('laser.desc')}</p>
       </div>
-      <div className={styles.liveBadge} data-live={realtimeStatus==='live'}>
+      <div className={styles.topRight}>
+        <nav className={styles.workspaceNav} aria-label="Laser Control">
+          <a href="/">Home</a>
+          <a href="/laser-control/guia">{locale==='pt-BR'?'Guia':'Guide'}</a>
+          <a href="mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support">{locale==='pt-BR'?'Suporte':'Support'}</a>
+          <button type="button" onClick={()=>void signOutLaser()}>{locale==='pt-BR'?'Sair':'Sign out'}</button>
+        </nav>
+        <div className={styles.liveBadge} data-live={realtimeStatus==='live'}>
         <i></i>{
           realtimeStatus==='live'?t('laser.live')
           :realtimeStatus==='connecting'?t('laser.connecting')
           :realtimeStatus==='error'?t('laser.error')
           :t('laser.waiting')
         }
+        </div>
       </div>
     </div>
 

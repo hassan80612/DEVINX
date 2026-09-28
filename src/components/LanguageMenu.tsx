@@ -2,6 +2,7 @@
 
 import {useEffect,useRef,useState} from 'react';
 import {useI18n} from '@/i18n/provider';
+import styles from './LanguageMenu.module.css';
 
 export function LanguageMenu({fullWidth=false}:{fullWidth?:boolean}){
   const{locale,setLocale,locales,languageNames,t}=useI18n();
@@ -16,12 +17,12 @@ export function LanguageMenu({fullWidth=false}:{fullWidth?:boolean}){
     return()=>document.removeEventListener('mousedown',close);
   },[]);
 
-  return <div ref={ref} className={'languageMenu'+(fullWidth?' fullWidth':'')}>
-    <button type="button" className="languageMenuButton" onClick={()=>setOpen(v=>!v)} aria-expanded={open} aria-label={t('settings.language')}>
+  return <div ref={ref} className={'languageMenu '+styles.menu+(fullWidth?' fullWidth '+styles.fullWidth:'')}>
+    <button type="button" className={"languageMenuButton "+styles.button} onClick={()=>setOpen(v=>!v)} aria-expanded={open} aria-label={t('settings.language')}>
       <span>{languageNames[locale]}</span><em>{open?'▴':'▾'}</em>
     </button>
-    {open&&<div className="languageMenuList" role="menu">
-      {locales.map(item=><button type="button" role="menuitem" key={item} className={item===locale?'active':''} onClick={()=>{setLocale(item);setOpen(false)}}>{languageNames[item]}{item===locale&&<span>✓</span>}</button>)}
+    {open&&<div className={"languageMenuList "+styles.list} role="menu">
+      {locales.map(item=><button type="button" role="menuitem" key={item} className={styles.item+' '+(item===locale?styles.active:'')} onClick={()=>{setLocale(item);setOpen(false)}}>{languageNames[item]}{item===locale&&<span>✓</span>}</button>)}
     </div>}
   </div>;
 }
