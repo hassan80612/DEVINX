@@ -31,3 +31,11 @@ Controle financeiro pessoal e de trabalho, mobile-first.
 
 ## Stack planejada
 Next.js + TypeScript + Supabase + Vercel.
+
+
+## Produção e manutenção
+- O `main` é a única linha de produção do DevinX.
+- O Laser Control usa Supabase para autenticação, banco, Realtime e Edge Functions.
+- Alterações de segurança do Laser devem passar por `npm test`, `npm run typecheck`, `npm run build` e pelo workflow `Laser Agent Check`.
+- Migrations já aplicadas em produção não devem ser renomeadas ou removidas apenas por limpeza visual.
+- Endpoints e funções de compatibilidade do Laser só devem ser removidos depois de comprovar que não há cliente/Agent antigo consumindo-os.

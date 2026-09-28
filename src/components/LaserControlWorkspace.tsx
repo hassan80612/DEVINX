@@ -12,6 +12,7 @@ import {
   useState
 } from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {LanguageMenu} from '@/components/LanguageMenu';
 import styles from './LaserControlWorkspace.module.css';
 import {useI18n} from '@/i18n/provider';
 
@@ -60,6 +61,15 @@ const DEVICE_REFRESH_MS=15_000;
 const SESSION_RENEW_MS=20_000;
 const DEVICE_REQUEST_MIN_GAP_MS=2_000;
 
+const WORKSPACE_NAV={
+  'pt-BR':{home:'Home',guide:'Guia',support:'Suporte',signOut:'Sair',mentorPack:'+5 sessões de mentoria',mentorNote:'Cada sessão pode durar até 6 horas. O Mentor começa com 10 sessões por ciclo; o pacote de +5 soma somente ao ciclo atual e expira junto com ele. Use na Kiwify o mesmo e-mail da sua conta DevinX.',mentorLocked:'MENTORIA',mentorAvailable:'Disponível no plano Mentor',mentorLockedText:'O plano Control não recebe sessões de mentoria. Para usar alunos e comprar pacotes extras, ative o plano Mentor.',mentorView:'Ver plano Mentor',pcTag:'PC ADICIONAL',pcDescription:'Cada compra acrescenta +1 PC ao limite do seu Control ou Mentor somente até o fim do período atual. A renovação do plano NÃO renova este adicional: no próximo período é preciso comprar novamente.',addPc:'Adicionar +1 PC',pcSmall:'Pode repetir a compra quantas vezes precisar neste período. O adicional nunca funciona sem um plano principal ativo.'},
+  en:{home:'Home',guide:'Guide',support:'Support',signOut:'Sign out',mentorPack:'+5 mentoring sessions',mentorNote:'Each session can last up to 6 hours. Mentor starts with 10 sessions per cycle; the +5 pack applies only to the current cycle and expires with it. Use the same email at Kiwify checkout as your DevinX account.',mentorLocked:'MENTORING',mentorAvailable:'Available with the Mentor plan',mentorLockedText:'Control does not include mentoring sessions. Activate Mentor to connect students and buy extra session packs.',mentorView:'View Mentor plan',pcTag:'EXTRA PC',pcDescription:'Each purchase adds +1 PC to your Control or Mentor limit only until the current plan period ends. Plan renewal does NOT renew this add-on: buy it again for the next period.',addPc:'Add +1 PC',pcSmall:'You can repeat the purchase as many times as needed in this period. The add-on never works without an active main plan.'},
+  es:{home:'Inicio',guide:'Guía',support:'Soporte',signOut:'Salir',mentorPack:'+5 sesiones de mentoría',mentorNote:'Cada sesión puede durar hasta 6 horas. Mentor comienza con 10 sesiones por ciclo; el paquete de +5 se suma solo al ciclo actual y vence con él. Usa en Kiwify el mismo correo de tu cuenta DevinX.',mentorLocked:'MENTORÍA',mentorAvailable:'Disponible con el plan Mentor',mentorLockedText:'Control no incluye sesiones de mentoría. Activa Mentor para conectar alumnos y comprar paquetes extra.',mentorView:'Ver plan Mentor',pcTag:'PC ADICIONAL',pcDescription:'Cada compra añade +1 PC al límite de Control o Mentor solo hasta el final del período actual. La renovación del plan NO renueva este adicional: debes comprarlo otra vez en el siguiente período.',addPc:'Añadir +1 PC',pcSmall:'Puedes repetir la compra las veces que necesites durante este período. El adicional nunca funciona sin un plan principal activo.'},
+  fr:{home:'Accueil',guide:'Guide',support:'Support',signOut:'Déconnexion',mentorPack:'+5 sessions de mentorat',mentorNote:'Chaque session peut durer jusqu’à 6 heures. Mentor commence avec 10 sessions par cycle ; le pack +5 s’applique uniquement au cycle actuel et expire avec lui. Utilisez le même e-mail sur Kiwify et sur votre compte DevinX.',mentorLocked:'MENTORAT',mentorAvailable:'Disponible avec le plan Mentor',mentorLockedText:'Control n’inclut pas de sessions de mentorat. Activez Mentor pour connecter des élèves et acheter des packs supplémentaires.',mentorView:'Voir le plan Mentor',pcTag:'PC SUPPLÉMENTAIRE',pcDescription:'Chaque achat ajoute +1 PC à la limite Control ou Mentor uniquement jusqu’à la fin de la période actuelle. Le renouvellement du plan NE renouvelle PAS cet ajout : il faut le racheter pour la période suivante.',addPc:'Ajouter +1 PC',pcSmall:'Vous pouvez répéter l’achat autant de fois que nécessaire pendant cette période. L’ajout ne fonctionne jamais sans plan principal actif.'},
+  de:{home:'Startseite',guide:'Anleitung',support:'Support',signOut:'Abmelden',mentorPack:'+5 Mentoring-Sitzungen',mentorNote:'Jede Sitzung kann bis zu 6 Stunden dauern. Mentor startet mit 10 Sitzungen pro Zyklus; das +5-Paket gilt nur für den aktuellen Zyklus und läuft mit ihm ab. Verwenden Sie bei Kiwify dieselbe E-Mail-Adresse wie für Ihr DevinX-Konto.',mentorLocked:'MENTORING',mentorAvailable:'Im Mentor-Plan verfügbar',mentorLockedText:'Control enthält keine Mentoring-Sitzungen. Aktivieren Sie Mentor, um Schüler zu verbinden und Zusatzpakete zu kaufen.',mentorView:'Mentor-Plan ansehen',pcTag:'ZUSÄTZLICHER PC',pcDescription:'Jeder Kauf erhöht das Control- oder Mentor-Limit bis zum Ende des aktuellen Zeitraums um +1 PC. Eine Planverlängerung verlängert diesen Zusatz NICHT; für den nächsten Zeitraum muss er neu gekauft werden.',addPc:'+1 PC hinzufügen',pcSmall:'Der Kauf kann in diesem Zeitraum beliebig oft wiederholt werden. Der Zusatz funktioniert nie ohne aktiven Hauptplan.'},
+  ar:{home:'الرئيسية',guide:'الدليل',support:'الدعم',signOut:'تسجيل الخروج',mentorPack:'+5 جلسات إرشاد',mentorNote:'يمكن أن تستمر كل جلسة حتى 6 ساعات. تبدأ خطة Mentor بـ10 جلسات في كل دورة، وتُضاف حزمة +5 إلى الدورة الحالية فقط وتنتهي معها. استخدم في Kiwify البريد الإلكتروني نفسه لحساب DevinX.',mentorLocked:'الإرشاد',mentorAvailable:'متاح مع خطة Mentor',mentorLockedText:'خطة Control لا تتضمن جلسات إرشاد. فعّل Mentor لربط الطلاب وشراء الحزم الإضافية.',mentorView:'عرض خطة Mentor',pcTag:'كمبيوتر إضافي',pcDescription:'كل عملية شراء تضيف كمبيوتر واحداً إلى حد Control أو Mentor حتى نهاية الفترة الحالية فقط. تجديد الخطة لا يجدد هذه الإضافة؛ يجب شراؤها من جديد في الفترة التالية.',addPc:'إضافة كمبيوتر +1',pcSmall:'يمكن تكرار الشراء بالقدر المطلوب خلال هذه الفترة. الإضافة لا تعمل أبداً من دون خطة رئيسية نشطة.'}
+} as const;
+
 const MOBILE_KEY_ROWS=[
   ['1','2','3','4','5','6','7','8','9','0'],
   ['q','w','e','r','t','y','u','i','o','p'],
@@ -70,6 +80,7 @@ const MOBILE_KEY_ROWS=[
 
 export function LaserControlWorkspace(){
   const{t,locale}=useI18n();
+  const nav=WORKSPACE_NAV[locale];
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
   const[loading,setLoading]=useState(true);
@@ -1337,10 +1348,11 @@ export function LaserControlWorkspace(){
       </div>
       <div className={styles.topRight}>
         <nav className={styles.workspaceNav} aria-label="Laser Control">
-          <a href="/">Home</a>
-          <a href="/laser-control/guia">{locale==='pt-BR'?'Guia':'Guide'}</a>
-          <a href="mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support">{locale==='pt-BR'?'Suporte':'Support'}</a>
-          <button type="button" onClick={()=>void signOutLaser()}>{locale==='pt-BR'?'Sair':'Sign out'}</button>
+          <a href="/">{nav.home}</a>
+          <a href="/laser-control/guia">{nav.guide}</a>
+          <a href="mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support">{nav.support}</a>
+          <button type="button" onClick={()=>void signOutLaser()}>{nav.signOut}</button>
+          <LanguageMenu/>
         </nav>
         <div className={styles.liveBadge} data-live={realtimeStatus==='live'}>
         <i></i>{
@@ -1386,22 +1398,16 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
-        <a className={styles.extraMentorButton} href={locale==='pt-BR'?'https://pay.kiwify.com.br/2Td87KB':'https://pay.kiwify.com/2sFxGp1?region=intl'} target="_blank" rel="noreferrer">
-          {locale==='pt-BR'?'+5 sessões de mentoria · R$ 9,90':'+5 mentoring sessions · US$ 7.50'}
+        <a className={styles.extraMentorButton} href={checkoutRegion==='intl'?'https://pay.kiwify.com/2sFxGp1?region=intl':'https://pay.kiwify.com.br/2Td87KB'} target="_blank" rel="noreferrer">
+          {nav.mentorPack} · {checkoutRegion==='intl'?'US$ 7.50':'R$ 9,90'}
         </a>
-        <small className={styles.extraMentorNote}>
-          {locale==='pt-BR'
-            ?'Cada sessão pode durar até 6 horas. O Mentor começa com 10 sessões por ciclo; o pacote de +5 soma somente ao ciclo atual e expira junto com ele. Use na Kiwify o mesmo e-mail da sua conta DevinX.'
-            :'Each session can last up to 6 hours. Mentor starts with 10 sessions per cycle; the +5 pack applies only to the current cycle and expires with it. Use the same email at Kiwify checkout as your DevinX account.'}
-        </small>
+        <small className={styles.extraMentorNote}>{nav.mentorNote}</small>
         {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
       </form>:<section className={styles.mentorLocked}>
-        <span>{locale==='pt-BR'?'MENTORIA':'MENTORING'}</span>
-        <b>{locale==='pt-BR'?'Disponível no plano Mentor':'Available with the Mentor plan'}</b>
-        <p>{locale==='pt-BR'
-          ?'O plano Control não recebe sessões de mentoria. Para usar alunos e comprar pacotes extras, ative o plano Mentor.'
-          :'Control does not include mentoring sessions. Activate Mentor to connect students and buy extra session packs.'}</p>
-        <a href="/laser-control/conhecer#planos">{locale==='pt-BR'?'Ver plano Mentor':'View Mentor plan'}</a>
+        <span>{nav.mentorLocked}</span>
+        <b>{nav.mentorAvailable}</b>
+        <p>{nav.mentorLockedText}</p>
+        <a href="/laser-control/conhecer#planos">{nav.mentorView}</a>
       </section>}
 
       <div className={styles.deviceGroup}>
@@ -1411,17 +1417,13 @@ export function LaserControlWorkspace(){
         </div>
 
         {ownerAccess&&<section className={styles.pcAddon}>
-          <span>{locale==='pt-BR'?'PC ADICIONAL':'EXTRA PC'}</span>
+          <span>{nav.pcTag}</span>
           <b>{checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90'}</b>
-          <p>{locale==='pt-BR'
-            ?'Cada compra acrescenta +1 PC ao limite do seu Control ou Mentor somente até o fim do período atual. A renovação do plano NÃO renova este adicional: no próximo período é preciso comprar novamente.'
-            :'Each purchase adds +1 PC to your Control or Mentor limit only until the current plan period ends. Plan renewal does NOT renew this add-on: buy it again for the next period.'}</p>
+          <p>{nav.pcDescription}</p>
           <a href={checkoutRegion==='intl'?'/api/laser-control/pc-addon-checkout?region=intl':'/api/laser-control/pc-addon-checkout'}>
-            {locale==='pt-BR'?'Adicionar +1 PC':'Add +1 PC'}
+            {nav.addPc}
           </a>
-          <small>{locale==='pt-BR'
-            ?'Pode repetir a compra quantas vezes precisar neste período. O adicional nunca funciona sem um plano principal ativo.'
-            :'You can repeat the purchase as many times as needed in this period. The add-on never works without an active main plan.'}</small>
+          <small>{nav.pcSmall}</small>
         </section>}
 
         {loading&&<span className={styles.emptyDevice}>…</span>}

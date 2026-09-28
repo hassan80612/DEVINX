@@ -42,3 +42,23 @@ test('Laser commands remain disabled in legacy public-facing master integration'
   assert.match(panel,/Comandos remotos continuam desligados/);
   assert.doesNotMatch(panel,/laser-agent-command/);
 });
+
+
+test('Laser public landing has real copy for supported languages',async()=>{
+  const landing=await readFile('src/components/LaserLanding.tsx','utf8');
+  assert.match(landing,/LANDING_COPY/);
+  assert.match(landing,/hero1:"Tu LightBurn\."/);
+  assert.match(landing,/hero1:"Votre LightBurn\."/);
+  assert.match(landing,/hero1:"Ihr LightBurn\."/);
+  assert.doesNotMatch(landing,/const c=intl\?INTL:BR/);
+});
+
+test('logged-in Laser workspace exposes the language selector',async()=>{
+  const workspace=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  assert.match(workspace,/LanguageMenu/);
+  assert.match(workspace,/<LanguageMenu\/>/);
+  assert.match(workspace,/WORKSPACE_NAV/);
+  assert.match(workspace,/es:\{home:'Inicio'/);
+  assert.match(workspace,/fr:\{home:'Accueil'/);
+  assert.match(workspace,/de:\{home:'Startseite'/);
+});
