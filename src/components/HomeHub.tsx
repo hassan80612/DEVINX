@@ -3,6 +3,7 @@
 import {useEffect,useState} from "react";
 import {BrandLogo} from "@/components/BrandLogo";
 import {LanguageMenu} from "@/components/LanguageMenu";
+import {LaserHomeCard} from "@/components/LaserHomeCard";
 import {useI18n} from "@/i18n/provider";
 import {createClient} from "@/lib/supabase/client";
 import styles from "./HomeHub.module.css";
@@ -172,14 +173,6 @@ const COPY={
   }
 } as const;
 
-const LASER_SOON={
-  "pt-BR":{title:"Laser Control",status:"Conhecer",text:"Veja e controle seu LightBurn pelo celular ou por outro computador."},
-  en:{title:"Laser Control",status:"Explore",text:"View and control LightBurn from your phone or another computer."},
-  es:{title:"Laser Control",status:"Conocer",text:"Visualiza y controla LightBurn desde el móvil u otro ordenador."},
-  fr:{title:"Laser Control",status:"Découvrir",text:"Affichez et contrôlez LightBurn depuis votre téléphone ou un autre ordinateur."},
-  de:{title:"Laser Control",status:"Entdecken",text:"LightBurn vom Smartphone oder einem anderen Computer aus anzeigen und steuern."},
-  ar:{title:"Laser Control",status:"اكتشف",text:"شاهد LightBurn وتحكم به من الهاتف أو من كمبيوتر آخر."}
-} as const;
 
 const FINANCE_FEATURES={
   "pt-BR":[
@@ -329,11 +322,6 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       <span className={styles.control}><b>{c.control}</b></span>
       <h1>{intl?c.intlChoose:c.choose}</h1>
       <p>{intl?c.intlChooseText:c.chooseText}</p>
-      {laserVisible&&<a href="/laser-control/guia" className={styles.laserSoon} aria-label={LASER_SOON[activeLocale].status}>
-        <span>{LASER_SOON[activeLocale].title}</span>
-        <b>{LASER_SOON[activeLocale].status}</b>
-        <small>{LASER_SOON[activeLocale].text}</small>
-      </a>}
     </section>
 
     <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
@@ -380,6 +368,8 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       </article>
       </>}
     </section>
+
+    {laserVisible&&<LaserHomeCard/>}
 
     <footer className={styles.footer}>{c.control}</footer>
   </main>;
