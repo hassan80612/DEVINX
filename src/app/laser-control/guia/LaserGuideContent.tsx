@@ -5,7 +5,7 @@ import {useI18n} from '@/i18n/provider';
 import {guideCopy} from './guide-copy';
 import styles from './page.module.css';
 
-const DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.27/DevinX-Laser-Agent-1.0.27.zip';
+const DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.28/DevinX-Laser-Agent-1.0.28.exe';
 
 export function LaserGuideContent(){
   const{locale}=useI18n();
