@@ -101,6 +101,7 @@ export function LaserControlWorkspace(){
   const[mentorAccess,setMentorAccess]=useState(false);
   const[ownerAccess,setOwnerAccess]=useState(false);
   const[pcCapacity,setPcCapacity]=useState<PcCapacity|null>(null);
+  const[checkoutRegion,setCheckoutRegion]=useState<'br'|'intl'|null>(null);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
   const[toolPanelOpen,setToolPanelOpen]=useState(false);
@@ -154,9 +155,10 @@ export function LaserControlWorkspace(){
     const supabase=createClient();
 
     async function loadAccessMeta(){
-      const[accessResult,capacityResult]=await Promise.all([
+      const[accessResult,capacityResult,regionResult]=await Promise.all([
         supabase.rpc('get_laser_access_status'),
-        supabase.rpc('get_laser_pc_capacity')
+        supabase.rpc('get_laser_pc_capacity'),
+        supabase.rpc('get_laser_checkout_region')
       ]);
       const accessData=accessResult?.data;
       const accessRow=Array.isArray(accessData)?accessData[0]:accessData;
@@ -166,6 +168,9 @@ export function LaserControlWorkspace(){
       const capacityData=capacityResult?.data;
       const capacityRow=Array.isArray(capacityData)?capacityData[0]:capacityData;
       setPcCapacity(capacityRow?(capacityRow as PcCapacity):null);
+
+      const regionData=Array.isArray(regionResult?.data)?regionResult.data[0]:regionResult?.data;
+      setCheckoutRegion(regionData==='intl'?'intl':'br');
     }
 
     void loadAccessMeta();
@@ -1407,11 +1412,11 @@ export function LaserControlWorkspace(){
 
         {ownerAccess&&<section className={styles.pcAddon}>
           <span>{locale==='pt-BR'?'PC ADICIONAL':'EXTRA PC'}</span>
-          <b>{locale==='pt-BR'?'+1 PC · R$ 12,90':'+1 PC · US$ 5'}</b>
+          <b>{checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90'}</b>
           <p>{locale==='pt-BR'
             ?'Cada compra acrescenta +1 PC ao limite do seu Control ou Mentor somente até o fim do período atual. A renovação do plano NÃO renova este adicional: no próximo período é preciso comprar novamente.'
             :'Each purchase adds +1 PC to your Control or Mentor limit only until the current plan period ends. Plan renewal does NOT renew this add-on: buy it again for the next period.'}</p>
-          <a href={locale==='pt-BR'?'/api/laser-control/pc-addon-checkout':'/api/laser-control/pc-addon-checkout?region=intl'}>
+          <a href={checkoutRegion==='intl'?'/api/laser-control/pc-addon-checkout?region=intl':'/api/laser-control/pc-addon-checkout'}>
             {locale==='pt-BR'?'Adicionar +1 PC':'Add +1 PC'}
           </a>
           <small>{locale==='pt-BR'

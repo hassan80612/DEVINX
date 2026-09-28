@@ -178,20 +178,21 @@ test("PC adicional do Laser fica dentro da conta e expira com o ciclo atual",()=
   const workspace=read("src/components/LaserControlWorkspace.tsx");
   const checkout=read("src/app/api/laser-control/pc-addon-checkout/route.ts");
   const webhook=read("src/app/api/webhooks/kiwify/laser/route.ts");
+  const hardening=read("supabase/migrations/20260928215639_laser_commerce_cycles_and_access_hardening.sql");
   assert.ok(workspace.includes("+1 PC · R$ 12,90"));
   assert.ok(workspace.includes("+1 PC · US$ 5"));
   assert.ok(workspace.includes("A renovação do plano NÃO renova este adicional"));
   assert.ok(workspace.includes("get_laser_pc_capacity"));
+  assert.ok(workspace.includes("get_laser_checkout_region"));
   assert.ok(checkout.includes("IdNEzcp"));
   assert.ok(checkout.includes("PR4BNpa"));
   assert.ok(checkout.includes("!access.isAdmin&&!access.ownerAccess"));
-  assert.ok(webhook.includes("process_kiwify_laser_pc_addon_webhook"));
-  assert.ok(webhook.includes("TrackingParameters"));
-  assert.ok(webhook.includes("devinx_extra_pc"));
-  const trackingMigration=read("supabase/migrations/20260928213553_laser_pc_addon_tracking_source.sql");
-  assert.ok(trackingMigration.includes("TrackingParameters,src"));
-  assert.ok(trackingMigration.includes("IdNEzcp"));
-  assert.ok(trackingMigration.includes("PR4BNpa"));
+  assert.ok(webhook.includes("process_kiwify_laser_offer_dispatch"));
+  assert.equal(webhook.includes("trackingSource(payload)"),false);
+  assert.ok(hardening.includes("v_expected_amount:=1290"));
+  assert.ok(hardening.includes("v_expected_amount:=500"));
+  assert.ok(hardening.includes("product_base_price_currency"));
+  assert.ok(hardening.includes("pc_addon_orders o where o.order_id=v_order_id"));
 });
 
 test("Mentoria mantém 10 sessões por ciclo, extras no ciclo e sessão máxima de 6 horas",()=>{
@@ -228,7 +229,7 @@ test("lease remoto nunca passa da validade do acesso emitido pelo servidor",()=>
 
 
 test("Mentoria tem teto duro de 6 horas no banco e leases continuam curtos",()=>{
-  const guard=read("supabase/migrations/20260928213030_laser_mentor_six_hour_hard_cap.sql");
+  const guard=read("supabase/migrations/20260928212916_laser_mentor_six_hour_hard_cap.sql");
   const auth=read("supabase/migrations/20260928212145_laser_device_authorization_fail_closed.sql");
   assert.ok(guard.includes("interval '6 hours'"));
   assert.ok(guard.includes("new.connection_mode='mentor'"));
@@ -239,10 +240,19 @@ test("Mentoria tem teto duro de 6 horas no banco e leases continuam curtos",()=>
 });
 
 
-test("webhook de +1 PC usa o SRC oficial da Kiwify e não depende de checkout_link inexistente",()=>{
-  const webhook=read("src/app/api/webhooks/kiwify/laser/route.ts");
-  assert.ok(webhook.includes("function trackingSource"));
-  assert.ok(webhook.includes("payload?.TrackingParameters?.src"));
-  assert.ok(webhook.includes("trackingSource(payload)==='devinx_extra_pc'"));
-  assert.equal(webhook.includes("function checkoutCode"),false);
+
+
+test("checkout adicional segue a moeda do plano e não o idioma da interface",()=>{
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  assert.ok(workspace.includes("get_laser_checkout_region"));
+  assert.ok(workspace.includes("checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90'"));
+  assert.equal(workspace.includes("locale==='pt-BR'?'+1 PC · R$ 12,90':'+1 PC · US$ 5'"),false);
+});
+
+test("Mentoria internacional credita somente o ciclo ativo e não antecipa ciclos futuros",()=>{
+  const migration=read("supabase/migrations/20260928215639_laser_commerce_cycles_and_access_hardening.sql");
+  assert.ok(migration.includes("laser_internal_current_pass_cycle"));
+  assert.ok(migration.includes("mentor_credits_cycle_started_at is distinct from v_cycle.cycle_started_at"));
+  assert.ok(migration.includes("where o.order_id=v_cycle.order_id"));
+  assert.ok(migration.includes("set mentor_credits_balance=10"));
 });
