@@ -21,7 +21,7 @@ const BR={
   ],
   remoteTag:"CONTROLE",remoteTitle:"Você controla de onde quiser.",remoteText:"Deixe o LightBurn aberto no computador ligado à máquina e use outro dispositivo para acompanhar e operar. O computador continua sendo a origem; o celular ou outro PC vira o seu painel remoto.",
   mentorTag:"MENTORIA",mentorTitle:"Professor de um lado. Aluno do outro. O LightBurn no meio.",mentorText:"O aluno abre o DevinX Mentoria no computador onde está o LightBurn, recebe um código temporário e envia ao professor. O professor conecta pelo Laser Control sem substituir o Agent permanente do aluno.",
-  mentorFacts:["Código válido por 30 minutos para conectar","Sessão temporária de até 6 horas","10 sessões incluídas no plano Mentor","Sessão Extra adiciona +1 crédito","1 atendimento ativo por vez","LightBurn precisa estar aberto no PC do aluno/origem"],
+  mentorFacts:["Código válido por 30 minutos para conectar","Sessão temporária de até 6 horas","10 sessões incluídas no plano Mentor","Sessão Extra adiciona mais uma sessão de mentoria","1 atendimento ativo por vez","LightBurn precisa estar aberto no PC do aluno/origem"],
   how:"COMO FUNCIONA",steps:[
     ["01","Instale o Agent","No seu computador principal, baixe o EXE, execute e faça o vínculo uma vez."],
     ["02","Abra o LightBurn","O Agent identifica o aplicativo e mantém o computador disponível no seu Laser Control."],
@@ -31,7 +31,7 @@ const BR={
   plans:[
     ["CONTROL","R$ 29,90","Controle remoto do seu LightBurn","1 PC · uso próprio","https://pay.kiwify.com.br/YghizRi","Assinar Control"],
     ["MENTOR","R$ 59,90","Controle próprio + mentoria remota","1 PC · 10 sessões por ciclo","https://pay.kiwify.com.br/qVRSFCL","Assinar Mentor"],
-    ["SESSÃO EXTRA","R$ 9,90","Adicione +1 crédito de mentoria","Pagamento único","https://pay.kiwify.com.br/2Td87KB","Comprar sessão"]
+    ["SESSÃO EXTRA","R$ 9,90","Adicione mais uma sessão de mentoria","Válida até o fim do período atual do Mentor","https://pay.kiwify.com.br/2Td87KB","Comprar sessão"]
   ],
   support:"Suporte por e-mail",home:"Voltar ao DevinX",already:"Já tenho acesso"
 } as const;
@@ -51,7 +51,7 @@ const INTL={
   ],
   remoteTag:"REMOTE CONTROL",remoteTitle:"Control it from wherever you are.",remoteText:"Keep LightBurn open on the computer connected to the machine and use another device as your remote panel. The source PC stays in control of the laser connection while your phone or another computer becomes the interface.",
   mentorTag:"MENTORING",mentorTitle:"Teacher on one side. Student on the other. LightBurn in between.",mentorText:"The student opens DevinX Mentoring on the computer running LightBurn, receives a temporary code and sends it to the teacher. The teacher connects through Laser Control without replacing the student's permanent Agent.",
-  mentorFacts:["Code valid for 30 minutes to connect","Temporary session up to 6 hours","10 sessions included with Mentor","Extra Session adds +1 credit","1 active mentoring session at a time","LightBurn must be open on the student/source PC"],
+  mentorFacts:["Code valid for 30 minutes to connect","Temporary session up to 6 hours","10 sessions included with Mentor","Extra Session adds another mentoring session","1 active mentoring session at a time","LightBurn must be open on the student/source PC"],
   how:"HOW IT WORKS",steps:[
     ["01","Install the Agent","On your main computer, download the EXE, run it and pair the computer once."],
     ["02","Open LightBurn","The Agent detects the app and keeps the computer available in Laser Control."],
@@ -61,7 +61,7 @@ const INTL={
   plans:[
     ["CONTROL","US$ 8.90","Remote access to your LightBurn","1 PC · 30 days","https://pay.kiwify.com/nuY5IsV","Get Control"],
     ["MENTOR","US$ 17.90","Personal control + remote mentoring","1 PC · 30 days · 10 sessions","https://pay.kiwify.com/aIbUTmG","Get Mentor"],
-    ["EXTRA SESSION","US$ 7.50","Add +1 mentoring credit","One-time purchase","https://pay.kiwify.com/2sFxGp1","Buy extra session"]
+    ["EXTRA SESSION","US$ 7.50","Add another mentoring session","Valid until the end of the current Mentor access period","https://pay.kiwify.com/2sFxGp1","Buy extra session"]
   ],
   support:"Email support",home:"Back to DevinX",already:"I already have access"
 } as const;
