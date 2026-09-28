@@ -7,9 +7,9 @@ internal sealed class SingleInstanceGuard : IDisposable
     private readonly Mutex _mutex;
     public bool IsPrimary { get; }
 
-    public SingleInstanceGuard()
+    public SingleInstanceGuard(string name=@"Local\DevinXLaserAgent")
     {
-        _mutex = new Mutex(initiallyOwned:true, name:@"Local\DevinXLaserAgent", createdNew:out var createdNew);
+        _mutex = new Mutex(initiallyOwned:true, name:name, createdNew:out var createdNew);
         IsPrimary = createdNew;
     }
 

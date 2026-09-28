@@ -31,6 +31,7 @@
 .mentorConnect button,.mentorEnd{border:1px solid rgba(94,231,255,.35);border-radius:11px;background:linear-gradient(180deg,#72eaff,#27b7df);color:#031118;font-weight:950;cursor:pointer;box-shadow:0 8px 24px rgba(39,183,223,.15),inset 0 1px rgba(255,255,255,.55)}
 .mentorConnect button{padding:0 13px}
 .mentorConnect button:disabled,.mentorEnd:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.mentorInlineNotice{margin-top:9px;padding:9px 10px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:rgba(12,28,38,.42);color:#e7f5fb;font-size:10px;line-height:1.45}
 
 .mentorShare{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;margin:0 0 12px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(17,31,42,.28)}
 .mentorShare strong{font-size:11px;color:#e7f8ff}

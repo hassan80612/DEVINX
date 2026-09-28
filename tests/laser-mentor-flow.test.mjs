@@ -55,7 +55,7 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
 });
 
 
-test('Agent 1.0.28 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
+test('Agent 1.0.29 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
   const runtime=await readFile('laser-agent/AgentRuntime.cs','utf8');
   const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
@@ -85,4 +85,26 @@ test('student mentoring download page stays public without DevinX login',async()
   const middleware=await readFile('src/middleware.ts','utf8');
   assert.match(middleware,/laser-control\/mentoria/);
   assert.match(middleware,/const publicLaserPage=/);
+});
+
+
+test('mentor mode allows only one local instance and keeps one pending identity',async()=>{
+  const program=await readFile('laser-agent/Program.cs','utf8');
+  const mentor=await readFile('laser-agent/MentorMode.cs','utf8');
+  const guard=await readFile('laser-agent/SingleInstanceGuard.cs','utf8');
+  assert.match(program,/DevinXLaserMentor/);
+  assert.match(program,/Mentoria DevinX já está aberta/);
+  const mentorStart=mentor.slice(0,mentor.indexOf('var identity=AgentIdentityStore.GetOrCreate()')+60);
+  assert.doesNotMatch(mentorStart,/AgentLocalState\.ResetAll/);
+  assert.match(guard,/SingleInstanceGuard\(string name=/);
+});
+
+test('mentor UI explains why a connection failed',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const laser=await readFile('src/i18n/laser.ts','utf8');
+  assert.match(panel,/mentorDeviceActive/);
+  assert.match(panel,/mentorRateLimited/);
+  assert.match(panel,/mentorServerError/);
+  assert.match(panel,/mentorInlineNotice/);
+  assert.equal((laser.match(/'laser\.mentorDeviceActive'/g)||[]).length,6);
 });

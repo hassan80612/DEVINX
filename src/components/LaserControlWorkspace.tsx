@@ -79,6 +79,7 @@ export function LaserControlWorkspace(){
   const[pairingPending,setPairingPending]=useState(false);
   const[mentorCode,setMentorCode]=useState('');
   const[mentorPending,setMentorPending]=useState(false);
+  const[mentorNotice,setMentorNotice]=useState('');
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
   const[toolPanelOpen,setToolPanelOpen]=useState(false);
@@ -1050,7 +1051,11 @@ export function LaserControlWorkspace(){
   async function claimMentor(event:FormEvent){
     event.preventDefault();
     const code=mentorCode.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
-    if(code.length!==8){setNotice(t('laser.invalidCode'));return}
+    if(code.length!==8){
+      const message=t('laser.invalidCode');
+      setMentorNotice(message);setNotice(message);return;
+    }
+    setMentorNotice(t('laser.mentorConnecting'));
     setMentorPending(true);
     try{
       const response=await fetch('/api/laser-control/mentor',{
@@ -1062,19 +1067,26 @@ export function LaserControlWorkspace(){
       const data=await response.json();
       if(!response.ok||!data?.claimed){
         const reason=String(data?.reason||'');
-        setNotice(
+        const message=
           reason==='mentor_entitlement_required'?t('laser.mentorNoAccess')
           :reason==='concurrent_limit'?t('laser.mentorLimit')
-          :t('laser.mentorExpired')
-        );
+          :reason==='device_already_active'?t('laser.mentorDeviceActive')
+          :reason==='rate_limited'?t('laser.mentorRateLimited')
+          :reason==='not_found_or_expired'||reason==='invalid_code'?t('laser.mentorExpired')
+          :t('laser.mentorServerError');
+        setMentorNotice(message);
+        setNotice(message);
         return;
       }
       setMentorCode('');
+      setMentorNotice(t('laser.mentorConnected'));
       setNotice(t('laser.mentorConnected'));
       await loadDevices();
       if(data?.deviceId)setSelectedDeviceId(String(data.deviceId));
     }catch{
-      setNotice(t('laser.commandFail'));
+      const message=t('laser.mentorServerError');
+      setMentorNotice(message);
+      setNotice(message);
     }finally{
       setMentorPending(false);
     }
@@ -1176,6 +1188,7 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
+        {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
       </form>
 
       <div className={styles.deviceGroup}>
