@@ -5,7 +5,7 @@ import {useI18n} from '@/i18n/provider';
 import {guideCopy} from './guide-copy';
 import styles from './page.module.css';
 
-const DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.31/DevinX-Laser-Agent-1.0.31.exe';
+const DOWNLOAD='/api/laser-control/agent-download';
 const SUPPORT={
   "pt-BR":"Suporte por e-mail",en:"Email support",es:"Soporte por correo",
   fr:"Support par e-mail",de:"E-Mail-Support",ar:"الدعم عبر البريد"
@@ -34,6 +34,7 @@ export function LaserGuideContent(){
       <div className={styles.actions}>
         <a className={styles.primary} href={DOWNLOAD} download>{c.download}</a>
         <a className={styles.secondary} href="/laser-control">{c.open}</a>
+        <a className={styles.secondary} href="/laser-control/mentoria">{locale==="pt-BR"?"Acesso temporário do aluno":locale==="es"?"Acceso temporal del alumno":locale==="fr"?"Accès temporaire élève":locale==="de"?"Temporärer Schülerzugang":locale==="ar"?"وصول الطالب المؤقت":"Student temporary access"}</a>
         <a className={styles.secondary} href={`mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support&body=Agent%20version:%0ALightBurn%20version:%0AWindows:%0AIssue:%0A`}>{SUPPORT[locale]}</a>
       </div>
 

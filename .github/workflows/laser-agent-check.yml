@@ -69,22 +69,31 @@ jobs:
             exit 1
           }
 
-      - name: Publish single-file Agent
-        run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish
+      - name: Publish permanent Agent
+        run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish-agent
+
+      - name: Publish mentor-only executable
+        run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DefineConstants=DEVINX_MENTOR_ONLY -o .\laser-agent\publish-mentor
 
       - name: Prepare direct Windows executables
         shell: pwsh
         run: |
-          Copy-Item .\laser-agent\publish\DevinXLaserAgent.exe .\laser-agent\DevinX-Laser-Agent-1.0.31.exe -Force
-          Copy-Item .\laser-agent\publish\DevinXLaserAgent.exe .\laser-agent\DevinX-Mentoria-1.0.31.exe -Force
+          Copy-Item .\laser-agent\publish-agent\DevinXLaserAgent.exe .\laser-agent\DevinX-Laser-Agent-1.0.32.exe -Force
+          Copy-Item .\laser-agent\publish-mentor\DevinXLaserAgent.exe .\laser-agent\DevinX-Mentoria-1.0.32.exe -Force
+          $agentHash = (Get-FileHash .\laser-agent\DevinX-Laser-Agent-1.0.32.exe -Algorithm SHA256).Hash
+          $mentorHash = (Get-FileHash .\laser-agent\DevinX-Mentoria-1.0.32.exe -Algorithm SHA256).Hash
+          if ($agentHash -eq $mentorHash) {
+            Write-Host "Permanent Agent and Mentoria must be different binaries."
+            exit 1
+          }
 
       - name: Upload direct executables
         uses: actions/upload-artifact@v4
         with:
           name: DevinX-Laser-direct-exe
           path: |
-            .\laser-agent\DevinX-Laser-Agent-1.0.31.exe
-            .\laser-agent\DevinX-Mentoria-1.0.31.exe
+            .\laser-agent\DevinX-Laser-Agent-1.0.32.exe
+            .\laser-agent\DevinX-Mentoria-1.0.32.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -94,11 +103,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'laser-agent-v1.0.31'
+          $tag = 'laser-agent-v1.0.32'
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists. Stable releases are immutable; skipping upload."
             exit 0
           }
-          gh release create $tag --title 'DevinX Laser Agent 1.0.31' --notes 'Executáveis diretos do DevinX Laser Control para Windows 10/11 x64. Sem ZIP e sem CMD.'
-          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.31.exe .\laser-agent\DevinX-Mentoria-1.0.31.exe
+          gh release create $tag --title 'DevinX Laser Agent 1.0.32' --notes 'Executáveis diretos do DevinX Laser Control para Windows 10/11 x64. Sem ZIP e sem CMD.'
+          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.32.exe .\laser-agent\DevinX-Mentoria-1.0.32.exe
