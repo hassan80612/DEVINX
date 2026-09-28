@@ -4,7 +4,7 @@ import {getLaserControlAccess} from '@/features/laser-control/server/master-acce
 export const dynamic='force-dynamic';
 
 const BR_CHECKOUT='https://pay.kiwify.com.br/IdNEzcp?src=devinx_extra_pc';
-const INTL_CHECKOUT='https://pay.kiwify.com/PR4BNpa?src=devinx_extra_pc';
+const INTL_CHECKOUT='https://pay.kiwify.com/PR4BNpa?region=intl&src=devinx_extra_pc';
 
 export async function GET(request:NextRequest){
   const access=await getLaserControlAccess();
