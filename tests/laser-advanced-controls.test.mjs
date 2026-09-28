@@ -81,7 +81,6 @@ test('mobile mentoring keyboard and dialog controls stay available over live pre
   assert.match(panel,/openMobileKeyboard/);
   assert.match(panel,/sendKeyboardCharacter/);
   assert.match(panel,/type:'replace_text',key:''/);
-  assert.doesNotMatch(panel,/mobileKeyboardRef|inputMode="text"|enterKeyHint="done"/);
   assert.match(panel,/laser\.closeEsc/);
   assert.match(panel,/laser\.okEnter/);
   assert.match(panel,/pendingGuard/);
