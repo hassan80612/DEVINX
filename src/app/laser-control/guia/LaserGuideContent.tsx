@@ -34,7 +34,7 @@ export function LaserGuideContent(){
       <div className={styles.actions}>
         <a className={styles.primary} href={DOWNLOAD}>{c.download}</a>
         <a className={styles.secondary} href="/laser-control">{c.open}</a>
-        <a className={styles.secondary} href="/laser-control/mentoria">{locale==="pt-BR"?"Acesso temporário do aluno":locale==="es"?"Acceso temporal del alumno":locale==="fr"?"Accès temporaire élève":locale==="de"?"Temporärer Schülerzugang":locale==="ar"?"وصول الطالب المؤقت":"Student temporary access"}</a>
+        <a className={styles.secondary} href="/laser-control/mentoria">{locale==="pt-BR"?"Acesso do aluno":locale==="es"?"Acceso temporal del alumno":locale==="fr"?"Accès temporaire élève":locale==="de"?"Temporärer Schülerzugang":locale==="ar"?"وصول الطالب المؤقت":"Student access"}</a>
         <a className={styles.secondary} href={`mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support&body=Agent%20version:%0ALightBurn%20version:%0AWindows:%0AIssue:%0A`}>{SUPPORT[locale]}</a>
       </div>
 
