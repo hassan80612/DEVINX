@@ -5,6 +5,7 @@ import {createServerSupabaseClient} from '@/lib/supabase/server';
 import {AuthForm} from './AuthForm';
 import {TrialActivation} from '@/components/TrialActivation';
 import {AccessGateCard} from '@/components/AccessGateCard';
+import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
 
 export const dynamic='force-dynamic';
 
@@ -24,6 +25,11 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
 
   if(data?.claims){
     if(trial==='claim')return <TrialActivation/>;
+    if(nextPath.startsWith('/laser-control')){
+      const laserAccess=await getLaserControlAccess();
+      if(laserAccess.allowed)redirect(nextPath);
+      redirect('/laser-control/conhecer#planos');
+    }
     const{data:accessData}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
     if(access?.allowed)redirect(nextPath||'/painel');
@@ -34,5 +40,5 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
     ?'Esse link de recuperação é inválido ou expirou. Solicite um novo.'
     :'';
 
-  return <AuthForm nextPath={nextPath} initialError={initialError} initialTrial={trial==='1'}/>;
+  return <AuthForm nextPath={nextPath} initialError={initialError} initialTrial={trial==='1'&&!nextPath.startsWith('/laser-control')} laserMode={nextPath.startsWith('/laser-control')}/>;
 }

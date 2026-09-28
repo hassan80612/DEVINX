@@ -25,9 +25,6 @@ export default async function LaserControlPage(){
     {access.isAdmin&&<div style={{width:'min(1720px,calc(100% - 24px))',margin:'0 auto'}}>
       <SiteVisibilityAdminCard/>
     </div>}
-    <div style={{width:'min(1720px,calc(100% - 24px))',margin:'8px auto 4px',display:'flex',justifyContent:'flex-end'}}>
-      <a href="mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support&body=Agent%20version:%0ALightBurn%20version:%0AWindows:%0AIssue:%0A" style={{padding:'8px 12px',borderRadius:10,border:'1px solid rgba(170,222,240,.28)',background:'rgba(13,33,43,.48)',color:'#cceef8',fontSize:11,fontWeight:800,textDecoration:'none'}}>Suporte / Support</a>
-    </div>
     <LaserControlWorkspace/>
   </main>;
 }

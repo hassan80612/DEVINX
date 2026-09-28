@@ -102,7 +102,7 @@ export function LaserLanding(){
       <article className={styles.story+" "+styles.mentor}><small>{c.mentorTag}</small><h2>{c.mentorTitle}</h2><p>{c.mentorText}</p><div className={styles.factGrid}>{c.mentorFacts.map(item=><span key={item}>◆ {item}</span>)}</div></article>
     </section>
     <section className={styles.how}><div className={styles.sectionHead}><small>{c.how}</small></div><div className={styles.steps}>{c.steps.map(([n,title,text])=><article key={n}><span>{n}</span><b>{title}</b><p>{text}</p></article>)}</div></section>
-    <section className={styles.pricing}>
+    <section className={styles.pricing} id="planos">
       <div className={styles.sectionHead}><small>{c.plansTag}</small><h2>{c.plansTitle}</h2></div>
       <div className={styles.planGrid}>{c.plans.map(([name,price,desc,detail,href,cta],index)=><article key={name} className={index===1?styles.featuredPlan:""}>{index===1&&<small className={styles.best}>{intl?"PROFESSIONAL":"MAIS COMPLETO"}</small>}<span>{name}</span><h3>{price}<em>{index===2?"":c.period}</em></h3><b>{desc}</b><p>{detail}</p><a href={href} target="_blank" rel="noreferrer">{cta}</a></article>)}</div>
     </section>
