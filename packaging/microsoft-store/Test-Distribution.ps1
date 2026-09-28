@@ -24,7 +24,7 @@ using DevinXLaserAgent;
 using Microsoft.Win32;
 
 bool expectedStore = args.Contains("store");
-if (AgentDistribution.IsStoreBuild != expectedStore) throw new Exception("Wrong distribution build.");
+if (AgentDistribution.IsStoreBuild != expectedStore) throw new Exception($"Wrong distribution build: expected={expectedStore}, actual={AgentDistribution.IsStoreBuild}, args={string.Join(",", args)}");
 AgentRuntime.Configure(Array.Empty<string>());
 var normalDirectory = AgentRuntime.StateDirectory;
 var expectedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -59,6 +59,7 @@ namespace DevinXLaserAgent
 '@ | Set-Content "$test/Program.cs"
 foreach ($distribution in @('portable', 'store')) {
     $storeBuild = if ($distribution -eq 'store') { 'true' } else { 'false' }
+    & dotnet msbuild "$test/DistributionTests.csproj" "-p:StoreDistribution=$storeBuild" -getProperty:DefineConstants,StoreDistribution
     & dotnet build "$test/DistributionTests.csproj" -c Release -t:Rebuild "-p:StoreDistribution=$storeBuild"
     if ($LASTEXITCODE -ne 0) { throw "$distribution test compilation failed." }
     & dotnet "$test/bin/Release/net8.0-windows/DistributionTests.dll" $distribution
