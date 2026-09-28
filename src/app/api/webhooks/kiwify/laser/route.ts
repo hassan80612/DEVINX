@@ -1,4 +1,5 @@
-import {createHmac,timingSafeEqual} from 'node:crypto';
+import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
+import {createClient} from '@supabase/supabase-js';
 import {NextRequest,NextResponse} from 'next/server';
 
 export const runtime='nodejs';
@@ -61,5 +62,19 @@ export async function POST(request:NextRequest){
   if(!signatureMatches(secret,signature,raw,payload))
     return NextResponse.json({ok:false,error:'invalid_signature'},{status:401});
 
-  return NextResponse.json({ok:true,accepted:true});
+  const supabase=createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
+  );
+  const tokenHash=createHash('sha256').update(secret).digest('hex');
+  const{data,error}=await supabase.rpc('process_kiwify_laser_webhook',{
+    p_payload:payload,p_token_hash:tokenHash
+  });
+  if(error){
+    console.error('kiwify laser webhook processing failed',error.code);
+    return NextResponse.json({ok:false,error:'processing_failed'},{status:500});
+  }
+
+  return NextResponse.json(data||{ok:true,accepted:true});
 }
