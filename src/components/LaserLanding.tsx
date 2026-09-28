@@ -9,7 +9,7 @@ import styles from "./LaserLanding.module.css";
 const BR={
   heroTag:"DEVINX LASER CONTROL · LIGHTBURN REMOTO",hero1:"Seu LightBurn.",hero2:"Onde você estiver.",
   intro:"Acompanhe a tela ao vivo, use os principais comandos, edite com toque, mouse e teclado e atenda alunos à distância sem transformar o processo em uma instalação complicada.",
-  access:"Entrar no Laser Control",guide:"Guia completo",agent:"Acesso temporário do aluno",
+  access:"Entrar no Laser Control",guide:"Guia completo",agent:"Acesso do aluno",
   capabilities:"DO COMPUTADOR PARA A SUA MÃO",capabilityLead:"Um painel criado para operar o LightBurn à distância sem esconder o que realmente importa.",
   features:[
     ["◉","Tela ao vivo","Veja a janela do LightBurn em tempo real e acompanhe o estado do computador e da máquina."],
@@ -40,7 +40,7 @@ const BR={
 const INTL={
   heroTag:"DEVINX LASER CONTROL · REMOTE LIGHTBURN",hero1:"Your LightBurn.",hero2:"Wherever you are.",
   intro:"See the live screen, use essential commands, edit with touch, mouse and the DevinX keyboard, and mentor students remotely without turning setup into a technical obstacle.",
-  access:"Open Laser Control",guide:"Complete guide",agent:"Student temporary access",
+  access:"Open Laser Control",guide:"Complete guide",agent:"Student access",
   capabilities:"FROM THE LASER PC TO YOUR HAND",capabilityLead:"A remote workspace built around the controls that matter when operating LightBurn.",
   features:[
     ["◉","Live screen","See the LightBurn window in real time and follow computer and machine status."],
