@@ -217,3 +217,14 @@ test('custom mobile keyboard sends letters and numbers through the already worki
   assert.match(css,/\.mobileKeyRows/);
   assert.match(css,/\.mobileKeyboardBottom/);
 });
+
+
+test('right-click button sends one right-click event and keyboard stays outside preview',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
+  assert.match(panel,/rightClickArmed[\s\S]*type:'click',[\s\S]*button:2/);
+  assert.match(panel,/title=\{t\('laser\.recenterView'\)\}[\s\S]*>⊙<\/button>/);
+  assert.match(panel,/dPadCenterSpacer/);
+  assert.match(css,/\.mobileKeyboard,.mobileKeyboardHidden\{[\s\S]*position:relative/);
+  assert.doesNotMatch(css,/\.mobileKeyboard,.mobileKeyboardHidden\{[\s\S]{0,250}position:absolute/);
+});

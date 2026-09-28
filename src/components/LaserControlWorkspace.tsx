@@ -506,8 +506,12 @@ export function LaserControlWorkspace(){
     sendRemoteInput({type:'keyup',key:'Alt',code:'AltLeft',...base});
   }
 
-  function openMobileKeyboard(){
+  async function openMobileKeyboard(){
     if(!inputReadyRef.current)return;
+    if(document.fullscreenElement){
+      try{await document.exitFullscreen();}catch{}
+      await new Promise(resolve=>window.setTimeout(resolve,120));
+    }
     setKeyboardShift(false);
     setMobileEditOpen(true);
     mobileEditPrepareRef.current=sendVerifiedInput({type:'prepare_edit'});
@@ -955,8 +959,7 @@ export function LaserControlWorkspace(){
     const point=pointerCoordinates(event);
     if(inputReady&&point){
       if(rightClickArmed&&!gesture.moved){
-        sendRemoteInput({type:'pointerdown',...point,button:2});
-        sendRemoteInput({type:'pointerup',...point,button:2});
+        sendRemoteInput({type:'click',...point,button:2});
         setRightClickArmed(false);
         lastTapRef.current=null;
         resetTouchGesture();
@@ -1337,6 +1340,7 @@ export function LaserControlWorkspace(){
             <button type="button" title={t('laser.saveProject')} aria-label={t('laser.saveProject')} disabled={toolPending!==null} onClick={()=>void runShortcut('save',{key:'s',code:'KeyS',ctrl:true})}>▣</button>
             <button type="button" title={t('laser.undo')} aria-label={t('laser.undo')} disabled={toolPending!==null} onClick={()=>void runShortcut('undo',{key:'z',code:'KeyZ',ctrl:true})}>↶</button>
             <button type="button" title={t('laser.redo')} aria-label={t('laser.redo')} disabled={toolPending!==null} onClick={()=>void runShortcut('redo',{key:'z',code:'KeyZ',ctrl:true,shift:true})}>↷</button>
+            <button type="button" title={t('laser.recenterView')} aria-label={t('laser.recenterView')} disabled={toolPending!==null} onClick={()=>void recenterLightBurnView()}>⊙</button>
             <button type="button" title={t('laser.importPc')} aria-label={t('laser.importPc')} disabled={toolPending!==null} onClick={()=>void runShortcut('import',{key:'i',code:'KeyI',ctrl:true})}>↥</button>
             <button type="button" title={t('laser.previewProject')} aria-label={t('laser.previewProject')} disabled={toolPending!==null} onClick={()=>void runShortcut('preview',{key:'p',code:'KeyP',alt:true})}>◉</button>
           </div>
@@ -1418,6 +1422,8 @@ export function LaserControlWorkspace(){
             <b>{selectedDevice.lightburn_online===false?t('laser.previewOpen'):t('laser.previewWaiting')}</b>
             <span>{t('laser.previewHelp')}</span>
           </div>}
+        </div>
+
           <div className={mobileEditOpen?styles.mobileKeyboard:styles.mobileKeyboardHidden} aria-label={t('laser.keyboardAria')}>
             <div className={styles.mobileKeyboardHead}>
               <b>⌨ {t('laser.keyboard')}</b>
@@ -1456,7 +1462,6 @@ export function LaserControlWorkspace(){
               <button type="button" onClick={closeMobileKeyboard}>{t('laser.cancel')}</button>
             </div>
           </div>
-        </div>
 
         <div className={styles.frameInfo}>
           <span>{frameSize||'—'}</span>
@@ -1468,7 +1473,7 @@ export function LaserControlWorkspace(){
           <div className={styles.dPad} aria-label={t('laser.moveSelection')}>
             <button className={styles.dPadUp} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-up','ArrowUp','ArrowUp')}>↑</button>
             <button className={styles.dPadLeft} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-left','ArrowLeft','ArrowLeft')}>←</button>
-            <button className={styles.dPadCenter} type="button" disabled={toolPending!==null} onClick={()=>void recenterLightBurnView()} title={t('laser.recenterView')} aria-label={t('laser.recenterView')}>⊙</button>
+            <span className={styles.dPadCenterSpacer} aria-hidden="true"/>
             <button className={styles.dPadRight} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-right','ArrowRight','ArrowRight')}>→</button>
             <button className={styles.dPadDown} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-down','ArrowDown','ArrowDown')}>↓</button>
           </div>
