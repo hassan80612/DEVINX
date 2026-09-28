@@ -221,3 +221,17 @@ test("lease remoto nunca passa da validade do acesso emitido pelo servidor",()=>
   assert.ok(migration.includes("now()+interval '45 seconds'"));
   assert.ok(migration.includes("least("));
 });
+
+
+test("webhook Kiwify do Laser despacha ofertas no banco e reconhece estorno pelo pedido",()=>{
+  const route=read("src/app/api/webhooks/kiwify/laser/route.ts");
+  const migration=read("supabase/migrations/20260928212544_laser_kiwify_offer_dispatch_refund_safe.sql");
+  assert.ok(route.includes("process_kiwify_laser_offer_dispatch"));
+  assert.equal(route.includes("checkoutCode(payload)"),false);
+  assert.ok(migration.includes("IdNEzcp"));
+  assert.ok(migration.includes("PR4BNpa"));
+  assert.ok(migration.includes("pc_addon_orders o where o.order_id=v_order_id"));
+  assert.ok(migration.includes("process_kiwify_laser_extra_webhook"));
+  assert.ok(migration.includes("process_kiwify_laser_international_webhook"));
+  assert.ok(migration.includes("process_kiwify_laser_webhook"));
+});
