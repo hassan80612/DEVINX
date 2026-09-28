@@ -79,13 +79,37 @@ export async function POST(request:Request){
   }
 
   let revokedCount=0;
-  for(const device of after){
-    if(device.device_id===activeDeviceId)continue;
-    const revoked=await invokeLaserMasterFunction('laser-master-device-access',{
-      deviceId:device.device_id!,
-      action:'revoke'
-    });
-    if(revoked.ok)revokedCount+=1;
+  async function revokeOtherPermanentDevices(devices:DeviceRow[]){
+    for(const device of devices){
+      if(device.device_id===activeDeviceId)continue;
+      const revoked=await invokeLaserMasterFunction('laser-master-device-access',{
+        deviceId:device.device_id!,
+        action:'revoke'
+      });
+      if(revoked.ok)revokedCount+=1;
+    }
+  }
+
+  await revokeOtherPermanentDevices(after);
+
+  // Fail closed under rare concurrent pairing: do not report success until the
+  // subscriber has exactly one active permanent PC and it is the PC just paired.
+  let singlePcVerified=false;
+  for(let attempt=0;attempt<3&&!singlePcVerified;attempt++){
+    const verify=await invokeLaserMasterFunction('laser-master-devices',{});
+    if(!verify.ok)break;
+    const active=activeOwnedDevices(verify.data);
+    singlePcVerified=active.length===1&&active[0].device_id===activeDeviceId;
+    if(singlePcVerified)break;
+    await revokeOtherPermanentDevices(active);
+    if(attempt<2)await new Promise(resolve=>setTimeout(resolve,120));
+  }
+
+  if(!singlePcVerified){
+    return NextResponse.json(
+      {claimed:false,reason:'single_pc_verification_failed',singlePcVerified:false},
+      {status:409,headers:{'Cache-Control':'no-store, max-age=0'}}
+    );
   }
 
   return NextResponse.json(
