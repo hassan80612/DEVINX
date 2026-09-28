@@ -30,6 +30,8 @@ const BR={
     ["03","Controle","Abra o painel no celular ou em outro PC, escolha o computador e inicie a tela ao vivo."]
   ],
   plansTag:"PLANOS BRASIL",plansTitle:"Escolha o acesso que combina com o seu uso.",period:"/mês",
+  purchaseTitle:"Como você ativa depois da compra",
+  purchaseSteps:["Escolha o plano e conclua o pagamento na Kiwify.","Use na sua conta DevinX o mesmo e-mail informado na compra.","Na página de confirmação, toque em Entrar no Laser Control. Se ainda não tiver conta, crie uma com esse mesmo e-mail.","O acesso é reconhecido automaticamente pelo pagamento aprovado."],
   plans:[
     ["CONTROL","R$ 29,90","Controle remoto do seu LightBurn","1 PC · uso próprio","https://pay.kiwify.com.br/YghizRi","Assinar Control"],
     ["MENTOR","R$ 59,90","Controle próprio + mentoria remota","1 PC · 10 sessões por ciclo","https://pay.kiwify.com.br/qVRSFCL","Assinar Mentor"],
@@ -60,6 +62,8 @@ const INTL={
     ["03","Take control","Open the panel on your phone or another computer, select the PC and start the live view."]
   ],
   plansTag:"INTERNATIONAL ACCESS",plansTitle:"Choose the access that fits your workflow.",period:"/30 days",
+  purchaseTitle:"How access is activated after purchase",
+  purchaseSteps:["Choose a plan and complete payment on Kiwify.","Use the same purchase email for your DevinX account.","On the confirmation page, open Laser Control. If you do not have an account yet, create one with that same email.","Approved purchases are recognized automatically."],
   plans:[
     ["CONTROL","US$ 8.90","Remote access to your LightBurn","1 PC · 30 days","https://pay.kiwify.com/nuY5IsV","Get Control"],
     ["MENTOR","US$ 17.90","Personal control + remote mentoring","1 PC · 30 days · 10 sessions","https://pay.kiwify.com/aIbUTmG","Get Mentor"],
@@ -131,6 +135,10 @@ export function LaserLanding(){
     <section className={styles.how}><div className={styles.sectionHead}><small>{c.how}</small></div><div className={styles.steps}>{c.steps.map(([n,title,text])=><article key={n}><span>{n}</span><b>{title}</b><p>{text}</p></article>)}</div></section>
     <section className={styles.pricing} id="planos">
       <div className={styles.sectionHead}><small>{c.plansTag}</small><h2>{c.plansTitle}</h2></div>
+      <div className={styles.purchaseFlow}>
+        <b>{c.purchaseTitle}</b>
+        <div>{c.purchaseSteps.map((step,index)=><span key={step}><i>{index+1}</i>{step}</span>)}</div>
+      </div>
       <div className={styles.planGrid}>{c.plans.map(([name,price,desc,detail,href,cta],index)=><article key={name} className={index===1?styles.featuredPlan:""}>{index===1&&<small className={styles.best}>{intl?"PROFESSIONAL":"MAIS COMPLETO"}</small>}<span>{name}</span><h3>{price}<em>{index===2?"":c.period}</em></h3><b>{desc}</b><p>{detail}</p><a href={href} target="_blank" rel="noreferrer">{cta}</a></article>)}</div>
     </section>
     <section className={styles.bottom}>

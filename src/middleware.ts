@@ -31,8 +31,11 @@ export async function middleware(request:NextRequest){
 
   const pathname=request.nextUrl.pathname;
   const publicLaserPage=
+    pathname==='/laser-control/conhecer'||pathname.startsWith('/laser-control/conhecer/')||
     pathname==='/laser-control/guia'||pathname.startsWith('/laser-control/guia/')||
-    pathname==='/laser-control/mentoria'||pathname.startsWith('/laser-control/mentoria/');
+    pathname==='/laser-control/mentoria'||pathname.startsWith('/laser-control/mentoria/')||
+    pathname==='/laser-control/obrigado'||pathname.startsWith('/laser-control/obrigado/')||
+    pathname==='/laser-control/thank-you'||pathname.startsWith('/laser-control/thank-you/');
   const isProtected=!publicLaserPage&&protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
 
   // Public pages do not need an Auth round-trip. This keeps marketing/storefront

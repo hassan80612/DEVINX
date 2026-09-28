@@ -20,8 +20,7 @@ export default function LaserThankYouInternationalPage(){
       <small style={{fontWeight:900,letterSpacing:'.14em',color:'#a9e8ff'}}>DEVINX LASER CONTROL</small>
       <h1 style={{margin:'12px 0 10px',fontSize:'clamp(32px,6vw,54px)',lineHeight:1}}>Payment received.</h1>
       <p style={{margin:0,color:'#c5d7df',fontSize:16,lineHeight:1.65}}>
-        Your access or extra mentoring session is synchronized automatically using the email from your purchase. The extra session is valid only until the end of your current Mentor access period.
-        If you do not have a DevinX account yet, create it using the same email used at checkout.
+        Your access or extra mentoring session is synchronized automatically using the email from your purchase. Use the same checkout email for your DevinX account. If you do not have an account yet, open Laser Control and choose Create account. The extra session is valid only until the end of your current Mentor access period.
       </p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,marginTop:24}}>
         <a href="/entrar?next=/laser-control" style={{
