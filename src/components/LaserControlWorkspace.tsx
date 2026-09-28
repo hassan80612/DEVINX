@@ -197,14 +197,18 @@ export function LaserControlWorkspace(){
     return Date.now()-Date.parse(device.last_seen_at)<25_000;
   };
 
-  const supportsAgent21=(version:string|null)=>{
-    const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=21);
+  const supportsAgentAtLeast=(version:string|null,minPatch:number)=>{
+    const match=/^(\d+)\.(\d+)\.(\d+)/.exec(version||'');
+    if(!match)return false;
+    const major=Number(match[1]);
+    const minor=Number(match[2]);
+    const patch=Number(match[3]);
+    if(major!==1)return major>1;
+    if(minor!==0)return minor>0;
+    return patch>=minPatch;
   };
-  const supportsAgent24=(version:string|null)=>{
-    const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=24);
-  };
+  const supportsAgent21=(version:string|null)=>supportsAgentAtLeast(version,21);
+  const supportsAgent24=(version:string|null)=>supportsAgentAtLeast(version,24);
   const latestAgentReady=Boolean(selectedDevice&&supportsAgent21(selectedDevice.agent_version));
   const workspaceKeysReady=Boolean(selectedDevice&&supportsAgent24(selectedDevice.agent_version));
 

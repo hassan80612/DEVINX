@@ -1,10 +1,10 @@
-# DevinX Laser Agent 1.0.28
+# DevinX Laser Agent 1.0.31
 
 Agent Windows do DevinX Laser Control.
 
 ## Instalação simples
 
-1. Baixe **DevinX-Laser-Agent-1.0.28.exe**.
+1. Baixe **DevinX-Laser-Agent-1.0.31.exe**.
 2. Dê dois cliques.
 3. O Agent instala ou atualiza automaticamente no perfil do usuário do Windows.
 4. Na primeira instalação, o navegador abre o DevinX já com o vínculo preparado.
@@ -17,7 +17,7 @@ Não é necessário ZIP, extrair pasta, abrir CMD nem copiar código no uso norm
 
 O aluno recebe um link por e-mail e abre no computador conectado ao LightBurn.
 
-1. Na página de mentoria, baixa **DevinX-Mentoria-1.0.28.exe**.
+1. Na página de mentoria, baixa **DevinX-Mentoria-1.0.31.exe**.
 2. Dá dois cliques.
 3. O executável reconhece automaticamente o modo Mentoria; não instala e não entra na inicialização do Windows.
 4. Uma janela mostra um código temporário de 8 caracteres.
