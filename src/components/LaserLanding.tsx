@@ -6,12 +6,10 @@ import {useI18n} from "@/i18n/provider";
 import {createClient} from "@/lib/supabase/client";
 import styles from "./LaserLanding.module.css";
 
-const AGENT="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.31/DevinX-Laser-Agent-1.0.31.exe";
-
 const BR={
   heroTag:"DEVINX LASER CONTROL · LIGHTBURN REMOTO",hero1:"Seu LightBurn.",hero2:"Onde você estiver.",
   intro:"Acompanhe a tela ao vivo, use os principais comandos, edite com toque, mouse e teclado e atenda alunos à distância sem transformar o processo em uma instalação complicada.",
-  access:"Entrar no Laser Control",guide:"Guia completo",agent:"Baixar Agent 1.0.31",
+  access:"Entrar no Laser Control",guide:"Guia completo",agent:"Acesso temporário do aluno",
   capabilities:"DO COMPUTADOR PARA A SUA MÃO",capabilityLead:"Um painel criado para operar o LightBurn à distância sem esconder o que realmente importa.",
   features:[
     ["◉","Tela ao vivo","Veja a janela do LightBurn em tempo real e acompanhe o estado do computador e da máquina."],
@@ -42,7 +40,7 @@ const BR={
 const INTL={
   heroTag:"DEVINX LASER CONTROL · REMOTE LIGHTBURN",hero1:"Your LightBurn.",hero2:"Wherever you are.",
   intro:"See the live screen, use essential commands, edit with touch, mouse and the DevinX keyboard, and mentor students remotely without turning setup into a technical obstacle.",
-  access:"Open Laser Control",guide:"Complete guide",agent:"Download Agent 1.0.31",
+  access:"Open Laser Control",guide:"Complete guide",agent:"Student temporary access",
   capabilities:"FROM THE LASER PC TO YOUR HAND",capabilityLead:"A remote workspace built around the controls that matter when operating LightBurn.",
   features:[
     ["◉","Live screen","See the LightBurn window in real time and follow computer and machine status."],
@@ -111,7 +109,7 @@ export function LaserLanding(){
         <div className={styles.heroActions}>
           <a className={styles.gold} href="/entrar?next=/laser-control">{c.access}</a>
           <a className={styles.dark} href="/laser-control/guia">{c.guide}</a>
-          <a className={styles.dark} href={AGENT}>{c.agent}</a>
+          <a className={styles.dark} href="/laser-control/mentoria">{c.agent}</a>
         </div>
       </div>
       <div className={styles.screen} aria-hidden="true">

@@ -55,18 +55,23 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
 });
 
 
-test('Agent 1.0.31 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
+test('Agent 1.0.32 uses separate permanent and mentor-only builds without ZIP or CMD',async()=>{
   const runtime=await readFile('laser-agent/AgentRuntime.cs','utf8');
   const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
   const mentorPage=await readFile('src/app/laser-control/mentoria/MentorDownloadPage.tsx','utf8');
-  assert.match(runtime,/exeName\.Contains\("Mentoria"/);
+  assert.match(runtime,/DEVINX_MENTOR_ONLY/);
+  assert.doesNotMatch(runtime,/exeName\.Contains/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.31\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\.0\.31\.exe/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.31\.zip/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.31\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.32\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.0\.32\.exe/);
+  assert.match(workflow,/publish-agent/);
+  assert.match(workflow,/publish-mentor/);
+  assert.match(workflow,/DefineConstants=DEVINX_MENTOR_ONLY/);
+  assert.match(workflow,/Permanent Agent and Mentoria must be different binaries/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.32\.zip/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.32\.exe/);
 });
 
 
@@ -118,4 +123,19 @@ test('mobile keyboard replaces the currently selected LightBurn field instead of
   assert.match(remote,/"replace_text"=>ReplaceFocusedText/);
   assert.match(remote,/GetFocusedElement/);
   assert.match(remote,/SetValue\(text\)/);
+});
+
+
+test('permanent Agent download is gated by Laser access while student Mentoria stays public',async()=>{
+  const route=await readFile('src/app/api/laser-control/agent-download/route.ts','utf8');
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const landing=await readFile('src/components/LaserLanding.tsx','utf8');
+  const mentorPage=await readFile('src/app/laser-control/mentoria/MentorDownloadPage.tsx','utf8');
+  assert.match(route,/getLaserControlAccess/);
+  assert.match(route,/!access\.authenticated/);
+  assert.match(route,/!access\.allowed/);
+  assert.match(panel,/\/api\/laser-control\/agent-download/);
+  assert.doesNotMatch(landing,/DevinX-Laser-Agent-1\.0\.32\.exe/);
+  assert.match(landing,/\/laser-control\/mentoria/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.32\.exe/);
 });
