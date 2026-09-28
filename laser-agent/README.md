@@ -1,77 +1,61 @@
-# DevinX Laser Agent 1.0.27
+# DevinX Laser Agent 1.0.28
 
 Agent Windows do DevinX Laser Control.
 
-## Uso normal
+## Instalação simples
 
-1. Extraia o ZIP em uma pasta.
-2. Dê dois cliques em `DevinXLaserAgent.exe`.
-3. Na primeira execução, o Agent copia seus arquivos para:
-   `%LOCALAPPDATA%\Programs\DevinX Laser Agent`
-4. O navegador abre o DevinX para vincular o PC.
-5. Depois de vinculado, o Agent permanece na bandeja do Windows e inicia automaticamente com o usuário.
+1. Baixe **DevinX-Laser-Agent-1.0.28.exe**.
+2. Dê dois cliques.
+3. O Agent instala ou atualiza automaticamente no perfil do usuário do Windows.
+4. Na primeira instalação, o navegador abre o DevinX já com o vínculo preparado.
+5. Confirme **Vincular este computador** uma vez.
+6. Depois disso o Agent fica na bandeja do Windows e inicia automaticamente.
 
-O vínculo fica salvo. Não é necessário repetir o pareamento a cada inicialização.
+Não é necessário ZIP, extrair pasta, abrir CMD nem copiar código no uso normal.
+
+## Mentoria temporária
+
+O aluno recebe um link por e-mail e abre no computador conectado ao LightBurn.
+
+1. Na página de mentoria, baixa **DevinX-Mentoria-1.0.28.exe**.
+2. Dá dois cliques.
+3. O executável reconhece automaticamente o modo Mentoria; não instala e não entra na inicialização do Windows.
+4. Uma janela mostra um código temporário de 8 caracteres.
+5. O aluno envia o código ao professor.
+6. O professor conecta no DevinX.
+7. O código vale 30 minutos para ser usado; a sessão conectada pode durar até 6 horas.
+8. Quando o professor encerra, o acesso é revogado e o modo temporário fecha.
+
+O vínculo permanente do computador, se existir, não é alterado.
 
 ## LightBurn
 
-Abra o LightBurn normalmente. O Agent detecta o aplicativo e envia:
-- estado do LightBurn e da máquina;
-- projeto/progresso quando a API local disponibiliza;
-- visualização da janela somente enquanto existe uma sessão remota aberta no DevinX.
+Abra o LightBurn normalmente. O Agent detecta o aplicativo e envia o estado do LightBurn e da máquina, além da visualização da janela somente durante uma sessão remota.
 
-A transmissão ao vivo usa um canal temporário e não grava cada quadro no banco.
+A transmissão usa canal temporário e não grava cada quadro da tela como histórico.
 
 ## Controle remoto
 
-- Botões dedicados: Frame seleção, Iniciar, Pausar e Parar.
-- Iniciar usa o comando local documentado pelo LightBurn.
-- Frame/Pause/Stop usam os atalhos oficiais do LightBurn no Windows.
-- O modo de mouse/toque/teclado só aceita entrada dentro da janela do LightBurn.
-- O modo de toque é habilitado pelo dispositivo remoto em tela cheia e é desativado ao sair da sessão.
+- Frame, Iniciar, Pausar e Parar;
+- toque, mouse e teclado restritos à janela do LightBurn;
+- tela ao vivo, zoom, pan e setas;
+- controle permanece ativo ao entrar e sair da tela cheia;
+- supervisão física, intertravamentos e botão de emergência continuam obrigatórios.
 
-A supervisão física da máquina, intertravamentos e botão de emergência continuam obrigatórios.
+## Bandeja e desinstalação
 
-## Bandeja do Windows
+No ícone do DevinX Laser Agent perto do relógio é possível abrir o Laser Control, atualizar o estado, sair e desinstalar.
 
-Clique no ícone do DevinX Laser Agent perto do relógio para:
-- abrir o Laser Control;
-- atualizar o estado;
-- sair;
-- desinstalar o Agent.
-
-## Desinstalação
-
-No ícone da bandeja escolha **Desinstalar DevinX Laser Agent**.
-
-O Agent:
-1. informa o DevinX;
-2. remove a inicialização automática;
-3. apaga o vínculo/chaves locais;
-4. remove os arquivos instalados do usuário.
-
-Não é necessário editar o Registro ou apagar pastas manualmente.
+A desinstalação remove inicialização automática, vínculo/chaves locais e arquivos instalados do usuário.
 
 ## Diagnóstico técnico
 
-Opções de suporte continuam disponíveis:
+Opções técnicas continuam disponíveis para suporte, mas não fazem parte do fluxo normal:
 - `--pair-devinx`
 - `--pair-rest`
 - `--heartbeat-once`
 - `--json-status`
 - `--reset-local-state --confirm-reset`
-
-O modo normal não abre console.
-
-
-## Mentoria temporária
-No pacote existe **INICIAR-MENTORIA.cmd**. Este modo não instala o Agent, não entra na inicialização do Windows e usa identidade/estado separados do Agent permanente.
-
-1. Extraia o ZIP.
-2. Abra `INICIAR-MENTORIA.cmd`.
-3. Envie ao professor o código de 8 caracteres exibido. O código vale 30 minutos e, após a conexão, a sessão pode durar até 6 horas.
-4. Quando o professor encerrar a sessão, o acesso é revogado e o Agent temporário fecha.
-5. O vínculo permanente do computador, se existir, não é alterado.
 
 
 ## Controles avançados do LightBurn
@@ -131,3 +115,7 @@ O controle remoto não é mais desligado automaticamente ao sair da tela cheia. 
 
 ## 1.0.27 — toque alinhado e zoom estável
 O ponteiro remoto usa os limites exatos da última imagem transmitida para manter os botões das bordas, topo e lateral do LightBurn alinhados ao toque. O caminho de clique não adiciona espera fixa quando o LightBurn já está no ponto correto. No celular, a pinça usa variação incremental limitada, mantém origem central estável e ignora o dedo restante até os dois dedos serem levantados, eliminando saltos e arrastos involuntários após o zoom.
+
+
+## 1.0.28 — EXE direto e mentoria sem CMD
+O download normal passou a ser um único EXE. O instalador direto copia ou atualiza a versão instalada e relança o Agent automaticamente. A mentoria usa um segundo EXE direto que entra em modo temporário pelo próprio nome do arquivo, sem ZIP, sem extração e sem CMD.

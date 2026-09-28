@@ -52,7 +52,6 @@ jobs:
             exit 1
           }
 
-
       - name: Heartbeat endpoint rejects unsigned payload
         shell: pwsh
         run: |
@@ -70,44 +69,22 @@ jobs:
             exit 1
           }
 
-
-      - name: Publish test Agent
+      - name: Publish single-file Agent
         run: dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish
 
-      - name: Package self-contained Agent
+      - name: Prepare direct Windows executables
         shell: pwsh
         run: |
-          Copy-Item .\laser-agent\README.md .\laser-agent\publish\LEIA-ME.txt
-          @'
-          @echo off
-          start "" "%~dp0DevinXLaserAgent.exe" --mentor
-          '@ | Set-Content -Path .\laser-agent\publish\INICIAR-MENTORIA.cmd -Encoding ASCII
-          Compress-Archive -Path .\laser-agent\publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.27.zip -Force
+          Copy-Item .\laser-agent\publish\DevinXLaserAgent.exe .\laser-agent\DevinX-Laser-Agent-1.0.28.exe -Force
+          Copy-Item .\laser-agent\publish\DevinXLaserAgent.exe .\laser-agent\DevinX-Mentoria-1.0.28.exe -Force
 
-      - name: Upload self-contained Agent
+      - name: Upload direct executables
         uses: actions/upload-artifact@v4
         with:
-          name: DevinX-Laser-Agent-win-x64
-          path: .\laser-agent\DevinX-Laser-Agent-1.0.27.zip
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Publish compact web package
-        shell: pwsh
-        run: |
-          dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained false -o .\laser-agent\web-publish
-          Copy-Item .\laser-agent\README.md .\laser-agent\web-publish\LEIA-ME.txt
-          @'
-          @echo off
-          start "" "%~dp0DevinXLaserAgent.exe" --mentor
-          '@ | Set-Content -Path .\laser-agent\web-publish\INICIAR-MENTORIA.cmd -Encoding ASCII
-          Compress-Archive -Path .\laser-agent\web-publish\* -DestinationPath .\laser-agent\DevinX-Laser-Agent-1.0.27-compact.zip -Force
-
-      - name: Upload compact web package
-        uses: actions/upload-artifact@v4
-        with:
-          name: DevinX-Laser-Agent-web
-          path: .\laser-agent\DevinX-Laser-Agent-1.0.27-compact.zip
+          name: DevinX-Laser-direct-exe
+          path: |
+            .\laser-agent\DevinX-Laser-Agent-1.0.28.exe
+            .\laser-agent\DevinX-Mentoria-1.0.28.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -117,11 +94,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'laser-agent-v1.0.27'
+          $tag = 'laser-agent-v1.0.28'
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists. Stable releases are immutable; skipping upload."
             exit 0
           }
-          gh release create $tag --title 'DevinX Laser Agent 1.0.27' --notes 'DevinX Laser Agent 1.0.27 para Windows 10/11 x64.'
-          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.27.zip
+          gh release create $tag --title 'DevinX Laser Agent 1.0.28' --notes 'Executáveis diretos do DevinX Laser Control para Windows 10/11 x64. Sem ZIP e sem CMD.'
+          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.28.exe .\laser-agent\DevinX-Mentoria-1.0.28.exe
