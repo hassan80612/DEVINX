@@ -15,7 +15,15 @@ const CANONICAL_ORIGIN='https://devinx.com.br';
 function safeNextPath(value:string){return value.startsWith('/')&&!value.startsWith('//')?value:'/painel'}
 
 export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMode=false}:{nextPath?:string;initialError?:string;initialTrial?:boolean;laserMode?:boolean}){
-  const{t}=useI18n();
+  const{t,locale}=useI18n();
+  const laserPlansLabel={
+    'pt-BR':'Ver planos do Laser Control',
+    en:'View Laser Control plans',
+    es:'Ver planes de Laser Control',
+    fr:'Voir les offres Laser Control',
+    de:'Laser-Control-Pläne ansehen',
+    ar:'عرض خطط Laser Control'
+  }[locale];
   const[mode,setMode]=useState<Mode>(initialError?'recuperar':initialTrial?'criar':'entrar');
   const[trialFlow,setTrialFlow]=useState(initialTrial);const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[showPassword,setShowPassword]=useState(false);const[message,setMessage]=useState(initialError? t('auth.errorExpired'):'');const[messageKind,setMessageKind]=useState<MessageKind>(initialError?'error':'idle');const[pending,setPending]=useState(false);const[purchaseApproved,setPurchaseApproved]=useState(false);
 
@@ -58,7 +66,7 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
       {mode==='recuperar'&&<button className="authLinkButton" type="button" onClick={()=>changeMode('entrar')}>{t('auth.backLogin')}</button>}
     </section>
     {laserMode
-      ?<aside className="authSubscription authSubscriptionPlans"><a className="secondary" href="/laser-control/conhecer#planos" style={{width:'100%',minHeight:48}}>{'Ver planos do Laser Control'}</a></aside>
+      ?<aside className="authSubscription authSubscriptionPlans"><a className="secondary" href="/laser-control/conhecer#planos" style={{width:'100%',minHeight:48}}>{laserPlansLabel}</a></aside>
       :<aside className="authSubscription authSubscriptionPlans"><SubscriptionPlans variant="compact"/></aside>}
   </main>;
 }
