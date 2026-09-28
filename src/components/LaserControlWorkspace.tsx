@@ -48,6 +48,8 @@ type RemoteSession={
 type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
+const MENTOR_SHARE_LINK='https://devinx.com.br/laser-control/mentoria';
+
 export function LaserControlWorkspace(){
   const{t}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
@@ -1036,6 +1038,15 @@ export function LaserControlWorkspace(){
     }
   }
 
+  async function copyMentorLink(){
+    try{
+      await navigator.clipboard.writeText(MENTOR_SHARE_LINK);
+      setNotice(t('laser.mentorLinkCopied'));
+    }catch{
+      setNotice(MENTOR_SHARE_LINK);
+    }
+  }
+
   async function claimMentor(event:FormEvent){
     event.preventDefault();
     const code=mentorCode.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
@@ -1137,6 +1148,20 @@ export function LaserControlWorkspace(){
         <span>{t('laser.mentoring')}</span>
         <b>{t('laser.mentorTitle')}</b>
         <p>{t('laser.mentorDesc')}</p>
+        <section className={styles.mentorShare}>
+          <strong>{t('laser.mentorShareTitle')}</strong>
+          <div className={styles.mentorShareActions}>
+            <button type="button" onClick={()=>void copyMentorLink()}>🔗 {t('laser.mentorCopyLink')}</button>
+            <a
+              href={'https://wa.me/?text='+encodeURIComponent(t('laser.mentorShareMessage')+' '+MENTOR_SHARE_LINK)}
+              target="_blank"
+              rel="noreferrer"
+            >WhatsApp</a>
+            <a
+              href={'mailto:?subject='+encodeURIComponent(t('laser.mentorShareSubject'))+'&body='+encodeURIComponent(t('laser.mentorShareMessage')+' '+MENTOR_SHARE_LINK)}
+            >✉ {t('laser.mentorEmail')}</a>
+          </div>
+        </section>
         <div>
           <input
             value={mentorCode}

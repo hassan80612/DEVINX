@@ -32,6 +32,12 @@
 .mentorConnect button{padding:0 13px}
 .mentorConnect button:disabled,.mentorEnd:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
 
+.mentorShare{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;margin:0 0 12px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(17,31,42,.28)}
+.mentorShare strong{font-size:11px;color:#e7f8ff}
+.mentorShareActions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.mentorShareActions button,.mentorShareActions a{min-height:36px;display:flex;align-items:center;justify-content:center;padding:7px 9px;border:1px solid rgba(94,231,255,.24);border-radius:9px;background:linear-gradient(180deg,rgba(83,112,134,.92),rgba(43,62,76,.96));color:#e9f8ff;font-size:10px;font-weight:900;text-decoration:none;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.08)}
+.mentorShareActions button:hover,.mentorShareActions a:hover{border-color:rgba(94,231,255,.5);color:#fff}
+
 .deviceGroup{display:grid;gap:7px;margin-top:16px}
 .groupTitle{display:flex;align-items:center;justify-content:space-between;padding:0 4px 2px;color:#c9d4e4}
 .groupTitle span{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
@@ -110,6 +116,7 @@
   .top{margin-bottom:10px;padding:18px;border-radius:17px;align-items:flex-start}.top h2{font-size:26px}.top p{font-size:13px}.liveBadge{font-size:10px;padding:8px 10px}
   .deviceStrip{position:static;max-height:none;margin-bottom:10px;padding:9px;border-radius:15px}
   .mentorConnect{padding:13px}.mentorConnect>b{font-size:17px}.mentorConnect p{font-size:11px}
+  .mentorShareActions{grid-template-columns:1fr}.mentorShareActions button,.mentorShareActions a{min-height:38px;font-size:11px}
   .deviceGroup{margin-top:11px}.deviceCard{border-radius:11px}.deviceSelect{padding:10px}.deviceSelect b{font-size:13px}
   .workspace,.workspaceEmpty{border-radius:15px}.workspaceEmpty{min-height:300px}
   .summary{grid-template-columns:1fr 1fr}.summary span{padding:11px 12px}.summary b{font-size:13px}

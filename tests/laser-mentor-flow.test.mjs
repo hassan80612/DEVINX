@@ -68,3 +68,14 @@ test('Agent 1.0.28 is distributed as direct permanent and mentor executables wit
   assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.28\.zip/);
   assert.match(mentorPage,/DevinX-Mentoria-1\.0\.28\.exe/);
 });
+
+
+test('mentor panel exposes student share actions and public mentoring link',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const laser=await readFile('src/i18n/laser.ts','utf8');
+  assert.match(panel,/https:\/\/devinx\.com\.br\/laser-control\/mentoria/);
+  assert.match(panel,/laser\.mentorCopyLink/);
+  assert.match(panel,/https:\/\/wa\.me\/\?text=/);
+  assert.match(panel,/mailto:\?subject=/);
+  assert.equal((laser.match(/'laser\.mentorShareTitle'/g)||[]).length,6);
+});
