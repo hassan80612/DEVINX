@@ -4,7 +4,7 @@ param(
     [string]$IdentityName,
     [string]$Publisher,
     [string]$PublisherDisplayName,
-    [ValidatePattern('^\d+\.\d+\.\d+\.0$')][string]$Version = '1.0.28.0',
+    [ValidatePattern('^\d+\.\d+\.\d+\.0$')][string]$Version = '1.0.31.0',
     [switch]$ValidationOnly
 )
 $ErrorActionPreference = 'Stop'

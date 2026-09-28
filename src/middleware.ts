@@ -30,8 +30,10 @@ export async function middleware(request:NextRequest){
   }
 
   const pathname=request.nextUrl.pathname;
-  const publicLaserGuide=pathname==='/laser-control/guia'||pathname.startsWith('/laser-control/guia/');
-  const isProtected=!publicLaserGuide&&protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+  const publicLaserPage=
+    pathname==='/laser-control/guia'||pathname.startsWith('/laser-control/guia/')||
+    pathname==='/laser-control/mentoria'||pathname.startsWith('/laser-control/mentoria/');
+  const isProtected=!publicLaserPage&&protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
 
   // Public pages do not need an Auth round-trip. This keeps marketing/storefront
   // requests independent from Supabase availability and removes middleware latency.

@@ -6,8 +6,6 @@ internal static class MentorMode
 {
     public static async Task RunAsync()
     {
-        try{AgentLocalState.ResetAll();}catch{}
-
         var identity=AgentIdentityStore.GetOrCreate();
         var proof=MentorProofFactory.Create(TimeSpan.FromMinutes(30));
 

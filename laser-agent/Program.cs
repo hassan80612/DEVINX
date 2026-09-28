@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Windows.Forms;
 
 namespace DevinXLaserAgent;
 
@@ -12,6 +13,17 @@ internal static class Program
 
         if(AgentRuntime.MentorMode)
         {
+            using var mentorInstance = new SingleInstanceGuard(@"Local\DevinXLaserMentor");
+            if(!mentorInstance.IsPrimary)
+            {
+                MessageBox.Show(
+                    "A Mentoria DevinX já está aberta neste computador.\n\nUse o código que já está aparecendo na janela aberta.",
+                    "DevinX Mentoria",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
             await MentorMode.RunAsync();
             return;
         }

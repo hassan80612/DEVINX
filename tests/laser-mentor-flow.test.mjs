@@ -55,7 +55,7 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
 });
 
 
-test('Agent 1.0.28 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
+test('Agent 1.0.31 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
   const runtime=await readFile('laser-agent/AgentRuntime.cs','utf8');
   const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
@@ -63,8 +63,59 @@ test('Agent 1.0.28 is distributed as direct permanent and mentor executables wit
   assert.match(runtime,/exeName\.Contains\("Mentoria"/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.28\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\.0\.28\.exe/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.28\.zip/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.28\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.31\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.0\.31\.exe/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.31\.zip/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.31\.exe/);
+});
+
+
+test('mentor panel exposes student share actions and public mentoring link',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const laser=await readFile('src/i18n/laser.ts','utf8');
+  assert.match(panel,/https:\/\/devinx\.com\.br\/laser-control\/mentoria/);
+  assert.match(panel,/laser\.mentorCopyLink/);
+  assert.match(panel,/https:\/\/wa\.me\/\?text=/);
+  assert.match(panel,/mailto:\?subject=/);
+  assert.equal((laser.match(/'laser\.mentorShareTitle'/g)||[]).length,6);
+});
+
+
+test('student mentoring download page stays public without DevinX login',async()=>{
+  const middleware=await readFile('src/middleware.ts','utf8');
+  assert.match(middleware,/laser-control\/mentoria/);
+  assert.match(middleware,/const publicLaserPage=/);
+});
+
+
+test('mentor mode allows only one local instance and keeps one pending identity',async()=>{
+  const program=await readFile('laser-agent/Program.cs','utf8');
+  const mentor=await readFile('laser-agent/MentorMode.cs','utf8');
+  const guard=await readFile('laser-agent/SingleInstanceGuard.cs','utf8');
+  assert.match(program,/DevinXLaserMentor/);
+  assert.match(program,/Mentoria DevinX já está aberta/);
+  const mentorStart=mentor.slice(0,mentor.indexOf('var identity=AgentIdentityStore.GetOrCreate()')+60);
+  assert.doesNotMatch(mentorStart,/AgentLocalState\.ResetAll/);
+  assert.match(guard,/SingleInstanceGuard\(string name=/);
+});
+
+test('mentor UI explains why a connection failed',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const laser=await readFile('src/i18n/laser.ts','utf8');
+  assert.match(panel,/mentorDeviceActive/);
+  assert.match(panel,/mentorRateLimited/);
+  assert.match(panel,/mentorServerError/);
+  assert.match(panel,/mentorInlineNotice/);
+  assert.equal((laser.match(/'laser\.mentorDeviceActive'/g)||[]).length,6);
+});
+
+
+test('mobile keyboard replaces the currently selected LightBurn field instead of appending',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const remote=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
+  assert.match(panel,/type:'replace_text'/);
+  assert.doesNotMatch(panel.slice(panel.indexOf('async function sendMobileEdit()'),panel.indexOf('function closeActiveDialog()')),/sendRemoteKey\('a'/);
+  assert.match(remote,/"replace_text"=>ReplaceFocusedText/);
+  assert.match(remote,/GetFocusedElement/);
+  assert.match(remote,/SetValue\(text\)/);
 });

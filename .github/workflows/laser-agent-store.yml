@@ -22,7 +22,7 @@ on:
         required: true
       version:
         description: Store version (last component must be zero)
-        default: '1.0.28.0'
+        default: '1.0.31.0'
         required: true
 permissions:
   contents: read

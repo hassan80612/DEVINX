@@ -48,8 +48,18 @@ type RemoteSession={
 type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
+const MENTOR_SHARE_LINK='https://devinx.com.br/laser-control/mentoria';
+
+const MOBILE_KEY_ROWS=[
+  ['1','2','3','4','5','6','7','8','9','0'],
+  ['q','w','e','r','t','y','u','i','o','p'],
+  ['a','s','d','f','g','h','j','k','l'],
+  ['z','x','c','v','b','n','m'],
+  ['á','é','í','ó','ú','ã','õ','ç','-','_','.',',','/','@']
+] as const;
+
 export function LaserControlWorkspace(){
-  const{t}=useI18n();
+  const{t,locale}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
   const[loading,setLoading]=useState(true);
@@ -77,13 +87,15 @@ export function LaserControlWorkspace(){
   const[pairingPending,setPairingPending]=useState(false);
   const[mentorCode,setMentorCode]=useState('');
   const[mentorPending,setMentorPending]=useState(false);
+  const[mentorNotice,setMentorNotice]=useState('');
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
   const[toolPanelOpen,setToolPanelOpen]=useState(false);
   const[controlPending,setControlPending]=useState<string|null>(null);
   const[activeDialogTool,setActiveDialogTool]=useState<string|null>(null);
   const[mobileEditOpen,setMobileEditOpen]=useState(false);
-  const[mobileEditValue,setMobileEditValue]=useState('');
+  const[keyboardShift,setKeyboardShift]=useState(false);
+  const[rightClickArmed,setRightClickArmed]=useState(false);
 
   const channelRef=useRef<any>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
@@ -112,10 +124,16 @@ export function LaserControlWorkspace(){
     remoteDown:false,moved:false,rightClickSent:false,startPanX:0,startPanY:0,longPressTimer:undefined
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
-  const mobileKeyboardRef=useRef<HTMLInputElement|null>(null);
   const inputReadyRef=useRef(false);
   const controlPendingRef=useRef<string|null>(null);
   const pendingInputResultsRef=useRef(new Map<string,(result:{ok:boolean;reason:string|null})=>void>());
+  const mobileEditPrepareRef=useRef<Promise<{ok:boolean;reason:string|null}>|null>(null);
+
+  async function signOutLaser(){
+    const supabase=createClient();
+    await supabase.auth.signOut();
+    window.location.assign('/');
+  }
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -487,29 +505,120 @@ export function LaserControlWorkspace(){
     window.setTimeout(()=>sendRemoteInput({type:'keyup',...payload}),45);
   }
 
-  function openMobileKeyboard(){
+  function releaseRemoteModifiers(){
+    const base={ctrl:false,shift:false,alt:false,meta:false};
+    sendRemoteInput({type:'keyup',key:'Shift',code:'ShiftLeft',...base});
+    sendRemoteInput({type:'keyup',key:'Control',code:'ControlLeft',...base});
+    sendRemoteInput({type:'keyup',key:'Alt',code:'AltLeft',...base});
+  }
+
+  async function openMobileKeyboard(){
     if(!inputReadyRef.current)return;
-    setMobileEditValue('');
-    setMobileEditOpen(true);
-    const input=mobileKeyboardRef.current;
-    if(input){
-      input.value='';
-      input.focus({preventScroll:true});
-      input.select();
+    if(document.fullscreenElement){
+      try{await document.exitFullscreen();}catch{}
+      await new Promise(resolve=>window.setTimeout(resolve,120));
     }
+    setKeyboardShift(false);
+    setMobileEditOpen(true);
+    mobileEditPrepareRef.current=sendVerifiedInput({type:'prepare_edit'});
   }
 
   function closeMobileKeyboard(){
     setMobileEditOpen(false);
-    mobileKeyboardRef.current?.blur();
+    setKeyboardShift(false);
+    mobileEditPrepareRef.current=null;
+    releaseRemoteModifiers();
   }
 
-  function sendMobileEdit(){
-    const value=mobileEditValue;
-    if(!value)return;
-    sendRemoteKey('a','KeyA',{ctrl:true});
-    window.setTimeout(()=>sendRemoteInput({type:'text',key:value}),70);
-    closeMobileKeyboard();
+  async function waitMobileEditTarget(){
+    const pending=mobileEditPrepareRef.current;
+    if(!pending)return true;
+    const prepared=await pending;
+    return prepared.ok;
+  }
+
+  async function sendMobileEditKey(
+    key:string,code:string,
+    modifiers:{shift?:boolean;ctrl?:boolean;alt?:boolean}={}
+  ){
+    if(!await ensureInputReady())return;
+    if(!await waitMobileEditTarget()){
+      setNotice(t('laser.editTargetFailed'));
+      return;
+    }
+    const payload={
+      key,code,
+      ctrl:Boolean(modifiers.ctrl),shift:Boolean(modifiers.shift),
+      alt:Boolean(modifiers.alt),meta:false
+    };
+    const down=await sendVerifiedInput({type:'keydown',...payload});
+    if(!down.ok){setNotice(t('laser.quickFailed'));releaseRemoteModifiers();return;}
+    const up=await sendVerifiedInput({type:'keyup',...payload});
+    if(!up.ok)setNotice(t('laser.quickFailed'));
+    releaseRemoteModifiers();
+  }
+
+  async function sendKeyboardCharacter(value:string){
+    if(/^[a-z]$/i.test(value)){
+      const letter=value.toUpperCase();
+      await sendMobileEditKey(
+        keyboardShift?letter:value.toLowerCase(),
+        'Key'+letter,
+        {shift:keyboardShift}
+      );
+      return;
+    }
+    if(/^[0-9]$/.test(value)){
+      await sendMobileEditKey(value,'Digit'+value);
+      return;
+    }
+
+    if(!await ensureInputReady())return;
+    if(!await waitMobileEditTarget()){
+      setNotice(t('laser.editTargetFailed'));
+      return;
+    }
+    const result=await sendVerifiedInput({type:'text',key:keyboardShift?value.toUpperCase():value});
+    if(!result.ok)setNotice(t('laser.quickFailed'));
+    releaseRemoteModifiers();
+  }
+
+  async function clearMobileEdit(){
+    if(!await ensureInputReady())return;
+    if(!await waitMobileEditTarget()){
+      setNotice(t('laser.editTargetFailed'));
+      return;
+    }
+    const result=await sendVerifiedInput({type:'replace_text',key:''});
+    releaseRemoteModifiers();
+    if(!result.ok)setNotice(t('laser.quickFailed'));
+  }
+
+  async function recenterLightBurnView(){
+    resetZoom();
+    if(toolPending)return;
+    setToolPending('recenter-view');
+    try{
+      if(!await ensureInputReady()){
+        setNotice(t('laser.quickNeedControl'));
+        return;
+      }
+
+      const escape={key:'Escape',code:'Escape',ctrl:false,shift:false,alt:false,meta:false};
+      await sendVerifiedInput({type:'keydown',...escape});
+      await sendVerifiedInput({type:'keyup',...escape});
+      await new Promise(resolve=>window.setTimeout(resolve,90));
+
+      const zoomPage={key:'0',code:'Digit0',ctrl:true,shift:false,alt:false,meta:false};
+      const down=await sendVerifiedInput({type:'keydown',...zoomPage});
+      if(!down.ok){setNotice(t('laser.quickFailed'));return;}
+      const up=await sendVerifiedInput({type:'keyup',...zoomPage});
+      if(!up.ok){setNotice(t('laser.quickFailed'));return;}
+
+      setNotice(t('laser.viewCentered'));
+    }finally{
+      setToolPending(null);
+    }
   }
 
   function closeActiveDialog(){
@@ -855,6 +964,13 @@ export function LaserControlWorkspace(){
 
     const point=pointerCoordinates(event);
     if(inputReady&&point){
+      if(rightClickArmed&&!gesture.moved){
+        sendRemoteInput({type:'click',...point,button:2});
+        setRightClickArmed(false);
+        lastTapRef.current=null;
+        resetTouchGesture();
+        return;
+      }
       if(gesture.remoteDown){
         sendRemoteInput({type:'pointerup',...point,button:0});
       }else if(!gesture.moved){
@@ -1036,10 +1152,23 @@ export function LaserControlWorkspace(){
     }
   }
 
+  async function copyMentorLink(){
+    try{
+      await navigator.clipboard.writeText(MENTOR_SHARE_LINK);
+      setNotice(t('laser.mentorLinkCopied'));
+    }catch{
+      setNotice(MENTOR_SHARE_LINK);
+    }
+  }
+
   async function claimMentor(event:FormEvent){
     event.preventDefault();
     const code=mentorCode.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8);
-    if(code.length!==8){setNotice(t('laser.invalidCode'));return}
+    if(code.length!==8){
+      const message=t('laser.invalidCode');
+      setMentorNotice(message);setNotice(message);return;
+    }
+    setMentorNotice(t('laser.mentorConnecting'));
     setMentorPending(true);
     try{
       const response=await fetch('/api/laser-control/mentor',{
@@ -1051,19 +1180,26 @@ export function LaserControlWorkspace(){
       const data=await response.json();
       if(!response.ok||!data?.claimed){
         const reason=String(data?.reason||'');
-        setNotice(
+        const message=
           reason==='mentor_entitlement_required'?t('laser.mentorNoAccess')
           :reason==='concurrent_limit'?t('laser.mentorLimit')
-          :t('laser.mentorExpired')
-        );
+          :reason==='device_already_active'?t('laser.mentorDeviceActive')
+          :reason==='rate_limited'?t('laser.mentorRateLimited')
+          :reason==='not_found_or_expired'||reason==='invalid_code'?t('laser.mentorExpired')
+          :t('laser.mentorServerError');
+        setMentorNotice(message);
+        setNotice(message);
         return;
       }
       setMentorCode('');
+      setMentorNotice(t('laser.mentorConnected'));
       setNotice(t('laser.mentorConnected'));
       await loadDevices();
       if(data?.deviceId)setSelectedDeviceId(String(data.deviceId));
     }catch{
-      setNotice(t('laser.commandFail'));
+      const message=t('laser.mentorServerError');
+      setMentorNotice(message);
+      setNotice(message);
     }finally{
       setMentorPending(false);
     }
@@ -1122,13 +1258,21 @@ export function LaserControlWorkspace(){
         <h2>{t('laser.title')}</h2>
         <p>{t('laser.desc')}</p>
       </div>
-      <div className={styles.liveBadge} data-live={realtimeStatus==='live'}>
+      <div className={styles.topRight}>
+        <nav className={styles.workspaceNav} aria-label="Laser Control">
+          <a href="/">Home</a>
+          <a href="/laser-control/guia">{locale==='pt-BR'?'Guia':'Guide'}</a>
+          <a href="mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support">{locale==='pt-BR'?'Suporte':'Support'}</a>
+          <button type="button" onClick={()=>void signOutLaser()}>{locale==='pt-BR'?'Sair':'Sign out'}</button>
+        </nav>
+        <div className={styles.liveBadge} data-live={realtimeStatus==='live'}>
         <i></i>{
           realtimeStatus==='live'?t('laser.live')
           :realtimeStatus==='connecting'?t('laser.connecting')
           :realtimeStatus==='error'?t('laser.error')
           :t('laser.waiting')
         }
+        </div>
       </div>
     </div>
 
@@ -1137,6 +1281,20 @@ export function LaserControlWorkspace(){
         <span>{t('laser.mentoring')}</span>
         <b>{t('laser.mentorTitle')}</b>
         <p>{t('laser.mentorDesc')}</p>
+        <section className={styles.mentorShare}>
+          <strong>{t('laser.mentorShareTitle')}</strong>
+          <div className={styles.mentorShareActions}>
+            <button type="button" onClick={()=>void copyMentorLink()}>🔗 {t('laser.mentorCopyLink')}</button>
+            <a
+              href={'https://wa.me/?text='+encodeURIComponent(t('laser.mentorShareMessage')+' '+MENTOR_SHARE_LINK)}
+              target="_blank"
+              rel="noreferrer"
+            >WhatsApp</a>
+            <a
+              href={'mailto:?subject='+encodeURIComponent(t('laser.mentorShareSubject'))+'&body='+encodeURIComponent(t('laser.mentorShareMessage')+' '+MENTOR_SHARE_LINK)}
+            >✉ {t('laser.mentorEmail')}</a>
+          </div>
+        </section>
         <div>
           <input
             value={mentorCode}
@@ -1151,6 +1309,7 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
+        {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
       </form>
 
       <div className={styles.deviceGroup}>
@@ -1195,6 +1354,7 @@ export function LaserControlWorkspace(){
             <button type="button" title={t('laser.saveProject')} aria-label={t('laser.saveProject')} disabled={toolPending!==null} onClick={()=>void runShortcut('save',{key:'s',code:'KeyS',ctrl:true})}>▣</button>
             <button type="button" title={t('laser.undo')} aria-label={t('laser.undo')} disabled={toolPending!==null} onClick={()=>void runShortcut('undo',{key:'z',code:'KeyZ',ctrl:true})}>↶</button>
             <button type="button" title={t('laser.redo')} aria-label={t('laser.redo')} disabled={toolPending!==null} onClick={()=>void runShortcut('redo',{key:'z',code:'KeyZ',ctrl:true,shift:true})}>↷</button>
+            <button type="button" title={t('laser.recenterView')} aria-label={t('laser.recenterView')} disabled={toolPending!==null} onClick={()=>void recenterLightBurnView()}>⊙</button>
             <button type="button" title={t('laser.importPc')} aria-label={t('laser.importPc')} disabled={toolPending!==null} onClick={()=>void runShortcut('import',{key:'i',code:'KeyI',ctrl:true})}>↥</button>
             <button type="button" title={t('laser.previewProject')} aria-label={t('laser.previewProject')} disabled={toolPending!==null} onClick={()=>void runShortcut('preview',{key:'p',code:'KeyP',alt:true})}>◉</button>
           </div>
@@ -1225,17 +1385,29 @@ export function LaserControlWorkspace(){
         >
           <div className={styles.fullscreenControls}>
             {fullscreen&&<>
-              <div className={styles.orientation}>
-                <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>{t('laser.auto')}</button>
-                <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>{t('laser.landscape')}</button>
-                <button className={orientation==='portrait'?styles.on:''} onClick={()=>void setOrientationMode('portrait')}>{t('laser.portrait')}</button>
+              <div className={styles.zoom}>
+                <button type="button" aria-label={t('laser.zoomOut')} onClick={()=>setPreviewZoom(zoom-.25)}>−</button>
+                <button type="button" title={t('laser.zoomReset')} onClick={resetZoom}>{Math.round(zoom*100)}%</button>
+                <button type="button" aria-label={t('laser.zoomIn')} onClick={()=>setPreviewZoom(zoom+.25)}>＋</button>
               </div>
+              <button
+                type="button"
+                className={styles.on}
+                title={orientation==='auto'?t('laser.auto'):orientation==='landscape'?t('laser.landscape'):t('laser.portrait')}
+                onClick={()=>void setOrientationMode(
+                  orientation==='auto'?'landscape'
+                  :orientation==='landscape'?'portrait'
+                  :'auto'
+                )}
+              >{orientation==='auto'?'↻':orientation==='landscape'?'↔':'↕'} {orientation==='auto'?t('laser.auto'):orientation==='landscape'?t('laser.landscape'):t('laser.portrait')}</button>
+              <button type="button" onClick={()=>void recenterLightBurnView()} disabled={toolPending!==null} title={t('laser.recenterView')} aria-label={t('laser.recenterView')}>⊙</button>
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
                 disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
                 onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
               >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
               <button onClick={openMobileKeyboard} disabled={!inputReady}>⌨</button>
+              <button className={rightClickArmed?styles.rightClickActive:''} onClick={()=>setRightClickArmed(value=>!value)} disabled={!inputReady} title={t('laser.rightClick')} aria-label={t('laser.rightClick')}>🖱</button>
               {activeDialogTool&&<>
                 <button className={styles.dialogOk} onClick={confirmActiveDialog} disabled={!inputReady}>OK</button>
                 <button className={styles.dialogClose} onClick={closeActiveDialog} disabled={!inputReady}>ESC</button>
@@ -1264,29 +1436,46 @@ export function LaserControlWorkspace(){
             <b>{selectedDevice.lightburn_online===false?t('laser.previewOpen'):t('laser.previewWaiting')}</b>
             <span>{t('laser.previewHelp')}</span>
           </div>}
-          <div className={mobileEditOpen?styles.mobileKeyboard:styles.mobileKeyboardHidden}>
-            <input
-              ref={mobileKeyboardRef}
-              type="text"
-              inputMode="text"
-              enterKeyHint="done"
-              value={mobileEditValue}
-              onChange={event=>setMobileEditValue(event.target.value)}
-              onKeyDown={event=>{
-                event.stopPropagation();
-                if(event.key==='Enter'){
-                  event.preventDefault();
-                  sendMobileEdit();
-                }
-              }}
-              onKeyUp={event=>event.stopPropagation()}
-              aria-label={t('laser.keyboardAria')}
-              placeholder={t('laser.keyboardPlaceholder')}
-            />
-            <button type="button" onClick={sendMobileEdit} disabled={!mobileEditValue}>{t('laser.send')}</button>
-            <button type="button" onClick={closeMobileKeyboard}>{t('laser.cancel')}</button>
-          </div>
         </div>
+
+          <div className={mobileEditOpen?styles.mobileKeyboard:styles.mobileKeyboardHidden} aria-label={t('laser.keyboardAria')}>
+            <div className={styles.mobileKeyboardHead}>
+              <b>⌨ {t('laser.keyboard')}</b>
+              <span>{t('laser.keyboardPlaceholder')}</span>
+              <button type="button" onClick={closeMobileKeyboard} aria-label={t('laser.cancel')}>×</button>
+            </div>
+
+            <div className={styles.mobileKeyRows}>
+              {MOBILE_KEY_ROWS.map((row,rowIndex)=>
+                <div className={styles.mobileKeyRow} key={rowIndex}>
+                  {row.map(value=>
+                    <button
+                      type="button"
+                      key={value}
+                      onClick={()=>void sendKeyboardCharacter(value)}
+                    >{keyboardShift?value.toUpperCase():value}</button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className={styles.mobileEditTools}>
+              <button type="button" className={keyboardShift?styles.keyActive:''} onClick={()=>setKeyboardShift(value=>!value)}>⇧</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('Home','Home')} aria-label="Home">↤</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('ArrowLeft','ArrowLeft')} aria-label={t('laser.cursorLeft')}>←</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('ArrowRight','ArrowRight')} aria-label={t('laser.cursorRight')}>→</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('End','End')} aria-label="End">↦</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('Backspace','Backspace')} aria-label={t('laser.backspace')}>⌫</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('Delete','Delete')}>Del</button>
+              <button type="button" onClick={()=>void clearMobileEdit()} aria-label={t('laser.clearText')}>{t('laser.clear')}</button>
+            </div>
+
+            <div className={styles.mobileKeyboardBottom}>
+              <button type="button" className={styles.spaceKey} onClick={()=>void sendMobileEditKey(' ','Space')}>␠</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('Enter','Enter')}>Enter</button>
+              <button type="button" onClick={closeMobileKeyboard}>{t('laser.cancel')}</button>
+            </div>
+          </div>
 
         <div className={styles.frameInfo}>
           <span>{frameSize||'—'}</span>
@@ -1298,12 +1487,13 @@ export function LaserControlWorkspace(){
           <div className={styles.dPad} aria-label={t('laser.moveSelection')}>
             <button className={styles.dPadUp} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-up','ArrowUp','ArrowUp')}>↑</button>
             <button className={styles.dPadLeft} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-left','ArrowLeft','ArrowLeft')}>←</button>
-            <button className={styles.dPadCenter} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('center','p','KeyP')}>⊙</button>
+            <span className={styles.dPadCenterSpacer} aria-hidden="true"/>
             <button className={styles.dPadRight} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-right','ArrowRight','ArrowRight')}>→</button>
             <button className={styles.dPadDown} type="button" disabled={!workspaceKeysReady||toolPending!==null} onClick={()=>void runWorkspaceKey('move-down','ArrowDown','ArrowDown')}>↓</button>
           </div>
           <div className={styles.liveDialogActions}>
             <button type="button" disabled={!inputReady} onClick={openMobileKeyboard}>⌨ {t('laser.keyboard')}</button>
+            <button type="button" className={rightClickArmed?styles.rightClickActive:''} disabled={!inputReady} onClick={()=>setRightClickArmed(value=>!value)}>🖱 {t('laser.rightClick')}</button>
             {activeDialogTool&&<>
               <button type="button" className={styles.dialogOk} disabled={!inputReady} onClick={confirmActiveDialog}>{t('laser.okEnter')}</button>
               <button type="button" className={styles.dialogClose} disabled={!inputReady} onClick={closeActiveDialog}>{t('laser.closeEsc')}</button>
@@ -1368,7 +1558,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.28/DevinX-Laser-Agent-1.0.28.exe" download>{t('laser.download')}</a>
+          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.31/DevinX-Laser-Agent-1.0.31.exe" download>{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

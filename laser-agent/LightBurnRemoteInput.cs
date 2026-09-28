@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using UIA=Interop.UIAutomationClient;
 
 namespace DevinXLaserAgent;
 
@@ -6,6 +7,13 @@ internal static class LightBurnRemoteInput
 {
     private const uint InputMouse=0;
     private const uint InputKeyboard=1;
+    private const int ValuePatternId=10002;
+    private const int RangeValuePatternId=10003;
+    private const int LegacyPatternId=10018;
+    private static readonly dynamic Automation=new UIA.CUIAutomation8();
+    private static readonly object LastPointerSync=new();
+    private static int? LastPointerX;
+    private static int? LastPointerY;
 
     private const uint MouseeventfLeftDown=0x0002;
     private const uint MouseeventfLeftUp=0x0004;
@@ -163,6 +171,8 @@ internal static class LightBurnRemoteInput
                 "workspacekeydown"=>WorkspaceKeyboard(main,input,true),
                 "workspacekeyup"=>WorkspaceKeyboard(main,input,false),
                 "text"=>Text(main,input.Key),
+                "prepare_edit"=>PrepareEdit(main),
+                "replace_text"=>ReplaceFocusedText(main,input.Key),
                 _=>new(false,"unsupported_input",null,null)
             };
         }
@@ -199,6 +209,8 @@ internal static class LightBurnRemoteInput
         if(!TryScreenPoint(main,input,out var x,out var y))
             return new(false,"invalid_coordinates",x,y);
 
+        RememberPointer(x,y);
+
         if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
             return new(false,reason,x,y);
 
@@ -225,6 +237,8 @@ internal static class LightBurnRemoteInput
         if(!TryScreenPoint(main,input,out var x,out var y))
             return new(false,"invalid_coordinates",x,y);
 
+        RememberPointer(x,y);
+
         if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
             return new(false,reason,x,y);
 
@@ -250,6 +264,8 @@ internal static class LightBurnRemoteInput
     {
         if(!TryScreenPoint(main,input,out var x,out var y))
             return new(false,"invalid_coordinates",x,y);
+
+        RememberPointer(x,y);
 
         if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
             return new(false,reason,x,y);
@@ -339,6 +355,57 @@ internal static class LightBurnRemoteInput
             :new(false,"workspace_key_failed",null,null);
     }
 
+
+    private static void RememberPointer(int x,int y)
+    {
+        lock(LastPointerSync)
+        {
+            LastPointerX=x;
+            LastPointerY=y;
+        }
+    }
+
+    private static RemoteInputApplyResult PrepareEdit(IntPtr main)
+    {
+        int? x;
+        int? y;
+        lock(LastPointerSync)
+        {
+            x=LastPointerX;
+            y=LastPointerY;
+        }
+
+        if(!x.HasValue||!y.HasValue)
+            return FocusLightBurn()
+                ?new(true,"edit_focus_ready",null,null)
+                :new(false,"edit_target_missing",null,null);
+
+        if(!EnsureLightBurnAtPoint(main,x.Value,y.Value,out var target,out var reason))
+            return new(false,reason,x,y);
+
+        var inputs=new[]
+        {
+            Mouse(MouseeventfLeftDown,0),
+            Mouse(MouseeventfLeftUp,0),
+            Mouse(MouseeventfLeftDown,0),
+            Mouse(MouseeventfLeftUp,0)
+        };
+        if(SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length)
+        {
+            Thread.Sleep(180);
+            return new(true,"edit_target_prepared",x,y);
+        }
+
+        var ok=PostPointer(target,WmLButtonDown,MkLButton,x.Value,y.Value)
+               &&PostPointer(target,WmLButtonUp,0,x.Value,y.Value)
+               &&PostPointer(target,WmLButtonDblClk,MkLButton,x.Value,y.Value)
+               &&PostPointer(target,WmLButtonUp,0,x.Value,y.Value);
+        if(ok)Thread.Sleep(180);
+        return ok
+            ?new(true,"edit_target_prepared_fallback",x,y)
+            :new(false,"edit_target_prepare_failed",x,y);
+    }
+
     private static RemoteInputApplyResult Text(IntPtr main,string? text)
     {
         if(string.IsNullOrEmpty(text))return new(false,"empty_text",null,null);
@@ -357,6 +424,100 @@ internal static class LightBurnRemoteInput
         return SendInput((uint)array.Length,array,Marshal.SizeOf<Input>())==array.Length
             ?new(true,"sendinput_text",null,null)
             :new(false,"windows_text_injection_failed",null,null);
+    }
+
+    private static RemoteInputApplyResult ReplaceFocusedText(IntPtr main,string? text)
+    {
+        if(text is null)return new(false,"empty_text",null,null);
+
+        try
+        {
+            dynamic? focused=Automation.GetFocusedElement();
+            if(focused is not null)
+            {
+                GetWindowThreadProcessId(main,out var mainPid);
+                var focusedPid=Convert.ToUInt32(focused.CurrentProcessId);
+                if(mainPid!=0&&focusedPid==mainPid)
+                {
+                    try
+                    {
+                        dynamic? valuePattern=focused.GetCurrentPattern(ValuePatternId);
+                        if(valuePattern is not null&&!Convert.ToBoolean(valuePattern.CurrentIsReadOnly))
+                        {
+                            valuePattern.SetValue(text);
+                            return new(true,"uia_value_replaced",null,null);
+                        }
+                    }
+                    catch{}
+
+                    try
+                    {
+                        dynamic? rangePattern=focused.GetCurrentPattern(RangeValuePatternId);
+                        if(rangePattern is not null&&!Convert.ToBoolean(rangePattern.CurrentIsReadOnly))
+                        {
+                            if(double.TryParse(text,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.CurrentCulture,out var number)
+                               ||double.TryParse(text,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out number))
+                            {
+                                var min=Convert.ToDouble(rangePattern.CurrentMinimum);
+                                var max=Convert.ToDouble(rangePattern.CurrentMaximum);
+                                if(number>=min&&number<=max)
+                                {
+                                    rangePattern.SetValue(number);
+                                    return new(true,"uia_range_replaced",null,null);
+                                }
+                            }
+                        }
+                    }
+                    catch{}
+
+                    try
+                    {
+                        dynamic? legacyPattern=focused.GetCurrentPattern(LegacyPatternId);
+                        if(legacyPattern is not null)
+                        {
+                            legacyPattern.SetValue(text);
+                            return new(true,"uia_legacy_replaced",null,null);
+                        }
+                    }
+                    catch{}
+                }
+            }
+        }
+        catch{}
+
+        // Fallback: keep the currently selected LightBurn field focused and
+        // replace its contents through the normal keyboard path.
+        var target=FindInteractiveWindow(main);
+        if(target==IntPtr.Zero)return new(false,"lightburn_window_not_found",null,null);
+        if(IsIconic(target))ShowWindow(target,SwRestore);
+        BringWindowToTop(target);
+        SetForegroundWindow(target);
+
+        var inputs=new List<Input>
+        {
+            Key(0x11,false),
+            Key((ushort)'A',false),
+            Key((ushort)'A',true),
+            Key(0x11,true)
+        };
+        if(text.Length==0)
+        {
+            inputs.Add(Key(0x08,false));
+            inputs.Add(Key(0x08,true));
+        }
+        else
+        {
+            foreach(var ch in text.Take(256))
+            {
+                inputs.Add(Unicode(ch,false));
+                inputs.Add(Unicode(ch,true));
+            }
+        }
+
+        var array=inputs.ToArray();
+        return SendInput((uint)array.Length,array,Marshal.SizeOf<Input>())==array.Length
+            ?new(true,"sendinput_replace_text",null,null)
+            :new(false,"windows_text_replace_failed",null,null);
     }
 
     private static bool EnsureLightBurnAtPoint(

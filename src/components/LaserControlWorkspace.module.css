@@ -31,6 +31,13 @@
 .mentorConnect button,.mentorEnd{border:1px solid rgba(94,231,255,.35);border-radius:11px;background:linear-gradient(180deg,#72eaff,#27b7df);color:#031118;font-weight:950;cursor:pointer;box-shadow:0 8px 24px rgba(39,183,223,.15),inset 0 1px rgba(255,255,255,.55)}
 .mentorConnect button{padding:0 13px}
 .mentorConnect button:disabled,.mentorEnd:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.mentorInlineNotice{margin-top:9px;padding:9px 10px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:rgba(12,28,38,.42);color:#e7f5fb;font-size:10px;line-height:1.45}
+
+.mentorShare{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;margin:0 0 12px;padding:10px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(17,31,42,.28)}
+.mentorShare strong{font-size:11px;color:#e7f8ff}
+.mentorShareActions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.mentorShareActions button,.mentorShareActions a{min-height:36px;display:flex;align-items:center;justify-content:center;padding:7px 9px;border:1px solid rgba(94,231,255,.24);border-radius:9px;background:linear-gradient(180deg,rgba(83,112,134,.92),rgba(43,62,76,.96));color:#e9f8ff;font-size:10px;font-weight:900;text-decoration:none;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.08)}
+.mentorShareActions button:hover,.mentorShareActions a:hover{border-color:rgba(94,231,255,.5);color:#fff}
 
 .deviceGroup{display:grid;gap:7px;margin-top:16px}
 .groupTitle{display:flex;align-items:center;justify-content:space-between;padding:0 4px 2px;color:#c9d4e4}
@@ -110,6 +117,7 @@
   .top{margin-bottom:10px;padding:18px;border-radius:17px;align-items:flex-start}.top h2{font-size:26px}.top p{font-size:13px}.liveBadge{font-size:10px;padding:8px 10px}
   .deviceStrip{position:static;max-height:none;margin-bottom:10px;padding:9px;border-radius:15px}
   .mentorConnect{padding:13px}.mentorConnect>b{font-size:17px}.mentorConnect p{font-size:11px}
+  .mentorShareActions{grid-template-columns:1fr}.mentorShareActions button,.mentorShareActions a{min-height:38px;font-size:11px}
   .deviceGroup{margin-top:11px}.deviceCard{border-radius:11px}.deviceSelect{padding:10px}.deviceSelect b{font-size:13px}
   .workspace,.workspaceEmpty{border-radius:15px}.workspaceEmpty{min-height:300px}
   .summary{grid-template-columns:1fr 1fr}.summary span{padding:11px 12px}.summary b{font-size:13px}
@@ -156,24 +164,40 @@
 .dialogOk{border-color:rgba(101,239,180,.48)!important;color:#dfffee!important}
 .dialogClose{border-color:rgba(255,109,126,.48)!important;color:#ffd6dc!important}
 .mobileKeyboard,.mobileKeyboardHidden{
-  position:absolute;z-index:20;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));
-  bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px;
-  padding:9px;border:1px solid rgba(111,230,255,.42);border-radius:13px;
-  background:rgba(20,32,42,.96);box-shadow:0 14px 40px rgba(0,0,0,.42)
+  position:relative;z-index:5;width:100%;display:grid;gap:4px;margin-top:6px;padding:6px;
+  border:1px solid rgba(111,230,255,.34);border-radius:11px;
+  background:linear-gradient(180deg,rgba(26,43,55,.98),rgba(18,31,41,.98));
+  box-shadow:0 8px 22px rgba(0,0,0,.22)
 }
-.mobileKeyboardHidden{opacity:0;pointer-events:none;transform:translateY(12px)}
-.mobileKeyboard input,.mobileKeyboardHidden input{
-  min-width:0;height:44px;padding:0 12px;border:1px solid rgba(210,235,255,.28);border-radius:10px;
-  background:#f7fbff;color:#0a1118;font-size:16px;font-weight:800;outline:none
+.mobileKeyboardHidden{display:none}
+.mobileKeyboardHead{display:grid;grid-template-columns:auto 1fr 28px;align-items:center;gap:6px}
+.mobileKeyboardHead b{font-size:10px;color:#e8fbff}
+.mobileKeyboardHead span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#a9bbc9;font-size:9px}
+.mobileKeyboardHead button{width:28px;height:26px;min-height:0;padding:0}
+.mobileKeyRows{display:grid;gap:2px}
+.mobileKeyRow{display:flex;justify-content:center;gap:2px}
+.mobileKeyboard button{
+  min-width:0;min-height:27px;padding:0 5px;border:1px solid rgba(170,222,242,.20);border-radius:6px;
+  background:linear-gradient(145deg,#506a7d,#334a5b);color:#f2fbff;font-size:11px;font-weight:900;
+  box-shadow:inset 0 1px rgba(255,255,255,.07)
 }
-.mobileKeyboard button,.mobileKeyboardHidden button{
-  min-height:44px;padding:0 12px;border:1px solid rgba(111,230,255,.35);border-radius:10px;
-  background:linear-gradient(180deg,#72eaff,#35b7d4);color:#06141b;font-weight:950
-}
-.mobileKeyboard button:last-child{border-color:rgba(255,109,126,.38);background:#41212a;color:#ffd9df}
+.mobileKeyboard button:active{transform:translateY(1px);background:linear-gradient(145deg,#62849a,#3f5a6e)}
+.mobileKeyRow button{flex:1 1 0;max-width:44px}
+.mobileEditTools{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:2px}
+.mobileEditTools button{padding:0 3px;font-size:10px}
+.mobileKeyboardBottom{display:grid;grid-template-columns:minmax(0,2fr) minmax(58px,.7fr) minmax(58px,.8fr);gap:3px}
+.mobileKeyboardBottom .spaceKey{font-size:16px}
+.mobileKeyboardBottom button:last-child{border-color:rgba(255,109,126,.38);background:#41212a;color:#ffd9df}
+.keyActive{border-color:rgba(118,239,255,.72)!important;background:linear-gradient(180deg,#3b8195,#245566)!important;color:#fff!important}
+.rightClickActive{border-color:rgba(118,239,255,.70)!important;background:linear-gradient(180deg,#3b8195,#245566)!important;color:#f3fdff!important;box-shadow:0 0 0 2px rgba(118,239,255,.12),inset 0 1px rgba(255,255,255,.16)!important}
+.dPadCenterSpacer{grid-area:center;display:block}
 @media(max-width:620px){
-  .mobileKeyboard,.mobileKeyboardHidden{grid-template-columns:minmax(0,1fr) auto}
-  .mobileKeyboard button:last-child,.mobileKeyboardHidden button:last-child{grid-column:1/-1;min-height:36px}
+  .mobileKeyboard{margin-top:5px;padding:5px;gap:3px}
+  .mobileKeyboard button{min-height:25px;font-size:10px}
+  .mobileKeyRow{gap:2px}
+  .mobileKeyRow button{max-width:40px}
+  .mobileEditTools{gap:2px}
+  .mobileKeyboardHead span{font-size:8px}
 }
 
 
@@ -228,8 +252,7 @@
   cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.10)
 }
 .dPad button:disabled{opacity:.38;cursor:not-allowed}
-.dPadUp{grid-area:up}.dPadLeft{grid-area:left}.dPadCenter{grid-area:center}.dPadRight{grid-area:right}.dPadDown{grid-area:down}
-.dPadCenter{font-size:17px!important;color:#bff6ff!important}
+.dPadUp{grid-area:up}.dPadLeft{grid-area:left}.dPadRight{grid-area:right}.dPadDown{grid-area:down}
 .liveDialogActions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
 .liveDialogActions button{
   min-height:40px;padding:7px 11px;border:1px solid rgba(174,208,243,.16);border-radius:10px;
@@ -270,3 +293,10 @@
   .iconActions{order:3;width:100%;justify-content:flex-start}
   .moreToolsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+.topRight{position:relative;z-index:3;display:grid;justify-items:end;gap:9px}
+.workspaceNav{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.workspaceNav a,.workspaceNav button{min-height:34px;display:flex;align-items:center;justify-content:center;padding:7px 10px;border:1px solid rgba(226,193,101,.18);border-radius:9px;background:rgba(21,30,37,.48);color:#e5cb77;font-size:10px;font-weight:900;text-decoration:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+.workspaceNav a:hover,.workspaceNav button:hover{border-color:rgba(226,193,101,.48);color:#fff1ad}
+.workspaceNav button{font-family:inherit;cursor:pointer}
+@media(max-width:760px){.topRight{width:100%;justify-items:start}.workspaceNav{justify-content:flex-start}.workspaceNav a,.workspaceNav button{min-height:32px;font-size:9px}}

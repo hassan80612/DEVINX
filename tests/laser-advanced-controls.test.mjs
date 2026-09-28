@@ -2,19 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser Control uses Agent 1.0.28 for advanced controls',async()=>{
+test('Laser Control uses Agent 1.0.31 for advanced controls',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   const i18n=await readFile('src/i18n/laser.ts','utf8');
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
-  assert.match(panel,/laser-agent-v1\.0\.28/);
+  assert.match(panel,/laser-agent-v1\.0\.31/);
   assert.doesNotMatch(panel,/dialog_confirm|dialog_cancel|dialog_close/);
   assert.match(panel,/sendRemoteKey\('Enter','Enter'\)/);
   assert.match(panel,/sendRemoteKey\('Escape','Escape'\)/);
   assert.doesNotMatch(panel,/select_layer|open_layer|refreshParameters|openLayerPanel/);
   assert.doesNotMatch(css,/\.parameterDock|\.parameterGrid|\.layerBar/);
-  assert.match(i18n,/DevinX Laser Agent 1\.0\.28/);
+  assert.match(i18n,/DevinX Laser Agent 1\.0\.31/);
 });
 
 test('Laser command buttons are not blocked by cached job state',async()=>{
@@ -47,7 +47,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.0\.28"/);
+  assert.match(pairing,/AgentVersion = "1\.0\.31"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
@@ -77,9 +77,10 @@ test('Laser Control does not expose retired layer errors or raw Agent reasons to
 test('mobile mentoring keyboard and dialog controls stay available over live preview',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
-  assert.match(panel,/mobileKeyboardRef/);
+  assert.match(panel,/MOBILE_KEY_ROWS/);
   assert.match(panel,/openMobileKeyboard/);
-  assert.match(panel,/type:'text',key:value/);
+  assert.match(panel,/sendKeyboardCharacter/);
+  assert.match(panel,/type:'replace_text',key:''/);
   assert.match(panel,/laser\.closeEsc/);
   assert.match(panel,/laser\.okEnter/);
   assert.match(panel,/pendingGuard/);
@@ -153,7 +154,7 @@ test('layer parameter panel and duplicate rotary trace adjust controls are remov
 });
 
 
-test('Agent 1.0.28 has a one-shot remote click path',async()=>{
+test('Agent 1.0.31 has a one-shot remote click path',async()=>{
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(input,/"click"=>Click\(main,input\)/);
   assert.match(input,/sendinput_click/);
@@ -161,7 +162,7 @@ test('Agent 1.0.28 has a one-shot remote click path',async()=>{
 });
 
 
-test('Agent 1.0.28 maps clicks to the exact streamed frame',async()=>{
+test('Agent 1.0.31 maps clicks to the exact streamed frame',async()=>{
   const capture=await readFile('laser-agent/LightBurnWindowCapture.cs','utf8');
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(capture,/TryGetLastCapturedBounds/);
@@ -189,4 +190,40 @@ test('Laser workspace has no dead layer panel state and no hidden parameter refr
   const confirm=panel.slice(panel.indexOf('function confirmActiveDialog'),panel.indexOf('function sendFrameGantryRequest'));
   assert.doesNotMatch(close,/control_request|inspect/);
   assert.doesNotMatch(confirm,/control_request|inspect/);
+});
+
+
+test('mobile keyboard prepares the selected LightBurn target and supports one-shot right click',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const remote=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
+  assert.match(panel,/type:'prepare_edit'/);
+  assert.match(panel,/rightClickArmed/);
+  assert.match(panel,/button:2/);
+  assert.match(remote,/"prepare_edit"=>PrepareEdit/);
+  assert.match(remote,/RememberPointer/);
+  assert.match(remote,/edit_target_prepared/);
+});
+
+
+test('custom mobile keyboard sends letters and numbers through the already working remote key path',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
+  assert.match(panel,/MOBILE_KEY_ROWS/);
+  assert.match(panel,/sendMobileEditKey/);
+  assert.match(panel,/Key'\+letter/);
+  assert.match(panel,/Digit'\+value/);
+  assert.match(panel,/releaseRemoteModifiers/);
+  assert.match(css,/\.mobileKeyRows/);
+  assert.match(css,/\.mobileKeyboardBottom/);
+});
+
+
+test('right-click button sends one right-click event and keyboard stays outside preview',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
+  assert.match(panel,/rightClickArmed[\s\S]*type:'click',[\s\S]*button:2/);
+  assert.match(panel,/title=\{t\('laser\.recenterView'\)\}[\s\S]*>⊙<\/button>/);
+  assert.match(panel,/dPadCenterSpacer/);
+  assert.match(css,/\.mobileKeyboard,.mobileKeyboardHidden\{[\s\S]*position:relative/);
+  assert.doesNotMatch(css,/\.mobileKeyboard,.mobileKeyboardHidden\{[\s\S]{0,250}position:absolute/);
 });

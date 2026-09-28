@@ -7,7 +7,7 @@ Preparação de dois aplicativos MSIX x64, Windows 10 2004 ou superior / Windows
 - **DevinX Mentoria:** o aluno abre e recebe seu código; nenhuma inicialização automática.
 - **DevinX Laser Agent:** vínculo permanente e inicialização pelo mecanismo do Windows; sem cópia do executável nem escrita de inicialização no Registro pela aplicação.
 
-Os downloads EXE 1.0.28 existentes permanecem publicados. Não trocar os links até a aprovação da Store e teste real com LightBurn. O MSIX gerado aqui não é assinado: destina-se à submissão para assinatura da Microsoft, não a download direto por clientes. Não distribuir certificados de teste nem pedir ao cliente para desativar proteções.
+Os downloads EXE 1.0.31 existentes permanecem publicados. Não trocar os links até a aprovação da Store e teste real com LightBurn. O MSIX gerado aqui não é assinado: destina-se à submissão para assinatura da Microsoft, não a download direto por clientes. Não distribuir certificados de teste nem pedir ao cliente para desativar proteções.
 
 ## Cadastro que depende do titular
 
