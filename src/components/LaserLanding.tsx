@@ -34,8 +34,7 @@ const BR={
   purchaseSteps:["Escolha o plano e conclua o pagamento na Kiwify.","Use na sua conta DevinX o mesmo e-mail informado na compra.","Na página de confirmação, toque em Entrar no Laser Control. Se ainda não tiver conta, crie uma com esse mesmo e-mail.","O acesso é reconhecido automaticamente pelo pagamento aprovado."],
   plans:[
     ["CONTROL","R$ 29,90","Controle remoto do seu LightBurn","1 PC · uso próprio","https://pay.kiwify.com.br/YghizRi","Assinar Control"],
-    ["MENTOR","R$ 59,90","Controle próprio + mentoria remota","1 PC · 10 sessões por ciclo","https://pay.kiwify.com.br/qVRSFCL","Assinar Mentor"],
-    ["SESSÃO EXTRA","R$ 9,90","Adicione mais 10 sessões de mentoria","Somente para Mentor ativo · expiram junto com o período atual","/laser-control/extra?market=br","Comprar +10 sessões"]
+    ["MENTOR","R$ 59,90","Controle próprio + mentoria remota","1 PC · 10 sessões por ciclo","https://pay.kiwify.com.br/qVRSFCL","Assinar Mentor"]
   ],
   support:"Suporte por e-mail",home:"Voltar ao DevinX",already:"Já tenho acesso"
 } as const;
@@ -66,8 +65,7 @@ const INTL={
   purchaseSteps:["Choose a plan and complete payment on Kiwify.","Use the same purchase email for your DevinX account.","On the confirmation page, open Laser Control. If you do not have an account yet, create one with that same email.","Approved purchases are recognized automatically."],
   plans:[
     ["CONTROL","US$ 8.90","Remote access to your LightBurn","1 PC · 30 days","https://pay.kiwify.com/nuY5IsV","Get Control"],
-    ["MENTOR","US$ 17.90","Personal control + remote mentoring","1 PC · 30 days · 10 sessions","https://pay.kiwify.com/aIbUTmG","Get Mentor"],
-    ["EXTRA SESSION","US$ 7.50","Add 10 more mentoring sessions","Active Mentor only · expire with the current access period","/laser-control/extra?market=intl","Buy +10 sessions"]
+    ["MENTOR","US$ 17.90","Personal control + remote mentoring","1 PC · 30 days · 10 sessions","https://pay.kiwify.com/aIbUTmG","Get Mentor"]
   ],
   support:"Email support",home:"Back to DevinX",already:"I already have access"
 } as const;
@@ -139,7 +137,7 @@ export function LaserLanding(){
         <b>{c.purchaseTitle}</b>
         <div>{c.purchaseSteps.map((step,index)=><span key={step}><i>{index+1}</i>{step}</span>)}</div>
       </div>
-      <div className={styles.planGrid}>{c.plans.map(([name,price,desc,detail,href,cta],index)=><article key={name} className={index===1?styles.featuredPlan:""}>{index===1&&<small className={styles.best}>{intl?"PROFESSIONAL":"MAIS COMPLETO"}</small>}<span>{name}</span><h3>{price}<em>{index===2?"":c.period}</em></h3><b>{desc}</b><p>{detail}</p><a href={href} target={index===2?undefined:"_blank"} rel={index===2?undefined:"noreferrer"}>{cta}</a></article>)}</div>
+      <div className={styles.planGrid}>{c.plans.map(([name,price,desc,detail,href,cta],index)=><article key={name} className={index===1?styles.featuredPlan:""}>{index===1&&<small className={styles.best}>{intl?"PROFESSIONAL":"MAIS COMPLETO"}</small>}<span>{name}</span><h3>{price}<em>{index===2?"":c.period}</em></h3><b>{desc}</b><p>{detail}</p><a href={href} target="_blank" rel="noreferrer">{cta}</a></article>)}</div>
     </section>
     <section className={styles.bottom}>
       <div><small>DEVINX LASER CONTROL</small><h2>{intl?"Ready when your LightBurn is.":"Pronto quando seu LightBurn estiver."}</h2></div>
