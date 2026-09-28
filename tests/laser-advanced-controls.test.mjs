@@ -17,6 +17,14 @@ test('Laser Control uses Agent 1.0.31 for advanced controls',async()=>{
   assert.match(i18n,/DevinX Laser Agent 1\.0\.31/);
 });
 
+test('Agent compatibility check accepts later semantic versions without changing 1.0 thresholds',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  assert.match(panel,/supportsAgentAtLeast/);
+  assert.match(panel,/if\(major!==1\)return major>1/);
+  assert.match(panel,/if\(minor!==0\)return minor>0/);
+  assert.match(panel,/return patch>=minPatch/);
+});
+
 test('Laser command buttons are not blocked by cached job state',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   assert.match(panel,/const canOperate=Boolean/);
