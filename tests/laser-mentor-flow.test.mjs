@@ -53,3 +53,18 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
   }
   assert.doesNotMatch(laser,/celular usa tela cheia para toque|mobile uses fullscreen touch|móvil usa toque en pantalla completa/);
 });
+
+
+test('Agent 1.0.28 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
+  const runtime=await readFile('laser-agent/AgentRuntime.cs','utf8');
+  const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
+  const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
+  const mentorPage=await readFile('src/app/laser-control/mentoria/MentorDownloadPage.tsx','utf8');
+  assert.match(runtime,/exeName\.Contains\("Mentoria"/);
+  assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
+  assert.match(install,/StopInstalledCopyIfRunning/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.28\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.0\.28\.exe/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.28\.zip/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.28\.exe/);
+});
