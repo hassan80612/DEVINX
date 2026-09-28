@@ -63,10 +63,10 @@ test('Agent 1.0.29 is distributed as direct permanent and mentor executables wit
   assert.match(runtime,/exeName\.Contains\("Mentoria"/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.28\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\.0\.28\.exe/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.28\.zip/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.28\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.29\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.0\.29\.exe/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.29\.zip/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.29\.exe/);
 });
 
 
