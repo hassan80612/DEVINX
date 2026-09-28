@@ -13,6 +13,18 @@ test('public Laser Control surface exposes the product card and its own landing 
   assert.match(landing,/id="planos"/);
 });
 
+test('Laser public pages own their canonical and social metadata',async()=>{
+  const landing=await readFile('src/app/laser-control/conhecer/page.tsx','utf8');
+  const guide=await readFile('src/app/laser-control/guia/page.tsx','utf8');
+  const mentor=await readFile('src/app/laser-control/mentoria/page.tsx','utf8');
+  assert.match(landing,/laser-control\/conhecer/);
+  assert.match(landing,/openGraph/);
+  assert.match(landing,/twitter/);
+  assert.match(guide,/laser-control\/guia/);
+  assert.match(mentor,/laser-control\/mentoria/);
+  assert.match(mentor,/robots:\{index:false,follow:false,nocache:true\}/);
+});
+
 test('real Laser Control panel is mounted in AdminMaster and in the entitlement-gated Laser route',async()=>{
   const admin=await readFile('src/components/AdminMaster.tsx','utf8');
   const finance=await readFile('src/components/FinanceHub.tsx','utf8');
