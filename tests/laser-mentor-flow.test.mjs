@@ -60,7 +60,8 @@ test('Agent 1.0.32 uses separate permanent and mentor-only builds without ZIP or
   const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
   const mentorPage=await readFile('src/app/laser-control/mentoria/MentorDownloadPage.tsx','utf8');
-  assert.match(runtime,/exeName\.Contains\("Mentoria"/);
+  assert.match(runtime,/DEVINX_MENTOR_ONLY/);
+  assert.doesNotMatch(runtime,/exeName\.Contains/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
   assert.match(workflow,/DevinX-Laser-Agent-1\.0\.32\.exe/);
