@@ -224,7 +224,7 @@ test("lease remoto nunca passa da validade do acesso emitido pelo servidor",()=>
 
 
 test("Mentoria tem teto duro de 6 horas no banco e leases continuam curtos",()=>{
-  const guard=read("supabase/migrations/20260928213030_laser_mentor_six_hour_hard_cap.sql");
+  const guard=read("supabase/migrations/20260928212916_laser_mentor_six_hour_hard_cap.sql");
   const auth=read("supabase/migrations/20260928212145_laser_device_authorization_fail_closed.sql");
   assert.ok(guard.includes("interval '6 hours'"));
   assert.ok(guard.includes("new.connection_mode='mentor'"));
