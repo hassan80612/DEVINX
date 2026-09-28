@@ -3,7 +3,7 @@ import {getLaserControlAccess} from '@/features/laser-control/server/master-acce
 
 export const dynamic='force-dynamic';
 
-const AGENT_DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.32/DevinX-Laser-Agent-1.0.32.exe';
+const AGENT_DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.33/DevinX-Laser-Agent-1.0.33.exe';
 
 export async function GET(request:NextRequest){
   const access=await getLaserControlAccess();
