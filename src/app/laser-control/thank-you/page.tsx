@@ -20,7 +20,7 @@ export default function LaserThankYouInternationalPage(){
       <small style={{fontWeight:900,letterSpacing:'.14em',color:'#a9e8ff'}}>DEVINX LASER CONTROL</small>
       <h1 style={{margin:'12px 0 10px',fontSize:'clamp(32px,6vw,54px)',lineHeight:1}}>Payment received.</h1>
       <p style={{margin:0,color:'#c5d7df',fontSize:16,lineHeight:1.65}}>
-        Your access is linked to the same email used at Kiwify checkout. After purchase, sign in or create your DevinX account using that exact email. The US$ 7.50 option adds 10 more mentoring sessions, and they expire with your current Mentor access period.
+        Your access is linked to the same email used at Kiwify checkout. After purchase, sign in or create your DevinX account using that exact email. The US$ 7.50 pack adds 5 mentoring sessions and requires an active Mentor plan. The 5 sessions expire with your current Mentor access period.
       </p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,marginTop:24}}>
         <a href="/entrar?next=/laser-control&modo=criar" style={{
