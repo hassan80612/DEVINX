@@ -64,8 +64,8 @@ const INTL={
   purchaseTitle:"How access is activated after purchase",
   purchaseSteps:["Choose a plan and complete payment on Kiwify.","Use the same purchase email for your DevinX account.","On the confirmation page, open Laser Control. If you do not have an account yet, create one with that same email.","Approved purchases are recognized automatically."],
   plans:[
-    ["CONTROL","US$ 8.90","Remote access to your LightBurn","1 PC · 30 days","https://pay.kiwify.com/nuY5IsV","Get Control"],
-    ["MENTOR","US$ 17.90","Personal control + remote mentoring","1 PC · 30 days · 10 sessions","https://pay.kiwify.com/aIbUTmG","Get Mentor"]
+    ["CONTROL","US$ 8.90","Remote access to your LightBurn","1 PC · 30 days","https://pay.kiwify.com/nuY5IsV?region=intl","Get Control"],
+    ["MENTOR","US$ 17.90","Personal control + remote mentoring","1 PC · 30 days · 10 sessions","https://pay.kiwify.com/aIbUTmG?region=intl","Get Mentor"]
   ],
   support:"Email support",home:"Back to DevinX",already:"I already have access"
 } as const;

@@ -1323,7 +1323,7 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
-        <a className={styles.extraMentorButton} href={locale==='pt-BR'?'https://pay.kiwify.com.br/2Td87KB':'https://pay.kiwify.com/2sFxGp1'} target="_blank" rel="noreferrer">
+        <a className={styles.extraMentorButton} href={locale==='pt-BR'?'https://pay.kiwify.com.br/2Td87KB':'https://pay.kiwify.com/2sFxGp1?region=intl'} target="_blank" rel="noreferrer">
           {locale==='pt-BR'?'+5 sessões de mentoria · R$ 9,90':'+5 mentoring sessions · US$ 7.50'}
         </a>
         <small className={styles.extraMentorNote}>
