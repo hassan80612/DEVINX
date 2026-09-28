@@ -1,7 +1,25 @@
 import {NextResponse} from 'next/server';
 import {invokeLaserMasterFunction} from '@/features/laser-control/server/invoke-master-function';
+import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
 
 export const dynamic='force-dynamic';
+
+type DeviceRow={
+  device_id?:string;
+  device_status?:string;
+  connection_mode?:string|null;
+};
+
+function activeOwnedDevices(data:unknown){
+  const rows=Array.isArray((data as {devices?:unknown[]}|null)?.devices)
+    ?(data as {devices:DeviceRow[]}).devices
+    :[];
+  return rows.filter(device=>
+    typeof device.device_id==='string'
+    &&device.device_status==='active'
+    &&device.connection_mode!=='mentor'
+  );
+}
 
 export async function POST(request:Request){
   let body:{pairingCode?:string;displayName?:string};
@@ -13,6 +31,65 @@ export async function POST(request:Request){
     return NextResponse.json({claimed:false,reason:'invalid_code'},{status:400});
   }
 
+  const access=await getLaserControlAccess();
+  if(!access.authenticated)return NextResponse.json({claimed:false,reason:'unauthorized'},{status:401});
+  if(!access.isAdmin&&!access.ownerAccess)return NextResponse.json({claimed:false,reason:'owner_access_required'},{status:403});
+
+  // Admin stays unrestricted for support/testing. Paid owner accounts keep one
+  // permanent PC active at a time, but can replace it without support contact.
+  let before:DeviceRow[]=[];
+  if(!access.isAdmin){
+    const current=await invokeLaserMasterFunction('laser-master-devices',{});
+    if(current.ok)before=activeOwnedDevices(current.data);
+  }
+
   const result=await invokeLaserMasterFunction('laser-master-pairing-claim',{pairingCode,displayName});
-  return NextResponse.json(result.data,{status:result.status,headers:{'Cache-Control':'no-store, max-age=0'}});
+  const payload=(result.data&&typeof result.data==='object')
+    ?result.data as Record<string,unknown>
+    :{claimed:false,reason:'invalid_response'};
+
+  if(!result.ok||payload.claimed!==true||access.isAdmin){
+    return NextResponse.json(payload,{status:result.status,headers:{'Cache-Control':'no-store, max-age=0'}});
+  }
+
+  const afterResult=await invokeLaserMasterFunction('laser-master-devices',{});
+  if(!afterResult.ok){
+    return NextResponse.json(payload,{status:result.status,headers:{'Cache-Control':'no-store, max-age=0'}});
+  }
+
+  const after=activeOwnedDevices(afterResult.data);
+  const beforeIds=new Set(before.map(device=>device.device_id));
+  const returnedDeviceId=typeof payload.deviceId==='string'?payload.deviceId:null;
+  const newIds=after.map(device=>device.device_id!).filter(id=>!beforeIds.has(id));
+
+  const activeDeviceId=
+    returnedDeviceId&&after.some(device=>device.device_id===returnedDeviceId)
+      ?returnedDeviceId
+      :newIds.length===1
+        ?newIds[0]
+        :after.length===1
+          ?after[0].device_id!
+          :null;
+
+  if(!activeDeviceId){
+    return NextResponse.json(
+      {...payload,singlePcVerified:false},
+      {status:result.status,headers:{'Cache-Control':'no-store, max-age=0'}}
+    );
+  }
+
+  let revokedCount=0;
+  for(const device of after){
+    if(device.device_id===activeDeviceId)continue;
+    const revoked=await invokeLaserMasterFunction('laser-master-device-access',{
+      deviceId:device.device_id!,
+      action:'revoke'
+    });
+    if(revoked.ok)revokedCount+=1;
+  }
+
+  return NextResponse.json(
+    {...payload,deviceId:activeDeviceId,singlePcVerified:true,replacedPreviousPc:revokedCount>0},
+    {status:result.status,headers:{'Cache-Control':'no-store, max-age=0'}}
+  );
 }
