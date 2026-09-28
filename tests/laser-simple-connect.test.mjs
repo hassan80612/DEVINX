@@ -15,3 +15,17 @@ test('protected redirect preserves pairing query string',async()=>{
   const middleware=await readFile('src/middleware.ts','utf8');
   assert.match(middleware,/requestedPath=pathname\+request\.nextUrl\.search/);
 });
+
+
+test('permanent pairing requires owner access and replaces the previous owner PC',async()=>{
+  const route=await readFile('src/app/api/laser-control/master/claim/route.ts','utf8');
+  assert.match(route,/getLaserControlAccess/);
+  assert.match(route,/!access\.isAdmin&&!access\.ownerAccess/);
+  assert.match(route,/laser-master-devices/);
+  assert.match(route,/connection_mode!==['"]mentor['"]/);
+  assert.match(route,/laser-master-pairing-claim/);
+  assert.match(route,/laser-master-device-access/);
+  assert.match(route,/action:['"]revoke['"]/);
+  assert.match(route,/singlePcVerified:true/);
+  assert.match(route,/replacedPreviousPc/);
+});
