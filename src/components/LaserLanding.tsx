@@ -195,18 +195,19 @@ const AR={
 
 const LANDING_COPY={"pt-BR":BR,en:INTL,es:ES,fr:FR,de:DE,ar:AR} as const;
 const AUX={
-  "pt-BR":{signOut:"Sair / Trocar conta",noticeTitle:"Esta conta ainda não tem acesso ao Laser Control.",noticeText:"Escolha um plano abaixo ou saia para entrar com outra conta.",professional:"MAIS COMPLETO",bottom:"Pronto quando seu LightBurn estiver.",supportBody:"Versão do Agent:\nVersão do LightBurn:\nWindows:\nProblema:\n"},
-  en:{signOut:"Sign out / Switch account",noticeTitle:"This account does not have Laser Control access yet.",noticeText:"Choose a plan below or sign out to enter with another account.",professional:"PROFESSIONAL",bottom:"Ready when your LightBurn is.",supportBody:"Agent version:\nLightBurn version:\nWindows:\nIssue:\n"},
-  es:{signOut:"Salir / Cambiar cuenta",noticeTitle:"Esta cuenta todavía no tiene acceso a Laser Control.",noticeText:"Elige un plan abajo o cierra sesión para entrar con otra cuenta.",professional:"PROFESIONAL",bottom:"Listo cuando tu LightBurn lo esté.",supportBody:"Versión del Agent:\nVersión de LightBurn:\nWindows:\nProblema:\n"},
-  fr:{signOut:"Déconnexion / Changer de compte",noticeTitle:"Ce compte n’a pas encore accès à Laser Control.",noticeText:"Choisissez un plan ci-dessous ou déconnectez-vous pour utiliser un autre compte.",professional:"PROFESSIONNEL",bottom:"Prêt dès que votre LightBurn l’est.",supportBody:"Version de l’Agent:\nVersion de LightBurn:\nWindows:\nProblème:\n"},
-  de:{signOut:"Abmelden / Konto wechseln",noticeTitle:"Dieses Konto hat noch keinen Laser-Control-Zugang.",noticeText:"Wählen Sie unten einen Plan oder melden Sie sich ab, um ein anderes Konto zu verwenden.",professional:"PROFESSIONELL",bottom:"Bereit, sobald Ihr LightBurn bereit ist.",supportBody:"Agent-Version:\nLightBurn-Version:\nWindows:\nProblem:\n"},
-  ar:{signOut:"تسجيل الخروج / تبديل الحساب",noticeTitle:"هذا الحساب لا يملك وصولاً إلى Laser Control بعد.",noticeText:"اختر خطة أدناه أو سجّل الخروج للدخول بحساب آخر.",professional:"احترافي",bottom:"جاهز عندما يكون LightBurn جاهزاً.",supportBody:"إصدار Agent:\nإصدار LightBurn:\nWindows:\nالمشكلة:\n"}
+  "pt-BR":{signOut:"Sair / Trocar conta",noticeTitle:"Esta conta ainda não tem acesso ao Laser Control.",noticeText:"Escolha um plano abaixo ou saia para entrar com outra conta.",professional:"MAIS COMPLETO",bottom:"Pronto quando seu LightBurn estiver.",supportBody:"Versão do Agent:\nVersão do LightBurn:\nWindows:\nProblema:\n",mockPc:"PC OFICINA",mockOnline:"● online",mockConnected:"LightBurn conectado",mockMachine:"Máquina pronta",mockLive:"LIGHTBURN · AO VIVO",mockFrame:"Frame",mockStart:"Iniciar",mockPause:"Pausar",mockStop:"Parar"},
+  en:{signOut:"Sign out / Switch account",noticeTitle:"This account does not have Laser Control access yet.",noticeText:"Choose a plan below or sign out to enter with another account.",professional:"PROFESSIONAL",bottom:"Ready when your LightBurn is.",supportBody:"Agent version:\nLightBurn version:\nWindows:\nIssue:\n",mockPc:"WORKSHOP PC",mockOnline:"● online",mockConnected:"LightBurn connected",mockMachine:"Machine ready",mockLive:"LIGHTBURN · LIVE VIEW",mockFrame:"Frame",mockStart:"Start",mockPause:"Pause",mockStop:"Stop"},
+  es:{signOut:"Salir / Cambiar cuenta",noticeTitle:"Esta cuenta todavía no tiene acceso a Laser Control.",noticeText:"Elige un plan abajo o cierra sesión para entrar con otra cuenta.",professional:"PROFESIONAL",bottom:"Listo cuando tu LightBurn lo esté.",supportBody:"Versión del Agent:\nVersión de LightBurn:\nWindows:\nProblema:\n",mockPc:"PC TALLER",mockOnline:"● en línea",mockConnected:"LightBurn conectado",mockMachine:"Máquina lista",mockLive:"LIGHTBURN · EN VIVO",mockFrame:"Frame",mockStart:"Iniciar",mockPause:"Pausar",mockStop:"Parar"},
+  fr:{signOut:"Déconnexion / Changer de compte",noticeTitle:"Ce compte n’a pas encore accès à Laser Control.",noticeText:"Choisissez un plan ci-dessous ou déconnectez-vous pour utiliser un autre compte.",professional:"PROFESSIONNEL",bottom:"Prêt dès que votre LightBurn l’est.",supportBody:"Version de l’Agent:\nVersion de LightBurn:\nWindows:\nProblème:\n",mockPc:"PC ATELIER",mockOnline:"● en ligne",mockConnected:"LightBurn connecté",mockMachine:"Machine prête",mockLive:"LIGHTBURN · EN DIRECT",mockFrame:"Frame",mockStart:"Démarrer",mockPause:"Pause",mockStop:"Arrêter"},
+  de:{signOut:"Abmelden / Konto wechseln",noticeTitle:"Dieses Konto hat noch keinen Laser-Control-Zugang.",noticeText:"Wählen Sie unten einen Plan oder melden Sie sich ab, um ein anderes Konto zu verwenden.",professional:"PROFESSIONELL",bottom:"Bereit, sobald Ihr LightBurn bereit ist.",supportBody:"Agent-Version:\nLightBurn-Version:\nWindows:\nProblem:\n",mockPc:"WERKSTATT-PC",mockOnline:"● online",mockConnected:"LightBurn verbunden",mockMachine:"Maschine bereit",mockLive:"LIGHTBURN · LIVE",mockFrame:"Frame",mockStart:"Start",mockPause:"Pause",mockStop:"Stopp"},
+  ar:{signOut:"تسجيل الخروج / تبديل الحساب",noticeTitle:"هذا الحساب لا يملك وصولاً إلى Laser Control بعد.",noticeText:"اختر خطة أدناه أو سجّل الخروج للدخول بحساب آخر.",professional:"احترافي",bottom:"جاهز عندما يكون LightBurn جاهزاً.",supportBody:"إصدار Agent:\nإصدار LightBurn:\nWindows:\nالمشكلة:\n",mockPc:"كمبيوتر الورشة",mockOnline:"● متصل",mockConnected:"LightBurn متصل",mockMachine:"الآلة جاهزة",mockLive:"LIGHTBURN · مباشر",mockFrame:"Frame",mockStart:"بدء",mockPause:"إيقاف مؤقت",mockStop:"إيقاف"}
 } as const;
 
 export function LaserLanding(){
   const{locale}=useI18n();
-  const c=LANDING_COPY[locale];
-  const aux=AUX[locale];
+  const activeLocale=(locale in LANDING_COPY?locale:"pt-BR") as keyof typeof LANDING_COPY;
+  const c=LANDING_COPY[activeLocale];
+  const aux=AUX[activeLocale];
   const[loggedIn,setLoggedIn]=useState(false);
   const[accessNotice,setAccessNotice]=useState(false);
 
@@ -221,7 +222,7 @@ export function LaserLanding(){
     window.location.assign("/entrar?next=/laser-control");
   }
   const supportBody=encodeURIComponent(aux.supportBody);
-  return <main className={styles.page} lang={locale}>
+  return <main key={activeLocale} className={styles.page} lang={activeLocale}>
     <header className={styles.header}>
       <a href="/" className={styles.brand}><b>DX</b><span>DEVINX <em>LASER CONTROL</em></span></a>
       <nav>
@@ -248,10 +249,10 @@ export function LaserLanding(){
         </div>
       </div>
       <div className={styles.screen} aria-hidden="true">
-        <div className={styles.screenBar}><i/><i/><i/><span>DEVINX · LIVE</span></div>
+        <div className={styles.screenBar}><i/><i/><i/><span>DEVINX · {activeLocale==="pt-BR"?"AO VIVO":activeLocale==="es"?"EN VIVO":activeLocale==="fr"?"EN DIRECT":activeLocale==="ar"?"مباشر":"LIVE"}</span></div>
         <div className={styles.screenBody}>
-          <aside><b>PC OFICINA</b><span>● online</span><span>LightBurn conectado</span><span>Máquina pronta</span></aside>
-          <div className={styles.mockLive}><small>LIGHTBURN · LIVE VIEW</small><div className={styles.mockCanvas}><span>LASER</span><b>CONTROL</b></div><div className={styles.mockButtons}><i>Frame</i><i>Start</i><i>Pause</i><i>Stop</i></div></div>
+          <aside><b>{aux.mockPc}</b><span>{aux.mockOnline}</span><span>{aux.mockConnected}</span><span>{aux.mockMachine}</span></aside>
+          <div className={styles.mockLive}><small>{aux.mockLive}</small><div className={styles.mockCanvas}><span>LASER</span><b>CONTROL</b></div><div className={styles.mockButtons}><i>{aux.mockFrame}</i><i>{aux.mockStart}</i><i>{aux.mockPause}</i><i>{aux.mockStop}</i></div></div>
         </div>
       </div>
     </section>
