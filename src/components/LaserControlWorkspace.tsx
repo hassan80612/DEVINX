@@ -138,7 +138,8 @@ export function LaserControlWorkspace(){
 
   useEffect(()=>{
     const supabase=createClient();
-    void supabase.rpc('get_laser_access_status').then(({data})=>{
+    void supabase.rpc('get_laser_access_status').then((result:any)=>{
+      const data=result?.data;
       const row=Array.isArray(data)?data[0]:data;
       setMentorAccess(Boolean(row?.mentor_access||row?.is_admin));
     });
