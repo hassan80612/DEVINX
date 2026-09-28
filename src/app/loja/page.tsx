@@ -7,6 +7,7 @@ import {StoreAvailabilityGate} from "@/components/StoreAvailabilityGate";
 export const metadata:Metadata={
   title:{absolute:"DevinX Loja | Vitrine, estoque e vendas"},
   description:"Sua vitrine, estoque, vendas, frete, equipe e financeiro em um único painel para quem vende produtos.",
+  keywords:["gestão de loja","controle de estoque","vitrine online","controle de vendas","estoque por cor","pedidos por WhatsApp","DevinX Loja"],
   alternates:{canonical:"/loja"},
   openGraph:{
     title:"DevinX Loja",
@@ -14,6 +15,11 @@ export const metadata:Metadata={
     url:"https://devinx.com.br/loja",
     siteName:"DevinX Loja",
     type:"website"
+  },
+  twitter:{
+    card:"summary_large_image",
+    title:"DevinX Loja | Vitrine, estoque e vendas",
+    description:"Vitrine, estoque, vendas, frete, equipe e lucro em um único painel para quem vende produtos."
   }
 };
 

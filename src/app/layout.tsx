@@ -3,8 +3,8 @@ import type {Metadata} from 'next';
 import {I18nProvider} from '@/i18n/provider';
 import {PresenceProvider} from '@/components/LivePresence';
 
-const title='DevinX | Financeiro e Loja';
-const description='DevinX reúne duas ferramentas independentes: Financeiro para organizar sua vida financeira e Loja para organizar produtos, estoque e vendas.';
+const title='DevinX | Financeiro, Loja e Laser Control';
+const description='DevinX reúne ferramentas independentes para controle financeiro, gestão de loja e controle remoto do LightBurn com o DevinX Laser Control.';
 
 export const metadata:Metadata={
   metadataBase:new URL('https://devinx.com.br'),
@@ -23,7 +23,13 @@ export const metadata:Metadata={
     'controle financeiro autônomo',
     'controle financeiro motorista de aplicativo',
     'controle financeiro Uber',
-    'organizar contas'
+    'organizar contas',
+    'gestão de loja',
+    'controle de estoque',
+    'vitrine online',
+    'LightBurn remoto',
+    'controle remoto LightBurn',
+    'DevinX Laser Control'
   ],
   category:'business',
   alternates:{canonical:'/'},
