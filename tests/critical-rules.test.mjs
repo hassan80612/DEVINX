@@ -200,3 +200,24 @@ test("Mentoria mantém 10 sessões por ciclo, extras no ciclo e sessão máxima 
   assert.ok(migration.includes("laser_internal_user_can_control_device"));
   assert.ok(migration.includes("v_lease_until"));
 });
+
+
+test("autorização do Laser fecha no servidor quando plano ou slot adicional expira",()=>{
+  const migration=read("supabase/migrations/20260928212145_laser_device_authorization_fail_closed.sql");
+  assert.ok(migration.includes("laser_internal_user_can_control_device"));
+  assert.ok(migration.includes("pc_addon_orders"));
+  assert.ok(migration.includes("o.expires_at>now()"));
+  assert.ok(migration.includes("row_number() over"));
+  assert.ok(migration.includes("laser_internal_device_access_deadline"));
+  assert.ok(migration.includes("laser_internal_agent_remote_session"));
+  assert.ok(migration.includes("laser_internal_agent_next_session_command"));
+  assert.ok(migration.includes("laser_internal_device_auth_context"));
+  assert.ok(migration.includes("not public.laser_internal_user_can_control_device"));
+});
+
+test("lease remoto nunca passa da validade do acesso emitido pelo servidor",()=>{
+  const migration=read("supabase/migrations/20260928212145_laser_device_authorization_fail_closed.sql");
+  assert.ok(migration.includes("v_access_until:=public.laser_internal_device_access_deadline"));
+  assert.ok(migration.includes("now()+interval '45 seconds'"));
+  assert.ok(migration.includes("least("));
+});
