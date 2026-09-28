@@ -79,7 +79,7 @@ test('mobile mentoring keyboard and dialog controls stay available over live pre
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   assert.match(panel,/mobileKeyboardRef/);
   assert.match(panel,/openMobileKeyboard/);
-  assert.match(panel,/type:'text',key:value/);
+  assert.match(panel,/type:'replace_text',key:value/);
   assert.match(panel,/laser\.closeEsc/);
   assert.match(panel,/laser\.okEnter/);
   assert.match(panel,/pendingGuard/);
