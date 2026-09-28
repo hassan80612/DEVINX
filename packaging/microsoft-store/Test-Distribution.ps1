@@ -57,7 +57,10 @@ namespace DevinXLaserAgent
     internal static class AgentLocalState { public static void ResetAll() => throw new Exception("Unexpected state deletion."); }
 }
 '@ | Set-Content "$test/Program.cs"
-& dotnet run --project "$test/DistributionTests.csproj" -c Release -- portable
-if ($LASTEXITCODE -ne 0) { throw 'Portable regression check failed.' }
-& dotnet run --project "$test/DistributionTests.csproj" -c Release -p:StoreDistribution=true -- store
-if ($LASTEXITCODE -ne 0) { throw 'Store isolation check failed.' }
+foreach ($distribution in @('portable', 'store')) {
+    $storeBuild = if ($distribution -eq 'store') { 'true' } else { 'false' }
+    & dotnet build "$test/DistributionTests.csproj" -c Release -t:Rebuild "-p:StoreDistribution=$storeBuild"
+    if ($LASTEXITCODE -ne 0) { throw "$distribution test compilation failed." }
+    & dotnet "$test/bin/Release/net8.0-windows/DistributionTests.dll" $distribution
+    if ($LASTEXITCODE -ne 0) { throw "$distribution isolation check failed." }
+}
