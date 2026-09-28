@@ -4,10 +4,6 @@ import {NextRequest,NextResponse} from 'next/server';
 
 export const runtime='nodejs';
 
-const LASER_PRODUCT_ID='a7e51ae0-bb55-11f1-8e93-792b23e3fb86';
-const LASER_EXTRA_PRODUCT_ID='edb2fd90-bb59-11f1-8e93-792b23e3fb86';
-const LASER_INTL_PRODUCT_ID='c8084800-bb5b-11f1-a3a3-c3b61dcd3677';
-
 function safeHexEqual(a:string,b:string){
   try{
     const left=Buffer.from(a.trim().toLowerCase(),'hex');
@@ -22,25 +18,6 @@ function signatureMatches(secret:string,signature:string,raw:string,payload:any)
   return !!signature&&(safeHexEqual(signature,expectedJson)||safeHexEqual(signature,expectedRaw));
 }
 
-function productId(payload:any){
-  return String(
-    payload?.Product?.product_id||
-    payload?.product_id||
-    payload?.product?.product_id||
-    payload?.product?.id||
-    payload?.order?.product_id||
-    ''
-  );
-}
-
-export async function GET(){
-  return NextResponse.json({
-    ok:true,
-    product:'DevinX Laser Control',
-    productIds:[LASER_PRODUCT_ID,LASER_EXTRA_PRODUCT_ID,LASER_INTL_PRODUCT_ID],
-    webhook:'ready_for_configuration'
-  },{headers:{'Cache-Control':'no-store'}});
-}
 
 export async function POST(request:NextRequest){
   const raw=await request.text();
@@ -48,9 +25,6 @@ export async function POST(request:NextRequest){
   try{payload=JSON.parse(raw)}
   catch{return NextResponse.json({ok:false,error:'invalid_json'},{status:400})}
 
-  const incomingProductId=productId(payload);
-  if(![LASER_PRODUCT_ID,LASER_EXTRA_PRODUCT_ID,LASER_INTL_PRODUCT_ID].includes(incomingProductId))
-    return NextResponse.json({ok:true,ignored:'product'});
 
   const primarySecret=process.env.KIWIFY_LASER_WEBHOOK_TOKEN||'';
   const extraSecret=process.env.KIWIFY_LASER_EXTRA_WEBHOOK_TOKEN||'';
@@ -75,11 +49,7 @@ export async function POST(request:NextRequest){
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
   const tokenHash=createHash('sha256').update(primarySecret||matchingSecret).digest('hex');
-  const rpcName=incomingProductId===LASER_EXTRA_PRODUCT_ID
-    ?'process_kiwify_laser_extra_webhook'
-    :incomingProductId===LASER_INTL_PRODUCT_ID
-      ?'process_kiwify_laser_international_webhook'
-      :'process_kiwify_laser_webhook';
+  const rpcName='process_kiwify_laser_offer_dispatch';
   const{data,error}=await supabase.rpc(rpcName,{
     p_payload:payload,p_token_hash:tokenHash
   });

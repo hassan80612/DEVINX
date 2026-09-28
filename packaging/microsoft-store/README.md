@@ -7,7 +7,7 @@ Preparação de dois aplicativos MSIX x64, Windows 10 2004 ou superior / Windows
 - **DevinX Mentoria:** o aluno abre e recebe seu código; nenhuma inicialização automática.
 - **DevinX Laser Agent:** vínculo permanente e inicialização pelo mecanismo do Windows; sem cópia do executável nem escrita de inicialização no Registro pela aplicação.
 
-Os downloads EXE 1.0.31 existentes permanecem publicados. Não trocar os links até a aprovação da Store e teste real com LightBurn. O MSIX gerado aqui não é assinado: destina-se à submissão para assinatura da Microsoft, não a download direto por clientes. Não distribuir certificados de teste nem pedir ao cliente para desativar proteções.
+Os downloads EXE 1.0.34 existentes permanecem publicados. Não trocar os links até a aprovação da Store e teste real com LightBurn. O MSIX gerado aqui não é assinado: destina-se à submissão para assinatura da Microsoft, não a download direto por clientes. Não distribuir certificados de teste nem pedir ao cliente para desativar proteções.
 
 ## Cadastro que depende do titular
 
@@ -29,7 +29,7 @@ Com as identidades oficiais, executar o mesmo workflow manualmente, selecionando
 
 ## Adaptações e limites
 
-`StoreDistribution=true` define `DEVINX_STORE`. Apenas esse build evita a instalação própria e usa pastas de estado separadas, sem apagar o vínculo do EXE tradicional. A opção de desinstalação revoga o vínculo e abre as Configurações do Windows, onde o usuário remove o aplicativo. A mentoria fecha a sessão, mas o aplicativo instalado pela Store permanece disponível até ser desinstalado.
+`StoreDistribution=true` define `DEVINX_STORE`. O pacote Mentoria também define `DEVINX_MENTOR_ONLY` durante a compilação; renomear o executável não altera seu modo. Apenas o build Store evita a instalação própria e usa pastas de estado separadas, sem apagar o vínculo do EXE tradicional. A opção de desinstalação revoga o vínculo e abre as Configurações do Windows, onde o usuário remove o aplicativo. A mentoria fecha a sessão, mas o aplicativo instalado pela Store permanece disponível até ser desinstalado.
 
 O Agent declara uma tarefa de inicialização no manifesto. Antes do vínculo, a execução em segundo plano termina sem criar acesso. A decisão do usuário de desativar a inicialização nas Configurações é respeitada. Fechar o Agent tradicional antes de testar o Agent da Store: o mutex existente continua impedindo duas instâncias permanentes.
 

@@ -31,6 +31,7 @@
 .intro p{max-width:720px;margin:16px auto 0;color:#c1d0cc;font-size:15px;line-height:1.6}
 .intro p::after{content:"";display:block;width:64px;height:1px;margin:20px auto 0;background:linear-gradient(90deg,transparent,#d4b34e,transparent)}
 
+
 .products{width:min(1160px,100%);margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 42px minmax(0,1fr);gap:12px;align-items:stretch}
 .product{
   position:relative;overflow:hidden;min-width:0;padding:28px;

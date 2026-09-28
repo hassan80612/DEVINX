@@ -44,6 +44,11 @@
 .groupTitle span{font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .groupTitle small{min-width:22px;padding:3px 6px;border:1px solid rgba(255,255,255,.09);border-radius:999px;text-align:center;color:#c1cfdd;font-size:10px}
 .emptyDevice{padding:12px 6px;color:#68778b;font-size:12px}
+.pcAddon{display:grid;gap:7px;padding:13px;border:1px solid rgba(94,231,255,.22);border-radius:13px;background:linear-gradient(145deg,rgba(42,72,88,.98),rgba(29,48,61,.98));box-shadow:inset 0 1px rgba(255,255,255,.06)}
+.pcAddon>span{color:var(--cyan);font-size:9px;font-weight:950;letter-spacing:.14em}
+.pcAddon>b{font-size:15px;color:#f2fbff}.pcAddon p{margin:0;color:#cedae5;font-size:10.5px;line-height:1.5}
+.pcAddon>a{display:flex;align-items:center;justify-content:center;min-height:38px;padding:9px 12px;border:1px solid rgba(94,231,255,.36);border-radius:10px;background:linear-gradient(180deg,#72eaff,#27b7df);color:#06151b;font-size:11px;font-weight:950;text-decoration:none;box-shadow:0 8px 22px rgba(39,183,223,.16),inset 0 1px rgba(255,255,255,.5)}
+.pcAddon>a:hover{transform:translateY(-1px);filter:brightness(1.04)}.pcAddon>small{color:#9fb1c0;font-size:9.5px;line-height:1.45}
 .deviceCard{overflow:hidden;border:1px solid rgba(255,255,255,.075);border-radius:14px;background:linear-gradient(145deg,#405668,#2f4353);transition:border-color .16s,transform .16s,box-shadow .16s}
 .deviceCard:hover{transform:translateY(-1px);border-color:rgba(94,231,255,.22)}
 .deviceCard[data-selected="true"]{border-color:rgba(94,231,255,.55);box-shadow:0 0 0 1px rgba(94,231,255,.08),0 12px 28px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.06)}
@@ -300,3 +305,33 @@
 .workspaceNav a:hover,.workspaceNav button:hover{border-color:rgba(226,193,101,.48);color:#fff1ad}
 .workspaceNav button{font-family:inherit;cursor:pointer}
 @media(max-width:760px){.topRight{width:100%;justify-items:start}.workspaceNav{justify-content:flex-start}.workspaceNav a,.workspaceNav button{min-height:32px;font-size:9px}}
+
+/* Compact navigation on phone/tablet: avoid the oversized empty header seen on narrow screens. */
+@media(max-width:920px){
+  .top{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+  .topRight{width:100%;justify-items:stretch}
+  .workspaceNav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}
+  .workspaceNav a,.workspaceNav button{width:100%;min-width:0;min-height:38px;padding:7px 6px;font-size:9.5px;white-space:nowrap}
+  .liveBadge{justify-self:start}
+}
+@media(max-width:470px){
+  .workspaceNav{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .workspaceNav a,.workspaceNav button{min-height:36px;font-size:9px}
+}
+
+.extraMentorButton{
+  display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:10px;padding:9px 11px;
+  border:1px solid rgba(231,198,105,.48);border-radius:11px;
+  background:linear-gradient(135deg,#876018,#d1a334 44%,#f2d36f);color:#171208;
+  text-decoration:none;font-size:10px;font-weight:950;text-align:center
+}
+.extraMentorButton:hover{filter:brightness(1.05)}
+.extraMentorNote{display:block;margin-top:8px;color:#b9c8d2;font-size:9px;line-height:1.45}
+.mentorLocked{
+  padding:16px;border:1px solid rgba(226,193,101,.20);border-radius:16px;
+  background:radial-gradient(circle at 8% 0%,rgba(218,184,83,.10),transparent 45%),linear-gradient(155deg,rgba(55,72,84,.94),rgba(34,48,58,.97))
+}
+.mentorLocked>span{display:block;color:#e2c45e;font-size:10px;font-weight:950;letter-spacing:.14em}
+.mentorLocked>b{display:block;margin-top:6px;font-size:17px;color:#f5fbff}
+.mentorLocked p{margin:7px 0 12px;color:#c8d4dc;font-size:11px;line-height:1.45}
+.mentorLocked a{display:flex;align-items:center;justify-content:center;min-height:40px;border:1px solid rgba(226,193,101,.34);border-radius:10px;background:rgba(19,29,35,.55);color:#f0d475;text-decoration:none;font-size:10px;font-weight:900}

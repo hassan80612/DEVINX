@@ -12,6 +12,7 @@ import {
   useState
 } from 'react';
 import {createClient} from '@/lib/supabase/client';
+import {LanguageMenu} from '@/components/LanguageMenu';
 import styles from './LaserControlWorkspace.module.css';
 import {useI18n} from '@/i18n/provider';
 
@@ -45,10 +46,29 @@ type RemoteSession={
   expiresAt:string;
 };
 
+type PcCapacity={
+  max_pcs:number;
+  active_pcs:number;
+  extra_pcs:number;
+  expires_at:string|null;
+};
+
 type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
 const MENTOR_SHARE_LINK='https://devinx.com.br/laser-control/mentoria';
+const DEVICE_REFRESH_MS=15_000;
+const SESSION_RENEW_MS=20_000;
+const DEVICE_REQUEST_MIN_GAP_MS=2_000;
+
+const WORKSPACE_NAV={
+  'pt-BR':{home:'Home',guide:'Guia',support:'Suporte',signOut:'Sair',mentorPack:'+5 sessões de mentoria',mentorNote:'Cada sessão pode durar até 6 horas. O Mentor começa com 10 sessões por ciclo; o pacote de +5 soma somente ao ciclo atual e expira junto com ele. Use na Kiwify o mesmo e-mail da sua conta DevinX.',mentorLocked:'MENTORIA',mentorAvailable:'Disponível no plano Mentor',mentorLockedText:'O plano Control não recebe sessões de mentoria. Para usar alunos e comprar pacotes extras, ative o plano Mentor.',mentorView:'Ver plano Mentor',pcTag:'PC ADICIONAL',pcDescription:'Cada compra acrescenta +1 PC ao limite do seu Control ou Mentor somente até o fim do período atual. A renovação do plano NÃO renova este adicional: no próximo período é preciso comprar novamente.',addPc:'Adicionar +1 PC',pcSmall:'Pode repetir a compra quantas vezes precisar neste período. O adicional nunca funciona sem um plano principal ativo.'},
+  en:{home:'Home',guide:'Guide',support:'Support',signOut:'Sign out',mentorPack:'+5 mentoring sessions',mentorNote:'Each session can last up to 6 hours. Mentor starts with 10 sessions per cycle; the +5 pack applies only to the current cycle and expires with it. Use the same email at Kiwify checkout as your DevinX account.',mentorLocked:'MENTORING',mentorAvailable:'Available with the Mentor plan',mentorLockedText:'Control does not include mentoring sessions. Activate Mentor to connect students and buy extra session packs.',mentorView:'View Mentor plan',pcTag:'EXTRA PC',pcDescription:'Each purchase adds +1 PC to your Control or Mentor limit only until the current plan period ends. Plan renewal does NOT renew this add-on: buy it again for the next period.',addPc:'Add +1 PC',pcSmall:'You can repeat the purchase as many times as needed in this period. The add-on never works without an active main plan.'},
+  es:{home:'Inicio',guide:'Guía',support:'Soporte',signOut:'Salir',mentorPack:'+5 sesiones de mentoría',mentorNote:'Cada sesión puede durar hasta 6 horas. Mentor comienza con 10 sesiones por ciclo; el paquete de +5 se suma solo al ciclo actual y vence con él. Usa en Kiwify el mismo correo de tu cuenta DevinX.',mentorLocked:'MENTORÍA',mentorAvailable:'Disponible con el plan Mentor',mentorLockedText:'Control no incluye sesiones de mentoría. Activa Mentor para conectar alumnos y comprar paquetes extra.',mentorView:'Ver plan Mentor',pcTag:'PC ADICIONAL',pcDescription:'Cada compra añade +1 PC al límite de Control o Mentor solo hasta el final del período actual. La renovación del plan NO renueva este adicional: debes comprarlo otra vez en el siguiente período.',addPc:'Añadir +1 PC',pcSmall:'Puedes repetir la compra las veces que necesites durante este período. El adicional nunca funciona sin un plan principal activo.'},
+  fr:{home:'Accueil',guide:'Guide',support:'Support',signOut:'Déconnexion',mentorPack:'+5 sessions de mentorat',mentorNote:'Chaque session peut durer jusqu’à 6 heures. Mentor commence avec 10 sessions par cycle ; le pack +5 s’applique uniquement au cycle actuel et expire avec lui. Utilisez le même e-mail sur Kiwify et sur votre compte DevinX.',mentorLocked:'MENTORAT',mentorAvailable:'Disponible avec le plan Mentor',mentorLockedText:'Control n’inclut pas de sessions de mentorat. Activez Mentor pour connecter des élèves et acheter des packs supplémentaires.',mentorView:'Voir le plan Mentor',pcTag:'PC SUPPLÉMENTAIRE',pcDescription:'Chaque achat ajoute +1 PC à la limite Control ou Mentor uniquement jusqu’à la fin de la période actuelle. Le renouvellement du plan NE renouvelle PAS cet ajout : il faut le racheter pour la période suivante.',addPc:'Ajouter +1 PC',pcSmall:'Vous pouvez répéter l’achat autant de fois que nécessaire pendant cette période. L’ajout ne fonctionne jamais sans plan principal actif.'},
+  de:{home:'Startseite',guide:'Anleitung',support:'Support',signOut:'Abmelden',mentorPack:'+5 Mentoring-Sitzungen',mentorNote:'Jede Sitzung kann bis zu 6 Stunden dauern. Mentor startet mit 10 Sitzungen pro Zyklus; das +5-Paket gilt nur für den aktuellen Zyklus und läuft mit ihm ab. Verwenden Sie bei Kiwify dieselbe E-Mail-Adresse wie für Ihr DevinX-Konto.',mentorLocked:'MENTORING',mentorAvailable:'Im Mentor-Plan verfügbar',mentorLockedText:'Control enthält keine Mentoring-Sitzungen. Aktivieren Sie Mentor, um Schüler zu verbinden und Zusatzpakete zu kaufen.',mentorView:'Mentor-Plan ansehen',pcTag:'ZUSÄTZLICHER PC',pcDescription:'Jeder Kauf erhöht das Control- oder Mentor-Limit bis zum Ende des aktuellen Zeitraums um +1 PC. Eine Planverlängerung verlängert diesen Zusatz NICHT; für den nächsten Zeitraum muss er neu gekauft werden.',addPc:'+1 PC hinzufügen',pcSmall:'Der Kauf kann in diesem Zeitraum beliebig oft wiederholt werden. Der Zusatz funktioniert nie ohne aktiven Hauptplan.'},
+  ar:{home:'الرئيسية',guide:'الدليل',support:'الدعم',signOut:'تسجيل الخروج',mentorPack:'+5 جلسات إرشاد',mentorNote:'يمكن أن تستمر كل جلسة حتى 6 ساعات. تبدأ خطة Mentor بـ10 جلسات في كل دورة، وتُضاف حزمة +5 إلى الدورة الحالية فقط وتنتهي معها. استخدم في Kiwify البريد الإلكتروني نفسه لحساب DevinX.',mentorLocked:'الإرشاد',mentorAvailable:'متاح مع خطة Mentor',mentorLockedText:'خطة Control لا تتضمن جلسات إرشاد. فعّل Mentor لربط الطلاب وشراء الحزم الإضافية.',mentorView:'عرض خطة Mentor',pcTag:'كمبيوتر إضافي',pcDescription:'كل عملية شراء تضيف كمبيوتر واحداً إلى حد Control أو Mentor حتى نهاية الفترة الحالية فقط. تجديد الخطة لا يجدد هذه الإضافة؛ يجب شراؤها من جديد في الفترة التالية.',addPc:'إضافة كمبيوتر +1',pcSmall:'يمكن تكرار الشراء بالقدر المطلوب خلال هذه الفترة. الإضافة لا تعمل أبداً من دون خطة رئيسية نشطة.'}
+} as const;
 
 const MOBILE_KEY_ROWS=[
   ['1','2','3','4','5','6','7','8','9','0'],
@@ -60,6 +80,7 @@ const MOBILE_KEY_ROWS=[
 
 export function LaserControlWorkspace(){
   const{t,locale}=useI18n();
+  const nav=WORKSPACE_NAV[locale];
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
   const[loading,setLoading]=useState(true);
@@ -88,6 +109,10 @@ export function LaserControlWorkspace(){
   const[mentorCode,setMentorCode]=useState('');
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorNotice,setMentorNotice]=useState('');
+  const[mentorAccess,setMentorAccess]=useState(false);
+  const[ownerAccess,setOwnerAccess]=useState(false);
+  const[pcCapacity,setPcCapacity]=useState<PcCapacity|null>(null);
+  const[checkoutRegion,setCheckoutRegion]=useState<'br'|'intl'|null>(null);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
   const[toolPanelOpen,setToolPanelOpen]=useState(false);
@@ -128,6 +153,8 @@ export function LaserControlWorkspace(){
   const controlPendingRef=useRef<string|null>(null);
   const pendingInputResultsRef=useRef(new Map<string,(result:{ok:boolean;reason:string|null})=>void>());
   const mobileEditPrepareRef=useRef<Promise<{ok:boolean;reason:string|null}>|null>(null);
+  const devicesBusyRef=useRef(false);
+  const lastDevicesLoadAtRef=useRef(0);
 
   async function signOutLaser(){
     const supabase=createClient();
@@ -135,7 +162,42 @@ export function LaserControlWorkspace(){
     window.location.assign('/');
   }
 
+  useEffect(()=>{
+    const supabase=createClient();
+
+    async function loadAccessMeta(){
+      const[accessResult,capacityResult,regionResult]=await Promise.all([
+        supabase.rpc('get_laser_access_status'),
+        supabase.rpc('get_laser_pc_capacity'),
+        supabase.rpc('get_laser_checkout_region')
+      ]);
+      const accessData=accessResult?.data;
+      const accessRow=Array.isArray(accessData)?accessData[0]:accessData;
+      setMentorAccess(Boolean(accessRow?.mentor_access||accessRow?.is_admin));
+      setOwnerAccess(Boolean(accessRow?.owner_access||accessRow?.is_admin));
+
+      const capacityData=capacityResult?.data;
+      const capacityRow=Array.isArray(capacityData)?capacityData[0]:capacityData;
+      setPcCapacity(capacityRow?(capacityRow as PcCapacity):null);
+
+      const regionData=Array.isArray(regionResult?.data)?regionResult.data[0]:regionResult?.data;
+      setCheckoutRegion(regionData==='intl'?'intl':'br');
+    }
+
+    void loadAccessMeta();
+    const onVisible=()=>{
+      if(document.visibilityState==='visible')void loadAccessMeta();
+    };
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>document.removeEventListener('visibilitychange',onVisible);
+  },[]);
+
   const loadDevices=useCallback(async(quiet=false)=>{
+    if(document.visibilityState==='hidden')return;
+    const now=Date.now();
+    if(devicesBusyRef.current||now-lastDevicesLoadAtRef.current<DEVICE_REQUEST_MIN_GAP_MS)return;
+    devicesBusyRef.current=true;
+    lastDevicesLoadAtRef.current=now;
     if(!quiet)setLoading(true);
     try{
       const response=await fetch('/api/laser-control/master/devices',{
@@ -152,14 +214,24 @@ export function LaserControlWorkspace(){
     }catch{
       if(!quiet)setNotice(t('laser.loadFail'));
     }finally{
+      devicesBusyRef.current=false;
       if(!quiet)setLoading(false);
     }
   },[t]);
 
   useEffect(()=>{
     void loadDevices();
-    const timer=window.setInterval(()=>void loadDevices(true),2_000);
-    return()=>window.clearInterval(timer);
+    const timer=window.setInterval(()=>{
+      if(document.visibilityState==='visible')void loadDevices(true);
+    },DEVICE_REFRESH_MS);
+    const onVisible=()=>{
+      if(document.visibilityState==='visible')void loadDevices(true);
+    };
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>{
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange',onVisible);
+    };
   },[loadDevices]);
 
   useEffect(()=>{
@@ -187,14 +259,18 @@ export function LaserControlWorkspace(){
     return Date.now()-Date.parse(device.last_seen_at)<25_000;
   };
 
-  const supportsAgent21=(version:string|null)=>{
-    const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=21);
+  const supportsAgentAtLeast=(version:string|null,minPatch:number)=>{
+    const match=/^(\d+)\.(\d+)\.(\d+)/.exec(version||'');
+    if(!match)return false;
+    const major=Number(match[1]);
+    const minor=Number(match[2]);
+    const patch=Number(match[3]);
+    if(major!==1)return major>1;
+    if(minor!==0)return minor>0;
+    return patch>=minPatch;
   };
-  const supportsAgent24=(version:string|null)=>{
-    const match=/^1\.0\.(\d+)/.exec(version||'');
-    return Boolean(match&&Number(match[1])>=24);
-  };
+  const supportsAgent21=(version:string|null)=>supportsAgentAtLeast(version,21);
+  const supportsAgent24=(version:string|null)=>supportsAgentAtLeast(version,24);
   const latestAgentReady=Boolean(selectedDevice&&supportsAgent21(selectedDevice.agent_version));
   const workspaceKeysReady=Boolean(selectedDevice&&supportsAgent24(selectedDevice.agent_version));
 
@@ -215,8 +291,11 @@ export function LaserControlWorkspace(){
     if(!selectedDeviceId)return;
     let active=true;
     let renewTimer:number|undefined;
+    let opening=false;
 
     async function open(){
+      if(!active||opening||document.visibilityState!=='visible')return;
+      opening=true;
       try{
         setRealtimeStatus('connecting');
         const data=await postSession({action:'open',deviceId:selectedDeviceId});
@@ -229,10 +308,13 @@ export function LaserControlWorkspace(){
         setInputReady(false);
       }catch{
         if(active)setRealtimeStatus('error');
+      }finally{
+        opening=false;
       }
     }
 
     async function renew(){
+      if(!active||opening||document.visibilityState!=='visible')return;
       try{
         const data=await postSession({action:'renew',deviceId:selectedDeviceId});
         if(!active)return;
@@ -243,12 +325,18 @@ export function LaserControlWorkspace(){
       }catch{}
     }
 
+    const onVisible=()=>{
+      if(document.visibilityState==='visible')void open();
+    };
+
     void open();
-    renewTimer=window.setInterval(()=>void renew(),15_000);
+    renewTimer=window.setInterval(()=>void renew(),SESSION_RENEW_MS);
+    document.addEventListener('visibilitychange',onVisible);
 
     return()=>{
       active=false;
       if(renewTimer)window.clearInterval(renewTimer);
+      document.removeEventListener('visibilitychange',onVisible);
       const current=sessionRef.current;
       sessionRef.current=null;
       if(current){
@@ -1260,10 +1348,11 @@ export function LaserControlWorkspace(){
       </div>
       <div className={styles.topRight}>
         <nav className={styles.workspaceNav} aria-label="Laser Control">
-          <a href="/">Home</a>
-          <a href="/laser-control/guia">{locale==='pt-BR'?'Guia':'Guide'}</a>
-          <a href="mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support">{locale==='pt-BR'?'Suporte':'Support'}</a>
-          <button type="button" onClick={()=>void signOutLaser()}>{locale==='pt-BR'?'Sair':'Sign out'}</button>
+          <a href="/">{nav.home}</a>
+          <a href="/laser-control/guia">{nav.guide}</a>
+          <a href="mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support">{nav.support}</a>
+          <button type="button" onClick={()=>void signOutLaser()}>{nav.signOut}</button>
+          <LanguageMenu/>
         </nav>
         <div className={styles.liveBadge} data-live={realtimeStatus==='live'}>
         <i></i>{
@@ -1277,7 +1366,7 @@ export function LaserControlWorkspace(){
     </div>
 
     <aside className={styles.deviceStrip}>
-      <form className={styles.mentorConnect} onSubmit={claimMentor}>
+      {mentorAccess?<form className={styles.mentorConnect} onSubmit={claimMentor}>
         <span>{t('laser.mentoring')}</span>
         <b>{t('laser.mentorTitle')}</b>
         <p>{t('laser.mentorDesc')}</p>
@@ -1309,11 +1398,34 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
+        <a className={styles.extraMentorButton} href={checkoutRegion==='intl'?'https://pay.kiwify.com/2sFxGp1?region=intl':'https://pay.kiwify.com.br/2Td87KB'} target="_blank" rel="noreferrer">
+          {nav.mentorPack} · {checkoutRegion==='intl'?'US$ 7.50':'R$ 9,90'}
+        </a>
+        <small className={styles.extraMentorNote}>{nav.mentorNote}</small>
         {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
-      </form>
+      </form>:<section className={styles.mentorLocked}>
+        <span>{nav.mentorLocked}</span>
+        <b>{nav.mentorAvailable}</b>
+        <p>{nav.mentorLockedText}</p>
+        <a href="/laser-control/conhecer#planos">{nav.mentorView}</a>
+      </section>}
 
       <div className={styles.deviceGroup}>
-        <div className={styles.groupTitle}><span>{t('laser.mine')}</span><small>{ownedDevices.length}</small></div>
+        <div className={styles.groupTitle}>
+          <span>{t('laser.mine')}</span>
+          <small>{ownedDevices.filter(device=>device.device_status==='active').length}/{pcCapacity?.max_pcs??1}</small>
+        </div>
+
+        {ownerAccess&&<section className={styles.pcAddon}>
+          <span>{nav.pcTag}</span>
+          <b>{checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90'}</b>
+          <p>{nav.pcDescription}</p>
+          <a href={checkoutRegion==='intl'?'/api/laser-control/pc-addon-checkout?region=intl':'/api/laser-control/pc-addon-checkout'}>
+            {nav.addPc}
+          </a>
+          <small>{nav.pcSmall}</small>
+        </section>}
+
         {loading&&<span className={styles.emptyDevice}>…</span>}
         {!loading&&ownedDevices.length===0&&<span className={styles.emptyDevice}>{t('laser.noPc')}</span>}
         {ownedDevices.map(deviceCard)}
@@ -1558,7 +1670,7 @@ export function LaserControlWorkspace(){
       {tab==='agent'&&<div className={styles.guide}>
         <div className={styles.downloadCard}>
           <div><small>WINDOWS 10/11 · 64 BITS</small><h3>{t('laser.agentTitle')}</h3><p>{t('laser.agentDesc')}</p></div>
-          <a href="https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.31/DevinX-Laser-Agent-1.0.31.exe" download>{t('laser.download')}</a>
+          <a href="/api/laser-control/agent-download">{t('laser.download')}</a>
         </div>
 
         <div className={styles.agentModes}>

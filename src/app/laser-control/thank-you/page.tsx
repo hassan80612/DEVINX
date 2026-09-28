@@ -20,18 +20,17 @@ export default function LaserThankYouInternationalPage(){
       <small style={{fontWeight:900,letterSpacing:'.14em',color:'#a9e8ff'}}>DEVINX LASER CONTROL</small>
       <h1 style={{margin:'12px 0 10px',fontSize:'clamp(32px,6vw,54px)',lineHeight:1}}>Payment received.</h1>
       <p style={{margin:0,color:'#c5d7df',fontSize:16,lineHeight:1.65}}>
-        Your access or extra mentoring session is synchronized automatically using the email from your purchase. The extra session is valid only until the end of your current Mentor access period.
-        If you do not have a DevinX account yet, create it using the same email used at checkout.
+        Your access is linked to the same email used at Kiwify checkout. After purchase, sign in or create your DevinX account using that exact email. The US$ 7.50 pack adds 5 mentoring sessions and requires an active Mentor plan. The 5 sessions expire with your current Mentor access period.
       </p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,marginTop:24}}>
-        <a href="/entrar?next=/laser-control" style={{
+        <a href="/entrar?next=/laser-control&modo=criar" style={{
           minHeight:50,display:'grid',placeItems:'center',borderRadius:14,textDecoration:'none',
           fontWeight:900,color:'#10202a',background:'linear-gradient(135deg,#8bdcf4,#d8f7ff)'
-        }}>Open Laser Control</a>
-        <a href="/laser-control/guia" style={{
+        }}>Create account and activate access</a>
+        <a href="/entrar?next=/laser-control" style={{
           minHeight:50,display:'grid',placeItems:'center',borderRadius:14,textDecoration:'none',
           fontWeight:900,color:'#edfaff',border:'1px solid rgba(169,232,255,.34)',background:'rgba(13,31,40,.52)'
-        }}>Open complete guide</a>
+        }}>I already have an account · Sign in</a>
       </div>
       <p style={{margin:'22px 0 0',color:'#91aab5',fontSize:12,lineHeight:1.6}}>
         For mentoring, the student/source computer must have LightBurn open before starting the connection.

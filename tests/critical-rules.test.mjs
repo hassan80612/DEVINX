@@ -154,3 +154,120 @@ test("vitrine recupera imagens após falha transitória sem criar proxy extra",(
   assert.ok((source.match(/onError=\{retryStorefrontImage\}/g)||[]).length>=4);
   assert.equal(source.includes("/api/storefront/image"),false);
 });
+
+
+test("Laser Control reduz chamadas à Vercel e pausa polling em aba oculta",()=>{
+  const source=read("src/components/LaserControlWorkspace.tsx");
+  assert.ok(source.includes("DEVICE_REFRESH_MS=15_000"));
+  assert.ok(source.includes("SESSION_RENEW_MS=20_000"));
+  assert.ok(source.includes("document.visibilityState==='hidden'"));
+  assert.ok(source.includes("document.visibilityState==='visible'"));
+  assert.equal(source.includes("setInterval(()=>void loadDevices(true),2_000)"),false);
+});
+
+test("Vercel Analytics não é carregado no cliente",()=>{
+  const layout=read("src/app/layout.tsx");
+  const pkg=read("package.json");
+  assert.equal(layout.includes("@vercel/analytics"),false);
+  assert.equal(layout.includes("<Analytics"),false);
+  assert.equal(pkg.includes("@vercel/analytics"),false);
+});
+
+
+test("PC adicional do Laser fica dentro da conta e expira com o ciclo atual",()=>{
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  const checkout=read("src/app/api/laser-control/pc-addon-checkout/route.ts");
+  const webhook=read("src/app/api/webhooks/kiwify/laser/route.ts");
+  const hardening=read("supabase/migrations/20260928215639_laser_commerce_cycles_and_access_hardening.sql");
+  assert.ok(workspace.includes("+1 PC · R$ 12,90"));
+  assert.ok(workspace.includes("+1 PC · US$ 5"));
+  assert.ok(workspace.includes("A renovação do plano NÃO renova este adicional"));
+  assert.ok(workspace.includes("get_laser_pc_capacity"));
+  assert.ok(workspace.includes("get_laser_checkout_region"));
+  assert.ok(checkout.includes("IdNEzcp"));
+  assert.ok(checkout.includes("PR4BNpa"));
+  assert.ok(checkout.includes("!access.isAdmin&&!access.ownerAccess"));
+  assert.ok(webhook.includes("process_kiwify_laser_offer_dispatch"));
+  assert.equal(webhook.includes("trackingSource(payload)"),false);
+  assert.ok(hardening.includes("v_expected_amount:=1290"));
+  assert.ok(hardening.includes("v_expected_amount:=500"));
+  assert.ok(hardening.includes("product_base_price_currency"));
+  assert.ok(hardening.includes("pc_addon_orders o where o.order_id=v_order_id"));
+});
+
+test("Mentoria mantém 10 sessões por ciclo, extras no ciclo e sessão máxima de 6 horas",()=>{
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  const migration=read("supabase/migrations/20260928211040_laser_pc_addons_and_cycle_security.sql");
+  assert.ok(workspace.includes("Cada sessão pode durar até 6 horas"));
+  assert.ok(workspace.includes("10 sessões por ciclo"));
+  assert.ok(workspace.includes("pacote de +5 soma somente ao ciclo atual"));
+  assert.ok(migration.includes("laser_internal_current_paid_cycle"));
+  assert.ok(migration.includes("laser_internal_user_can_control_device"));
+  assert.ok(migration.includes("v_lease_until"));
+});
+
+
+test("autorização do Laser fecha no servidor quando plano ou slot adicional expira",()=>{
+  const migration=read("supabase/migrations/20260928212145_laser_device_authorization_fail_closed.sql");
+  assert.ok(migration.includes("laser_internal_user_can_control_device"));
+  assert.ok(migration.includes("pc_addon_orders"));
+  assert.ok(migration.includes("o.expires_at>now()"));
+  assert.ok(migration.includes("row_number() over"));
+  assert.ok(migration.includes("laser_internal_device_access_deadline"));
+  assert.ok(migration.includes("laser_internal_agent_remote_session"));
+  assert.ok(migration.includes("laser_internal_agent_next_session_command"));
+  assert.ok(migration.includes("laser_internal_device_auth_context"));
+  assert.ok(migration.includes("not public.laser_internal_user_can_control_device"));
+});
+
+test("lease remoto nunca passa da validade do acesso emitido pelo servidor",()=>{
+  const migration=read("supabase/migrations/20260928212145_laser_device_authorization_fail_closed.sql");
+  assert.ok(migration.includes("v_access_until:=public.laser_internal_device_access_deadline"));
+  assert.ok(migration.includes("now()+interval '45 seconds'"));
+  assert.ok(migration.includes("least("));
+});
+
+
+test("Mentoria tem teto duro de 6 horas no banco e leases continuam curtos",()=>{
+  const guard=read("supabase/migrations/20260928212916_laser_mentor_six_hour_hard_cap.sql");
+  const auth=read("supabase/migrations/20260928212145_laser_device_authorization_fail_closed.sql");
+  assert.ok(guard.includes("interval '6 hours'"));
+  assert.ok(guard.includes("new.connection_mode='mentor'"));
+  assert.ok(guard.includes("new.access_expires_at:=v_max_expiry"));
+  assert.ok(auth.includes("v_device.access_expires_at<=now()"));
+  assert.ok(auth.includes("ms.expires_at>now()"));
+  assert.ok(auth.includes("now()+interval '45 seconds'"));
+});
+
+
+
+
+test("checkout adicional segue a moeda do plano e não o idioma da interface",()=>{
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  assert.ok(workspace.includes("get_laser_checkout_region"));
+  assert.ok(workspace.includes("checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90'"));
+  assert.equal(workspace.includes("locale==='pt-BR'?'+1 PC · R$ 12,90':'+1 PC · US$ 5'"),false);
+});
+
+test("Mentoria internacional credita somente o ciclo ativo e não antecipa ciclos futuros",()=>{
+  const migration=read("supabase/migrations/20260928215639_laser_commerce_cycles_and_access_hardening.sql");
+  assert.ok(migration.includes("laser_internal_current_pass_cycle"));
+  assert.ok(migration.includes("mentor_credits_cycle_started_at is distinct from v_cycle.cycle_started_at"));
+  assert.ok(migration.includes("where o.order_id=v_cycle.order_id"));
+  assert.ok(migration.includes("set mentor_credits_balance=10"));
+});
+
+
+test("Laser público troca todos os textos principais nos seis idiomas e usuário logado mantém seletor",()=>{
+  const landing=read("src/components/LaserLanding.tsx");
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  for(const key of ['"pt-BR":BR','en:INTL','es:ES','fr:FR','de:DE','ar:AR'])assert.ok(landing.includes(key));
+  assert.ok(landing.includes('mockConnected:"LightBurn conectado"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn connected"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn conectado"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn connecté"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn verbunden"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn متصل"'));
+  assert.ok(landing.includes('<LanguageMenu/>'));
+  assert.ok(workspace.includes('<LanguageMenu/>'));
+});

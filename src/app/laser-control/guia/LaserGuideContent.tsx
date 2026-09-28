@@ -5,10 +5,18 @@ import {useI18n} from '@/i18n/provider';
 import {guideCopy} from './guide-copy';
 import styles from './page.module.css';
 
-const DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.31/DevinX-Laser-Agent-1.0.31.exe';
+const DOWNLOAD='/api/laser-control/agent-download';
 const SUPPORT={
   "pt-BR":"Suporte por e-mail",en:"Email support",es:"Soporte por correo",
   fr:"Support par e-mail",de:"E-Mail-Support",ar:"الدعم عبر البريد"
+} as const;
+const HOME={
+  "pt-BR":"Página inicial",en:"Home",es:"Página inicial",
+  fr:"Accueil",de:"Startseite",ar:"الصفحة الرئيسية"
+} as const;
+const STUDENT={
+  "pt-BR":"Acesso do aluno",en:"Student access",es:"Acceso del alumno",
+  fr:"Accès élève",de:"Schülerzugang",ar:"وصول الطالب"
 } as const;
 
 export function LaserGuideContent(){
@@ -32,8 +40,10 @@ export function LaserGuideContent(){
       <p>{c.lead}</p>
 
       <div className={styles.actions}>
-        <a className={styles.primary} href={DOWNLOAD} download>{c.download}</a>
+        <a className={styles.homeButton} href="/">{HOME[locale]}</a>
+        <a className={styles.primary} href={DOWNLOAD}>{c.download}</a>
         <a className={styles.secondary} href="/laser-control">{c.open}</a>
+        <a className={styles.studentButton} href="/laser-control/mentoria">{STUDENT[locale]}</a>
         <a className={styles.secondary} href={`mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support&body=Agent%20version:%0ALightBurn%20version:%0AWindows:%0AIssue:%0A`}>{SUPPORT[locale]}</a>
       </div>
 

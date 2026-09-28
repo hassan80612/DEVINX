@@ -4,7 +4,7 @@ param(
     [string]$IdentityName,
     [string]$Publisher,
     [string]$PublisherDisplayName,
-    [ValidatePattern('^\d+\.\d+\.\d+\.0$')][string]$Version = '1.0.31.0',
+    [ValidatePattern('^\d+\.\d+\.\d+\.0$')][string]$Version = '1.0.34.0',
     [switch]$ValidationOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -28,8 +28,9 @@ if ($parsedVersion.Major -lt 1 -or $parsedVersion.Major -gt 65535 -or $parsedVer
 
 $exe = if ($Mode -eq 'Mentoria') { 'DevinX-Mentoria' } else { 'DevinXLaserAgent' }
 $title = if ($Mode -eq 'Mentoria') { 'DevinX Mentoria' } else { 'DevinX Laser Agent' }
+$mentorOnly = if ($Mode -eq 'Mentoria') { 'true' } else { 'false' }
 & dotnet publish "$root/laser-agent/DevinXLaserAgent.csproj" -c Release -r win-x64 --self-contained true `
-    -p:StoreDistribution=true -p:AssemblyName=$exe -p:Version=$Version `
+    -p:StoreDistribution=true -p:MentorOnly=$mentorOnly -p:AssemblyName=$exe -p:Version=$Version `
     -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:DebugType=None -p:DebugSymbols=false -o $stage.FullName
 if ($LASTEXITCODE -ne 0) { throw 'Agent compilation failed.' }
@@ -101,7 +102,7 @@ $startupCount = $verified.SelectNodes("//*[local-name()='StartupTask']").Count
 if (($Mode -eq 'Mentoria' -and $startupCount -ne 0) -or ($Mode -eq 'Agent' -and $startupCount -ne 1)) { throw 'Startup policy mismatch.' }
 Get-FileHash $package -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $([IO.Path]::GetFileName($_.Path))" } | Set-Content "$package.sha256"
 @{
-    mode = $Mode; version = $Version; identity = $IdentityName; publisher = $Publisher;
+    mode = $Mode; mentorOnly = [bool]($Mode -eq 'Mentoria'); version = $Version; identity = $IdentityName; publisher = $Publisher;
     validationOnly = [bool]$ValidationOnly; signature = 'Unsigned: Microsoft Store signs after certification';
     buildCommit = (git -C $root rev-parse HEAD); generatedUtc = [DateTime]::UtcNow.ToString('O')
 } | ConvertTo-Json | Set-Content "$out/build-info.json"

@@ -8,6 +8,7 @@ internal sealed class ContinuousAgent
     private static readonly TimeSpan TelemetryInterval=TimeSpan.FromSeconds(3);
     private static readonly TimeSpan OnlineKeepAlive=TimeSpan.FromSeconds(10);
     private static readonly TimeSpan OfflineKeepAlive=TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan InactiveAccessRetry=TimeSpan.FromMinutes(5);
     private static readonly TimeSpan FrameInterval=TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan UnchangedFrameKeepAlive=TimeSpan.FromSeconds(3);
 
@@ -267,11 +268,31 @@ internal sealed class ContinuousAgent
 
             if(!poll.Ok)
             {
-                if(_temporarySession&&poll.Reason is "device_not_active" or "unknown_device")
-                    break;
+                if(current is not null&&current.ExpiresAt<=DateTimeOffset.UtcNow)
+                {
+                    await StopRealtimeAsync();
+                    current=null;
+                    _tray.SetStatus("DevinX Laser Agent — sessão remota encerrada");
+                }
+
+                if(poll.Reason is "device_not_active" or "unknown_device")
+                {
+                    await StopRealtimeAsync();
+                    current=null;
+                    if(_temporarySession)break;
+                    _tray.SetStatus("DevinX Laser Agent — acesso inativo; nova verificação em alguns minutos");
+                    await DelaySafe(InactiveAccessRetry,cancellationToken);
+                    continue;
+                }
+
                 await DelaySafe(TimeSpan.FromSeconds(2),cancellationToken);
                 continue;
             }
+
+            // Never keep or open a Realtime channel past the server-issued lease.
+            // The normal poll refreshes ExpiresAt continuously while access remains valid.
+            if(poll.Session is not null&&poll.Session.ExpiresAt<=DateTimeOffset.UtcNow)
+                poll=poll with{Session=null};
 
             if(poll.Command is not null)
             {
@@ -292,6 +313,9 @@ internal sealed class ContinuousAgent
                 !sessionIdentityChanged
                 &&current is not null&&poll.Session is not null
                 &&current.Revision!=poll.Session.Revision;
+
+            if(!sessionIdentityChanged&&poll.Session is not null)
+                current=poll.Session;
 
             if(sessionIdentityChanged)
             {
@@ -449,7 +473,10 @@ internal sealed class ContinuousAgent
                     }
                     else
                     {
-                        nextKeepAlive=DateTimeOffset.UtcNow+TimeSpan.FromSeconds(8);
+                        nextKeepAlive=DateTimeOffset.UtcNow+
+                            (result.Reason is "device_not_active" or "unknown_device"
+                                ?InactiveAccessRetry
+                                :TimeSpan.FromSeconds(8));
                     }
                 }
                 catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}

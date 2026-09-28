@@ -1,5 +1,6 @@
 import {NextResponse} from 'next/server';
 import {invokeLaserMasterFunction} from '@/features/laser-control/server/invoke-master-function';
+import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
 
 export const dynamic='force-dynamic';
 
@@ -13,6 +14,20 @@ export async function POST(request:Request){
     return NextResponse.json({claimed:false,reason:'invalid_code'},{status:400});
   }
 
+  const access=await getLaserControlAccess();
+  if(!access.authenticated)return NextResponse.json({claimed:false,reason:'unauthorized'},{status:401});
+  if(!access.isAdmin&&!access.ownerAccess)return NextResponse.json({claimed:false,reason:'owner_access_required'},{status:403});
+
+  // The database is the authority for PC capacity. It serializes pairing against
+  // the entitlement row, swaps the old PC automatically when the base limit is 1,
+  // and allows purchased extra slots without client-side revocation races.
   const result=await invokeLaserMasterFunction('laser-master-pairing-claim',{pairingCode,displayName});
-  return NextResponse.json(result.data,{status:result.status,headers:{'Cache-Control':'no-store, max-age=0'}});
+  const payload=(result.data&&typeof result.data==='object')
+    ?result.data as Record<string,unknown>
+    :{claimed:false,reason:'invalid_response'};
+
+  return NextResponse.json(payload,{
+    status:result.status,
+    headers:{'Cache-Control':'no-store, max-age=0'}
+  });
 }
