@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser Control uses Agent 1.0.32 for advanced controls',async()=>{
+test('Laser Control uses Agent 1.0.33 for advanced controls',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   const i18n=await readFile('src/i18n/laser.ts','utf8');
@@ -162,7 +162,7 @@ test('layer parameter panel and duplicate rotary trace adjust controls are remov
 });
 
 
-test('Agent 1.0.32 has a one-shot remote click path',async()=>{
+test('Agent 1.0.33 has a one-shot remote click path',async()=>{
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(input,/"click"=>Click\(main,input\)/);
   assert.match(input,/sendinput_click/);
@@ -170,7 +170,7 @@ test('Agent 1.0.32 has a one-shot remote click path',async()=>{
 });
 
 
-test('Agent 1.0.32 maps clicks to the exact streamed frame',async()=>{
+test('Agent 1.0.33 maps clicks to the exact streamed frame',async()=>{
   const capture=await readFile('laser-agent/LightBurnWindowCapture.cs','utf8');
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(capture,/TryGetLastCapturedBounds/);
@@ -234,4 +234,14 @@ test('right-click button sends one right-click event and keyboard stays outside 
   assert.match(panel,/dPadCenterSpacer/);
   assert.match(css,/\.mobileKeyboard,.mobileKeyboardHidden\{[\s\S]*position:relative/);
   assert.doesNotMatch(css,/\.mobileKeyboard,.mobileKeyboardHidden\{[\s\S]{0,250}position:absolute/);
+});
+
+
+test('Agent fails closed when the server-issued remote session lease expires',async()=>{
+  const agent=await readFile('laser-agent/ContinuousAgent.cs','utf8');
+  assert.match(agent,/current\.ExpiresAt<=DateTimeOffset\.UtcNow/);
+  assert.match(agent,/poll\.Session\.ExpiresAt<=DateTimeOffset\.UtcNow/);
+  assert.match(agent,/poll=poll with\{Session=null\}/);
+  assert.match(agent,/if\(!sessionIdentityChanged&&poll\.Session is not null\)\s*current=poll\.Session/);
+  assert.match(agent,/await StopRealtimeAsync\(\)/);
 });
