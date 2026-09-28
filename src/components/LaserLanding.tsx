@@ -76,7 +76,7 @@ export function LaserLanding(){
 
   useEffect(()=>{
     const supabase=createClient();
-    void supabase.auth.getSession().then(({data})=>setLoggedIn(Boolean(data.session)));
+    void supabase.auth.getSession().then((result:{data:{session:unknown|null}})=>setLoggedIn(Boolean(result.data.session)));
     try{setAccessNotice(new URLSearchParams(window.location.search).get("acesso")==="necessario")}catch{}
   },[]);
 
