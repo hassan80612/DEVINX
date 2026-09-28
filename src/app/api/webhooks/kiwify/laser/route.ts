@@ -4,10 +4,6 @@ import {NextRequest,NextResponse} from 'next/server';
 
 export const runtime='nodejs';
 
-const LASER_PRODUCT_ID='a7e51ae0-bb55-11f1-8e93-792b23e3fb86';
-const LASER_EXTRA_PRODUCT_ID='edb2fd90-bb59-11f1-8e93-792b23e3fb86';
-const LASER_INTL_PRODUCT_ID='c8084800-bb5b-11f1-a3a3-c3b61dcd3677';
-
 function safeHexEqual(a:string,b:string){
   try{
     const left=Buffer.from(a.trim().toLowerCase(),'hex');
@@ -22,15 +18,6 @@ function signatureMatches(secret:string,signature:string,raw:string,payload:any)
   return !!signature&&(safeHexEqual(signature,expectedJson)||safeHexEqual(signature,expectedRaw));
 }
 
-
-export async function GET(){
-  return NextResponse.json({
-    ok:true,
-    product:'DevinX Laser Control',
-    productIds:[LASER_PRODUCT_ID,LASER_EXTRA_PRODUCT_ID,LASER_INTL_PRODUCT_ID],
-    webhook:'ready_for_configuration'
-  },{headers:{'Cache-Control':'no-store'}});
-}
 
 export async function POST(request:NextRequest){
   const raw=await request.text();
