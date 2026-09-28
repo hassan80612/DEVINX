@@ -20,17 +20,17 @@ export default function LaserThankYouPage(){
       <small style={{fontWeight:900,letterSpacing:'.14em',color:'#a9e8ff'}}>DEVINX LASER CONTROL</small>
       <h1 style={{margin:'12px 0 10px',fontSize:'clamp(32px,6vw,54px)',lineHeight:1}}>Pagamento recebido.</h1>
       <p style={{margin:0,color:'#c5d7df',fontSize:16,lineHeight:1.65}}>
-        Seu acesso ou sessão extra de mentoria é sincronizado automaticamente pelo e-mail usado na compra. Use no DevinX o mesmo e-mail informado na Kiwify. Se ainda não tiver uma conta, clique em Entrar no Laser Control e escolha Criar conta. A sessão extra vale somente até o fim do período atual do plano Mentor.
+        Seu acesso é liberado pelo mesmo e-mail usado na Kiwify. Depois da compra, entre ou crie sua conta DevinX usando exatamente esse e-mail. No plano de R$ 9,90 você recebe mais 10 sessões de mentoria; elas expiram junto com o período atual do plano Mentor.
       </p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,marginTop:24}}>
-        <a href="/entrar?next=/laser-control" style={{
+        <a href="/entrar?next=/laser-control&modo=criar" style={{
           minHeight:50,display:'grid',placeItems:'center',borderRadius:14,textDecoration:'none',
           fontWeight:900,color:'#10202a',background:'linear-gradient(135deg,#8bdcf4,#d8f7ff)'
-        }}>Entrar no Laser Control</a>
-        <a href="/laser-control/guia" style={{
+        }}>Criar conta e ativar acesso</a>
+        <a href="/entrar?next=/laser-control" style={{
           minHeight:50,display:'grid',placeItems:'center',borderRadius:14,textDecoration:'none',
           fontWeight:900,color:'#edfaff',border:'1px solid rgba(169,232,255,.34)',background:'rgba(13,31,40,.52)'
-        }}>Abrir guia completo</a>
+        }}>Já tenho conta · Entrar</a>
       </div>
       <p style={{margin:'22px 0 0',color:'#91aab5',fontSize:12,lineHeight:1.6}}>
         Na mentoria, o computador do aluno/origem precisa estar com o LightBurn aberto antes de iniciar a conexão.
