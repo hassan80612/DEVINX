@@ -6,7 +6,10 @@ internal static class AgentRuntime
 
     public static void Configure(string[] args)
     {
-        MentorMode=args.Contains("--mentor",StringComparer.OrdinalIgnoreCase);
+        var exeName=Path.GetFileNameWithoutExtension(Environment.ProcessPath??"");
+        MentorMode=args.Contains("--mentor",StringComparer.OrdinalIgnoreCase)
+            ||exeName.Contains("Mentoria",StringComparison.OrdinalIgnoreCase)
+            ||exeName.Contains("Mentor",StringComparison.OrdinalIgnoreCase);
     }
 
     public static string StateDirectory=>Path.Combine(
