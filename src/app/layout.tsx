@@ -1,6 +1,5 @@
 import './globals.css';
 import type {Metadata} from 'next';
-import {Analytics} from '@vercel/analytics/next';
 import {I18nProvider} from '@/i18n/provider';
 import {PresenceProvider} from '@/components/LivePresence';
 
@@ -72,6 +71,5 @@ export default function RootLayout({children}:Readonly<{children:React.ReactNode
       dangerouslySetInnerHTML={{__html:JSON.stringify(softwareApplicationJsonLd)}}
     />
     <I18nProvider><PresenceProvider>{children}</PresenceProvider></I18nProvider>
-    <Analytics/>
   </body></html>
 }
