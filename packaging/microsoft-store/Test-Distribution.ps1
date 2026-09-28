@@ -8,7 +8,7 @@ New-Item $test -ItemType Directory -Force | Out-Null
     <OutputType>Exe</OutputType><TargetFramework>net8.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
   </PropertyGroup>
-  <PropertyGroup Condition="'StoreDistribution' == 'true'">
+  <PropertyGroup Condition="'$(StoreDistribution)' == 'true'">
     <DefineConstants>$(DefineConstants);DEVINX_STORE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
@@ -59,7 +59,6 @@ namespace DevinXLaserAgent
 '@ | Set-Content "$test/Program.cs"
 foreach ($distribution in @('portable', 'store')) {
     $storeBuild = if ($distribution -eq 'store') { 'true' } else { 'false' }
-    & dotnet msbuild "$test/DistributionTests.csproj" "-p:StoreDistribution=$storeBuild" -getProperty:DefineConstants,StoreDistribution
     & dotnet build "$test/DistributionTests.csproj" -c Release -t:Rebuild "-p:StoreDistribution=$storeBuild"
     if ($LASTEXITCODE -ne 0) { throw "$distribution test compilation failed." }
     & dotnet "$test/bin/Release/net8.0-windows/DistributionTests.dll" $distribution

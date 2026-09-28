@@ -8,7 +8,7 @@
     <AssemblyName>DevinXLaserAgent</AssemblyName>
     <RootNamespace>DevinXLaserAgent</RootNamespace>
   </PropertyGroup>
-  <PropertyGroup Condition="'StoreDistribution' == 'true'">
+  <PropertyGroup Condition="'$(StoreDistribution)' == 'true'">
     <DefineConstants>$(DefineConstants);DEVINX_STORE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
