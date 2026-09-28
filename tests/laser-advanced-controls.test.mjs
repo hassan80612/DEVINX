@@ -2,19 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser Control uses Agent 1.0.27 for advanced controls',async()=>{
+test('Laser Control uses Agent 1.0.28 for advanced controls',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
   const i18n=await readFile('src/i18n/laser.ts','utf8');
   assert.match(panel,/event:'control_request'/);
   assert.match(panel,/event:'control_result'/);
-  assert.match(panel,/laser-agent-v1\.0\.27/);
+  assert.match(panel,/laser-agent-v1\.0\.28/);
   assert.doesNotMatch(panel,/dialog_confirm|dialog_cancel|dialog_close/);
   assert.match(panel,/sendRemoteKey\('Enter','Enter'\)/);
   assert.match(panel,/sendRemoteKey\('Escape','Escape'\)/);
   assert.doesNotMatch(panel,/select_layer|open_layer|refreshParameters|openLayerPanel/);
   assert.doesNotMatch(css,/\.parameterDock|\.parameterGrid|\.layerBar/);
-  assert.match(i18n,/DevinX Laser Agent 1\.0\.27/);
+  assert.match(i18n,/DevinX Laser Agent 1\.0\.28/);
 });
 
 test('Laser command buttons are not blocked by cached job state',async()=>{
@@ -47,7 +47,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.0\.27"/);
+  assert.match(pairing,/AgentVersion = "1\.0\.28"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
@@ -153,7 +153,7 @@ test('layer parameter panel and duplicate rotary trace adjust controls are remov
 });
 
 
-test('Agent 1.0.27 has a one-shot remote click path',async()=>{
+test('Agent 1.0.28 has a one-shot remote click path',async()=>{
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(input,/"click"=>Click\(main,input\)/);
   assert.match(input,/sendinput_click/);
@@ -161,7 +161,7 @@ test('Agent 1.0.27 has a one-shot remote click path',async()=>{
 });
 
 
-test('Agent 1.0.27 maps clicks to the exact streamed frame',async()=>{
+test('Agent 1.0.28 maps clicks to the exact streamed frame',async()=>{
   const capture=await readFile('laser-agent/LightBurnWindowCapture.cs','utf8');
   const input=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
   assert.match(capture,/TryGetLastCapturedBounds/);
