@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using UIA=Interop.UIAutomationClient;
 
 namespace DevinXLaserAgent;
 
@@ -6,6 +7,10 @@ internal static class LightBurnRemoteInput
 {
     private const uint InputMouse=0;
     private const uint InputKeyboard=1;
+    private const int ValuePatternId=10002;
+    private const int RangeValuePatternId=10003;
+    private const int LegacyPatternId=10018;
+    private static readonly dynamic Automation=new UIA.CUIAutomation8();
 
     private const uint MouseeventfLeftDown=0x0002;
     private const uint MouseeventfLeftUp=0x0004;
@@ -163,6 +168,7 @@ internal static class LightBurnRemoteInput
                 "workspacekeydown"=>WorkspaceKeyboard(main,input,true),
                 "workspacekeyup"=>WorkspaceKeyboard(main,input,false),
                 "text"=>Text(main,input.Key),
+                "replace_text"=>ReplaceFocusedText(main,input.Key),
                 _=>new(false,"unsupported_input",null,null)
             };
         }
@@ -357,6 +363,92 @@ internal static class LightBurnRemoteInput
         return SendInput((uint)array.Length,array,Marshal.SizeOf<Input>())==array.Length
             ?new(true,"sendinput_text",null,null)
             :new(false,"windows_text_injection_failed",null,null);
+    }
+
+    private static RemoteInputApplyResult ReplaceFocusedText(IntPtr main,string? text)
+    {
+        if(text is null)return new(false,"empty_text",null,null);
+
+        try
+        {
+            dynamic? focused=Automation.GetFocusedElement();
+            if(focused is not null)
+            {
+                GetWindowThreadProcessId(main,out var mainPid);
+                var focusedPid=Convert.ToUInt32(focused.CurrentProcessId);
+                if(mainPid!=0&&focusedPid==mainPid)
+                {
+                    try
+                    {
+                        dynamic? valuePattern=focused.GetCurrentPattern(ValuePatternId);
+                        if(valuePattern is not null&&!Convert.ToBoolean(valuePattern.CurrentIsReadOnly))
+                        {
+                            valuePattern.SetValue(text);
+                            return new(true,"uia_value_replaced",null,null);
+                        }
+                    }
+                    catch{}
+
+                    try
+                    {
+                        dynamic? rangePattern=focused.GetCurrentPattern(RangeValuePatternId);
+                        if(rangePattern is not null&&!Convert.ToBoolean(rangePattern.CurrentIsReadOnly))
+                        {
+                            if(double.TryParse(text,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.CurrentCulture,out var number)
+                               ||double.TryParse(text,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out number))
+                            {
+                                var min=Convert.ToDouble(rangePattern.CurrentMinimum);
+                                var max=Convert.ToDouble(rangePattern.CurrentMaximum);
+                                if(number>=min&&number<=max)
+                                {
+                                    rangePattern.SetValue(number);
+                                    return new(true,"uia_range_replaced",null,null);
+                                }
+                            }
+                        }
+                    }
+                    catch{}
+
+                    try
+                    {
+                        dynamic? legacyPattern=focused.GetCurrentPattern(LegacyPatternId);
+                        if(legacyPattern is not null)
+                        {
+                            legacyPattern.SetValue(text);
+                            return new(true,"uia_legacy_replaced",null,null);
+                        }
+                    }
+                    catch{}
+                }
+            }
+        }
+        catch{}
+
+        // Fallback: keep the currently selected LightBurn field focused and
+        // replace its contents through the normal keyboard path.
+        var target=FindInteractiveWindow(main);
+        if(target==IntPtr.Zero)return new(false,"lightburn_window_not_found",null,null);
+        if(IsIconic(target))ShowWindow(target,SwRestore);
+        BringWindowToTop(target);
+        SetForegroundWindow(target);
+
+        var inputs=new List<Input>
+        {
+            Key(0x11,false),
+            Key((ushort)'A',false),
+            Key((ushort)'A',true),
+            Key(0x11,true)
+        };
+        foreach(var ch in text.Take(256))
+        {
+            inputs.Add(Unicode(ch,false));
+            inputs.Add(Unicode(ch,true));
+        }
+
+        var array=inputs.ToArray();
+        return SendInput((uint)array.Length,array,Marshal.SizeOf<Input>())==array.Length
+            ?new(true,"sendinput_replace_text",null,null)
+            :new(false,"windows_text_replace_failed",null,null);
     }
 
     private static bool EnsureLightBurnAtPoint(

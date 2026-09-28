@@ -515,17 +515,12 @@ export function LaserControlWorkspace(){
       return;
     }
 
-    const selectAll={key:'a',code:'KeyA',ctrl:true,shift:false,alt:false,meta:false};
-    const down=await sendVerifiedInput({type:'keydown',...selectAll});
-    if(!down.ok){setNotice(t('laser.quickFailed'));return;}
-    await new Promise(resolve=>window.setTimeout(resolve,90));
+    const result=await sendVerifiedInput({type:'replace_text',key:value});
+    if(!result.ok){
+      setNotice(t('laser.quickFailed'));
+      return;
+    }
 
-    const up=await sendVerifiedInput({type:'keyup',...selectAll});
-    if(!up.ok){setNotice(t('laser.quickFailed'));return;}
-    await new Promise(resolve=>window.setTimeout(resolve,120));
-
-    const typed=await sendVerifiedInput({type:'text',key:value});
-    if(!typed.ok){setNotice(t('laser.quickFailed'));return;}
     closeMobileKeyboard();
   }
 
