@@ -152,10 +152,12 @@ export function LaserControlWorkspace(){
 
   useEffect(()=>{
     const supabase=createClient();
-    void Promise.all([
-      supabase.rpc('get_laser_access_status'),
-      supabase.rpc('get_laser_pc_capacity')
-    ]).then(([accessResult,capacityResult]:any[])=>{
+
+    async function loadAccessMeta(){
+      const[accessResult,capacityResult]=await Promise.all([
+        supabase.rpc('get_laser_access_status'),
+        supabase.rpc('get_laser_pc_capacity')
+      ]);
       const accessData=accessResult?.data;
       const accessRow=Array.isArray(accessData)?accessData[0]:accessData;
       setMentorAccess(Boolean(accessRow?.mentor_access||accessRow?.is_admin));
@@ -163,8 +165,15 @@ export function LaserControlWorkspace(){
 
       const capacityData=capacityResult?.data;
       const capacityRow=Array.isArray(capacityData)?capacityData[0]:capacityData;
-      if(capacityRow)setPcCapacity(capacityRow as PcCapacity);
-    });
+      setPcCapacity(capacityRow?(capacityRow as PcCapacity):null);
+    }
+
+    void loadAccessMeta();
+    const onVisible=()=>{
+      if(document.visibilityState==='visible')void loadAccessMeta();
+    };
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>document.removeEventListener('visibilitychange',onVisible);
   },[]);
 
   const loadDevices=useCallback(async(quiet=false)=>{
