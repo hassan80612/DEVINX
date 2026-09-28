@@ -49,6 +49,9 @@ type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
 const MENTOR_SHARE_LINK='https://devinx.com.br/laser-control/mentoria';
+const DEVICE_REFRESH_MS=15_000;
+const SESSION_RENEW_MS=20_000;
+const DEVICE_REQUEST_MIN_GAP_MS=2_000;
 
 const MOBILE_KEY_ROWS=[
   ['1','2','3','4','5','6','7','8','9','0'],
@@ -129,6 +132,8 @@ export function LaserControlWorkspace(){
   const controlPendingRef=useRef<string|null>(null);
   const pendingInputResultsRef=useRef(new Map<string,(result:{ok:boolean;reason:string|null})=>void>());
   const mobileEditPrepareRef=useRef<Promise<{ok:boolean;reason:string|null}>|null>(null);
+  const devicesBusyRef=useRef(false);
+  const lastDevicesLoadAtRef=useRef(0);
 
   async function signOutLaser(){
     const supabase=createClient();
@@ -146,6 +151,11 @@ export function LaserControlWorkspace(){
   },[]);
 
   const loadDevices=useCallback(async(quiet=false)=>{
+    if(document.visibilityState==='hidden')return;
+    const now=Date.now();
+    if(devicesBusyRef.current||now-lastDevicesLoadAtRef.current<DEVICE_REQUEST_MIN_GAP_MS)return;
+    devicesBusyRef.current=true;
+    lastDevicesLoadAtRef.current=now;
     if(!quiet)setLoading(true);
     try{
       const response=await fetch('/api/laser-control/master/devices',{
@@ -162,14 +172,24 @@ export function LaserControlWorkspace(){
     }catch{
       if(!quiet)setNotice(t('laser.loadFail'));
     }finally{
+      devicesBusyRef.current=false;
       if(!quiet)setLoading(false);
     }
   },[t]);
 
   useEffect(()=>{
     void loadDevices();
-    const timer=window.setInterval(()=>void loadDevices(true),2_000);
-    return()=>window.clearInterval(timer);
+    const timer=window.setInterval(()=>{
+      if(document.visibilityState==='visible')void loadDevices(true);
+    },DEVICE_REFRESH_MS);
+    const onVisible=()=>{
+      if(document.visibilityState==='visible')void loadDevices(true);
+    };
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>{
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange',onVisible);
+    };
   },[loadDevices]);
 
   useEffect(()=>{
@@ -229,8 +249,11 @@ export function LaserControlWorkspace(){
     if(!selectedDeviceId)return;
     let active=true;
     let renewTimer:number|undefined;
+    let opening=false;
 
     async function open(){
+      if(!active||opening||document.visibilityState!=='visible')return;
+      opening=true;
       try{
         setRealtimeStatus('connecting');
         const data=await postSession({action:'open',deviceId:selectedDeviceId});
@@ -243,10 +266,13 @@ export function LaserControlWorkspace(){
         setInputReady(false);
       }catch{
         if(active)setRealtimeStatus('error');
+      }finally{
+        opening=false;
       }
     }
 
     async function renew(){
+      if(!active||opening||document.visibilityState!=='visible')return;
       try{
         const data=await postSession({action:'renew',deviceId:selectedDeviceId});
         if(!active)return;
@@ -257,12 +283,18 @@ export function LaserControlWorkspace(){
       }catch{}
     }
 
+    const onVisible=()=>{
+      if(document.visibilityState==='visible')void open();
+    };
+
     void open();
-    renewTimer=window.setInterval(()=>void renew(),15_000);
+    renewTimer=window.setInterval(()=>void renew(),SESSION_RENEW_MS);
+    document.addEventListener('visibilitychange',onVisible);
 
     return()=>{
       active=false;
       if(renewTimer)window.clearInterval(renewTimer);
+      document.removeEventListener('visibilitychange',onVisible);
       const current=sessionRef.current;
       sessionRef.current=null;
       if(current){
