@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser guide is detailed, localized and current for Agent 1.0.32',async()=>{
+test('Laser guide is detailed, localized and current for Agent 1.0.33',async()=>{
   const copy=await readFile('src/app/laser-control/guia/guide-copy.ts','utf8');
   const ui=await readFile('src/app/laser-control/guia/LaserGuideContent.tsx','utf8');
   for(const locale of ['"pt-BR"','"en"','"es"','"fr"','"de"','"ar"'])assert.ok(copy.includes(locale));
@@ -15,4 +15,16 @@ test('Laser guide is detailed, localized and current for Agent 1.0.32',async()=>
   assert.match(copy,/DevinX-Mentoria-1\.0\.32\.exe/);
   assert.match(copy,/heartbeat/);
   assert.match(copy,/SmartScreen/);
+});
+
+
+test('guide exposes a clear home button and a highlighted student access button',async()=>{
+  const ui=await readFile('src/app/laser-control/guia/LaserGuideContent.tsx','utf8');
+  const css=await readFile('src/app/laser-control/guia/page.module.css','utf8');
+  assert.match(ui,/className=\{styles\.homeButton\} href="\/"/);
+  assert.match(ui,/className=\{styles\.studentButton\} href="\/laser-control\/mentoria"/);
+  assert.match(ui,/"pt-BR":"Página inicial"/);
+  assert.match(ui,/"pt-BR":"Acesso do aluno"/);
+  assert.match(css,/\.studentButton\{/);
+  assert.match(css,/\.homeButton\{/);
 });
