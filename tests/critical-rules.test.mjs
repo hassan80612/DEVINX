@@ -186,8 +186,12 @@ test("PC adicional do Laser fica dentro da conta e expira com o ciclo atual",()=
   assert.ok(checkout.includes("PR4BNpa"));
   assert.ok(checkout.includes("!access.isAdmin&&!access.ownerAccess"));
   assert.ok(webhook.includes("process_kiwify_laser_pc_addon_webhook"));
-  assert.ok(webhook.includes("IdNEzcp"));
-  assert.ok(webhook.includes("PR4BNpa"));
+  assert.ok(webhook.includes("TrackingParameters"));
+  assert.ok(webhook.includes("devinx_extra_pc"));
+  const trackingMigration=read("supabase/migrations/20260928213553_laser_pc_addon_tracking_source.sql");
+  assert.ok(trackingMigration.includes("TrackingParameters,src"));
+  assert.ok(trackingMigration.includes("IdNEzcp"));
+  assert.ok(trackingMigration.includes("PR4BNpa"));
 });
 
 test("Mentoria mantém 10 sessões por ciclo, extras no ciclo e sessão máxima de 6 horas",()=>{
@@ -232,4 +236,13 @@ test("Mentoria tem teto duro de 6 horas no banco e leases continuam curtos",()=>
   assert.ok(auth.includes("v_device.access_expires_at<=now()"));
   assert.ok(auth.includes("ms.expires_at>now()"));
   assert.ok(auth.includes("now()+interval '45 seconds'"));
+});
+
+
+test("webhook de +1 PC usa o SRC oficial da Kiwify e não depende de checkout_link inexistente",()=>{
+  const webhook=read("src/app/api/webhooks/kiwify/laser/route.ts");
+  assert.ok(webhook.includes("function trackingSource"));
+  assert.ok(webhook.includes("payload?.TrackingParameters?.src"));
+  assert.ok(webhook.includes("trackingSource(payload)==='devinx_extra_pc'"));
+  assert.equal(webhook.includes("function checkoutCode"),false);
 });
