@@ -29,3 +29,12 @@ test('permanent pairing requires owner access and replaces the previous owner PC
   assert.match(route,/singlePcVerified:true/);
   assert.match(route,/replacedPreviousPc/);
 });
+
+
+test('concurrent permanent pairing fails closed until exactly one owner PC remains active',async()=>{
+  const route=await readFile('src/app/api/laser-control/master/claim/route.ts','utf8');
+  assert.match(route,/for\(let attempt=0;attempt<3&&!singlePcVerified;attempt\+\+\)/);
+  assert.match(route,/active\.length===1&&active\[0\]\.device_id===activeDeviceId/);
+  assert.match(route,/single_pc_verification_failed/);
+  assert.match(route,/status:409/);
+});
