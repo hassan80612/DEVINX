@@ -256,3 +256,18 @@ test("Mentoria internacional credita somente o ciclo ativo e não antecipa ciclo
   assert.ok(migration.includes("where o.order_id=v_cycle.order_id"));
   assert.ok(migration.includes("set mentor_credits_balance=10"));
 });
+
+
+test("Laser público troca todos os textos principais nos seis idiomas e usuário logado mantém seletor",()=>{
+  const landing=read("src/components/LaserLanding.tsx");
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  for(const key of ['"pt-BR":BR','en:INTL','es:ES','fr:FR','de:DE','ar:AR'])assert.ok(landing.includes(key));
+  assert.ok(landing.includes('mockConnected:"LightBurn conectado"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn connected"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn conectado"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn connecté"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn verbunden"'));
+  assert.ok(landing.includes('mockConnected:"LightBurn متصل"'));
+  assert.ok(landing.includes('<LanguageMenu/>'));
+  assert.ok(workspace.includes('<LanguageMenu/>'));
+});
