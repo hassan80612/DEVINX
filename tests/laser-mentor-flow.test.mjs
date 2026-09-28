@@ -79,3 +79,10 @@ test('mentor panel exposes student share actions and public mentoring link',asyn
   assert.match(panel,/mailto:\?subject=/);
   assert.equal((laser.match(/'laser\.mentorShareTitle'/g)||[]).length,6);
 });
+
+
+test('student mentoring download page stays public without DevinX login',async()=>{
+  const middleware=await readFile('src/middleware.ts','utf8');
+  assert.match(middleware,/laser-control\/mentoria/);
+  assert.match(middleware,/const publicLaserPage=/);
+});
