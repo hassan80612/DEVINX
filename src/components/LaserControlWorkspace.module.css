@@ -313,3 +313,20 @@
   .workspaceNav{grid-template-columns:repeat(2,minmax(0,1fr))}
   .workspaceNav a,.workspaceNav button{min-height:36px;font-size:9px}
 }
+
+.extraMentorButton{
+  display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:10px;padding:9px 11px;
+  border:1px solid rgba(231,198,105,.48);border-radius:11px;
+  background:linear-gradient(135deg,#876018,#d1a334 44%,#f2d36f);color:#171208;
+  text-decoration:none;font-size:10px;font-weight:950;text-align:center
+}
+.extraMentorButton:hover{filter:brightness(1.05)}
+.extraMentorNote{display:block;margin-top:8px;color:#b9c8d2;font-size:9px;line-height:1.45}
+.mentorLocked{
+  padding:16px;border:1px solid rgba(226,193,101,.20);border-radius:16px;
+  background:radial-gradient(circle at 8% 0%,rgba(218,184,83,.10),transparent 45%),linear-gradient(155deg,rgba(55,72,84,.94),rgba(34,48,58,.97))
+}
+.mentorLocked>span{display:block;color:#e2c45e;font-size:10px;font-weight:950;letter-spacing:.14em}
+.mentorLocked>b{display:block;margin-top:6px;font-size:17px;color:#f5fbff}
+.mentorLocked p{margin:7px 0 12px;color:#c8d4dc;font-size:11px;line-height:1.45}
+.mentorLocked a{display:flex;align-items:center;justify-content:center;min-height:40px;border:1px solid rgba(226,193,101,.34);border-radius:10px;background:rgba(19,29,35,.55);color:#f0d475;text-decoration:none;font-size:10px;font-weight:900}

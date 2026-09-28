@@ -58,7 +58,7 @@ const MOBILE_KEY_ROWS=[
   ['á','é','í','ó','ú','ã','õ','ç','-','_','.',',','/','@']
 ] as const;
 
-export function LaserControlWorkspace(){
+export function LaserControlWorkspace({mentorAccess}:{mentorAccess:boolean}){
   const{t,locale}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
@@ -1277,7 +1277,7 @@ export function LaserControlWorkspace(){
     </div>
 
     <aside className={styles.deviceStrip}>
-      <form className={styles.mentorConnect} onSubmit={claimMentor}>
+      {mentorAccess?<form className={styles.mentorConnect} onSubmit={claimMentor}>
         <span>{t('laser.mentoring')}</span>
         <b>{t('laser.mentorTitle')}</b>
         <p>{t('laser.mentorDesc')}</p>
@@ -1309,8 +1309,23 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
+        <a className={styles.extraMentorButton} href={'/laser-control/extra?market='+(locale==='pt-BR'?'br':'intl')}>
+          {locale==='pt-BR'?'+10 sessões de mentoria · R$ 9,90':'+10 mentoring sessions · US$ 7.50'}
+        </a>
+        <small className={styles.extraMentorNote}>
+          {locale==='pt-BR'
+            ?'Somente para plano Mentor ativo. As 10 sessões extras expiram junto com o período atual. Use na Kiwify o mesmo e-mail da sua conta DevinX.'
+            :'Active Mentor plan only. The 10 extra sessions expire with the current access period. Use the same email at Kiwify checkout as your DevinX account.'}
+        </small>
         {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
-      </form>
+      </form>:<section className={styles.mentorLocked}>
+        <span>{locale==='pt-BR'?'MENTORIA':'MENTORING'}</span>
+        <b>{locale==='pt-BR'?'Disponível no plano Mentor':'Available with the Mentor plan'}</b>
+        <p>{locale==='pt-BR'
+          ?'O plano Control não recebe sessões de mentoria. Para usar alunos e comprar pacotes extras, ative o plano Mentor.'
+          :'Control does not include mentoring sessions. Activate Mentor to connect students and buy extra session packs.'}</p>
+        <a href="/laser-control/conhecer#planos">{locale==='pt-BR'?'Ver plano Mentor':'View Mentor plan'}</a>
+      </section>}
 
       <div className={styles.deviceGroup}>
         <div className={styles.groupTitle}><span>{t('laser.mine')}</span><small>{ownedDevices.length}</small></div>
