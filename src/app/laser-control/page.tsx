@@ -3,6 +3,7 @@ import {redirect} from 'next/navigation';
 import {LaserControlWorkspace} from '@/components/LaserControlWorkspace';
 import {SiteVisibilityAdminCard} from '@/components/SiteVisibilityAdminCard';
 import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
+import {LaserAccessGate} from '@/components/LaserAccessGate';
 
 export const dynamic='force-dynamic';
 
