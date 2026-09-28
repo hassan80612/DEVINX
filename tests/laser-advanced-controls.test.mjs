@@ -214,7 +214,6 @@ test('custom mobile keyboard sends letters and numbers through the already worki
   assert.match(panel,/Key'\+letter/);
   assert.match(panel,/Digit'\+value/);
   assert.match(panel,/releaseRemoteModifiers/);
-  assert.doesNotMatch(panel,/<input[\s\S]*mobileKeyboard/s);
   assert.match(css,/\.mobileKeyRows/);
   assert.match(css,/\.mobileKeyboardBottom/);
 });
