@@ -77,9 +77,11 @@ test('Laser Control does not expose retired layer errors or raw Agent reasons to
 test('mobile mentoring keyboard and dialog controls stay available over live preview',async()=>{
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
-  assert.match(panel,/mobileKeyboardRef/);
+  assert.match(panel,/MOBILE_KEY_ROWS/);
   assert.match(panel,/openMobileKeyboard/);
-  assert.match(panel,/type:'replace_text',key:value/);
+  assert.match(panel,/sendKeyboardCharacter/);
+  assert.match(panel,/type:'replace_text',key:''/);
+  assert.doesNotMatch(panel,/mobileKeyboardRef|inputMode="text"|enterKeyHint="done"/);
   assert.match(panel,/laser\.closeEsc/);
   assert.match(panel,/laser\.okEnter/);
   assert.match(panel,/pendingGuard/);
@@ -201,4 +203,18 @@ test('mobile keyboard prepares the selected LightBurn target and supports one-sh
   assert.match(remote,/"prepare_edit"=>PrepareEdit/);
   assert.match(remote,/RememberPointer/);
   assert.match(remote,/edit_target_prepared/);
+});
+
+
+test('custom mobile keyboard sends letters and numbers through the already working remote key path',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const css=await readFile('src/components/LaserControlWorkspace.module.css','utf8');
+  assert.match(panel,/MOBILE_KEY_ROWS/);
+  assert.match(panel,/sendMobileEditKey/);
+  assert.match(panel,/Key'\+letter/);
+  assert.match(panel,/Digit'\+value/);
+  assert.match(panel,/releaseRemoteModifiers/);
+  assert.doesNotMatch(panel,/<input[\s\S]*mobileKeyboard/s);
+  assert.match(css,/\.mobileKeyRows/);
+  assert.match(css,/\.mobileKeyboardBottom/);
 });

@@ -50,6 +50,14 @@ type OrientationMode='auto'|'landscape'|'portrait';
 
 const MENTOR_SHARE_LINK='https://devinx.com.br/laser-control/mentoria';
 
+const MOBILE_KEY_ROWS=[
+  ['1','2','3','4','5','6','7','8','9','0'],
+  ['q','w','e','r','t','y','u','i','o','p'],
+  ['a','s','d','f','g','h','j','k','l'],
+  ['z','x','c','v','b','n','m'],
+  ['á','é','í','ó','ú','ã','õ','ç','-','_','.',',','/','@']
+] as const;
+
 export function LaserControlWorkspace(){
   const{t}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
@@ -86,7 +94,7 @@ export function LaserControlWorkspace(){
   const[controlPending,setControlPending]=useState<string|null>(null);
   const[activeDialogTool,setActiveDialogTool]=useState<string|null>(null);
   const[mobileEditOpen,setMobileEditOpen]=useState(false);
-  const[mobileEditValue,setMobileEditValue]=useState('');
+  const[keyboardShift,setKeyboardShift]=useState(false);
   const[rightClickArmed,setRightClickArmed]=useState(false);
 
   const channelRef=useRef<any>(null);
@@ -116,7 +124,6 @@ export function LaserControlWorkspace(){
     remoteDown:false,moved:false,rightClickSent:false,startPanX:0,startPanY:0,longPressTimer:undefined
   });
   const lastTapRef=useRef<{at:number;clientX:number;clientY:number}|null>(null);
-  const mobileKeyboardRef=useRef<HTMLInputElement|null>(null);
   const inputReadyRef=useRef(false);
   const controlPendingRef=useRef<string|null>(null);
   const pendingInputResultsRef=useRef(new Map<string,(result:{ok:boolean;reason:string|null})=>void>());
@@ -492,24 +499,25 @@ export function LaserControlWorkspace(){
     window.setTimeout(()=>sendRemoteInput({type:'keyup',...payload}),45);
   }
 
+  function releaseRemoteModifiers(){
+    const base={ctrl:false,shift:false,alt:false,meta:false};
+    sendRemoteInput({type:'keyup',key:'Shift',code:'ShiftLeft',...base});
+    sendRemoteInput({type:'keyup',key:'Control',code:'ControlLeft',...base});
+    sendRemoteInput({type:'keyup',key:'Alt',code:'AltLeft',...base});
+  }
+
   function openMobileKeyboard(){
     if(!inputReadyRef.current)return;
-    setMobileEditValue('');
+    setKeyboardShift(false);
     setMobileEditOpen(true);
     mobileEditPrepareRef.current=sendVerifiedInput({type:'prepare_edit'});
-    window.setTimeout(()=>{
-      const input=mobileKeyboardRef.current;
-      if(!input)return;
-      input.value='';
-      input.focus({preventScroll:true});
-      input.select();
-    },80);
   }
 
   function closeMobileKeyboard(){
     setMobileEditOpen(false);
+    setKeyboardShift(false);
     mobileEditPrepareRef.current=null;
-    mobileKeyboardRef.current?.blur();
+    releaseRemoteModifiers();
   }
 
   async function waitMobileEditTarget(){
@@ -519,36 +527,61 @@ export function LaserControlWorkspace(){
     return prepared.ok;
   }
 
-  async function sendMobileEdit(valueOverride?:string){
-    const value=valueOverride??mobileEditValue;
-    if(!await ensureInputReady()){
-      setNotice(t('laser.quickNeedControl'));
-      return;
-    }
-    if(!await waitMobileEditTarget()){
-      setNotice(t('laser.editTargetFailed'));
-      return;
-    }
-
-    const result=await sendVerifiedInput({type:'replace_text',key:value});
-    if(!result.ok){
-      setNotice(t('laser.quickFailed'));
-      return;
-    }
-
-    closeMobileKeyboard();
-  }
-
-  async function sendMobileEditKey(key:string,code:string){
+  async function sendMobileEditKey(
+    key:string,code:string,
+    modifiers:{shift?:boolean;ctrl?:boolean;alt?:boolean}={}
+  ){
     if(!await ensureInputReady())return;
     if(!await waitMobileEditTarget()){
       setNotice(t('laser.editTargetFailed'));
       return;
     }
-    const payload={key,code,ctrl:false,shift:false,alt:false,meta:false};
+    const payload={
+      key,code,
+      ctrl:Boolean(modifiers.ctrl),shift:Boolean(modifiers.shift),
+      alt:Boolean(modifiers.alt),meta:false
+    };
     const down=await sendVerifiedInput({type:'keydown',...payload});
-    if(!down.ok){setNotice(t('laser.quickFailed'));return;}
-    await sendVerifiedInput({type:'keyup',...payload});
+    if(!down.ok){setNotice(t('laser.quickFailed'));releaseRemoteModifiers();return;}
+    const up=await sendVerifiedInput({type:'keyup',...payload});
+    if(!up.ok)setNotice(t('laser.quickFailed'));
+    releaseRemoteModifiers();
+  }
+
+  async function sendKeyboardCharacter(value:string){
+    if(/^[a-z]$/i.test(value)){
+      const letter=value.toUpperCase();
+      await sendMobileEditKey(
+        keyboardShift?letter:value.toLowerCase(),
+        'Key'+letter,
+        {shift:keyboardShift}
+      );
+      return;
+    }
+    if(/^[0-9]$/.test(value)){
+      await sendMobileEditKey(value,'Digit'+value);
+      return;
+    }
+
+    if(!await ensureInputReady())return;
+    if(!await waitMobileEditTarget()){
+      setNotice(t('laser.editTargetFailed'));
+      return;
+    }
+    const result=await sendVerifiedInput({type:'text',key:keyboardShift?value.toUpperCase():value});
+    if(!result.ok)setNotice(t('laser.quickFailed'));
+    releaseRemoteModifiers();
+  }
+
+  async function clearMobileEdit(){
+    if(!await ensureInputReady())return;
+    if(!await waitMobileEditTarget()){
+      setNotice(t('laser.editTargetFailed'));
+      return;
+    }
+    const result=await sendVerifiedInput({type:'replace_text',key:''});
+    releaseRemoteModifiers();
+    if(!result.ok)setNotice(t('laser.quickFailed'));
   }
 
   async function recenterLightBurnView(){
@@ -1385,33 +1418,43 @@ export function LaserControlWorkspace(){
             <b>{selectedDevice.lightburn_online===false?t('laser.previewOpen'):t('laser.previewWaiting')}</b>
             <span>{t('laser.previewHelp')}</span>
           </div>}
-          <div className={mobileEditOpen?styles.mobileKeyboard:styles.mobileKeyboardHidden}>
-            <input
-              ref={mobileKeyboardRef}
-              type="text"
-              inputMode="text"
-              enterKeyHint="done"
-              value={mobileEditValue}
-              onChange={event=>setMobileEditValue(event.target.value)}
-              onKeyDown={event=>{
-                event.stopPropagation();
-                if(event.key==='Enter'){
-                  event.preventDefault();
-                  sendMobileEdit();
-                }
-              }}
-              onKeyUp={event=>event.stopPropagation()}
-              aria-label={t('laser.keyboardAria')}
-              placeholder={t('laser.keyboardPlaceholder')}
-            />
+          <div className={mobileEditOpen?styles.mobileKeyboard:styles.mobileKeyboardHidden} aria-label={t('laser.keyboardAria')}>
+            <div className={styles.mobileKeyboardHead}>
+              <b>⌨ {t('laser.keyboard')}</b>
+              <span>{t('laser.keyboardPlaceholder')}</span>
+              <button type="button" onClick={closeMobileKeyboard} aria-label={t('laser.cancel')}>×</button>
+            </div>
+
+            <div className={styles.mobileKeyRows}>
+              {MOBILE_KEY_ROWS.map((row,rowIndex)=>
+                <div className={styles.mobileKeyRow} key={rowIndex}>
+                  {row.map(value=>
+                    <button
+                      type="button"
+                      key={value}
+                      onClick={()=>void sendKeyboardCharacter(value)}
+                    >{keyboardShift?value.toUpperCase():value}</button>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className={styles.mobileEditTools}>
+              <button type="button" className={keyboardShift?styles.keyActive:''} onClick={()=>setKeyboardShift(value=>!value)}>⇧</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('Home','Home')} aria-label="Home">↤</button>
               <button type="button" onClick={()=>void sendMobileEditKey('ArrowLeft','ArrowLeft')} aria-label={t('laser.cursorLeft')}>←</button>
               <button type="button" onClick={()=>void sendMobileEditKey('ArrowRight','ArrowRight')} aria-label={t('laser.cursorRight')}>→</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('End','End')} aria-label="End">↦</button>
               <button type="button" onClick={()=>void sendMobileEditKey('Backspace','Backspace')} aria-label={t('laser.backspace')}>⌫</button>
-              <button type="button" onClick={()=>void sendMobileEdit('')} aria-label={t('laser.clearText')}>{t('laser.clear')}</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('Delete','Delete')}>Del</button>
+              <button type="button" onClick={()=>void clearMobileEdit()} aria-label={t('laser.clearText')}>{t('laser.clear')}</button>
             </div>
-            <button type="button" onClick={()=>void sendMobileEdit()}>{t('laser.send')}</button>
-            <button type="button" onClick={closeMobileKeyboard}>{t('laser.cancel')}</button>
+
+            <div className={styles.mobileKeyboardBottom}>
+              <button type="button" className={styles.spaceKey} onClick={()=>void sendMobileEditKey(' ','Space')}>␠</button>
+              <button type="button" onClick={()=>void sendMobileEditKey('Enter','Enter')}>Enter</button>
+              <button type="button" onClick={closeMobileKeyboard}>{t('laser.cancel')}</button>
+            </div>
           </div>
         </div>
 
