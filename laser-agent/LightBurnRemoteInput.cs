@@ -11,6 +11,9 @@ internal static class LightBurnRemoteInput
     private const int RangeValuePatternId=10003;
     private const int LegacyPatternId=10018;
     private static readonly dynamic Automation=new UIA.CUIAutomation8();
+    private static readonly object LastPointerSync=new();
+    private static int? LastPointerX;
+    private static int? LastPointerY;
 
     private const uint MouseeventfLeftDown=0x0002;
     private const uint MouseeventfLeftUp=0x0004;
@@ -168,6 +171,7 @@ internal static class LightBurnRemoteInput
                 "workspacekeydown"=>WorkspaceKeyboard(main,input,true),
                 "workspacekeyup"=>WorkspaceKeyboard(main,input,false),
                 "text"=>Text(main,input.Key),
+                "prepare_edit"=>PrepareEdit(main),
                 "replace_text"=>ReplaceFocusedText(main,input.Key),
                 _=>new(false,"unsupported_input",null,null)
             };
@@ -205,6 +209,8 @@ internal static class LightBurnRemoteInput
         if(!TryScreenPoint(main,input,out var x,out var y))
             return new(false,"invalid_coordinates",x,y);
 
+        RememberPointer(x,y);
+
         if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
             return new(false,reason,x,y);
 
@@ -231,6 +237,8 @@ internal static class LightBurnRemoteInput
         if(!TryScreenPoint(main,input,out var x,out var y))
             return new(false,"invalid_coordinates",x,y);
 
+        RememberPointer(x,y);
+
         if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
             return new(false,reason,x,y);
 
@@ -256,6 +264,8 @@ internal static class LightBurnRemoteInput
     {
         if(!TryScreenPoint(main,input,out var x,out var y))
             return new(false,"invalid_coordinates",x,y);
+
+        RememberPointer(x,y);
 
         if(!EnsureLightBurnAtPoint(main,x,y,out var target,out var reason))
             return new(false,reason,x,y);
@@ -343,6 +353,57 @@ internal static class LightBurnRemoteInput
         return SendInput(1,single,Marshal.SizeOf<Input>())==1
             ?new(true,"workspace_sendinput",null,null)
             :new(false,"workspace_key_failed",null,null);
+    }
+
+
+    private static void RememberPointer(int x,int y)
+    {
+        lock(LastPointerSync)
+        {
+            LastPointerX=x;
+            LastPointerY=y;
+        }
+    }
+
+    private static RemoteInputApplyResult PrepareEdit(IntPtr main)
+    {
+        int? x;
+        int? y;
+        lock(LastPointerSync)
+        {
+            x=LastPointerX;
+            y=LastPointerY;
+        }
+
+        if(!x.HasValue||!y.HasValue)
+            return FocusLightBurn()
+                ?new(true,"edit_focus_ready",null,null)
+                :new(false,"edit_target_missing",null,null);
+
+        if(!EnsureLightBurnAtPoint(main,x.Value,y.Value,out var target,out var reason))
+            return new(false,reason,x,y);
+
+        var inputs=new[]
+        {
+            Mouse(MouseeventfLeftDown,0),
+            Mouse(MouseeventfLeftUp,0),
+            Mouse(MouseeventfLeftDown,0),
+            Mouse(MouseeventfLeftUp,0)
+        };
+        if(SendInput((uint)inputs.Length,inputs,Marshal.SizeOf<Input>())==inputs.Length)
+        {
+            Thread.Sleep(180);
+            return new(true,"edit_target_prepared",x,y);
+        }
+
+        var ok=PostPointer(target,WmLButtonDown,MkLButton,x.Value,y.Value)
+               &&PostPointer(target,WmLButtonUp,0,x.Value,y.Value)
+               &&PostPointer(target,WmLButtonDblClk,MkLButton,x.Value,y.Value)
+               &&PostPointer(target,WmLButtonUp,0,x.Value,y.Value);
+        if(ok)Thread.Sleep(180);
+        return ok
+            ?new(true,"edit_target_prepared_fallback",x,y)
+            :new(false,"edit_target_prepare_failed",x,y);
     }
 
     private static RemoteInputApplyResult Text(IntPtr main,string? text)
@@ -439,10 +500,18 @@ internal static class LightBurnRemoteInput
             Key((ushort)'A',true),
             Key(0x11,true)
         };
-        foreach(var ch in text.Take(256))
+        if(text.Length==0)
         {
-            inputs.Add(Unicode(ch,false));
-            inputs.Add(Unicode(ch,true));
+            inputs.Add(Key(0x08,false));
+            inputs.Add(Key(0x08,true));
+        }
+        else
+        {
+            foreach(var ch in text.Take(256))
+            {
+                inputs.Add(Unicode(ch,false));
+                inputs.Add(Unicode(ch,true));
+            }
         }
 
         var array=inputs.ToArray();

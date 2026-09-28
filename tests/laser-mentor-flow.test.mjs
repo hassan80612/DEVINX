@@ -55,7 +55,7 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
 });
 
 
-test('Agent 1.0.30 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
+test('Agent 1.0.31 is distributed as direct permanent and mentor executables without ZIP or CMD',async()=>{
   const runtime=await readFile('laser-agent/AgentRuntime.cs','utf8');
   const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
@@ -63,10 +63,10 @@ test('Agent 1.0.30 is distributed as direct permanent and mentor executables wit
   assert.match(runtime,/exeName\.Contains\("Mentoria"/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.30\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\.0\.30\.exe/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.30\.zip/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.30\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.31\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.0\.31\.exe/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.31\.zip/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.31\.exe/);
 });
 
 

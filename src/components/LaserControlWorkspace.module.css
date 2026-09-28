@@ -179,8 +179,12 @@
   background:linear-gradient(180deg,#72eaff,#35b7d4);color:#06141b;font-weight:950
 }
 .mobileKeyboard button:last-child{border-color:rgba(255,109,126,.38);background:#41212a;color:#ffd9df}
+.mobileEditTools{display:flex;gap:5px;align-items:center}
+.mobileEditTools button{min-width:38px;padding:0 8px;background:linear-gradient(145deg,#506b7f,#334b5d);color:#eefbff;border-color:rgba(166,226,244,.28)}
+.rightClickActive{border-color:rgba(118,239,255,.70)!important;background:linear-gradient(180deg,#3b8195,#245566)!important;color:#f3fdff!important;box-shadow:0 0 0 2px rgba(118,239,255,.12),inset 0 1px rgba(255,255,255,.16)!important}
 @media(max-width:620px){
   .mobileKeyboard,.mobileKeyboardHidden{grid-template-columns:minmax(0,1fr) auto}
+  .mobileEditTools{grid-column:1/-1;justify-content:flex-start}
   .mobileKeyboard button:last-child,.mobileKeyboardHidden button:last-child{grid-column:1/-1;min-height:36px}
 }
 

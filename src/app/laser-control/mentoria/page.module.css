@@ -12,25 +12,25 @@
 .language em{color:#d2e0e8;font-size:9px;font-style:normal;font-weight:900;text-transform:uppercase;letter-spacing:.11em}
 .language :global(.languageMenu){position:relative;z-index:40}
 .language :global(.languageMenuButton){
-  min-width:150px;min-height:42px;padding:9px 12px;border:1px solid rgba(255,255,255,.72);
-  border-radius:12px;background:linear-gradient(180deg,#f7fbfd,#dce7ec);
-  color:#203542;box-shadow:0 8px 20px rgba(7,18,26,.22),inset 0 1px rgba(255,255,255,.95);
+  min-width:150px;min-height:42px;padding:9px 12px;border:1px solid rgba(154,238,255,.58);
+  border-radius:12px;background:linear-gradient(180deg,#6f8798,#4d6576);
+  color:#f5fbff;box-shadow:0 8px 20px rgba(7,18,26,.25),inset 0 1px rgba(255,255,255,.18);
   font-size:11px;font-weight:900;cursor:pointer
 }
-.language :global(.languageMenuButton:hover){background:linear-gradient(180deg,#fff,#e8f1f5);border-color:#fff}
-.language :global(.languageMenuButton em){color:#2a7c96;font-size:11px}
+.language :global(.languageMenuButton:hover){background:linear-gradient(180deg,#7d98aa,#587184);border-color:#c6f6ff}
+.language :global(.languageMenuButton em){color:#bff6ff;font-size:11px}
 .language :global(.languageMenuList){
   top:calc(100% + 7px);right:0;min-width:194px;padding:7px;border:1px solid rgba(255,255,255,.8);
-  border-radius:13px;background:#f3f7f9;
-  box-shadow:0 18px 40px rgba(5,14,20,.35),inset 0 1px #fff
+  border-radius:13px;background:linear-gradient(180deg,#4d6576,#344b5b);
+  box-shadow:0 18px 40px rgba(5,14,20,.38),inset 0 1px rgba(255,255,255,.14)
 }
 .language :global(.languageMenuList button){
   min-height:39px;padding:9px 11px;border:1px solid transparent;border-radius:9px;
-  background:transparent;color:#233846;font-size:11px;font-weight:850
+  background:transparent;color:#edf8fc;font-size:11px;font-weight:850
 }
-.language :global(.languageMenuList button:hover){background:#dcebf1;border-color:#c5dce6;color:#102630}
-.language :global(.languageMenuList button.active){background:linear-gradient(180deg,#d6f4fb,#c6e7f0);border-color:#a9dce9;color:#123645}
-.language :global(.languageMenuList button.active span){color:#197b98;font-weight:950}
+.language :global(.languageMenuList button:hover){background:#60798b;border-color:#8fdff0;color:#fff}
+.language :global(.languageMenuList button.active){background:linear-gradient(180deg,#74a0b5,#55798b);border-color:#9ae6f6;color:#fff}
+.language :global(.languageMenuList button.active span){color:#c9f7ff;font-weight:950}
 .card h1{margin:27px 0 10px;font-size:clamp(34px,7vw,58px);line-height:1;letter-spacing:-.045em;color:#fff;text-shadow:0 4px 20px rgba(11,22,30,.18)}
 .lead{max-width:620px;margin:0;color:#e1ebf1;font-size:14px;line-height:1.65}
 .steps{display:grid;gap:9px;margin:26px 0}

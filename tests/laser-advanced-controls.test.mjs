@@ -190,3 +190,15 @@ test('Laser workspace has no dead layer panel state and no hidden parameter refr
   assert.doesNotMatch(close,/control_request|inspect/);
   assert.doesNotMatch(confirm,/control_request|inspect/);
 });
+
+
+test('mobile keyboard prepares the selected LightBurn target and supports one-shot right click',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  const remote=await readFile('laser-agent/LightBurnRemoteInput.cs','utf8');
+  assert.match(panel,/type:'prepare_edit'/);
+  assert.match(panel,/rightClickArmed/);
+  assert.match(panel,/button:2/);
+  assert.match(remote,/"prepare_edit"=>PrepareEdit/);
+  assert.match(remote,/RememberPointer/);
+  assert.match(remote,/edit_target_prepared/);
+});
