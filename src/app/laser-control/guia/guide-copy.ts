@@ -20,7 +20,7 @@ export const guideCopy:Record<Locale,GuideCopy>={
     sections:[
       {title:"1. Instalação e primeiro vínculo",lead:"Faça isso uma vez no computador que fica ligado à máquina.",items:[
         {title:"Baixe o EXE",text:"Use Windows 10 ou 11 de 64 bits e baixe DevinX-Laser-Agent-1.0.31.exe pelo botão acima."},
-        {title:"Abra o arquivo",text:"Dê dois cliques no EXE baixado. Não há ZIP, pasta para extrair nem comando para digitar."},
+        {title:"Abra o EXE",text:"Dê dois cliques em DevinX-Laser-Agent-1.0.31.exe. A instalação começa pelo próprio arquivo."},
         {title:"Instalação automática",text:"O próprio EXE instala ou atualiza o Agent no seu usuário do Windows e configura a inicialização automática."},
         {title:"Vincule o computador",text:"Na primeira execução o navegador abre o DevinX. Confirme o vínculo uma única vez. Atualizações futuras preservam esse vínculo."},
         {title:"Abra o LightBurn",text:"Deixe o LightBurn aberto normalmente. O Agent detecta o aplicativo e acompanha o estado da conexão com a máquina."},
