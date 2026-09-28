@@ -1304,11 +1304,22 @@ export function LaserControlWorkspace(){
         >
           <div className={styles.fullscreenControls}>
             {fullscreen&&<>
-              <div className={styles.orientation}>
-                <button className={orientation==='auto'?styles.on:''} onClick={()=>void setOrientationMode('auto')}>{t('laser.auto')}</button>
-                <button className={orientation==='landscape'?styles.on:''} onClick={()=>void setOrientationMode('landscape')}>{t('laser.landscape')}</button>
-                <button className={orientation==='portrait'?styles.on:''} onClick={()=>void setOrientationMode('portrait')}>{t('laser.portrait')}</button>
+              <div className={styles.zoom}>
+                <button type="button" aria-label={t('laser.zoomOut')} onClick={()=>setPreviewZoom(zoom-.25)}>−</button>
+                <button type="button" title={t('laser.zoomReset')} onClick={resetZoom}>{Math.round(zoom*100)}%</button>
+                <button type="button" aria-label={t('laser.zoomIn')} onClick={()=>setPreviewZoom(zoom+.25)}>＋</button>
               </div>
+              <button
+                type="button"
+                className={styles.on}
+                title={orientation==='auto'?t('laser.auto'):orientation==='landscape'?t('laser.landscape'):t('laser.portrait')}
+                onClick={()=>void setOrientationMode(
+                  orientation==='auto'?'landscape'
+                  :orientation==='landscape'?'portrait'
+                  :'auto'
+                )}
+              >{orientation==='auto'?'↻':orientation==='landscape'?'↔':'↕'} {orientation==='auto'?t('laser.auto'):orientation==='landscape'?t('laser.landscape'):t('laser.portrait')}</button>
+              <button type="button" onClick={()=>void recenterLightBurnView()} disabled={toolPending!==null} title={t('laser.recenterView')} aria-label={t('laser.recenterView')}>⊙</button>
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
                 disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
