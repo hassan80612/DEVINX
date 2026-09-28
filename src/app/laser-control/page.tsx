@@ -1,5 +1,5 @@
 import type {Metadata} from 'next';
-import {notFound,redirect} from 'next/navigation';
+import {redirect} from 'next/navigation';
 import {LaserControlWorkspace} from '@/components/LaserControlWorkspace';
 import {SiteVisibilityAdminCard} from '@/components/SiteVisibilityAdminCard';
 import {getLaserControlAccess} from '@/features/laser-control/server/master-access';

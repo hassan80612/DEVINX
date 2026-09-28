@@ -300,3 +300,16 @@
 .workspaceNav a:hover,.workspaceNav button:hover{border-color:rgba(226,193,101,.48);color:#fff1ad}
 .workspaceNav button{font-family:inherit;cursor:pointer}
 @media(max-width:760px){.topRight{width:100%;justify-items:start}.workspaceNav{justify-content:flex-start}.workspaceNav a,.workspaceNav button{min-height:32px;font-size:9px}}
+
+/* Compact navigation on phone/tablet: avoid the oversized empty header seen on narrow screens. */
+@media(max-width:920px){
+  .top{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+  .topRight{width:100%;justify-items:stretch}
+  .workspaceNav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%}
+  .workspaceNav a,.workspaceNav button{width:100%;min-width:0;min-height:38px;padding:7px 6px;font-size:9.5px;white-space:nowrap}
+  .liveBadge{justify-self:start}
+}
+@media(max-width:470px){
+  .workspaceNav{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .workspaceNav a,.workspaceNav button{min-height:36px;font-size:9px}
+}
