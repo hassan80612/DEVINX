@@ -267,11 +267,22 @@ internal sealed class ContinuousAgent
 
             if(!poll.Ok)
             {
+                if(current is not null&&current.ExpiresAt<=DateTimeOffset.UtcNow)
+                {
+                    await StopRealtimeAsync();
+                    current=null;
+                    _tray.SetStatus("DevinX Laser Agent — sessão remota encerrada");
+                }
                 if(_temporarySession&&poll.Reason is "device_not_active" or "unknown_device")
                     break;
                 await DelaySafe(TimeSpan.FromSeconds(2),cancellationToken);
                 continue;
             }
+
+            // Never keep or open a Realtime channel past the server-issued lease.
+            // The normal poll refreshes ExpiresAt continuously while access remains valid.
+            if(poll.Session is not null&&poll.Session.ExpiresAt<=DateTimeOffset.UtcNow)
+                poll=poll with{Session=null};
 
             if(poll.Command is not null)
             {
@@ -292,6 +303,9 @@ internal sealed class ContinuousAgent
                 !sessionIdentityChanged
                 &&current is not null&&poll.Session is not null
                 &&current.Revision!=poll.Session.Revision;
+
+            if(!sessionIdentityChanged&&poll.Session is not null)
+                current=poll.Session;
 
             if(sessionIdentityChanged)
             {

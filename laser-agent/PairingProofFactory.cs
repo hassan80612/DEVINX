@@ -15,7 +15,7 @@ internal sealed record PairingProof(
 
 internal static class PairingProofFactory
 {
-    public const string AgentVersion = "1.0.32";
+    public const string AgentVersion = "1.0.33";
     private static readonly char[] Alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray();
 
     public static PairingProof Create(TimeSpan lifetime)

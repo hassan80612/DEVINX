@@ -78,10 +78,10 @@ jobs:
       - name: Prepare direct Windows executables
         shell: pwsh
         run: |
-          Copy-Item .\laser-agent\publish-agent\DevinXLaserAgent.exe .\laser-agent\DevinX-Laser-Agent-1.0.32.exe -Force
-          Copy-Item .\laser-agent\publish-mentor\DevinXLaserAgent.exe .\laser-agent\DevinX-Mentoria-1.0.32.exe -Force
-          $agentHash = (Get-FileHash .\laser-agent\DevinX-Laser-Agent-1.0.32.exe -Algorithm SHA256).Hash
-          $mentorHash = (Get-FileHash .\laser-agent\DevinX-Mentoria-1.0.32.exe -Algorithm SHA256).Hash
+          Copy-Item .\laser-agent\publish-agent\DevinXLaserAgent.exe .\laser-agent\DevinX-Laser-Agent-1.0.33.exe -Force
+          Copy-Item .\laser-agent\publish-mentor\DevinXLaserAgent.exe .\laser-agent\DevinX-Mentoria-1.0.33.exe -Force
+          $agentHash = (Get-FileHash .\laser-agent\DevinX-Laser-Agent-1.0.33.exe -Algorithm SHA256).Hash
+          $mentorHash = (Get-FileHash .\laser-agent\DevinX-Mentoria-1.0.33.exe -Algorithm SHA256).Hash
           if ($agentHash -eq $mentorHash) {
             Write-Host "Permanent Agent and Mentoria must be different binaries."
             exit 1
@@ -92,8 +92,8 @@ jobs:
         with:
           name: DevinX-Laser-direct-exe
           path: |
-            .\laser-agent\DevinX-Laser-Agent-1.0.32.exe
-            .\laser-agent\DevinX-Mentoria-1.0.32.exe
+            .\laser-agent\DevinX-Laser-Agent-1.0.33.exe
+            .\laser-agent\DevinX-Mentoria-1.0.33.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -103,11 +103,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'laser-agent-v1.0.32'
+          $tag = 'laser-agent-v1.0.33'
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             Write-Host "Release $tag already exists. Stable releases are immutable; skipping upload."
             exit 0
           }
-          gh release create $tag --title 'DevinX Laser Agent 1.0.32' --notes 'Executáveis diretos do DevinX Laser Control para Windows 10/11 x64. Sem ZIP e sem CMD.'
-          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.32.exe .\laser-agent\DevinX-Mentoria-1.0.32.exe
+          gh release create $tag --title 'DevinX Laser Agent 1.0.33' --notes 'Executáveis diretos do DevinX Laser Control para Windows 10/11 x64. Sem ZIP e sem CMD.'
+          gh release upload $tag .\laser-agent\DevinX-Laser-Agent-1.0.33.exe .\laser-agent\DevinX-Mentoria-1.0.33.exe

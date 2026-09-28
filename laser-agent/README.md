@@ -1,10 +1,10 @@
-# DevinX Laser Agent 1.0.32
+# DevinX Laser Agent 1.0.33
 
 Agent Windows do DevinX Laser Control.
 
 ## Instalação simples
 
-1. Baixe **DevinX-Laser-Agent-1.0.32.exe**.
+1. Baixe **DevinX-Laser-Agent-1.0.33.exe**.
 2. Dê dois cliques.
 3. O Agent instala ou atualiza automaticamente no perfil do usuário do Windows.
 4. Na primeira instalação, o navegador abre o DevinX já com o vínculo preparado.
@@ -15,7 +15,7 @@ Não é necessário ZIP, extrair pasta, abrir CMD nem copiar código no uso norm
 
 ## Binários separados
 
-A partir da 1.0.32, o **DevinX Laser Agent** e o **DevinX Mentoria** são publicados por builds diferentes. O modo é definido na compilação, não pelo nome do arquivo. Renomear o EXE de Mentoria não o transforma no Agent permanente, e o Agent permanente não entra em modo Mentoria por argumento ou renomeação.
+A partir da 1.0.33, o **DevinX Laser Agent** e o **DevinX Mentoria** são publicados por builds diferentes. O modo é definido na compilação, não pelo nome do arquivo. Renomear o EXE de Mentoria não o transforma no Agent permanente, e o Agent permanente não entra em modo Mentoria por argumento ou renomeação.
 
 O download do Agent permanente fica apresentado somente dentro do Laser Control para contas autenticadas com acesso. O download de Mentoria continua público para o aluno, que não precisa criar conta.
 
@@ -23,7 +23,7 @@ O download do Agent permanente fica apresentado somente dentro do Laser Control 
 
 O aluno recebe um link por e-mail e abre no computador conectado ao LightBurn.
 
-1. Na página de mentoria, baixa **DevinX-Mentoria-1.0.32.exe**.
+1. Na página de mentoria, baixa **DevinX-Mentoria-1.0.33.exe**.
 2. Dá dois cliques.
 3. O executável reconhece automaticamente o modo Mentoria; não instala e não entra na inicialização do Windows.
 4. Uma janela mostra um código temporário de 8 caracteres.
@@ -125,3 +125,7 @@ O ponteiro remoto usa os limites exatos da última imagem transmitida para mante
 
 ## 1.0.28 — EXE direto e mentoria sem CMD
 O download normal passou a ser um único EXE. O instalador direto copia ou atualiza a versão instalada e relança o Agent automaticamente. A mentoria usa um segundo EXE direto que entra em modo temporário pelo próprio nome do arquivo, sem ZIP, sem extração e sem CMD.
+
+
+## 1.0.33 — expiração local da sessão remota
+O Agent encerra localmente a transmissão e o controle quando a validade curta emitida pelo servidor termina. Enquanto a assinatura e a sessão continuam válidas, o polling normal renova essa validade e o funcionamento permanece igual. Se a renovação deixar de ser autorizada, o canal remoto é fechado sem executar novos comandos.
