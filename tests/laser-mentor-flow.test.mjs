@@ -133,7 +133,7 @@ test('permanent Agent download is gated by Laser access while student Mentoria s
   const mentorPage=await readFile('src/app/laser-control/mentoria/MentorDownloadPage.tsx','utf8');
   assert.match(route,/getLaserControlAccess/);
   assert.match(route,/!access\.authenticated/);
-  assert.match(route,/!access\.allowed/);
+  assert.match(route,/!access\.isAdmin&&!access\.ownerAccess/);
   assert.match(panel,/\/api\/laser-control\/agent-download/);
   assert.doesNotMatch(landing,/DevinX-Laser-Agent-1\.0\.33\.exe/);
   assert.match(landing,/\/laser-control\/mentoria/);
