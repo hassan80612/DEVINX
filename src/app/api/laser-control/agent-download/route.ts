@@ -9,7 +9,7 @@ export async function GET(request:NextRequest){
   const access=await getLaserControlAccess();
   if(!access.authenticated)
     return NextResponse.redirect(new URL('/entrar?next=/laser-control',request.url),307);
-  if(!access.allowed)
+  if(!access.isAdmin&&!access.ownerAccess)
     return NextResponse.redirect(new URL('/laser-control/conhecer?acesso=necessario#planos',request.url),307);
 
   return NextResponse.redirect(AGENT_DOWNLOAD,307);
