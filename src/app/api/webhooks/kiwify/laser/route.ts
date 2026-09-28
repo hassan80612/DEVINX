@@ -5,6 +5,7 @@ import {NextRequest,NextResponse} from 'next/server';
 export const runtime='nodejs';
 
 const LASER_PRODUCT_ID='a7e51ae0-bb55-11f1-8e93-792b23e3fb86';
+const LASER_EXTRA_PRODUCT_ID='edb2fd90-bb59-11f1-8e93-792b23e3fb86';
 
 function safeHexEqual(a:string,b:string){
   try{
@@ -35,7 +36,7 @@ export async function GET(){
   return NextResponse.json({
     ok:true,
     product:'DevinX Laser Control',
-    productId:LASER_PRODUCT_ID,
+    productIds:[LASER_PRODUCT_ID,LASER_EXTRA_PRODUCT_ID],
     webhook:'ready_for_configuration'
   },{headers:{'Cache-Control':'no-store'}});
 }
@@ -46,11 +47,13 @@ export async function POST(request:NextRequest){
   try{payload=JSON.parse(raw)}
   catch{return NextResponse.json({ok:false,error:'invalid_json'},{status:400})}
 
-  if(productId(payload)!==LASER_PRODUCT_ID)
+  const incomingProductId=productId(payload);
+  if(![LASER_PRODUCT_ID,LASER_EXTRA_PRODUCT_ID].includes(incomingProductId))
     return NextResponse.json({ok:true,ignored:'product'});
 
-  const secret=process.env.KIWIFY_LASER_WEBHOOK_TOKEN||'';
-  if(!secret)
+  const primarySecret=process.env.KIWIFY_LASER_WEBHOOK_TOKEN||'';
+  const extraSecret=process.env.KIWIFY_LASER_EXTRA_WEBHOOK_TOKEN||'';
+  if(!primarySecret&&!extraSecret)
     return NextResponse.json({ok:false,error:'laser_webhook_not_configured'},{status:503});
 
   const signature=(
@@ -59,7 +62,9 @@ export async function POST(request:NextRequest){
     ''
   ).trim();
 
-  if(!signatureMatches(secret,signature,raw,payload))
+  const matchingSecret=[primarySecret,extraSecret].filter(Boolean)
+    .find(candidate=>signatureMatches(candidate,signature,raw,payload));
+  if(!matchingSecret)
     return NextResponse.json({ok:false,error:'invalid_signature'},{status:401});
 
   const supabase=createClient(
@@ -67,8 +72,11 @@ export async function POST(request:NextRequest){
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
-  const tokenHash=createHash('sha256').update(secret).digest('hex');
-  const{data,error}=await supabase.rpc('process_kiwify_laser_webhook',{
+  const tokenHash=createHash('sha256').update(primarySecret||matchingSecret).digest('hex');
+  const rpcName=incomingProductId===LASER_EXTRA_PRODUCT_ID
+    ?'process_kiwify_laser_extra_webhook'
+    :'process_kiwify_laser_webhook';
+  const{data,error}=await supabase.rpc(rpcName,{
     p_payload:payload,p_token_hash:tokenHash
   });
   if(error){
