@@ -14,5 +14,6 @@ internal static class AgentRuntime
 
     public static string StateDirectory=>Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        MentorMode?"DevinXLaserMentor":"DevinXLaserAgent");
+        (MentorMode?"DevinXLaserMentor":"DevinXLaserAgent")
+            +(AgentDistribution.IsStoreBuild?"Store":""));
 }
