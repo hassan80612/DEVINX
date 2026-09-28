@@ -33,14 +33,13 @@ function productId(payload:any){
   );
 }
 
-function checkoutCode(payload:any){
-  const raw=String(
-    payload?.checkout_link||
-    payload?.Checkout?.checkout_link||
-    payload?.checkout?.checkout_link||
+function trackingSource(payload:any){
+  return String(
+    payload?.TrackingParameters?.src||
+    payload?.trackingParameters?.src||
+    payload?.tracking_parameters?.src||
     ''
-  ).trim();
-  return raw.replace(/^.*\//,'').split('?')[0]||'';
+  ).trim().toLowerCase();
 }
 
 export async function GET(){
@@ -85,8 +84,7 @@ export async function POST(request:NextRequest){
     {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
   );
   const tokenHash=createHash('sha256').update(primarySecret||matchingSecret).digest('hex');
-  const offer=checkoutCode(payload);
-  const pcAddonOffer=offer==='IdNEzcp'||offer==='PR4BNpa';
+  const pcAddonOffer=trackingSource(payload)==='devinx_extra_pc';
   const rpcName=pcAddonOffer
     ?'process_kiwify_laser_pc_addon_webhook'
     :incomingProductId===LASER_EXTRA_PRODUCT_ID
