@@ -172,3 +172,31 @@ test("Vercel Analytics não é carregado no cliente",()=>{
   assert.equal(layout.includes("<Analytics"),false);
   assert.equal(pkg.includes("@vercel/analytics"),false);
 });
+
+
+test("PC adicional do Laser fica dentro da conta e expira com o ciclo atual",()=>{
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  const checkout=read("src/app/api/laser-control/pc-addon-checkout/route.ts");
+  const webhook=read("src/app/api/webhooks/kiwify/laser/route.ts");
+  assert.ok(workspace.includes("+1 PC · R$ 12,90"));
+  assert.ok(workspace.includes("+1 PC · US$ 5"));
+  assert.ok(workspace.includes("A renovação do plano NÃO renova este adicional"));
+  assert.ok(workspace.includes("get_laser_pc_capacity"));
+  assert.ok(checkout.includes("IdNEzcp"));
+  assert.ok(checkout.includes("PR4BNpa"));
+  assert.ok(checkout.includes("!access.isAdmin&&!access.ownerAccess"));
+  assert.ok(webhook.includes("process_kiwify_laser_pc_addon_webhook"));
+  assert.ok(webhook.includes("IdNEzcp"));
+  assert.ok(webhook.includes("PR4BNpa"));
+});
+
+test("Mentoria mantém 10 sessões por ciclo, extras no ciclo e sessão máxima de 6 horas",()=>{
+  const workspace=read("src/components/LaserControlWorkspace.tsx");
+  const migration=read("supabase/migrations/20260928211040_laser_pc_addons_and_cycle_security.sql");
+  assert.ok(workspace.includes("Cada sessão pode durar até 6 horas"));
+  assert.ok(workspace.includes("10 sessões por ciclo"));
+  assert.ok(workspace.includes("pacote de +5 soma somente ao ciclo atual"));
+  assert.ok(migration.includes("laser_internal_current_paid_cycle"));
+  assert.ok(migration.includes("laser_internal_user_can_control_device"));
+  assert.ok(migration.includes("v_lease_until"));
+});
