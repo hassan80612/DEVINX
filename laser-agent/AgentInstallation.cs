@@ -23,8 +23,8 @@ internal static class AgentInstallation
             var current=Environment.ProcessPath;
             if(string.IsNullOrWhiteSpace(current))return false;
             return string.Equals(
-                Path.GetFullPath(Path.GetDirectoryName(current)??""),
-                Path.GetFullPath(InstallDirectory),
+                Path.GetFullPath(current),
+                Path.GetFullPath(InstalledExe),
                 StringComparison.OrdinalIgnoreCase);
         }
     }
@@ -34,20 +34,28 @@ internal static class AgentInstallation
         if(!OperatingSystem.IsWindows()||IsInstalledCopy)return false;
         if(args.Any(a=>a.StartsWith("--",StringComparison.OrdinalIgnoreCase)))return false;
 
+        var current=Environment.ProcessPath;
+        if(string.IsNullOrWhiteSpace(current)||!File.Exists(current))return false;
+
         try
         {
             Directory.CreateDirectory(InstallDirectory);
-            var sourceDirectory=AppContext.BaseDirectory;
+            StopInstalledCopyIfRunning();
 
-            foreach(var source in Directory.EnumerateFiles(sourceDirectory))
+            var staged=Path.Combine(InstallDirectory,"DevinXLaserAgent.new.exe");
+            File.Copy(current,staged,overwrite:true);
+
+            if(File.Exists(InstalledExe))
             {
-                var name=Path.GetFileName(source);
-                if(name.Equals("README.md",StringComparison.OrdinalIgnoreCase))continue;
-                if(name.Equals("LEIA-ME.txt",StringComparison.OrdinalIgnoreCase))continue;
-                File.Copy(source,Path.Combine(InstallDirectory,name),overwrite:true);
+                try{File.Delete(InstalledExe);}
+                catch
+                {
+                    MoveFileEx(InstalledExe,null,MovefileDelayUntilReboot);
+                    return false;
+                }
             }
 
-            if(!File.Exists(InstalledExe))return false;
+            File.Move(staged,InstalledExe,overwrite:true);
 
             Process.Start(new ProcessStartInfo
             {
@@ -61,6 +69,26 @@ internal static class AgentInstallation
         catch
         {
             return false;
+        }
+    }
+
+    private static void StopInstalledCopyIfRunning()
+    {
+        foreach(var process in Process.GetProcessesByName("DevinXLaserAgent"))
+        {
+            try
+            {
+                if(process.Id==Environment.ProcessId)continue;
+                var path=process.MainModule?.FileName;
+                if(string.IsNullOrWhiteSpace(path)
+                   ||!string.Equals(Path.GetFullPath(path),Path.GetFullPath(InstalledExe),StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                process.Kill(entireProcessTree:true);
+                process.WaitForExit(3_000);
+            }
+            catch{}
+            finally{process.Dispose();}
         }
     }
 
