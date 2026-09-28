@@ -58,7 +58,7 @@ const MOBILE_KEY_ROWS=[
   ['á','é','í','ó','ú','ã','õ','ç','-','_','.',',','/','@']
 ] as const;
 
-export function LaserControlWorkspace({mentorAccess}:{mentorAccess:boolean}){
+export function LaserControlWorkspace(){
   const{t,locale}=useI18n();
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
@@ -88,6 +88,7 @@ export function LaserControlWorkspace({mentorAccess}:{mentorAccess:boolean}){
   const[mentorCode,setMentorCode]=useState('');
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorNotice,setMentorNotice]=useState('');
+  const[mentorAccess,setMentorAccess]=useState(false);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
   const[toolPanelOpen,setToolPanelOpen]=useState(false);
@@ -134,6 +135,14 @@ export function LaserControlWorkspace({mentorAccess}:{mentorAccess:boolean}){
     await supabase.auth.signOut();
     window.location.assign('/');
   }
+
+  useEffect(()=>{
+    const supabase=createClient();
+    void supabase.rpc('get_laser_access_status').then(({data})=>{
+      const row=Array.isArray(data)?data[0]:data;
+      setMentorAccess(Boolean(row?.mentor_access||row?.is_admin));
+    });
+  },[]);
 
   const loadDevices=useCallback(async(quiet=false)=>{
     if(!quiet)setLoading(true);
@@ -1309,7 +1318,7 @@ export function LaserControlWorkspace({mentorAccess}:{mentorAccess:boolean}){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
-        <a className={styles.extraMentorButton} href={'/laser-control/extra?market='+(locale==='pt-BR'?'br':'intl')}>
+        <a className={styles.extraMentorButton} href={locale==='pt-BR'?'https://pay.kiwify.com.br/2Td87KB':'https://pay.kiwify.com/2sFxGp1'} target="_blank" rel="noreferrer">
           {locale==='pt-BR'?'+5 sessões de mentoria · R$ 9,90':'+5 mentoring sessions · US$ 7.50'}
         </a>
         <small className={styles.extraMentorNote}>

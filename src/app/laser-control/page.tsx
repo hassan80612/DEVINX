@@ -26,6 +26,6 @@ export default async function LaserControlPage(){
     {access.isAdmin&&<div style={{width:'min(1720px,calc(100% - 24px))',margin:'0 auto'}}>
       <SiteVisibilityAdminCard/>
     </div>}
-    <LaserControlWorkspace mentorAccess={access.mentorAccess||access.isAdmin}/>
+    <LaserControlWorkspace/>
   </main>;
 }
