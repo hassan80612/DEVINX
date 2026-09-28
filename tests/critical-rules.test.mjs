@@ -154,3 +154,21 @@ test("vitrine recupera imagens após falha transitória sem criar proxy extra",(
   assert.ok((source.match(/onError=\{retryStorefrontImage\}/g)||[]).length>=4);
   assert.equal(source.includes("/api/storefront/image"),false);
 });
+
+
+test("Laser Control reduz chamadas à Vercel e pausa polling em aba oculta",()=>{
+  const source=read("src/components/LaserControlWorkspace.tsx");
+  assert.ok(source.includes("DEVICE_REFRESH_MS=15_000"));
+  assert.ok(source.includes("SESSION_RENEW_MS=20_000"));
+  assert.ok(source.includes("document.visibilityState==='hidden'"));
+  assert.ok(source.includes("document.visibilityState==='visible'"));
+  assert.equal(source.includes("setInterval(()=>void loadDevices(true),2_000)"),false);
+});
+
+test("Vercel Analytics não é carregado no cliente",()=>{
+  const layout=read("src/app/layout.tsx");
+  const pkg=read("package.json");
+  assert.equal(layout.includes("@vercel/analytics"),false);
+  assert.equal(layout.includes("<Analytics"),false);
+  assert.equal(pkg.includes("@vercel/analytics"),false);
+});
