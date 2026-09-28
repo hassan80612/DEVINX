@@ -45,6 +45,13 @@ type RemoteSession={
   expiresAt:string;
 };
 
+type PcCapacity={
+  max_pcs:number;
+  active_pcs:number;
+  extra_pcs:number;
+  expires_at:string|null;
+};
+
 type LaserCommand='frame'|'start'|'pause'|'stop';
 type OrientationMode='auto'|'landscape'|'portrait';
 
@@ -92,6 +99,8 @@ export function LaserControlWorkspace(){
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorNotice,setMentorNotice]=useState('');
   const[mentorAccess,setMentorAccess]=useState(false);
+  const[ownerAccess,setOwnerAccess]=useState(false);
+  const[pcCapacity,setPcCapacity]=useState<PcCapacity|null>(null);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
   const[toolPending,setToolPending]=useState<string|null>(null);
   const[toolPanelOpen,setToolPanelOpen]=useState(false);
@@ -143,10 +152,18 @@ export function LaserControlWorkspace(){
 
   useEffect(()=>{
     const supabase=createClient();
-    void supabase.rpc('get_laser_access_status').then((result:any)=>{
-      const data=result?.data;
-      const row=Array.isArray(data)?data[0]:data;
-      setMentorAccess(Boolean(row?.mentor_access||row?.is_admin));
+    void Promise.all([
+      supabase.rpc('get_laser_access_status'),
+      supabase.rpc('get_laser_pc_capacity')
+    ]).then(([accessResult,capacityResult]:any[])=>{
+      const accessData=accessResult?.data;
+      const accessRow=Array.isArray(accessData)?accessData[0]:accessData;
+      setMentorAccess(Boolean(accessRow?.mentor_access||accessRow?.is_admin));
+      setOwnerAccess(Boolean(accessRow?.owner_access||accessRow?.is_admin));
+
+      const capacityData=capacityResult?.data;
+      const capacityRow=Array.isArray(capacityData)?capacityData[0]:capacityData;
+      if(capacityRow)setPcCapacity(capacityRow as PcCapacity);
     });
   },[]);
 
@@ -1360,8 +1377,8 @@ export function LaserControlWorkspace(){
         </a>
         <small className={styles.extraMentorNote}>
           {locale==='pt-BR'
-            ?'Somente para plano Mentor ativo. As 5 sessões extras expiram junto com o período atual. Use na Kiwify o mesmo e-mail da sua conta DevinX.'
-            :'Active Mentor plan only. The 5 extra sessions expire with the current access period. Use the same email at Kiwify checkout as your DevinX account.'}
+            ?'Cada sessão pode durar até 6 horas. O Mentor começa com 10 sessões por ciclo; o pacote de +5 soma somente ao ciclo atual e expira junto com ele. Use na Kiwify o mesmo e-mail da sua conta DevinX.'
+            :'Each session can last up to 6 hours. Mentor starts with 10 sessions per cycle; the +5 pack applies only to the current cycle and expires with it. Use the same email at Kiwify checkout as your DevinX account.'}
         </small>
         {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
       </form>:<section className={styles.mentorLocked}>
@@ -1374,7 +1391,25 @@ export function LaserControlWorkspace(){
       </section>}
 
       <div className={styles.deviceGroup}>
-        <div className={styles.groupTitle}><span>{t('laser.mine')}</span><small>{ownedDevices.length}</small></div>
+        <div className={styles.groupTitle}>
+          <span>{t('laser.mine')}</span>
+          <small>{ownedDevices.filter(device=>device.device_status==='active').length}/{pcCapacity?.max_pcs??1}</small>
+        </div>
+
+        {ownerAccess&&<section className={styles.pcAddon}>
+          <span>{locale==='pt-BR'?'PC ADICIONAL':'EXTRA PC'}</span>
+          <b>{locale==='pt-BR'?'+1 PC · R$ 12,90':'+1 PC · US$ 5'}</b>
+          <p>{locale==='pt-BR'
+            ?'Cada compra acrescenta +1 PC ao limite do seu Control ou Mentor somente até o fim do período atual. A renovação do plano NÃO renova este adicional: no próximo período é preciso comprar novamente.'
+            :'Each purchase adds +1 PC to your Control or Mentor limit only until the current plan period ends. Plan renewal does NOT renew this add-on: buy it again for the next period.'}</p>
+          <a href={locale==='pt-BR'?'/api/laser-control/pc-addon-checkout':'/api/laser-control/pc-addon-checkout?region=intl'}>
+            {locale==='pt-BR'?'Adicionar +1 PC':'Add +1 PC'}
+          </a>
+          <small>{locale==='pt-BR'
+            ?'Pode repetir a compra quantas vezes precisar neste período. O adicional nunca funciona sem um plano principal ativo.'
+            :'You can repeat the purchase as many times as needed in this period. The add-on never works without an active main plan.'}</small>
+        </section>}
+
         {loading&&<span className={styles.emptyDevice}>…</span>}
         {!loading&&ownedDevices.length===0&&<span className={styles.emptyDevice}>{t('laser.noPc')}</span>}
         {ownedDevices.map(deviceCard)}
