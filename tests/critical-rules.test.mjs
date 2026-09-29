@@ -244,9 +244,12 @@ test("Mentoria tem teto duro de 6 horas no banco e leases continuam curtos",()=>
 
 test("checkout adicional segue a moeda do plano e não o idioma da interface",()=>{
   const workspace=read("src/components/LaserControlWorkspace.tsx");
+  const checkout=read("src/app/api/laser-control/pc-addon-checkout/route.ts");
   assert.ok(workspace.includes("get_laser_checkout_region"));
   assert.ok(workspace.includes("checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90'"));
   assert.equal(workspace.includes("locale==='pt-BR'?'+1 PC · R$ 12,90':'+1 PC · US$ 5'"),false);
+  assert.ok(checkout.includes("supabase.rpc('get_laser_checkout_region')"));
+  assert.equal(checkout.includes("request.nextUrl.searchParams.get('region')"),false);
 });
 
 test("Mentoria internacional credita somente o ciclo ativo e não antecipa ciclos futuros",()=>{

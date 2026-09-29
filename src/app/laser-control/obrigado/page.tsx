@@ -18,9 +18,9 @@ export default function LaserThankYouPage(){
       boxShadow:'0 28px 70px rgba(0,0,0,.28)'
     }}>
       <small style={{fontWeight:900,letterSpacing:'.14em',color:'#a9e8ff'}}>DEVINX LASER CONTROL</small>
-      <h1 style={{margin:'12px 0 10px',fontSize:'clamp(32px,6vw,54px)',lineHeight:1}}>Pagamento recebido.</h1>
+      <h1 style={{margin:'12px 0 10px',fontSize:'clamp(32px,6vw,54px)',lineHeight:1}}>Obrigado pela compra.</h1>
       <p style={{margin:0,color:'#c5d7df',fontSize:16,lineHeight:1.65}}>
-        Seu acesso é liberado pelo mesmo e-mail usado na Kiwify. Depois da compra, entre ou crie sua conta DevinX usando exatamente esse e-mail. O pacote de R$ 9,90 adiciona 5 sessões de mentoria e só funciona com um plano Mentor ativo; elas expiram junto com o período atual do Mentor.
+        Entre ou crie sua conta DevinX com o mesmo e-mail usado na Kiwify. Após a confirmação do pagamento, seu plano ou adicional será associado a esse e-mail conforme o item comprado.
       </p>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10,marginTop:24}}>
         <a href="/entrar?next=/laser-control&modo=criar" style={{
