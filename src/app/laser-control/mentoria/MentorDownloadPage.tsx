@@ -5,7 +5,7 @@ import {useI18n} from '@/i18n/provider';
 import type {Locale} from '@/i18n/catalogs';
 import styles from './page.module.css';
 
-const DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.34/DevinX-Mentoria-1.0.34.exe';
+const DOWNLOAD='https://github.com/hassan80612/DEVINX/releases/download/laser-agent-v1.0.35/DevinX-Mentoria-1.0.35.exe';
 
 const copy:Record<Locale,{
   eyebrow:string;title:string;lead:string;step1:string;step2:string;step3:string;
@@ -21,7 +21,7 @@ const copy:Record<Locale,{
     button:'Baixar acesso temporário',
     note:'O acesso não entra na inicialização do Windows e termina quando a sessão for encerrada.',
     security:'O professor só consegue conectar depois que você abrir o programa e compartilhar o código temporário.',
-    version:'DevinX Mentoria 1.0.34 · Windows 10/11 64 bits',
+    version:'DevinX Mentoria 1.0.35 · Windows 10/11 64 bits',
     language:'Idioma'
   },
   en:{
@@ -34,7 +34,7 @@ const copy:Record<Locale,{
     button:'Download temporary access',
     note:'It does not start with Windows and ends when the temporary session is closed.',
     security:'The instructor can only connect after you open the program and share the temporary code.',
-    version:'DevinX Mentoring 1.0.34 · Windows 10/11 64-bit',
+    version:'DevinX Mentoring 1.0.35 · Windows 10/11 64-bit',
     language:'Language'
   },
   es:{
@@ -47,7 +47,7 @@ const copy:Record<Locale,{
     button:'Descargar acceso temporal',
     note:'No inicia con Windows y termina cuando se cierra la sesión temporal.',
     security:'El profesor solo puede conectarse después de que abras el programa y compartas el código temporal.',
-    version:'DevinX Mentoría 1.0.34 · Windows 10/11 64 bits',
+    version:'DevinX Mentoría 1.0.35 · Windows 10/11 64 bits',
     language:'Idioma'
   },
   fr:{
@@ -60,7 +60,7 @@ const copy:Record<Locale,{
     button:'Télécharger l’accès temporaire',
     note:'Il ne démarre pas avec Windows et s’arrête à la fin de la session temporaire.',
     security:'Le formateur ne peut se connecter qu’après l’ouverture du programme et le partage du code temporaire.',
-    version:'DevinX Mentorat 1.0.34 · Windows 10/11 64 bits',
+    version:'DevinX Mentorat 1.0.35 · Windows 10/11 64 bits',
     language:'Langue'
   },
   de:{
@@ -73,7 +73,7 @@ const copy:Record<Locale,{
     button:'Temporären Zugriff herunterladen',
     note:'Das Programm startet nicht mit Windows und endet mit der temporären Sitzung.',
     security:'Der Lehrer kann sich erst verbinden, nachdem das Programm geöffnet und der temporäre Code geteilt wurde.',
-    version:'DevinX Mentoring 1.0.34 · Windows 10/11 64 Bit',
+    version:'DevinX Mentoring 1.0.35 · Windows 10/11 64 Bit',
     language:'Sprache'
   },
   ar:{
@@ -86,7 +86,7 @@ const copy:Record<Locale,{
     button:'تنزيل الوصول المؤقت',
     note:'لا يعمل تلقائياً مع بدء ويندوز وينتهي عند إنهاء الجلسة المؤقتة.',
     security:'لا يستطيع المدرّس الاتصال إلا بعد فتح البرنامج ومشاركة الرمز المؤقت.',
-    version:'DevinX Mentoria 1.0.34 · Windows 10/11 64-bit',
+    version:'DevinX Mentoria 1.0.35 · Windows 10/11 64-bit',
     language:'اللغة'
   }
 };
