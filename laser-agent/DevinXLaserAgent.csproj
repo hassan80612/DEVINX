@@ -8,6 +8,12 @@
     <AssemblyName>DevinXLaserAgent</AssemblyName>
     <RootNamespace>DevinXLaserAgent</RootNamespace>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(StoreDistribution)' == 'true'">
+    <DefineConstants>$(DefineConstants);DEVINX_STORE</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MentorOnly)' == 'true'">
+    <DefineConstants>$(DefineConstants);DEVINX_MENTOR_ONLY</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
     <PackageReference Include="Interop.UIAutomationClient" Version="10.19041.0" />

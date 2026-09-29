@@ -1,0 +1,85 @@
+name: Laser Agent Microsoft Store
+on:
+  push:
+    branches: ['codex/laser-agent-microsoft-store']
+  pull_request:
+    paths: ['laser-agent/**', 'packaging/microsoft-store/**', '.github/workflows/laser-agent-store.yml']
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: App to package
+        type: choice
+        options: [Mentoria, Agent]
+        default: Mentoria
+      identity_name:
+        description: Package/Identity/Name from Partner Center
+        required: true
+      publisher:
+        description: Package/Identity/Publisher from Partner Center
+        required: true
+      publisher_display_name:
+        description: Publisher display name from Partner Center
+        required: true
+      version:
+        description: Store version (last component must be zero)
+        default: '1.0.34.0'
+        required: true
+permissions:
+  contents: read
+jobs:
+  validate:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build existing direct EXE
+        run: dotnet build laser-agent/DevinXLaserAgent.csproj -c Release
+      - name: Check portable and Store isolation
+        shell: pwsh
+        run: ./packaging/microsoft-store/Test-Distribution.ps1
+      - name: Validate both MSIX packages
+        shell: pwsh
+        run: |
+          ./packaging/microsoft-store/Build-StorePackage.ps1 -Mode Agent -ValidationOnly
+          ./packaging/microsoft-store/Build-StorePackage.ps1 -Mode Mentoria -ValidationOnly
+      - uses: actions/upload-artifact@v4
+        with:
+          name: msix-validation-only
+          path: |
+            artifacts/store/*/*.msix
+            artifacts/store/*/*.sha256
+            artifacts/store/*/build-info.json
+          retention-days: 30
+          if-no-files-found: error
+  submission:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build with verified Store identity
+        shell: pwsh
+        env:
+          STORE_MODE: ${{ inputs.mode }}
+          STORE_IDENTITY: ${{ inputs.identity_name }}
+          STORE_PUBLISHER: ${{ inputs.publisher }}
+          STORE_DISPLAY_NAME: ${{ inputs.publisher_display_name }}
+          STORE_VERSION: ${{ inputs.version }}
+        run: |
+          ./packaging/microsoft-store/Build-StorePackage.ps1 -Mode $env:STORE_MODE -IdentityName $env:STORE_IDENTITY -Publisher $env:STORE_PUBLISHER -PublisherDisplayName $env:STORE_DISPLAY_NAME -Version $env:STORE_VERSION
+      - uses: actions/upload-artifact@v4
+        with:
+          name: microsoft-store-submission
+          path: |
+            artifacts/store/*/*.msix
+            artifacts/store/*/*.sha256
+            artifacts/store/*/build-info.json
+          retention-days: 90
+          if-no-files-found: error
