@@ -526,10 +526,9 @@ internal static class LightBurnRemoteInput
         target=IntPtr.Zero;
         reason="target_not_lightburn";
 
-        if(!LightBurnWindowCapture.TryGetLastCapturedBounds(main,out var preferred,
-            out _,out _,out _,out _))
-            LightBurnWindowCapture.TryGetInteractionBounds(main,out preferred,
-                out _,out _,out _,out _);
+        // Pointer coordinates follow the full LightBurn frame. Window focus is
+        // independent: prefer the active LightBurn dialog when one exists.
+        var preferred=FindInteractiveWindow(main);
         if(preferred==IntPtr.Zero)preferred=main;
         ActivateWindow(preferred);
         SetWindowPos(preferred,HwndTop,0,0,0,0,SwpNoMove|SwpNoSize|SwpShowWindow);
