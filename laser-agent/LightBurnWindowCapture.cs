@@ -14,7 +14,7 @@ internal static class LightBurnWindowCapture
 
     private const int DwmwaExtendedFrameBounds=9;
     private const uint PwRenderFullContent=0x00000002;
-    private const int MaxJpegBytes=165_000;
+    private const int MaxJpegBytes=90_000;
     private static IntPtr _lastDialog=IntPtr.Zero;
     private static readonly object LastCaptureGate=new();
     private static IntPtr _lastCapturedTarget=IntPtr.Zero;
@@ -55,7 +55,10 @@ internal static class LightBurnWindowCapture
 
         var handle=FindLightBurnWindow();
         if(handle==IntPtr.Zero||IsIconic(handle)||!IsWindowVisible(handle))return null;
-        if(!TryGetInteractionBounds(handle,out var captureHandle,out var left,out var top,out var width,out var height))return null;
+
+        // Always stream the full LightBurn window. Modal dialogs stay visible in
+        // context instead of replacing the entire remote view.
+        if(!TryGetPhysicalBounds(handle,out var left,out var top,out var width,out var height))return null;
         if(width<200||height<150||width>10000||height>10000)return null;
 
         using var source=new Bitmap(width,height,PixelFormat.Format24bppRgb);
@@ -64,25 +67,20 @@ internal static class LightBurnWindowCapture
 
         try
         {
-            using var graphics=Graphics.FromImage(source);
-
             if(sameProcess)
             {
-                // Fast path: preserve the existing low-latency screen capture while
-                // LightBurn (or one of its dialogs) is the foreground application.
+                using var graphics=Graphics.FromImage(source);
+                // CopyFromScreen includes the active LightBurn modal exactly where
+                // it appears over the main window.
                 graphics.CopyFromScreen(left,top,0,0,new Size(width,height),CopyPixelOperation.SourceCopy);
             }
             else
             {
-                // Background path: capture the LightBurn HWND itself instead of
-                // whatever app the user is currently using. This avoids the DevinX
-                // mirror loop without forcing LightBurn on top of the desktop.
-                var hdc=graphics.GetHdc();
-                try
-                {
-                    if(!PrintWindow(captureHandle,hdc,PwRenderFullContent))return null;
-                }
-                finally{graphics.ReleaseHdc(hdc);}
+                // Keep LightBurn capturable when the student uses another app.
+                // Print the main HWND, then composite an active LightBurn dialog
+                // back into its real screen position when one exists.
+                if(!PrintWindowInto(source,handle))return null;
+                OverlayActiveDialog(handle,source,left,top);
             }
         }
         catch{return null;}
@@ -92,7 +90,7 @@ internal static class LightBurnWindowCapture
         var capturedAt=DateTimeOffset.UtcNow;
         lock(LastCaptureGate)
         {
-            _lastCapturedTarget=captureHandle;
+            _lastCapturedTarget=handle;
             _lastCapturedLeft=left;
             _lastCapturedTop=top;
             _lastCapturedWidth=width;
@@ -102,9 +100,33 @@ internal static class LightBurnWindowCapture
         return new CapturedPreview(encoded.Value.Bytes,encoded.Value.Width,encoded.Value.Height,capturedAt);
     }
 
+    private static bool PrintWindowInto(Bitmap target,IntPtr handle)
+    {
+        using var graphics=Graphics.FromImage(target);
+        var hdc=graphics.GetHdc();
+        try{return PrintWindow(handle,hdc,PwRenderFullContent);}
+        finally{graphics.ReleaseHdc(hdc);}
+    }
+
+    private static void OverlayActiveDialog(IntPtr main,Bitmap target,int mainLeft,int mainTop)
+    {
+        if(!TryGetInteractionBounds(main,out var dialog,
+            out var left,out var top,out var width,out var height)
+           ||dialog==main||width<100||height<70)
+            return;
+
+        using var dialogBitmap=new Bitmap(width,height,PixelFormat.Format24bppRgb);
+        if(!PrintWindowInto(dialogBitmap,dialog))return;
+
+        using var graphics=Graphics.FromImage(target);
+        graphics.DrawImageUnscaled(dialogBitmap,left-mainLeft,top-mainTop);
+    }
+
     private static (byte[] Bytes,int Width,int Height)? EncodeAdaptive(Bitmap source)
     {
-        foreach(var width in new[]{1440,1280,1120,960})
+        // Prefer smaller, faster frames. LightBurn is mostly high-contrast UI, so
+        // this remains readable while substantially reducing upload time.
+        foreach(var width in new[]{1280,1120,960,840,720})
         {
             Bitmap? resized=null;
             Bitmap output=source;
@@ -121,7 +143,7 @@ internal static class LightBurnWindowCapture
 
             try
             {
-                foreach(var quality in new long[]{58,50,43,36})
+                foreach(var quality in new long[]{55,48,42,36,30})
                 {
                     var bytes=EncodeJpeg(output,quality);
                     if(bytes.Length is>=100 and<=MaxJpegBytes)
@@ -189,9 +211,8 @@ internal static class LightBurnWindowCapture
         return width>0&&height>0;
     }
 
-    // A modal window can sit outside the main window. Capture that window on its
-    // own so the same normalized coordinates are used by remote pointer input.
-    // Never include the desktop between two windows in the stream.
+    // Track the active LightBurn dialog for interaction/compositing while the
+    // streamed coordinate space remains the full main LightBurn window.
     public static bool TryGetInteractionBounds(
         IntPtr main,out IntPtr target,
         out int left,out int top,out int width,out int height)
