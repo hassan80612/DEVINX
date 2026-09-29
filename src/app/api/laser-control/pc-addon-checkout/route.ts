@@ -1,6 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
-import {createServerSupabaseClient} from '@/lib/supabase/server';
 
 export const dynamic='force-dynamic';
 
@@ -15,10 +14,6 @@ export async function GET(request:NextRequest){
   if(!access.isAdmin&&!access.ownerAccess)
     return NextResponse.redirect(new URL('/laser-control/conhecer?acesso=necessario#planos',request.url),307);
 
-  const supabase=await createServerSupabaseClient();
-  const{data:region,error}=await supabase.rpc('get_laser_checkout_region');
-  if(error||(region!=='br'&&region!=='intl'))
-    return NextResponse.redirect(new URL('/laser-control?checkout=indisponivel',request.url),307);
-
-  return NextResponse.redirect(region==='intl'?INTL_CHECKOUT:BR_CHECKOUT,307);
+  const intl=request.nextUrl.searchParams.get('region')==='intl';
+  return NextResponse.redirect(intl?INTL_CHECKOUT:BR_CHECKOUT,307);
 }

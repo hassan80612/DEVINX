@@ -81,7 +81,7 @@ const MOBILE_KEY_ROWS=[
 export function LaserControlWorkspace(){
   const{t,locale}=useI18n();
   const nav=WORKSPACE_NAV[locale];
-  const[checkoutRegion,setCheckoutRegion]=useState<'br'|'intl'|null>(null);
+  const internationalPricing=locale!=='pt-BR';
   const[devices,setDevices]=useState<LaserDevice[]>([]);
   const[selectedDeviceId,setSelectedDeviceId]=useState<string|null>(null);
   const[loading,setLoading]=useState(true);
@@ -166,10 +166,9 @@ export function LaserControlWorkspace(){
     const supabase=createClient();
 
     async function loadAccessMeta(){
-      const[accessResult,capacityResult,regionResult]=await Promise.all([
+      const[accessResult,capacityResult]=await Promise.all([
         supabase.rpc('get_laser_access_status'),
-        supabase.rpc('get_laser_pc_capacity'),
-        supabase.rpc('get_laser_checkout_region')
+        supabase.rpc('get_laser_pc_capacity')
       ]);
       const accessData=accessResult?.data;
       const accessRow=Array.isArray(accessData)?accessData[0]:accessData;
@@ -179,7 +178,6 @@ export function LaserControlWorkspace(){
       const capacityData=capacityResult?.data;
       const capacityRow=Array.isArray(capacityData)?capacityData[0]:capacityData;
       setPcCapacity(capacityRow?(capacityRow as PcCapacity):null);
-      setCheckoutRegion(!regionResult.error&&(regionResult.data==='br'||regionResult.data==='intl')?regionResult.data:null);
 
     }
 
@@ -1397,9 +1395,9 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
-        {checkoutRegion?<a className={styles.extraMentorButton} href={checkoutRegion==='intl'?'https://pay.kiwify.com/2sFxGp1?region=intl':'https://pay.kiwify.com.br/2Td87KB'} target="_blank" rel="noreferrer">
-          {nav.mentorPack} · {checkoutRegion==='intl'?'US$ 7.50':'R$ 9,90'}
-        </a>:<span className={styles.extraMentorButton} aria-disabled="true">{nav.mentorPack} · …</span>}
+        <a className={styles.extraMentorButton} href={internationalPricing?'https://pay.kiwify.com/2sFxGp1?region=intl':'https://pay.kiwify.com.br/2Td87KB'} target="_blank" rel="noreferrer">
+          {nav.mentorPack} · {internationalPricing?'US$ 7.50':'R$ 9,90'}
+        </a>
         <small className={styles.extraMentorNote}>{nav.mentorNote}</small>
         {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
       </form>:<section className={styles.mentorLocked}>
@@ -1417,10 +1415,11 @@ export function LaserControlWorkspace(){
 
         {ownerAccess&&<section className={styles.pcAddon}>
           <span>{nav.pcTag}</span>
-          <b>{checkoutRegion?checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90':'+1 PC · …'}</b>
+          <b>{internationalPricing?'+1 PC · US$ 5':'+1 PC · R$ 12,90'}</b>
           <p>{nav.pcDescription}</p>
-          {checkoutRegion?<a href="/api/laser-control/pc-addon-checkout">{nav.addPc}</a>
-            :<span aria-disabled="true">{nav.addPc} · …</span>}
+          <a href={internationalPricing?'/api/laser-control/pc-addon-checkout?region=intl':'/api/laser-control/pc-addon-checkout'}>
+            {nav.addPc}
+          </a>
           <small>{nav.pcSmall}</small>
         </section>}
 
