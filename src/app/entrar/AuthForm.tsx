@@ -24,6 +24,14 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
     de:'Laser-Control-Pläne ansehen',
     ar:'عرض خطط Laser Control'
   }[locale];
+  const laserLoginDescription={
+    'pt-BR':'Entre para acessar o DevinX Laser Control.',
+    en:'Sign in to access DevinX Laser Control.',
+    es:'Inicia sesión para acceder a DevinX Laser Control.',
+    fr:'Connectez-vous pour accéder à DevinX Laser Control.',
+    de:'Melden Sie sich an, um DevinX Laser Control zu öffnen.',
+    ar:'سجّل الدخول للوصول إلى DevinX Laser Control.'
+  }[locale];
   const[mode,setMode]=useState<Mode>(initialError?'recuperar':initialTrial?'criar':'entrar');
   const[trialFlow,setTrialFlow]=useState(initialTrial);const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[showPassword,setShowPassword]=useState(false);const[message,setMessage]=useState(initialError? t('auth.errorExpired'):'');const[messageKind,setMessageKind]=useState<MessageKind>(initialError?'error':'idle');const[pending,setPending]=useState(false);const[purchaseApproved,setPurchaseApproved]=useState(false);
 
@@ -52,7 +60,7 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
     <header className="authTop"><Link className="brand" href="/"><BrandLogo/></Link><LanguageMenu/></header>
     {purchaseApproved&&<section className="purchaseReturnNotice"><span>✓</span><div><b>{t('auth.purchaseApprovedTitle')}</b><p>{t('auth.purchaseApprovedText')}</p></div></section>}
     <section className="authCard">
-      <div className="authIntro"><span className="goldPill">{laserMode?'DEVINX LASER CONTROL':'DEVINX'}</span><h1>{mode==='entrar'?t('auth.titleLogin'):mode==='criar'?(trialFlow?t('trial.title'):t('auth.titleCreate')):t('auth.titleRecover')}</h1><p>{mode==='entrar'?t('auth.loginDesc'):mode==='criar'?(trialFlow?t('trial.desc'):t('auth.createDesc')):t('auth.recoverDesc')}</p>{trialFlow&&<small>{t('trial.noCard')}</small>}</div>
+      <div className="authIntro"><span className="goldPill">{laserMode?'DEVINX LASER CONTROL':'DEVINX'}</span><h1>{mode==='entrar'?t('auth.titleLogin'):mode==='criar'?(trialFlow?t('trial.title'):t('auth.titleCreate')):t('auth.titleRecover')}</h1><p>{mode==='entrar'?(laserMode?laserLoginDescription:t('auth.loginDesc')):mode==='criar'?(trialFlow?t('trial.desc'):t('auth.createDesc')):t('auth.recoverDesc')}</p>{trialFlow&&<small>{t('trial.noCard')}</small>}</div>
       {mode!=='recuperar'&&<div className="authTabs"><button type="button" className={mode==='entrar'?'active':''} onClick={()=>changeMode('entrar')}>{t('auth.login')}</button><button type="button" className={mode==='criar'&&!trialFlow?'active':''} onClick={()=>changeMode('criar')}>{t('auth.create')}</button></div>}
       {mode==='entrar'&&!laserMode&&<button className="secondary authTrialButton" type="button" onClick={startTrial}>{t('trial.cta')}</button>}
       <form onSubmit={handleSubmit} className="authForm">
