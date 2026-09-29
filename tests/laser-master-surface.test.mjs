@@ -25,16 +25,19 @@ test('Laser public pages own their canonical and social metadata',async()=>{
   assert.match(mentor,/robots:\{index:false,follow:false,nocache:true\}/);
 });
 
-test('real Laser Control panel is mounted in AdminMaster and in the entitlement-gated Laser route',async()=>{
+test('Laser admin stays inside Laser Control and the workspace remains entitlement-gated',async()=>{
   const admin=await readFile('src/components/AdminMaster.tsx','utf8');
   const finance=await readFile('src/components/FinanceHub.tsx','utf8');
   const route=await readFile('src/app/laser-control/page.tsx','utf8');
-  assert.match(admin,/LaserControlMasterPanel/);
-  assert.match(admin,/LASER CONTROL/);
-  assert.doesNotMatch(finance,/LaserControlMasterPanel/);
+  const laserAdmin=await readFile('src/components/LaserAdminPanel.tsx','utf8');
+  assert.doesNotMatch(admin,/LaserControlWorkspace/);
   assert.match(finance,/section==='master'&&access\.is_admin&&<AdminMaster\/>/);
+  assert.match(route,/LaserAdminPanel/);
+  assert.match(route,/access\.isAdmin&&<LaserAdminPanel\/>/);
   assert.match(route,/LaserControlWorkspace/);
   assert.match(route,/getLaserControlAccess/);
+  assert.match(laserAdmin,/admin_set_laser_access_by_email/);
+  assert.match(laserAdmin,/admin_list_laser_customers/);
 });
 
 test('Laser commands remain disabled in legacy public-facing master integration',async()=>{
