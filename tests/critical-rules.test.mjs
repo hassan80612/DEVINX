@@ -183,7 +183,7 @@ test("PC adicional do Laser fica dentro da conta e expira com o ciclo atual",()=
   assert.ok(workspace.includes("+1 PC · US$ 5"));
   assert.ok(workspace.includes("A renovação do plano NÃO renova este adicional"));
   assert.ok(workspace.includes("get_laser_pc_capacity"));
-  assert.ok(workspace.includes("get_laser_checkout_region"));
+  assert.ok(workspace.includes("internationalPricing=locale!=='pt-BR'"));
   assert.ok(checkout.includes("IdNEzcp"));
   assert.ok(checkout.includes("PR4BNpa"));
   assert.ok(checkout.includes("!access.isAdmin&&!access.ownerAccess"));
@@ -242,14 +242,15 @@ test("Mentoria tem teto duro de 6 horas no banco e leases continuam curtos",()=>
 
 
 
-test("checkout adicional segue a moeda do plano e não o idioma da interface",()=>{
+test("checkouts dos adicionais seguem o idioma da interface",()=>{
   const workspace=read("src/components/LaserControlWorkspace.tsx");
   const checkout=read("src/app/api/laser-control/pc-addon-checkout/route.ts");
-  assert.ok(workspace.includes("get_laser_checkout_region"));
-  assert.ok(workspace.includes("checkoutRegion==='intl'?'+1 PC · US$ 5':'+1 PC · R$ 12,90'"));
-  assert.equal(workspace.includes("locale==='pt-BR'?'+1 PC · R$ 12,90':'+1 PC · US$ 5'"),false);
-  assert.ok(checkout.includes("supabase.rpc('get_laser_checkout_region')"));
-  assert.equal(checkout.includes("request.nextUrl.searchParams.get('region')"),false);
+  assert.ok(workspace.includes("internationalPricing=locale!=='pt-BR'"));
+  assert.ok(workspace.includes("internationalPricing?'+1 PC · US$ 5':'+1 PC · R$ 12,90'"));
+  assert.ok(workspace.includes("internationalPricing?'US$ 7.50':'R$ 9,90'"));
+  assert.ok(workspace.includes("internationalPricing?'/api/laser-control/pc-addon-checkout?region=intl':'/api/laser-control/pc-addon-checkout'"));
+  assert.ok(checkout.includes("request.nextUrl.searchParams.get('region')==='intl'"));
+  assert.ok(checkout.includes("intl?INTL_CHECKOUT:BR_CHECKOUT"));
 });
 
 test("Mentoria internacional credita somente o ciclo ativo e não antecipa ciclos futuros",()=>{
