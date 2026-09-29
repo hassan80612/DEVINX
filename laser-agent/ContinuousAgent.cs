@@ -9,7 +9,7 @@ internal sealed class ContinuousAgent
     private static readonly TimeSpan OnlineKeepAlive=TimeSpan.FromSeconds(10);
     private static readonly TimeSpan OfflineKeepAlive=TimeSpan.FromSeconds(30);
     private static readonly TimeSpan InactiveAccessRetry=TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan FrameInterval=TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan FrameInterval=TimeSpan.FromMilliseconds(125);
     private static readonly TimeSpan UnchangedFrameKeepAlive=TimeSpan.FromSeconds(3);
 
     private readonly AgentIdentity _identity;
@@ -392,17 +392,11 @@ internal sealed class ContinuousAgent
         string? lastHash=null;
         var lastSent=DateTimeOffset.MinValue;
         long sequence=0;
-        var nextFocusLock=DateTimeOffset.MinValue;
 
         while(!cancellationToken.IsCancellationRequested&&realtime.IsConnected)
         {
             try
             {
-                if(DateTimeOffset.UtcNow>=nextFocusLock)
-                {
-                    nextFocusLock=DateTimeOffset.UtcNow.AddSeconds(1);
-                }
-
                 var frame=LightBurnWindowCapture.TryCapture();
                 if(frame is not null)
                 {
@@ -412,9 +406,13 @@ internal sealed class ContinuousAgent
 
                     if(changed||keepAlive)
                     {
-                        await realtime.SendFrameAsync(frame,Interlocked.Increment(ref sequence),cancellationToken);
-                        lastHash=hash;
-                        lastSent=DateTimeOffset.UtcNow;
+                        var sent=await realtime.SendFrameAsync(
+                            frame,Interlocked.Increment(ref sequence),cancellationToken);
+                        if(sent)
+                        {
+                            lastHash=hash;
+                            lastSent=DateTimeOffset.UtcNow;
+                        }
                     }
                 }
             }
