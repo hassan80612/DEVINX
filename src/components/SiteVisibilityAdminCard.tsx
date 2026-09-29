@@ -5,7 +5,6 @@ import {createClient} from '@/lib/supabase/client';
 import styles from './SiteVisibilityAdminCard.module.css';
 
 export function SiteVisibilityAdminCard(){
-  const[laser,setLaser]=useState(false);
   const[finance,setFinance]=useState(true);
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState<string|null>(null);
@@ -17,7 +16,6 @@ export function SiteVisibilityAdminCard(){
     const{data,error}=await supabase.rpc('admin_get_site_visibility');
     if(!error){
       const row=Array.isArray(data)?data[0]:data;
-      setLaser(Boolean(row?.laser_public_visible));
       setFinance(row?.finance_public_visible!==false);
     }
     setLoading(false);
@@ -25,20 +23,19 @@ export function SiteVisibilityAdminCard(){
 
   useEffect(()=>{void load()},[]);
 
-  async function update(kind:'laser'|'finance',value:boolean){
+  async function update(kind:'finance',value:boolean){
     setSaving(kind);
     setNotice('');
     const supabase=createClient();
     const{error}=await supabase.rpc('admin_update_site_visibility',{
-      p_laser_public_visible:kind==='laser'?value:null,
-      p_finance_public_visible:kind==='finance'?value:null
+      p_laser_public_visible:null,
+      p_finance_public_visible:value
     });
 
     if(error){
       setNotice('Não foi possível alterar a visibilidade.');
     }else{
-      if(kind==='laser')setLaser(value);
-      else setFinance(value);
+      setFinance(value);
       setNotice(value?'Publicado na home.':'Oculto da home.');
     }
     setSaving(null);
@@ -58,17 +55,11 @@ export function SiteVisibilityAdminCard(){
       <article>
         <div>
           <b>Laser Control</b>
-          <span>{laser?'Visível na home':'Oculto da home · acesso master continua ativo'}</span>
+          <span>Visível na home · publicação permanente</span>
         </div>
         <div className={styles.actions}>
           <a href="/laser-control">Abrir Laser Control</a>
           <a href="/laser-control/guia">Abrir guia</a>
-          <button
-            type="button"
-            disabled={saving!==null}
-            className={laser?styles.hideButton:styles.showButton}
-            onClick={()=>void update('laser',!laser)}
-          >{saving==='laser'?'Salvando…':laser?'Esconder':'Divulgar'}</button>
         </div>
       </article>
 
