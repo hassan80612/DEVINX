@@ -19,6 +19,34 @@ function statusKey(status:string){
   return 'common.none';
 }
 
+function isFinanceCustomer(customer:Customer){
+  return Boolean(
+    customer.onboarded_at||
+    customer.access_status!=='none'||
+    customer.access_source!=='none'||
+    customer.manual_grant||
+    customer.kiwify_customer||
+    customer.plan_name||
+    customer.expires_at
+  );
+}
+
+function financeFunnel(customers:Customer[]):Funnel{
+  const cutoff=Date.now()-7*24*60*60*1000;
+  return {
+    total_customers:customers.length,
+    total_accounts:customers.filter(c=>c.account_exists).length,
+    onboarded:customers.filter(c=>Boolean(c.onboarded_at)).length,
+    signed_in_7d:customers.filter(c=>c.last_sign_in_at&&Date.parse(c.last_sign_in_at)>=cutoff).length,
+    active_access:customers.filter(c=>c.access_status==='active').length,
+    blocked_access:customers.filter(c=>c.access_status==='blocked').length,
+    pending_signup:customers.filter(c=>!c.account_exists).length,
+    kiwify_customers:customers.filter(c=>c.kiwify_customer).length,
+    manual_grants:customers.filter(c=>c.manual_grant||c.access_source==='manual').length,
+    no_access:customers.filter(c=>c.access_status==='none').length
+  };
+}
+
 export function AdminMaster(){
   const{t,date,locale}=useI18n();
   const[funnel,setFunnel]=useState<Funnel|null>(null);
@@ -57,17 +85,16 @@ export function AdminMaster(){
   async function load(){
     setLoading(true);
     const s=createClient();
-    const[f,cfg,list,attempts]=await Promise.all([
-      s.rpc('admin_get_devinx_customer_funnel'),
+    const[cfg,list,attempts]=await Promise.all([
       s.rpc('admin_get_devinx_settings'),
       s.rpc('admin_list_devinx_customers'),
       s.rpc('admin_list_kiwify_webhook_attempts')
     ]);
-    if(f.error||cfg.error||list.error){setNotice(t('master.unauthorized'));setLoading(false);return}
-    const fr=Array.isArray(f.data)?f.data[0]:f.data;
+    if(cfg.error||list.error){setNotice(t('master.unauthorized'));setLoading(false);return}
     const cr=Array.isArray(cfg.data)?cfg.data[0]:cfg.data;
-    setFunnel(fr as Funnel);
-    setCustomers((list.data||[]) as Customer[]);
+    const financeCustomers=((list.data||[]) as Customer[]).filter(isFinanceCustomer);
+    setFunnel(financeFunnel(financeCustomers));
+    setCustomers(financeCustomers);
     setWebhookAttempts((attempts.data||[]) as WebhookAttempt[]);
     setSubscriptionRequired(!!cr?.subscription_required);
     setCheckout(cr?.checkout_url||'');
