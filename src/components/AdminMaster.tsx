@@ -85,14 +85,25 @@ export function AdminMaster(){
   async function load(){
     setLoading(true);
     const s=createClient();
-    const[cfg,list,attempts]=await Promise.all([
+    const[cfg,list,attempts,laserList]=await Promise.all([
       s.rpc('admin_get_devinx_settings'),
       s.rpc('admin_list_devinx_customers'),
-      s.rpc('admin_list_kiwify_webhook_attempts')
+      s.rpc('admin_list_kiwify_webhook_attempts'),
+      s.rpc('admin_list_laser_customers')
     ]);
     if(cfg.error||list.error){setNotice(t('master.unauthorized'));setLoading(false);return}
     const cr=Array.isArray(cfg.data)?cfg.data[0]:cfg.data;
-    const financeCustomers=((list.data||[]) as Customer[]).filter(isFinanceCustomer);
+    const rawCustomers=(list.data||[]) as Customer[];
+    const laserCustomers=laserList.error?[]:(laserList.data||[]) as Array<{email?:string|null;user_id?:string|null}>;
+    const laserUserIds=new Set(laserCustomers.map(c=>c.user_id).filter((id):id is string=>Boolean(id)));
+    const laserEmails=new Set(laserCustomers.map(c=>String(c.email||'').trim().toLowerCase()).filter(Boolean));
+    const financeCustomers=rawCustomers.filter(customer=>{
+      const belongsToLaser=Boolean(
+        (customer.user_id&&laserUserIds.has(customer.user_id))||
+        laserEmails.has(customer.email.trim().toLowerCase())
+      );
+      return !belongsToLaser||isFinanceCustomer(customer);
+    });
     setFunnel(financeFunnel(financeCustomers));
     setCustomers(financeCustomers);
     setWebhookAttempts((attempts.data||[]) as WebhookAttempt[]);
