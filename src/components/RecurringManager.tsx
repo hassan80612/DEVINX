@@ -20,6 +20,30 @@ type Bill=RecurringBillLike&{
 type Payment=RecurringPaymentLike&{id:string;paid_on:string};
 type Override=RecurringOverrideLike&{id:string};
 const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
+function distributeBulkTotal(remainings:number[],total:number){
+  const original=remainings.reduce((sum,value)=>sum+value,0);
+  if(total<=0||total>original||remainings.length===0||remainings.some(value=>value<=0)||total<remainings.length)return null;
+  if(total===original)return[...remainings];
+  const result=remainings.map(()=>1);
+  let left=total-remainings.length;
+  if(left===0)return result;
+  const capacities=remainings.map(value=>value-1);
+  const capacityTotal=capacities.reduce((sum,value)=>sum+value,0);
+  if(capacityTotal<=0)return null;
+  const raw=capacities.map(capacity=>left*capacity/capacityTotal);
+  raw.forEach((share,index)=>{const extra=Math.min(capacities[index],Math.floor(share));result[index]+=extra});
+  let remainder=total-result.reduce((sum,value)=>sum+value,0);
+  const order=raw.map((share,index)=>({index,fraction:share-Math.floor(share)})).sort((a,b)=>b.fraction-a.fraction);
+  while(remainder>0){
+    let progressed=false;
+    for(const item of order){
+      if(remainder<=0)break;
+      if(result[item.index]<remainings[item.index]){result[item.index]++;remainder--;progressed=true}
+    }
+    if(!progressed)return null;
+  }
+  return result;
+}
 function monthEnd(month:string){
   const d=new Date(month.slice(0,7)+'-01T12:00:00');
   const last=new Date(d.getFullYear(),d.getMonth()+1,0);
@@ -63,8 +87,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   const[expandedBills,setExpandedBills]=useState<Set<string>>(new Set());
   const[selectedInstallments,setSelectedInstallments]=useState<Set<string>>(new Set());
   const[bulkOpen,setBulkOpen]=useState(false);
-  const[bulkAmounts,setBulkAmounts]=useState<Record<string,string>>({});
-  const[bulkSettle,setBulkSettle]=useState<Record<string,boolean>>({});
+  const[bulkTotal,setBulkTotal]=useState('');
   const[bulkPaidOn,setBulkPaidOn]=useState(localDateISO());
 
   const[monthBill,setMonthBill]=useState<Bill|null>(null);
@@ -164,34 +187,29 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   }
   function openBulkPayment(){
     if(selectedRows.length===0)return;
-    const amounts:Record<string,string>={},settles:Record<string,boolean>={};
-    selectedRows.forEach(row=>{amounts[row.key]=String(row.remaining/100).replace('.',',');settles[row.key]=true});
-    setBulkAmounts(amounts);setBulkSettle(settles);setBulkPaidOn(localDateISO());setBulkOpen(true);setNotice('');
+    setBulkTotal(String(selectedOpenTotal/100).replace('.',','));setBulkPaidOn(localDateISO());setBulkOpen(true);setNotice('');
   }
-  const bulkSummary=useMemo(()=>selectedRows.reduce((sum,row)=>{
-    const amount=minor(bulkAmounts[row.key]||'0');
-    const settle=bulkSettle[row.key]!==false;
-    sum.original+=row.remaining;sum.paid+=Math.max(0,amount);
-    if(settle&&amount>=0&&amount<row.remaining)sum.discount+=row.remaining-amount;
-    return sum;
-  },{original:0,paid:0,discount:0}),[selectedRows,bulkAmounts,bulkSettle]);
+  const bulkPaidAmount=useMemo(()=>minor(bulkTotal||'0'),[bulkTotal]);
+  const bulkSummary=useMemo(()=>({
+    original:selectedOpenTotal,
+    paid:Math.max(0,bulkPaidAmount),
+    discount:Math.max(0,selectedOpenTotal-Math.max(0,bulkPaidAmount))
+  }),[selectedOpenTotal,bulkPaidAmount]);
 
   async function saveBulkPayments(e:FormEvent){
     e.preventDefault();
     if(selectedRows.length===0)return;
-    const items=selectedRows.map(row=>({
-      bill_id:row.bill.id,due_month:row.month,amount_minor:minor(bulkAmounts[row.key]||'0'),
-      settle:bulkSettle[row.key]!==false
+    const allocations=distributeBulkTotal(selectedRows.map(row=>row.remaining),bulkPaidAmount);
+    if(!allocations){setNotice(t('payment.bulkInvalid'));return}
+    const items=selectedRows.map((row,index)=>({
+      bill_id:row.bill.id,due_month:row.month,amount_minor:allocations[index],settle:true
     }));
-    if(items.some((item,index)=>item.amount_minor<=0||item.amount_minor>selectedRows[index].remaining)){
-      setNotice(t('payment.bulkInvalid'));return;
-    }
     setSavingAction('payment');
     try{
       const s=createClient();
       const{error}=await s.rpc('register_recurring_bill_batch',{p_items:items,p_paid_on:bulkPaidOn});
       if(error){setNotice(t('common.errorSave'));return}
-      setBulkOpen(false);setSelectedInstallments(new Set());setBulkAmounts({});setBulkSettle({});
+      setBulkOpen(false);setSelectedInstallments(new Set());setBulkTotal('');
       setNotice(t('payment.bulkSaved'));notifyFinanceUpdated();await load();
     }finally{setSavingAction('')}
   }
@@ -442,11 +460,10 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
 
     {bulkOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setBulkOpen(false)}}><form className="modalCard bulkPaymentModal" onSubmit={saveBulkPayments}>
       <div className="modalHead"><h2>{t('payment.paySelected')}</h2><button type="button" onClick={()=>setBulkOpen(false)}>×</button></div>
-      <div className="bulkPaymentSummary"><span><small>{t('payment.selectedTotal')}</small><b>{currency(bulkSummary.original)}</b></span><span><small>{t('payment.actualPaid')}</small><b>{currency(bulkSummary.paid)}</b></span><span><small>{t('payment.discount')}</small><b className="positive">{currency(bulkSummary.discount)}</b></span></div>
-      <div className="bulkPaymentRows">{selectedRows.map(row=><div className="bulkPaymentRow" key={row.key}>
-        <div className="bulkPaymentIdentity"><b>{row.bill.name}{row.number?' · '+row.number+'/'+row.bill.installment_count:''}</b><small>{date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})} · {t('payment.openValue')} {currency(row.remaining)}</small></div>
-        <label>{t('payment.actualPaid')}<input value={bulkAmounts[row.key]||''} onChange={e=>setBulkAmounts(prev=>({...prev,[row.key]:e.target.value}))} inputMode="decimal" required/></label>
-        <label className="bulkSettleCheck"><input type="checkbox" checked={bulkSettle[row.key]!==false} onChange={e=>setBulkSettle(prev=>({...prev,[row.key]:e.target.checked}))}/><span><b>{t('payment.settleInstallment')}</b><small>{t('payment.settleInstallmentHelp')}</small></span></label>
+      <div className="bulkPaymentSummary"><span><small>{t('payment.selectedTotal')}</small><b>{currency(bulkSummary.original)}</b></span><label className="bulkTotalEditor"><small>{t('payment.actualPaid')}</small><input value={bulkTotal} onChange={e=>setBulkTotal(e.target.value)} inputMode="decimal" autoFocus required/></label><span><small>{t('payment.discount')}</small><b className="positive">{currency(bulkSummary.discount)}</b></span></div>
+      <div className="bulkPaymentRows">{selectedRows.map(row=><div className="bulkPaymentRow bulkPaymentReviewRow" key={row.key}>
+        <div className="bulkPaymentIdentity"><b>{row.bill.name}{row.number?' · '+row.number+'/'+row.bill.installment_count:''}</b><small>{date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small></div>
+        <strong>{currency(row.remaining)}</strong>
       </div>)}</div>
       <label>{t('common.date')}<input type="date" value={bulkPaidOn} onChange={e=>setBulkPaidOn(e.target.value)} required/></label>
       <div className="modalActions"><button type="button" className="secondary" onClick={()=>setBulkOpen(false)}>{t('common.cancel')}</button><button className="primary" disabled={savingAction==='payment'} aria-busy={savingAction==='payment'}>{savingAction==='payment'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div>
