@@ -367,6 +367,7 @@ export function LaserControlWorkspace(){
 
   useEffect(()=>{
     if(!session?.topic)return;
+    const currentSession=session;
     const supabase=createClient();
     lastFrameSeqRef.current=0;
     setRealtimeStatus('connecting');
@@ -420,7 +421,7 @@ export function LaserControlWorkspace(){
           if(!candidate)return;
           const json=candidate.toJSON();
           void sendWebRtcSignal('webrtc_ice',{
-            token:session.frameToken,from:'browser',
+            token:currentSession.frameToken,from:'browser',
             candidate:json.candidate,sdpMid:json.sdpMid,
             sdpMLineIndex:json.sdpMLineIndex
           }).catch(()=>undefined);
@@ -447,14 +448,14 @@ export function LaserControlWorkspace(){
         const offer=await nextPeer.createOffer();
         await nextPeer.setLocalDescription(offer);
         await sendWebRtcSignal('webrtc_offer',{
-          token:session.frameToken,from:'browser',
+          token:currentSession.frameToken,from:'browser',
           sdp:nextPeer.localDescription?.sdp||offer.sdp
         });
 
         peerTimeout=window.setTimeout(()=>{
           if(peer!==nextPeer||nextPeer.connectionState==='connected')return;
           void sendWebRtcSignal('webrtc_stop',{
-            token:session.frameToken,from:'browser'
+            token:currentSession.frameToken,from:'browser'
           }).catch(()=>undefined);
           closePeer(true);
         },6_500);
@@ -463,7 +464,7 @@ export function LaserControlWorkspace(){
 
     channel
       .on('broadcast',{event:'frame'},({payload}:any)=>{
-        if(payload?.token!==session.frameToken)return;
+        if(payload?.token!==currentSession.frameToken)return;
         const seq=Number(payload?.seq||0);
         if(seq<=lastFrameSeqRef.current)return;
         const jpeg=String(payload?.jpeg||'');
@@ -478,7 +479,7 @@ export function LaserControlWorkspace(){
         setRealtimeStatus('live');
       })
       .on('broadcast',{event:'webrtc_answer'},async({payload}:any)=>{
-        if(payload?.token!==session.frameToken||payload?.from!=='agent'||!peer)return;
+        if(payload?.token!==currentSession.frameToken||payload?.from!=='agent'||!peer)return;
         const sdp=String(payload?.sdp||'');
         if(!sdp)return;
         try{
@@ -491,7 +492,7 @@ export function LaserControlWorkspace(){
         }catch{closePeer(true);}
       })
       .on('broadcast',{event:'webrtc_ice'},async({payload}:any)=>{
-        if(payload?.token!==session.frameToken||payload?.from!=='agent'||!peer)return;
+        if(payload?.token!==currentSession.frameToken||payload?.from!=='agent'||!peer)return;
         const candidate=String(payload?.candidate||'');
         if(!candidate)return;
         const init:RTCIceCandidateInit={
@@ -503,12 +504,12 @@ export function LaserControlWorkspace(){
         try{await peer.addIceCandidate(init);}catch{}
       })
       .on('broadcast',{event:'webrtc_state'},({payload}:any)=>{
-        if(payload?.token!==session.frameToken||payload?.from!=='agent')return;
+        if(payload?.token!==currentSession.frameToken||payload?.from!=='agent')return;
         if(payload?.state==='connected')setRealtimeStatus('live');
         else if(payload?.state==='fallback')setWebRtcActive(false);
       })
       .on('broadcast',{event:'agent_state'},({payload}:any)=>{
-        if(payload?.token!==session.frameToken)return;
+        if(payload?.token!==currentSession.frameToken)return;
         if(payload?.state==='control-ready'){inputReadyRef.current=true;setInputReady(true);}
         if(payload?.state==='preview-ready'){
           inputReadyRef.current=false;setInputReady(false);
@@ -516,7 +517,7 @@ export function LaserControlWorkspace(){
         }
       })
       .on('broadcast',{event:'input_result'},({payload}:any)=>{
-        if(payload?.token!==session.frameToken)return;
+        if(payload?.token!==currentSession.frameToken)return;
         const requestId=String(payload?.requestId||'');
         const resolve=pendingInputResultsRef.current.get(requestId);
         if(!resolve)return;
@@ -524,7 +525,7 @@ export function LaserControlWorkspace(){
         resolve({ok:payload?.ok===true,reason:String(payload?.reason||'')||null});
       })
       .on('broadcast',{event:'control_result'},({payload}:any)=>{
-        if(payload?.token!==session.frameToken)return;
+        if(payload?.token!==currentSession.frameToken)return;
         const requestId=String(payload?.requestId||'');
         if(controlPendingRef.current!==requestId)return;
         controlPendingRef.current=null;
