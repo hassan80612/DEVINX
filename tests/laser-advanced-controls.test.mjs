@@ -14,7 +14,7 @@ test('Laser Control uses Agent 1.1.0 for advanced controls',async()=>{
   assert.match(panel,/sendRemoteKey\('Escape','Escape'\)/);
   assert.doesNotMatch(panel,/select_layer|open_layer|refreshParameters|openLayerPanel/);
   assert.doesNotMatch(css,/\.parameterDock|\.parameterGrid|\.layerBar/);
-  assert.match(i18n,/DevinX Laser Agent 1\.1\.4/);
+  assert.match(i18n,/DevinX Laser Agent 1\.1\.5/);
 });
 
 test('Agent compatibility check accepts later semantic versions without changing 1.0 thresholds',async()=>{
@@ -55,7 +55,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.1\.4"/);
+  assert.match(pairing,/AgentVersion = "1\.1\.5"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
@@ -261,4 +261,12 @@ test('Selecting a Laser PC automatically requests remote control once the sessio
   assert.match(panel,/action:'open',deviceId:selectedDeviceId/);
   assert.match(panel,/if\(!next\.remoteInputEnabled\)/);
   assert.match(panel,/action:'input'[\s\S]{0,180}sessionId:next\.sessionId[\s\S]{0,180}enabled:true/);
+});
+
+
+test('Remote control button toggles from actual Agent readiness, not backend intent',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  assert.match(panel,/onClick=\{\(\)=>void \(inputReady\?disableRemoteInput\(\):enableRemoteInput\(\)\)\}/);
+  assert.doesNotMatch(panel,/session\?\.remoteInputEnabled\?disableRemoteInput/);
+  assert.doesNotMatch(panel,/session\?\.remoteInputEnabled\?t\('laser\.remoteConnecting'\)/);
 });

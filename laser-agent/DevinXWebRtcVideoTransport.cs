@@ -82,11 +82,24 @@ internal sealed class DevinXWebRtcVideoTransport : IAsyncDisposable
             _=SendIceSafeAsync(candidate);
         };
         peer.onconnectionstatechange+=(state)=>{
-            var connected=state==RTCPeerConnectionState.connected;
-            var previous=Interlocked.Exchange(ref _connected,connected?1:0);
-            if(connected&&previous==0)_=SendStateSafeAsync("connected",CancellationToken.None);
-            else if(!connected&&previous==1)_=SendStateSafeAsync("fallback",CancellationToken.None);
-            if(state==RTCPeerConnectionState.failed)try{peer.Close("ice_failed");}catch{}
+            if(state==RTCPeerConnectionState.connected)
+            {
+                var previous=Interlocked.Exchange(ref _connected,1);
+                if(previous==0)_=SendStateSafeAsync("connected",CancellationToken.None);
+                return;
+            }
+
+            // ICE can report "disconnected" briefly while the selected pair is
+            // being re-checked. Keep the P2P stream alive and let ICE recover.
+            if(state==RTCPeerConnectionState.disconnected)return;
+
+            if(state is RTCPeerConnectionState.failed or RTCPeerConnectionState.closed)
+            {
+                var previous=Interlocked.Exchange(ref _connected,0);
+                if(previous==1)_=SendStateSafeAsync("fallback",CancellationToken.None);
+                if(state==RTCPeerConnectionState.failed)
+                    try{peer.Close("ice_failed");}catch{}
+            }
         };
 
         lock(_gate){_peer=peer;_encoder=encoder;_remoteDescriptionApplied=false;}

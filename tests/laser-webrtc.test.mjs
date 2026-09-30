@@ -43,3 +43,12 @@ test('WebRTC negotiation cannot block the main Realtime input loop',()=>{
   assert.match(continuous,/WaitAsync\(TimeSpan\.FromSeconds\(6\)/);
   assert.match(workspace,/\(inputReady\|\|session\?\.remoteInputEnabled\)\?disableRemoteInput/);
 });
+
+
+test('Transient WebRTC disconnect does not immediately drop P2P video',()=>{
+  assert.match(continuous,/DevinXWebRtcVideoTransport/);
+  assert.match(realtime,/webrtc_answer/);
+  const transport=readFileSync('laser-agent/DevinXWebRtcVideoTransport.cs','utf8');
+  assert.match(transport,/RTCPeerConnectionState\.disconnected\)return/);
+  assert.match(workspace,/connectionState==='disconnected'[\s\S]{0,120}setRealtimeStatus\('connecting'\)/);
+});

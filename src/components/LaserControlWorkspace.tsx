@@ -476,7 +476,7 @@ export function LaserControlWorkspace(){
             return;
           }
           if(nextPeer.connectionState==='disconnected'){
-            setWebRtcActive(false);
+            setRealtimeStatus('connecting');
             return;
           }
           if(nextPeer.connectionState==='failed'||nextPeer.connectionState==='closed'){
@@ -1659,11 +1659,10 @@ export function LaserControlWorkspace(){
           <button
             className={inputReady?styles.controlOn:styles.controlOff}
             disabled={inputPending}
-            onClick={()=>void ((inputReady||session?.remoteInputEnabled)?disableRemoteInput():enableRemoteInput())}
+            onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
           >{
             inputPending?t('laser.remoteActivating')
             :inputReady?t('laser.remoteOn')
-            :session?.remoteInputEnabled?t('laser.remoteConnecting')
             :t('laser.remoteOff')
           }</button>
           <button className={styles.fullscreenButton} onClick={()=>void enterFullscreen()}>{t('laser.fullscreen')}</button>
@@ -1697,7 +1696,7 @@ export function LaserControlWorkspace(){
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
                 disabled={inputPending}
-                onClick={()=>void ((inputReady||session?.remoteInputEnabled)?disableRemoteInput():enableRemoteInput())}
+                onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
               >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
               <button onClick={openMobileKeyboard} disabled={!inputReady}>⌨</button>
               <button className={rightClickArmed?styles.rightClickActive:''} onClick={()=>setRightClickArmed(value=>!value)} disabled={!inputReady} title={t('laser.rightClick')} aria-label={t('laser.rightClick')}>🖱</button>
