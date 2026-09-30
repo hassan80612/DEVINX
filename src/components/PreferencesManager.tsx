@@ -128,6 +128,8 @@ export function PreferencesManager(){
     try{
       sessionStorage.removeItem('devinx-active-section');
       localStorage.removeItem('devinx_auto_future_income');
+      localStorage.removeItem('devinx_auto_future_income_since');
+      localStorage.removeItem('devinx_auto_future_income_ignored');
     }catch{}
     window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
     location.href='/painel';
