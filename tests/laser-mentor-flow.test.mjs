@@ -55,7 +55,7 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
 });
 
 
-test('Agent 1.0.35 uses separate permanent and mentor-only builds without ZIP or CMD',async()=>{
+test('Agent 1.0.36 uses separate permanent and mentor-only builds without ZIP or CMD',async()=>{
   const runtime=await readFile('laser-agent/AgentRuntime.cs','utf8');
   const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
@@ -64,14 +64,14 @@ test('Agent 1.0.35 uses separate permanent and mentor-only builds without ZIP or
   assert.doesNotMatch(runtime,/exeName\.Contains/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.35\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\.0\.35\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.0\.36\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.0\.36\.exe/);
   assert.match(workflow,/publish-agent/);
   assert.match(workflow,/publish-mentor/);
   assert.match(workflow,/DefineConstants=DEVINX_MENTOR_ONLY/);
   assert.match(workflow,/Permanent Agent and Mentoria must be different binaries/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.35\.zip/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.35\.exe/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.0\.36\.zip/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.36\.exe/);
 });
 
 
@@ -135,7 +135,7 @@ test('permanent Agent download is gated by Laser access while student Mentoria s
   assert.match(route,/!access\.authenticated/);
   assert.match(route,/!access\.isAdmin&&!access\.ownerAccess/);
   assert.match(panel,/\/api\/laser-control\/agent-download/);
-  assert.doesNotMatch(landing,/DevinX-Laser-Agent-1\.0\.35\.exe/);
+  assert.doesNotMatch(landing,/DevinX-Laser-Agent-1\.0\.36\.exe/);
   assert.match(landing,/\/laser-control\/mentoria/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.35\.exe/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.0\.36\.exe/);
 });
