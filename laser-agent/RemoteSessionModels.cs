@@ -51,3 +51,11 @@ internal sealed record RealtimeControlRequest(
     string? Value,
     bool? Toggle,
     string? Layer);
+
+
+internal sealed record RealtimeWebRtcSignal(
+    string Type,
+    string? Sdp,
+    string? Candidate,
+    string? SdpMid,
+    ushort? SdpMLineIndex);
