@@ -820,3 +820,19 @@
   .bulkSettleCheck{grid-column:1}
   .statementItemSelectable>.installmentCheck{margin-left:5px}
 }
+
+
+/* Finance reset danger zone */
+.settingsDangerZone{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px;border:1px solid rgb(var(--negative-rgb) / .28);border-radius:14px;background:rgb(var(--negative-rgb) / .055)}
+.settingsDangerZone>div{min-width:0}.settingsDangerZone b,.settingsDangerZone p,.settingsDangerZone small{display:block}.settingsDangerZone p{margin:5px 0 6px;color:var(--text-soft);font-size:10px;line-height:1.55}.settingsDangerZone small{color:var(--text-muted);font-size:9px;line-height:1.5}
+.dangerButton{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 12px;border:1px solid rgb(var(--negative-rgb) / .42);border-radius:10px;background:rgb(var(--negative-rgb) / .10);color:var(--negative);font-weight:900;cursor:pointer}
+.dangerButton:hover:not(:disabled){background:rgb(var(--negative-rgb) / .16);border-color:rgb(var(--negative-rgb) / .58)}
+.dangerButton:disabled{opacity:.5;cursor:not-allowed}
+.financeResetModal{width:min(620px,calc(100vw - 28px))}
+.financeResetWarning{padding:13px;border:1px solid rgb(var(--negative-rgb) / .28);border-radius:12px;background:rgb(var(--negative-rgb) / .07)}
+.financeResetWarning b{color:var(--negative)}.financeResetWarning p{margin:6px 0;color:var(--text-soft);line-height:1.55}.financeResetWarning small{display:block;color:var(--text-muted);font-size:9px;line-height:1.5}
+
+@media(max-width:640px){
+  .settingsDangerZone{align-items:stretch;flex-direction:column}
+  .settingsDangerZone .dangerButton{width:100%}
+}
