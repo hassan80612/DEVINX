@@ -19,6 +19,7 @@ internal sealed record AgentPollResult(
     bool Ok,
     RemoteSessionConfig? Session,
     RemoteCommand? Command,
+    RealtimeWebRtcSignal? Signal,
     string? Reason);
 
 internal sealed record RealtimeRemoteInput(
