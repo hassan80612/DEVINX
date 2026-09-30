@@ -1647,8 +1647,8 @@ export function LaserControlWorkspace(){
           </div>
           <button
             className={inputReady?styles.controlOn:styles.controlOff}
-            disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
-            onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
+            disabled={inputPending}
+            onClick={()=>void ((inputReady||session?.remoteInputEnabled)?disableRemoteInput():enableRemoteInput())}
           >{
             inputPending?t('laser.remoteActivating')
             :inputReady?t('laser.remoteOn')
@@ -1685,8 +1685,8 @@ export function LaserControlWorkspace(){
               <button type="button" onClick={()=>void recenterLightBurnView()} disabled={toolPending!==null} title={t('laser.recenterView')} aria-label={t('laser.recenterView')}>⊙</button>
               <button
                 className={inputReady?styles.controlOn:styles.controlOff}
-                disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
-                onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
+                disabled={inputPending}
+                onClick={()=>void ((inputReady||session?.remoteInputEnabled)?disableRemoteInput():enableRemoteInput())}
               >{inputReady?t('laser.remoteOn'):t('laser.remoteOff')}</button>
               <button onClick={openMobileKeyboard} disabled={!inputReady}>⌨</button>
               <button className={rightClickArmed?styles.rightClickActive:''} onClick={()=>setRightClickArmed(value=>!value)} disabled={!inputReady} title={t('laser.rightClick')} aria-label={t('laser.rightClick')}>🖱</button>

@@ -501,29 +501,40 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             static string? SignalString(JsonElement p,string name)=>
                 p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.String?e.GetString():null;
 
+            RealtimeWebRtcSignal? signal=null;
+
             if(userEvent=="webrtc_offer")
             {
                 var sdp=SignalString(payload,"sdp");
                 if(!string.IsNullOrWhiteSpace(sdp))
-                    await _onWebRtcSignal(new RealtimeWebRtcSignal("offer",sdp,null,null,null));
-                return;
+                    signal=new RealtimeWebRtcSignal("offer",sdp,null,null,null);
             }
-
-            if(userEvent=="webrtc_stop")
+            else if(userEvent=="webrtc_stop")
             {
-                await _onWebRtcSignal(new RealtimeWebRtcSignal("stop",null,null,null,null));
-                return;
+                signal=new RealtimeWebRtcSignal("stop",null,null,null,null);
+            }
+            else
+            {
+                var candidate=SignalString(payload,"candidate");
+                if(!string.IsNullOrWhiteSpace(candidate))
+                {
+                    ushort? sdpMLineIndex=null;
+                    if(payload.TryGetProperty("sdpMLineIndex",out var lineEl)
+                       &&lineEl.TryGetInt32(out var line)
+                       &&line is>=0 and<=ushort.MaxValue)
+                        sdpMLineIndex=(ushort)line;
+                    signal=new RealtimeWebRtcSignal(
+                        "ice",null,candidate,SignalString(payload,"sdpMid"),sdpMLineIndex);
+                }
             }
 
-            var candidate=SignalString(payload,"candidate");
-            if(string.IsNullOrWhiteSpace(candidate))return;
-            ushort? sdpMLineIndex=null;
-            if(payload.TryGetProperty("sdpMLineIndex",out var lineEl)
-               &&lineEl.TryGetInt32(out var line)
-               &&line is>=0 and<=ushort.MaxValue)
-                sdpMLineIndex=(ushort)line;
-            await _onWebRtcSignal(new RealtimeWebRtcSignal(
-                "ice",null,candidate,SignalString(payload,"sdpMid"),sdpMLineIndex));
+            if(signal is not null)
+            {
+                _=Task.Run(async()=>{
+                    try{await _onWebRtcSignal(signal);}
+                    catch{}
+                });
+            }
             return;
         }
 

@@ -14,7 +14,7 @@ test('Laser Control uses Agent 1.1.0 for advanced controls',async()=>{
   assert.match(panel,/sendRemoteKey\('Escape','Escape'\)/);
   assert.doesNotMatch(panel,/select_layer|open_layer|refreshParameters|openLayerPanel/);
   assert.doesNotMatch(css,/\.parameterDock|\.parameterGrid|\.layerBar/);
-  assert.match(i18n,/DevinX Laser Agent 1\.1\.2/);
+  assert.match(i18n,/DevinX Laser Agent 1\.1\.3/);
 });
 
 test('Agent compatibility check accepts later semantic versions without changing 1.0 thresholds',async()=>{
@@ -55,7 +55,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.1\.2"/);
+  assert.match(pairing,/AgentVersion = "1\.1\.3"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);

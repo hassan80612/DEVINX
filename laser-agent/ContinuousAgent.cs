@@ -291,7 +291,15 @@ internal sealed class ContinuousAgent
             if(target is null)return;
             try
             {
-                await target.HandleSignalAsync(signal,cancellationToken);
+                if(signal.Type=="offer")
+                {
+                    await target.HandleSignalAsync(signal,cancellationToken)
+                        .WaitAsync(TimeSpan.FromSeconds(6),cancellationToken);
+                }
+                else
+                {
+                    await target.HandleSignalAsync(signal,cancellationToken);
+                }
             }
             catch
             {

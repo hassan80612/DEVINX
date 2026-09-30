@@ -38,3 +38,10 @@ test('WebRTC signaling goes directly browser -> Agent after Agent presence is kn
   assert.match(workspace,/channel\.send\(\{[\s\S]*type:'broadcast'[\s\S]*from:'browser'/);
   assert.doesNotMatch(workspace,/sendWebRtcSignal=.*postSession/);
 });
+
+
+test('WebRTC negotiation cannot block the main Realtime input loop',()=>{
+  assert.match(realtime,/Task\.Run\(async\(\)=>\{/);
+  assert.match(continuous,/WaitAsync\(TimeSpan\.FromSeconds\(6\)/);
+  assert.match(workspace,/\(inputReady\|\|session\?\.remoteInputEnabled\)\?disableRemoteInput/);
+});
