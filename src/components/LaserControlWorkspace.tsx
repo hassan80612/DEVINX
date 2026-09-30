@@ -205,7 +205,8 @@ export function LaserControlWorkspace(){
       });
       const data=await response.json();
       if(!response.ok)throw new Error('devices');
-      const list=Array.isArray(data?.devices)?data.devices as LaserDevice[]:[];
+      const list=(Array.isArray(data?.devices)?data.devices as LaserDevice[]:[])
+        .filter(device=>device.device_status==='active');
       setDevices(list);
       setSelectedDeviceId(current=>{
         if(current&&list.some(device=>device.device_id===current))return current;
