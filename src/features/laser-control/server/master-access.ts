@@ -28,6 +28,7 @@ export async function getLaserControlAccess(){
     planId:null as string|null,mentorBillingMode:'disabled',mentorMaxConcurrent:1
   };
 
+  await supabase.rpc('register_devinx_product',{p_product:'laser'});
   const{data,error}=await supabase.rpc('get_laser_access_status');
   const row=Array.isArray(data)?data[0]:data;
   if(error||!row)return {

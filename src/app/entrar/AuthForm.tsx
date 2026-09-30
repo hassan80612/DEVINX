@@ -16,6 +16,7 @@ function safeNextPath(value:string){return value.startsWith('/')&&!value.startsW
 
 export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMode=false}:{nextPath?:string;initialError?:string;initialTrial?:boolean;laserMode?:boolean}){
   const{t,locale}=useI18n();
+  const authProduct=laserMode?'laser':'financeiro';
   const laserPlansLabel={
     'pt-BR':'Ver planos do Laser Control',
     en:'View Laser Control plans',
@@ -41,6 +42,7 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
   function changeMode(next:Mode){setTrialFlow(false);setMode(next);resetFields()}
   function startTrial(){setTrialFlow(true);setMode('criar');resetFields()}
   async function destinationForUser(userId:string){if(laserMode)return safeNextPath(nextPath);const s=createClient();const{data}=await s.from('profiles').select('onboarded_at').eq('id',userId).maybeSingle();return data?.onboarded_at?safeNextPath(nextPath):'/onboarding'}
+  async function registerProduct(s:ReturnType<typeof createClient>){const{error}=await s.rpc('register_devinx_product',{p_product:authProduct});if(error)console.error('DEVINX PRODUCT MEMBERSHIP',error)}
   function friendlyError(message:string){const lower=message.toLowerCase();if(lower.includes('invalid login credentials'))return t('auth.errorCredentials');if(lower.includes('email not confirmed'))return t('auth.errorUnconfirmed');if(lower.includes('user already registered'))return t('auth.errorExists');if(lower.includes('password should be'))return t('auth.errorPassword');if(lower.includes('rate limit'))return t('auth.errorRate');return t('auth.errorGeneric')}
 
   async function handleSubmit(event:FormEvent<HTMLFormElement>){
@@ -50,8 +52,8 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
     if(mode==='criar'&&password!==confirmPassword){setMessage(t('auth.errorMatch'));setMessageKind('error');return}
     setPending(true);const s=createClient();
     try{
-      if(mode==='entrar'){const{data,error}=await s.auth.signInWithPassword({email:normalizedEmail,password});if(error||!data.user){setMessage(friendlyError(error?.message||''));setMessageKind('error');return}window.location.replace(await destinationForUser(data.user.id));return}
-      if(mode==='criar'){const afterConfirm=trialFlow?'/entrar?trial=claim':laserMode?safeNextPath(nextPath):'/painel';const{data,error}=await s.auth.signUp({email:normalizedEmail,password,options:{emailRedirectTo:CANONICAL_ORIGIN+'/auth/confirm?next='+encodeURIComponent(afterConfirm)}});if(error||!data.user){setMessage(friendlyError(error?.message||''));setMessageKind('error');return}if(data.user.identities?.length===0){setMessage(t('auth.errorExists'));setMessageKind('error');return}if(data.session){window.location.replace(afterConfirm);return}setMessage(trialFlow?t('trial.created'):t('auth.created'));setMessageKind('success');return}
+      if(mode==='entrar'){const{data,error}=await s.auth.signInWithPassword({email:normalizedEmail,password});if(error||!data.user){setMessage(friendlyError(error?.message||''));setMessageKind('error');return}await registerProduct(s);window.location.replace(await destinationForUser(data.user.id));return}
+      if(mode==='criar'){const afterConfirm=trialFlow?'/entrar?trial=claim':laserMode?safeNextPath(nextPath):'/painel';const{data,error}=await s.auth.signUp({email:normalizedEmail,password,options:{emailRedirectTo:CANONICAL_ORIGIN+'/auth/confirm?next='+encodeURIComponent(afterConfirm),data:{devinx_product:authProduct}}});const alreadyExists=Boolean(error?.message?.toLowerCase().includes('user already registered')||data.user?.identities?.length===0);if(alreadyExists){setTrialFlow(false);setMode('entrar');setMessage(t('auth.errorExists'));setMessageKind('error');return}if(error||!data.user){setMessage(friendlyError(error?.message||''));setMessageKind('error');return}if(data.session){await registerProduct(s);window.location.replace(afterConfirm);return}setMessage(trialFlow?t('trial.created'):t('auth.created'));setMessageKind('success');return}
       const callback=CANONICAL_ORIGIN+'/auth/confirm?next=/redefinir-senha';const{error}=await s.auth.resetPasswordForEmail(normalizedEmail,{redirectTo:callback});if(error){setMessage(friendlyError(error.message));setMessageKind('error');return}setMessage(t('auth.resetSent'));setMessageKind('success');
     }catch{setMessage(t('auth.errorGeneric'));setMessageKind('error')}finally{setPending(false)}
   }

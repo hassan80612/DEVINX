@@ -36,12 +36,13 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
   const{data}=await supabase.auth.getClaims();
 
   if(data?.claims){
-    if(trial==='claim')return <TrialActivation/>;
+    if(trial==='claim'){await supabase.rpc('register_devinx_product',{p_product:'financeiro'});return <TrialActivation/>;}
     if(nextPath.startsWith('/laser-control')){
       const laserAccess=await getLaserControlAccess();
       if(laserAccess.allowed)redirect(nextPath);
       redirect('/laser-control/conhecer#planos');
     }
+    await supabase.rpc('register_devinx_product',{p_product:'financeiro'});
     const{data:accessData}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
     if(access?.allowed)redirect(nextPath||'/painel');

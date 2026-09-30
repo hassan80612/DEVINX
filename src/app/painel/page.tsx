@@ -12,6 +12,8 @@ export default async function PainelPage(){
   const userId=data?.claims?.sub;
   if(!userId)redirect('/entrar');
 
+  await supabase.rpc('register_devinx_product',{p_product:'financeiro'});
+
   const[{data:accessData,error:accessError},{data:profile,error:profileError}]=await Promise.all([
     supabase.rpc('get_devinx_access_status'),
     supabase.from('profiles').select('onboarded_at,locale,currency_code,timezone').eq('id',userId).maybeSingle()
