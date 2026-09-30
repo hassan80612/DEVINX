@@ -14,7 +14,7 @@ internal static class LightBurnWindowCapture
 
     private const int DwmwaExtendedFrameBounds=9;
     private const uint PwRenderFullContent=0x00000002;
-    private const int MaxJpegBytes=90_000;
+    private const int MaxJpegBytes=150_000;
     private static IntPtr _lastDialog=IntPtr.Zero;
     private static readonly object LastCaptureGate=new();
     private static IntPtr _lastCapturedTarget=IntPtr.Zero;
@@ -129,9 +129,9 @@ internal static class LightBurnWindowCapture
 
     private static (byte[] Bytes,int Width,int Height)? EncodeAdaptive(Bitmap source)
     {
-        // Prefer smaller, faster frames. LightBurn is mostly high-contrast UI, so
-        // this remains readable while substantially reducing upload time.
-        foreach(var width in new[]{1280,1120,960,840,720})
+        // Favor readable LightBurn text while keeping the fallback adaptive.
+        // If a high-resolution frame is too large, step down before sending.
+        foreach(var width in new[]{1600,1440,1280,1120,960,840,720})
         {
             Bitmap? resized=null;
             Bitmap output=source;
@@ -141,14 +141,14 @@ internal static class LightBurnWindowCapture
                 var targetHeight=Math.Max(1,(int)Math.Round(source.Height*scale));
                 resized=new Bitmap(width,targetHeight,PixelFormat.Format24bppRgb);
                 using var g=Graphics.FromImage(resized);
-                g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                g.InterpolationMode=System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                 g.DrawImage(source,0,0,width,targetHeight);
                 output=resized;
             }
 
             try
             {
-                foreach(var quality in new long[]{55,48,42,36,30})
+                foreach(var quality in new long[]{72,64,56,48,40})
                 {
                     var bytes=EncodeJpeg(output,quality);
                     if(bytes.Length is>=100 and<=MaxJpegBytes)

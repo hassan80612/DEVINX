@@ -64,14 +64,14 @@ test('Agent 1.1.0 uses separate permanent and mentor-only builds without ZIP or 
   assert.doesNotMatch(runtime,/exeName\.Contains/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\.1\.5\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\.1\.5\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.1\.6\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.1\.6\.exe/);
   assert.match(workflow,/publish-agent/);
   assert.match(workflow,/publish-mentor/);
   assert.match(workflow,/DefineConstants=DEVINX_MENTOR_ONLY/);
   assert.match(workflow,/Permanent Agent and Mentoria must be different binaries/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.1\.5\.zip/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.1\.5\.exe/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.1\.6\.zip/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.1\.6\.exe/);
 });
 
 
@@ -135,7 +135,7 @@ test('permanent Agent download is gated by Laser access while student Mentoria s
   assert.match(route,/!access\.authenticated/);
   assert.match(route,/!access\.isAdmin&&!access\.ownerAccess/);
   assert.match(panel,/\/api\/laser-control\/agent-download/);
-  assert.doesNotMatch(landing,/DevinX-Laser-Agent-1\.1\.5\.exe/);
+  assert.doesNotMatch(landing,/DevinX-Laser-Agent-1\.1\.6\.exe/);
   assert.match(landing,/\/laser-control\/mentoria/);
-  assert.match(mentorPage,/DevinX-Mentoria-1\.1\.5\.exe/);
+  assert.match(mentorPage,/DevinX-Mentoria-1\.1\.6\.exe/);
 });

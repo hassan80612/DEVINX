@@ -41,7 +41,7 @@ test('WebRTC signaling is queued through authenticated backend for Agent poll',(
 test('WebRTC negotiation cannot block the main Realtime input loop',()=>{
   assert.match(realtime,/Task\.Run\(async\(\)=>\{/);
   assert.match(continuous,/WaitAsync\(TimeSpan\.FromSeconds\(6\)/);
-  assert.match(workspace,/\(inputReady\|\|session\?\.remoteInputEnabled\)\?disableRemoteInput/);
+  assert.match(workspace,/inputReady\?disableRemoteInput\(\):enableRemoteInput\(\)/);
 });
 
 
@@ -51,4 +51,13 @@ test('Transient WebRTC disconnect does not immediately drop P2P video',()=>{
   const transport=readFileSync('laser-agent/DevinXWebRtcVideoTransport.cs','utf8');
   assert.match(transport,/RTCPeerConnectionState\.disconnected\)return/);
   assert.match(workspace,/connectionState==='disconnected'[\s\S]{0,120}setRealtimeStatus\('connecting'\)/);
+});
+
+
+test('Fallback JPEG favors readable LightBurn text without removing adaptive limits',()=>{
+  const capture=readFileSync('laser-agent/LightBurnWindowCapture.cs','utf8');
+  assert.match(capture,/MaxJpegBytes=150_000/);
+  assert.match(capture,/1600,1440,1280,1120,960,840,720/);
+  assert.match(capture,/72,64,56,48,40/);
+  assert.match(capture,/HighQualityBicubic/);
 });
