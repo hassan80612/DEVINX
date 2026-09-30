@@ -7,7 +7,7 @@ import {localDateISO,localMonthStartISO} from '@/lib/date';
 import {categoryOptions,CustomCategory} from '@/domain/categories';
 import {
   RecurringBillLike,RecurringOverrideLike,RecurringPaymentLike,
-  billAppliesToMonth,billDueDay,billExpectedAmount,billPaidAmount,billRemaining,installmentNumber,dueDateForMonth
+  addMonths,billAppliesToMonth,billDueDay,billExpectedAmount,billPaidAmount,billRemaining,installmentNumber,dueDateForMonth
 } from '@/domain/recurring';
 import {useI18n} from '@/i18n/provider';
 
@@ -60,6 +60,13 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   const[eAvoidable,setEAvoidable]=useState(false);
   const[eInstallmentCount,setEInstallmentCount]=useState('');
 
+  const[expandedBills,setExpandedBills]=useState<Set<string>>(new Set());
+  const[selectedInstallments,setSelectedInstallments]=useState<Set<string>>(new Set());
+  const[bulkOpen,setBulkOpen]=useState(false);
+  const[bulkAmounts,setBulkAmounts]=useState<Record<string,string>>({});
+  const[bulkSettle,setBulkSettle]=useState<Record<string,boolean>>({});
+  const[bulkPaidOn,setBulkPaidOn]=useState(localDateISO());
+
   const[monthBill,setMonthBill]=useState<Bill|null>(null);
   const[mAmount,setMAmount]=useState('');
   const[mDue,setMDue]=useState('');
@@ -72,8 +79,8 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     if(!user){location.href='/entrar';return}
     const[b,p,o,c]=await Promise.all([
       s.from('recurring_bills').select('id,name,category_id,amount_minor,due_day,payment_method,is_avoidable,start_month,installment_count').eq('user_id',user.id).eq('is_active',true).order('due_day'),
-      s.from('recurring_bill_payments').select('id,recurring_bill_id,due_month,amount_minor,paid_on').eq('user_id',user.id).eq('due_month',selectedMonth).order('paid_on',{ascending:true}),
-      s.from('recurring_bill_month_overrides').select('id,recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id).eq('due_month',selectedMonth),
+      s.from('recurring_bill_payments').select('id,recurring_bill_id,due_month,amount_minor,paid_on').eq('user_id',user.id).order('due_month',{ascending:true}).order('paid_on',{ascending:true}),
+      s.from('recurring_bill_month_overrides').select('id,recurring_bill_id,due_month,amount_minor,due_day').eq('user_id',user.id).order('due_month',{ascending:true}),
       s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id).eq('kind','expense').order('created_at')
     ]);
     setBills((b.data||[]) as Bill[]);
@@ -97,6 +104,96 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     ()=>bills.filter(b=>billAppliesToMonth(b,selectedMonth)),
     [bills,selectedMonth]
   );
+
+  function selectionKey(billId:string,month:string){return billId+'|'+month.slice(0,7)+'-01'}
+  function toggleExpandedBill(id:string){
+    setExpandedBills(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next});
+  }
+  function toggleInstallmentSelection(billId:string,month:string){
+    const key=selectionKey(billId,month);
+    setSelectedInstallments(prev=>{const next=new Set(prev);next.has(key)?next.delete(key):next.add(key);return next});
+  }
+  function scheduleRows(b:Bill){
+    if(!b.installment_count)return[];
+    return Array.from({length:Math.min(600,b.installment_count)},(_,index)=>{
+      const month=addMonths(b.start_month,index);
+      const expected=billExpectedAmount(b,month,overrides);
+      const paid=billPaidAmount(b.id,month,payments);
+      const remaining=Math.max(0,expected-paid);
+      return{
+        key:selectionKey(b.id,month),bill:b,month,expected,paid,remaining,
+        number:index+1,dueDate:dueDateForMonth(month,billDueDay(b,month,overrides))
+      };
+    });
+  }
+  const selectedRows=useMemo(()=>{
+    const rows:{key:string;bill:Bill;month:string;expected:number;paid:number;remaining:number;number:number|null;dueDate:string}[]=[];
+    selectedInstallments.forEach(key=>{
+      const cut=key.indexOf('|');
+      if(cut<0)return;
+      const billId=key.slice(0,cut),month=key.slice(cut+1);
+      const bill=bills.find(item=>item.id===billId);
+      if(!bill||!billAppliesToMonth(bill,month))return;
+      const expected=billExpectedAmount(bill,month,overrides);
+      const paid=billPaidAmount(bill.id,month,payments);
+      const remaining=Math.max(0,expected-paid);
+      if(remaining<=0)return;
+      rows.push({key,bill,month,expected,paid,remaining,number:installmentNumber(bill,month),dueDate:dueDateForMonth(month,billDueDay(bill,month,overrides))});
+    });
+    return rows.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.bill.name.localeCompare(b.bill.name));
+  },[selectedInstallments,bills,payments,overrides]);
+
+  function toggleCurrentMonthSelection(){
+    const open=monthBills.filter(b=>billRemaining(b,selectedMonth,payments,overrides)>0);
+    const allSelected=open.length>0&&open.every(b=>selectedInstallments.has(selectionKey(b.id,selectedMonth)));
+    setSelectedInstallments(prev=>{
+      const next=new Set(prev);
+      open.forEach(b=>{const key=selectionKey(b.id,selectedMonth);allSelected?next.delete(key):next.add(key)});
+      return next;
+    });
+  }
+  function toggleBillOpenSelection(b:Bill){
+    const open=scheduleRows(b).filter(row=>row.remaining>0);
+    const allSelected=open.length>0&&open.every(row=>selectedInstallments.has(row.key));
+    setSelectedInstallments(prev=>{
+      const next=new Set(prev);
+      open.forEach(row=>{allSelected?next.delete(row.key):next.add(row.key)});
+      return next;
+    });
+  }
+  function openBulkPayment(){
+    if(selectedRows.length===0)return;
+    const amounts:Record<string,string>={},settles:Record<string,boolean>={};
+    selectedRows.forEach(row=>{amounts[row.key]=String(row.remaining/100).replace('.',',');settles[row.key]=true});
+    setBulkAmounts(amounts);setBulkSettle(settles);setBulkPaidOn(localDateISO());setBulkOpen(true);setNotice('');
+  }
+  const bulkSummary=useMemo(()=>selectedRows.reduce((sum,row)=>{
+    const amount=minor(bulkAmounts[row.key]||'0');
+    const settle=bulkSettle[row.key]!==false;
+    sum.original+=row.remaining;sum.paid+=Math.max(0,amount);
+    if(settle&&amount>=0&&amount<row.remaining)sum.discount+=row.remaining-amount;
+    return sum;
+  },{original:0,paid:0,discount:0}),[selectedRows,bulkAmounts,bulkSettle]);
+
+  async function saveBulkPayments(e:FormEvent){
+    e.preventDefault();
+    if(selectedRows.length===0)return;
+    const items=selectedRows.map(row=>({
+      bill_id:row.bill.id,due_month:row.month,amount_minor:minor(bulkAmounts[row.key]||'0'),
+      settle:bulkSettle[row.key]!==false
+    }));
+    if(items.some((item,index)=>item.amount_minor<=0||item.amount_minor>selectedRows[index].remaining)){
+      setNotice(t('payment.bulkInvalid'));return;
+    }
+    setSavingAction('payment');
+    try{
+      const s=createClient();
+      const{error}=await s.rpc('register_recurring_bill_batch',{p_items:items,p_paid_on:bulkPaidOn});
+      if(error){setNotice(t('common.errorSave'));return}
+      setBulkOpen(false);setSelectedInstallments(new Set());setBulkAmounts({});setBulkSettle({});
+      setNotice(t('payment.bulkSaved'));notifyFinanceUpdated();await load();
+    }finally{setSavingAction('')}
+  }
 
   async function add(e:FormEvent){
     e.preventDefault();
@@ -270,6 +367,8 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
   return <div className="billsPage">
     <div className="toolbar">
       <button className="primary" onClick={()=>setOpen(v=>!v)}>{t('bills.new')}</button>
+      {monthBills.some(b=>billRemaining(b,selectedMonth,payments,overrides)>0)&&<button className="ghost compactButton" type="button" onClick={toggleCurrentMonthSelection}>{t('payment.selectMonthOpen')}</button>}
+      {selectedRows.length>0&&<button className="goldButton" type="button" onClick={openBulkPayment}>{t('payment.paySelected')} · {selectedRows.length}</button>}
       {onNavigate&&<button className="goldOutline" onClick={()=>onNavigate('categories')}>{t('nav.categories')}</button>}
     </div>
 
@@ -299,9 +398,14 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
         const paid=billPaidAmount(b.id,selectedMonth,payments);
         const remaining=Math.max(0,expected-paid);
         const number=installmentNumber(b,selectedMonth);
-        const billPayments=payments.filter(p=>p.recurring_bill_id===b.id);
+        const billPayments=payments.filter(p=>p.recurring_bill_id===b.id&&p.due_month.slice(0,7)===selectedMonth.slice(0,7));
+        const currentKey=selectionKey(b.id,selectedMonth);
+        const schedule=b.installment_count?scheduleRows(b):[];
+        const scheduleOpen=schedule.filter(row=>row.remaining>0);
+        const scheduleAllSelected=scheduleOpen.length>0&&scheduleOpen.every(row=>selectedInstallments.has(row.key));
         return <article className="recurringCard recurringInstallmentCard" key={b.id}>
           <div className="recurringMain">
+            {remaining>0&&<label className="installmentCheck" title={t('payment.selectInstallment')}><input type="checkbox" checked={selectedInstallments.has(currentKey)} onChange={()=>toggleInstallmentSelection(b.id,selectedMonth)}/><span>✓</span></label>}
             <div><b>{b.name}</b><small>{t('move.due')} {date(dueDateForMonth(selectedMonth,billDueDay(b,selectedMonth,overrides)),{day:'2-digit',month:'2-digit',year:'numeric'})}{b.installment_count&&number?' · '+t('bills.installment')+' '+number+'/'+b.installment_count:''}{b.is_avoidable?' · '+t('dashboard.avoidable'):''}</small></div>
             <strong>{currency(expected)}</strong>
           </div>
@@ -315,11 +419,32 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
             {remaining>0?<button className="primary billPayPrimary" onClick={()=>openPay(b)}>{paid>0?t('bills.completePayment'):t('bills.paySettle')}</button>:<span className="paidBadge">✓ {t('bills.paidThisMonthBadge')}</span>}
             <button className="textButton" onClick={()=>startMonthEdit(b)}>{t('bills.editThisMonth')}</button>
             <button className="textButton" onClick={()=>startBillEdit(b)}>{t('bills.editRule')}</button>
+            {b.installment_count&&<button className="textButton" type="button" onClick={()=>toggleExpandedBill(b.id)}>{expandedBills.has(b.id)?t('payment.hideInstallments'):t('payment.viewInstallments')}</button>}
             <button className="dangerText textButton" onClick={()=>disable(b)}>{t('bills.disable')}</button>
           </div>
+          {b.installment_count&&expandedBills.has(b.id)&&<div className="installmentSchedule">
+            <div className="installmentScheduleHead"><div><small>{t('payment.installmentSchedule')}</small><b>{b.name} · {b.installment_count}x</b></div>{scheduleOpen.length>0&&<button type="button" className="goldOutline" onClick={()=>toggleBillOpenSelection(b)}>{scheduleAllSelected?t('payment.clearSelection'):t('payment.selectAllOpen')}</button>}</div>
+            <div className="installmentScheduleList">{schedule.map(row=><label className={'installmentScheduleRow '+(row.remaining<=0?'settled':'')+(selectedInstallments.has(row.key)?' selected':'')} key={row.key}>
+              <input type="checkbox" disabled={row.remaining<=0} checked={row.remaining<=0||selectedInstallments.has(row.key)} onChange={()=>row.remaining>0&&toggleInstallmentSelection(b.id,row.month)}/>
+              <span><b>{t('bills.installment')} {row.number}/{b.installment_count}</b><small>{t('move.dueOn')} {date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}{row.paid>0?' · '+t('cards.paidSoFar')+' '+currency(row.paid):''}</small></span>
+              <strong>{row.remaining>0?currency(row.remaining):'✓ '+t('bills.paid')}</strong>
+            </label>)}</div>
+          </div>}
         </article>
       })}
     </section>
+
+    {bulkOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setBulkOpen(false)}}><form className="modalCard bulkPaymentModal" onSubmit={saveBulkPayments}>
+      <div className="modalHead"><h2>{t('payment.paySelected')}</h2><button type="button" onClick={()=>setBulkOpen(false)}>×</button></div>
+      <div className="bulkPaymentSummary"><span><small>{t('payment.selectedTotal')}</small><b>{currency(bulkSummary.original)}</b></span><span><small>{t('payment.actualPaid')}</small><b>{currency(bulkSummary.paid)}</b></span><span><small>{t('payment.discount')}</small><b className="positive">{currency(bulkSummary.discount)}</b></span></div>
+      <div className="bulkPaymentRows">{selectedRows.map(row=><div className="bulkPaymentRow" key={row.key}>
+        <div className="bulkPaymentIdentity"><b>{row.bill.name}{row.number?' · '+row.number+'/'+row.bill.installment_count:''}</b><small>{date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})} · {t('payment.openValue')} {currency(row.remaining)}</small></div>
+        <label>{t('payment.actualPaid')}<input value={bulkAmounts[row.key]||''} onChange={e=>setBulkAmounts(prev=>({...prev,[row.key]:e.target.value}))} inputMode="decimal" required/></label>
+        <label className="bulkSettleCheck"><input type="checkbox" checked={bulkSettle[row.key]!==false} onChange={e=>setBulkSettle(prev=>({...prev,[row.key]:e.target.checked}))}/><span><b>{t('payment.settleInstallment')}</b><small>{t('payment.settleInstallmentHelp')}</small></span></label>
+      </div>)}</div>
+      <label>{t('common.date')}<input type="date" value={bulkPaidOn} onChange={e=>setBulkPaidOn(e.target.value)} required/></label>
+      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setBulkOpen(false)}>{t('common.cancel')}</button><button className="primary" disabled={savingAction==='payment'} aria-busy={savingAction==='payment'}>{savingAction==='payment'?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div>
+    </form></div>}
 
     {paying&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setPaying(null)}}><form className="modalCard" onSubmit={savePayment}>
       <div className="modalHead"><h2>{paying.name}</h2><button type="button" onClick={()=>setPaying(null)}>×</button></div>
