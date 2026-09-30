@@ -78,6 +78,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
     }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.card.name.localeCompare(b.card.name));
   },[cards,inst,itemPays]);
   const selectedRows=useMemo(()=>openInstallments.filter(row=>selectedInstallments.has(row.id)),[openInstallments,selectedInstallments]);
+  const selectedOpenTotal=useMemo(()=>selectedRows.reduce((sum,row)=>sum+row.installment.remaining,0),[selectedRows]);
 
   function toggleInstallmentSelection(id:string){
     setSelectedInstallments(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next});
@@ -192,6 +193,11 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
         {s.statements.length>0&&<div className="statementList">{s.statements.map(st=><section className="statementGroup" key={st.month}><div className="statementHead"><span>{t('move.dueOn')} {date(st.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</span><b>{currency(st.amount)}</b><small>{t('cards.statementTotal')}</small></div><div className="statementItems">{st.rows.map(item=><div className={'statementItemSelectable '+(selectedInstallments.has(item.id)?'selected':'')} key={item.id}><label className="installmentCheck" title={t('payment.selectInstallment')}><input type="checkbox" checked={selectedInstallments.has(item.id)} onChange={()=>toggleInstallmentSelection(item.id)}/><span>✓</span></label><button type="button" onClick={()=>{setPayTarget({card,installment:item,dueDate:item.due_date||st.dueDate});setPayDate(localDateISO());setPayAmount(String(item.remaining/100).replace('.',','));setPayMode('partial')}}><span><b>{item.card_purchases?.description||card.name}</b><small>{item.card_purchases?.installment_count&&item.card_purchases.installment_count>1?item.installment_number+'/'+item.card_purchases.installment_count+' · ':''}{t('move.dueOn')} {date(item.due_date||st.dueDate,{day:'2-digit',month:'2-digit'})}{item.paid>0?' · '+t('cards.paidSoFar')+' '+currency(item.paid):''}</small></span><strong>{currency(item.remaining)}</strong><em>{t('cards.payItem')}</em></button></div>)}</div></section>)}</div>}
       </div>}
     </article>})}</section>
+
+    {selectedRows.length>0&&<div className="bulkSelectionBar" role="region" aria-live="polite">
+      <div><small>{selectedRows.length} · {t('payment.selectedTotal')}</small><b>{currency(selectedOpenTotal)}</b></div>
+      <div className="bulkSelectionActions"><button type="button" className="ghost compactButton" onClick={()=>setSelectedInstallments(new Set())}>{t('payment.clearSelection')}</button><button type="button" className="primary" onClick={openBulkPayment}>{t('payment.paySelected')} · {selectedRows.length}</button></div>
+    </div>}
 
     {bulkOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setBulkOpen(false)}}><form className="modalCard bulkPaymentModal" onSubmit={saveBulkPayments}>
       <div className="modalHead"><h2>{t('payment.paySelected')}</h2><button type="button" onClick={()=>setBulkOpen(false)}>×</button></div>
