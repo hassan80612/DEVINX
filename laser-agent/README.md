@@ -1,10 +1,10 @@
-# DevinX Laser Agent 1.1.3
+# DevinX Laser Agent 1.1.4
 
 Agent Windows do DevinX Laser Control.
 
 ## Instalação simples
 
-1. Baixe **DevinX-Laser-Agent-1.1.3.exe**.
+1. Baixe **DevinX-Laser-Agent-1.1.4.exe**.
 2. Dê dois cliques.
 3. O Agent instala ou atualiza automaticamente no perfil do usuário do Windows.
 4. Na primeira instalação, o navegador abre o DevinX já com o vínculo preparado.
@@ -15,7 +15,7 @@ Não é necessário ZIP, extrair pasta, abrir CMD nem copiar código no uso norm
 
 ## Binários separados
 
-A partir da 1.1.3, o **DevinX Laser Agent** e o **DevinX Mentoria** são publicados por builds diferentes. O modo é definido na compilação, não pelo nome do arquivo. Renomear o EXE de Mentoria não o transforma no Agent permanente, e o Agent permanente não entra em modo Mentoria por argumento ou renomeação.
+A partir da 1.1.4, o **DevinX Laser Agent** e o **DevinX Mentoria** são publicados por builds diferentes. O modo é definido na compilação, não pelo nome do arquivo. Renomear o EXE de Mentoria não o transforma no Agent permanente, e o Agent permanente não entra em modo Mentoria por argumento ou renomeação.
 
 O download do Agent permanente fica apresentado somente dentro do Laser Control para contas autenticadas com acesso. O download de Mentoria continua público para o aluno, que não precisa criar conta.
 
@@ -23,7 +23,7 @@ O download do Agent permanente fica apresentado somente dentro do Laser Control 
 
 O aluno recebe um link por e-mail e abre no computador conectado ao LightBurn.
 
-1. Na página de mentoria, baixa **DevinX-Mentoria-1.1.3.exe**.
+1. Na página de mentoria, baixa **DevinX-Mentoria-1.1.4.exe**.
 2. Dá dois cliques.
 3. O executável reconhece automaticamente o modo Mentoria; não instala e não entra na inicialização do Windows.
 4. Uma janela mostra um código temporário de 8 caracteres.
@@ -127,24 +127,29 @@ O ponteiro remoto usa os limites exatos da última imagem transmitida para mante
 O download normal passou a ser um único EXE. O instalador direto copia ou atualiza a versão instalada e relança o Agent automaticamente. A mentoria usa um segundo EXE direto que entra em modo temporário pelo próprio nome do arquivo, sem ZIP, sem extração e sem CMD.
 
 
-## 1.1.3 — expiração local da sessão remota
+## 1.1.4 — expiração local da sessão remota
 O Agent encerra localmente a transmissão e o controle quando a validade curta emitida pelo servidor termina. Enquanto a assinatura e a sessão continuam válidas, o polling normal renova essa validade e o funcionamento permanece igual. Se a renovação deixar de ser autorizada, o canal remoto é fechado sem executar novos comandos.
 
 
-## 1.1.3 — backoff de acesso inativo
+## 1.1.4 — backoff de acesso inativo
 Quando o servidor informa que o dispositivo está sem acesso ativo, o Agent mantém o LightBurn local intacto, encerra qualquer canal remoto e reduz as tentativas de rede para uma verificação a cada 5 minutos. Ao renovar o plano, o acesso volta na próxima verificação ou ao reiniciar o Agent.
 
 
-## WebRTC 1.1.3
+## WebRTC 1.1.4
 
 A transmissão ao vivo tenta primeiro WebRTC P2P com STUN e vídeo VP8. O Supabase Realtime permanece como signaling e canal de controle. Se o WebRTC não conectar ou cair, o Agent retorna automaticamente ao fluxo JPEG/Realtime da 1.0.36. Nenhum frame WebRTC é gravado no Storage.
 
 
-### Realtime receive compatibility 1.1.3
+### Realtime receive compatibility 1.1.4
 
 O Agent usa o protocolo JSON v1 do Supabase Realtime para o canal do Agent. Isso mantém os frames e respostas enviados como texto JSON e, principalmente, garante que broadcasts vindos do navegador (controle remoto e signaling WebRTC) cheguem ao mesmo parser sem depender do formato binário do protocolo v2. O navegador pode continuar usando o cliente Realtime atual; o servidor faz a ponte entre as versões do protocolo.
 
 
-### WebRTC / controle 1.1.3
+### WebRTC / controle 1.1.4
 
 A negociação WebRTC roda fora do loop principal de recepção Realtime e tem limite de tempo. Uma tentativa de STUN/WebRTC que falhar não pode mais bloquear mouse, toque, teclado ou mensagens de controle. O botão de controle também pode cancelar um estado preso em “Conectando controle…”, mantendo o fallback JPEG ativo.
+
+
+### WebRTC signaling 1.1.4
+
+Mantém o Realtime v2 da linha estável 1.0.36 para controle remoto e fallback JPEG. Offer/ICE do WebRTC também passam pela fila autenticada do long-poll do Agent, para que a negociação não dependa do broadcast de entrada. O isolamento assíncrono do WebRTC permanece ativo para não bloquear mouse, toque ou teclado.
