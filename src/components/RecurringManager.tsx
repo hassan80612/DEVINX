@@ -142,6 +142,7 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
     });
     return rows.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.bill.name.localeCompare(b.bill.name));
   },[selectedInstallments,bills,payments,overrides]);
+  const selectedOpenTotal=useMemo(()=>selectedRows.reduce((sum,row)=>sum+row.remaining,0),[selectedRows]);
 
   function toggleCurrentMonthSelection(){
     const open=monthBills.filter(b=>billRemaining(b,selectedMonth,payments,overrides)>0);
@@ -433,6 +434,11 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
         </article>
       })}
     </section>
+
+    {selectedRows.length>0&&<div className="bulkSelectionBar" role="region" aria-live="polite">
+      <div><small>{selectedRows.length} · {t('payment.selectedTotal')}</small><b>{currency(selectedOpenTotal)}</b></div>
+      <div className="bulkSelectionActions"><button type="button" className="ghost compactButton" onClick={()=>setSelectedInstallments(new Set())}>{t('payment.clearSelection')}</button><button type="button" className="primary" onClick={openBulkPayment}>{t('payment.paySelected')} · {selectedRows.length}</button></div>
+    </div>}
 
     {bulkOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setBulkOpen(false)}}><form className="modalCard bulkPaymentModal" onSubmit={saveBulkPayments}>
       <div className="modalHead"><h2>{t('payment.paySelected')}</h2><button type="button" onClick={()=>setBulkOpen(false)}>×</button></div>
