@@ -386,13 +386,19 @@ export function LaserControlWorkspace(){
     let webRtcAttempted=false;
     const pendingAgentIce:RTCIceCandidateInit[]=[];
 
-    const sendWebRtcSignal=(event:string,payload:Record<string,unknown>)=>
-      postSession({
-        action:'signal',
-        sessionId:currentSession.sessionId,
+    const sendWebRtcSignal=async(event:string,payload:Record<string,unknown>)=>{
+      const status=await channel.send({
+        type:'broadcast',
         event,
-        payload
+        payload:{
+          token:currentSession.frameToken,
+          from:'browser',
+          ...payload
+        }
       });
+      if(status!=='ok')throw new Error('webrtc_signal_failed');
+      return status;
+    };
 
     const closePeer=(clearStream=true)=>{
       if(peerTimeout)window.clearTimeout(peerTimeout);
@@ -414,7 +420,13 @@ export function LaserControlWorkspace(){
         });
         peer=nextPeer;
         let receivedStream:MediaStream|null=null;
-        nextPeer.addTransceiver('video',{direction:'recvonly'});
+        const videoTransceiver=nextPeer.addTransceiver('video',{direction:'recvonly'});
+        const videoCapabilities=RTCRtpReceiver.getCapabilities('video');
+        const vp8Codecs=(videoCapabilities?.codecs??[]).filter(
+          codec=>codec.mimeType.toLowerCase()==='video/vp8'
+        );
+        if(vp8Codecs.length&&typeof videoTransceiver.setCodecPreferences==='function')
+          videoTransceiver.setCodecPreferences(vp8Codecs);
 
         nextPeer.ontrack=event=>{
           receivedStream=event.streams[0]??new MediaStream([event.track]);
