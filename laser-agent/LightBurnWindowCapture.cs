@@ -287,7 +287,7 @@ internal static class LightBurnWindowCapture
         IntPtr best=IntPtr.Zero;
         long bestArea=0;
 
-        EnumWindows((window,_)=>{
+        EnumWindows((window,state)=>{
             if(!IsWindowVisible(window)||IsIconic(window))return true;
             GetWindowThreadProcessId(window,out var pid);
             if(pid!=processId)return true;
