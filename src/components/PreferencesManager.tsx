@@ -72,6 +72,10 @@ export function PreferencesManager(){
   const[notice,setNotice]=useState('');
   const[loading,setLoading]=useState(true);
   const[saving,setSaving]=useState(false);
+  const[resetOpen,setResetOpen]=useState(false);
+  const[resetConfirm,setResetConfirm]=useState('');
+  const[resetting,setResetting]=useState(false);
+  const[resetError,setResetError]=useState('');
 
   const currencyDisplay=useMemo(()=>{
     let names:Intl.DisplayNames|null=null;
@@ -113,6 +117,20 @@ export function PreferencesManager(){
   function chooseTheme(next:FinanceTheme){
     setTheme(next);
     writeFinanceTheme(next);
+  }
+
+  async function resetFinance(){
+    if(resetConfirm.trim().toUpperCase()!=='RESET')return;
+    setResetting(true);setResetError('');
+    const s=createClient();
+    const{error}=await s.rpc('reset_my_finance',{p_confirm:'RESET'});
+    if(error){setResetting(false);setResetError(t('settings.resetFinanceError'));return}
+    try{
+      sessionStorage.removeItem('devinx-active-section');
+      localStorage.removeItem('devinx_auto_future_income');
+    }catch{}
+    window.dispatchEvent(new CustomEvent('devinx:finance-updated'));
+    location.href='/painel';
   }
 
   async function save(){
@@ -196,5 +214,20 @@ export function PreferencesManager(){
     <SettingsFoldCard id="calculator-tools" eyebrow="DEVINX · PRO" title={t('settings.calculatorTools')} summary={t('calculator.subtitle')}>
       <ProCalculator variant="embedded"/>
     </SettingsFoldCard>
+
+    <SettingsFoldCard id="finance-reset" eyebrow={t('settings.resetFinanceEyebrow')} title={t('settings.resetFinanceTitle')} summary={t('settings.resetFinanceSummary')}>
+      <div className="settingsDangerZone">
+        <div><b>{t('settings.resetFinanceTitle')}</b><p>{t('settings.resetFinanceDesc')}</p><small>{t('settings.resetFinanceKeeps')}</small></div>
+        <button type="button" className="dangerButton" onClick={()=>{setResetConfirm('');setResetError('');setResetOpen(true)}}>{t('settings.resetFinanceButton')}</button>
+      </div>
+    </SettingsFoldCard>
+
+    {resetOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!resetting)setResetOpen(false)}}><div className="modalCard financeResetModal">
+      <div className="modalHead"><h2>{t('settings.resetFinanceConfirmTitle')}</h2><button type="button" disabled={resetting} onClick={()=>setResetOpen(false)}>×</button></div>
+      <div className="financeResetWarning"><b>{t('settings.resetFinanceWarningTitle')}</b><p>{t('settings.resetFinanceWarning')}</p><small>{t('settings.resetFinanceKeeps')}</small></div>
+      <label>{t('settings.resetFinanceType')} <b>RESET</b><input value={resetConfirm} onChange={e=>setResetConfirm(e.target.value)} autoComplete="off" spellCheck={false} placeholder="RESET"/></label>
+      {resetError&&<div className="authMessage error">{resetError}</div>}
+      <div className="modalActions"><button type="button" className="secondary" disabled={resetting} onClick={()=>setResetOpen(false)}>{t('common.cancel')}</button><button type="button" className="dangerButton" disabled={resetting||resetConfirm.trim().toUpperCase()!=='RESET'} aria-busy={resetting} onClick={resetFinance}>{resetting?<><span className="buttonSpinner"/>{t('settings.resetFinanceRunning')}</>:t('settings.resetFinanceFinal')}</button></div>
+    </div></div>}
   </div>;
 }
