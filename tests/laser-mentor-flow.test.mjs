@@ -55,7 +55,7 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
 });
 
 
-test('Agent 1.0.36 uses separate permanent and mentor-only builds without ZIP or CMD',async()=>{
+test('Agent 1.1.0 uses separate permanent and mentor-only builds without ZIP or CMD',async()=>{
   const runtime=await readFile('laser-agent/AgentRuntime.cs','utf8');
   const install=await readFile('laser-agent/AgentInstallation.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');

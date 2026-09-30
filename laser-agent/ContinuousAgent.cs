@@ -10,6 +10,7 @@ internal sealed class ContinuousAgent
     private static readonly TimeSpan OfflineKeepAlive=TimeSpan.FromSeconds(30);
     private static readonly TimeSpan InactiveAccessRetry=TimeSpan.FromMinutes(5);
     private static readonly TimeSpan FrameInterval=TimeSpan.FromMilliseconds(125);
+    private static readonly TimeSpan WebRtcFrameInterval=TimeSpan.FromMilliseconds(67);
     private static readonly TimeSpan UnchangedFrameKeepAlive=TimeSpan.FromSeconds(3);
 
     private readonly AgentIdentity _identity;
@@ -114,6 +115,7 @@ internal sealed class ContinuousAgent
         DevinXRealtimeSession? realtime=null;
         CancellationTokenSource? frameCts=null;
         Task? frameTask=null;
+        DevinXWebRtcVideoTransport? webRtc=null;
 
         async Task StopRealtimeAsync()
         {
@@ -124,6 +126,11 @@ internal sealed class ContinuousAgent
                 frameCts.Dispose();
                 frameCts=null;
                 frameTask=null;
+            }
+            if(webRtc is not null)
+            {
+                await webRtc.DisposeAsync();
+                webRtc=null;
             }
             if(realtime is not null)
             {
@@ -251,6 +258,14 @@ internal sealed class ContinuousAgent
             }
         }
 
+        async Task HandleWebRtcSignalAsync(RealtimeWebRtcSignal signal)
+        {
+            var target=webRtc;
+            if(target is null)return;
+            try{await target.HandleSignalAsync(signal,cancellationToken);}
+            catch{}
+        }
+
         while(!cancellationToken.IsCancellationRequested)
         {
             AgentPollResult poll;
@@ -328,7 +343,9 @@ internal sealed class ContinuousAgent
                         current,
                         HandleRealtimeCommandAsync,
                         HandleRemoteInputAsync,
-                        HandleControlRequestAsync);
+                        HandleControlRequestAsync,
+                        HandleWebRtcSignalAsync);
+                    webRtc=new DevinXWebRtcVideoTransport(realtime);
 
                     var connected=await realtime.ConnectAsync(cancellationToken);
                     if(connected)
@@ -341,7 +358,7 @@ internal sealed class ContinuousAgent
                             cancellationToken);
 
                         frameCts=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        frameTask=RunFrameLoopAsync(realtime,frameCts.Token);
+                        frameTask=RunFrameLoopAsync(realtime,webRtc,frameCts.Token);
                     }
                     else
                     {
@@ -367,11 +384,17 @@ internal sealed class ContinuousAgent
             else if(current is not null&&(realtime is null||!realtime.IsConnected))
             {
                 await StopRealtimeAsync();
-                realtime=new DevinXRealtimeSession(current,HandleRealtimeCommandAsync,HandleRemoteInputAsync,HandleControlRequestAsync);
+                realtime=new DevinXRealtimeSession(
+                    current,
+                    HandleRealtimeCommandAsync,
+                    HandleRemoteInputAsync,
+                    HandleControlRequestAsync,
+                    HandleWebRtcSignalAsync);
+                webRtc=new DevinXWebRtcVideoTransport(realtime);
                 if(await realtime.ConnectAsync(cancellationToken))
                 {
                     frameCts=CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                    frameTask=RunFrameLoopAsync(realtime,frameCts.Token);
+                    frameTask=RunFrameLoopAsync(realtime,webRtc,frameCts.Token);
                 }
                 else
                 {
@@ -387,6 +410,7 @@ internal sealed class ContinuousAgent
 
     private async Task RunFrameLoopAsync(
         DevinXRealtimeSession realtime,
+        DevinXWebRtcVideoTransport webRtc,
         CancellationToken cancellationToken)
     {
         string? lastHash=null;
@@ -397,6 +421,14 @@ internal sealed class ContinuousAgent
         {
             try
             {
+                if(webRtc.IsConnected)
+                {
+                    var rawFrame=LightBurnWebRtcCapture.TryCapture();
+                    if(rawFrame is not null)webRtc.TrySendFrame(rawFrame);
+                    await DelaySafe(WebRtcFrameInterval,cancellationToken);
+                    continue;
+                }
+
                 var frame=LightBurnWindowCapture.TryCapture();
                 if(frame is not null)
                 {

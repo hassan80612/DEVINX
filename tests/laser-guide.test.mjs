@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-test('Laser guide is detailed, localized and current for Agent 1.0.36',async()=>{
+test('Laser guide is detailed, localized and current for Agent 1.1.0',async()=>{
   const copy=await readFile('src/app/laser-control/guia/guide-copy.ts','utf8');
   const ui=await readFile('src/app/laser-control/guia/LaserGuideContent.tsx','utf8');
   for(const locale of ['"pt-BR"','"en"','"es"','"fr"','"de"','"ar"'])assert.ok(copy.includes(locale));
