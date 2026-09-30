@@ -11,9 +11,8 @@ test('WebRTC waits for Agent presence and keeps JPEG fallback independent',()=>{
   assert.match(workspace,/markAgentReadyForWebRtc/);
   assert.match(workspace,/event:'frame'/);
   assert.match(workspace,/event:'agent_state'/);
-  assert.match(workspace,/type:'broadcast'/);
-  assert.match(workspace,/event,/);
-  assert.match(workspace,/from:'browser'/);
+  assert.match(workspace,/action:'signal'/);
+  assert.match(workspace,/sessionId:currentSession\.sessionId/);
   assert.match(workspace,/pendingBrowserIce/);
   assert.match(workspace,/video\/vp8/);
   assert.match(sessionRoute,/webrtc_offer/);
@@ -26,17 +25,16 @@ test('WebRTC waits for Agent presence and keeps JPEG fallback independent',()=>{
 });
 
 
-test('Agent receives browser broadcasts over Realtime JSON v1',()=>{
-  assert.match(realtime,/vsn=1\.0\.0/);
-  assert.match(realtime,/topic="realtime:"\+_config\.Topic/);
-  assert.match(realtime,/@event="broadcast"/);
-  assert.doesNotMatch(realtime,/vsn=2\.0\.0/);
+test('Agent keeps stable Realtime v2 for remote input fallback',()=>{
+  assert.match(realtime,/vsn=2\.0\.0/);
+  assert.match(realtime,/new object\?\[\]/);
+  assert.doesNotMatch(realtime,/vsn=1\.0\.0/);
 });
 
 
-test('WebRTC signaling goes directly browser -> Agent after Agent presence is known',()=>{
-  assert.match(workspace,/channel\.send\(\{[\s\S]*type:'broadcast'[\s\S]*from:'browser'/);
-  assert.doesNotMatch(workspace,/sendWebRtcSignal=.*postSession/);
+test('WebRTC signaling is queued through authenticated backend for Agent poll',()=>{
+  assert.match(workspace,/sendWebRtcSignal=.*postSession/s);
+  assert.match(continuous,/poll\.Signal/);
 });
 
 

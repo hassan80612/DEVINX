@@ -386,19 +386,13 @@ export function LaserControlWorkspace(){
     let webRtcAttempted=false;
     const pendingAgentIce:RTCIceCandidateInit[]=[];
 
-    const sendWebRtcSignal=async(event:string,payload:Record<string,unknown>)=>{
-      const status=await channel.send({
-        type:'broadcast',
+    const sendWebRtcSignal=(event:string,payload:Record<string,unknown>)=>
+      postSession({
+        action:'signal',
+        sessionId:currentSession.sessionId,
         event,
-        payload:{
-          token:currentSession.frameToken,
-          from:'browser',
-          ...payload
-        }
+        payload
       });
-      if(status!=='ok')throw new Error('webrtc_signal_failed');
-      return status;
-    };
 
     const closePeer=(clearStream=true)=>{
       if(peerTimeout)window.clearTimeout(peerTimeout);

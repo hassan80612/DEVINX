@@ -447,6 +447,12 @@ internal sealed class ContinuousAgent
                     realtime=null;
                 }
             }
+
+            if(poll.Signal is not null&&current is not null&&realtime is not null&&realtime.IsConnected)
+            {
+                try{await HandleWebRtcSignalAsync(poll.Signal);}
+                catch{}
+            }
         }
 
         await StopRealtimeAsync();
