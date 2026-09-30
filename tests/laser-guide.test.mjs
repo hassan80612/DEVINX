@@ -8,11 +8,11 @@ test('Laser guide is detailed, localized and current for Agent 1.1.0',async()=>{
   for(const locale of ['"pt-BR"','"en"','"es"','"fr"','"de"','"ar"'])assert.ok(copy.includes(locale));
   assert.match(ui,/LanguageMenu/);
   assert.match(ui,/\/api\/laser-control\/agent-download/);
-  assert.doesNotMatch(ui,/github\.com\/hassan80612\/DEVINX\/releases\/download\/laser-agent-v1\.1\.1\/DevinX-Laser-Agent/);
+  assert.doesNotMatch(ui,/github\.com\/hassan80612\/DEVINX\/releases\/download\/laser-agent-v1\.1\.2\/DevinX-Laser-Agent/);
   assert.match(copy,/Sair da tela cheia não deve desligar o controle/);
   assert.match(copy,/Frame \/ Encerrar/);
   assert.doesNotMatch(copy,/INICIAR-MENTORIA\.cmd/);
-  assert.match(copy,/DevinX-Mentoria-1\.1\.1\.exe/);
+  assert.match(copy,/DevinX-Mentoria-1\.1\.2\.exe/);
   assert.match(copy,/heartbeat/);
   assert.match(copy,/SmartScreen/);
 });

@@ -21,3 +21,11 @@ test('WebRTC waits for Agent presence and keeps JPEG fallback independent',()=>{
   assert.match(continuous,/SendFrameAsync/);
   assert.match(realtime,/webrtc_answer/);
 });
+
+
+test('Agent receives browser broadcasts over Realtime JSON v1',()=>{
+  assert.match(realtime,/vsn=1\.0\.0/);
+  assert.match(realtime,/topic="realtime:"\+_config\.Topic/);
+  assert.match(realtime,/@event="broadcast"/);
+  assert.doesNotMatch(realtime,/vsn=2\.0\.0/);
+});
