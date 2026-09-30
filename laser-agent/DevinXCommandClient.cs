@@ -22,7 +22,7 @@ internal sealed class DevinXCommandClient : IDisposable
             identity,"poll",null,null,null,
             knownSessionId,knownRevision,cancellationToken);
 
-        return new AgentPollResult(response.Ok,response.Session,response.Command,response.Reason);
+        return new AgentPollResult(response.Ok,response.Session,response.Command,response.Signal,response.Reason);
     }
 
     public async Task<bool> AckAsync(
@@ -150,6 +150,37 @@ internal sealed class DevinXCommandClient : IDisposable
                 }
             }
 
+            RealtimeWebRtcSignal? signal=null;
+            if(root.TryGetProperty("signal",out var signalElement)
+               &&signalElement.ValueKind==JsonValueKind.Object)
+            {
+                var eventName=signalElement.TryGetProperty("event",out var eventEl)
+                    &&eventEl.ValueKind==JsonValueKind.String
+                    ?eventEl.GetString()
+                    :null;
+                if(signalElement.TryGetProperty("payload",out var signalPayload)
+                   &&signalPayload.ValueKind==JsonValueKind.Object)
+                {
+                    static string? SignalString(JsonElement p,string name)=>
+                        p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.String?e.GetString():null;
+
+                    ushort? lineIndex=null;
+                    if(signalPayload.TryGetProperty("sdpMLineIndex",out var lineEl)
+                       &&lineEl.TryGetInt32(out var line)
+                       &&line is>=0 and<=ushort.MaxValue)
+                        lineIndex=(ushort)line;
+
+                    if(eventName=="webrtc_offer")
+                        signal=new RealtimeWebRtcSignal("offer",SignalString(signalPayload,"sdp"),null,null,null);
+                    else if(eventName=="webrtc_ice")
+                        signal=new RealtimeWebRtcSignal(
+                            "ice",null,SignalString(signalPayload,"candidate"),
+                            SignalString(signalPayload,"sdpMid"),lineIndex);
+                    else if(eventName=="webrtc_stop")
+                        signal=new RealtimeWebRtcSignal("stop",null,null,null,null);
+                }
+            }
+
             RemoteCommand? command=null;
             if(root.TryGetProperty("command",out var commandElement)
                &&commandElement.ValueKind==JsonValueKind.Object)
@@ -166,7 +197,7 @@ internal sealed class DevinXCommandClient : IDisposable
                     command=new RemoteCommand(id!,type!,expires);
             }
 
-            return new CommandResponse(responseOk,session,command,null);
+            return new CommandResponse(responseOk,session,command,signal,null);
         }
         catch
         {
@@ -180,8 +211,9 @@ internal sealed class DevinXCommandClient : IDisposable
         bool Ok,
         RemoteSessionConfig? Session,
         RemoteCommand? Command,
+        RealtimeWebRtcSignal? Signal,
         string? Reason)
     {
-        public static CommandResponse Failed(string reason)=>new(false,null,null,reason);
+        public static CommandResponse Failed(string reason)=>new(false,null,null,null,reason);
     }
 }
