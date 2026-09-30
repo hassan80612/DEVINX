@@ -425,7 +425,7 @@ export function LaserControlWorkspace(){
           setRealtimeStatus('live');
         };
 
-        const pendingBrowserIce:RTCIceCandidateInit[]=[];
+        const pendingBrowserIce:Array<Record<string,unknown>>=[];
         let offerSent=false;
 
         nextPeer.onicecandidate=event=>{
