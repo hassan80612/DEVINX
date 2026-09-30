@@ -386,19 +386,13 @@ export function LaserControlWorkspace(){
     let webRtcAttempted=false;
     const pendingAgentIce:RTCIceCandidateInit[]=[];
 
-    const sendWebRtcSignal=async(event:string,payload:Record<string,unknown>)=>{
-      const status=await channel.send({
-        type:'broadcast',
+    const sendWebRtcSignal=(event:string,payload:Record<string,unknown>)=>
+      postSession({
+        action:'signal',
+        sessionId:currentSession.sessionId,
         event,
-        payload:{
-          token:currentSession.frameToken,
-          from:'browser',
-          ...payload
-        }
+        payload
       });
-      if(status!=='ok')throw new Error('webrtc_signal_failed');
-      return status;
-    };
 
     const closePeer=(clearStream=true)=>{
       if(peerTimeout)window.clearTimeout(peerTimeout);
@@ -1647,8 +1641,8 @@ export function LaserControlWorkspace(){
           </div>
           <button
             className={inputReady?styles.controlOn:styles.controlOff}
-            disabled={inputPending||Boolean(session?.remoteInputEnabled&&!inputReady)}
-            onClick={()=>void (inputReady?disableRemoteInput():enableRemoteInput())}
+            disabled={inputPending}
+            onClick={()=>void ((inputReady||session?.remoteInputEnabled)?disableRemoteInput():enableRemoteInput())}
           >{
             inputPending?t('laser.remoteActivating')
             :inputReady?t('laser.remoteOn')
