@@ -9,7 +9,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
 {
     private const string PublishableKey="sb_publishable_sZoXI7Qxu35geVcMN1p-4A_d4ojgA8s";
     private static readonly Uri RealtimeBase=
-        new($"wss://jubiwhtnhxluetzkzomm.supabase.co/realtime/v1/websocket?apikey={Uri.EscapeDataString(PublishableKey)}&vsn=2.0.0&log_level=info");
+        new($"wss://jubiwhtnhxluetzkzomm.supabase.co/realtime/v1/websocket?apikey={Uri.EscapeDataString(PublishableKey)}&vsn=1.0.0&log_level=info");
 
     private readonly RemoteSessionConfig _config;
     private readonly object _accessSync=new();
@@ -134,13 +134,13 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
 
         try
         {
-            var message=JsonSerializer.Serialize(new object?[]
+            var message=JsonSerializer.Serialize(new
             {
-                "1",
-                Interlocked.Increment(ref _ref).ToString(),
-                "realtime:"+_config.Topic,
-                "broadcast",
-                new{type="broadcast",@event="frame",payload}
+                topic="realtime:"+_config.Topic,
+                @event="broadcast",
+                payload=new{type="broadcast",@event="frame",payload},
+                @ref=Interlocked.Increment(ref _ref).ToString(),
+                join_ref="1"
             });
             var bytes=Encoding.UTF8.GetBytes(message);
             await _socket.SendAsync(
@@ -272,15 +272,15 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
     {
         if(_socket.State!=WebSocketState.Open)return;
 
-        // Supabase Realtime uses the Phoenix v2 serializer by default in current clients:
-        // [join_ref, ref, topic, event, payload].
-        var message=JsonSerializer.Serialize(new object?[]
+        // Protocol v1 keeps every incoming broadcast as JSON text.
+        // This avoids relying on the v2 binary broadcast serializer for browser -> Agent traffic.
+        var message=JsonSerializer.Serialize(new
         {
-            joinRef,
-            reference,
-            "realtime:"+_config.Topic,
-            eventName,
-            payload
+            topic="realtime:"+_config.Topic,
+            @event=eventName,
+            payload,
+            @ref=reference,
+            join_ref=joinRef
         });
 
         var bytes=Encoding.UTF8.GetBytes(message);
@@ -589,13 +589,13 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             {
                 await Task.Delay(TimeSpan.FromSeconds(25),cancellationToken);
                 if(cancellationToken.IsCancellationRequested)return;
-                var message=JsonSerializer.Serialize(new object?[]
+                var message=JsonSerializer.Serialize(new
                 {
-                    null,
-                    Interlocked.Increment(ref _ref).ToString(),
-                    "phoenix",
-                    "heartbeat",
-                    new{}
+                    topic="phoenix",
+                    @event="heartbeat",
+                    payload=new{},
+                    @ref=Interlocked.Increment(ref _ref).ToString(),
+                    join_ref=(string?)null
                 });
                 var bytes=Encoding.UTF8.GetBytes(message);
                 await _sendLock.WaitAsync(cancellationToken);
