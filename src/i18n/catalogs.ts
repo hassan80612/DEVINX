@@ -1123,12 +1123,31 @@ const frThemeRelease=replace(frTrial,{'settings.theme':'Thème visuel','settings
 const deThemeRelease=replace(deTrial,{'settings.theme':'Darstellung','settings.themeHelp':'Ändert nur die Darstellung der Finanzen. Daten und Berechnungen bleiben unverändert.','settings.themeDark':'Dunkel','settings.themeLight':'Hell'});
 const arThemeRelease=replace(arTrial,{'settings.theme':'المظهر','settings.themeHelp':'يغيّر مظهر القسم المالي فقط، من دون تغيير البيانات أو الحسابات.','settings.themeDark':'داكن','settings.themeLight':'فاتح'});
 
+const ptBulkRelease=replace(ptThemeRelease,{
+'payment.selectInstallment':'Selecionar parcela','payment.hideInstallments':'Ocultar parcelas','payment.viewInstallments':'Ver todas as parcelas','payment.installmentSchedule':'CRONOGRAMA DA CONTA','payment.clearSelection':'Limpar seleção','payment.selectAllOpen':'Selecionar todas em aberto','payment.selectMonthOpen':'Selecionar contas deste mês','payment.paySelected':'Pagar selecionadas','payment.selectedTotal':'Total selecionado','payment.actualPaid':'Valor que vou pagar','payment.discount':'Desconto','payment.openValue':'Em aberto','payment.settleInstallment':'Quitar esta parcela','payment.settleInstallmentHelp':'Se o valor pago for menor, a diferença vira desconto e esta parcela é encerrada. Desmarque para pagamento parcial.','payment.bulkInvalid':'Revise os valores. Nenhum pagamento pode ser zero ou maior que o saldo da parcela.','payment.bulkSaved':'Pagamentos selecionados registrados e saldos atualizados.'
+});
+const enBulkRelease=replace(enThemeRelease,{
+'payment.selectInstallment':'Select installment','payment.hideInstallments':'Hide installments','payment.viewInstallments':'View all installments','payment.installmentSchedule':'ACCOUNT SCHEDULE','payment.clearSelection':'Clear selection','payment.selectAllOpen':'Select all open','payment.selectMonthOpen':'Select this month bills','payment.paySelected':'Pay selected','payment.selectedTotal':'Selected total','payment.actualPaid':'Amount I will pay','payment.discount':'Discount','payment.openValue':'Open balance','payment.settleInstallment':'Settle this installment','payment.settleInstallmentHelp':'If the amount paid is lower, the difference becomes a discount and this installment is closed. Uncheck for a partial payment.','payment.bulkInvalid':'Review the amounts. No payment can be zero or greater than the installment balance.','payment.bulkSaved':'Selected payments recorded and balances updated.'
+});
+const esBulkRelease=replace(esThemeRelease,{
+'payment.selectInstallment':'Seleccionar cuota','payment.hideInstallments':'Ocultar cuotas','payment.viewInstallments':'Ver todas las cuotas','payment.installmentSchedule':'CRONOGRAMA DE LA CUENTA','payment.clearSelection':'Limpiar selección','payment.selectAllOpen':'Seleccionar todas pendientes','payment.selectMonthOpen':'Seleccionar cuentas de este mes','payment.paySelected':'Pagar seleccionadas','payment.selectedTotal':'Total seleccionado','payment.actualPaid':'Importe que pagaré','payment.discount':'Descuento','payment.openValue':'Pendiente','payment.settleInstallment':'Saldar esta cuota','payment.settleInstallmentHelp':'Si el importe pagado es menor, la diferencia se considera descuento y la cuota se cierra. Desmarca para pago parcial.','payment.bulkInvalid':'Revisa los importes. Ningún pago puede ser cero ni superar el saldo de la cuota.','payment.bulkSaved':'Pagos seleccionados registrados y saldos actualizados.'
+});
+const frBulkRelease=replace(frThemeRelease,{
+'payment.selectInstallment':'Sélectionner l’échéance','payment.hideInstallments':'Masquer les échéances','payment.viewInstallments':'Voir toutes les échéances','payment.installmentSchedule':'ÉCHÉANCIER DU COMPTE','payment.clearSelection':'Effacer la sélection','payment.selectAllOpen':'Tout sélectionner en cours','payment.selectMonthOpen':'Sélectionner les comptes du mois','payment.paySelected':'Payer la sélection','payment.selectedTotal':'Total sélectionné','payment.actualPaid':'Montant réellement payé','payment.discount':'Remise','payment.openValue':'Solde ouvert','payment.settleInstallment':'Solder cette échéance','payment.settleInstallmentHelp':'Si le montant payé est inférieur, la différence devient une remise et cette échéance est clôturée. Décochez pour un paiement partiel.','payment.bulkInvalid':'Vérifiez les montants. Aucun paiement ne peut être nul ni supérieur au solde de l’échéance.','payment.bulkSaved':'Paiements sélectionnés enregistrés et soldes mis à jour.'
+});
+const deBulkRelease=replace(deThemeRelease,{
+'payment.selectInstallment':'Rate auswählen','payment.hideInstallments':'Raten ausblenden','payment.viewInstallments':'Alle Raten anzeigen','payment.installmentSchedule':'RATENPLAN','payment.clearSelection':'Auswahl löschen','payment.selectAllOpen':'Alle offenen auswählen','payment.selectMonthOpen':'Konten dieses Monats auswählen','payment.paySelected':'Auswahl bezahlen','payment.selectedTotal':'Ausgewählter Gesamtbetrag','payment.actualPaid':'Tatsächlich gezahlter Betrag','payment.discount':'Rabatt','payment.openValue':'Offener Betrag','payment.settleInstallment':'Diese Rate ablösen','payment.settleInstallmentHelp':'Ist der Zahlbetrag niedriger, wird die Differenz als Rabatt verbucht und die Rate geschlossen. Für Teilzahlung abwählen.','payment.bulkInvalid':'Bitte Beträge prüfen. Keine Zahlung darf null oder höher als der offene Ratenbetrag sein.','payment.bulkSaved':'Ausgewählte Zahlungen gespeichert und Salden aktualisiert.'
+});
+const arBulkRelease=replace(arThemeRelease,{
+'payment.selectInstallment':'تحديد القسط','payment.hideInstallments':'إخفاء الأقساط','payment.viewInstallments':'عرض جميع الأقساط','payment.installmentSchedule':'جدول الأقساط','payment.clearSelection':'مسح التحديد','payment.selectAllOpen':'تحديد جميع الأقساط المفتوحة','payment.selectMonthOpen':'تحديد حسابات هذا الشهر','payment.paySelected':'دفع المحدد','payment.selectedTotal':'إجمالي المحدد','payment.actualPaid':'المبلغ الذي سأدفعه','payment.discount':'الخصم','payment.openValue':'المبلغ المفتوح','payment.settleInstallment':'تسوية هذا القسط','payment.settleInstallmentHelp':'إذا كان المبلغ المدفوع أقل، يُسجل الفرق كخصم ويُغلق هذا القسط. أزل التحديد للدفع الجزئي.','payment.bulkInvalid':'راجع المبالغ. لا يمكن أن تكون الدفعة صفراً أو أكبر من الرصيد المتبقي للقسط.','payment.bulkSaved':'تم تسجيل الدفعات المحددة وتحديث الأرصدة.'
+});
+
 export const catalogs:Record<Locale,Catalog>={
-  'pt-BR':{...ptThemeRelease,...landingCatalogs['pt-BR'],...laserCatalogs['pt-BR']},
-  en:{...enThemeRelease,...landingCatalogs.en,...laserCatalogs.en},
-  es:{...esThemeRelease,...landingCatalogs.es,...laserCatalogs.es},
-  fr:{...frThemeRelease,...landingCatalogs.fr,...laserCatalogs.fr},
-  ar:{...arThemeRelease,...landingCatalogs.ar,...laserCatalogs.ar},
-  de:{...deThemeRelease,...landingCatalogs.de,...laserCatalogs.de},
+  'pt-BR':{...ptBulkRelease,...landingCatalogs['pt-BR'],...laserCatalogs['pt-BR']},
+  en:{...enBulkRelease,...landingCatalogs.en,...laserCatalogs.en},
+  es:{...esBulkRelease,...landingCatalogs.es,...laserCatalogs.es},
+  fr:{...frBulkRelease,...landingCatalogs.fr,...laserCatalogs.fr},
+  ar:{...arBulkRelease,...landingCatalogs.ar,...laserCatalogs.ar},
+  de:{...deBulkRelease,...landingCatalogs.de,...laserCatalogs.de},
 };
-export type TranslationKey=keyof typeof ptThemeRelease;
+export type TranslationKey=keyof typeof ptBulkRelease;

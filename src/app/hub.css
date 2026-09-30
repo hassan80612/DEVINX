@@ -769,3 +769,54 @@
   .manualDailyGoal label span,.manualDailyGoal small{font-size:10px}
 
 }
+
+
+/* Bulk installment settlement: selectable schedules without changing existing payment flows. */
+.installmentCheck{display:inline-grid;place-items:center;flex:0 0 auto;width:30px;height:30px;cursor:pointer}
+.installmentCheck input{position:absolute;opacity:0;pointer-events:none}
+.installmentCheck span{display:grid;place-items:center;width:24px;height:24px;border:1px solid rgb(var(--accent-rgb) / .28);border-radius:7px;background:var(--surface-0);color:transparent;font-size:12px;font-weight:950;transition:.16s ease}
+.installmentCheck input:checked+span{border-color:var(--border-accent);background:var(--finance-soft-accent-bg);color:var(--finance-accent-text);box-shadow:inset 0 0 0 1px rgb(var(--accent-rgb) / .12)}
+.installmentCheck input:focus-visible+span{outline:2px solid rgb(var(--accent-rgb) / .45);outline-offset:2px}
+
+.installmentSchedule{grid-column:1/-1;display:grid;gap:8px;padding:11px;border:1px solid rgb(var(--accent-rgb) / .18);border-radius:12px;background:var(--finance-card-inset)}
+.installmentScheduleHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.installmentScheduleHead small,.installmentScheduleHead b{display:block}
+.installmentScheduleHead small{font-size:8px;color:var(--accent);font-weight:900;letter-spacing:.08em}
+.installmentScheduleHead b{margin-top:3px;font-size:11px}
+.installmentScheduleList{display:grid;gap:6px;max-height:380px;overflow:auto;padding-right:2px}
+.installmentScheduleRow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid rgb(var(--accent-rgb) / .13);border-radius:10px;background:var(--surface-0);cursor:pointer}
+.installmentScheduleRow>input{width:17px;height:17px;accent-color:var(--accent)}
+.installmentScheduleRow>span b,.installmentScheduleRow>span small{display:block}
+.installmentScheduleRow>span b{font-size:10px}.installmentScheduleRow>span small{margin-top:3px;font-size:8px;color:var(--text-muted)}
+.installmentScheduleRow>strong{font-size:10px;text-align:right}
+.installmentScheduleRow.selected{border-color:rgb(var(--accent-rgb) / .42);background:var(--finance-soft-accent-bg)}
+.installmentScheduleRow.settled{opacity:.7;cursor:default}.installmentScheduleRow.settled>strong{color:var(--positive)}
+
+.statementItemSelectable{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;border-top:1px solid rgb(var(--accent-rgb) / .1);background:transparent}
+.statementItemSelectable:first-child{border-top:0}
+.statementItemSelectable.selected{background:var(--finance-soft-accent-bg)}
+.statementItemSelectable>.installmentCheck{margin-left:8px}
+.statementItems .statementItemSelectable>button{border-top:0!important}
+.statementItems .statementItemSelectable>button:first-child{border-top:0}
+
+.bulkPaymentModal{width:min(760px,calc(100vw - 28px));max-height:min(88vh,820px)}
+.bulkPaymentSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bulkPaymentSummary>span{display:block;padding:10px;border:1px solid rgb(var(--accent-rgb) / .16);border-radius:10px;background:var(--finance-card-inset)}
+.bulkPaymentSummary small,.bulkPaymentSummary b{display:block}.bulkPaymentSummary small{font-size:8px;color:var(--text-muted)}.bulkPaymentSummary b{margin-top:4px;font-size:12px}
+.bulkPaymentRows{display:grid;gap:8px;max-height:48vh;overflow:auto;padding-right:3px}
+.bulkPaymentRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.48fr);gap:9px;align-items:end;padding:11px;border:1px solid rgb(var(--accent-rgb) / .15);border-radius:11px;background:var(--finance-card-inset)}
+.bulkPaymentIdentity{align-self:center}.bulkPaymentIdentity b,.bulkPaymentIdentity small{display:block}.bulkPaymentIdentity b{font-size:10px}.bulkPaymentIdentity small{margin-top:4px;font-size:8px;color:var(--text-muted);line-height:1.45}
+.bulkPaymentRow>label{margin:0}.bulkSettleCheck{grid-column:1/-1;display:flex!important;flex-direction:row!important;align-items:flex-start!important;gap:9px;padding:8px 9px;border:1px solid rgb(var(--accent-rgb) / .12);border-radius:9px;background:var(--surface-0)}
+.bulkSettleCheck input{flex:0 0 auto;width:17px;height:17px;margin-top:1px;accent-color:var(--accent)}
+.bulkSettleCheck span b,.bulkSettleCheck span small{display:block}.bulkSettleCheck span b{font-size:9px}.bulkSettleCheck span small{margin-top:3px;color:var(--text-muted);font-size:8px;line-height:1.4}
+
+@media(max-width:640px){
+  .installmentScheduleHead{align-items:flex-start;flex-direction:column}
+  .installmentScheduleHead button{width:100%}
+  .installmentScheduleRow{grid-template-columns:auto minmax(0,1fr);gap:8px}
+  .installmentScheduleRow>strong{grid-column:2;text-align:left}
+  .bulkPaymentSummary{grid-template-columns:1fr}
+  .bulkPaymentRow{grid-template-columns:1fr}
+  .bulkSettleCheck{grid-column:1}
+  .statementItemSelectable>.installmentCheck{margin-left:5px}
+}

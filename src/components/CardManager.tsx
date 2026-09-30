@@ -25,6 +25,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   const[openCard,setOpenCard]=useState(false);const[openPurchase,setOpenPurchase]=useState(false);const[name,setName]=useState('');const[limit,setLimit]=useState('');const[closing,setClosing]=useState('');const[due,setDue]=useState('');
   const[cardId,setCardId]=useState('');const[desc,setDesc]=useState('');const[total,setTotal]=useState('');const[count,setCount]=useState('1');const[category,setCategory]=useState('other');const[avoidable,setAvoidable]=useState(false);const[purchaseDate,setPurchaseDate]=useState(localDateISO());const[firstDueDate,setFirstDueDate]=useState('');const[notice,setNotice]=useState('');
   const[payTarget,setPayTarget]=useState<{card:Card;installment:OpenInst;dueDate:string}|null>(null);const[payDate,setPayDate]=useState(localDateISO());const[payAmount,setPayAmount]=useState('');const[payMode,setPayMode]=useState<'partial'|'settle'>('partial');const[saving,setSaving]=useState(false);const[expandedCards,setExpandedCards]=useState<Set<string>>(new Set());const[editingCard,setEditingCard]=useState<Card|null>(null);const[eCardName,setECardName]=useState('');const[eCardLimit,setECardLimit]=useState('');const[eCardClosing,setECardClosing]=useState('');const[eCardDue,setECardDue]=useState('');
+  const[selectedInstallments,setSelectedInstallments]=useState<Set<string>>(new Set());const[bulkOpen,setBulkOpen]=useState(false);const[bulkAmounts,setBulkAmounts]=useState<Record<string,string>>({});const[bulkSettle,setBulkSettle]=useState<Record<string,boolean>>({});const[bulkPaidOn,setBulkPaidOn]=useState(localDateISO());
   const categories=categoryOptions('expense',custom,t);
   function toggleCard(id:string){setExpandedCards(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next})}
   function toggleAll(){setExpandedCards(prev=>prev.size===cards.length?new Set():new Set(cards.map(card=>card.id)))}
@@ -62,6 +63,58 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
     });
     return[card.id,{overdue,now,future,total:unpaid.reduce((a,b)=>a+b.remaining,0),statements}];
   })),[cards,inst,itemPays,current]);
+
+  const openInstallments=useMemo(()=>{
+    const paidMap=new Map<string,number>();
+    itemPays.forEach(p=>{if(p.source_id)paidMap.set(p.source_id,(paidMap.get(p.source_id)||0)+Number(p.amount_minor))});
+    return inst.flatMap(i=>{
+      const card=cards.find(item=>item.id===i.card_purchases?.card_id);
+      if(!card||i.paid_at)return[];
+      const paid=Math.min(Number(i.amount_minor),paidMap.get(i.id)||0);
+      const remaining=Math.max(0,Number(i.amount_minor)-paid);
+      if(remaining<=0)return[];
+      const installment={...i,paid,remaining} as OpenInst;
+      return[{id:i.id,card,installment,dueDate:i.due_date||statementDueDate(i.billing_month,card.due_day)}];
+    }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.card.name.localeCompare(b.card.name));
+  },[cards,inst,itemPays]);
+  const selectedRows=useMemo(()=>openInstallments.filter(row=>selectedInstallments.has(row.id)),[openInstallments,selectedInstallments]);
+
+  function toggleInstallmentSelection(id:string){
+    setSelectedInstallments(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next});
+  }
+  function toggleCardOpenSelection(cardId:string){
+    const rows=openInstallments.filter(row=>row.card.id===cardId);
+    const allSelected=rows.length>0&&rows.every(row=>selectedInstallments.has(row.id));
+    setSelectedInstallments(prev=>{
+      const next=new Set(prev);
+      rows.forEach(row=>{allSelected?next.delete(row.id):next.add(row.id)});
+      return next;
+    });
+  }
+  function openBulkPayment(){
+    if(selectedRows.length===0)return;
+    const amounts:Record<string,string>={},settles:Record<string,boolean>={};
+    selectedRows.forEach(row=>{amounts[row.id]=String(row.installment.remaining/100).replace('.',',');settles[row.id]=true});
+    setBulkAmounts(amounts);setBulkSettle(settles);setBulkPaidOn(localDateISO());setBulkOpen(true);setNotice('');
+  }
+  const bulkSummary=useMemo(()=>selectedRows.reduce((sum,row)=>{
+    const amount=minor(bulkAmounts[row.id]||'0'),settle=bulkSettle[row.id]!==false;
+    sum.original+=row.installment.remaining;sum.paid+=Math.max(0,amount);
+    if(settle&&amount>=0&&amount<row.installment.remaining)sum.discount+=row.installment.remaining-amount;
+    return sum;
+  },{original:0,paid:0,discount:0}),[selectedRows,bulkAmounts,bulkSettle]);
+
+  async function saveBulkPayments(e:FormEvent){
+    e.preventDefault();if(selectedRows.length===0)return;
+    const items=selectedRows.map(row=>({installment_id:row.id,amount_minor:minor(bulkAmounts[row.id]||'0'),settle:bulkSettle[row.id]!==false}));
+    if(items.some((item,index)=>item.amount_minor<=0||item.amount_minor>selectedRows[index].installment.remaining)){setNotice(t('payment.bulkInvalid'));return}
+    setSaving(true);
+    const s=createClient();
+    const{error}=await s.rpc('register_card_installment_batch',{p_items:items,p_paid_on:bulkPaidOn});
+    setSaving(false);
+    if(error){setNotice(t('common.errorSave'));return}
+    setBulkOpen(false);setSelectedInstallments(new Set());setBulkAmounts({});setBulkSettle({});setNotice(t('payment.bulkSaved'));notifyFinanceUpdated();await load();
+  }
 
   async function addCard(e:FormEvent){
     e.preventDefault();const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user)return;
@@ -122,7 +175,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
 
   return <div className="cardsPage">
     <section className="moduleSummary"><small>{t('cards.intro')}</small><strong>{t('cards.title')}</strong><span>{t('cards.desc')}</span></section>
-    <div className="toolbar"><button className="secondary" onClick={()=>setOpenCard(v=>!v)}>{t('cards.addCard')}</button>{cards.length>0&&<button className="primary" onClick={()=>setOpenPurchase(v=>!v)}>{t('cards.addPurchase')}</button>}{onNavigate&&<button className="goldOutline" onClick={()=>onNavigate('categories')}>{t('cards.categories')}</button>}{cards.length>1&&<button className="ghost compactButton" onClick={toggleAll}>{expandedCards.size===cards.length?t('common.collapseAll'):t('common.expandAll')}</button>}</div>
+    <div className="toolbar"><button className="secondary" onClick={()=>setOpenCard(v=>!v)}>{t('cards.addCard')}</button>{cards.length>0&&<button className="primary" onClick={()=>setOpenPurchase(v=>!v)}>{t('cards.addPurchase')}</button>}{selectedRows.length>0&&<button className="goldButton" type="button" onClick={openBulkPayment}>{t('payment.paySelected')} · {selectedRows.length}</button>}{onNavigate&&<button className="goldOutline" onClick={()=>onNavigate('categories')}>{t('cards.categories')}</button>}{cards.length>1&&<button className="ghost compactButton" onClick={toggleAll}>{expandedCards.size===cards.length?t('common.collapseAll'):t('common.expandAll')}</button>}</div>
     {openCard&&<form className="panel entryForm" onSubmit={addCard}><label>{t('cards.cardName')}<input required value={name} onChange={e=>setName(e.target.value)}/></label><label>{t('cards.closing')}<input type="number" min="1" max="31" value={closing} onChange={e=>setClosing(e.target.value)}/></label><label>{t('cards.dueDay')}<input type="number" min="1" max="31" value={due} onChange={e=>setDue(e.target.value)}/></label><label>{t('cards.limit')} <small>({t('common.optional')})</small><input value={limit} onChange={e=>setLimit(e.target.value)} inputMode="decimal"/></label><button className="primary">{t('common.save')}</button></form>}
     {openPurchase&&<form className="panel entryForm" onSubmit={addPurchase}><label>{t('nav.cards')}<select value={cardId} onChange={e=>setCardId(e.target.value)}>{cards.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label>{t('cards.purchase')}<input required value={desc} onChange={e=>setDesc(e.target.value)}/></label><label>{t('cards.total')}<input required value={total} onChange={e=>setTotal(e.target.value)} inputMode="decimal"/></label><label>{t('cards.installments')}<input type="number" min="1" max="60" value={count} onChange={e=>setCount(e.target.value)} required/></label><label>{t('cards.purchaseDate')}<input type="date" value={purchaseDate} onChange={e=>setPurchaseDate(e.target.value)} required/></label><label>{t('cards.firstDueDate')} <small>({t('common.optional')})</small><input type="date" value={firstDueDate} onChange={e=>setFirstDueDate(e.target.value)}/><small>{t('cards.firstDueDateHelp')}</small></label><label>{t('common.category')}<select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(c=><option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}</select></label><label className="checkOnly"><input type="checkbox" checked={avoidable} onChange={e=>setAvoidable(e.target.checked)}/>{t('quick.avoidable')}</label><button className="primary" disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('cards.distribute')}</button></form>}
     {notice&&<div className="authMessage">{notice}</div>}
@@ -134,11 +187,23 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
         <em>{opened?'−':'＋'}</em>
       </button>
       {opened&&<div className="collapsibleBody">
-        <div className="cardManageRow"><div>{card.limit_minor!=null&&<div className="cardLimitLine"><span>{t('cards.limit')}</span><b>{currency(Number(card.limit_minor))}</b></div>}</div><div className="cardManageActions"><button className="textButton" type="button" onClick={()=>startCardEdit(card)}>{t('common.edit')}</button><button className="dangerText textButton" type="button" onClick={()=>archiveCard(card)}>{t('common.delete')}</button></div></div>
+        <div className="cardManageRow"><div>{card.limit_minor!=null&&<div className="cardLimitLine"><span>{t('cards.limit')}</span><b>{currency(Number(card.limit_minor))}</b></div>}</div><div className="cardManageActions">{openInstallments.some(row=>row.card.id===card.id)&&<button className="goldOutline" type="button" onClick={()=>toggleCardOpenSelection(card.id)}>{openInstallments.filter(row=>row.card.id===card.id).every(row=>selectedInstallments.has(row.id))?t('payment.clearSelection'):t('payment.selectAllOpen')}</button>}<button className="textButton" type="button" onClick={()=>startCardEdit(card)}>{t('common.edit')}</button><button className="dangerText textButton" type="button" onClick={()=>archiveCard(card)}>{t('common.delete')}</button></div></div>
         <div className="cardNumbers"><div className={s.overdue>0?'dangerMetric':''}><small>{t('cards.overdue')}</small><strong>{currency(s.overdue)}</strong></div><div><small>{t('cards.thisMonth')}</small><strong>{currency(s.now)}</strong></div><div><small>{t('cards.future')}</small><strong>{currency(s.future)}</strong></div><div className="totalMetric"><small>{t('cards.totalOpen')}</small><strong>{currency(s.total)}</strong></div></div>
-        {s.statements.length>0&&<div className="statementList">{s.statements.map(st=><section className="statementGroup" key={st.month}><div className="statementHead"><span>{t('move.dueOn')} {date(st.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</span><b>{currency(st.amount)}</b><small>{t('cards.statementTotal')}</small></div><div className="statementItems">{st.rows.map(item=><button type="button" key={item.id} onClick={()=>{setPayTarget({card,installment:item,dueDate:item.due_date||st.dueDate});setPayDate(localDateISO());setPayAmount(String(item.remaining/100).replace('.',','));setPayMode('partial')}}><span><b>{item.card_purchases?.description||card.name}</b><small>{item.card_purchases?.installment_count&&item.card_purchases.installment_count>1?item.installment_number+'/'+item.card_purchases.installment_count+' · ':''}{t('move.dueOn')} {date(item.due_date||st.dueDate,{day:'2-digit',month:'2-digit'})}{item.paid>0?' · '+t('cards.paidSoFar')+' '+currency(item.paid):''}</small></span><strong>{currency(item.remaining)}</strong><em>{t('cards.payItem')}</em></button>)}</div></section>)}</div>}
+        {s.statements.length>0&&<div className="statementList">{s.statements.map(st=><section className="statementGroup" key={st.month}><div className="statementHead"><span>{t('move.dueOn')} {date(st.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</span><b>{currency(st.amount)}</b><small>{t('cards.statementTotal')}</small></div><div className="statementItems">{st.rows.map(item=><div className={'statementItemSelectable '+(selectedInstallments.has(item.id)?'selected':'')} key={item.id}><label className="installmentCheck" title={t('payment.selectInstallment')}><input type="checkbox" checked={selectedInstallments.has(item.id)} onChange={()=>toggleInstallmentSelection(item.id)}/><span>✓</span></label><button type="button" onClick={()=>{setPayTarget({card,installment:item,dueDate:item.due_date||st.dueDate});setPayDate(localDateISO());setPayAmount(String(item.remaining/100).replace('.',','));setPayMode('partial')}}><span><b>{item.card_purchases?.description||card.name}</b><small>{item.card_purchases?.installment_count&&item.card_purchases.installment_count>1?item.installment_number+'/'+item.card_purchases.installment_count+' · ':''}{t('move.dueOn')} {date(item.due_date||st.dueDate,{day:'2-digit',month:'2-digit'})}{item.paid>0?' · '+t('cards.paidSoFar')+' '+currency(item.paid):''}</small></span><strong>{currency(item.remaining)}</strong><em>{t('cards.payItem')}</em></button></div>)}</div></section>)}</div>}
       </div>}
     </article>})}</section>
+
+    {bulkOpen&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setBulkOpen(false)}}><form className="modalCard bulkPaymentModal" onSubmit={saveBulkPayments}>
+      <div className="modalHead"><h2>{t('payment.paySelected')}</h2><button type="button" onClick={()=>setBulkOpen(false)}>×</button></div>
+      <div className="bulkPaymentSummary"><span><small>{t('payment.selectedTotal')}</small><b>{currency(bulkSummary.original)}</b></span><span><small>{t('payment.actualPaid')}</small><b>{currency(bulkSummary.paid)}</b></span><span><small>{t('payment.discount')}</small><b className="positive">{currency(bulkSummary.discount)}</b></span></div>
+      <div className="bulkPaymentRows">{selectedRows.map(row=><div className="bulkPaymentRow" key={row.id}>
+        <div className="bulkPaymentIdentity"><b>{row.card.name} · {row.installment.card_purchases?.description||t('cards.purchase')}</b><small>{row.installment.card_purchases?.installment_count&&row.installment.card_purchases.installment_count>1?row.installment.installment_number+'/'+row.installment.card_purchases.installment_count+' · ':''}{date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})} · {t('payment.openValue')} {currency(row.installment.remaining)}</small></div>
+        <label>{t('payment.actualPaid')}<input value={bulkAmounts[row.id]||''} onChange={e=>setBulkAmounts(prev=>({...prev,[row.id]:e.target.value}))} inputMode="decimal" required/></label>
+        <label className="bulkSettleCheck"><input type="checkbox" checked={bulkSettle[row.id]!==false} onChange={e=>setBulkSettle(prev=>({...prev,[row.id]:e.target.checked}))}/><span><b>{t('payment.settleInstallment')}</b><small>{t('payment.settleInstallmentHelp')}</small></span></label>
+      </div>)}</div>
+      <label>{t('common.date')}<input type="date" value={bulkPaidOn} onChange={e=>setBulkPaidOn(e.target.value)} required/></label>
+      <div className="modalActions"><button type="button" className="secondary" onClick={()=>setBulkOpen(false)}>{t('common.cancel')}</button><button className="primary" disabled={saving} aria-busy={saving}>{saving?<><span className="buttonSpinner"/>{t('common.saving')}</>:t('common.confirm')}</button></div>
+    </form></div>}
 
     {editingCard&&<div className="modalBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEditingCard(null)}}><form className="modalCard" onSubmit={saveCardEdit}><div className="modalHead"><h2>{t('common.edit')} · {editingCard.name}</h2><button type="button" onClick={()=>setEditingCard(null)}>×</button></div><label>{t('cards.cardName')}<input required value={eCardName} onChange={e=>setECardName(e.target.value)}/></label><label>{t('cards.closing')}<input type="number" min="1" max="31" value={eCardClosing} onChange={e=>setECardClosing(e.target.value)}/></label><label>{t('cards.dueDay')}<input type="number" min="1" max="31" value={eCardDue} onChange={e=>setECardDue(e.target.value)}/></label><label>{t('cards.limit')} <small>({t('common.optional')})</small><input value={eCardLimit} onChange={e=>setECardLimit(e.target.value)} inputMode="decimal"/></label><div className="modalActions"><button type="button" className="secondary" onClick={()=>setEditingCard(null)}>{t('common.cancel')}</button><button className="primary">{t('common.save')}</button></div></form></div>}
 
