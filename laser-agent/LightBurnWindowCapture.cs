@@ -46,6 +46,11 @@ internal static class LightBurnWindowCapture
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint processId);
 
+    private delegate bool EnumWindowsProc(IntPtr hWnd,IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc,IntPtr lParam);
+
     [DllImport("user32.dll",SetLastError=true)]
     private static extern bool PrintWindow(IntPtr hWnd,IntPtr hdcBlt,uint nFlags);
 
@@ -261,14 +266,44 @@ internal static class LightBurnWindowCapture
             {
                 var name=process.ProcessName;
                 var title=process.MainWindowTitle;
-                if(process.MainWindowHandle!=IntPtr.Zero
-                   &&(name.Equals("LightBurn",StringComparison.OrdinalIgnoreCase)
-                      ||title.Contains("LightBurn",StringComparison.OrdinalIgnoreCase)))
-                    return process.MainWindowHandle;
+                if(!name.Equals("LightBurn",StringComparison.OrdinalIgnoreCase)
+                   &&!title.Contains("LightBurn",StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var pid=(uint)process.Id;
+                var preferred=process.MainWindowHandle;
+                var largest=FindLargestVisibleWindow(pid);
+                if(largest!=IntPtr.Zero)return largest;
+                if(preferred!=IntPtr.Zero)return preferred;
             }
             catch{}
             finally{process.Dispose();}
         }
         return IntPtr.Zero;
+    }
+
+    private static IntPtr FindLargestVisibleWindow(uint processId)
+    {
+        IntPtr best=IntPtr.Zero;
+        long bestArea=0;
+
+        EnumWindows((window,state)=>{
+            if(!IsWindowVisible(window)||IsIconic(window))return true;
+            GetWindowThreadProcessId(window,out var pid);
+            if(pid!=processId)return true;
+            if(!TryGetPhysicalBounds(window,out _,out _,out var width,out var height))
+                return true;
+            if(width<300||height<200)return true;
+
+            var area=(long)width*height;
+            if(area>bestArea)
+            {
+                best=window;
+                bestArea=area;
+            }
+            return true;
+        },IntPtr.Zero);
+
+        return best;
     }
 }
