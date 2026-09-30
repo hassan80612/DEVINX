@@ -1161,12 +1161,31 @@ const arResetRelease=replace(arBulkRelease,{
 'settings.resetFinanceEyebrow':'البيانات المالية','settings.resetFinanceTitle':'إعادة ضبط المالية','settings.resetFinanceSummary':'يحذف البيانات المالية مع الحفاظ على حسابك وصلاحيات الوصول.','settings.resetFinanceDesc':'استخدم هذا الخيار للبدء من الصفر. سيتم حذف الرصيد والحركات، جلسات العمل، الفواتير والأقساط، البطاقات والمشتريات، الديون، الأهداف، الاحتياطيات، الخطط والفئات التي أنشأتها.','settings.resetFinanceKeeps':'لن يتم حذف تسجيل الدخول أو الاشتراك أو الوصول إلى DevinX أو Laser Control أو المتجر أو الصلاحيات أو اللغة أو العملة أو المظهر أو المنطقة الزمنية.','settings.resetFinanceButton':'إعادة ضبط جميع البيانات المالية','settings.resetFinanceConfirmTitle':'تأكيد إعادة ضبط المالية','settings.resetFinanceWarningTitle':'لا يمكن التراجع عن هذا الإجراء.','settings.resetFinanceWarning':'بعد التأكيد سيصبح قسم المالية كحساب جديد وسيتم حذف السجل المالي بالكامل.','settings.resetFinanceType':'اكتب للتأكيد:','settings.resetFinanceFinal':'الحذف والبدء من الصفر','settings.resetFinanceRunning':'جارٍ إعادة ضبط المالية...','settings.resetFinanceError':'تعذر إعادة ضبط المالية. لم يتم حذف أي بيانات بشكل جزئي.'
 });
 
+const ptInstallmentOriginRelease=replace(ptResetRelease,{
+'payment.installmentOrigins':'PARCELAMENTOS','payment.resolvedValue':'Já quitado / abatido','payment.payCurrent':'Pagar parcela atual','payment.settleRemaining':'Quitar saldo restante'
+});
+const enInstallmentOriginRelease=replace(enResetRelease,{
+'payment.installmentOrigins':'INSTALLMENT PLANS','payment.resolvedValue':'Already settled / reduced','payment.payCurrent':'Pay current installment','payment.settleRemaining':'Settle remaining balance'
+});
+const esInstallmentOriginRelease=replace(esResetRelease,{
+'payment.installmentOrigins':'CUOTAS','payment.resolvedValue':'Ya saldado / descontado','payment.payCurrent':'Pagar cuota actual','payment.settleRemaining':'Saldar saldo restante'
+});
+const frInstallmentOriginRelease=replace(frResetRelease,{
+'payment.installmentOrigins':'ÉCHELONNEMENTS','payment.resolvedValue':'Déjà soldé / déduit','payment.payCurrent':'Payer l’échéance actuelle','payment.settleRemaining':'Solder le solde restant'
+});
+const deInstallmentOriginRelease=replace(deResetRelease,{
+'payment.installmentOrigins':'RATENPLÄNE','payment.resolvedValue':'Bereits getilgt / reduziert','payment.payCurrent':'Aktuelle Rate zahlen','payment.settleRemaining':'Restschuld ablösen'
+});
+const arInstallmentOriginRelease=replace(arResetRelease,{
+'payment.installmentOrigins':'خطط التقسيط','payment.resolvedValue':'تمت تسويته / خصمه','payment.payCurrent':'دفع القسط الحالي','payment.settleRemaining':'تسوية الرصيد المتبقي'
+});
+
 export const catalogs:Record<Locale,Catalog>={
-  'pt-BR':{...ptResetRelease,...landingCatalogs['pt-BR'],...laserCatalogs['pt-BR']},
-  en:{...enResetRelease,...landingCatalogs.en,...laserCatalogs.en},
-  es:{...esResetRelease,...landingCatalogs.es,...laserCatalogs.es},
-  fr:{...frResetRelease,...landingCatalogs.fr,...laserCatalogs.fr},
-  ar:{...arResetRelease,...landingCatalogs.ar,...laserCatalogs.ar},
-  de:{...deResetRelease,...landingCatalogs.de,...laserCatalogs.de},
+  'pt-BR':{...ptInstallmentOriginRelease,...landingCatalogs['pt-BR'],...laserCatalogs['pt-BR']},
+  en:{...enInstallmentOriginRelease,...landingCatalogs.en,...laserCatalogs.en},
+  es:{...esInstallmentOriginRelease,...landingCatalogs.es,...laserCatalogs.es},
+  fr:{...frInstallmentOriginRelease,...landingCatalogs.fr,...laserCatalogs.fr},
+  ar:{...arInstallmentOriginRelease,...landingCatalogs.ar,...laserCatalogs.ar},
+  de:{...deInstallmentOriginRelease,...landingCatalogs.de,...laserCatalogs.de},
 };
-export type TranslationKey=keyof typeof ptResetRelease;
+export type TranslationKey=keyof typeof ptInstallmentOriginRelease;

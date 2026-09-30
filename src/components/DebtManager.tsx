@@ -122,10 +122,10 @@ export function DebtManager(){
     await load();
   }
 
-  function openPay(d:Debt){
+  function openPay(d:Debt,mode:'partial'|'settle'='partial'){
     setPaying(d);
-    setPaymentMode('partial');
-    setPaymentAmount(d.installment_minor?String(Number(d.installment_minor)/100).replace('.',','):'');
+    setPaymentMode(mode);
+    setPaymentAmount(String(Number(mode==='settle'?d.outstanding_minor:(d.installment_minor||d.outstanding_minor))/100).replace('.',','));
     setPaymentMethod('pix');
     setPaymentDate(localDateISO());
     setNotice('');
@@ -263,7 +263,7 @@ export function DebtManager(){
             </div>
 
             <div className="debtActions">
-              {d.is_active&&Number(d.outstanding_minor)>0&&<button className="primary" onClick={()=>openPay(d)}>{t('debts.register')}</button>}
+              {d.is_active&&Number(d.outstanding_minor)>0&&<><button className="primary" onClick={()=>openPay(d,'partial')}>{t('payment.payCurrent')}</button><button className="goldOutline" onClick={()=>openPay(d,'settle')}>{t('payment.settleRemaining')}</button></>}
               <button className="textButton" onClick={()=>startEdit(d)}>{t('common.edit')}</button>
               {!settled&&(d.is_active
                 ?<button className="dangerText textButton" onClick={()=>setActive(d,false)}>{t('debts.archive')}</button>

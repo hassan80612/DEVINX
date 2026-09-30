@@ -8,7 +8,7 @@ import {categoryOptions,CustomCategory} from '@/domain/categories';
 import {useI18n} from '@/i18n/provider';
 
 type Card={id:string;name:string;limit_minor:number|null;closing_day:number|null;due_day:number|null};
-type Inst={id:string;installment_number:number;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null;card_purchases:{description:string|null;card_id:string;category_id:string;is_avoidable:boolean;installment_count:number}|null};
+type Inst={id:string;purchase_id:string;installment_number:number;amount_minor:number;billing_month:string;due_date:string|null;paid_at:string|null;card_purchases:{id:string;description:string|null;card_id:string;category_id:string;is_avoidable:boolean;installment_count:number;total_minor:number;purchased_on:string}|null};
 type ItemPay={id:string;amount_minor:number;occurred_on:string;source_id:string|null};
 type OpenInst=Inst&{paid:number;remaining:number};
 const minor=(raw:string)=>Math.round((Number(raw.replace(/\./g,'').replace(',','.'))||0)*100);
@@ -49,7 +49,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   const[openCard,setOpenCard]=useState(false);const[openPurchase,setOpenPurchase]=useState(false);const[name,setName]=useState('');const[limit,setLimit]=useState('');const[closing,setClosing]=useState('');const[due,setDue]=useState('');
   const[cardId,setCardId]=useState('');const[desc,setDesc]=useState('');const[total,setTotal]=useState('');const[count,setCount]=useState('1');const[category,setCategory]=useState('other');const[avoidable,setAvoidable]=useState(false);const[purchaseDate,setPurchaseDate]=useState(localDateISO());const[firstDueDate,setFirstDueDate]=useState('');const[notice,setNotice]=useState('');
   const[payTarget,setPayTarget]=useState<{card:Card;installment:OpenInst;dueDate:string}|null>(null);const[payDate,setPayDate]=useState(localDateISO());const[payAmount,setPayAmount]=useState('');const[payMode,setPayMode]=useState<'partial'|'settle'>('partial');const[saving,setSaving]=useState(false);const[expandedCards,setExpandedCards]=useState<Set<string>>(new Set());const[editingCard,setEditingCard]=useState<Card|null>(null);const[eCardName,setECardName]=useState('');const[eCardLimit,setECardLimit]=useState('');const[eCardClosing,setECardClosing]=useState('');const[eCardDue,setECardDue]=useState('');
-  const[selectedInstallments,setSelectedInstallments]=useState<Set<string>>(new Set());const[bulkOpen,setBulkOpen]=useState(false);const[bulkTotal,setBulkTotal]=useState('');const[bulkPaidOn,setBulkPaidOn]=useState(localDateISO());
+  const[selectedInstallments,setSelectedInstallments]=useState<Set<string>>(new Set());const[bulkOpen,setBulkOpen]=useState(false);const[bulkTotal,setBulkTotal]=useState('');const[bulkPaidOn,setBulkPaidOn]=useState(localDateISO());const[expandedPurchases,setExpandedPurchases]=useState<Set<string>>(new Set());
   const categories=categoryOptions('expense',custom,t);
   function toggleCard(id:string){setExpandedCards(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next})}
   function toggleAll(){setExpandedCards(prev=>prev.size===cards.length?new Set():new Set(cards.map(card=>card.id)))}
@@ -58,7 +58,7 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
     const s=createClient();const{data:{user}}=await s.auth.getUser();if(!user){location.href='/entrar';return}
     const[c,i,p,ct]=await Promise.all([
       s.from('credit_cards').select('id,name,limit_minor,closing_day,due_day').eq('user_id',user.id).eq('is_active',true).order('created_at'),
-      s.from('card_installments').select('id,installment_number,amount_minor,billing_month,due_date,paid_at,card_purchases(description,card_id,category_id,is_avoidable,installment_count)').eq('user_id',user.id).order('billing_month').order('installment_number'),
+      s.from('card_installments').select('id,purchase_id,installment_number,amount_minor,billing_month,due_date,paid_at,card_purchases(id,description,card_id,category_id,is_avoidable,installment_count,total_minor,purchased_on)').eq('user_id',user.id).order('billing_month').order('installment_number'),
       s.from('transactions').select('id,amount_minor,occurred_on,source_id').eq('user_id',user.id).eq('source_type','card_installment_payment').order('occurred_on'),
       s.from('finance_categories').select('id,kind,name,icon,show_in_quick,is_active').eq('user_id',user.id).eq('kind','expense').order('created_at')
     ]);
@@ -103,6 +103,29 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
   },[cards,inst,itemPays]);
   const selectedRows=useMemo(()=>openInstallments.filter(row=>selectedInstallments.has(row.id)),[openInstallments,selectedInstallments]);
   const selectedOpenTotal=useMemo(()=>selectedRows.reduce((sum,row)=>sum+row.installment.remaining,0),[selectedRows]);
+  const purchaseSummaries=useMemo(()=>{
+    const paidMap=new Map<string,number>();
+    itemPays.forEach(p=>{if(p.source_id)paidMap.set(p.source_id,(paidMap.get(p.source_id)||0)+Number(p.amount_minor))});
+    const groups=new Map<string,{id:string;card:Card;description:string;original:number;purchasedOn:string;installmentCount:number;rows:{id:string;installment:OpenInst;dueDate:string}[]}>();
+    inst.forEach(i=>{
+      const purchase=i.card_purchases;
+      const card=cards.find(item=>item.id===purchase?.card_id);
+      if(!purchase||!card)return;
+      const linked=Math.min(Number(i.amount_minor),paidMap.get(i.id)||0);
+      const paid=i.paid_at?Number(i.amount_minor):linked;
+      const remaining=i.paid_at?0:Math.max(0,Number(i.amount_minor)-linked);
+      const installment={...i,paid,remaining} as OpenInst;
+      const current=groups.get(purchase.id)||{id:purchase.id,card,description:purchase.description||card.name,original:Number(purchase.total_minor),purchasedOn:purchase.purchased_on,installmentCount:Number(purchase.installment_count||1),rows:[]};
+      current.rows.push({id:i.id,installment,dueDate:i.due_date||statementDueDate(i.billing_month,card.due_day)});
+      groups.set(purchase.id,current);
+    });
+    return [...groups.values()].map(group=>{
+      const rows=group.rows.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.installment.installment_number-b.installment.installment_number);
+      const remaining=rows.reduce((sum,row)=>sum+row.installment.remaining,0);
+      const openRows=rows.filter(row=>row.installment.remaining>0);
+      return{...group,rows,openRows,remaining,resolved:Math.max(0,group.original-remaining),next:openRows[0]||null};
+    }).sort((a,b)=>b.purchasedOn.localeCompare(a.purchasedOn)||a.description.localeCompare(b.description));
+  },[cards,inst,itemPays]);
 
   function toggleInstallmentSelection(id:string){
     setSelectedInstallments(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next});
@@ -115,6 +138,22 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       rows.forEach(row=>{allSelected?next.delete(row.id):next.add(row.id)});
       return next;
     });
+  }
+  function togglePurchase(id:string){setExpandedPurchases(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next})}
+  function togglePurchaseOpenSelection(purchaseId:string){
+    const rows=openInstallments.filter(row=>row.installment.purchase_id===purchaseId);
+    const allSelected=rows.length>0&&rows.every(row=>selectedInstallments.has(row.id));
+    setSelectedInstallments(prev=>{
+      const next=new Set(prev);
+      rows.forEach(row=>{allSelected?next.delete(row.id):next.add(row.id)});
+      return next;
+    });
+    setExpandedPurchases(prev=>{const next=new Set(prev);next.add(purchaseId);return next});
+  }
+  function openCurrentPurchasePayment(group:(typeof purchaseSummaries)[number]){
+    if(!group.next)return;
+    setPayTarget({card:group.card,installment:group.next.installment,dueDate:group.next.dueDate});
+    setPayDate(localDateISO());setPayAmount(String(group.next.installment.remaining/100).replace('.',','));setPayMode('partial');
   }
   function openBulkPayment(){
     if(selectedRows.length===0)return;
@@ -213,6 +252,34 @@ export function CardManager({onNavigate}:{onNavigate?:(target:string)=>void}){
       {opened&&<div className="collapsibleBody">
         <div className="cardManageRow"><div>{card.limit_minor!=null&&<div className="cardLimitLine"><span>{t('cards.limit')}</span><b>{currency(Number(card.limit_minor))}</b></div>}</div><div className="cardManageActions">{openInstallments.some(row=>row.card.id===card.id)&&<button className="goldOutline" type="button" onClick={()=>toggleCardOpenSelection(card.id)}>{openInstallments.filter(row=>row.card.id===card.id).every(row=>selectedInstallments.has(row.id))?t('payment.clearSelection'):t('payment.selectAllOpen')}</button>}<button className="textButton" type="button" onClick={()=>startCardEdit(card)}>{t('common.edit')}</button><button className="dangerText textButton" type="button" onClick={()=>archiveCard(card)}>{t('common.delete')}</button></div></div>
         <div className="cardNumbers"><div className={s.overdue>0?'dangerMetric':''}><small>{t('cards.overdue')}</small><strong>{currency(s.overdue)}</strong></div><div><small>{t('cards.thisMonth')}</small><strong>{currency(s.now)}</strong></div><div><small>{t('cards.future')}</small><strong>{currency(s.future)}</strong></div><div className="totalMetric"><small>{t('cards.totalOpen')}</small><strong>{currency(s.total)}</strong></div></div>
+        {purchaseSummaries.some(group=>group.card.id===card.id&&group.installmentCount>1)&&<div className="purchaseCommitmentList">
+          <div className="purchaseCommitmentTitle"><small>{t('payment.installmentOrigins')}</small></div>
+          {purchaseSummaries.filter(group=>group.card.id===card.id&&group.installmentCount>1).map(group=>{
+            const allSelected=group.openRows.length>0&&group.openRows.every(row=>selectedInstallments.has(row.id));
+            const openedPurchase=expandedPurchases.has(group.id);
+            return <section className="purchaseCommitmentCard" key={group.id}>
+              <button type="button" className="purchaseCommitmentHead" onClick={()=>togglePurchase(group.id)}>
+                <span><b>{group.description}</b><small>{group.installmentCount}x · {date(group.purchasedOn,{day:'2-digit',month:'2-digit',year:'numeric'})}</small></span>
+                <strong>{currency(group.remaining)}</strong><em>{openedPurchase?'−':'＋'}</em>
+              </button>
+              <div className="purchaseCommitmentMetrics">
+                <span><small>{t('cards.originalValue')}</small><b>{currency(group.original)}</b></span>
+                <span><small>{t('payment.resolvedValue')}</small><b className="positive">{currency(group.resolved)}</b></span>
+                <span><small>{t('debts.balance')}</small><b>{currency(group.remaining)}</b></span>
+              </div>
+              {group.openRows.length>0&&<div className="purchaseCommitmentActions">
+                <button type="button" className="primary" onClick={()=>openCurrentPurchasePayment(group)}>{t('payment.payCurrent')}</button>
+                <button type="button" className="goldOutline" onClick={()=>togglePurchaseOpenSelection(group.id)}>{allSelected?t('payment.clearSelection'):t('payment.selectAllOpen')}</button>
+                <button type="button" className="textButton" onClick={()=>togglePurchase(group.id)}>{openedPurchase?t('payment.hideInstallments'):t('payment.viewInstallments')}</button>
+              </div>}
+              {openedPurchase&&<div className="installmentScheduleList purchaseMonthList">{group.rows.map(row=><label className={'installmentScheduleRow '+(row.installment.remaining<=0?'settled':'')+(selectedInstallments.has(row.id)?' selected':'')} key={row.id}>
+                <input type="checkbox" disabled={row.installment.remaining<=0} checked={row.installment.remaining<=0||selectedInstallments.has(row.id)} onChange={()=>row.installment.remaining>0&&toggleInstallmentSelection(row.id)}/>
+                <span><b>{t('bills.installment')} {row.installment.installment_number}/{group.installmentCount}</b><small>{t('move.dueOn')} {date(row.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</small></span>
+                <strong>{row.installment.remaining>0?currency(row.installment.remaining):'✓ '+t('bills.paid')}</strong>
+              </label>)}</div>}
+            </section>
+          })}
+        </div>}
         {s.statements.length>0&&<div className="statementList">{s.statements.map(st=><section className="statementGroup" key={st.month}><div className="statementHead"><span>{t('move.dueOn')} {date(st.dueDate,{day:'2-digit',month:'2-digit',year:'numeric'})}</span><b>{currency(st.amount)}</b><small>{t('cards.statementTotal')}</small></div><div className="statementItems">{st.rows.map(item=><div className={'statementItemSelectable '+(selectedInstallments.has(item.id)?'selected':'')} key={item.id}><label className="installmentCheck" title={t('payment.selectInstallment')}><input type="checkbox" checked={selectedInstallments.has(item.id)} onChange={()=>toggleInstallmentSelection(item.id)}/><span>✓</span></label><button type="button" onClick={()=>{setPayTarget({card,installment:item,dueDate:item.due_date||st.dueDate});setPayDate(localDateISO());setPayAmount(String(item.remaining/100).replace('.',','));setPayMode('partial')}}><span><b>{item.card_purchases?.description||card.name}</b><small>{item.card_purchases?.installment_count&&item.card_purchases.installment_count>1?item.installment_number+'/'+item.card_purchases.installment_count+' · ':''}{t('move.dueOn')} {date(item.due_date||st.dueDate,{day:'2-digit',month:'2-digit'})}{item.paid>0?' · '+t('cards.paidSoFar')+' '+currency(item.paid):''}</small></span><strong>{currency(item.remaining)}</strong><em>{t('cards.payItem')}</em></button></div>)}</div></section>)}</div>}
       </div>}
     </article>})}</section>

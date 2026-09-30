@@ -432,10 +432,16 @@ export function RecurringManager({onNavigate}:{onNavigate?:(target:string)=>void
             <span><small>{t('bills.paidThisMonth')}</small><b className="positive">{currency(paid)}</b></span>
             <span><small>{t('bills.remainingThisMonth')}</small><b className={remaining>0?'negative':'positive'}>{currency(remaining)}</b></span>
           </div>
+          {b.installment_count&&<div className="installmentOriginSummary">
+            <span><small>{t('cards.originalValue')}</small><b>{currency(schedule.reduce((sum,row)=>sum+row.expected,0))}</b></span>
+            <span><small>{t('debts.totalPaid')}</small><b className="positive">{currency(schedule.reduce((sum,row)=>sum+row.paid,0))}</b></span>
+            <span><small>{t('debts.balance')}</small><b>{currency(schedule.reduce((sum,row)=>sum+row.remaining,0))}</b></span>
+          </div>}
           {billPayments.length>0&&<div className="billPaymentTrail">{billPayments.map(p=><div key={p.id}><span>{date(p.paid_on,{day:'2-digit',month:'short'})} · {currency(Number(p.amount_minor))}</span><button type="button" onClick={()=>openPay(b,p)}>{t('common.edit')}</button><button type="button" className="dangerText" onClick={()=>removePayment(p)}>{t('common.delete')}</button></div>)}</div>}
           {paid>0&&remaining>0&&<div className="billPaymentState"><small>{t('bills.partialStatus')}</small><b>{currency(paid)} · {t('bills.remainingLabel')} {currency(remaining)}</b></div>}
           <div className="recurringActions">
-            {remaining>0?<button className="primary billPayPrimary" onClick={()=>openPay(b)}>{paid>0?t('bills.completePayment'):t('bills.paySettle')}</button>:<span className="paidBadge">✓ {t('bills.paidThisMonthBadge')}</span>}
+            {remaining>0?<button className="primary billPayPrimary" onClick={()=>openPay(b)}>{t('payment.payCurrent')}</button>:<span className="paidBadge">✓ {t('bills.paidThisMonthBadge')}</span>}
+            {b.installment_count&&scheduleOpen.length>0&&<button className="goldOutline" type="button" onClick={()=>{toggleBillOpenSelection(b);setExpandedBills(prev=>{const next=new Set(prev);next.add(b.id);return next})}}>{scheduleAllSelected?t('payment.clearSelection'):t('payment.selectAllOpen')}</button>}
             <button className="textButton" onClick={()=>startMonthEdit(b)}>{t('bills.editThisMonth')}</button>
             <button className="textButton" onClick={()=>startBillEdit(b)}>{t('bills.editRule')}</button>
             {b.installment_count&&<button className="textButton" type="button" onClick={()=>toggleExpandedBill(b.id)}>{expandedBills.has(b.id)?t('payment.hideInstallments'):t('payment.viewInstallments')}</button>}
