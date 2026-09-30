@@ -801,8 +801,10 @@
 
 .bulkPaymentModal{width:min(760px,calc(100vw - 28px));max-height:min(88vh,820px)}
 .bulkPaymentSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.bulkPaymentSummary>span{display:block;padding:10px;border:1px solid rgb(var(--accent-rgb) / .16);border-radius:10px;background:var(--finance-card-inset)}
+.bulkPaymentSummary>span,.bulkPaymentSummary>.bulkTotalEditor{display:block;margin:0;padding:10px;border:1px solid rgb(var(--accent-rgb) / .16);border-radius:10px;background:var(--finance-card-inset)}
 .bulkPaymentSummary small,.bulkPaymentSummary b{display:block}.bulkPaymentSummary small{font-size:8px;color:var(--text-muted)}.bulkPaymentSummary b{margin-top:4px;font-size:12px}
+.bulkTotalEditor{border-color:var(--border-accent)!important}.bulkTotalEditor input{width:100%;min-height:42px;margin-top:5px;padding:8px 10px;border:1px solid var(--border-accent);border-radius:9px;background:var(--surface-0);color:var(--finance-strong-text);font-size:17px;font-weight:900;font-variant-numeric:tabular-nums}.bulkTotalEditor input:focus{outline:2px solid rgb(var(--accent-rgb) / .26);outline-offset:1px}
+.bulkPaymentReviewRow{grid-template-columns:minmax(0,1fr) auto;align-items:center}.bulkPaymentReviewRow>strong{font-size:12px;color:var(--finance-accent-text);white-space:nowrap}
 .bulkPaymentRows{display:grid;gap:8px;max-height:48vh;overflow:auto;padding-right:3px}
 .bulkPaymentRow{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.48fr);gap:9px;align-items:end;padding:11px;border:1px solid rgb(var(--accent-rgb) / .15);border-radius:11px;background:var(--finance-card-inset)}
 .bulkPaymentIdentity{align-self:center}.bulkPaymentIdentity b,.bulkPaymentIdentity small{display:block}.bulkPaymentIdentity b{font-size:10px}.bulkPaymentIdentity small{margin-top:4px;font-size:8px;color:var(--text-muted);line-height:1.45}
@@ -817,6 +819,7 @@
   .installmentScheduleRow>strong{grid-column:2;text-align:left}
   .bulkPaymentSummary{grid-template-columns:1fr}
   .bulkPaymentRow{grid-template-columns:1fr}
+  .bulkPaymentReviewRow{grid-template-columns:minmax(0,1fr) auto}
   .bulkSettleCheck{grid-column:1}
   .statementItemSelectable>.installmentCheck{margin-left:5px}
 }
