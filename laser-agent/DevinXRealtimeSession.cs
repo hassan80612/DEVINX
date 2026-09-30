@@ -19,7 +19,6 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
     private readonly Func<RealtimeCommand,Task> _onCommand;
     private readonly Func<RealtimeRemoteInput,Task> _onInput;
     private readonly Func<RealtimeControlRequest,Task>? _onControl;
-    private readonly Func<RealtimeWebRtcSignal,Task>? _onWebRtcSignal;
     private readonly ClientWebSocket _socket=new();
     private readonly SemaphoreSlim _sendLock=new(1,1);
     private readonly CancellationTokenSource _stop=new();
@@ -32,8 +31,7 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         RemoteSessionConfig config,
         Func<RealtimeCommand,Task> onCommand,
         Func<RealtimeRemoteInput,Task> onInput,
-        Func<RealtimeControlRequest,Task>? onControl=null,
-        Func<RealtimeWebRtcSignal,Task>? onWebRtcSignal=null)
+        Func<RealtimeControlRequest,Task>? onControl=null)
     {
         _config=config;
         _remoteInputEnabled=config.RemoteInputEnabled;
@@ -42,7 +40,6 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         _onCommand=onCommand;
         _onInput=onInput;
         _onControl=onControl;
-        _onWebRtcSignal=onWebRtcSignal;
     }
 
     public bool IsConnected=>_socket.State==WebSocketState.Open&&_joined.Task.IsCompletedSuccessfully;
@@ -155,37 +152,6 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
             _sendLock.Release();
         }
     }
-
-    public Task SendWebRtcAnswerAsync(string sdp,CancellationToken cancellationToken)=>
-        SendBroadcastAsync("webrtc_answer",new
-        {
-            token=_config.FrameToken,
-            from="agent",
-            sdp
-        },cancellationToken);
-
-    public Task SendWebRtcIceAsync(
-        string candidate,
-        string? sdpMid,
-        ushort sdpMLineIndex,
-        CancellationToken cancellationToken)=>
-        SendBroadcastAsync("webrtc_ice",new
-        {
-            token=_config.FrameToken,
-            from="agent",
-            candidate,
-            sdpMid,
-            sdpMLineIndex
-        },cancellationToken);
-
-    public Task SendWebRtcStateAsync(string state,CancellationToken cancellationToken)=>
-        SendBroadcastAsync("webrtc_state",new
-        {
-            token=_config.FrameToken,
-            from="agent",
-            state,
-            at=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-        },cancellationToken);
 
     public async Task SendAgentStateAsync(string state,CancellationToken cancellationToken)
     {
@@ -483,47 +449,6 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
 
             if(!string.IsNullOrWhiteSpace(id)&&!string.IsNullOrWhiteSpace(command))
                 await _onCommand(new RealtimeCommand(token??"",id!,command!,expires));
-            return;
-        }
-
-        if(userEvent is "webrtc_offer" or "webrtc_ice" or "webrtc_stop")
-        {
-            if(_onWebRtcSignal is null)return;
-            var signalToken=payload.TryGetProperty("token",out var signalTokenEl)
-                &&signalTokenEl.ValueKind==JsonValueKind.String
-                ?signalTokenEl.GetString()
-                :"";
-            if(!CryptographicOperations.FixedTimeEquals(
-                Encoding.UTF8.GetBytes(signalToken??""),
-                Encoding.UTF8.GetBytes(_config.FrameToken)))
-                return;
-
-            static string? SignalString(JsonElement p,string name)=>
-                p.TryGetProperty(name,out var e)&&e.ValueKind==JsonValueKind.String?e.GetString():null;
-
-            if(userEvent=="webrtc_offer")
-            {
-                var sdp=SignalString(payload,"sdp");
-                if(!string.IsNullOrWhiteSpace(sdp))
-                    await _onWebRtcSignal(new RealtimeWebRtcSignal("offer",sdp,null,null,null));
-                return;
-            }
-
-            if(userEvent=="webrtc_stop")
-            {
-                await _onWebRtcSignal(new RealtimeWebRtcSignal("stop",null,null,null,null));
-                return;
-            }
-
-            var candidate=SignalString(payload,"candidate");
-            if(string.IsNullOrWhiteSpace(candidate))return;
-            ushort? sdpMLineIndex=null;
-            if(payload.TryGetProperty("sdpMLineIndex",out var lineEl)
-               &&lineEl.TryGetInt32(out var line)
-               &&line is>=0 and<=ushort.MaxValue)
-                sdpMLineIndex=(ushort)line;
-            await _onWebRtcSignal(new RealtimeWebRtcSignal(
-                "ice",null,candidate,SignalString(payload,"sdpMid"),sdpMLineIndex));
             return;
         }
 

@@ -173,21 +173,6 @@ internal static class LightBurnWindowCapture
         return stream.ToArray();
     }
 
-    internal static void RememberCapturedBounds(
-        IntPtr target,int left,int top,int width,int height,DateTimeOffset capturedAt)
-    {
-        if(target==IntPtr.Zero||width<=0||height<=0)return;
-        lock(LastCaptureGate)
-        {
-            _lastCapturedTarget=target;
-            _lastCapturedLeft=left;
-            _lastCapturedTop=top;
-            _lastCapturedWidth=width;
-            _lastCapturedHeight=height;
-            _lastCapturedAtUtc=capturedAt;
-        }
-    }
-
     public static bool TryGetLastCapturedBounds(
         IntPtr main,out IntPtr target,
         out int left,out int top,out int width,out int height)

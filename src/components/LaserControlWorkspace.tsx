@@ -94,8 +94,6 @@ export function LaserControlWorkspace(){
   const[frameSize,setFrameSize]=useState('');
   const[frameLatency,setFrameLatency]=useState<number|null>(null);
   const[frameAt,setFrameAt]=useState<number|null>(null);
-  const[webRtcStream,setWebRtcStream]=useState<MediaStream|null>(null);
-  const[webRtcActive,setWebRtcActive]=useState(false);
   const[zoom,setZoom]=useState(1);
   const[pan,setPan]=useState({x:0,y:0});
   const zoomRef=useRef(1);
@@ -127,7 +125,6 @@ export function LaserControlWorkspace(){
   const channelRef=useRef<any>(null);
   const previewSurfaceRef=useRef<HTMLDivElement|null>(null);
   const imageRef=useRef<HTMLImageElement|null>(null);
-  const videoRef=useRef<HTMLVideoElement|null>(null);
   const sessionRef=useRef<RemoteSession|null>(null);
   const lastFrameSeqRef=useRef(0);
   const lastPointerMoveRef=useRef(0);
@@ -273,13 +270,6 @@ export function LaserControlWorkspace(){
   const supportsAgent24=(version:string|null)=>supportsAgentAtLeast(version,24);
   const latestAgentReady=Boolean(selectedDevice&&supportsAgent21(selectedDevice.agent_version));
   const workspaceKeysReady=Boolean(selectedDevice&&supportsAgent24(selectedDevice.agent_version));
-  const webRtcAgentReady=Boolean(selectedDevice&&(()=>{
-    const match=/^(\d+)\.(\d+)\.(\d+)/.exec(selectedDevice.agent_version||'');
-    if(!match)return false;
-    const major=Number(match[1]);
-    const minor=Number(match[2]);
-    return major>1||(major===1&&minor>=1);
-  })());
 
   const postSession=useCallback(async(payload:Record<string,unknown>)=>{
     const response=await fetch('/api/laser-control/master/remote-session',{
@@ -355,8 +345,6 @@ export function LaserControlWorkspace(){
       }
       setSession(null);
       setFrameSrc('');
-      setWebRtcActive(false);
-      setWebRtcStream(null);
       setControlPending(null);
       resetZoom();
       inputReadyRef.current=false;
@@ -367,104 +355,17 @@ export function LaserControlWorkspace(){
 
   useEffect(()=>{
     if(!session?.topic)return;
-    const currentSession=session;
     const supabase=createClient();
     lastFrameSeqRef.current=0;
     setRealtimeStatus('connecting');
-    setWebRtcActive(false);
-    setWebRtcStream(null);
 
     const channel=supabase.channel(session.topic,{
       config:{broadcast:{ack:false,self:false}}
     });
 
-    let peer:RTCPeerConnection|null=null;
-    let peerTimeout:number|undefined;
-    let remoteDescriptionReady=false;
-    const pendingAgentIce:RTCIceCandidateInit[]=[];
-
-    const sendWebRtcSignal=(event:string,payload:Record<string,unknown>)=>
-      channel.send({type:'broadcast',event,payload});
-
-    const closePeer=(clearStream=true)=>{
-      if(peerTimeout)window.clearTimeout(peerTimeout);
-      peerTimeout=undefined;
-      try{peer?.close();}catch{}
-      peer=null;
-      remoteDescriptionReady=false;
-      pendingAgentIce.length=0;
-      setWebRtcActive(false);
-      if(clearStream)setWebRtcStream(null);
-    };
-
-    async function startWebRtc(){
-      if(!webRtcAgentReady||typeof RTCPeerConnection==='undefined'||peer)return;
-      try{
-        const nextPeer=new RTCPeerConnection({
-          iceServers:[{urls:'stun:stun.cloudflare.com:3478'}]
-        });
-        peer=nextPeer;
-        let receivedStream:MediaStream|null=null;
-        nextPeer.addTransceiver('video',{direction:'recvonly'});
-
-        nextPeer.ontrack=event=>{
-          receivedStream=event.streams[0]??new MediaStream([event.track]);
-          setWebRtcStream(receivedStream);
-          setWebRtcActive(true);
-          setFrameLatency(null);
-          setFrameAt(Date.now());
-          setRealtimeStatus('live');
-        };
-
-        nextPeer.onicecandidate=event=>{
-          const candidate=event.candidate;
-          if(!candidate)return;
-          const json=candidate.toJSON();
-          void sendWebRtcSignal('webrtc_ice',{
-            token:currentSession.frameToken,from:'browser',
-            candidate:json.candidate,sdpMid:json.sdpMid,
-            sdpMLineIndex:json.sdpMLineIndex
-          }).catch(()=>undefined);
-        };
-
-        nextPeer.onconnectionstatechange=()=>{
-          if(nextPeer.connectionState==='connected'){
-            if(peerTimeout)window.clearTimeout(peerTimeout);
-            peerTimeout=undefined;
-            if(receivedStream)setWebRtcActive(true);
-            setRealtimeStatus('live');
-            return;
-          }
-          if(nextPeer.connectionState==='disconnected'){
-            setWebRtcActive(false);
-            return;
-          }
-          if(nextPeer.connectionState==='failed'||nextPeer.connectionState==='closed'){
-            setWebRtcActive(false);
-            setWebRtcStream(null);
-          }
-        };
-
-        const offer=await nextPeer.createOffer();
-        await nextPeer.setLocalDescription(offer);
-        await sendWebRtcSignal('webrtc_offer',{
-          token:currentSession.frameToken,from:'browser',
-          sdp:nextPeer.localDescription?.sdp||offer.sdp
-        });
-
-        peerTimeout=window.setTimeout(()=>{
-          if(peer!==nextPeer||nextPeer.connectionState==='connected')return;
-          void sendWebRtcSignal('webrtc_stop',{
-            token:currentSession.frameToken,from:'browser'
-          }).catch(()=>undefined);
-          closePeer(true);
-        },6_500);
-      }catch{closePeer(true);}
-    }
-
     channel
       .on('broadcast',{event:'frame'},({payload}:any)=>{
-        if(payload?.token!==currentSession.frameToken)return;
+        if(payload?.token!==session.frameToken)return;
         const seq=Number(payload?.seq||0);
         if(seq<=lastFrameSeqRef.current)return;
         const jpeg=String(payload?.jpeg||'');
@@ -478,46 +379,20 @@ export function LaserControlWorkspace(){
         setFrameLatency(Math.max(0,receivedAt-capturedAt));
         setRealtimeStatus('live');
       })
-      .on('broadcast',{event:'webrtc_answer'},async({payload}:any)=>{
-        if(payload?.token!==currentSession.frameToken||payload?.from!=='agent'||!peer)return;
-        const sdp=String(payload?.sdp||'');
-        if(!sdp)return;
-        try{
-          await peer.setRemoteDescription({type:'answer',sdp});
-          remoteDescriptionReady=true;
-          while(pendingAgentIce.length){
-            const candidate=pendingAgentIce.shift();
-            if(candidate)await peer.addIceCandidate(candidate);
-          }
-        }catch{closePeer(true);}
-      })
-      .on('broadcast',{event:'webrtc_ice'},async({payload}:any)=>{
-        if(payload?.token!==currentSession.frameToken||payload?.from!=='agent'||!peer)return;
-        const candidate=String(payload?.candidate||'');
-        if(!candidate)return;
-        const init:RTCIceCandidateInit={
-          candidate,
-          sdpMid:payload?.sdpMid==null?null:String(payload.sdpMid),
-          sdpMLineIndex:payload?.sdpMLineIndex==null?null:Number(payload.sdpMLineIndex)
-        };
-        if(!remoteDescriptionReady){pendingAgentIce.push(init);return;}
-        try{await peer.addIceCandidate(init);}catch{}
-      })
-      .on('broadcast',{event:'webrtc_state'},({payload}:any)=>{
-        if(payload?.token!==currentSession.frameToken||payload?.from!=='agent')return;
-        if(payload?.state==='connected')setRealtimeStatus('live');
-        else if(payload?.state==='fallback')setWebRtcActive(false);
-      })
       .on('broadcast',{event:'agent_state'},({payload}:any)=>{
-        if(payload?.token!==currentSession.frameToken)return;
-        if(payload?.state==='control-ready'){inputReadyRef.current=true;setInputReady(true);}
+        if(payload?.token!==session.frameToken)return;
+        if(payload?.state==='control-ready'){
+          inputReadyRef.current=true;
+          setInputReady(true);
+        }
         if(payload?.state==='preview-ready'){
-          inputReadyRef.current=false;setInputReady(false);
+          inputReadyRef.current=false;
+          setInputReady(false);
           setRealtimeStatus(current=>current==='live'?'live':'connecting');
         }
       })
       .on('broadcast',{event:'input_result'},({payload}:any)=>{
-        if(payload?.token!==currentSession.frameToken)return;
+        if(payload?.token!==session.frameToken)return;
         const requestId=String(payload?.requestId||'');
         const resolve=pendingInputResultsRef.current.get(requestId);
         if(!resolve)return;
@@ -525,48 +400,36 @@ export function LaserControlWorkspace(){
         resolve({ok:payload?.ok===true,reason:String(payload?.reason||'')||null});
       })
       .on('broadcast',{event:'control_result'},({payload}:any)=>{
-        if(payload?.token!==currentSession.frameToken)return;
+        if(payload?.token!==session.frameToken)return;
         const requestId=String(payload?.requestId||'');
         if(controlPendingRef.current!==requestId)return;
         controlPendingRef.current=null;
         setControlPending(current=>current===requestId?null:current);
+
         if(!payload?.ok){
           const reason=String(payload?.reason||'');
-          setNotice(/frame_button_not_found/.test(reason)?t('laser.frameGantryMissing'):t('laser.quickFailed'));
+          setNotice(/frame_button_not_found/.test(reason)
+            ?t('laser.frameGantryMissing')
+            :t('laser.quickFailed'));
           return;
         }
+
         setNotice(t('laser.frameGantrySent'));
       })
       .subscribe((status:string)=>{
-        if(status==='SUBSCRIBED'){
-          setRealtimeStatus(current=>current==='live'?'live':'connecting');
-          void startWebRtc();
-        }
+        if(status==='SUBSCRIBED')setRealtimeStatus(current=>current==='live'?'live':'connecting');
         if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')setRealtimeStatus('error');
       });
 
     channelRef.current=channel;
     return()=>{
-      if(peerTimeout)window.clearTimeout(peerTimeout);
-      try{peer?.close();}catch{}
-      peer=null;
-      setWebRtcActive(false);
-      setWebRtcStream(null);
       for(const resolve of pendingInputResultsRef.current.values())
         resolve({ok:false,reason:'session_closed'});
       pendingInputResultsRef.current.clear();
       if(channelRef.current===channel)channelRef.current=null;
       void supabase.removeChannel(channel);
     };
-  },[session?.topic,session?.frameToken,t,webRtcAgentReady]);
-
-  useEffect(()=>{
-    const video=videoRef.current;
-    if(!video||!webRtcStream)return;
-    video.srcObject=webRtcStream;
-    void video.play().catch(()=>undefined);
-    return()=>{if(video.srcObject===webRtcStream)video.srcObject=null;};
-  },[webRtcStream,webRtcActive]);
+  },[session?.topic,session?.frameToken,t]);
 
   useEffect(()=>{
     const handle=()=>setFullscreen(Boolean(document.fullscreenElement));
@@ -966,7 +829,7 @@ export function LaserControlWorkspace(){
   }
 
   function pointerCoordinatesFromClient(clientX:number,clientY:number){
-    const image=webRtcActive?(videoRef.current??imageRef.current):imageRef.current;
+    const image=imageRef.current;
     if(!image)return null;
     const rect=image.getBoundingClientRect();
     if(rect.width<=0||rect.height<=0)return null;
@@ -1003,7 +866,7 @@ export function LaserControlWorkspace(){
   }
 
   function clampPan(nextX:number,nextY:number,nextZoom=zoom){
-    const image=webRtcActive?(videoRef.current??imageRef.current):imageRef.current;
+    const image=imageRef.current;
     const surface=previewSurfaceRef.current;
     if(!image||!surface||nextZoom<=1)return{x:0,y:0};
     const baseWidth=image.offsetWidth||image.getBoundingClientRect().width/nextZoom;
@@ -1031,7 +894,7 @@ export function LaserControlWorkspace(){
   }
 
   function handlePointer(
-    event:ReactPointerEvent<HTMLImageElement|HTMLVideoElement>,
+    event:ReactPointerEvent<HTMLImageElement>,
     type:'pointerdown'|'pointerup'|'pointermove'|'pointercancel'
   ){
     if(event.pointerType!=='touch'){
@@ -1215,7 +1078,7 @@ export function LaserControlWorkspace(){
     resetTouchGesture();
   }
 
-  function handleWheel(event:ReactWheelEvent<HTMLImageElement|HTMLVideoElement>){
+  function handleWheel(event:ReactWheelEvent<HTMLImageElement>){
     if(!inputReady)return;
     const rect=event.currentTarget.getBoundingClientRect();
     if(rect.width<=0||rect.height<=0)return;
@@ -1662,29 +1525,7 @@ export function LaserControlWorkspace(){
             </>}
           </div>
 
-          {webRtcActive&&webRtcStream?<video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            aria-label="LightBurn WebRTC"
-            onLoadedMetadata={event=>{
-              setFrameSize(`${event.currentTarget.videoWidth} × ${event.currentTarget.videoHeight}`);
-              setFrameAt(Date.now());
-            }}
-            style={{
-              transform:`translate3d(${pan.x}px,${pan.y}px,0) scale(${zoom})`,
-              transformOrigin:'center center'
-            }}
-            className={inputReady?styles.remoteImageActive:styles.remoteImage}
-            onPointerDown={event=>handlePointer(event,'pointerdown')}
-            onPointerUp={event=>handlePointer(event,'pointerup')}
-            onPointerMove={event=>handlePointer(event,'pointermove')}
-            onPointerCancel={event=>handlePointer(event,'pointercancel')}
-            onContextMenu={event=>event.preventDefault()}
-            onWheel={handleWheel}
-            draggable={false}
-          />:frameSrc?<img
+          {frameSrc?<img
             ref={imageRef}
             src={frameSrc}
             alt="LightBurn"
@@ -1747,7 +1588,7 @@ export function LaserControlWorkspace(){
 
         <div className={styles.frameInfo}>
           <span>{frameSize||'—'}</span>
-          <span>{webRtcActive?'WebRTC P2P':frameLatency==null?'—':`${t('laser.latency')} ~${frameLatency} ms`}</span>
+          <span>{frameLatency==null?'—':`${t('laser.latency')} ~${frameLatency} ms`}</span>
           <span>{frameAt?new Date(frameAt).toLocaleTimeString():'—'}</span>
         </div>
 
