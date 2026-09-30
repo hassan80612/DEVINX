@@ -308,7 +308,24 @@ export function LaserControlWorkspace(){
         setRealtimeStatus('connecting');
         const data=await postSession({action:'open',deviceId:selectedDeviceId});
         if(!active)return;
-        const next=data as RemoteSession;
+        let next=data as RemoteSession;
+
+        // Opening a PC means the operator intends to control it. Enable remote
+        // input immediately so the workspace does not require a second click.
+        if(!next.remoteInputEnabled){
+          try{
+            const control=await postSession({
+              action:'input',
+              sessionId:next.sessionId,
+              enabled:true
+            });
+            if(!active)return;
+            next={...next,...control,remoteInputEnabled:Boolean(control?.enabled)} as RemoteSession;
+          }catch{
+            // Keep the live preview available even if input activation fails.
+          }
+        }
+
         sessionRef.current=next;
         setSession(next);
         setRealtimeStatus('connecting');

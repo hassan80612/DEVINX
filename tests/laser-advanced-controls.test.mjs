@@ -254,3 +254,11 @@ test('expired permanent Agent backs off instead of polling Supabase every few se
   assert.match(agent,/poll\.Reason is "device_not_active" or "unknown_device"/);
   assert.match(agent,/await DelaySafe\(InactiveAccessRetry,cancellationToken\)/);
 });
+
+
+test('Selecting a Laser PC automatically requests remote control once the session opens',async()=>{
+  const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
+  assert.match(panel,/action:'open',deviceId:selectedDeviceId/);
+  assert.match(panel,/if\(!next\.remoteInputEnabled\)/);
+  assert.match(panel,/action:'input'[\s\S]{0,180}sessionId:next\.sessionId[\s\S]{0,180}enabled:true/);
+});
