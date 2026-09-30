@@ -836,3 +836,16 @@
   .settingsDangerZone{align-items:stretch;flex-direction:column}
   .settingsDangerZone .dangerButton{width:100%}
 }
+
+
+/* Selected installments: keep the payment action visible while scrolling. */
+.bulkSelectionBar{position:fixed;left:50%;bottom:86px;z-index:42;transform:translateX(-50%);width:min(620px,calc(100% - 20px));display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--border-accent);border-radius:16px;background:var(--finance-chrome-bg);box-shadow:var(--finance-chrome-shadow);backdrop-filter:blur(18px)}
+.bulkSelectionBar>div:first-child{min-width:0}.bulkSelectionBar small,.bulkSelectionBar b{display:block}.bulkSelectionBar small{font-size:8px;color:var(--text-muted);letter-spacing:.04em}.bulkSelectionBar b{margin-top:3px;color:var(--finance-accent-text);font-size:14px}
+.bulkSelectionActions{display:flex;align-items:center;gap:7px}.bulkSelectionActions .primary{white-space:nowrap}
+@media(max-width:520px){
+  .bulkSelectionBar{align-items:stretch;flex-direction:column;gap:8px;bottom:84px;padding:9px 10px}
+  .bulkSelectionBar>div:first-child{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .bulkSelectionBar b{margin-top:0}
+  .bulkSelectionActions{display:grid;grid-template-columns:auto 1fr}
+  .bulkSelectionActions .primary{width:100%}
+}
