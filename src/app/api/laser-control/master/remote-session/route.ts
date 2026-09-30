@@ -4,7 +4,14 @@ import {invokeLaserMasterFunction} from '@/features/laser-control/server/invoke-
 export const dynamic='force-dynamic';
 
 export async function POST(request:Request){
-  let body:{action?:string;deviceId?:string;sessionId?:string;enabled?:boolean};
+  let body:{
+    action?:string;
+    deviceId?:string;
+    sessionId?:string;
+    enabled?:boolean;
+    event?:string;
+    payload?:Record<string,unknown>;
+  };
   try{body=await request.json()}catch{
     return NextResponse.json({error:'invalid_json'},{status:400});
   }
@@ -24,6 +31,17 @@ export async function POST(request:Request){
     payload=action==='input'
       ?{action,sessionId,enabled:body.enabled===true}
       :{action,sessionId};
+  }else if(action==='signal'){
+    const sessionId=String(body.sessionId||'');
+    const event=String(body.event||'');
+    if(!/^[0-9a-f-]{36}$/i.test(sessionId))
+      return NextResponse.json({error:'invalid_session'},{status:400});
+    if(!['webrtc_offer','webrtc_ice','webrtc_stop'].includes(event))
+      return NextResponse.json({error:'invalid_signal'},{status:400});
+    const signalPayload=body.payload&&typeof body.payload==='object'&&!Array.isArray(body.payload)
+      ?body.payload
+      :{};
+    payload={action,sessionId,event,payload:signalPayload};
   }else{
     return NextResponse.json({error:'invalid_action'},{status:400});
   }

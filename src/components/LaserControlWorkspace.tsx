@@ -387,7 +387,12 @@ export function LaserControlWorkspace(){
     const pendingAgentIce:RTCIceCandidateInit[]=[];
 
     const sendWebRtcSignal=(event:string,payload:Record<string,unknown>)=>
-      channel.send({type:'broadcast',event,payload});
+      postSession({
+        action:'signal',
+        sessionId:currentSession.sessionId,
+        event,
+        payload
+      });
 
     const closePeer=(clearStream=true)=>{
       if(peerTimeout)window.clearTimeout(peerTimeout);
@@ -420,15 +425,23 @@ export function LaserControlWorkspace(){
           setRealtimeStatus('live');
         };
 
+        const pendingBrowserIce:RTCIceCandidateInit[]=[];
+        let offerSent=false;
+
         nextPeer.onicecandidate=event=>{
           const candidate=event.candidate;
           if(!candidate)return;
           const json=candidate.toJSON();
-          void sendWebRtcSignal('webrtc_ice',{
-            token:currentSession.frameToken,from:'browser',
-            candidate:json.candidate,sdpMid:json.sdpMid,
+          const payload={
+            candidate:json.candidate,
+            sdpMid:json.sdpMid,
             sdpMLineIndex:json.sdpMLineIndex
-          }).catch(()=>undefined);
+          };
+          if(!offerSent){
+            pendingBrowserIce.push(payload);
+            return;
+          }
+          void sendWebRtcSignal('webrtc_ice',payload).catch(()=>undefined);
         };
 
         nextPeer.onconnectionstatechange=()=>{
@@ -452,15 +465,16 @@ export function LaserControlWorkspace(){
         const offer=await nextPeer.createOffer();
         await nextPeer.setLocalDescription(offer);
         await sendWebRtcSignal('webrtc_offer',{
-          token:currentSession.frameToken,from:'browser',
           sdp:nextPeer.localDescription?.sdp||offer.sdp
         });
+        offerSent=true;
+        for(const candidate of pendingBrowserIce.splice(0)){
+          void sendWebRtcSignal('webrtc_ice',candidate).catch(()=>undefined);
+        }
 
         peerTimeout=window.setTimeout(()=>{
           if(peer!==nextPeer||nextPeer.connectionState==='connected')return;
-          void sendWebRtcSignal('webrtc_stop',{
-            token:currentSession.frameToken,from:'browser'
-          }).catch(()=>undefined);
+          void sendWebRtcSignal('webrtc_stop',{}).catch(()=>undefined);
           closePeer(true);
         },8_000);
       }catch{closePeer(true);}
@@ -568,7 +582,7 @@ export function LaserControlWorkspace(){
       if(channelRef.current===channel)channelRef.current=null;
       void supabase.removeChannel(channel);
     };
-  },[session?.topic,session?.frameToken,t,webRtcAgentReady]);
+  },[session?.topic,session?.frameToken,t,webRtcAgentReady,postSession]);
 
   useEffect(()=>{
     const video=videoRef.current;
