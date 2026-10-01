@@ -193,6 +193,7 @@ export function LaserAdminPanel(){
   const[actionKey,setActionKey]=useState<string|null>(null);
   const[openSections,setOpenSections]=useState<Set<SectionKey>>(new Set(['overview','live']));
   const[openCustomers,setOpenCustomers]=useState<Set<string>>(new Set());
+  const[openDevices,setOpenDevices]=useState<Set<string>>(new Set());
 
   const loadAll=useCallback(async(silent=false)=>{
     if(!silent)setLoading(true);
@@ -263,6 +264,14 @@ export function LaserAdminPanel(){
     setOpenCustomers(previous=>{
       const next=new Set(previous);
       next.has(customerEmail)?next.delete(customerEmail):next.add(customerEmail);
+      return next;
+    });
+  }
+
+  function toggleDevice(deviceId:string){
+    setOpenDevices(previous=>{
+      const next=new Set(previous);
+      next.has(deviceId)?next.delete(deviceId):next.add(deviceId);
       return next;
     });
   }
@@ -413,6 +422,12 @@ export function LaserAdminPanel(){
 
   const liveLaser=useMemo(()=>presence.filter(row=>row.path.startsWith('/laser-control')),[presence]);
   const activeSessions=useMemo(()=>sessions.filter(row=>row.is_active),[sessions]);
+  const currentDevices=useMemo(()=>devices
+    .filter(device=>device.device_status!=='revoked')
+    .sort((a,b)=>Number(b.online)-Number(a.online)||(Date.parse(b.last_seen_at||'')||0)-(Date.parse(a.last_seen_at||'')||0)),[devices]);
+  const revokedDevices=useMemo(()=>devices
+    .filter(device=>device.device_status==='revoked')
+    .sort((a,b)=>(Date.parse(b.last_seen_at||'')||0)-(Date.parse(a.last_seen_at||'')||0)),[devices]);
   const planClicks=asNumber(snapshot?.funnel.control_click)+asNumber(snapshot?.funnel.mentor_click);
 
   const date=(value:string|null)=>{
@@ -628,35 +643,69 @@ export function LaserAdminPanel(){
       </section>
 
       <section id="laser-master-devices" className={styles.sectionCard}>
-        {sectionHeader('devices','PCs e Agents','DISPOSITIVOS',(snapshot?.agents.online??0)+' online · '+devices.length+' total')}
+        {sectionHeader('devices','PCs e Agents','DISPOSITIVOS',(snapshot?.agents.online??0)+' online · '+currentDevices.length+' atuais'+(revokedDevices.length?' · '+revokedDevices.length+' histórico':''))}
         {openSections.has('devices')&&<div className={styles.sectionBody}>
-          <div className={styles.devices}>
-            {devices.length===0&&<div className={styles.empty}>Nenhum PC vinculado.</div>}
-            {devices.map(device=><article className={styles.deviceCard} key={device.device_id}>
-              <div className={styles.deviceTop}>
-                <div><span className={device.online?styles.onlineDot:styles.offlineDot}/><strong>{device.display_name}</strong><small>{device.owner_email||'—'}</small></div>
-                <div className={styles.badges}>
-                  <b className={device.online?styles.onlineBadge:styles.offlineBadge}>{device.online?'● ONLINE':'OFFLINE'}</b>
-                  <b>{device.connection_mode?.toUpperCase()||'—'}</b>
-                  <b>{device.device_status.toUpperCase()}</b>
-                </div>
-              </div>
-              <div className={styles.deviceMeta}>
-                <span><small>Agent</small><b>{device.agent_version||'—'}</b></span>
-                <span><small>LightBurn</small><b>{device.lightburn_online?'Online':'Offline'}</b></span>
-                <span><small>Máquina</small><b>{device.machine_connected?(device.machine_name||'Conectada'):'Desconectada'}</b></span>
-                <span><small>Job</small><b>{device.job_state||'—'}</b></span>
-                <span><small>Último heartbeat</small><b>{date(device.last_seen_at)}</b></span>
-                <span><small>Projeto</small><b>{device.project_file||'—'}</b></span>
-                <span><small>Preview</small><b>{device.preview_last_frame_at?date(device.preview_last_frame_at):'—'}</b></span>
-              </div>
-              <div className={styles.actions}>
-                <button type="button" className={device.device_status==='revoked'?styles.positive:styles.danger} disabled={actionKey==='device:'+device.device_id} onClick={()=>void deviceAction(device)}>
-                  {device.device_status==='revoked'?'Reativar PC':'Revogar PC'}
-                </button>
-              </div>
-            </article>)}
+          <div className={styles.deviceSectionIntro}>
+            <div><b>PCs atuais</b><span>Somente dispositivos válidos ficam em destaque. Toque em um PC para abrir os detalhes.</span></div>
+            <strong>{currentDevices.length}</strong>
           </div>
+
+          <div className={styles.devices}>
+            {currentDevices.length===0&&<div className={styles.empty}>Nenhum PC atual vinculado.</div>}
+            {currentDevices.map(device=>{
+              const expanded=openDevices.has(device.device_id);
+              return <article className={[styles.deviceCard,device.online?styles.deviceOnline:''].filter(Boolean).join(' ')} key={device.device_id}>
+                <button type="button" className={styles.deviceHeader} onClick={()=>toggleDevice(device.device_id)}>
+                  <div className={styles.deviceIdentity}>
+                    <span className={device.online?styles.onlineDot:styles.offlineDot}/>
+                    <div><strong>{device.display_name}</strong><small>{device.owner_email||'—'}</small></div>
+                  </div>
+                  <div className={styles.deviceHeaderRight}>
+                    <div className={styles.badges}>
+                      <b className={device.online?styles.onlineBadge:styles.offlineBadge}>{device.online?'● ONLINE':'OFFLINE'}</b>
+                      <b>AGENT {device.agent_version||'—'}</b>
+                    </div>
+                    <em>{expanded?'−':'＋'}</em>
+                  </div>
+                </button>
+
+                <div className={styles.deviceStrip}>
+                  <span><small>LightBurn</small><b>{device.lightburn_online?'Online':'Offline'}</b></span>
+                  <span><small>Máquina</small><b>{device.machine_connected?(device.machine_name||'Conectada'):'Desconectada'}</b></span>
+                  <span><small>Heartbeat</small><b>{date(device.last_seen_at)}</b></span>
+                </div>
+
+                {expanded&&<div className={styles.deviceExpanded}>
+                  <div className={styles.deviceMeta}>
+                    <span><small>Agent</small><b>{device.agent_version||'—'}</b></span>
+                    <span><small>Conexão</small><b>{device.connection_mode?.toUpperCase()||'—'}</b></span>
+                    <span><small>Status</small><b>{device.device_status.toUpperCase()}</b></span>
+                    <span><small>Job</small><b>{device.job_state||'—'}</b></span>
+                    <span><small>Projeto</small><b>{device.project_file||'—'}</b></span>
+                    <span><small>Preview</small><b>{device.preview_last_frame_at?date(device.preview_last_frame_at):'—'}</b></span>
+                  </div>
+                  <div className={styles.actions}>
+                    <button type="button" className={styles.danger} disabled={actionKey==='device:'+device.device_id} onClick={()=>void deviceAction(device)}>Revogar PC</button>
+                  </div>
+                </div>}
+              </article>;
+            })}
+          </div>
+
+          {revokedDevices.length>0&&<details className={styles.deviceHistory}>
+            <summary><div><small>HISTÓRICO</small><b>Agents antigos / revogados</b></div><span>{revokedDevices.length}</span></summary>
+            <div className={styles.historyList}>
+              {revokedDevices.map(device=><article className={styles.historyRow} key={device.device_id}>
+                <span className={styles.offlineDot}/>
+                <div className={styles.historyIdentity}><b>{device.display_name}</b><small>{device.owner_email||'—'}</small></div>
+                <div className={styles.historyFacts}>
+                  <span>Agent <b>{device.agent_version||'—'}</b></span>
+                  <span>Último contato <b>{date(device.last_seen_at)}</b></span>
+                </div>
+                <button type="button" className={styles.reactivateMini} disabled={actionKey==='device:'+device.device_id} onClick={()=>void deviceAction(device)}>Reativar</button>
+              </article>)}
+            </div>
+          </details>}
         </div>}
       </section>
 
