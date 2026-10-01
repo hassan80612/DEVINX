@@ -1,9 +1,10 @@
 "use client";
 
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {LanguageMenu} from "@/components/LanguageMenu";
 import {useI18n} from "@/i18n/provider";
 import {createClient} from "@/lib/supabase/client";
+import {getDevinxPresenceLanguage,getDevinxPresenceSessionId,getDevinxPresenceSource} from "@/components/LivePresence";
 import styles from "./LaserLanding.module.css";
 
 const BR={
@@ -211,11 +212,33 @@ export function LaserLanding(){
   const[loggedIn,setLoggedIn]=useState(false);
   const[accessNotice,setAccessNotice]=useState(false);
   const[presentationOpen,setPresentationOpen]=useState(false);
+  const landingTracked=useRef(false);
 
   useEffect(()=>{
     const supabase=createClient();
     void supabase.auth.getSession().then((result:{data:{session:unknown|null}})=>setLoggedIn(Boolean(result.data.session)));
     try{setAccessNotice(new URLSearchParams(window.location.search).get("acesso")==="necessario")}catch{}
+  },[]);
+
+  function trackLaser(eventName:string,planId:string|null=null){
+    try{
+      const supabase=createClient();
+      void supabase.rpc('track_laser_funnel_event',{
+        p_event_name:eventName,
+        p_session_id:getDevinxPresenceSessionId(),
+        p_path:window.location.pathname,
+        p_source:getDevinxPresenceSource(),
+        p_language:getDevinxPresenceLanguage(),
+        p_plan_id:planId,
+        p_metadata:{}
+      }).then(()=>undefined).catch(()=>undefined);
+    }catch{}
+  }
+
+  useEffect(()=>{
+    if(landingTracked.current)return;
+    landingTracked.current=true;
+    trackLaser('landing_view');
   },[]);
 
   async function signOutAndSwitch(){
@@ -255,14 +278,17 @@ export function LaserLanding(){
       <div className={styles.heroCopy}>
         <span className={styles.tag}>{c.heroTag}</span><h1>{c.hero1}<br/><em>{c.hero2}</em></h1><p>{c.intro}</p>
         <div className={styles.heroActions}>
-          <a className={styles.gold} href="/entrar?next=/laser-control">{c.access}</a>
-          <a className={styles.dark} href="/laser-control/guia">{c.guide}</a>
-          <a className={styles.dark} href="/laser-control/mentoria">{c.agent}</a>
+          <a className={styles.gold} href="/entrar?next=/laser-control" onClick={()=>trackLaser('login_click')}>{c.access}</a>
+          <a className={styles.dark} href="/laser-control/guia" onClick={()=>trackLaser('guide_click')}>{c.guide}</a>
+          <a className={styles.dark} href="/laser-control/mentoria" onClick={()=>trackLaser('student_access_click')}>{c.agent}</a>
           <button
             type="button"
             className={styles.presentationToggle}
             aria-expanded={presentationOpen}
-            onClick={()=>setPresentationOpen(open=>!open)}
+            onClick={()=>{
+              if(!presentationOpen)trackLaser('presentation_open');
+              setPresentationOpen(open=>!open);
+            }}
           >
             <span className={styles.videoIcon}>▶</span>
             <span><b>{presentationOpen?presentationCopy.close:presentationCopy.button}</b><small>{presentationCopy.kind}</small></span>
@@ -277,6 +303,8 @@ export function LaserLanding(){
             playsInline
             preload="metadata"
             aria-label={presentationCopy.aria}
+            onPlay={()=>trackLaser('presentation_play')}
+            onEnded={()=>trackLaser('presentation_complete')}
           />
         </div>}
       </div>
@@ -296,11 +324,11 @@ export function LaserLanding(){
         <b>{c.purchaseTitle}</b>
         <div>{c.purchaseSteps.map((step,index)=><span key={step}><i>{index+1}</i>{step}</span>)}</div>
       </div>
-      <div className={styles.planGrid}>{c.plans.map(([name,price,desc,detail,href,cta],index)=><article key={name} className={index===1?styles.featuredPlan:""}>{index===1&&<small className={styles.best}>{aux.professional}</small>}<span>{name}</span><h3>{price}<em>{index===2?"":c.period}</em></h3><b>{desc}</b><p>{detail}</p><a href={href} target="_blank" rel="noreferrer">{cta}</a></article>)}</div>
+      <div className={styles.planGrid}>{c.plans.map(([name,price,desc,detail,href,cta],index)=><article key={name} className={index===1?styles.featuredPlan:""}>{index===1&&<small className={styles.best}>{aux.professional}</small>}<span>{name}</span><h3>{price}<em>{index===2?"":c.period}</em></h3><b>{desc}</b><p>{detail}</p><a href={href} target="_blank" rel="noreferrer" onClick={()=>trackLaser(index===0?'plan_control_click':'plan_mentor_click',index===0?'control':'mentor')}>{cta}</a></article>)}</div>
     </section>
     <section className={styles.bottom}>
       <div><small>DEVINX LASER CONTROL</small><h2>{aux.bottom}</h2></div>
-      <div className={styles.bottomActions}><a href="/entrar?next=/laser-control">{c.already}</a><a href={"mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support&body="+supportBody}>{c.support}</a><a href="/laser-control/guia">{c.guide}</a></div>
+      <div className={styles.bottomActions}><a href="/entrar?next=/laser-control" onClick={()=>trackLaser('login_click')}>{c.already}</a><a href={"mailto:vetorizeai.1@gmail.com?subject=DevinX%20Laser%20Control%20Support&body="+supportBody}>{c.support}</a><a href="/laser-control/guia" onClick={()=>trackLaser('guide_click')}>{c.guide}</a></div>
     </section>
   </main>;
 }
