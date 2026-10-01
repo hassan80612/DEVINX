@@ -1,5 +1,6 @@
 "use client";
 
+import {useId,useState} from "react";
 import {useI18n} from "@/i18n/provider";
 import styles from "./LaserHomeCard.module.css";
 
@@ -63,11 +64,45 @@ const COPY={
 export function LaserHomeCard(){
   const{locale}=useI18n();
   const c=COPY[locale];
+  const presentationId=useId();
+  const[presentationOpen,setPresentationOpen]=useState(false);
+  const isPortuguese=locale==="pt-BR";
+  const presentation=isPortuguese
+    ?{title:"Apresentação",expand:"Expandir",collapse:"Recolher",aria:"Apresentação do Laser Control em português"}
+    :{title:"Presentation",expand:"Expand",collapse:"Collapse",aria:"Laser Control presentation in English"};
+  const presentationVideo=isPortuguese
+    ?"/media/laser-control-presentation-pt.mp4"
+    :"/media/laser-control-presentation-intl.mp4";
+
   return <section id="laser-control" className={styles.shell} lang={locale} aria-label="DevinX Laser Control">
     <div className={styles.glow} aria-hidden="true"/>
-    <div className={styles.independent}>
-      <b>{c.independent}</b>
-      <span>{c.sub}</span>
+    <div className={styles.topline}>
+      <div className={styles.independent}>
+        <b>{c.independent}</b>
+        <span>{c.sub}</span>
+      </div>
+      <button
+        type="button"
+        className={styles.presentationToggle}
+        aria-expanded={presentationOpen}
+        aria-controls={presentationId}
+        onClick={()=>setPresentationOpen(open=>!open)}
+      >
+        <span className={styles.presentationTitle}>▶ {presentation.title}</span>
+        <span className={styles.presentationAction}>{presentationOpen?presentation.collapse:presentation.expand}</span>
+      </button>
+    </div>
+    <div id={presentationId} className={styles.presentationPanel} hidden={!presentationOpen}>
+      {presentationOpen&&<video
+        className={styles.presentationVideo}
+        src={presentationVideo}
+        width="590"
+        height="1280"
+        controls
+        playsInline
+        preload="metadata"
+        aria-label={presentation.aria}
+      />}
     </div>
     <div className={styles.copy}>
       <span className={styles.tag}><i></i>{c.eyebrow}</span>
