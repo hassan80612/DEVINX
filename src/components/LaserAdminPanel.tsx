@@ -467,7 +467,7 @@ export function LaserAdminPanel(){
           </div>
           <div className={styles.explainer}>
             <b>Por que Vercel e Master podem mostrar números diferentes?</b>
-            <span>Vercel conta requisições HTTP — inclusive HEAD, pré-visualizadores e scanners de links. Aqui “online” significa navegador real com heartbeat recente. Agent/PC é contado separadamente.</span>
+            <span>A Vercel pode mostrar tráfego/visitantes dentro de uma janela de relatório diferente. Aqui “online agora” significa navegador com heartbeat recente; Master, visitante externo, Agent/PC e sessão remota são contados separadamente.</span>
           </div>
         </div>}
       </section>
