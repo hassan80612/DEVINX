@@ -85,6 +85,10 @@ function releasePresenceLeader(tabId:string){
   }catch{}
 }
 
+export function getDevinxPresenceSessionId(){
+  return sessionIdentity().sessionId;
+}
+
 function sourceLabel(){
   try{
     const saved=sessionStorage.getItem(SOURCE_KEY);
@@ -105,6 +109,14 @@ function sourceLabel(){
   }catch{
     return'Direto/sem referência';
   }
+}
+
+export function getDevinxPresenceSource(){
+  return sourceLabel();
+}
+
+export function getDevinxPresenceLanguage(){
+  return languageLabel();
 }
 
 function languageLabel(){
