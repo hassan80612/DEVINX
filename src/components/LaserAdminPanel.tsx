@@ -1,6 +1,6 @@
 'use client';
 
-import {FormEvent,useMemo,useState} from 'react';
+import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
 import styles from './LaserAdminPanel.module.css';
 
@@ -30,6 +30,12 @@ type Customer={
   last_seen_at:string|null;
 };
 
+function customerOnline(customer:Customer){
+  if(!customer.last_seen_at)return false;
+  const seen=Date.parse(customer.last_seen_at);
+  return Number.isFinite(seen)&&Date.now()-seen<15_000;
+}
+
 export function LaserAdminPanel(){
   const[open,setOpen]=useState(false);
   const[loaded,setLoaded]=useState(false);
@@ -45,8 +51,8 @@ export function LaserAdminPanel(){
   const[note,setNote]=useState('');
   const[actionEmail,setActionEmail]=useState<string|null>(null);
 
-  async function load(){
-    setLoading(true);
+  async function load(silent=false){
+    if(!silent)setLoading(true);
     setNotice('');
     const s=createClient();
     const[sum,list]=await Promise.all([
@@ -55,15 +61,21 @@ export function LaserAdminPanel(){
     ]);
     if(sum.error||list.error){
       setNotice('Não foi possível carregar o Master do Laser.');
-      setLoading(false);
+      if(!silent)setLoading(false);
       return;
     }
     const sr=Array.isArray(sum.data)?sum.data[0]:sum.data;
     setSummary((sr||null) as Summary|null);
     setCustomers((list.data||[]) as Customer[]);
     setLoaded(true);
-    setLoading(false);
+    if(!silent)setLoading(false);
   }
+
+  useEffect(()=>{
+    if(!open)return;
+    const timer=window.setInterval(()=>void load(true),5000);
+    return()=>window.clearInterval(timer);
+  },[open]);
 
   async function toggle(){
     const next=!open;
@@ -133,9 +145,10 @@ export function LaserAdminPanel(){
 
   const visible=useMemo(()=>{
     const q=search.trim().toLowerCase();
-    if(!q)return customers;
-    return customers.filter(c=>c.email.toLowerCase().includes(q));
+    const filtered=q?customers.filter(c=>c.email.toLowerCase().includes(q)):customers;
+    return [...filtered].sort((a,b)=>Number(customerOnline(b))-Number(customerOnline(a)));
   },[customers,search]);
+  const onlineCount=customers.filter(customerOnline).length;
 
   const date=(value:string|null)=>{
     if(!value)return 'Sem vencimento';
@@ -163,6 +176,7 @@ export function LaserAdminPanel(){
       {summary&&<div className={styles.metrics}>
         <article><small>CLIENTES LASER</small><b>{summary.known_customers}</b></article>
         <article><small>ACESSOS ATIVOS</small><b>{summary.active_access}</b></article>
+        <article className={styles.onlineMetric}><small>ONLINE AGORA</small><b>{onlineCount}</b></article>
         <article><small>MENTOR</small><b>{summary.mentor_plans}</b></article>
         <article><small>MANUAIS</small><b>{summary.manual_grants}</b></article>
         <article><small>PCS VINCULADOS</small><b>{summary.linked_pcs}</b></article>
@@ -189,7 +203,7 @@ export function LaserAdminPanel(){
       {notice&&<div className={styles.notice}>{notice}</div>}
 
       <div className={styles.usersHead}>
-        <div><small>USUÁRIOS DO LASER</small><h3>Acessos e uso</h3></div>
+        <div><small>USUÁRIOS DO LASER</small><h3>Acessos e uso</h3><span className={styles.onlineSummary}>● {onlineCount} online agora</span></div>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por e-mail"/>
       </div>
 
@@ -204,6 +218,7 @@ export function LaserAdminPanel(){
             <div className={styles.badges}>
               {customer.is_admin&&<b>MASTER</b>}
               {customer.manual_grant&&<b>MANUAL</b>}
+              <b className={customerOnline(customer)?styles.onlineBadge:styles.offlineBadge}>{customerOnline(customer)?'● ONLINE':'OFFLINE'}</b>
               <b className={customer.access_status==='active'?styles.active:styles.blocked}>{customer.access_status==='active'?'ATIVO':'BLOQUEADO'}</b>
             </div>
           </div>
@@ -214,7 +229,7 @@ export function LaserAdminPanel(){
             <span><small>PCs</small><b>{customer.device_count}/{customer.max_pcs||0}</b></span>
             <span><small>Sessões restantes</small><b>{customer.mentor_credits<0?'∞':customer.mentor_credits}</b></span>
             <span><small>Mentoria ativa</small><b>{customer.active_mentor_sessions}</b></span>
-            <span><small>Último PC online</small><b>{customer.last_seen_at?date(customer.last_seen_at):'—'}</b></span>
+            <span><small>Último heartbeat do PC</small><b>{customer.last_seen_at?date(customer.last_seen_at):'—'}</b></span>
           </div>
           {!customer.is_admin&&<div className={styles.actions}>
             {customer.access_status==='active'

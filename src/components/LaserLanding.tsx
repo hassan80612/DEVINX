@@ -210,6 +210,7 @@ export function LaserLanding(){
   const aux=AUX[activeLocale];
   const[loggedIn,setLoggedIn]=useState(false);
   const[accessNotice,setAccessNotice]=useState(false);
+  const[presentationOpen,setPresentationOpen]=useState(false);
 
   useEffect(()=>{
     const supabase=createClient();
@@ -222,9 +223,13 @@ export function LaserLanding(){
     window.location.assign("/entrar?next=/laser-control");
   }
   const supportBody=encodeURIComponent(aux.supportBody);
-  const presentationCopy=activeLocale==="pt-BR"
-    ?{eyebrow:"APRESENTAÇÃO",title:"Veja o Laser Control funcionando",aria:"Apresentação do Laser Control em português"}
-    :{eyebrow:"PRESENTATION",title:"See Laser Control in action",aria:"Laser Control presentation in English"};
+  const presentationCopy=
+    activeLocale==="pt-BR"?{button:"Apresentação",kind:"VÍDEO",close:"Fechar apresentação",aria:"Apresentação do Laser Control em português"}
+    :activeLocale==="es"?{button:"Presentación",kind:"VÍDEO",close:"Cerrar presentación",aria:"Presentación de Laser Control en inglés"}
+    :activeLocale==="fr"?{button:"Présentation",kind:"VIDÉO",close:"Fermer la présentation",aria:"Présentation de Laser Control en anglais"}
+    :activeLocale==="de"?{button:"Präsentation",kind:"VIDEO",close:"Präsentation schließen",aria:"Laser Control Präsentation auf Englisch"}
+    :activeLocale==="ar"?{button:"عرض تقديمي",kind:"فيديو",close:"إغلاق العرض",aria:"عرض Laser Control باللغة الإنجليزية"}
+    :{button:"Presentation",kind:"VIDEO",close:"Close presentation",aria:"Laser Control presentation in English"};
   // The retained media filenames are historically inverted; this mapping matches the actual audio/content used by the Home card.
   const presentationVideo=activeLocale==="pt-BR"
     ?"/media/laser-control-presentation-intl.mp4"
@@ -253,30 +258,27 @@ export function LaserLanding(){
           <a className={styles.gold} href="/entrar?next=/laser-control">{c.access}</a>
           <a className={styles.dark} href="/laser-control/guia">{c.guide}</a>
           <a className={styles.dark} href="/laser-control/mentoria">{c.agent}</a>
+          <button
+            type="button"
+            className={styles.presentationToggle}
+            aria-expanded={presentationOpen}
+            onClick={()=>setPresentationOpen(open=>!open)}
+          >
+            <span className={styles.videoIcon}>▶</span>
+            <span><b>{presentationOpen?presentationCopy.close:presentationCopy.button}</b><small>{presentationCopy.kind}</small></span>
+            <em>{presentationOpen?"⌃":"⌄"}</em>
+          </button>
         </div>
-      </div>
-      <div className={styles.screen} aria-hidden="true">
-        <div className={styles.screenBar}><i/><i/><i/><span>DEVINX · {activeLocale==="pt-BR"?"AO VIVO":activeLocale==="es"?"EN VIVO":activeLocale==="fr"?"EN DIRECT":activeLocale==="ar"?"مباشر":"LIVE"}</span></div>
-        <div className={styles.screenBody}>
-          <aside><b>{aux.mockPc}</b><span>{aux.mockOnline}</span><span>{aux.mockConnected}</span><span>{aux.mockMachine}</span></aside>
-          <div className={styles.mockLive}><small>{aux.mockLive}</small><div className={styles.mockCanvas}><span>LASER</span><b>CONTROL</b></div><div className={styles.mockButtons}><i>{aux.mockFrame}</i><i>{aux.mockStart}</i><i>{aux.mockPause}</i><i>{aux.mockStop}</i></div></div>
-        </div>
-      </div>
-    </section>
-    <section className={styles.presentationSection}>
-      <div className={styles.presentationHead}>
-        <small>{presentationCopy.eyebrow}</small>
-        <h2>{presentationCopy.title}</h2>
-      </div>
-      <div className={styles.presentationFrame}>
-        <video
-          className={styles.presentationVideo}
-          src={presentationVideo}
-          controls
-          playsInline
-          preload="metadata"
-          aria-label={presentationCopy.aria}
-        />
+        {presentationOpen&&<div className={styles.inlinePresentation}>
+          <video
+            className={styles.presentationVideo}
+            src={presentationVideo}
+            controls
+            playsInline
+            preload="metadata"
+            aria-label={presentationCopy.aria}
+          />
+        </div>}
       </div>
     </section>
     <section className={styles.featureSection}>
