@@ -190,24 +190,15 @@ export function AdminMaster(){
   if(loading)return <section className="panel"><span className="loader"/></section>;
 
   return <div className="masterPage">
-    <section className="masterHero">
+    <section className="masterHero financeMasterHero">
       <div><span className="goldPill">{t('master.admin')}</span><h2>{t('master.title')}</h2><p>{t('master.lead')}</p></div>
       <div className="masterHeroActions"><button className="secondary compactButton" onClick={load}>{t('master.refresh')}</button><span className="masterLock">◆</span></div>
     </section>
 
-    <MasterLivePresence/>
-    <SiteVisibilityAdminCard/>
-
     <FinanceMasterOpsPanel funnel={funnel} customers={customers} webhookAttempts={webhookAttempts} onFilter={next=>setFilter(next)}/>
 
-    {funnel&&<div className="masterMetrics">
-      <article><small>{t('master.customersKnown')}</small><b>{funnel.total_customers}</b></article>
-      <article><small>{t('master.accounts')}</small><b>{funnel.total_accounts}</b></article>
-      <article><small>{t('master.activeAccess')}</small><b>{funnel.active_access}</b></article>
-      <article><small>{t('master.kiwify')}</small><b>{funnel.kiwify_customers}</b></article>
-      <article><small>{t('master.manual')}</small><b>{funnel.manual_grants}</b></article>
-      <article><small>{t('master.pendingSignup')}</small><b>{funnel.pending_signup}</b></article>
-    </div>}
+    <MasterLivePresence/>
+    <SiteVisibilityAdminCard/>
 
     <section className={'panel masterSectionCard '+(openPanels.has('grant')?'expanded':'collapsed')}>
       <button className="collapseHeader masterSectionHeader" type="button" onClick={()=>togglePanel('grant')}><div><small>{t('master.manualAccess')}</small><h2>{t('master.grantByEmail')}</h2></div><em>{openPanels.has('grant')?'−':'＋'}</em></button>

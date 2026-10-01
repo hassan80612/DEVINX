@@ -2,6 +2,7 @@
 
 import {useCallback,useEffect,useMemo,useState} from 'react';
 import {createClient} from '@/lib/supabase/client';
+import styles from './FinanceMasterOpsPanel.module.css';
 
 type FinanceFilter='all'|'active'|'blocked'|'pending'|'kiwify'|'manual'|'trial';
 
@@ -94,7 +95,6 @@ export function FinanceMasterOpsPanel({
   onFilter:(filter:FinanceFilter)=>void;
 }){
   const[usage,setUsage]=useState<Usage>(EMPTY_USAGE);
-  const[usageOpen,setUsageOpen]=useState(true);
 
   const accounts=useMemo(
     ()=>customers.filter(customer=>customer.account_exists&&!customer.is_admin&&customer.email).slice(0,80),
@@ -159,20 +159,21 @@ export function FinanceMasterOpsPanel({
 
   const alertCount=(funnel?.blocked_access||0)+commercial.expiring48h+commercial.webhookErrors;
 
-  return <section className="financeOpsMaster panel">
-    <div className="financeOpsHead">
+  return <section className={styles.panel}>
+    <div className={styles.head}>
       <div>
         <small>ÁREA MASTER · FINANCEIRO</small>
-        <h2>Central operacional do Financeiro</h2>
-        <p>Acesso, atividade dos módulos e sinais comerciais em uma visão só.</p>
+        <h2>Estado interno do DevinX Financeiro</h2>
       </div>
-      <div className="financeOpsHeadActions">
-        <span className="financeOpsSafe">FINANCEIRO</span>
-        <button type="button" className="secondary compactButton" onClick={()=>void loadUsage()} disabled={usage.loading}>{usage.loading?'Lendo…':'Atualizar uso'}</button>
+      <div className={styles.headActions}>
+        <span className={styles.safe}>FINANCE OPS</span>
+        <button type="button" className={styles.refresh} onClick={()=>void loadUsage()} disabled={usage.loading}>
+          {usage.loading?'Lendo…':'Atualizar'}
+        </button>
       </div>
     </div>
 
-    <div className="financeOpsStatusGrid">
+    <div className={styles.grid}>
       <button type="button" onClick={()=>show('active')}>
         <small>ACESSOS ATIVOS</small>
         <strong>{funnel?.active_access??0}</strong>
@@ -188,43 +189,67 @@ export function FinanceMasterOpsPanel({
         <strong>{funnel?.kiwify_customers??0}</strong>
         <span>{commercial.webhookAccepted} webhooks aceitos em 24h</span>
       </button>
-      <button type="button" className={alertCount>0?'attention':''} onClick={()=>show('blocked')}>
+      <button type="button" className={alertCount>0?styles.alertCard:''} onClick={()=>show('blocked')}>
         <small>ATENÇÃO</small>
         <strong>{alertCount}</strong>
         <span>{commercial.webhookErrors} erro(s) de webhook · {funnel?.blocked_access??0} bloqueado(s)</span>
       </button>
     </div>
 
-    <div className="financeOpsToolbar">
-      <div>
-        <small>USO REAL DO FINANCEIRO</small>
-        <b>{usage.loading?'Atualizando leitura dos clientes…':usage.scanned+' conta(s) analisada(s)'}</b>
-      </div>
-      <button type="button" className="ghost compactButton" onClick={()=>setUsageOpen(current=>!current)}>{usageOpen?'Recolher':'Expandir'}</button>
+    <div className={styles.flow}>
+      <span>CLIENTES</span><i>→</i><span>ACESSO</span><i>→</i><span>USO FINANCEIRO</span><i>→</i><span>KIWIFY</span>
     </div>
 
-    {usageOpen&&<div className="financeOpsUsage">
-      <div className="financeOpsModuleGrid">
-        <article><small>MOVIMENTOS</small><b>{usage.transactions}</b><span>lançamentos registrados</span></article>
-        <article><small>JORNADAS</small><b>{usage.work}</b><span>sessões de trabalho</span></article>
-        <article><small>CARTÕES</small><b>{usage.cards}</b><span>cartões cadastrados</span></article>
-        <article><small>CONTAS</small><b>{usage.bills}</b><span>contas recorrentes</span></article>
-        <article><small>DÍVIDAS</small><b>{usage.debts}</b><span>dívidas acompanhadas</span></article>
-        <article><small>ATIVOS 30D</small><b>{usage.active30d}</b><span>{usage.active7d} com atividade em 7 dias</span></article>
+    <details className={styles.section} open>
+      <summary>
+        <div><small>USO REAL</small><b>Módulos do Financeiro</b></div>
+        <span>{usage.loading?'ATUALIZANDO':usage.scanned+' CONTAS'}</span>
+      </summary>
+      <div className={styles.sectionBody}>
+        <div className={styles.moduleGrid}>
+          <article><small>MOVIMENTOS</small><b>{usage.transactions}</b><span>lançamentos registrados</span></article>
+          <article><small>JORNADAS</small><b>{usage.work}</b><span>sessões de trabalho</span></article>
+          <article><small>CARTÕES</small><b>{usage.cards}</b><span>cartões cadastrados</span></article>
+          <article><small>CONTAS</small><b>{usage.bills}</b><span>contas recorrentes</span></article>
+          <article><small>DÍVIDAS</small><b>{usage.debts}</b><span>dívidas acompanhadas</span></article>
+          <article><small>ATIVOS 30D</small><b>{usage.active30d}</b><span>{usage.active7d} com atividade em 7 dias</span></article>
+        </div>
       </div>
+    </details>
 
-      <div className="financeOpsHealth">
-        <div><span className={commercial.webhookErrors===0?'okDot':'warnDot'}/><p><b>Webhook financeiro</b><small>{commercial.webhookErrors===0?'Sem erros detectados nas últimas 24h':commercial.webhookErrors+' erro(s) nas últimas 24h'}</small></p></div>
-        <div><span className={usage.failed===0?'okDot':'warnDot'}/><p><b>Leitura administrativa</b><small>{usage.failed===0?'Diagnósticos respondendo normalmente':usage.failed+' conta(s) não responderam ao diagnóstico'}</small></p></div>
-        <div><span className="okDot"/><p><b>Última atividade financeira</b><small>{formatDateTime(usage.lastActivity)}</small></p></div>
+    <details className={styles.section}>
+      <summary>
+        <div><small>SAÚDE</small><b>Alertas e integração</b></div>
+        <span className={alertCount>0?styles.warnText:styles.okText}>{alertCount>0?alertCount+' ALERTAS':'NORMAL'}</span>
+      </summary>
+      <div className={styles.sectionBody}>
+        <div className={styles.health}>
+          <div><span className={commercial.webhookErrors===0?styles.okDot:styles.warnDot}/><p><b>Webhook financeiro</b><small>{commercial.webhookErrors===0?'Sem erros detectados nas últimas 24h':commercial.webhookErrors+' erro(s) nas últimas 24h'}</small></p></div>
+          <div><span className={usage.failed===0?styles.okDot:styles.warnDot}/><p><b>Leitura administrativa</b><small>{usage.failed===0?'Diagnósticos respondendo normalmente':usage.failed+' conta(s) não responderam ao diagnóstico'}</small></p></div>
+          <div><span className={styles.okDot}/><p><b>Última atividade financeira</b><small>{formatDateTime(usage.lastActivity)}</small></p></div>
+          <div><span className={commercial.expiring48h===0?styles.okDot:styles.warnDot}/><p><b>Vencimentos próximos</b><small>{commercial.expiring48h===0?'Nenhum acesso vencendo em 48h':commercial.expiring48h+' acesso(s) vencendo em até 48h'}</small></p></div>
+        </div>
       </div>
-    </div>}
+    </details>
 
-    <div className="financeOpsWatch">
-      <button type="button" onClick={()=>show('pending')}><small>CADASTRO PENDENTE</small><b>{funnel?.pending_signup??0}</b></button>
-      <button type="button" onClick={()=>show('manual')}><small>ACESSO MANUAL</small><b>{funnel?.manual_grants??0}</b></button>
-      <button type="button" onClick={()=>show('all')}><small>SEM LOGIN HÁ 14D</small><b>{commercial.inactive14d}</b></button>
-      <button type="button" onClick={()=>show('all')}><small>CLIENTES CONHECIDOS</small><b>{funnel?.total_customers??customers.length}</b></button>
+    <details className={styles.section}>
+      <summary>
+        <div><small>BASE FINANCEIRA</small><b>Clientes e acesso</b></div>
+        <span>{funnel?.total_customers??customers.length} CLIENTES</span>
+      </summary>
+      <div className={styles.sectionBody}>
+        <div className={styles.quickGrid}>
+          <button type="button" onClick={()=>show('pending')}><small>CADASTRO PENDENTE</small><b>{funnel?.pending_signup??0}</b><span>Abrir filtro</span></button>
+          <button type="button" onClick={()=>show('manual')}><small>ACESSO MANUAL</small><b>{funnel?.manual_grants??0}</b><span>Abrir filtro</span></button>
+          <button type="button" onClick={()=>show('all')}><small>SEM LOGIN HÁ 14D</small><b>{commercial.inactive14d}</b><span>Revisar base</span></button>
+          <button type="button" onClick={()=>show('all')}><small>CONTAS CRIADAS</small><b>{funnel?.total_accounts??0}</b><span>Ver clientes</span></button>
+        </div>
+      </div>
+    </details>
+
+    <div className={styles.rules}>
+      <b>Master focada apenas no Financeiro</b>
+      <p>Esta área só lê diagnóstico administrativo e acesso. Ela não altera Meta Diária, Reserva nem movimentações dos clientes.</p>
     </div>
   </section>;
 }
