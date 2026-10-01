@@ -222,6 +222,13 @@ export function LaserLanding(){
     window.location.assign("/entrar?next=/laser-control");
   }
   const supportBody=encodeURIComponent(aux.supportBody);
+  const presentationCopy=activeLocale==="pt-BR"
+    ?{eyebrow:"APRESENTAÇÃO",title:"Veja o Laser Control funcionando",aria:"Apresentação do Laser Control em português"}
+    :{eyebrow:"PRESENTATION",title:"See Laser Control in action",aria:"Laser Control presentation in English"};
+  // The retained media filenames are historically inverted; this mapping matches the actual audio/content used by the Home card.
+  const presentationVideo=activeLocale==="pt-BR"
+    ?"/media/laser-control-presentation-intl.mp4"
+    :"/media/laser-control-presentation-pt.mp4";
   return <main key={activeLocale} className={styles.page} lang={activeLocale}>
     <header className={styles.header}>
       <a href="/" className={styles.brand}><b>DX</b><span>DEVINX <em>LASER CONTROL</em></span></a>
@@ -254,6 +261,22 @@ export function LaserLanding(){
           <aside><b>{aux.mockPc}</b><span>{aux.mockOnline}</span><span>{aux.mockConnected}</span><span>{aux.mockMachine}</span></aside>
           <div className={styles.mockLive}><small>{aux.mockLive}</small><div className={styles.mockCanvas}><span>LASER</span><b>CONTROL</b></div><div className={styles.mockButtons}><i>{aux.mockFrame}</i><i>{aux.mockStart}</i><i>{aux.mockPause}</i><i>{aux.mockStop}</i></div></div>
         </div>
+      </div>
+    </section>
+    <section className={styles.presentationSection}>
+      <div className={styles.presentationHead}>
+        <small>{presentationCopy.eyebrow}</small>
+        <h2>{presentationCopy.title}</h2>
+      </div>
+      <div className={styles.presentationFrame}>
+        <video
+          className={styles.presentationVideo}
+          src={presentationVideo}
+          controls
+          playsInline
+          preload="metadata"
+          aria-label={presentationCopy.aria}
+        />
       </div>
     </section>
     <section className={styles.featureSection}>
