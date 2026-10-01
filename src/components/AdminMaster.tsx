@@ -5,6 +5,7 @@ import {createClient} from '@/lib/supabase/client';
 import {useI18n} from '@/i18n/provider';
 import {MasterLivePresence} from './LivePresence';
 import {SiteVisibilityAdminCard} from './SiteVisibilityAdminCard';
+import {FinanceMasterOpsPanel} from './FinanceMasterOpsPanel';
 
 type Funnel={total_customers:number;total_accounts:number;onboarded:number;signed_in_7d:number;active_access:number;blocked_access:number;pending_signup:number;kiwify_customers:number;manual_grants:number;no_access:number};
 type Customer={email:string;user_id:string|null;account_exists:boolean;created_at:string|null;last_sign_in_at:string|null;onboarded_at:string|null;access_status:string;access_source:string;expires_at:string|null;is_admin:boolean;manual_grant:boolean;kiwify_customer:boolean;kiwify_status:string|null;plan_name:string|null;amount_minor:number|null;currency_code:string|null;last_event_at:string|null};
@@ -197,6 +198,7 @@ export function AdminMaster(){
     <MasterLivePresence/>
     <SiteVisibilityAdminCard/>
 
+    <FinanceMasterOpsPanel funnel={funnel} customers={customers} webhookAttempts={webhookAttempts} onFilter={next=>setFilter(next)}/>
 
     {funnel&&<div className="masterMetrics">
       <article><small>{t('master.customersKnown')}</small><b>{funnel.total_customers}</b></article>
@@ -243,7 +245,7 @@ export function AdminMaster(){
 
     {notice&&<div className="authMessage">{notice}</div>}
 
-    <section className="panel masterUsers">
+    <section id="finance-master-users" className="panel masterUsers">
       <div className="sectionTitleRow"><div><small>{t('master.customerBase')}</small><h2>{t('master.users')}</h2></div><div className="sectionActions"><span>{visible.length}</span><button className="ghost compactButton" onClick={toggleAllCustomers}>{expanded.size===visible.length&&visible.length>0?t('common.collapseAll'):t('common.expandAll')}</button></div></div>
       <div className="masterFilters"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t('master.search')}/><div className="filterRow">
         <button className={filter==='all'?'active':''} onClick={()=>setFilter('all')}>{t('common.all')}</button>
