@@ -209,7 +209,8 @@ export function LaserLanding(){
   const c=LANDING_COPY[activeLocale];
   const aux=AUX[activeLocale];
   const[loggedIn,setLoggedIn]=useState(false);
-  const[accessNotice,setAccessNotice]=useState(false);\n  const[presentationOpen,setPresentationOpen]=useState(false);
+  const[accessNotice,setAccessNotice]=useState(false);
+  const[presentationOpen,setPresentationOpen]=useState(false);
 
   useEffect(()=>{
     const supabase=createClient();
@@ -279,7 +280,8 @@ export function LaserLanding(){
           />
         </div>}
       </div>
-    </section>\n    <section className={styles.featureSection}>
+    </section>
+    <section className={styles.featureSection}>
       <div className={styles.sectionHead}><small>{c.capabilities}</small><h2>{c.capabilityLead}</h2></div>
       <div className={styles.features}>{c.features.map(([icon,title,text])=><article key={title}><i>{icon}</i><b>{title}</b><p>{text}</p></article>)}</div>
     </section>
