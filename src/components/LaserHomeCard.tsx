@@ -71,8 +71,8 @@ export function LaserHomeCard(){
     ?{title:"Apresentação",expand:"Expandir",collapse:"Recolher",aria:"Apresentação do Laser Control em português"}
     :{title:"Presentation",expand:"Expand",collapse:"Collapse",aria:"Laser Control presentation in English"};
   const presentationVideo=isPortuguese
-    ?"/media/laser-control-presentation-pt.mp4"
-    :"/media/laser-control-presentation-intl.mp4";
+    ?"/media/laser-control-presentation-intl.mp4"
+    :"/media/laser-control-presentation-pt.mp4";
 
   return <section id="laser-control" className={styles.shell} lang={locale} aria-label="DevinX Laser Control">
     <div className={styles.glow} aria-hidden="true"/>
