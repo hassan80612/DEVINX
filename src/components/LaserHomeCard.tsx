@@ -12,7 +12,7 @@ const COPY={
     primary:"Conhecer Laser Control",secondary:"Já tenho acesso",guide:"Guia completo",
     independent:"PRODUTO INDEPENDENTE",sub:"Controle remoto + mentoria",
     featureTitle:"LASER CONTROL · CONTROLE, MENTORIA E FERRAMENTAS",
-    features:["Tela do LightBurn ao vivo","Controle por celular ou computador","Toque, mouse e teclado DevinX","Frame, Iniciar, Pausar e Parar","Zoom, tela cheia e orientação","Salvar, Desfazer, Refazer e Importar","Preview e ferramentas de imagem","Rotativo e comandos do LightBurn","Mentoria professor e aluno","Código temporário de sessão","Agent Windows com inicialização automática","Sessão remota com controle de acesso"]
+    features:["Tela do LightBurn ao vivo","Controle por celular ou computador","Toque, mouse e teclado DevinX","Frame, Iniciar, Pausar e Parar","Zoom, tela cheia e orientação","Salvar, Desfazer, Refazer e Importar","Preview e ferramentas de imagem","Rotativo e comandos do LightBurn","Control: 2 PCs + aluno avulso","Mentor: 5 PCs + alunos ilimitados","Mentoria professor e aluno","Código temporário de sessão","Agent Windows com inicialização automática","Sessão remota com controle de acesso"]
   },
   en:{
     eyebrow:"DEVINX LASER CONTROL · REMOTE LIGHTBURN",
@@ -21,7 +21,7 @@ const COPY={
     primary:"Explore Laser Control",secondary:"I already have access",guide:"Complete guide",
     independent:"INDEPENDENT PRODUCT",sub:"Remote control + mentoring",
     featureTitle:"LASER CONTROL · REMOTE CONTROL, MENTORING & TOOLS",
-    features:["Live LightBurn screen","Control from phone or computer","Touch, mouse and DevinX keyboard","Frame, Start, Pause and Stop","Zoom, fullscreen and orientation","Save, Undo, Redo and Import","Preview and image tools","Rotary and LightBurn commands","Teacher-to-student mentoring","Temporary session code","Windows Agent with auto-start","Server-controlled remote access"]
+    features:["Live LightBurn screen","Control from phone or computer","Touch, mouse and DevinX keyboard","Frame, Start, Pause and Stop","Zoom, fullscreen and orientation","Save, Undo, Redo and Import","Preview and image tools","Rotary and LightBurn commands","Control: 2 PCs + optional student","Mentor: 5 PCs + unlimited students","Teacher-to-student mentoring","Temporary session code","Windows Agent with auto-start","Server-controlled remote access"]
   },
   es:{
     eyebrow:"DEVINX LASER CONTROL · LIGHTBURN REMOTO",
@@ -30,7 +30,7 @@ const COPY={
     primary:"Conocer Laser Control",secondary:"Ya tengo acceso",guide:"Guía completa",
     independent:"PRODUCTO INDEPENDIENTE",sub:"Control remoto + mentoría",
     featureTitle:"LASER CONTROL · CONTROL, MENTORÍA Y HERRAMIENTAS",
-    features:["Pantalla de LightBurn en vivo","Control desde móvil u ordenador","Toque, ratón y teclado DevinX","Frame, Iniciar, Pausar y Parar","Zoom, pantalla completa y orientación","Guardar, Deshacer, Rehacer e Importar","Preview y herramientas de imagen","Rotativo y comandos de LightBurn","Mentoría profesor-alumno","Código temporal de sesión","Agent Windows con inicio automático","Acceso remoto controlado por el servidor"]
+    features:["Pantalla de LightBurn en vivo","Control desde móvil u ordenador","Toque, ratón y teclado DevinX","Frame, Iniciar, Pausar y Parar","Zoom, pantalla completa y orientación","Guardar, Deshacer, Rehacer e Importar","Preview y herramientas de imagen","Rotativo y comandos de LightBurn","Control: 2 PCs + alumno adicional","Mentor: 5 PCs + alumnos ilimitados","Mentoría profesor-alumno","Código temporal de sesión","Agent Windows con inicio automático","Acceso remoto controlado por el servidor"]
   },
   fr:{
     eyebrow:"DEVINX LASER CONTROL · LIGHTBURN À DISTANCE",
@@ -39,7 +39,7 @@ const COPY={
     primary:"Découvrir Laser Control",secondary:"J’ai déjà accès",guide:"Guide complet",
     independent:"PRODUIT INDÉPENDANT",sub:"Contrôle à distance + mentorat",
     featureTitle:"LASER CONTROL · CONTRÔLE, MENTORAT ET OUTILS",
-    features:["Écran LightBurn en direct","Contrôle depuis téléphone ou ordinateur","Tactile, souris et clavier DevinX","Frame, Démarrer, Pause et Arrêter","Zoom, plein écran et orientation","Enregistrer, Annuler, Rétablir et Importer","Preview et outils d’image","Rotatif et commandes LightBurn","Mentorat professeur-élève","Code de session temporaire","Agent Windows avec démarrage automatique","Accès distant contrôlé par le serveur"]
+    features:["Écran LightBurn en direct","Contrôle depuis téléphone ou ordinateur","Tactile, souris et clavier DevinX","Frame, Démarrer, Pause et Arrêter","Zoom, plein écran et orientation","Enregistrer, Annuler, Rétablir et Importer","Preview et outils d’image","Rotatif et commandes LightBurn","Control : 2 PC + élève supplémentaire","Mentor : 5 PC + élèves illimités","Mentorat professeur-élève","Code de session temporaire","Agent Windows avec démarrage automatique","Accès distant contrôlé par le serveur"]
   },
   de:{
     eyebrow:"DEVINX LASER CONTROL · LIGHTBURN REMOTE",
@@ -48,7 +48,7 @@ const COPY={
     primary:"Laser Control ansehen",secondary:"Ich habe bereits Zugang",guide:"Vollständige Anleitung",
     independent:"EIGENSTÄNDIGES PRODUKT",sub:"Fernsteuerung + Mentoring",
     featureTitle:"LASER CONTROL · STEUERUNG, MENTORING UND WERKZEUGE",
-    features:["Live-Bildschirm von LightBurn","Steuerung per Smartphone oder Computer","Touch, Maus und DevinX-Tastatur","Frame, Start, Pause und Stopp","Zoom, Vollbild und Ausrichtung","Speichern, Rückgängig, Wiederholen und Import","Preview und Bildwerkzeuge","Rotary und LightBurn-Befehle","Lehrer-Schüler-Mentoring","Temporärer Sitzungscode","Windows-Agent mit Autostart","Servergesteuerter Fernzugriff"]
+    features:["Live-Bildschirm von LightBurn","Steuerung per Smartphone oder Computer","Touch, Maus und DevinX-Tastatur","Frame, Start, Pause und Stopp","Zoom, Vollbild und Ausrichtung","Speichern, Rückgängig, Wiederholen und Import","Preview und Bildwerkzeuge","Rotary und LightBurn-Befehle","Control: 2 PCs + optionaler Schüler","Mentor: 5 PCs + unbegrenzte Schüler","Lehrer-Schüler-Mentoring","Temporärer Sitzungscode","Windows-Agent mit Autostart","Servergesteuerter Fernzugriff"]
   },
   ar:{
     eyebrow:"DEVINX LASER CONTROL · LIGHTBURN عن بُعد",
@@ -57,7 +57,7 @@ const COPY={
     primary:"التعرّف على Laser Control",secondary:"لدي وصول بالفعل",guide:"الدليل الكامل",
     independent:"منتج مستقل",sub:"تحكم عن بُعد + إرشاد",
     featureTitle:"LASER CONTROL · تحكم وإرشاد وأدوات",
-    features:["شاشة LightBurn مباشرة","التحكم من الهاتف أو الكمبيوتر","اللمس والماوس ولوحة مفاتيح DevinX","Frame وStart وPause وStop","التكبير وملء الشاشة والاتجاه","حفظ وتراجع وإعادة واستيراد","Preview وأدوات الصور","المحور الدوار وأوامر LightBurn","إرشاد المدرّس والطالب","رمز جلسة مؤقت","Agent Windows مع تشغيل تلقائي","وصول عن بُعد يتحكم به الخادم"]
+    features:["شاشة LightBurn مباشرة","التحكم من الهاتف أو الكمبيوتر","اللمس والماوس ولوحة مفاتيح DevinX","Frame وStart وPause وStop","التكبير وملء الشاشة والاتجاه","حفظ وتراجع وإعادة واستيراد","Preview وأدوات الصور","المحور الدوار وأوامر LightBurn","Control: جهازي كمبيوتر + طالب إضافي","Mentor: 5 أجهزة كمبيوتر + طلاب غير محدودين","إرشاد المدرّس والطالب","رمز جلسة مؤقت","Agent Windows مع تشغيل تلقائي","وصول عن بُعد يتحكم به الخادم"]
   }
 } as const;
 
