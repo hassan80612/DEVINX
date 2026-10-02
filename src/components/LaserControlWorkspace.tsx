@@ -62,12 +62,12 @@ const SESSION_RENEW_MS=20_000;
 const DEVICE_REQUEST_MIN_GAP_MS=2_000;
 
 const WORKSPACE_NAV={
-  'pt-BR':{home:'Home',guide:'Guia',support:'Suporte',signOut:'Sair',mentorPack:'+5 sessões de mentoria',mentorNote:'Cada sessão pode durar até 6 horas. O Mentor começa com 10 sessões por ciclo; o pacote de +5 soma somente ao ciclo atual e expira junto com ele. Use na Kiwify o mesmo e-mail da sua conta DevinX.',mentorLocked:'MENTORIA',mentorAvailable:'Disponível no plano Mentor',mentorLockedText:'O plano Control não recebe sessões de mentoria. Para usar alunos e comprar pacotes extras, ative o plano Mentor.',mentorView:'Ver plano Mentor',pcTag:'PC ADICIONAL',pcDescription:'Cada compra acrescenta +1 PC ao limite do seu Control ou Mentor somente até o fim do período atual. A renovação do plano NÃO renova este adicional: no próximo período é preciso comprar novamente.',addPc:'Adicionar +1 PC',pcSmall:'Pode repetir a compra quantas vezes precisar neste período. O adicional nunca funciona sem um plano principal ativo.'},
-  en:{home:'Home',guide:'Guide',support:'Support',signOut:'Sign out',mentorPack:'+5 mentoring sessions',mentorNote:'Each session can last up to 6 hours. Mentor starts with 10 sessions per cycle; the +5 pack applies only to the current cycle and expires with it. Use the same email at Kiwify checkout as your DevinX account.',mentorLocked:'MENTORING',mentorAvailable:'Available with the Mentor plan',mentorLockedText:'Control does not include mentoring sessions. Activate Mentor to connect students and buy extra session packs.',mentorView:'View Mentor plan',pcTag:'EXTRA PC',pcDescription:'Each purchase adds +1 PC to your Control or Mentor limit only until the current plan period ends. Plan renewal does NOT renew this add-on: buy it again for the next period.',addPc:'Add +1 PC',pcSmall:'You can repeat the purchase as many times as needed in this period. The add-on never works without an active main plan.'},
-  es:{home:'Inicio',guide:'Guía',support:'Soporte',signOut:'Salir',mentorPack:'+5 sesiones de mentoría',mentorNote:'Cada sesión puede durar hasta 6 horas. Mentor comienza con 10 sesiones por ciclo; el paquete de +5 se suma solo al ciclo actual y vence con él. Usa en Kiwify el mismo correo de tu cuenta DevinX.',mentorLocked:'MENTORÍA',mentorAvailable:'Disponible con el plan Mentor',mentorLockedText:'Control no incluye sesiones de mentoría. Activa Mentor para conectar alumnos y comprar paquetes extra.',mentorView:'Ver plan Mentor',pcTag:'PC ADICIONAL',pcDescription:'Cada compra añade +1 PC al límite de Control o Mentor solo hasta el final del período actual. La renovación del plan NO renueva este adicional: debes comprarlo otra vez en el siguiente período.',addPc:'Añadir +1 PC',pcSmall:'Puedes repetir la compra las veces que necesites durante este período. El adicional nunca funciona sin un plan principal activo.'},
-  fr:{home:'Accueil',guide:'Guide',support:'Support',signOut:'Déconnexion',mentorPack:'+5 sessions de mentorat',mentorNote:'Chaque session peut durer jusqu’à 6 heures. Mentor commence avec 10 sessions par cycle ; le pack +5 s’applique uniquement au cycle actuel et expire avec lui. Utilisez le même e-mail sur Kiwify et sur votre compte DevinX.',mentorLocked:'MENTORAT',mentorAvailable:'Disponible avec le plan Mentor',mentorLockedText:'Control n’inclut pas de sessions de mentorat. Activez Mentor pour connecter des élèves et acheter des packs supplémentaires.',mentorView:'Voir le plan Mentor',pcTag:'PC SUPPLÉMENTAIRE',pcDescription:'Chaque achat ajoute +1 PC à la limite Control ou Mentor uniquement jusqu’à la fin de la période actuelle. Le renouvellement du plan NE renouvelle PAS cet ajout : il faut le racheter pour la période suivante.',addPc:'Ajouter +1 PC',pcSmall:'Vous pouvez répéter l’achat autant de fois que nécessaire pendant cette période. L’ajout ne fonctionne jamais sans plan principal actif.'},
-  de:{home:'Startseite',guide:'Anleitung',support:'Support',signOut:'Abmelden',mentorPack:'+5 Mentoring-Sitzungen',mentorNote:'Jede Sitzung kann bis zu 6 Stunden dauern. Mentor startet mit 10 Sitzungen pro Zyklus; das +5-Paket gilt nur für den aktuellen Zyklus und läuft mit ihm ab. Verwenden Sie bei Kiwify dieselbe E-Mail-Adresse wie für Ihr DevinX-Konto.',mentorLocked:'MENTORING',mentorAvailable:'Im Mentor-Plan verfügbar',mentorLockedText:'Control enthält keine Mentoring-Sitzungen. Aktivieren Sie Mentor, um Schüler zu verbinden und Zusatzpakete zu kaufen.',mentorView:'Mentor-Plan ansehen',pcTag:'ZUSÄTZLICHER PC',pcDescription:'Jeder Kauf erhöht das Control- oder Mentor-Limit bis zum Ende des aktuellen Zeitraums um +1 PC. Eine Planverlängerung verlängert diesen Zusatz NICHT; für den nächsten Zeitraum muss er neu gekauft werden.',addPc:'+1 PC hinzufügen',pcSmall:'Der Kauf kann in diesem Zeitraum beliebig oft wiederholt werden. Der Zusatz funktioniert nie ohne aktiven Hauptplan.'},
-  ar:{home:'الرئيسية',guide:'الدليل',support:'الدعم',signOut:'تسجيل الخروج',mentorPack:'+5 جلسات إرشاد',mentorNote:'يمكن أن تستمر كل جلسة حتى 6 ساعات. تبدأ خطة Mentor بـ10 جلسات في كل دورة، وتُضاف حزمة +5 إلى الدورة الحالية فقط وتنتهي معها. استخدم في Kiwify البريد الإلكتروني نفسه لحساب DevinX.',mentorLocked:'الإرشاد',mentorAvailable:'متاح مع خطة Mentor',mentorLockedText:'خطة Control لا تتضمن جلسات إرشاد. فعّل Mentor لربط الطلاب وشراء الحزم الإضافية.',mentorView:'عرض خطة Mentor',pcTag:'كمبيوتر إضافي',pcDescription:'كل عملية شراء تضيف كمبيوتر واحداً إلى حد Control أو Mentor حتى نهاية الفترة الحالية فقط. تجديد الخطة لا يجدد هذه الإضافة؛ يجب شراؤها من جديد في الفترة التالية.',addPc:'إضافة كمبيوتر +1',pcSmall:'يمكن تكرار الشراء بالقدر المطلوب خلال هذه الفترة. الإضافة لا تعمل أبداً من دون خطة رئيسية نشطة.'}
+  'pt-BR':{home:'Home',guide:'Guia',support:'Suporte',signOut:'Sair',addStudent:'Adicionar +1 aluno',studentNote:'O adicional libera 1 nova conexão de mentoria no ciclo atual. Cada sessão pode durar até 6 horas e expira junto com o plano.',mentorUnlimited:'Alunos ilimitados no Mentor · 1 atendimento ativo por vez · até 6 horas por sessão.',mentorLocked:'MENTORIA',mentorAvailable:'Mentoria disponível no plano Mentor',mentorLockedText:'O Mentor inclui alunos ilimitados. No Control, você pode liberar um aluno avulso quando precisar.',mentorView:'Ver plano Mentor',controlStudentTitle:'Precisa atender um aluno?',controlStudentText:'Seu Control pode liberar 1 aluno avulso sem trocar de plano.',pcTag:'PC ADICIONAL',pcDescription:'Cada compra acrescenta +1 PC ao limite do seu Control ou Mentor somente até o fim do período atual. A renovação do plano não renova este adicional.',addPc:'Adicionar +1 PC',pcSmall:'Pode repetir a compra quantas vezes precisar neste período. O adicional exige um plano principal ativo.'},
+  en:{home:'Home',guide:'Guide',support:'Support',signOut:'Sign out',addStudent:'Add +1 student',studentNote:'The add-on unlocks 1 new mentoring connection in the current cycle. Each session can last up to 6 hours and expires with the plan.',mentorUnlimited:'Unlimited students with Mentor · 1 active mentoring session at a time · up to 6 hours per session.',mentorLocked:'MENTORING',mentorAvailable:'Mentoring is included with Mentor',mentorLockedText:'Mentor includes unlimited students. Control can unlock one student when needed.',mentorView:'View Mentor plan',controlStudentTitle:'Need to help a student?',controlStudentText:'Your Control plan can unlock 1 student without switching plans.',pcTag:'EXTRA PC',pcDescription:'Each purchase adds +1 PC to your Control or Mentor limit until the current plan period ends. Renewal does not renew this add-on.',addPc:'Add +1 PC',pcSmall:'Repeat the purchase as needed during this period. An active main plan is required.'},
+  es:{home:'Inicio',guide:'Guía',support:'Soporte',signOut:'Salir',addStudent:'Añadir +1 alumno',studentNote:'El adicional libera 1 nueva conexión de mentoría en el ciclo actual. Cada sesión puede durar hasta 6 horas y vence con el plan.',mentorUnlimited:'Alumnos ilimitados con Mentor · 1 sesión activa a la vez · hasta 6 horas por sesión.',mentorLocked:'MENTORÍA',mentorAvailable:'Mentoría incluida con Mentor',mentorLockedText:'Mentor incluye alumnos ilimitados. Control puede liberar un alumno cuando lo necesites.',mentorView:'Ver plan Mentor',controlStudentTitle:'¿Necesitas atender a un alumno?',controlStudentText:'Tu plan Control puede liberar 1 alumno sin cambiar de plan.',pcTag:'PC ADICIONAL',pcDescription:'Cada compra añade +1 PC al límite de Control o Mentor hasta el final del período actual. La renovación no renueva este adicional.',addPc:'Añadir +1 PC',pcSmall:'Puedes repetir la compra durante el período. Requiere un plan principal activo.'},
+  fr:{home:'Accueil',guide:'Guide',support:'Support',signOut:'Déconnexion',addStudent:'Ajouter +1 élève',studentNote:'L’option débloque 1 nouvelle connexion de mentorat pendant la période actuelle. Chaque session peut durer jusqu’à 6 heures et expire avec le plan.',mentorUnlimited:'Élèves illimités avec Mentor · 1 session active à la fois · jusqu’à 6 heures par session.',mentorLocked:'MENTORAT',mentorAvailable:'Mentorat inclus avec Mentor',mentorLockedText:'Mentor inclut des élèves illimités. Control peut débloquer un élève selon vos besoins.',mentorView:'Voir le plan Mentor',controlStudentTitle:'Besoin d’aider un élève ?',controlStudentText:'Votre plan Control peut débloquer 1 élève sans changer de plan.',pcTag:'PC SUPPLÉMENTAIRE',pcDescription:'Chaque achat ajoute +1 PC à la limite Control ou Mentor jusqu’à la fin de la période actuelle. Le renouvellement ne renouvelle pas cet ajout.',addPc:'Ajouter +1 PC',pcSmall:'Vous pouvez répéter l’achat pendant la période. Un plan principal actif est requis.'},
+  de:{home:'Startseite',guide:'Anleitung',support:'Support',signOut:'Abmelden',addStudent:'+1 Schüler hinzufügen',studentNote:'Das Add-on schaltet 1 neue Mentoring-Verbindung im aktuellen Zeitraum frei. Jede Sitzung kann bis zu 6 Stunden dauern und läuft mit dem Plan ab.',mentorUnlimited:'Unbegrenzte Schüler mit Mentor · 1 aktive Sitzung gleichzeitig · bis zu 6 Stunden pro Sitzung.',mentorLocked:'MENTORING',mentorAvailable:'Mentoring ist im Mentor-Plan enthalten',mentorLockedText:'Mentor umfasst unbegrenzte Schüler. Mit Control können Sie bei Bedarf einen Schüler freischalten.',mentorView:'Mentor-Plan ansehen',controlStudentTitle:'Müssen Sie einen Schüler unterstützen?',controlStudentText:'Ihr Control-Plan kann 1 Schüler freischalten, ohne den Plan zu wechseln.',pcTag:'ZUSÄTZLICHER PC',pcDescription:'Jeder Kauf erhöht das Control- oder Mentor-Limit bis zum Ende des aktuellen Zeitraums um +1 PC. Die Verlängerung erneuert dieses Add-on nicht.',addPc:'+1 PC hinzufügen',pcSmall:'Der Kauf kann in diesem Zeitraum wiederholt werden. Ein aktiver Hauptplan ist erforderlich.'},
+  ar:{home:'الرئيسية',guide:'الدليل',support:'الدعم',signOut:'تسجيل الخروج',addStudent:'إضافة طالب +1',studentNote:'تفتح الإضافة اتصال إرشاد جديداً واحداً خلال الدورة الحالية. يمكن أن تستمر كل جلسة حتى 6 ساعات وتنتهي مع الخطة.',mentorUnlimited:'طلاب غير محدودين مع Mentor · جلسة إرشاد نشطة واحدة في الوقت نفسه · حتى 6 ساعات للجلسة.',mentorLocked:'الإرشاد',mentorAvailable:'الإرشاد مشمول في خطة Mentor',mentorLockedText:'تتضمن Mentor طلاباً غير محدودين. ويمكن لـ Control فتح طالب واحد عند الحاجة.',mentorView:'عرض خطة Mentor',controlStudentTitle:'تحتاج إلى مساعدة طالب؟',controlStudentText:'يمكن لخطة Control فتح طالب واحد من دون تغيير الخطة.',pcTag:'كمبيوتر إضافي',pcDescription:'كل عملية شراء تضيف كمبيوتر واحداً إلى حد Control أو Mentor حتى نهاية الفترة الحالية. التجديد لا يجدد هذه الإضافة.',addPc:'إضافة كمبيوتر +1',pcSmall:'يمكن تكرار الشراء خلال الفترة. يلزم وجود خطة رئيسية نشطة.'}
 } as const;
 
 const MOBILE_KEY_ROWS=[
@@ -113,6 +113,8 @@ export function LaserControlWorkspace(){
   const[mentorPending,setMentorPending]=useState(false);
   const[mentorNotice,setMentorNotice]=useState('');
   const[mentorAccess,setMentorAccess]=useState(false);
+  const[planId,setPlanId]=useState<string|null>(null);
+  const[mentorRemaining,setMentorRemaining]=useState<number|null>(null);
   const[ownerAccess,setOwnerAccess]=useState(false);
   const[pcCapacity,setPcCapacity]=useState<PcCapacity|null>(null);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
@@ -169,18 +171,23 @@ export function LaserControlWorkspace(){
     const supabase=createClient();
 
     async function loadAccessMeta(){
-      const[accessResult,capacityResult]=await Promise.all([
+      const[accessResult,capacityResult,mentorRemainingResult]=await Promise.all([
         supabase.rpc('get_laser_access_status'),
-        supabase.rpc('get_laser_pc_capacity')
+        supabase.rpc('get_laser_pc_capacity'),
+        supabase.rpc('get_laser_mentor_sessions_remaining')
       ]);
       const accessData=accessResult?.data;
       const accessRow=Array.isArray(accessData)?accessData[0]:accessData;
       setMentorAccess(Boolean(accessRow?.mentor_access||accessRow?.is_admin));
+      setPlanId(typeof accessRow?.plan_id==='string'?accessRow.plan_id:null);
       setOwnerAccess(Boolean(accessRow?.owner_access||accessRow?.is_admin));
 
       const capacityData=capacityResult?.data;
       const capacityRow=Array.isArray(capacityData)?capacityData[0]:capacityData;
       setPcCapacity(capacityRow?(capacityRow as PcCapacity):null);
+
+      const remaining=Number(mentorRemainingResult?.data);
+      setMentorRemaining(Number.isFinite(remaining)?remaining:null);
 
     }
 
@@ -1450,7 +1457,7 @@ export function LaserControlWorkspace(){
       if(!response.ok||!data?.claimed){
         const reason=String(data?.reason||'');
         const message=
-          reason==='mentor_entitlement_required'?t('laser.mentorNoAccess')
+          reason==='mentor_entitlement_required'||reason==='mentor_credits_exhausted'?t('laser.mentorNoAccess')
           :reason==='concurrent_limit'?t('laser.mentorLimit')
           :reason==='device_already_active'?t('laser.mentorDeviceActive')
           :reason==='rate_limited'?t('laser.mentorRateLimited')
@@ -1461,6 +1468,7 @@ export function LaserControlWorkspace(){
         return;
       }
       setMentorCode('');
+      if(planId==='control')setMentorRemaining(current=>current==null?current:Math.max(0,current-1));
       setMentorNotice(t('laser.mentorConnected'));
       setNotice(t('laser.mentorConnected'));
       await loadDevices();
@@ -1547,7 +1555,7 @@ export function LaserControlWorkspace(){
     </div>
 
     <aside className={styles.deviceStrip}>
-      {mentorAccess?<form className={styles.mentorConnect} onSubmit={claimMentor}>
+      {mentorAccess&&(planId!=='control'||(mentorRemaining??0)>0)?<form className={styles.mentorConnect} onSubmit={claimMentor}>
         <span>{t('laser.mentoring')}</span>
         <b>{t('laser.mentorTitle')}</b>
         <p>{t('laser.mentorDesc')}</p>
@@ -1579,12 +1587,23 @@ export function LaserControlWorkspace(){
             {mentorPending?t('laser.mentorConnecting'):t('laser.mentorConnect')}
           </button>
         </div>
-        <a className={styles.extraMentorButton} href={internationalPricing?'https://pay.kiwify.com/2sFxGp1?region=intl':'https://pay.kiwify.com.br/2Td87KB'} target="_blank" rel="noreferrer">
-          {nav.mentorPack} · {internationalPricing?'US$ 7.50':'R$ 9,90'}
-        </a>
-        <small className={styles.extraMentorNote}>{nav.mentorNote}</small>
+        {planId==='control'&&<>
+          <a className={styles.extraMentorButton} href={internationalPricing?'/api/laser-control/student-addon-checkout?region=intl':'/api/laser-control/student-addon-checkout'} target="_blank" rel="noreferrer">
+            {nav.addStudent} · {internationalPricing?'US$ 7.50':'R$ 9,90'}
+          </a>
+          <small className={styles.extraMentorNote}>{nav.studentNote}</small>
+        </>}
+        {planId==='mentor'&&<small className={styles.extraMentorNote}>{nav.mentorUnlimited}</small>}
         {mentorNotice&&<div className={styles.mentorInlineNotice} role="status">{mentorNotice}</div>}
-      </form>:<section className={styles.mentorLocked}>
+      </form>:planId==='control'?<section className={styles.mentorLocked}>
+        <span>{nav.mentorLocked}</span>
+        <b>{nav.controlStudentTitle}</b>
+        <p>{nav.controlStudentText}</p>
+        <a href={internationalPricing?'/api/laser-control/student-addon-checkout?region=intl':'/api/laser-control/student-addon-checkout'} target="_blank" rel="noreferrer">
+          {nav.addStudent} · {internationalPricing?'US$ 7.50':'R$ 9,90'}
+        </a>
+        <small className={styles.extraMentorNote}>{nav.studentNote}</small>
+      </section>:<section className={styles.mentorLocked}>
         <span>{nav.mentorLocked}</span>
         <b>{nav.mentorAvailable}</b>
         <p>{nav.mentorLockedText}</p>

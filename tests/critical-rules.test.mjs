@@ -165,12 +165,12 @@ test("Laser Control reduz chamadas à Vercel e pausa polling em aba oculta",()=>
   assert.equal(source.includes("setInterval(()=>void loadDevices(true),2_000)"),false);
 });
 
-test("Vercel Analytics não é carregado no cliente",()=>{
+test("Vercel Analytics é carregado uma vez no layout global",()=>{
   const layout=read("src/app/layout.tsx");
   const pkg=read("package.json");
-  assert.equal(layout.includes("@vercel/analytics"),false);
-  assert.equal(layout.includes("<Analytics"),false);
-  assert.equal(pkg.includes("@vercel/analytics"),false);
+  assert.ok(layout.includes("@vercel/analytics/next"));
+  assert.ok(layout.includes("<Analytics />"));
+  assert.ok(pkg.includes("@vercel/analytics"));
 });
 
 
@@ -181,7 +181,7 @@ test("PC adicional do Laser fica dentro da conta e expira com o ciclo atual",()=
   const hardening=read("supabase/migrations/20260928215639_laser_commerce_cycles_and_access_hardening.sql");
   assert.ok(workspace.includes("+1 PC · R$ 12,90"));
   assert.ok(workspace.includes("+1 PC · US$ 5"));
-  assert.ok(workspace.includes("A renovação do plano NÃO renova este adicional"));
+  assert.ok(workspace.includes("A renovação do plano não renova este adicional"));
   assert.ok(workspace.includes("get_laser_pc_capacity"));
   assert.ok(workspace.includes("internationalPricing=locale!=='pt-BR'"));
   assert.ok(checkout.includes("IdNEzcp"));
@@ -195,15 +195,16 @@ test("PC adicional do Laser fica dentro da conta e expira com o ciclo atual",()=
   assert.ok(hardening.includes("pc_addon_orders o where o.order_id=v_order_id"));
 });
 
-test("Mentoria mantém 10 sessões por ciclo, extras no ciclo e sessão máxima de 6 horas",()=>{
+test("Mentoria dá alunos ilimitados no Mentor e +1 aluno avulso no Control",()=>{
   const workspace=read("src/components/LaserControlWorkspace.tsx");
-  const migration=read("supabase/migrations/20260928211040_laser_pc_addons_and_cycle_security.sql");
+  const migration=read("supabase/migrations/20261001233000_laser_plan_benefits.sql");
   assert.ok(workspace.includes("Cada sessão pode durar até 6 horas"));
-  assert.ok(workspace.includes("10 sessões por ciclo"));
-  assert.ok(workspace.includes("pacote de +5 soma somente ao ciclo atual"));
-  assert.ok(migration.includes("laser_internal_current_paid_cycle"));
-  assert.ok(migration.includes("laser_internal_user_can_control_device"));
-  assert.ok(migration.includes("v_lease_until"));
+  assert.ok(workspace.includes("Alunos ilimitados no Mentor"));
+  assert.ok(workspace.includes("Adicionar +1 aluno"));
+  assert.ok(migration.includes("v_students integer:=1"));
+  assert.ok(migration.includes("p_plan_id='mentor' then 5"));
+  assert.ok(migration.includes("p_plan_id='control' then 2"));
+  assert.ok(migration.includes("interval '6 hours'"));
 });
 
 

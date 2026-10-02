@@ -22,7 +22,7 @@ const BR={
   ],
   remoteTag:"CONTROLE",remoteTitle:"Você controla de onde quiser.",remoteText:"Deixe o LightBurn aberto no computador ligado à máquina e use outro dispositivo para acompanhar e operar. O computador continua sendo a origem; o celular ou outro PC vira o seu painel remoto.",
   mentorTag:"MENTORIA",mentorTitle:"Professor de um lado. Aluno do outro. O LightBurn no meio.",mentorText:"O aluno abre o DevinX Mentoria no computador onde está o LightBurn, recebe um código temporário e envia ao professor. O professor conecta pelo Laser Control sem substituir o Agent permanente do aluno.",
-  mentorFacts:["Código válido por 30 minutos para conectar","Sessão temporária de até 6 horas","10 sessões incluídas no plano Mentor","Pacote extra de +5 sessões disponível somente dentro do plano Mentor","1 atendimento ativo por vez","LightBurn precisa estar aberto no PC do aluno/origem"],
+  mentorFacts:["Código válido por 30 minutos para conectar","Sessão temporária de até 6 horas","Alunos ilimitados no plano Mentor","Control pode adicionar +1 aluno quando precisar","1 atendimento ativo por vez","LightBurn precisa estar aberto no PC do aluno/origem"],
   how:"COMO FUNCIONA",steps:[
     ["01","Instale o Agent","No seu computador principal, baixe o EXE, execute e faça o vínculo uma vez."],
     ["02","Abra o LightBurn","O Agent identifica o aplicativo e mantém o computador disponível no seu Laser Control."],
@@ -32,8 +32,8 @@ const BR={
   purchaseTitle:"Como você ativa depois da compra",
   purchaseSteps:["Escolha o plano e conclua o pagamento na Kiwify.","Use na sua conta DevinX o mesmo e-mail informado na compra.","Na página de confirmação, toque em Entrar no Laser Control. Se ainda não tiver conta, crie uma com esse mesmo e-mail.","O acesso é reconhecido automaticamente pelo pagamento aprovado."],
   plans:[
-    ["CONTROL","R$ 29,90","Controle remoto do seu LightBurn","1 PC · uso próprio","https://pay.kiwify.com.br/YghizRi","Assinar Control"],
-    ["MENTOR","R$ 59,90","Controle próprio + mentoria remota","1 PC · 10 sessões por ciclo","https://pay.kiwify.com.br/qVRSFCL","Assinar Mentor"]
+    ["CONTROL","R$ 29,90","Controle remoto do seu LightBurn","2 PCs · uso próprio","https://pay.kiwify.com.br/YghizRi","Assinar Control"],
+    ["MENTOR","R$ 59,90","Controle próprio + mentoria remota","5 PCs · alunos ilimitados","https://pay.kiwify.com.br/qVRSFCL","Assinar Mentor"]
   ],
   support:"Suporte por e-mail",home:"Voltar ao DevinX",already:"Já tenho acesso"
 } as const;
@@ -53,7 +53,7 @@ const INTL={
   ],
   remoteTag:"REMOTE CONTROL",remoteTitle:"Control it from wherever you are.",remoteText:"Keep LightBurn open on the computer connected to the machine and use another device as your remote panel. The source PC stays in control of the laser connection while your phone or another computer becomes the interface.",
   mentorTag:"MENTORING",mentorTitle:"Teacher on one side. Student on the other. LightBurn in between.",mentorText:"The student opens DevinX Mentoring on the computer running LightBurn, receives a temporary code and sends it to the teacher. The teacher connects through Laser Control without replacing the student's permanent Agent.",
-  mentorFacts:["Code valid for 30 minutes to connect","Temporary session up to 6 hours","10 sessions included with Mentor","A +5 session pack is available only inside the Mentor plan","1 active mentoring session at a time","LightBurn must be open on the student/source PC"],
+  mentorFacts:["Code valid for 30 minutes to connect","Temporary session up to 6 hours","Unlimited students with Mentor","Control can add +1 student when needed","1 active mentoring session at a time","LightBurn must be open on the student/source PC"],
   how:"HOW IT WORKS",steps:[
     ["01","Install the Agent","On your main computer, download the EXE, run it and pair the computer once."],
     ["02","Open LightBurn","The Agent detects the app and keeps the computer available in Laser Control."],
@@ -63,8 +63,8 @@ const INTL={
   purchaseTitle:"How access is activated after purchase",
   purchaseSteps:["Choose a plan and complete payment on Kiwify.","Use the same purchase email for your DevinX account.","On the confirmation page, open Laser Control. If you do not have an account yet, create one with that same email.","Approved purchases are recognized automatically."],
   plans:[
-    ["CONTROL","US$ 8.90","Remote access to your LightBurn","1 PC · 30 days","https://pay.kiwify.com/nuY5IsV?region=intl","Get Control"],
-    ["MENTOR","US$ 17.90","Personal control + remote mentoring","1 PC · 30 days · 10 sessions","https://pay.kiwify.com/aIbUTmG?region=intl","Get Mentor"]
+    ["CONTROL","US$ 8.90","Remote access to your LightBurn","2 PCs · 30 days","https://pay.kiwify.com/nuY5IsV?region=intl","Get Control"],
+    ["MENTOR","US$ 17.90","Personal control + remote mentoring","5 PCs · 30 days · unlimited students","https://pay.kiwify.com/aIbUTmG?region=intl","Get Mentor"]
   ],
   support:"Email support",home:"Back to DevinX",already:"I already have access"
 } as const;
@@ -85,7 +85,7 @@ const ES={
   ],
   remoteTag:"CONTROL REMOTO",remoteTitle:"Controla desde donde quieras.",remoteText:"Deja LightBurn abierto en el ordenador conectado a la máquina y usa otro dispositivo como panel remoto. El PC de origen conserva la conexión con el láser mientras tu móvil u otro ordenador se convierte en la interfaz.",
   mentorTag:"MENTORÍA",mentorTitle:"Profesor de un lado. Alumno del otro. LightBurn en medio.",mentorText:"El alumno abre DevinX Mentoria en el ordenador donde está LightBurn, recibe un código temporal y se lo envía al profesor. El profesor se conecta por Laser Control sin sustituir el Agent permanente del alumno.",
-  mentorFacts:["Código válido durante 30 minutos para conectar","Sesión temporal de hasta 6 horas","10 sesiones incluidas en el plan Mentor","Paquete extra de +5 sesiones disponible solo dentro del plan Mentor","1 sesión de mentoría activa a la vez","LightBurn debe estar abierto en el PC del alumno/origen"],
+  mentorFacts:["Código válido durante 30 minutos para conectar","Sesión temporal de hasta 6 horas","Alumnos ilimitados en el plan Mentor","Control puede añadir +1 alumno cuando lo necesite","1 sesión de mentoría activa a la vez","LightBurn debe estar abierto en el PC del alumno/origen"],
   how:"CÓMO FUNCIONA",steps:[
     ["01","Instala el Agent","En tu ordenador principal, descarga el EXE, ejecútalo y vincula el PC una sola vez."],
     ["02","Abre LightBurn","El Agent detecta la aplicación y mantiene el ordenador disponible en Laser Control."],
@@ -95,8 +95,8 @@ const ES={
   purchaseTitle:"Cómo se activa el acceso después de la compra",
   purchaseSteps:["Elige un plan y completa el pago en Kiwify.","Usa en tu cuenta DevinX el mismo correo utilizado en la compra.","En la página de confirmación, abre Laser Control. Si todavía no tienes cuenta, créala con ese mismo correo.","Las compras aprobadas se reconocen automáticamente."],
   plans:[
-    ["CONTROL","US$ 8.90","Control remoto de tu LightBurn","1 PC · 30 días","https://pay.kiwify.com/nuY5IsV?region=intl","Obtener Control"],
-    ["MENTOR","US$ 17.90","Control propio + mentoría remota","1 PC · 30 días · 10 sesiones","https://pay.kiwify.com/aIbUTmG?region=intl","Obtener Mentor"]
+    ["CONTROL","US$ 8.90","Control remoto de tu LightBurn","2 PCs · 30 días","https://pay.kiwify.com/nuY5IsV?region=intl","Obtener Control"],
+    ["MENTOR","US$ 17.90","Control propio + mentoría remota","5 PCs · 30 días · alumnos ilimitados","https://pay.kiwify.com/aIbUTmG?region=intl","Obtener Mentor"]
   ],
   support:"Soporte por correo",home:"Volver a DevinX",already:"Ya tengo acceso"
 } as const;
@@ -116,7 +116,7 @@ const FR={
   ],
   remoteTag:"CONTRÔLE À DISTANCE",remoteTitle:"Contrôlez où que vous soyez.",remoteText:"Laissez LightBurn ouvert sur l’ordinateur connecté à la machine et utilisez un autre appareil comme panneau distant. Le PC source conserve la connexion au laser tandis que votre téléphone ou un autre ordinateur devient l’interface.",
   mentorTag:"MENTORAT",mentorTitle:"Le professeur d’un côté. L’élève de l’autre. LightBurn entre les deux.",mentorText:"L’élève ouvre DevinX Mentoria sur l’ordinateur où tourne LightBurn, reçoit un code temporaire et l’envoie au professeur. Le professeur se connecte via Laser Control sans remplacer l’Agent permanent de l’élève.",
-  mentorFacts:["Code valable 30 minutes pour se connecter","Session temporaire jusqu’à 6 heures","10 sessions incluses avec Mentor","Pack supplémentaire de +5 sessions disponible uniquement avec Mentor","1 session de mentorat active à la fois","LightBurn doit être ouvert sur le PC élève/source"],
+  mentorFacts:["Code valable 30 minutes pour se connecter","Session temporaire jusqu’à 6 heures","Élèves illimités avec Mentor","Control peut ajouter +1 élève selon les besoins","1 session de mentorat active à la fois","LightBurn doit être ouvert sur le PC élève/source"],
   how:"COMMENT ÇA MARCHE",steps:[
     ["01","Installez l’Agent","Sur votre ordinateur principal, téléchargez l’EXE, lancez-le et associez le PC une seule fois."],
     ["02","Ouvrez LightBurn","L’Agent détecte l’application et maintient l’ordinateur disponible dans Laser Control."],
@@ -126,8 +126,8 @@ const FR={
   purchaseTitle:"Activation après l’achat",
   purchaseSteps:["Choisissez un plan et terminez le paiement sur Kiwify.","Utilisez le même e-mail pour l’achat et votre compte DevinX.","Sur la page de confirmation, ouvrez Laser Control. Si vous n’avez pas encore de compte, créez-le avec ce même e-mail.","Les achats approuvés sont reconnus automatiquement."],
   plans:[
-    ["CONTROL","US$ 8.90","Contrôle à distance de votre LightBurn","1 PC · 30 jours","https://pay.kiwify.com/nuY5IsV?region=intl","Obtenir Control"],
-    ["MENTOR","US$ 17.90","Contrôle personnel + mentorat à distance","1 PC · 30 jours · 10 sessions","https://pay.kiwify.com/aIbUTmG?region=intl","Obtenir Mentor"]
+    ["CONTROL","US$ 8.90","Contrôle à distance de votre LightBurn","2 PC · 30 jours","https://pay.kiwify.com/nuY5IsV?region=intl","Obtenir Control"],
+    ["MENTOR","US$ 17.90","Contrôle personnel + mentorat à distance","5 PC · 30 jours · élèves illimités","https://pay.kiwify.com/aIbUTmG?region=intl","Obtenir Mentor"]
   ],
   support:"Support par e-mail",home:"Retour à DevinX",already:"J’ai déjà accès"
 } as const;
@@ -147,7 +147,7 @@ const DE={
   ],
   remoteTag:"FERNSTEUERUNG",remoteTitle:"Steuern Sie von überall.",remoteText:"Lassen Sie LightBurn auf dem mit der Maschine verbundenen Computer geöffnet und verwenden Sie ein anderes Gerät als Fernbedienung. Der Quell-PC behält die Laser-Verbindung, während Ihr Smartphone oder ein anderer Computer zur Oberfläche wird.",
   mentorTag:"MENTORING",mentorTitle:"Lehrer auf der einen Seite. Schüler auf der anderen. LightBurn dazwischen.",mentorText:"Der Schüler öffnet DevinX Mentoria auf dem LightBurn-PC, erhält einen temporären Code und sendet ihn an den Lehrer. Der Lehrer verbindet sich über Laser Control, ohne den permanenten Agent des Schülers zu ersetzen.",
-  mentorFacts:["Code 30 Minuten lang zum Verbinden gültig","Temporäre Sitzung bis zu 6 Stunden","10 Sitzungen im Mentor-Plan enthalten","+5-Sitzungen-Paket nur innerhalb des Mentor-Plans verfügbar","1 aktive Mentor-Sitzung gleichzeitig","LightBurn muss auf dem Schüler-/Quell-PC geöffnet sein"],
+  mentorFacts:["Code 30 Minuten lang zum Verbinden gültig","Temporäre Sitzung bis zu 6 Stunden","Unbegrenzte Schüler im Mentor-Plan","Control kann bei Bedarf +1 Schüler hinzufügen","1 aktive Mentor-Sitzung gleichzeitig","LightBurn muss auf dem Schüler-/Quell-PC geöffnet sein"],
   how:"SO FUNKTIONIERT ES",steps:[
     ["01","Agent installieren","Laden Sie auf Ihrem Hauptcomputer die EXE herunter, starten Sie sie und koppeln Sie den PC einmal."],
     ["02","LightBurn öffnen","Der Agent erkennt die Anwendung und hält den Computer in Laser Control verfügbar."],
@@ -157,8 +157,8 @@ const DE={
   purchaseTitle:"So wird der Zugang nach dem Kauf aktiviert",
   purchaseSteps:["Wählen Sie einen Plan und schließen Sie die Zahlung bei Kiwify ab.","Verwenden Sie für Ihr DevinX-Konto dieselbe E-Mail-Adresse wie beim Kauf.","Öffnen Sie auf der Bestätigungsseite Laser Control. Falls Sie noch kein Konto haben, erstellen Sie eines mit derselben E-Mail-Adresse.","Genehmigte Käufe werden automatisch erkannt."],
   plans:[
-    ["CONTROL","US$ 8.90","Fernzugriff auf Ihr LightBurn","1 PC · 30 Tage","https://pay.kiwify.com/nuY5IsV?region=intl","Control kaufen"],
-    ["MENTOR","US$ 17.90","Eigene Steuerung + Remote-Mentoring","1 PC · 30 Tage · 10 Sitzungen","https://pay.kiwify.com/aIbUTmG?region=intl","Mentor kaufen"]
+    ["CONTROL","US$ 8.90","Fernzugriff auf Ihr LightBurn","2 PCs · 30 Tage","https://pay.kiwify.com/nuY5IsV?region=intl","Control kaufen"],
+    ["MENTOR","US$ 17.90","Eigene Steuerung + Remote-Mentoring","5 PCs · 30 Tage · unbegrenzte Schüler","https://pay.kiwify.com/aIbUTmG?region=intl","Mentor kaufen"]
   ],
   support:"E-Mail-Support",home:"Zurück zu DevinX",already:"Ich habe bereits Zugang"
 } as const;
@@ -178,7 +178,7 @@ const AR={
   ],
   remoteTag:"التحكم عن بُعد",remoteTitle:"تحكم من أي مكان.",remoteText:"اترك LightBurn مفتوحاً على الكمبيوتر المتصل بالآلة واستخدم جهازاً آخر كلوحة تحكم عن بُعد. يبقى الكمبيوتر الأصلي مسؤولاً عن اتصال الليزر بينما يصبح هاتفك أو كمبيوتر آخر واجهة التحكم.",
   mentorTag:"الإرشاد",mentorTitle:"المدرّس في جهة. والطالب في جهة. وLightBurn بينهما.",mentorText:"يفتح الطالب DevinX Mentoria على الكمبيوتر الذي يعمل عليه LightBurn، ويحصل على رمز مؤقت ويرسله للمدرّس. يتصل المدرّس عبر Laser Control من دون استبدال Agent الدائم للطالب.",
-  mentorFacts:["الرمز صالح لمدة 30 دقيقة للاتصال","جلسة مؤقتة حتى 6 ساعات","10 جلسات مشمولة في خطة Mentor","حزمة +5 جلسات إضافية متاحة فقط داخل خطة Mentor","جلسة إرشاد نشطة واحدة في الوقت نفسه","يجب أن يكون LightBurn مفتوحاً على كمبيوتر الطالب/المصدر"],
+  mentorFacts:["الرمز صالح لمدة 30 دقيقة للاتصال","جلسة مؤقتة حتى 6 ساعات","طلاب غير محدودين في خطة Mentor","يمكن لخطة Control إضافة طالب +1 عند الحاجة","جلسة إرشاد نشطة واحدة في الوقت نفسه","يجب أن يكون LightBurn مفتوحاً على كمبيوتر الطالب/المصدر"],
   how:"كيف يعمل",steps:[
     ["01","ثبّت Agent","على الكمبيوتر الرئيسي نزّل ملف EXE وشغّله واربط الكمبيوتر مرة واحدة."],
     ["02","افتح LightBurn","يتعرّف Agent على التطبيق ويبقي الكمبيوتر متاحاً داخل Laser Control."],
@@ -188,8 +188,8 @@ const AR={
   purchaseTitle:"كيف يتم تفعيل الوصول بعد الشراء",
   purchaseSteps:["اختر الخطة وأكمل الدفع عبر Kiwify.","استخدم في حساب DevinX البريد الإلكتروني نفسه المستخدم في الشراء.","في صفحة التأكيد افتح Laser Control. إذا لم يكن لديك حساب، أنشئه بالبريد نفسه.","يتم التعرف على عمليات الشراء المعتمدة تلقائياً."],
   plans:[
-    ["CONTROL","US$ 8.90","تحكم عن بُعد في LightBurn","كمبيوتر واحد · 30 يوماً","https://pay.kiwify.com/nuY5IsV?region=intl","الحصول على Control"],
-    ["MENTOR","US$ 17.90","تحكم شخصي + إرشاد عن بُعد","كمبيوتر واحد · 30 يوماً · 10 جلسات","https://pay.kiwify.com/aIbUTmG?region=intl","الحصول على Mentor"]
+    ["CONTROL","US$ 8.90","تحكم عن بُعد في LightBurn","جهازي كمبيوتر · 30 يوماً","https://pay.kiwify.com/nuY5IsV?region=intl","الحصول على Control"],
+    ["MENTOR","US$ 17.90","تحكم شخصي + إرشاد عن بُعد","5 أجهزة كمبيوتر · 30 يوماً · طلاب غير محدودين","https://pay.kiwify.com/aIbUTmG?region=intl","الحصول على Mentor"]
   ],
   support:"الدعم عبر البريد",home:"العودة إلى DevinX",already:"لدي وصول بالفعل"
 } as const;
