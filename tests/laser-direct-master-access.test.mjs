@@ -6,7 +6,7 @@ test('direct Laser Control route is entitlement-gated and non-subscribers return
   const route=await readFile('src/app/laser-control/page.tsx','utf8');
   const guard=await readFile('src/features/laser-control/server/master-access.ts','utf8');
   assert.match(route,/getLaserControlAccess/);
-  assert.match(route,/redirect\('\/entrar\?next=\/laser-control'\)/);
+  assert.match(route,/if\(!access\.authenticated\)redirect\('\/laser-control\/conhecer'\)/);
   assert.match(route,/if\(!access\.allowed\)redirect\('\/laser-control\/conhecer\?acesso=necessario#planos'\)/);
   assert.match(route,/access\.isAdmin&&/);
   assert.match(route,/index:false/);
