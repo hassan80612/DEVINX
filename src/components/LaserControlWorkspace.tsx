@@ -1582,7 +1582,7 @@ export function LaserControlWorkspace(){
           </button>
         </div>
         {planId==='control'&&<>
-          <a className={styles.extraMentorButton} href={internationalPricing?'https://pay.kiwify.com/2sFxGp1?region=intl':'https://pay.kiwify.com.br/2Td87KB'} target="_blank" rel="noreferrer">
+          <a className={styles.extraMentorButton} href={internationalPricing?'/api/laser-control/student-addon-checkout?region=intl':'/api/laser-control/student-addon-checkout'} target="_blank" rel="noreferrer">
             {nav.addStudent} · {internationalPricing?'US$ 7.50':'R$ 9,90'}
           </a>
           <small className={styles.extraMentorNote}>{nav.studentNote}</small>
@@ -1593,7 +1593,7 @@ export function LaserControlWorkspace(){
         <span>{nav.mentorLocked}</span>
         <b>{nav.controlStudentTitle}</b>
         <p>{nav.controlStudentText}</p>
-        <a href={internationalPricing?'https://pay.kiwify.com/2sFxGp1?region=intl':'https://pay.kiwify.com.br/2Td87KB'} target="_blank" rel="noreferrer">
+        <a href={internationalPricing?'/api/laser-control/student-addon-checkout?region=intl':'/api/laser-control/student-addon-checkout'} target="_blank" rel="noreferrer">
           {nav.addStudent} · {internationalPricing?'US$ 7.50':'R$ 9,90'}
         </a>
         <small className={styles.extraMentorNote}>{nav.studentNote}</small>
