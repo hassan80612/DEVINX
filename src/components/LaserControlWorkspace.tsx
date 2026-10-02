@@ -114,6 +114,7 @@ export function LaserControlWorkspace(){
   const[mentorNotice,setMentorNotice]=useState('');
   const[mentorAccess,setMentorAccess]=useState(false);
   const[planId,setPlanId]=useState<string|null>(null);
+  const[mentorRemaining,setMentorRemaining]=useState<number|null>(null);
   const[ownerAccess,setOwnerAccess]=useState(false);
   const[pcCapacity,setPcCapacity]=useState<PcCapacity|null>(null);
   const[mentorClosingId,setMentorClosingId]=useState<string|null>(null);
@@ -170,9 +171,10 @@ export function LaserControlWorkspace(){
     const supabase=createClient();
 
     async function loadAccessMeta(){
-      const[accessResult,capacityResult]=await Promise.all([
+      const[accessResult,capacityResult,mentorRemainingResult]=await Promise.all([
         supabase.rpc('get_laser_access_status'),
-        supabase.rpc('get_laser_pc_capacity')
+        supabase.rpc('get_laser_pc_capacity'),
+        supabase.rpc('get_laser_mentor_sessions_remaining')
       ]);
       const accessData=accessResult?.data;
       const accessRow=Array.isArray(accessData)?accessData[0]:accessData;
@@ -183,6 +185,9 @@ export function LaserControlWorkspace(){
       const capacityData=capacityResult?.data;
       const capacityRow=Array.isArray(capacityData)?capacityData[0]:capacityData;
       setPcCapacity(capacityRow?(capacityRow as PcCapacity):null);
+
+      const remaining=Number(mentorRemainingResult?.data);
+      setMentorRemaining(Number.isFinite(remaining)?remaining:null);
 
     }
 
@@ -1452,7 +1457,7 @@ export function LaserControlWorkspace(){
       if(!response.ok||!data?.claimed){
         const reason=String(data?.reason||'');
         const message=
-          reason==='mentor_entitlement_required'?t('laser.mentorNoAccess')
+          reason==='mentor_entitlement_required'||reason==='mentor_credits_exhausted'?t('laser.mentorNoAccess')
           :reason==='concurrent_limit'?t('laser.mentorLimit')
           :reason==='device_already_active'?t('laser.mentorDeviceActive')
           :reason==='rate_limited'?t('laser.mentorRateLimited')
@@ -1463,6 +1468,7 @@ export function LaserControlWorkspace(){
         return;
       }
       setMentorCode('');
+      if(planId==='control')setMentorRemaining(current=>current==null?current:Math.max(0,current-1));
       setMentorNotice(t('laser.mentorConnected'));
       setNotice(t('laser.mentorConnected'));
       await loadDevices();
@@ -1549,7 +1555,7 @@ export function LaserControlWorkspace(){
     </div>
 
     <aside className={styles.deviceStrip}>
-      {mentorAccess?<form className={styles.mentorConnect} onSubmit={claimMentor}>
+      {mentorAccess&&(planId!=='control'||(mentorRemaining??0)>0)?<form className={styles.mentorConnect} onSubmit={claimMentor}>
         <span>{t('laser.mentoring')}</span>
         <b>{t('laser.mentorTitle')}</b>
         <p>{t('laser.mentorDesc')}</p>
