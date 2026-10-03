@@ -55,7 +55,7 @@ test('Agent source and immutable release workflow live on main',async()=>{
   const pairing=await readFile('laser-agent/PairingProofFactory.cs','utf8');
   const bridge=await readFile('laser-agent/LightBurnControlBridge.cs','utf8');
   const workflow=await readFile('.github/workflows/laser-agent-check.yml','utf8');
-  assert.match(pairing,/AgentVersion = "1\.1\.6"/);
+  assert.match(pairing,/AgentVersion = \"1\\.2\\.0\"/);
   assert.match(bridge,/GetLayersJsonAsync/);
   assert.match(bridge,/DialogAction/);
   assert.match(workflow,/branches:\s*\n\s*- main/);
