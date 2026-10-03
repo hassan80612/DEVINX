@@ -48,8 +48,8 @@ test('visible Laser workspace actions use i18n and mobile help matches normal-vi
   const panel=await readFile('src/components/LaserControlWorkspace.tsx','utf8');
   const laser=await readFile('src/i18n/laser.ts','utf8');
   for(const key of ['laser.operate','laser.frameDiode','laser.moreTools','laser.keyboardPlaceholder','laser.startConfirm']){
-    assert.match(panel,new RegExp(key.replace('.','\\.')));
-    assert.equal((laser.match(new RegExp("'"+key.replace('.','\\.')+"'","g"))||[]).length,6);
+    assert.match(panel,new RegExp(key.replace('.','\.')));
+    assert.equal((laser.match(new RegExp("'"+key.replace('.','\.')+"'","g"))||[]).length,6);
   }
   assert.doesNotMatch(laser,/celular usa tela cheia para toque|mobile uses fullscreen touch|móvil usa toque en pantalla completa/);
 });
@@ -64,13 +64,13 @@ test('Agent 1.1.0 uses separate permanent and mentor-only builds without ZIP or 
   assert.doesNotMatch(runtime,/exeName\.Contains/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\\.2\\.0\\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\\.2\\.0\\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\.2\.0\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\.2\.0\.exe/);
   assert.match(workflow,/publish-agent/);
   assert.match(workflow,/publish-mentor/);
   assert.match(workflow,/DefineConstants=DEVINX_MENTOR_ONLY/);
   assert.match(workflow,/Permanent Agent and Mentoria must be different binaries/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\\.cmd|1\\.2\\.0\\.zip/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.2\.0\.zip/);
   assert.match(mentorPage,/DevinX-Mentoria-1\.1\.6\.exe/);
 });
 
