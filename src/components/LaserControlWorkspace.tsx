@@ -289,6 +289,14 @@ export function LaserControlWorkspace(){
     return major>1||(major===1&&minor>=1);
   })());
 
+  const desktopAgentReady=Boolean(selectedDevice&&(()=>{
+    const match=/^(\d+)\.(\d+)\.(\d+)/.exec(selectedDevice.agent_version||'');
+    if(!match)return false;
+    const major=Number(match[1]);
+    const minor=Number(match[2]);
+    return major>1||(major===1&&minor>=2);
+  })());
+
   const postSession=useCallback(async(payload:Record<string,unknown>)=>{
     const response=await fetch('/api/laser-control/master/remote-session',{
       method:'POST',
@@ -777,8 +785,10 @@ export function LaserControlWorkspace(){
       ctrl:Boolean(modifiers.ctrl),shift:Boolean(modifiers.shift),
       alt:Boolean(modifiers.alt),meta:Boolean(modifiers.meta)
     };
-    sendRemoteInput({type:'keydown',...payload});
-    window.setTimeout(()=>sendRemoteInput({type:'keyup',...payload}),45);
+    const downType=desktopAgentReady?'lightburnkeydown':'keydown';
+    const upType=desktopAgentReady?'lightburnkeyup':'keyup';
+    sendRemoteInput({type:downType,...payload});
+    window.setTimeout(()=>sendRemoteInput({type:upType,...payload}),45);
   }
 
   function releaseRemoteModifiers(){
@@ -881,14 +891,16 @@ export function LaserControlWorkspace(){
       }
 
       const escape={key:'Escape',code:'Escape',ctrl:false,shift:false,alt:false,meta:false};
-      await sendVerifiedInput({type:'keydown',...escape});
-      await sendVerifiedInput({type:'keyup',...escape});
+      const lightBurnDown=desktopAgentReady?'lightburnkeydown':'keydown';
+      const lightBurnUp=desktopAgentReady?'lightburnkeyup':'keyup';
+      await sendVerifiedInput({type:lightBurnDown,...escape});
+      await sendVerifiedInput({type:lightBurnUp,...escape});
       await new Promise(resolve=>window.setTimeout(resolve,90));
 
       const zoomPage={key:'0',code:'Digit0',ctrl:true,shift:false,alt:false,meta:false};
-      const down=await sendVerifiedInput({type:'keydown',...zoomPage});
+      const down=await sendVerifiedInput({type:lightBurnDown,...zoomPage});
       if(!down.ok){setNotice(t('laser.quickFailed'));return;}
-      const up=await sendVerifiedInput({type:'keyup',...zoomPage});
+      const up=await sendVerifiedInput({type:lightBurnUp,...zoomPage});
       if(!up.ok){setNotice(t('laser.quickFailed'));return;}
 
       setNotice(t('laser.viewCentered'));
@@ -973,12 +985,14 @@ export function LaserControlWorkspace(){
         meta:false
       };
       const agentSupportsReceipt=latestAgentReady;
+      const shortcutDown=desktopAgentReady?'lightburnkeydown':'keydown';
+      const shortcutUp=desktopAgentReady?'lightburnkeyup':'keyup';
       const receiptPromise=agentSupportsReceipt
-        ?sendVerifiedInput({type:'keydown',...payload})
+        ?sendVerifiedInput({type:shortcutDown,...payload})
         :null;
-      if(!agentSupportsReceipt)sendRemoteInput({type:'keydown',...payload});
+      if(!agentSupportsReceipt)sendRemoteInput({type:shortcutDown,...payload});
       await new Promise(resolve=>window.setTimeout(resolve,80));
-      sendRemoteInput({type:'keyup',...payload});
+      sendRemoteInput({type:shortcutUp,...payload});
       const receipt=receiptPromise?await receiptPromise:null;
       if(receipt&&!receipt.ok){
         setNotice(t('laser.quickFailed'));

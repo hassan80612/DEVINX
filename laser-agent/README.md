@@ -1,10 +1,10 @@
-# DevinX Laser Agent 1.1.6
+# DevinX Laser Agent 1.2.0
 
 Agent Windows do DevinX Laser Control.
 
 ## Instalação simples
 
-1. Baixe **DevinX-Laser-Agent-1.1.6.exe**.
+1. Baixe **DevinX-Laser-Agent-1.2.0.exe**.
 2. Dê dois cliques.
 3. O Agent instala ou atualiza automaticamente no perfil do usuário do Windows.
 4. Na primeira instalação, o navegador abre o DevinX já com o vínculo preparado.
@@ -23,7 +23,7 @@ O download do Agent permanente fica apresentado somente dentro do Laser Control 
 
 O aluno recebe um link por e-mail e abre no computador conectado ao LightBurn.
 
-1. Na página de mentoria, baixa **DevinX-Mentoria-1.1.6.exe**.
+1. Na página de mentoria, baixa **DevinX-Mentoria-1.2.0.exe**.
 2. Dá dois cliques.
 3. O executável reconhece automaticamente o modo Mentoria; não instala e não entra na inicialização do Windows.
 4. Uma janela mostra um código temporário de 8 caracteres.
@@ -36,14 +36,14 @@ O vínculo permanente do computador, se existir, não é alterado.
 
 ## LightBurn
 
-Abra o LightBurn normalmente. O Agent detecta o aplicativo e envia o estado do LightBurn e da máquina, além da visualização da janela somente durante uma sessão remota.
+O Agent mantém o PC disponível para sessão remota mesmo com o LightBurn fechado. Durante a sessão, transmite o desktop completo do Windows. Quando o LightBurn estiver aberto, também detecta o aplicativo e envia o estado do LightBurn e da máquina.
 
 A transmissão usa canal temporário e não grava cada quadro da tela como histórico.
 
 ## Controle remoto
 
 - Frame, Iniciar, Pausar e Parar;
-- toque, mouse e teclado restritos à janela do LightBurn;
+- toque, mouse e teclado atuam no desktop remoto e no aplicativo que estiver em foco;
 - tela ao vivo, zoom, pan e setas;
 - controle permanece ativo ao entrar e sair da tela cheia;
 - supervisão física, intertravamentos e botão de emergência continuam obrigatórios.
@@ -126,6 +126,10 @@ O ponteiro remoto usa os limites exatos da última imagem transmitida para mante
 ## 1.0.28 — EXE direto e mentoria sem CMD
 O download normal passou a ser um único EXE. O instalador direto copia ou atualiza a versão instalada e relança o Agent automaticamente. A mentoria usa um segundo EXE direto que entra em modo temporário pelo próprio nome do arquivo, sem ZIP, sem extração e sem CMD.
 
+
+## 1.2.0 — desktop completo
+
+A sessão remota passa a capturar o desktop virtual completo do Windows, inclusive múltiplos monitores, independentemente de o LightBurn estar aberto. Mouse, clique direito, roda e teclado atuam no aplicativo que estiver em foco. Os atalhos, setas, Frame e demais controles específicos do LightBurn continuam em caminhos dedicados para não misturar controle geral do PC com comandos da máquina. WebRTC/VP8 continua como transporte principal e JPEG/Realtime permanece como fallback usando o mesmo espaço de coordenadas.
 
 ## 1.1.6 — expiração local da sessão remota
 O Agent encerra localmente a transmissão e o controle quando a validade curta emitida pelo servidor termina. Enquanto a assinatura e a sessão continuam válidas, o polling normal renova essa validade e o funcionamento permanece igual. Se a renovação deixar de ser autorizada, o canal remoto é fechado sem executar novos comandos.
