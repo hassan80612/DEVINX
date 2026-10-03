@@ -64,13 +64,13 @@ test('Agent 1.1.0 uses separate permanent and mentor-only builds without ZIP or 
   assert.doesNotMatch(runtime,/exeName\.Contains/);
   assert.match(install,/File\.Copy\(current,staged,overwrite:true\)/);
   assert.match(install,/StopInstalledCopyIfRunning/);
-  assert.match(workflow,/DevinX-Laser-Agent-1\.1\.6\.exe/);
-  assert.match(workflow,/DevinX-Mentoria-1\.1\.6\.exe/);
+  assert.match(workflow,/DevinX-Laser-Agent-1\\.2\\.0\\.exe/);
+  assert.match(workflow,/DevinX-Mentoria-1\\.2\\.0\\.exe/);
   assert.match(workflow,/publish-agent/);
   assert.match(workflow,/publish-mentor/);
   assert.match(workflow,/DefineConstants=DEVINX_MENTOR_ONLY/);
   assert.match(workflow,/Permanent Agent and Mentoria must be different binaries/);
-  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\.cmd|1\.1\.6\.zip/);
+  assert.doesNotMatch(workflow,/Compress-Archive|INICIAR-MENTORIA\\.cmd|1\\.2\\.0\\.zip/);
   assert.match(mentorPage,/DevinX-Mentoria-1\.1\.6\.exe/);
 });
 
