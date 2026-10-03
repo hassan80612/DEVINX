@@ -250,7 +250,7 @@ internal sealed class ContinuousAgent
 
         async Task HandleRemoteInputAsync(RealtimeRemoteInput input)
         {
-            var result=LightBurnRemoteInput.Apply(input);
+            var result=DesktopRemoteInput.Apply(input);
             if(input.Type!="pointermove"&&realtime is not null&&realtime.IsConnected)
             {
                 try{await realtime.SendInputResultAsync(input.Type,input.RequestId,result,cancellationToken);}
@@ -474,13 +474,13 @@ internal sealed class ContinuousAgent
                 var activeWebRtc=getWebRtc();
                 if(activeWebRtc?.IsConnected==true)
                 {
-                    var rawFrame=LightBurnWebRtcCapture.TryCapture();
+                    var rawFrame=DesktopWebRtcCapture.TryCapture();
                     if(rawFrame is not null)activeWebRtc.TrySendFrame(rawFrame);
                     await DelaySafe(WebRtcFrameInterval,cancellationToken);
                     continue;
                 }
 
-                var frame=LightBurnWindowCapture.TryCapture();
+                var frame=DesktopCapture.TryCapture();
                 if(frame is not null)
                 {
                     var hash=Convert.ToHexString(SHA256.HashData(frame.Jpeg));
