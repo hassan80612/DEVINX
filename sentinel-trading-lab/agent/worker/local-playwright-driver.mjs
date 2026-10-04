@@ -126,7 +126,20 @@ function protocolScan(data,st,direction='in'){
   const body=data?.msg?.body||data?.msg?.params?.routingFilters||data?.body||data?.params?.routingFilters||{};
   const activeRaw=body?.active_id??body?.activeId??data?.msg?.active_id??data?.active_id;
   const sizeRaw=body?.size??body?.duration??data?.msg?.size??data?.msg?.duration;
-  if(/out/.test(direction)&&/candle/i.test(inner||outer)&&activeRaw!=null){const aid=n(activeRaw);if(aid!=null)st.activeId=aid;const sz=n(sizeRaw);if(sz!=null&&sz>0&&sz<=86400)st.candleSize=sz}
+  if(/page-out/.test(direction)&&activeRaw!=null){
+    const aid=n(activeRaw);
+    if(aid!=null){
+      st.activeId=aid;
+      const mapped=[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null;
+      if(mapped){
+        const found=[...st.assets].find(x=>pairKey(x)===mapped)||mapped.replace(/([A-Z]{3})([A-Z]{3})(OTC)?/,'$1/$2$3');
+        if(found&&pairKey(found)!==pairKey(st.uiSymbol||'')){
+          st.uiSymbol=found;st.symbol=found;st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${found}`;st.lastRequestAt=null;st.autoSelected=false;
+        }
+      }
+    }
+    const sz=n(sizeRaw);if(sz!=null&&sz>0&&sz<=86400)st.candleSize=sz
+  }
 
   if(outer==='profile'&&data.msg&&typeof data.msg==='object'){
     const m=data.msg;const bid=n(m.balance_id??m.balanceId);if(bid!=null)st.balanceId=bid;
@@ -495,11 +508,14 @@ export class LocalPlaywrightDriver{
         const buy=ranked('buy'),sell=ranked('sell');
         const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
         const amount=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
+        const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
+        const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|+/.test(desc(el)))||null;
+        const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|−|-/.test(desc(el)))||null;
         return{
-          buy:!!buy,sell:!!sell,amount:!!amount,
+          buy:!!buy,sell:!!sell,amount:!!amount||!!(plus&&minus),amountStepper:!!(plus&&minus),
           buyText:buy?desc(buy).slice(0,180):'',
           sellText:sell?desc(sell).slice(0,180):'',
-          amountText:amount?desc(amount).slice(0,180):'',
+          amountText:amount?desc(amount).slice(0,180):((plus&&minus)?'stepper +/-':''),
           buttonCount:all.length,amountCandidateCount:amountEls.length
         };
       });
@@ -530,21 +546,46 @@ export class LocalPlaywrightDriver{
       const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
       let input=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
       if(input&&input.tagName!=='INPUT'&&input.querySelector)input=input.querySelector('input,[role=spinbutton],[contenteditable=true]')||input;
-      if(!target||!input)return{ok:false,error:'trade_controls_missing',target:!!target,amount:!!input};
-      try{
-        input.focus?.();
-        if(input.tagName==='INPUT'){
-          const proto=Object.getPrototypeOf(input),setter=Object.getOwnPropertyDescriptor(proto,'value')?.set||Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
-          if(setter)setter.call(input,String(amount));else input.value=String(amount);
-        }else if(input.getAttribute?.('contenteditable')==='true')input.textContent=String(amount);
-        else if('value' in input)input.value=String(amount);
-        input.dispatchEvent(new Event('input',{bubbles:true}));
-        input.dispatchEvent(new Event('change',{bubbles:true}));
-        input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));
-        input.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true}));
-      }catch(e){return{ok:false,error:'amount_set_failed',detail:String(e?.message||e)}}
+      const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
+      const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|+/.test(desc(el)))||null;
+      const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|−|-/.test(desc(el)))||null;
+      if(!target||(!input&&!(plus&&minus)))return{ok:false,error:'trade_controls_missing',target:!!target,amount:!!input,stepper:!!(plus&&minus)};
+      let amountControl='';
+      if(input){
+        try{
+          input.focus?.();
+          if(input.tagName==='INPUT'){
+            const proto=Object.getPrototypeOf(input),setter=Object.getOwnPropertyDescriptor(proto,'value')?.set||Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
+            if(setter)setter.call(input,String(amount));else input.value=String(amount);
+          }else if(input.getAttribute?.('contenteditable')==='true')input.textContent=String(amount);
+          else if('value' in input)input.value=String(amount);
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+          input.dispatchEvent(new Event('change',{bubbles:true}));
+          input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));
+          input.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true}));
+          amountControl=desc(input).slice(0,180);
+        }catch(e){return{ok:false,error:'amount_set_failed',detail:String(e?.message||e)}}
+      }else{
+        const parseAmount=()=>{
+          const candidates=[...document.querySelectorAll('[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i],[role=spinbutton]')].filter(visible);
+          for(const el of candidates){const m=String(el.textContent||el.getAttribute?.('aria-valuenow')||'').replace(/\s/g,'').match(/\d+(?:[.,]\d+)?/);if(m){const v=Number(m[0].replace(',','.'));if(Number.isFinite(v)&&v>=0)return v}}
+          return null;
+        };
+        let current=parseAmount();
+        if(current==null)return{ok:false,error:'amount_stepper_value_not_found'};
+        let guard=0;
+        while(Math.abs(current-amount)>0.001&&guard++<60){
+          const before=current;
+          (current<amount?plus:minus).click();
+          const next=parseAmount();
+          if(next==null||Math.abs(next-before)<0.0001)break;
+          current=next;
+        }
+        if(Math.abs(current-amount)>0.001)return{ok:false,error:'amount_stepper_target_not_reached',current,target:amount};
+        amountControl='stepper +/-';
+      }
       target.click();
-      return{ok:true,button:desc(target).slice(0,180),amountControl:desc(input).slice(0,180)}
+      return{ok:true,button:desc(target).slice(0,180),amountControl}
     },{amount,side});
     if(!result?.ok)throw new Error(result?.error||'demo_order_click_failed');
     st.lastRequestAt=Date.now();
