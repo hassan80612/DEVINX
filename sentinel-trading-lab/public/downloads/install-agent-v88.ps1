@@ -35,11 +35,28 @@ try {
   Step '1/5 Atualizando arquivos do Agent...'
   New-Item -ItemType Directory -Force -Path $root | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=8.8.0&t=agt_v88_bg_20261004" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=8.8.0&release=final-core-20261004" -OutFile $payloadZip }
   if (Test-Path $payloadTmp) { Remove-Item $payloadTmp -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $payloadTmp | Out-Null
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
+
+  # Limpa codigo antigo sem apagar identidade, sessoes da corretora ou runtime Node.
+  $dataDir = Join-Path $root 'worker\data'
+  $dataBackup = Join-Path $env:TEMP 'sentinel-v88-data-backup'
+  if (Test-Path $dataBackup) { Remove-Item $dataBackup -Recurse -Force }
+  if (Test-Path $dataDir) {
+    New-Item -ItemType Directory -Force -Path $dataBackup | Out-Null
+    Copy-Item (Join-Path $dataDir '*') $dataBackup -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  foreach ($item in @('worker','src','node_modules','package.json','package-lock.json')) {
+    $target = Join-Path $root $item
+    if (Test-Path $target) { Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue }
+  }
   Copy-Item (Join-Path $payloadTmp '*') $root -Recurse -Force
+  if (Test-Path $dataBackup) {
+    New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
+    Copy-Item (Join-Path $dataBackup '*') $dataDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
 
   $node = Join-Path $runtime 'node.exe'
   $npm = Join-Path $runtime 'npm.cmd'
