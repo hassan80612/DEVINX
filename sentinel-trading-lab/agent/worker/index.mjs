@@ -75,7 +75,7 @@ async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&
 let remoteBusy=false;
 async function remoteState(){
   const x=await status();
-  return {agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,analysis:x.analysis,signal:x.signal,risk:x.risk,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
+  return {agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,analysis:x.analysis,signal:x.signal,risk:x.risk,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
 }
 async function remoteLoop(){
   if(remoteBusy)return;remoteBusy=true;
@@ -85,7 +85,7 @@ async function remoteLoop(){
     if(hb&&hb.accessActive===false)await enforceAccessLease();
     const polled=await remoteRelay.poll();const cmd=polled?.command;
     if(cmd?.id&&cmd?.type){
-      try{const method=cmd.type==='settings'?'PATCH':'POST';const data=await act('/'+cmd.type,method,cmd.payload||{});await saveState();await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null})}
+      try{const method=cmd.type==='settings'?'PATCH':'POST';const data=await act('/'+cmd.type,method,cmd.payload||{});await saveState();await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})}
       catch(e){await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)})}
     }
   }catch(e){
