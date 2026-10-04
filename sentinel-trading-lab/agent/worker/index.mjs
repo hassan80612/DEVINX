@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='9.2.0';
+const VERSION='9.3.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -91,15 +91,14 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       plan:view.lastResult?.plan||{},
       nextEval:next,
       durationMs:view.settings?.orderDurationMs||60000,
-      intervalMs:view.settings?.schedule?.intervalMs||2000,
-      fixedStake:view.settings?.risk?.fixedStake||1,
+      intervalMs:view.settings?.schedule?.intervalMs||1000,
       brokerMode:view.liveBroker?.mode||view.mode,
       mode:view.mode,
       state:view.state
     }).catch(()=>{});
   }
   await saveState()
-}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,1000).unref();
+}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,500).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,agentVersion:VERSION,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
