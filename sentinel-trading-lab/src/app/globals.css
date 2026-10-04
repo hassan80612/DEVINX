@@ -238,3 +238,137 @@ button:disabled,.kill:disabled{opacity:.6;filter:saturate(.6)}
   .metric small{font-size:10px}.metric b{font-size:18px}
   .primary,.secondary,.kill{font-size:14px;min-height:44px}
 }
+
+
+/* V8.8 theme toggle */
+.themeToggle{
+  display:inline-flex;align-items:center;justify-content:center;min-height:42px;
+  padding:9px 13px;border-radius:10px;border:1px solid #cbd9e3;background:#fff;
+  color:#29475d;font-size:13px;font-weight:800;cursor:pointer;transition:.16s ease
+}
+.themeToggle:hover{background:#f3f7fa;border-color:#9fb5c5}
+
+html[data-theme='dark']{
+  --bg:#05080c;
+  --bg-soft:#0a0f14;
+  --panel:#0d141b;
+  --panel-2:#091017;
+  --panel-3:#111a22;
+  --line:#24313b;
+  --line-strong:#344654;
+  --text:#f1f5f7;
+  --muted:#9aabb6;
+  --muted-2:#71838e;
+  --green:#59d6b2;
+  --green-strong:#2ea984;
+  --red:#ff7c86;
+  --amber:#f2c868;
+  --blue:#69b8ff;
+  --shadow:0 16px 42px rgba(0,0,0,.34);
+  background:#05080c;
+  color-scheme:dark
+}
+html[data-theme='dark'] body{
+  background:radial-gradient(circle at 76% 0%,rgba(37,91,82,.16),transparent 34%),#05080c;
+  color:var(--text)
+}
+html[data-theme='dark'] .sidebar{
+  background:linear-gradient(180deg,#090d12 0%,#05080c 100%);
+  border-right-color:#1d2831
+}
+html[data-theme='dark'] .brandmark{background:#0e171e;border-color:#31414c}
+html[data-theme='dark'] .brand span,
+html[data-theme='dark'] .brand small,
+html[data-theme='dark'] .navTitle,
+html[data-theme='dark'] .sidefoot{color:#748793}
+html[data-theme='dark'] .brand strong{color:#fff}
+html[data-theme='dark'] .navGroup button{color:#99aab5}
+html[data-theme='dark'] .navGroup button i{background:#101820;color:#80939f;border-color:#1d2b35}
+html[data-theme='dark'] .navGroup button:hover{color:#fff;background:#111b23;border-color:#273944}
+html[data-theme='dark'] .navGroup button.active{color:#fff;background:linear-gradient(90deg,rgba(34,103,84,.28),rgba(14,24,31,.9));border-color:#285447;box-shadow:inset 3px 0 0 var(--green)}
+html[data-theme='dark'] .navGroup button.active i{background:#173b31;color:#8be8cd;border-color:#2e6d5a}
+html[data-theme='dark'] .pageHeading h1,
+html[data-theme='dark'] .card h3,
+html[data-theme='dark'] .price b,
+html[data-theme='dark'] .metric b,
+html[data-theme='dark'] .row b,
+html[data-theme='dark'] .event b,
+html[data-theme='dark'] .strategy b,
+html[data-theme='dark'] .sessionhint span{color:#eef4f7}
+html[data-theme='dark'] .pageHeading p,
+html[data-theme='dark'] .card p,
+html[data-theme='dark'] .hero p,
+html[data-theme='dark'] .muted,
+html[data-theme='dark'] .price small,
+html[data-theme='dark'] .price span,
+html[data-theme='dark'] .metric small,
+html[data-theme='dark'] .metric em,
+html[data-theme='dark'] .row span,
+html[data-theme='dark'] .event span,
+html[data-theme='dark'] .event time,
+html[data-theme='dark'] .strategy span,
+html[data-theme='dark'] .sessionhint b,
+html[data-theme='dark'] .sessionhint em,
+html[data-theme='dark'] .check em,
+html[data-theme='dark'] .field span{color:#8fa1ad}
+html[data-theme='dark'] .eyebrow{color:#7d929e}
+html[data-theme='dark'] .topBrand{color:#8fdec8}
+html[data-theme='dark'] .card{
+  background:linear-gradient(180deg,#101820,#0a1016);
+  border-color:#24313b;color:#eef4f7;box-shadow:var(--shadow)
+}
+html[data-theme='dark'] .hero,
+html[data-theme='dark'] .connectIntro{background:radial-gradient(circle at 88% 5%,rgba(50,150,123,.11),transparent 34%),linear-gradient(180deg,#101a22,#090f15)}
+html[data-theme='dark'] .price,
+html[data-theme='dark'] .metric,
+html[data-theme='dark'] .signal,
+html[data-theme='dark'] .strategy,
+html[data-theme='dark'] .field input,
+html[data-theme='dark'] .field select,
+html[data-theme='dark'] .sessionhint,
+html[data-theme='dark'] .check{background:#080d12;border-color:#24323c;color:#eef4f7}
+html[data-theme='dark'] .row{border-bottom-color:#1d2a33}
+html[data-theme='dark'] .primary{background:linear-gradient(180deg,#1b4a3c,#15382f);color:#b8f5e3;border-color:#2c6a58}
+html[data-theme='dark'] .primary:hover{background:#205543;border-color:#38806b}
+html[data-theme='dark'] .secondary,
+html[data-theme='dark'] .themeToggle{background:#101820;color:#d2dde3;border-color:#2a3944}
+html[data-theme='dark'] .secondary:hover,
+html[data-theme='dark'] .themeToggle:hover{background:#16222b;border-color:#3a4c58}
+html[data-theme='dark'] .kill{background:#2d171c;color:#ff9da6;border-color:#633139}
+html[data-theme='dark'] .kill:hover{background:#3a1c22;border-color:#8a4049}
+html[data-theme='dark'] .pill{background:#101820;color:#b2c1ca;border-color:#30404b}
+html[data-theme='dark'] .pill.good{color:#8be3c9;border-color:#245647;background:#102921}
+html[data-theme='dark'] .pill.bad{color:#ff9ca2;border-color:#643137;background:#2b171a}
+html[data-theme='dark'] .pill.warn{color:#f4d98b;border-color:#6b5926;background:#2a2412}
+html[data-theme='dark'] .table th,
+html[data-theme='dark'] .table td{border-bottom-color:#1d2a33}
+html[data-theme='dark'] .table th{color:#8799a5}
+html[data-theme='dark'] .strategy.selected{border-color:#34745f;box-shadow:inset 0 0 0 1px #214c40;background:linear-gradient(180deg,#0d211b,#09171a)}
+html[data-theme='dark'] .timeline .event div{border-left-color:#263640}
+html[data-theme='dark'] .alert{background:#321f16;border-color:#694527;color:#efc28e}
+html[data-theme='dark'] .agentbanner{background:linear-gradient(90deg,rgba(46,37,14,.92),rgba(29,27,16,.76));border-color:#625729}
+html[data-theme='dark'] .agentText b{color:#f0d985}
+html[data-theme='dark'] .agentText span{color:#b8ab78}
+html[data-theme='dark'] .brokerNote{background:#0d211a;border-color:#285141}
+html[data-theme='dark'] .brokerNote b{color:#8fe2c8}
+html[data-theme='dark'] .brokerNote span{color:#87a99e}
+html[data-theme='dark'] .brokerOffline{background:#2d171c;border-color:#633139}
+html[data-theme='dark'] .brokerOffline b{color:#ff9da6}
+html[data-theme='dark'] .brokerOffline span{color:#d69da2}
+html[data-theme='dark'] .steps span{background:#081117;border-color:#18303a;color:#5ed3b6}
+html[data-theme='dark'] .steps b{color:#c8d8df}
+html[data-theme='dark'] .check.ok{background:#0d211c;border-color:#235345}
+html[data-theme='dark'] .mode{background:#081117;border-color:#27343e}
+html[data-theme='dark'] .privateBadge{background:rgba(93,255,185,.08);border-color:rgba(93,255,185,.22);color:#9fffd1}
+html[data-theme='dark'] .loginPage{background:radial-gradient(circle at top,#11233f 0,#08111f 40%,#050a12 100%)}
+html[data-theme='dark'] .loginCard{background:#08111f;border-color:rgba(255,255,255,.1);box-shadow:0 24px 80px rgba(0,0,0,.45)}
+html[data-theme='dark'] .loginCard h1{color:#fff}
+html[data-theme='dark'] .loginCard p,
+html[data-theme='dark'] .loginHint{color:#9aabb6}
+html[data-theme='dark'] .authTab{border-color:#263244;background:transparent;color:#eef4f7}
+html[data-theme='dark'] .authTab.active{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.2)}
+html[data-theme='dark'] .mobileDock{background:rgba(5,8,12,.98)!important;border-top-color:#26343e!important;box-shadow:0 -8px 24px rgba(0,0,0,.38)!important}
+html[data-theme='dark'] .mobileDock button{color:#8da0ad!important}
+html[data-theme='dark'] .mobileDock button.active{background:rgba(72,158,132,.16)!important;color:#b8f3df!important}
+html[data-theme='dark'] .mobileMorePanel{background:#0c1319!important;border-color:#27343e!important;box-shadow:0 18px 45px rgba(0,0,0,.48)!important}
+html[data-theme='dark'] .mobileMorePanel button{background:#111a21!important;border-color:#293843!important;color:#d6e2e8!important}
