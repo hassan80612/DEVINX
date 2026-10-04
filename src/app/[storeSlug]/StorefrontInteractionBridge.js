@@ -129,24 +129,21 @@ export default function StorefrontInteractionBridge() {
       }
     }
 
-    function prepareBoxes() {
-      document.querySelectorAll('[class*="storefront_photoBox"]').forEach((box) => {
-        if (!box.hasAttribute("tabindex")) box.setAttribute("tabindex", "0");
-      });
-    }
+    const onPointerUp = (event) => finishPointer(event, false);
+    const onPointerCancel = (event) => finishPointer(event, true);
+    const pointerOptions = { capture: true, passive: true };
 
-    prepareBoxes();
-    const observer = new MutationObserver(prepareBoxes);
-    observer.observe(document.body, { childList: true, subtree: true });
-    document.addEventListener("pointerdown", onPointerDown, true);
-    document.addEventListener("pointermove", onPointerMove, true);
-    document.addEventListener("pointerup", (event) => finishPointer(event, false), true);
-    document.addEventListener("pointercancel", (event) => finishPointer(event, true), true);
+    document.addEventListener("pointerdown", onPointerDown, pointerOptions);
+    document.addEventListener("pointermove", onPointerMove, pointerOptions);
+    document.addEventListener("pointerup", onPointerUp, pointerOptions);
+    document.addEventListener("pointercancel", onPointerCancel, pointerOptions);
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      observer.disconnect(); clearGesture();
+      clearGesture();
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("pointermove", onPointerMove, true);
+      document.removeEventListener("pointerup", onPointerUp, true);
+      document.removeEventListener("pointercancel", onPointerCancel, true);
       window.removeEventListener("keydown", onKeyDown);
     };
   }, []);
