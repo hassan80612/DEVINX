@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='8.7.0';
+const VERSION='8.8.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -25,14 +25,14 @@ const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter(
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 function chooseLive(){const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];for(const k of order){const b=brokers[k],m=driver.liveStatus?.(k);if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){return{k,m}}}return null}
-function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,mode:m.mode,symbol:m.symbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(m.symbol)runtime.settings.asset=m.symbol;if(['demo','real'].includes(m.mode))runtime.settings.mode=m.mode;return live}
+function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,mode:m.mode,symbol:m.symbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,autoSelected:m.autoSelected,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(m.symbol)runtime.settings.asset=m.symbol;if(['demo','real'].includes(m.mode))runtime.settings.mode=m.mode;return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
-async function bootstrapSavedBrokers(){for(const [name,adapter] of Object.entries(brokers)){if(!adapter.sessionRef)continue;try{await adapter.connect();if(adapter.connected){activeProvider=name;await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();if(adapter.validated)break}}catch{}}syncRuntimeMarket()}
+async function bootstrapSavedBrokers(){if(!remoteRelay.info.paired||remoteRelay.info.accessActive!==true)return;for(const [name,adapter] of Object.entries(brokers)){if(!adapter.sessionRef)continue;try{await adapter.connect();if(adapter.connected){activeProvider=name;await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();if(adapter.validated)break}}catch{}}syncRuntimeMarket()}
 setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),700).unref();
 let busy=false;async function loop(){if(busy)return;busy=true;try{if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.tick(Date.now());await saveState()}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,1000).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
@@ -41,7 +41,7 @@ async function status(){if(activeProvider&&brokers[activeProvider]?.connected){a
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);const ALLOWED_ORIGINS=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
 function allowedOrigin(origin=''){
-  if(origin===''||origin==='null'||origin==='http://localhost:3000'||origin==='http://127.0.0.1:3000')return true;
+  if(origin===''||origin==='http://localhost:3000'||origin==='http://127.0.0.1:3000')return true;
   if(ALLOWED_ORIGINS.has(origin))return true;
   return false;
 }
@@ -50,20 +50,34 @@ function json(req,res,statusCode,data){res.writeHead(statusCode,{'content-type':
 async function body(req){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>65536)throw new Error('body_too_large')}return raw?JSON.parse(raw):{}}
 function authorized(req){if(!TOKEN)return true;return(req.headers.authorization||'')===`Bearer ${TOKEN}`}
 function providerFromPath(path){const m=path.match(/^\/brokers\/(iq_option|exnova)(?:\/(.+))?$/);return m?{name:m[1],action:m[2]||''}:null}
-async function act(path,method,payload){if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+function requiresAccess(path){
+  if(path==='/status'||path==='/control/stop'||path==='/control/kill')return false;
+  return path==='/control/start'||path==='/mode'||path==='/settings'||path.startsWith('/brokers/');
+}
+function ensureAccess(path){
+  if(!requiresAccess(path))return;
+  if(!remoteRelay.info.paired)throw new Error('agent_not_paired');
+  if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
+}
+async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){const info=await driver.call(p.name,'login',{body:{accountMode:'auto',userInitiated:payload.userInitiated===true}});loginStates[p.name]=info;return status()}if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
   const err=new Error('not_found');err.status=404;throw err}
 
 let remoteBusy=false;
 async function remoteState(){
   const x=await status();
-  return {agentVersion:VERSION,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,analysis:x.analysis,signal:x.signal,risk:x.risk,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
+  return {agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,analysis:x.analysis,signal:x.signal,risk:x.risk,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
 }
 async function remoteLoop(){
   if(remoteBusy)return;remoteBusy=true;
   try{
     if(!remoteRelay.info.deviceId)await remoteRelay.register();
-    await remoteRelay.heartbeat(await remoteState());
+    const hb=await remoteRelay.heartbeat(await remoteState());
+    if(hb&&hb.accessActive===false){
+      if(runtime.stateName==='running')await runtime.stop('system','agent_access_inactive');
+      for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
+      activeProvider=null;syncRuntimeMarket();
+    }
     const polled=await remoteRelay.poll();const cmd=polled?.command;
     if(cmd?.id&&cmd?.type){
       try{const method=cmd.type==='settings'?'PATCH':'POST';const data=await act('/'+cmd.type,method,cmd.payload||{});await saveState();await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null})}
