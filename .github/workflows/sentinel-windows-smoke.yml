@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.1.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.2.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.1 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.2 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '9.1.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '9.2.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -208,6 +208,13 @@ jobs:
           const clicked=await testPage.evaluate(()=>window.__sentinelClickedSymbol||'');
           if(clicked!=='EUR/THB OTC')throw new Error('asset_click_tracking_failed:'+clicked);
           console.log('ASSET CLICK TRACKING: PASS',clicked);
+          const st=d.state('iq_option');
+          st.assets=new Set(['EUR/USD OTC','EUR/THB OTC']);
+          st.activeMap=new Map([['EURUSDOTC',1],['EURTHBOTC',2]]);
+          st.uiSymbol='EUR/THB OTC';st.symbol='EUR/THB OTC';st.activeId=2;
+          d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',body:{active_id:1,size:60}}}),'page-out');
+          if(st.uiSymbol!=='EUR/USD OTC'||st.symbol!=='EUR/USD OTC'||Number(st.activeId)!==1)throw new Error('broker_active_id_tracking_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId}));
+          console.log('BROKER ACTIVE ID TRACKING: PASS',st.uiSymbol);
           try{await s.context?.close()}catch{}
           '@
           $script | Set-Content -LiteralPath "broker-open-smoke.mjs" -Encoding utf8
