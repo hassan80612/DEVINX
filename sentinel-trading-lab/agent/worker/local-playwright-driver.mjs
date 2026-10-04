@@ -509,8 +509,8 @@ export class LocalPlaywrightDriver{
         const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
         const amount=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
         const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
-        const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|+/.test(desc(el)))||null;
-        const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|−|-/.test(desc(el)))||null;
+        const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|[+]/.test(desc(el)))||null;
+        const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|[−-]/.test(desc(el)))||null;
         return{
           buy:!!buy,sell:!!sell,amount:!!amount||!!(plus&&minus),amountStepper:!!(plus&&minus),
           buyText:buy?desc(buy).slice(0,180):'',
@@ -547,8 +547,8 @@ export class LocalPlaywrightDriver{
       let input=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
       if(input&&input.tagName!=='INPUT'&&input.querySelector)input=input.querySelector('input,[role=spinbutton],[contenteditable=true]')||input;
       const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
-      const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|+/.test(desc(el)))||null;
-      const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|−|-/.test(desc(el)))||null;
+      const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|[+]/.test(desc(el)))||null;
+      const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|[−-]/.test(desc(el)))||null;
       if(!target||(!input&&!(plus&&minus)))return{ok:false,error:'trade_controls_missing',target:!!target,amount:!!input,stepper:!!(plus&&minus)};
       let amountControl='';
       if(input){
