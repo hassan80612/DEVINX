@@ -147,4 +147,21 @@ export async function POST(req:NextRequest){
 }
 `);
 
+
+const middlewareCandidates=['middleware.ts','src/middleware.ts'];
+for (const mwPath of middlewareCandidates) {
+  try {
+    let mw=readFileSync(mwPath,'utf8');
+    if (!mw.includes("pathname.startsWith('/downloads/')")) {
+      const match=mw.match(/export\s+(?:async\s+)?function\s+middleware\s*\(\s*([A-Za-z_$][\w$]*)[^)]*\)\s*\{/);
+      if (match) {
+        const reqName=match[1];
+        mw=mw.replace(match[0],match[0]+"\n  if ("+reqName+".nextUrl.pathname.startsWith('/downloads/')) return NextResponse.next();");
+        writeFileSync(mwPath,mw);
+        console.log('Sentinel downloads route bypassed from auth middleware:',mwPath);
+      }
+    }
+  } catch {}
+}
+
 console.log('Sentinel Master private ops patch applied');
