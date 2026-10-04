@@ -60,8 +60,8 @@ export default function Page(){
   const act=async(path:string,body:any={})=>{
     const previous=s;
     setBusy(true);setErr('');
-    if(path==='mode'&&body?.mode)setS(v=>v?{...v,mode:body.mode}:v);
-    if(path==='settings'&&body&&typeof body==='object')setS(v=>v?{...v,settings:{...(v.settings||{}),...body}}:v);
+    if(path==='mode'&&body?.mode)setS((v:Status|null)=>v?{...v,mode:body.mode}:v);
+    if(path==='settings'&&body&&typeof body==='object')setS((v:Status|null)=>v?{...v,settings:{...(v.settings||{}),...body}}:v);
     if(path==='mode')setNotice(body.mode==='demo'?'Mudando para DEMO…':'Mudando para REAL…');
     else if(path==='settings'&&body?.strategy)setNotice('Ativando estratégia…');
     else if(path.startsWith('brokers/')&&path.endsWith('/login'))setNotice('Abrindo a corretora no PC…');
