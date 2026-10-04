@@ -4,7 +4,7 @@ const pagePath='src/app/page.tsx';
 let src=readFileSync(pagePath,'utf8');
 
 const oldContent="const content=useMemo(()=>s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<Loading/> ,[tab,s,busy,agent,account,pairCode]);";
-const newContent="const content=useMemo(()=>tab==='Master Console'&&isMaster?<Master s={s} act={act} busy={busy}/>:s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<OfflinePanel/>,[tab,s,busy,agent,account,pairCode,isMaster]);";
+const newContent="const content=useMemo(()=>tab==='Master Console'?<Master s={s} act={act} busy={busy}/>:s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<OfflinePanel/>,[tab,s,busy,agent,account,pairCode,isMaster]);";
 if(!src.includes(oldContent)) throw new Error('Sentinel patch: content anchor not found');
 src=src.replace(oldContent,newContent);
 
