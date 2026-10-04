@@ -20,9 +20,11 @@ func fail(msg string, err error) {
         text += ": " + err.Error()
     }
     // MessageBox via PowerShell keeps the EXE friendly even when built as windowsgui.
-    _ = exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+    dlg := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
         "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show($env:SENTINEL_ERROR,'Sentinel Agent') | Out-Null",
-    ).Run()
+    )
+    dlg.Env = append(os.Environ(), "SENTINEL_ERROR="+text)
+    _ = dlg.Run()
     fmt.Fprintln(os.Stderr, text)
     os.Exit(1)
 }
