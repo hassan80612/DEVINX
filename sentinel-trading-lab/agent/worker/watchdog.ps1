@@ -1,6 +1,6 @@
 $ErrorActionPreference='SilentlyContinue'
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$node = Join-Path $root '.sentinel-runtime\node.exe'
+$node = if ($env:SENTINEL_NODE_PATH) { $env:SENTINEL_NODE_PATH } else { Join-Path $root '.sentinel-runtime\node.exe' }
 $manager = Join-Path $root 'worker\agent-manager.mjs'
 $exitMarker = Join-Path $root 'worker\data\agent.exit'
 $health = 'http://127.0.0.1:8788/health'
