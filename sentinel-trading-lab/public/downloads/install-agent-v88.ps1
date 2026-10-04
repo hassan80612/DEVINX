@@ -92,9 +92,21 @@ try {
 
   Step '5/5 Iniciando Agent na bandeja do Windows...'
   $tray = Join-Path $root 'worker\tray-host.ps1'
+  $watchdog = Join-Path $root 'worker\watchdog.ps1'
   $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
   New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
   Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -Value $runCmd -Force
+
+  # Watchdog independente: religa Manager/Worker se o processo principal morrer.
+  try {
+    $taskName = 'SentinelTradingLabWatchdog'
+    $taskCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$watchdog`""
+    & schtasks.exe /Delete /TN $taskName /F 2>$null | Out-Null
+    & schtasks.exe /Create /TN $taskName /SC MINUTE /MO 1 /TR $taskCmd /F | Out-Null
+  } catch {
+    Write-Host 'Aviso: watchdog agendado nao foi criado; o Agent ainda inicia pela bandeja.' -ForegroundColor Yellow
+  }
+
   Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',$tray) -WindowStyle Hidden | Out-Null
 
   $ready = $false
