@@ -1,11 +1,11 @@
 {
   "name": "sentinel-trading-lab",
-  "version": "8.6.0",
+  "version": "8.8.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "cat app-bundle.b64.* | tr -d '\\n' | base64 -d > app-bundle.tar.gz && tar -xzf app-bundle.tar.gz && node patch-master.mjs && next build",
+    "build": "next build",
     "start": "next start"
   },
   "dependencies": {
