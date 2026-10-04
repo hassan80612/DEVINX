@@ -34,12 +34,6 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   if(action==='start'){ensureAccess('/control/start');if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
   if(action==='pause'){ensureAccess('/control/start');await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
   if(action==='stop'){await runtime.stop('overlay','manual');return{ok:true,message:'Bot parado'}}
-  if(action==='stake-up'||action==='stake-down'){
-    ensureAccess('/settings');
-    const current=Number(runtime.settings.risk.fixedStake||1),max=Math.max(1,Number(runtime.settings.risk.maxStake||999999));
-    const next=Math.max(1,Math.min(max,current+(action==='stake-up'?1:-1)));
-    runtime.patchSettings({risk:{fixedStake:next}},'overlay');await saveState();return{ok:true,message:`Valor: ${next.toFixed(2)}`}
-  }
   if(action==='setting'){
     ensureAccess('/settings');
     const key=String(payload.key||''),value=payload.value;
@@ -50,9 +44,6 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }else if(key==='duration'){
       const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
       runtime.patchSettings({orderDurationMs:n},'overlay');
-    }else if(key==='interval'){
-      const n=Number(value);if(![2000,5000,10000,15000].includes(n))throw new Error('invalid_interval');
-      runtime.patchSettings({schedule:{intervalMs:n}},'overlay');
     }else throw new Error('invalid_overlay_setting');
     await saveState();return{ok:true,message:'Configuração aplicada'}
   }
@@ -86,6 +77,8 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       strategy:view.settings?.strategy||'—',
       side:a.side||'WAIT',
       confidence:a.confidence||0,
+      forecast30:a.forecast30||null,
+      minConfidence:view.settings?.risk?.minConfidence||74,
       reasons:a.reasons||view.lastResult?.reasons||[],
       metrics:m,
       plan:view.lastResult?.plan||{},
