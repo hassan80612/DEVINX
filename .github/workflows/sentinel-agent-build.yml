@@ -37,5 +37,5 @@ jobs:
             echo 'Agent executable already current.'
             exit 0
           fi
-          git commit -m 'build(sentinel): refresh Windows Agent V8.6'
+          git commit -m 'build(sentinel): refresh Windows Agent V8.7'
           git push

@@ -9,3 +9,5 @@ Single-source production project for Sentinel Trading Lab.
 - REAL mode keeps human confirmation required for execution
 
 Production: https://sentinel-trading-lab.vercel.app
+
+- Agent V8.7: sessão da corretora persiste em background após o primeiro login; o painel pode ser usado de outro dispositivo sem manter a janela da corretora em primeiro plano.

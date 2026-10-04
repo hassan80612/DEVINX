@@ -7,8 +7,8 @@ import (
     "path/filepath"
 )
 
-// V8.6 launcher served from the single stable Sentinel project.
-const installerURL = "https://sentinel-trading-lab.vercel.app/downloads/install-agent.ps1?v=8.6.0&t=agt_v86_6b3e8119f3104c0490b2320c5829df86"
+// V8.7 launcher served from the single stable Sentinel project.
+const installerURL = "https://sentinel-trading-lab.vercel.app/downloads/install-agent-v87.ps1?v=8.7.0&t=agt_v87_bg_20261004"
 
 func main() {
     tmp := filepath.Join(os.TempDir(), "sentinel-install-v86.ps1")
