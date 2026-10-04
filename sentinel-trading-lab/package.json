@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "node extract.mjs && next build",
+    "build": "cat app-bundle.b64.* | tr -d '\\n' | base64 -d > app-bundle.tar.gz && tar -xzf app-bundle.tar.gz && next build",
     "start": "next start"
   },
   "dependencies": {
