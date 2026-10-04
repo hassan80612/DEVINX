@@ -53,7 +53,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
     await driver.updateOverlay?.(activeProvider,{
-      asset:view.settings?.asset||view.liveBroker?.uiSymbol||'—',
+      asset:view.liveBroker?.uiSymbol||view.settings?.asset||'—',
       strategy:view.settings?.strategy||'—',
       side:a.side||'WAIT',
       confidence:a.confidence||0,
