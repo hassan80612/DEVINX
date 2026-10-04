@@ -70,6 +70,7 @@ jobs:
           $ErrorActionPreference='Stop'
           $env:SENTINEL_WORKER_PORT='8787'
           $env:SENTINEL_MANAGER_PORT='8788'
+          $env:SENTINEL_NODE_PATH=(Get-Command node).Source
 
           $manager=Start-Process -FilePath node -ArgumentList @('worker/agent-manager.mjs') -WorkingDirectory $PWD -PassThru
           $ok=$false
