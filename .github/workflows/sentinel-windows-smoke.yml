@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '8.8.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.0.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 8.8 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.0 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '8.8.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '9.0.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -190,7 +190,7 @@ jobs:
             } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
           }catch{}
 
-      - name: Broker visible launch creates CDP session
+      - name: Broker visible launch creates Playwright session
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
@@ -199,12 +199,9 @@ jobs:
           const d=new LocalPlaywrightDriver({dataDir:'worker/data/smoke-browser'});
           const s=await d.launchNormal('iq_option',{manual:true});
           const info=await d.sessionInfo('iq_option');
-          if(!s?.debugPort || !s?.page || !info?.open) throw new Error('broker_visible_launch_failed');
-          const r=await fetch('http://127.0.0.1:'+s.debugPort+'/json/version');
-          if(!r.ok) throw new Error('broker_cdp_not_ready');
-          console.log('BROKER OPEN PASS',JSON.stringify({port:s.debugPort,url:info.url,phase:info.phase,pid:s.cdp?.pid||null}));
-          try{await s.browser?.close()}catch{}
-          try{s.cdp?.kill()}catch{}
+          if(!s?.context || !s?.page || !info?.open) throw new Error('broker_visible_launch_failed');
+          console.log('BROKER OPEN PASS',JSON.stringify({url:info.url,phase:info.phase,background:info.background||false}));
+          try{await s.context?.close()}catch{}
           '@
           $script | Set-Content -LiteralPath "broker-open-smoke.mjs" -Encoding utf8
           & node "broker-open-smoke.mjs"
