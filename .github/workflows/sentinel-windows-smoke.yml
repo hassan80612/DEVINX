@@ -206,6 +206,8 @@ jobs:
           try{await s.browser?.close()}catch{}
           try{s.cdp?.kill()}catch{}
           '@
-          $script | Set-Content -LiteralPath "$env:RUNNER_TEMP\broker-open-smoke.mjs" -Encoding utf8
-          & node "$env:RUNNER_TEMP\broker-open-smoke.mjs"
-          if($LASTEXITCODE -ne 0){throw 'Broker visible launch smoke failed'}
+          $script | Set-Content -LiteralPath "broker-open-smoke.mjs" -Encoding utf8
+          & node "broker-open-smoke.mjs"
+          $code=$LASTEXITCODE
+          Remove-Item "broker-open-smoke.mjs" -Force -ErrorAction SilentlyContinue
+          if($code -ne 0){throw 'Broker visible launch smoke failed'}
