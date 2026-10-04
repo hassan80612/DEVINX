@@ -580,21 +580,72 @@ export class LocalPlaywrightDriver{
             position:'fixed',right:'14px',top:'14px',zIndex:'2147483647',width:'320px',maxWidth:'calc(100vw - 28px)',
             background:'rgba(13,22,30,.94)',color:'#f4f7f9',border:'1px solid rgba(93,224,186,.42)',borderRadius:'14px',
             boxShadow:'0 18px 50px rgba(0,0,0,.38)',backdropFilter:'blur(12px)',fontFamily:'Inter,Segoe UI,Arial,sans-serif',
-            fontSize:'12px',lineHeight:'1.35',padding:'12px',pointerEvents:'none'
+            fontSize:'12px',lineHeight:'1.35',padding:'12px',pointerEvents:'auto',userSelect:'none'
           });
+          try{
+            const saved=JSON.parse(localStorage.getItem('sentinel-overlay-pos-v1')||'null');
+            if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
+              el.style.left=Math.max(0,Math.min(window.innerWidth-320,saved.x))+'px';
+              el.style.top=Math.max(0,Math.min(window.innerHeight-80,saved.y))+'px';
+              el.style.right='auto';
+            }
+          }catch{}
           document.documentElement.appendChild(el);
+
+          let drag=null;
+          const stop=()=>{
+            if(!drag)return;
+            drag=null;
+            el.style.cursor='';
+            try{
+              const rect=el.getBoundingClientRect();
+              localStorage.setItem('sentinel-overlay-pos-v1',JSON.stringify({x:rect.left,y:rect.top}));
+            }catch{}
+          };
+          el.addEventListener('pointerdown',ev=>{
+            const handle=ev.target?.closest?.('[data-sentinel-drag]');
+            if(!handle)return;
+            const rect=el.getBoundingClientRect();
+            drag={dx:ev.clientX-rect.left,dy:ev.clientY-rect.top};
+            el.style.left=rect.left+'px';
+            el.style.top=rect.top+'px';
+            el.style.right='auto';
+            el.style.cursor='grabbing';
+            try{el.setPointerCapture(ev.pointerId)}catch{}
+            ev.preventDefault();
+          });
+          el.addEventListener('pointermove',ev=>{
+            if(!drag)return;
+            const maxX=Math.max(0,window.innerWidth-el.offsetWidth);
+            const maxY=Math.max(0,window.innerHeight-el.offsetHeight);
+            el.style.left=Math.max(0,Math.min(maxX,ev.clientX-drag.dx))+'px';
+            el.style.top=Math.max(0,Math.min(maxY,ev.clientY-drag.dy))+'px';
+            ev.preventDefault();
+          });
+          el.addEventListener('pointerup',stop);
+          el.addEventListener('pointercancel',stop);
+          window.addEventListener('resize',()=>{
+            const rect=el.getBoundingClientRect();
+            el.style.left=Math.max(0,Math.min(window.innerWidth-el.offsetWidth,rect.left))+'px';
+            el.style.top=Math.max(0,Math.min(window.innerHeight-el.offsetHeight,rect.top))+'px';
+            el.style.right='auto';
+          });
         }
         const esc=(v)=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         const n=(v,d=2)=>Number.isFinite(Number(v))?Number(v).toFixed(d):'—';
         const m=d.metrics||{},plan=d.plan||{},side=String(d.side||'WAIT').toUpperCase();
-        const signal=side==='BUY'?'CALL / COMPRA':side==='SELL'?'PUT / VENDA':'WAIT';
+        const signal=side==='BUY'?'CALL / COMPRA':side==='SELL'?'PUT / VENDA':'AGUARDAR';
         const tone=side==='BUY'?'#66e0b8':side==='SELL'?'#ff8f9a':'#f2ca68';
-        const reasons=(d.reasons||[]).slice(0,3).map(x=>'<div style="margin-top:3px;color:#aebec8">• '+esc(x)+'</div>').join('');
+        const confidence=Math.max(0,Math.min(100,Number(d.confidence)||0));
+        const buyScore=Math.max(0,Math.min(100,Number(m.buyScore)||0));
+        const sellScore=Math.max(0,Math.min(100,Number(m.sellScore)||0));
+        const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:3px;color:#aebec8">• '+esc(x)+'</div>').join('');
         el.innerHTML=`
-          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+          <div data-sentinel-drag="1" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;cursor:grab;touch-action:none;padding-bottom:2px">
             <div><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL DEMO · ${esc(d.strategy||'—')}</div>
-            <div style="font-size:18px;font-weight:900;margin-top:2px">${esc(d.asset||'—')}</div></div>
-            <div style="text-align:right"><div style="font-size:20px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">${n(d.confidence,0)}%</div></div>
+            <div style="font-size:18px;font-weight:900;margin-top:2px">${esc(d.asset||'—')}</div>
+            <div style="font-size:9px;color:#6f8796;margin-top:2px">↕ arraste este cabeçalho para mover</div></div>
+            <div style="text-align:right"><div style="font-size:20px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div></div>
           </div>
           <div style="margin-top:9px;padding:8px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035)">
             <div><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
@@ -608,9 +659,21 @@ export class LocalPlaywrightDriver{
             <div>Estoc.: <b>${n(m.stoch,1)}</b></div><div>ATR: <b>${n(m.atr,5)}</b></div>
             <div>Suporte: <b>${n(m.sr?.support,5)}</b></div><div>Resist.: <b>${n(m.sr?.resistance,5)}</b></div>
           </div>
-          <div style="margin-top:8px"><b>Estrutura:</b> ${esc(m.structure?.label||'—')} · <b>BUY</b> ${n(m.buyScore,0)} / <b>SELL</b> ${n(m.sellScore,0)}</div>
+          <div style="margin-top:8px"><b>Estrutura:</b> ${esc(m.structure?.label||'—')}</div>
+          <div style="margin-top:7px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div style="padding:6px;border-radius:8px;background:rgba(102,224,184,.08);border:1px solid rgba(102,224,184,.18)">
+              <div style="font-size:9px;color:#86a89d">FORÇA COMPRA</div><b style="font-size:16px;color:#66e0b8">${n(buyScore,0)}%</b>
+            </div>
+            <div style="padding:6px;border-radius:8px;background:rgba(255,143,154,.08);border:1px solid rgba(255,143,154,.18)">
+              <div style="font-size:9px;color:#ae8a90">FORÇA VENDA</div><b style="font-size:16px;color:#ff8f9a">${n(sellScore,0)}%</b>
+            </div>
+          </div>
+          <div style="margin-top:7px;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden">
+            <div style="height:100%;width:${confidence}%;background:${tone};transition:width .25s ease"></div>
+          </div>
+          <div style="margin-top:3px;font-size:9px;color:#78909f">Confiança do sinal: ${n(confidence,0)}% · não é probabilidade garantida de lucro.</div>
           ${reasons}
-          <div style="margin-top:8px;font-size:10px;color:#78909f">Sinal experimental para teste DEMO. Não representa garantia de resultado.</div>
+          <div style="margin-top:8px;font-size:10px;color:#78909f">Ajuda visual para teste DEMO. Em conta real, mantenha confirmação manual antes de qualquer ordem.</div>
         `;
       },payload);
       return true
