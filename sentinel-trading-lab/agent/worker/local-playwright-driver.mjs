@@ -734,6 +734,8 @@ export class LocalPlaywrightDriver{
         const intervalMs=Number(d.intervalMs||5000);
         const runtimeState=String(d.state||'stopped').toLowerCase();
         const strategy=String(d.strategy||'smart_confluence');
+        const fixedStake=Math.max(1,Number(d.fixedStake||1));
+        const brokerMode=String(d.brokerMode||d.mode||'').toUpperCase();
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
           const run=async(payload)=>{
@@ -782,7 +784,7 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
           <div data-sentinel-drag="1" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;cursor:grab;touch-action:none;padding-bottom:2px">
-            <div style="min-width:0"><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL DEMO · ${esc(d.strategy||'—')}</div>
+            <div style="min-width:0"><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL ${esc(brokerMode||'—')} · ${esc(d.strategy||'—')}</div>
             <div style="font-size:18px;font-weight:900;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.asset||'—')}</div></div>
             <div style="text-align:right;flex:0 0 auto"><div style="font-size:18px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div></div>
           </div>
@@ -820,11 +822,19 @@ export class LocalPlaywrightDriver{
                   <option value="15000" ${intervalMs===15000?'selected':''}>15 segundos</option>
                 </select>
               </label>
-              <div style="display:flex;align-items:flex-end;gap:4px">
-                <button data-sentinel-action="start" style="flex:1;height:28px;border:0;border-radius:7px;background:#2fbf8f;color:#07140f;font-weight:900;cursor:pointer" ${runtimeState==='running'?'disabled':''}>▶</button>
-                <button data-sentinel-action="pause" style="flex:1;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer" ${runtimeState!=='running'?'disabled':''}>Ⅱ</button>
-                <button data-sentinel-action="stop" style="flex:1;height:28px;border:1px solid rgba(255,143,154,.24);border-radius:7px;background:rgba(255,143,154,.10);color:#ffadb5;font-weight:900;cursor:pointer">■</button>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:9px;color:#89a0ae">VALOR DEMO</span>
+                <div style="display:flex;gap:4px;align-items:center">
+                  <button data-sentinel-action="stake-down" title="Diminuir valor" style="width:27px;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer">−</button>
+                  <div style="flex:1;text-align:center;height:28px;line-height:28px;border:1px solid rgba(255,255,255,.12);border-radius:7px;background:#111d26;font-weight:900">${n(fixedStake,2)}</div>
+                  <button data-sentinel-action="stake-up" title="Aumentar valor" style="width:27px;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer">+</button>
+                </div>
               </div>
+            </div>
+            <div style="display:flex;gap:5px;margin-top:7px">
+              <button data-sentinel-action="start" style="flex:1;height:30px;border:0;border-radius:7px;background:#2fbf8f;color:#07140f;font-weight:900;cursor:pointer" ${runtimeState==='running'?'disabled':''}>▶ INICIAR</button>
+              <button data-sentinel-action="pause" style="flex:1;height:30px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer" ${runtimeState!=='running'?'disabled':''}>Ⅱ PAUSAR</button>
+              <button data-sentinel-action="stop" style="flex:1;height:30px;border:1px solid rgba(255,143,154,.24);border-radius:7px;background:rgba(255,143,154,.10);color:#ffadb5;font-weight:900;cursor:pointer">■ PARAR</button>
             </div>
             <div style="display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:10px"><span><b>Bot:</b> ${esc(runtimeState.toUpperCase())}</span><span><b>Próxima:</b> ${esc(d.nextEval||'—')}</span></div>
             <div style="margin-top:5px"><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
