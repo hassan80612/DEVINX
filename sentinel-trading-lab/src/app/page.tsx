@@ -118,7 +118,84 @@ function Dashboard({s,act,busy}:{s:Status,act:any,busy:boolean}){const r=s.lastR
 
 function BotControl({s,act,busy}:{s:Status,act:any,busy:boolean}){return <div className="grid"><section className="card span8"><h3>Controle de execução</h3><p className="muted">O intervalo define quando analisar. Uma ordem só é criada quando agenda, sinal e risco aprovam juntos.</p><div className="actions bigactions"><button className="primary" disabled={busy||s.state==='running'||s.killSwitch||s.masterFrozen||!!s.startBlockedReason} onClick={()=>act('control/start')}>▶ Iniciar bot</button><button className="secondary" disabled={busy||s.state!=='running'} onClick={()=>act('control/pause')}>Ⅱ Pausar</button><button className="secondary" disabled={busy||s.state==='stopped'} onClick={()=>act('control/stop')}>■ Parar</button></div>{s.startBlockedReason&&<p className="formerror">{s.startBlockedReason}</p>}<div className="statusline"><Pill tone={s.state==='running'?'good':'neutral'}>{s.state}</Pill><Pill>{s.mode}</Pill><Pill>{s.settings.asset}</Pill><Pill>{s.settings.strategy}</Pill></div></section><section className="card span4 dangercard"><h3>Emergência</h3><p>Interrompe a runtime e impede reinício até a Master liberar.</p><button className="kill wide" onClick={()=>window.confirm('Confirmar KILL SWITCH?')&&act('control/kill')}>KILL SWITCH</button></section></div>}
 
-function Market({s}:{s:Status}){const a=s.lastResult?.analysis||s.recentAnalyses?.[0]||{};const m=a.metrics||{};const fib=m.fib?.nearest;const live=s.liveBroker||{};return <div className="grid"><section className="card span8"><div className="eyebrow">ANÁLISE ATUAL · {s.analysisSource||'SIMULATED'} · {live.uiSymbol||s.settings.asset||'—'}</div><div className={`megaSignal ${String(a.side||'WAIT').toLowerCase()}`}>{a.side||'WAIT'} <span>{a.confidence||0}%</span></div><div className="confidence"><i style={{width:`${a.confidence||0}%`}}/></div><div className="reasonlist large">{(a.reasons||['Aguardando análise']).map((x:string,i:number)=><div key={i}>• {x}</div>)}</div></section><section className="card span4"><h3>Confluência técnica</h3><div className="stack"><Row k="Estrutura" v={m.structure?.label||'—'}/><Row k="Score BUY" v={String(Math.round(m.buyScore||0))}/><Row k="Score SELL" v={String(Math.round(m.sellScore||0))}/><Row k="EMA 9 / 21" v={`${fmt(m.fast)} / ${fmt(m.slow)}`}/><Row k="RSI 14" v={fmt(m.rsi,1)}/><Row k="MACD hist." v={fmt(m.macd?.histogram,5)}/><Row k="Estocástico" v={fmt(m.stoch,1)}/><Row k="Suporte" v={fmt(m.sr?.support)}/><Row k="Resistência" v={fmt(m.sr?.resistance)}/><Row k="Fibonacci próximo" v={fib?`${String(fib.name).replace('l','')} · ${fmt(fib.price)}`:'—'}/><Row k="Padrões de vela" v={(m.patterns||[]).map((x:any)=>x.label).join(', ')||'—'}/><Row k="Candles lidos" v={String(m.sourceCandles||0)}/></div></section></div>}
+function Market({s}:{s:Status}){
+  const a=s.lastResult?.analysis||s.recentAnalyses?.[0]||{};
+  const m=a.metrics||{};
+  const fib=m.fib?.nearest;
+  const live=s.liveBroker||{};
+  const plan=s.lastResult?.plan||{};
+  const side=String(a.side||'WAIT').toUpperCase();
+  const signal=side==='BUY'?'CALL / COMPRA':side==='SELL'?'PUT / VENDA':'WAIT';
+  const next=s.nextEvalMs?new Date(s.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+  const orderExpiry=plan.expiresAt?new Date(plan.expiresAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+  const trend=m.structure?.bias==='bullish'?'ALTA':m.structure?.bias==='bearish'?'BAIXA':'LATERAL';
+  const macdState=m.macd?.histogram>0?'POSITIVO':m.macd?.histogram<0?'NEGATIVO':'NEUTRO';
+  const rsiState=m.rsi==null?'—':m.rsi>=70?'SOBRECOMPRADO':m.rsi<=30?'SOBREVENDIDO':m.rsi>=52?'FORÇA COMPRADORA':m.rsi<=48?'FORÇA VENDEDORA':'NEUTRO';
+  const bbState=m.bb&&m.last!=null?(m.last>=m.bb.upper?'BANDA SUPERIOR':m.last<=m.bb.lower?'BANDA INFERIOR':m.last>m.bb.mid?'ACIMA DA MÉDIA':'ABAIXO DA MÉDIA'):'—';
+  return <div className="grid">
+    <section className="card span12 signalCockpit">
+      <div className="split cockpitTop">
+        <div>
+          <div className="eyebrow">COCKPIT TÉCNICO · {s.analysisSource||'OFFLINE'}</div>
+          <h3>{live.uiSymbol||s.settings.asset||'—'}</h3>
+          <p className="muted">Mesmo ativo da tela da corretora. Sinal experimental para validação em DEMO.</p>
+        </div>
+        <div className={'signalBadge '+side.toLowerCase()}>
+          <span>{signal}</span>
+          <b>{Math.round(Number(a.confidence||0))}%</b>
+        </div>
+      </div>
+      <div className="cockpitPlan">
+        <div><small>Estratégia</small><b>{String(s.settings?.strategy||'—').replaceAll('_',' ')}</b></div>
+        <div><small>Entrada</small><b>{plan.entry||'Aguardar confirmação'}</b></div>
+        <div><small>Saída / expiração</small><b>{plan.exit||'Sem entrada'}</b></div>
+        <div><small>Expira às</small><b>{orderExpiry}</b></div>
+        <div><small>Próxima análise</small><b>{next}</b></div>
+        <div><small>Estado</small><b>{String(s.state||'—').toUpperCase()}</b></div>
+      </div>
+      <div className="confidence"><i style={{width:String(a.confidence||0)+'%'}}/></div>
+      <div className="reasonlist large">{(a.reasons||s.lastResult?.reasons||['Aguardando análise']).slice(0,6).map((x:string,i:number)=><div key={i}>• {x}</div>)}</div>
+    </section>
+
+    <section className="card span8">
+      <div className="split"><div><div className="eyebrow">INDICADORES</div><h3>Leitura técnica ao vivo</h3></div><Pill tone={side==='WAIT'?'warn':'good'}>{signal}</Pill></div>
+      <div className="indicatorGrid">
+        <div className="indicatorBox"><small>Estrutura</small><b>{m.structure?.label||'—'}</b><span>{trend}</span></div>
+        <div className="indicatorBox"><small>EMA 9</small><b>{fmt(m.fast)}</b><span>{m.fast!=null&&m.slow!=null?(m.fast>m.slow?'ACIMA DA 21':'ABAIXO DA 21'):'—'}</span></div>
+        <div className="indicatorBox"><small>EMA 21</small><b>{fmt(m.slow)}</b><span>CURTA</span></div>
+        <div className="indicatorBox"><small>EMA 50</small><b>{fmt(m.ema50)}</b><span>{m.last!=null&&m.ema50!=null?(m.last>m.ema50?'PREÇO ACIMA':'PREÇO ABAIXO'):'—'}</span></div>
+        <div className="indicatorBox"><small>EMA 200</small><b>{fmt(m.ema200)}</b><span>LONGA</span></div>
+        <div className="indicatorBox"><small>RSI 14</small><b>{fmt(m.rsi,1)}</b><span>{rsiState}</span></div>
+        <div className="indicatorBox"><small>MACD hist.</small><b>{fmt(m.macd?.histogram,5)}</b><span>{macdState}</span></div>
+        <div className="indicatorBox"><small>Estocástico</small><b>{fmt(m.stoch,1)}</b><span>{m.stoch==null?'—':m.stoch>80?'SOBRECOMPRADO':m.stoch<20?'SOBREVENDIDO':'NEUTRO'}</span></div>
+        <div className="indicatorBox"><small>Bollinger</small><b>{bbState}</b><span>{m.bb?fmt(m.bb.lower)+' — '+fmt(m.bb.upper):'—'}</span></div>
+        <div className="indicatorBox"><small>ATR 14</small><b>{fmt(m.atr,5)}</b><span>VOLATILIDADE</span></div>
+        <div className="indicatorBox"><small>Suporte</small><b>{fmt(m.sr?.support)}</b><span>NÍVEL</span></div>
+        <div className="indicatorBox"><small>Resistência</small><b>{fmt(m.sr?.resistance)}</b><span>NÍVEL</span></div>
+        <div className="indicatorBox"><small>Fibonacci</small><b>{fib?String(fib.name).replace('l',''):'—'}</b><span>{fib?fmt(fib.price):'—'}</span></div>
+        <div className="indicatorBox"><small>Momentum</small><b>{fmt(m.momentum,3)}</b><span>{m.momentum>0?'POSITIVO':m.momentum<0?'NEGATIVO':'NEUTRO'}</span></div>
+        <div className="indicatorBox"><small>Score BUY</small><b>{String(Math.round(m.buyScore||0))}</b><span>PONTOS</span></div>
+        <div className="indicatorBox"><small>Score SELL</small><b>{String(Math.round(m.sellScore||0))}</b><span>PONTOS</span></div>
+      </div>
+    </section>
+
+    <section className="card span4">
+      <h3>Confirmações</h3>
+      <div className="stack">
+        <Row k="Ativo na tela" v={live.uiSymbol||'—'}/>
+        <Row k="Ativo analisado" v={live.symbol||s.settings.asset||'—'}/>
+        <Row k="Candles" v={String(m.sourceCandles||live.candles?.length||0)}/>
+        <Row k="Feed atual" v={live.candleFresh?'SIM':'NÃO'}/>
+        <Row k="Timeframe superior" v={m.higherTF?.structure?.label||m.higherTF?.structure?.bias||'—'}/>
+        <Row k="Padrões de vela" v={(m.patterns||[]).map((x:any)=>x.label).join(', ')||'—'}/>
+        <Row k="Breakout/reteste" v={m.retest?.side||'WAIT'}/>
+        <Row k="Confiança mínima" v={pct(s.settings?.risk?.minConfidence)}/>
+        <Row k="Confiança atual" v={pct(a.confidence)}/>
+      </div>
+      <div className="demoDisclaimer">Nenhum indicador elimina risco. Use o histórico DEMO para medir taxa de acerto por estratégia antes de confiar no sistema.</div>
+    </section>
+  </div>
+}
 
 function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
   const rows=[
