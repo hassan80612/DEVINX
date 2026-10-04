@@ -50,6 +50,11 @@ function json(req,res,statusCode,data){res.writeHead(statusCode,{'content-type':
 async function body(req){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>65536)throw new Error('body_too_large')}return raw?JSON.parse(raw):{}}
 function authorized(req){if(!TOKEN)return true;return(req.headers.authorization||'')===`Bearer ${TOKEN}`}
 function providerFromPath(path){const m=path.match(/^\/brokers\/(iq_option|exnova)(?:\/(.+))?$/);return m?{name:m[1],action:m[2]||''}:null}
+const ACCESS_LEASE_MS=90000;
+function accessLeaseValid(){
+  const last=Number(remoteRelay.info.lastContactAt||0);
+  return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&last>0&&(Date.now()-last)<=ACCESS_LEASE_MS;
+}
 function requiresAccess(path){
   if(path==='/status'||path==='/control/stop'||path==='/control/kill')return false;
   return path==='/control/start'||path==='/mode'||path==='/settings'||path.startsWith('/brokers/');
@@ -58,6 +63,7 @@ function ensureAccess(path){
   if(!requiresAccess(path))return;
   if(!remoteRelay.info.paired)throw new Error('agent_not_paired');
   if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
+  if(!accessLeaseValid())throw new Error('agent_license_check_stale');
 }
 async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){const info=await driver.call(p.name,'login',{body:{accountMode:'auto',userInitiated:payload.userInitiated===true}});loginStates[p.name]=info;return status()}if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
@@ -83,7 +89,17 @@ async function remoteLoop(){
       try{const method=cmd.type==='settings'?'PATCH':'POST';const data=await act('/'+cmd.type,method,cmd.payload||{});await saveState();await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null})}
       catch(e){await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)})}
     }
-  }catch(e){remoteRelay.info.lastError=String(e?.message||e)}finally{remoteBusy=false}
+  }catch(e){
+    remoteRelay.info.lastError=String(e?.message||e);
+    const last=Number(remoteRelay.info.lastContactAt||0);
+    if(last>0&&Date.now()-last>ACCESS_LEASE_MS){
+      remoteRelay.info.accessActive=false;
+      remoteRelay.info.accessReason='license_check_unavailable';
+      if(runtime.stateName==='running')await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
+      for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
+      activeProvider=null;syncRuntimeMarket();
+    }
+  }finally{remoteBusy=false}
 }
 setInterval(remoteLoop,1500).unref();setTimeout(remoteLoop,350).unref();
 
