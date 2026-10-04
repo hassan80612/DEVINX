@@ -91,7 +91,7 @@ async function remoteLoop(){
   }catch(e){
     remoteRelay.info.lastError=String(e?.message||e);
     const last=Number(remoteRelay.info.lastContactAt||0);
-    if(last>0&&Date.now()-last>ACCESS_LEASE_MS){
+    if(last>0&&Date.now()-last>ACCESS_LEASE_GRACE_MS){
       remoteRelay.info.accessActive=false;
       remoteRelay.info.accessReason='license_check_unavailable';
       if(runtime.stateName==='running')await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
