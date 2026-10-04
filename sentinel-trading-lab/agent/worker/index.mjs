@@ -24,36 +24,6 @@ const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({base
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
-const overlayScoreHistory=new Map();
-const clamp=(v,a=0,b=100)=>Math.max(a,Math.min(b,Number(v)||0));
-function buildOverlayForecast({asset,strategy,analysis,minConfidence,lastEvalMs}={}){
-  const key=`${asset||'—'}|${strategy||'—'}`,now=Number(lastEvalMs||Date.now());
-  const m=analysis?.metrics||{},buy=clamp(m.buyScore),sell=clamp(m.sellScore),confidence=clamp(analysis?.confidence),min=clamp(minConfidence||74);
-  let hist=overlayScoreHistory.get(key)||[];
-  if(!hist.length||hist.at(-1)?.ts!==now)hist.push({ts:now,buy,sell,confidence});
-  hist=hist.filter(x=>now-x.ts<=45000).slice(-60);overlayScoreHistory.set(key,hist);
-  const sample=hist.find(x=>now-x.ts>=6000)||hist[0];
-  let projectedBuy=buy,projectedSell=sell;
-  if(sample&&sample!==hist.at(-1)){
-    const dt=Math.max(1,(now-sample.ts)/1000);
-    const buySlope=Math.max(-.8,Math.min(.8,(buy-sample.buy)/dt));
-    const sellSlope=Math.max(-.8,Math.min(.8,(sell-sample.sell)/dt));
-    projectedBuy=clamp(buy+buySlope*30);projectedSell=clamp(sell+sellSlope*30);
-  }
-  const raw=Math.max(projectedBuy,projectedSell),conflict=Math.min(projectedBuy,projectedSell);
-  const projectedConfidence=clamp(Math.round(raw-conflict*.35));
-  const diff=projectedBuy-projectedSell;
-  let projectedSide='WAIT';
-  if(projectedConfidence>=min&&Math.abs(diff)>=10)projectedSide=diff>0?'BUY':'SELL';
-  else if(Math.abs(diff)>=6)projectedSide=diff>0?'BUY_BIAS':'SELL_BIAS';
-  const currentDiff=buy-sell;
-  const currentGap=Math.max(0,min-confidence);
-  return{
-    minConfidence:min,buy,sell,confidence,currentGap,currentDiff,
-    projectedBuy:Math.round(projectedBuy),projectedSell:Math.round(projectedSell),projectedConfidence,projectedSide,
-    samples:hist.length,windowSeconds:hist.length>1?Math.round((now-hist[0].ts)/1000):0
-  }
-}
 function chooseLive(){const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];for(const k of order){const b=brokers[k],m=driver.liveStatus?.(k);if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){return{k,m}}}return null}
 function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
@@ -103,7 +73,6 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
     const currentAsset=view.liveBroker?.uiSymbol||view.settings?.asset||'—';
-    const forecast=buildOverlayForecast({asset:currentAsset,strategy:view.settings?.strategy,analysis:a,minConfidence:view.settings?.risk?.minConfidence,lastEvalMs:view.lastEvalMs});
     await driver.updateOverlay?.(activeProvider,{
       asset:currentAsset,
       strategy:view.settings?.strategy||'—',
@@ -114,7 +83,6 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       reasons:a.reasons||view.lastResult?.reasons||[],
       metrics:m,
       plan:view.lastResult?.plan||{},
-      forecast,
       nextEval:next,
       durationMs:view.settings?.orderDurationMs||60000,
       intervalMs:view.settings?.schedule?.intervalMs||1000,
