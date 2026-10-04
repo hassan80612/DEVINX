@@ -1,0 +1,41 @@
+name: Sentinel Windows Agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - '.github/workflows/sentinel-agent-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Build Windows Agent
+        shell: bash
+        run: |
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          file public/downloads/Sentinel-Agent-Windows.exe
+          sha256sum public/downloads/Sentinel-Agent-Windows.exe
+      - name: Commit Agent executable
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          if git diff --cached --quiet; then
+            echo 'Agent executable already current.'
+            exit 0
+          fi
+          git commit -m 'build(sentinel): refresh Windows Agent V8.6'
+          git push
