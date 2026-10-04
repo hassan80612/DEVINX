@@ -487,6 +487,55 @@ export class LocalPlaywrightDriver{
     const marketStatus=candleFresh?'open':(st.marketStatus||'stale');const marketReason=candleFresh?`${st.symbol||'Ativo'} atualizado`:(st.marketReason||'Sem candle recente');
     return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi}
   }
+  async updateOverlay(provider,data={}){
+    const s=await this.session(provider);if(!s?.page||s.background)return false;
+    try{
+      const payload=JSON.parse(JSON.stringify(data||{}));
+      await s.page.evaluate((d)=>{
+        const id='sentinel-trading-overlay';
+        let el=document.getElementById(id);
+        if(!el){
+          el=document.createElement('div');el.id=id;
+          Object.assign(el.style,{
+            position:'fixed',right:'14px',top:'14px',zIndex:'2147483647',width:'320px',maxWidth:'calc(100vw - 28px)',
+            background:'rgba(13,22,30,.94)',color:'#f4f7f9',border:'1px solid rgba(93,224,186,.42)',borderRadius:'14px',
+            boxShadow:'0 18px 50px rgba(0,0,0,.38)',backdropFilter:'blur(12px)',fontFamily:'Inter,Segoe UI,Arial,sans-serif',
+            fontSize:'12px',lineHeight:'1.35',padding:'12px',pointerEvents:'none'
+          });
+          document.documentElement.appendChild(el);
+        }
+        const esc=(v)=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        const n=(v,d=2)=>Number.isFinite(Number(v))?Number(v).toFixed(d):'—';
+        const m=d.metrics||{},plan=d.plan||{},side=String(d.side||'WAIT').toUpperCase();
+        const signal=side==='BUY'?'CALL / COMPRA':side==='SELL'?'PUT / VENDA':'WAIT';
+        const tone=side==='BUY'?'#66e0b8':side==='SELL'?'#ff8f9a':'#f2ca68';
+        const reasons=(d.reasons||[]).slice(0,3).map(x=>'<div style="margin-top:3px;color:#aebec8">• '+esc(x)+'</div>').join('');
+        el.innerHTML=`
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+            <div><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL DEMO · ${esc(d.strategy||'—')}</div>
+            <div style="font-size:18px;font-weight:900;margin-top:2px">${esc(d.asset||'—')}</div></div>
+            <div style="text-align:right"><div style="font-size:20px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">${n(d.confidence,0)}%</div></div>
+          </div>
+          <div style="margin-top:9px;padding:8px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035)">
+            <div><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
+            <div><b>Saída:</b> ${esc(plan.exit||'Sem entrada')}</div>
+            <div><b>Próxima análise:</b> ${esc(d.nextEval||'—')}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:9px;color:#d8e3e9">
+            <div>EMA 9: <b>${n(m.fast,5)}</b></div><div>EMA 21: <b>${n(m.slow,5)}</b></div>
+            <div>EMA 50: <b>${n(m.ema50,5)}</b></div><div>EMA 200: <b>${n(m.ema200,5)}</b></div>
+            <div>RSI 14: <b>${n(m.rsi,1)}</b></div><div>MACD H: <b>${n(m.macd?.histogram,5)}</b></div>
+            <div>Estoc.: <b>${n(m.stoch,1)}</b></div><div>ATR: <b>${n(m.atr,5)}</b></div>
+            <div>Suporte: <b>${n(m.sr?.support,5)}</b></div><div>Resist.: <b>${n(m.sr?.resistance,5)}</b></div>
+          </div>
+          <div style="margin-top:8px"><b>Estrutura:</b> ${esc(m.structure?.label||'—')} · <b>BUY</b> ${n(m.buyScore,0)} / <b>SELL</b> ${n(m.sellScore,0)}</div>
+          ${reasons}
+          <div style="margin-top:8px;font-size:10px;color:#78909f">Sinal experimental para teste DEMO. Não representa garantia de resultado.</div>
+        `;
+      },payload);
+      return true
+    }catch{return false}
+  }
   async call(provider,action,{method='POST',body}={}){
     const cfg=this.config(provider);
     if(action==='login'){if(body?.userInitiated!==true)throw new Error('broker_open_requires_manual_action');await this.launchNormal(provider,{manual:true});return{opened:true,label:cfg.label,...await this.sessionInfo(provider)}}
