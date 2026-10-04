@@ -575,3 +575,45 @@ html[data-theme='dark'] .mobileMorePanel button{background:#1c2a35!important;bor
     box-shadow:0 8px 24px rgba(0,0,0,.22)
   }
 }
+
+
+/* DEMO technical cockpit */
+.signalCockpit{position:relative;overflow:hidden}
+.signalCockpit:after{content:"";position:absolute;right:-80px;top:-110px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(59,172,143,.10),transparent 68%);pointer-events:none}
+.cockpitTop{position:relative;z-index:1}
+.signalBadge{min-width:170px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel-2);text-align:right}
+.signalBadge span{display:block;font-size:15px;font-weight:900;letter-spacing:.02em}
+.signalBadge b{display:block;margin-top:2px;font-size:27px;line-height:1}
+.signalBadge.buy{border-color:#9bd3bf;background:#eaf8f3;color:#12684f}
+.signalBadge.sell{border-color:#efbcc2;background:#fff0f2;color:#a83a46}
+.signalBadge.wait{border-color:#e6d19a;background:#fff8e8;color:#896812}
+.cockpitPlan{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0 12px}
+.cockpitPlan>div{padding:10px 11px;border:1px solid var(--line);border-radius:11px;background:var(--panel-2)}
+.cockpitPlan small{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:850}
+.cockpitPlan b{display:block;margin-top:4px;font-size:12px;line-height:1.35;color:var(--text)}
+.indicatorGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.indicatorBox{display:grid;gap:3px;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--panel-2);min-height:86px}
+.indicatorBox small{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:850}
+.indicatorBox b{font-size:14px;color:var(--text);overflow-wrap:anywhere}
+.indicatorBox span{font-size:9px;font-weight:800;color:var(--muted-2);letter-spacing:.04em}
+.demoDisclaimer{margin-top:12px;padding:10px 11px;border:1px solid #e6d19a;border-radius:10px;background:#fff8e8;color:#786019;font-size:11px;line-height:1.45}
+
+html[data-theme='dark'] .signalBadge{background:#15212b}
+html[data-theme='dark'] .signalBadge.buy{background:#163329;border-color:#3e806b;color:#a2ead5}
+html[data-theme='dark'] .signalBadge.sell{background:#351b21;border-color:#744049;color:#ffabb2}
+html[data-theme='dark'] .signalBadge.wait{background:#302817;border-color:#715f2b;color:#f2d98d}
+html[data-theme='dark'] .cockpitPlan>div,
+html[data-theme='dark'] .indicatorBox{background:#121c25;border-color:#2b3e4b}
+html[data-theme='dark'] .demoDisclaimer{background:#302817;border-color:#715f2b;color:#e5cf91}
+
+@media(max-width:900px){
+  .cockpitTop{align-items:stretch}
+  .signalBadge{width:100%;min-width:0;text-align:left}
+  .cockpitPlan{grid-template-columns:1fr 1fr}
+  .indicatorGrid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:520px){
+  .cockpitPlan{grid-template-columns:1fr}
+  .indicatorGrid{grid-template-columns:1fr 1fr}
+  .indicatorBox{min-height:78px}
+}
