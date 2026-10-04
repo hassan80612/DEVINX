@@ -126,7 +126,20 @@ function protocolScan(data,st,direction='in'){
   const body=data?.msg?.body||data?.msg?.params?.routingFilters||data?.body||data?.params?.routingFilters||{};
   const activeRaw=body?.active_id??body?.activeId??data?.msg?.active_id??data?.active_id;
   const sizeRaw=body?.size??body?.duration??data?.msg?.size??data?.msg?.duration;
-  if(/out/.test(direction)&&/candle/i.test(inner||outer)&&activeRaw!=null){const aid=n(activeRaw);if(aid!=null)st.activeId=aid;const sz=n(sizeRaw);if(sz!=null&&sz>0&&sz<=86400)st.candleSize=sz}
+  if(/page-out/.test(direction)&&activeRaw!=null){
+    const aid=n(activeRaw);
+    if(aid!=null){
+      st.activeId=aid;
+      const mapped=[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null;
+      if(mapped){
+        const found=[...st.assets].find(x=>pairKey(x)===mapped)||mapped.replace(/([A-Z]{3})([A-Z]{3})(OTC)?/,'$1/$2$3');
+        if(found&&pairKey(found)!==pairKey(st.uiSymbol||'')){
+          st.uiSymbol=found;st.symbol=found;st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${found}`;st.lastRequestAt=null;st.autoSelected=false;
+        }
+      }
+    }
+    const sz=n(sizeRaw);if(sz!=null&&sz>0&&sz<=86400)st.candleSize=sz
+  }
 
   if(outer==='profile'&&data.msg&&typeof data.msg==='object'){
     const m=data.msg;const bid=n(m.balance_id??m.balanceId);if(bid!=null)st.balanceId=bid;
@@ -187,7 +200,8 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
-  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null}
+  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null}
+  setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
   state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,candles:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null});return this.live.get(provider)}
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
@@ -244,7 +258,7 @@ export class LocalPlaywrightDriver{
       context.once?.('close',markClosed);
       let pages=context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await context.newPage();
       if(!String(s.page.url()||'').includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
-      await this.installBridge(s.page);this.attachNetwork(provider,s.page);
+      await this.installBridge(s.page,provider);this.attachNetwork(provider,s.page);
       try{await s.page.bringToFront()}catch{}
       this.lastManualOpenAt.set(provider,Date.now());
       const info=await this.sessionInfo(provider).catch(()=>null);
@@ -286,7 +300,7 @@ export class LocalPlaywrightDriver{
       context.once?.('close',markClosed);
       let pages=context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await context.newPage();
       if(!String(s.page.url()||'').includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
-      await this.installBridge(s.page);this.attachNetwork(provider,s.page);
+      await this.installBridge(s.page,provider);this.attachNetwork(provider,s.page);
       this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.tradeUrl,title:cfg.label,cookieCount:0,phase:'background-session',background:true,updatedAt:nowIso()});
       const info=await this.sessionInfo(provider);
       if(!info.sessionPresent){
@@ -305,7 +319,11 @@ export class LocalPlaywrightDriver{
     if(manual)return this.launchNormal(provider,{manual:true});
     return this.launchBackground(provider);
   }
-  async installBridge(page){
+  async installBridge(page,provider=null){
+    if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
+      page.__sentinelOverlayControlExposed=true;
+      try{await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}))}catch{}
+    }
     if(page.__sentinelBridgeInstalled)return;
     page.__sentinelBridgeInstalled=true;
     const install=()=>{
@@ -318,19 +336,21 @@ export class LocalPlaywrightDriver{
         }
         if(!window.__sentinelAssetClickReady){
           window.__sentinelAssetClickReady=true;
-          const pairFrom=(text)=>{
+          const pairsFrom=(text)=>{
             const raw=String(text||'').toUpperCase();
-            const m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);
-            if(!m)return null;
-            return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;
+            const ms=[...raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g)];
+            return [...new Set(ms.map(m=>`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`))];
           };
           document.addEventListener('click',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              const nodes=[];
               let node=ev.target;
-              for(let i=0;i<7&&node;i++,node=node.parentElement){
-                const pair=pairFrom(node.textContent||'');
-                if(pair){window.__sentinelClickedSymbol=pair;window.__sentinelClickedSymbolAt=Date.now();break}
+              for(let i=0;i<9&&node;i++,node=node.parentElement)nodes.push(node);
+              if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const el of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(el))nodes.push(el);
+              for(const el of nodes){
+                const ps=pairsFrom(el?.textContent||'');
+                if(ps.length===1){window.__sentinelClickedSymbol=ps[0];window.__sentinelClickedSymbolAt=Date.now();break}
               }
             }catch{}
           },true);
@@ -488,11 +508,14 @@ export class LocalPlaywrightDriver{
         const buy=ranked('buy'),sell=ranked('sell');
         const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
         const amount=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
+        const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
+        const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|+/.test(desc(el)))||null;
+        const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|−|-/.test(desc(el)))||null;
         return{
-          buy:!!buy,sell:!!sell,amount:!!amount,
+          buy:!!buy,sell:!!sell,amount:!!amount||!!(plus&&minus),amountStepper:!!(plus&&minus),
           buyText:buy?desc(buy).slice(0,180):'',
           sellText:sell?desc(sell).slice(0,180):'',
-          amountText:amount?desc(amount).slice(0,180):'',
+          amountText:amount?desc(amount).slice(0,180):((plus&&minus)?'stepper +/-':''),
           buttonCount:all.length,amountCandidateCount:amountEls.length
         };
       });
@@ -523,21 +546,46 @@ export class LocalPlaywrightDriver{
       const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
       let input=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
       if(input&&input.tagName!=='INPUT'&&input.querySelector)input=input.querySelector('input,[role=spinbutton],[contenteditable=true]')||input;
-      if(!target||!input)return{ok:false,error:'trade_controls_missing',target:!!target,amount:!!input};
-      try{
-        input.focus?.();
-        if(input.tagName==='INPUT'){
-          const proto=Object.getPrototypeOf(input),setter=Object.getOwnPropertyDescriptor(proto,'value')?.set||Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
-          if(setter)setter.call(input,String(amount));else input.value=String(amount);
-        }else if(input.getAttribute?.('contenteditable')==='true')input.textContent=String(amount);
-        else if('value' in input)input.value=String(amount);
-        input.dispatchEvent(new Event('input',{bubbles:true}));
-        input.dispatchEvent(new Event('change',{bubbles:true}));
-        input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));
-        input.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true}));
-      }catch(e){return{ok:false,error:'amount_set_failed',detail:String(e?.message||e)}}
+      const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
+      const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|+/.test(desc(el)))||null;
+      const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|−|-/.test(desc(el)))||null;
+      if(!target||(!input&&!(plus&&minus)))return{ok:false,error:'trade_controls_missing',target:!!target,amount:!!input,stepper:!!(plus&&minus)};
+      let amountControl='';
+      if(input){
+        try{
+          input.focus?.();
+          if(input.tagName==='INPUT'){
+            const proto=Object.getPrototypeOf(input),setter=Object.getOwnPropertyDescriptor(proto,'value')?.set||Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
+            if(setter)setter.call(input,String(amount));else input.value=String(amount);
+          }else if(input.getAttribute?.('contenteditable')==='true')input.textContent=String(amount);
+          else if('value' in input)input.value=String(amount);
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+          input.dispatchEvent(new Event('change',{bubbles:true}));
+          input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));
+          input.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true}));
+          amountControl=desc(input).slice(0,180);
+        }catch(e){return{ok:false,error:'amount_set_failed',detail:String(e?.message||e)}}
+      }else{
+        const parseAmount=()=>{
+          const candidates=[...document.querySelectorAll('[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i],[role=spinbutton]')].filter(visible);
+          for(const el of candidates){const m=String(el.textContent||el.getAttribute?.('aria-valuenow')||'').replace(/\s/g,'').match(/\d+(?:[.,]\d+)?/);if(m){const v=Number(m[0].replace(',','.'));if(Number.isFinite(v)&&v>=0)return v}}
+          return null;
+        };
+        let current=parseAmount();
+        if(current==null)return{ok:false,error:'amount_stepper_value_not_found'};
+        let guard=0;
+        while(Math.abs(current-amount)>0.001&&guard++<60){
+          const before=current;
+          (current<amount?plus:minus).click();
+          const next=parseAmount();
+          if(next==null||Math.abs(next-before)<0.0001)break;
+          current=next;
+        }
+        if(Math.abs(current-amount)>0.001)return{ok:false,error:'amount_stepper_target_not_reached',current,target:amount};
+        amountControl='stepper +/-';
+      }
       target.click();
-      return{ok:true,button:desc(target).slice(0,180),amountControl:desc(input).slice(0,180)}
+      return{ok:true,button:desc(target).slice(0,180),amountControl}
     },{amount,side});
     if(!result?.ok)throw new Error(result?.error||'demo_order_click_failed');
     st.lastRequestAt=Date.now();
@@ -562,7 +610,7 @@ export class LocalPlaywrightDriver{
   async domSnapshot(provider,{allowAttach=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();text=(await page.locator('body').innerText({timeout:2500})).slice(0,100000)}catch{}
     let accountText='',instrumentText='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const els=[...document.querySelectorAll('[aria-selected="true"],[aria-checked="true"],[class*="active"],[class*="selected"],[data-test*="account"],[data-test*="balance"],[data-test*="asset"],[data-test*="instrument"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const inst=els.map(el=>String(el.textContent||'').trim()).filter(t=>/[A-Z]{3}\s*[\/-]\s*[A-Z]{3}/i.test(t)).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`};
-    const clickedPairs=clickedSymbol?pairStrings(clickedSymbol):[];const activePairs=clickedPairs.length?clickedPairs:pairStrings(instrumentText);
+    const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const activePairs=clickedPairs.length?clickedPairs:pairStrings(instrumentText);
     if(activePairs.length){
       const nextUi=activePairs[0],changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
@@ -682,6 +730,35 @@ export class LocalPlaywrightDriver{
         const sellScore=Math.max(0,Math.min(100,Number(m.sellScore)||0));
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:3px;color:#aebec8">• '+esc(x)+'</div>').join('');
         const currentScale=Math.max(.65,Math.min(1.15,Number(el.dataset.scale||el.style.zoom||1)||1));
+        const durationMs=Number(d.durationMs||60000);
+        const intervalMs=Number(d.intervalMs||5000);
+        const runtimeState=String(d.state||'stopped').toLowerCase();
+        const strategy=String(d.strategy||'smart_confluence');
+        const fixedStake=Math.max(1,Number(d.fixedStake||1));
+        const brokerMode=String(d.brokerMode||d.mode||'').toUpperCase();
+        if(!el.dataset.controlReady){
+          el.dataset.controlReady='1';
+          const run=async(payload)=>{
+            const msg=el.querySelector('[data-sentinel-control-msg]');
+            if(msg)msg.textContent='Aplicando…';
+            try{
+              const res=await window.__sentinelOverlayAction?.(payload);
+              if(msg)msg.textContent=res?.message||'Aplicado';
+            }catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
+          };
+          el.addEventListener('click',ev=>{
+            const btn=ev.target?.closest?.('[data-sentinel-action]');
+            if(!btn)return;
+            ev.preventDefault();ev.stopPropagation();
+            run({action:btn.getAttribute('data-sentinel-action')});
+          });
+          el.addEventListener('change',ev=>{
+            const field=ev.target?.closest?.('[data-sentinel-setting]');
+            if(!field)return;
+            ev.stopPropagation();
+            run({action:'setting',key:field.getAttribute('data-sentinel-setting'),value:field.value});
+          });
+        }
         if(!el.dataset.sizeControl){
           el.dataset.sizeControl='1';
           el.addEventListener('click',ev=>{
@@ -707,14 +784,62 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
           <div data-sentinel-drag="1" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;cursor:grab;touch-action:none;padding-bottom:2px">
-            <div style="min-width:0"><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL DEMO · ${esc(d.strategy||'—')}</div>
+            <div style="min-width:0"><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL ${esc(brokerMode||'—')} · ${esc(d.strategy||'—')}</div>
             <div style="font-size:18px;font-weight:900;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.asset||'—')}</div></div>
             <div style="text-align:right;flex:0 0 auto"><div style="font-size:18px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div></div>
           </div>
           <div style="margin-top:9px;padding:8px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035)">
-            <div><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <label style="display:flex;flex-direction:column;gap:3px"><span style="font-size:9px;color:#89a0ae">ESTRATÉGIA</span>
+                <select data-sentinel-setting="strategy" style="width:100%;min-width:0;background:#111d26;color:#e9f1f5;border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px;font-size:10px">
+                  <option value="smart_confluence" ${strategy==='smart_confluence'?'selected':''}>Smart Confluence</option>
+                  <option value="price_action" ${strategy==='price_action'?'selected':''}>Price Action</option>
+                  <option value="trendline_breakout" ${strategy==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
+                  <option value="support_resistance" ${strategy==='support_resistance'?'selected':''}>Suporte/Resist.</option>
+                  <option value="fibonacci_retest" ${strategy==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
+                  <option value="trend" ${strategy==='trend'?'selected':''}>Trend Following</option>
+                  <option value="mean_reversion" ${strategy==='mean_reversion'?'selected':''}>Mean Reversion</option>
+                  <option value="breakout" ${strategy==='breakout'?'selected':''}>Breakout</option>
+                </select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:3px"><span style="font-size:9px;color:#89a0ae">TEMPO DA OPERAÇÃO</span>
+                <select data-sentinel-setting="duration" style="width:100%;background:#111d26;color:#e9f1f5;border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px;font-size:10px">
+                  <option value="30000" ${durationMs===30000?'selected':''}>30 segundos</option>
+                  <option value="60000" ${durationMs===60000?'selected':''}>1 minuto</option>
+                  <option value="120000" ${durationMs===120000?'selected':''}>2 minutos</option>
+                  <option value="300000" ${durationMs===300000?'selected':''}>5 minutos</option>
+                  <option value="600000" ${durationMs===600000?'selected':''}>10 minutos</option>
+                  <option value="900000" ${durationMs===900000?'selected':''}>15 minutos</option>
+                </select>
+              </label>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+              <label style="display:flex;flex-direction:column;gap:3px"><span style="font-size:9px;color:#89a0ae">ATUALIZAÇÃO</span>
+                <select data-sentinel-setting="interval" style="width:100%;background:#111d26;color:#e9f1f5;border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px;font-size:10px">
+                  <option value="2000" ${intervalMs===2000?'selected':''}>2 segundos</option>
+                  <option value="5000" ${intervalMs===5000?'selected':''}>5 segundos</option>
+                  <option value="10000" ${intervalMs===10000?'selected':''}>10 segundos</option>
+                  <option value="15000" ${intervalMs===15000?'selected':''}>15 segundos</option>
+                </select>
+              </label>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:9px;color:#89a0ae">VALOR DEMO</span>
+                <div style="display:flex;gap:4px;align-items:center">
+                  <button data-sentinel-action="stake-down" title="Diminuir valor" style="width:27px;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer">−</button>
+                  <div style="flex:1;text-align:center;height:28px;line-height:28px;border:1px solid rgba(255,255,255,.12);border-radius:7px;background:#111d26;font-weight:900">${n(fixedStake,2)}</div>
+                  <button data-sentinel-action="stake-up" title="Aumentar valor" style="width:27px;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer">+</button>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:5px;margin-top:7px">
+              <button data-sentinel-action="start" style="flex:1;height:30px;border:0;border-radius:7px;background:#2fbf8f;color:#07140f;font-weight:900;cursor:pointer" ${runtimeState==='running'?'disabled':''}>▶ INICIAR</button>
+              <button data-sentinel-action="pause" style="flex:1;height:30px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer" ${runtimeState!=='running'?'disabled':''}>Ⅱ PAUSAR</button>
+              <button data-sentinel-action="stop" style="flex:1;height:30px;border:1px solid rgba(255,143,154,.24);border-radius:7px;background:rgba(255,143,154,.10);color:#ffadb5;font-weight:900;cursor:pointer">■ PARAR</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:10px"><span><b>Bot:</b> ${esc(runtimeState.toUpperCase())}</span><span><b>Próxima:</b> ${esc(d.nextEval||'—')}</span></div>
+            <div style="margin-top:5px"><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
             <div><b>Saída:</b> ${esc(plan.exit||'Sem entrada')}</div>
-            <div><b>Próxima análise:</b> ${esc(d.nextEval||'—')}</div>
+            <div data-sentinel-control-msg style="min-height:12px;margin-top:4px;font-size:9px;color:#7f9aa9"></div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:9px;color:#d8e3e9">
             <div>EMA 9: <b>${n(m.fast,5)}</b></div><div>EMA 21: <b>${n(m.slow,5)}</b></div>

@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='9.1.0';
+const VERSION='9.2.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -29,6 +29,35 @@ function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExtern
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
+driver.setOverlayActionHandler?.(async(provider,payload={})=>{
+  const action=String(payload.action||'');
+  if(action==='start'){ensureAccess('/control/start');if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
+  if(action==='pause'){ensureAccess('/control/start');await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
+  if(action==='stop'){await runtime.stop('overlay','manual');return{ok:true,message:'Bot parado'}}
+  if(action==='stake-up'||action==='stake-down'){
+    ensureAccess('/settings');
+    const current=Number(runtime.settings.risk.fixedStake||1),max=Math.max(1,Number(runtime.settings.risk.maxStake||999999));
+    const next=Math.max(1,Math.min(max,current+(action==='stake-up'?1:-1)));
+    runtime.patchSettings({risk:{fixedStake:next}},'overlay');await saveState();return{ok:true,message:`Valor: ${next.toFixed(2)}`}
+  }
+  if(action==='setting'){
+    ensureAccess('/settings');
+    const key=String(payload.key||''),value=payload.value;
+    if(key==='strategy'){
+      const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
+      if(!allowed.includes(String(value)))throw new Error('invalid_strategy');
+      runtime.patchSettings({strategy:String(value)},'overlay');
+    }else if(key==='duration'){
+      const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
+      runtime.patchSettings({orderDurationMs:n},'overlay');
+    }else if(key==='interval'){
+      const n=Number(value);if(![2000,5000,10000,15000].includes(n))throw new Error('invalid_interval');
+      runtime.patchSettings({schedule:{intervalMs:n}},'overlay');
+    }else throw new Error('invalid_overlay_setting');
+    await saveState();return{ok:true,message:'Configuração aplicada'}
+  }
+  throw new Error('invalid_overlay_action')
+});
 const ACCESS_LEASE_GRACE_MS=120000;
 function accessLeaseValid(){return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&remoteRelay.info.lastContactAt!=null&&(Date.now()-Number(remoteRelay.info.lastContactAt))<=ACCESS_LEASE_GRACE_MS}
 async function enforceAccessLease(){
@@ -61,6 +90,10 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       metrics:m,
       plan:view.lastResult?.plan||{},
       nextEval:next,
+      durationMs:view.settings?.orderDurationMs||60000,
+      intervalMs:view.settings?.schedule?.intervalMs||2000,
+      fixedStake:view.settings?.risk?.fixedStake||1,
+      brokerMode:view.liveBroker?.mode||view.mode,
       mode:view.mode,
       state:view.state
     }).catch(()=>{});
