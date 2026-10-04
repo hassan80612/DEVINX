@@ -132,9 +132,9 @@ function protocolScan(data,st,direction='in'){
       st.activeId=aid;
       const mapped=[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null;
       if(mapped){
-        const found=[...st.assets].find(x=>pairKey(x)===mapped)||mapped.replace(/([A-Z]{3})([A-Z]{3})(OTC)?/,'$1/$2$3');
+        const found=[...st.assets].find(x=>pairKey(x)===mapped)||(mapped.endsWith('OTC')?`${mapped.slice(0,3)}/${mapped.slice(3,6)} OTC`:`${mapped.slice(0,3)}/${mapped.slice(3,6)}`);
         if(found&&pairKey(found)!==pairKey(st.uiSymbol||'')){
-          st.uiSymbol=found;st.symbol=found;st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${found}`;st.lastRequestAt=null;st.autoSelected=false;
+          st.uiSymbol=found;st.symbol=found;st.lastUiSignalAt=Date.now();st.uiSymbolSource='protocol';st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${found}`;st.lastRequestAt=null;st.autoSelected=false;
         }
       }
     }
@@ -161,10 +161,15 @@ function protocolScan(data,st,direction='in'){
     const m=(data.msg&&typeof data.msg==='object')?data.msg:data;const id=n(m.balance_id??m.balanceId??m.id);const typ=Number(m.type??m.balance_type??m.balanceType);const matchesKnown=st.balanceId!=null&&id!=null&&id===st.balanceId;const matchesMode=st.mode&&((st.mode==='real'&&typ===1)||(st.mode==='demo'&&typ===4));if(matchesKnown||matchesMode){if(typ===1)st.mode='real';if(typ===4)st.mode='demo';if(st.balanceId==null&&id!=null)st.balanceId=id;const val=n(m.amount??m.balance??m.current_balance??m.value);if(val!=null){st.balance=val;st.balanceSource='protocol:balance-changed'}}
   }
   if(outer==='candles'){
-    const arr=Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];if(arr.length){st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const aid=n(data?.msg?.active_id??data?.msg?.activeId);if(aid!=null)st.activeId=aid;const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now()}}
+    const aid=n(data?.msg?.active_id??data?.msg?.activeId);
+    const matches=aid==null||st.activeId==null||Number(aid)===Number(st.activeId);
+    const arr=Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];
+    if(matches&&arr.length){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now()}}
   }
   if(outer==='candle-generated'){
-    const c=candleOf(data.msg);if(c){st.candles=mergeCandles(st.candles,[c]);st.lastCandleAt=Date.now();st.quote=Number(c.close);st.lastQuoteAt=Date.now();const aid=n(data?.msg?.active_id??data?.msg?.activeId);if(aid!=null)st.activeId=aid;const sz=n(data?.msg?.size);if(sz!=null&&sz>0)st.candleSize=sz}
+    const aid=n(data?.msg?.active_id??data?.msg?.activeId);
+    const matches=aid==null||st.activeId==null||Number(aid)===Number(st.activeId);
+    const candle=candleOf(data.msg);if(matches&&candle){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const sz=n(data?.msg?.size);if(sz!=null&&sz>0)st.candleSize=sz}
   }
 }
 function chooseCandidate(candidates=[],modeHint=null){
@@ -203,7 +208,7 @@ export class LocalPlaywrightDriver{
   constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
-  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,candles:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null});return this.live.get(provider)}
+  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null});return this.live.get(provider)}
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
   async browserPath(){for(const p of findBrowser())if(await exists(p))return p;throw new Error('chrome_or_edge_not_found')}
   async session(provider){if(!this.sessions.has(provider))this.sessions.set(provider,{provider,normal:null,cdp:null,browser:null,context:null,page:null,background:false,debugPort:null,profileDir:resolve(this.dataDir,provider)});return this.sessions.get(provider)}
@@ -368,7 +373,12 @@ export class LocalPlaywrightDriver{
     try{recursiveScan(data,out)}catch{}
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
-    st.assets=out.assets;st.activeMap=out.activeMap;if(out.quote!=null){st.quote=out.quote;st.lastQuoteAt=out.lastQuoteAt||Date.now()}st.symbol=out.symbol||st.symbol;st.candles=mergeCandles(st.candles,out.candles);st.lastCandleAt=out.lastCandleAt||st.lastCandleAt;
+    st.assets=out.assets;st.activeMap=out.activeMap;
+    const rawActive=n(data?.msg?.body?.active_id??data?.msg?.params?.routingFilters?.active_id??data?.msg?.active_id??data?.body?.active_id??data?.active_id);
+    const marketMatches=rawActive==null||st.activeId==null||Number(rawActive)===Number(st.activeId);
+    if(marketMatches&&out.quote!=null){st.quote=out.quote;st.lastQuoteAt=out.lastQuoteAt||Date.now()}
+    if(out.symbol&&(!st.uiSymbol||pairKey(out.symbol)===pairKey(st.uiSymbol)))st.symbol=out.symbol;
+    if(marketMatches){st.candles=mergeCandles(st.candles,out.candles);st.lastCandleAt=out.lastCandleAt||st.lastCandleAt}
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
   }
   attachNetwork(provider,page){if(page.__sentinelAttached)return;page.__sentinelAttached=true;
@@ -592,7 +602,9 @@ export class LocalPlaywrightDriver{
     return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
   }
   async maintain(provider){
-    const st=this.state(provider),now=Date.now();if(st.lastMaintainAt&&now-st.lastMaintainAt<700)return this.liveStatus(provider);st.lastMaintainAt=now;
+    const st=this.state(provider),now=Date.now();
+    await this.domSnapshot(provider,{fast:true}).catch(()=>{});
+    if(st.lastMaintainAt&&now-st.lastMaintainAt<900)return this.liveStatus(provider);st.lastMaintainAt=now;
     const direct=this.feeds.get(provider);const directStatus=direct?.status?.();
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
@@ -607,18 +619,23 @@ export class LocalPlaywrightDriver{
     await this.scanExecutionUi(provider).catch(()=>{});
     return this.liveStatus(provider)
   }
-  async domSnapshot(provider,{allowAttach=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();text=(await page.locator('body').innerText({timeout:2500})).slice(0,100000)}catch{}
-    let accountText='',instrumentText='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const els=[...document.querySelectorAll('[aria-selected="true"],[aria-checked="true"],[class*="active"],[class*="selected"],[data-test*="account"],[data-test*="balance"],[data-test*="asset"],[data-test*="instrument"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const inst=els.map(el=>String(el.textContent||'').trim()).filter(t=>/[A-Z]{3}\s*[\/-]\s*[A-Z]{3}/i.test(t)).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
-    st.lastDomAt=Date.now();for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`};
-    const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const activePairs=clickedPairs.length?clickedPairs:pairStrings(instrumentText);
-    if(activePairs.length){
-      const nextUi=activePairs[0],changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
+  async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
+    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const m=String(t||'').toUpperCase().match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);return m?`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`:''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[data-test*="account"],[data-test*="balance"],[data-test*="asset"],[data-test*="instrument"],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{const cls=String(el.className||'').toLowerCase(),state=String(el.getAttribute?.('data-state')||'').toLowerCase(),cur=String(el.getAttribute?.('aria-current')||'').toLowerCase();let n=0;if(el.getAttribute?.('aria-selected')==='true')n+=100;if(el.getAttribute?.('aria-checked')==='true')n+=90;if(cur&&cur!=='false')n+=80;if(/active|selected|current|checked/.test(state))n+=75;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=60;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
+    st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
+    const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
+    let nextUi=null,uiSource=null;
+    if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
+    else if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
+    else if(instrumentPairs.length===1){nextUi=instrumentPairs[0];uiSource='dom-single'}
+    else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
+    if(nextUi){
+      const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
-        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;
+        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
         st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
-        st.marketStatus='switching';st.marketReason=`Trocando leitura para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
-      }else{st.uiSymbol=nextUi;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
-    }else if(!st.uiSymbol){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];if(!st.autoSelected)st.symbol=p[0]}}
+        st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
+      }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
+    }else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     if(st.quote==null&&st.symbol){try{const q=await page.evaluate((symbol)=>{const all=[...document.querySelectorAll('body *')];const sym=all.find(el=>el.textContent?.trim()===symbol);if(!sym)return null;let node=sym;for(let d=0;d<5&&node;d++,node=node.parentElement){const txt=node.textContent||'';const nums=txt.match(/\b\d{1,5}[.,]\d{2,6}\b/g)||[];for(const x of nums){const v=Number(x.replace(',','.'));if(Number.isFinite(v)&&v>0)return v}}return null},st.symbol);if(q){st.quote=q;st.lastQuoteAt=Date.now()}}catch{}}
     return{provider,open:true,url,title,text,st};
@@ -734,7 +751,6 @@ export class LocalPlaywrightDriver{
         const intervalMs=Number(d.intervalMs||5000);
         const runtimeState=String(d.state||'stopped').toLowerCase();
         const strategy=String(d.strategy||'smart_confluence');
-        const fixedStake=Math.max(1,Number(d.fixedStake||1));
         const brokerMode=String(d.brokerMode||d.mode||'').toUpperCase();
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
@@ -756,7 +772,7 @@ export class LocalPlaywrightDriver{
             const field=ev.target?.closest?.('[data-sentinel-setting]');
             if(!field)return;
             ev.stopPropagation();
-            run({action:'setting',key:field.getAttribute('data-sentinel-setting'),value:field.value});
+            const key=field.getAttribute('data-sentinel-setting'),value=field.value;run({action:'setting',key,value});setTimeout(()=>field.blur?.(),60);
           });
         }
         if(!el.dataset.sizeControl){
@@ -774,95 +790,78 @@ export class LocalPlaywrightDriver{
             try{localStorage.setItem('sentinel-overlay-scale-v1',String(fixed))}catch{} const label=el.querySelector('[data-sentinel-size="reset"]');if(label)label.textContent=Math.round(fixed*100)+'%'
           });
         }
+        const focused=document.activeElement;if(focused&&el.contains(focused)&&focused.matches?.('select'))return;
         el.innerHTML=`
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px">
-            <div data-sentinel-drag="1" style="flex:1;min-width:0;cursor:grab;touch-action:none;font-size:9px;color:#6f8796;padding:4px 2px">↕ segure aqui para mover</div>
-            <div style="display:flex;gap:4px;flex:0 0 auto">
-              <button data-sentinel-size="down" title="Diminuir card" style="width:25px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">−</button>
-              <button data-sentinel-size="reset" title="Tamanho atual / voltar a 100%" style="width:42px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#9db0bd;font-size:9px;cursor:pointer">${Math.round(currentScale*100)}%</button>
-              <button data-sentinel-size="up" title="Aumentar card" style="width:25px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">+</button>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div data-sentinel-drag="1" style="flex:1;cursor:grab;touch-action:none">
+              <div style="font-size:9px;letter-spacing:.12em;color:#78909f;font-weight:800">SENTINEL ${esc(brokerMode||'—')}</div>
+              <div style="font-size:19px;font-weight:900;line-height:1.1;margin-top:2px">${esc(d.asset||'—')}</div>
+              <div style="font-size:9px;color:#69808d;margin-top:2px">↕ arraste para mover</div>
+            </div>
+            <div style="text-align:right;flex:0 0 auto">
+              <div style="font-size:18px;font-weight:950;color:${tone}">${signal}</div>
+              <div style="font-size:10px;color:#9db0bd">${n(confidence,0)}% confiança</div>
+              <div style="display:flex;gap:3px;justify-content:flex-end;margin-top:4px">
+                <button data-sentinel-size="down" style="width:24px;height:21px;border:1px solid #29404d;border-radius:6px;background:#13222c;color:#d8e4ea;cursor:pointer">−</button>
+                <button data-sentinel-size="reset" style="width:40px;height:21px;border:1px solid #29404d;border-radius:6px;background:#13222c;color:#9fb3bd;font-size:9px;cursor:pointer">${Math.round(currentScale*100)}%</button>
+                <button data-sentinel-size="up" style="width:24px;height:21px;border:1px solid #29404d;border-radius:6px;background:#13222c;color:#d8e4ea;cursor:pointer">+</button>
+              </div>
             </div>
           </div>
-          <div data-sentinel-drag="1" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;cursor:grab;touch-action:none;padding-bottom:2px">
-            <div style="min-width:0"><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL ${esc(brokerMode||'—')} · ${esc(d.strategy||'—')}</div>
-            <div style="font-size:18px;font-weight:900;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.asset||'—')}</div></div>
-            <div style="text-align:right;flex:0 0 auto"><div style="font-size:18px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div></div>
-          </div>
-          <div style="margin-top:9px;padding:8px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035)">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-              <label style="display:flex;flex-direction:column;gap:3px"><span style="font-size:9px;color:#89a0ae">ESTRATÉGIA</span>
-                <select data-sentinel-setting="strategy" style="width:100%;min-width:0;background:#111d26;color:#e9f1f5;border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px;font-size:10px">
+
+          <div style="padding:9px;border:1px solid rgba(115,153,173,.18);border-radius:11px;background:rgba(7,16,22,.52)">
+            <div style="display:grid;grid-template-columns:1.3fr .9fr;gap:7px">
+              <label style="display:block"><span style="display:block;font-size:8px;color:#78909f;margin-bottom:3px">ESTRATÉGIA</span>
+                <select data-sentinel-setting="strategy" style="width:100%;height:29px;background:#10202a;color:#edf5f8;border:1px solid #29404d;border-radius:7px;padding:0 7px;font-size:10px">
                   <option value="smart_confluence" ${strategy==='smart_confluence'?'selected':''}>Smart Confluence</option>
                   <option value="price_action" ${strategy==='price_action'?'selected':''}>Price Action</option>
                   <option value="trendline_breakout" ${strategy==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
-                  <option value="support_resistance" ${strategy==='support_resistance'?'selected':''}>Suporte/Resist.</option>
+                  <option value="support_resistance" ${strategy==='support_resistance'?'selected':''}>Suporte / Resistência</option>
                   <option value="fibonacci_retest" ${strategy==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
                   <option value="trend" ${strategy==='trend'?'selected':''}>Trend Following</option>
                   <option value="mean_reversion" ${strategy==='mean_reversion'?'selected':''}>Mean Reversion</option>
                   <option value="breakout" ${strategy==='breakout'?'selected':''}>Breakout</option>
                 </select>
               </label>
-              <label style="display:flex;flex-direction:column;gap:3px"><span style="font-size:9px;color:#89a0ae">TEMPO DA OPERAÇÃO</span>
-                <select data-sentinel-setting="duration" style="width:100%;background:#111d26;color:#e9f1f5;border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px;font-size:10px">
-                  <option value="30000" ${durationMs===30000?'selected':''}>30 segundos</option>
-                  <option value="60000" ${durationMs===60000?'selected':''}>1 minuto</option>
-                  <option value="120000" ${durationMs===120000?'selected':''}>2 minutos</option>
-                  <option value="300000" ${durationMs===300000?'selected':''}>5 minutos</option>
-                  <option value="600000" ${durationMs===600000?'selected':''}>10 minutos</option>
-                  <option value="900000" ${durationMs===900000?'selected':''}>15 minutos</option>
+              <label style="display:block"><span style="display:block;font-size:8px;color:#78909f;margin-bottom:3px">TEMPO</span>
+                <select data-sentinel-setting="duration" style="width:100%;height:29px;background:#10202a;color:#edf5f8;border:1px solid #29404d;border-radius:7px;padding:0 7px;font-size:10px">
+                  <option value="30000" ${durationMs===30000?'selected':''}>30 s</option>
+                  <option value="60000" ${durationMs===60000?'selected':''}>1 min</option>
+                  <option value="120000" ${durationMs===120000?'selected':''}>2 min</option>
+                  <option value="300000" ${durationMs===300000?'selected':''}>5 min</option>
+                  <option value="600000" ${durationMs===600000?'selected':''}>10 min</option>
+                  <option value="900000" ${durationMs===900000?'selected':''}>15 min</option>
                 </select>
               </label>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-              <label style="display:flex;flex-direction:column;gap:3px"><span style="font-size:9px;color:#89a0ae">ATUALIZAÇÃO</span>
-                <select data-sentinel-setting="interval" style="width:100%;background:#111d26;color:#e9f1f5;border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px;font-size:10px">
-                  <option value="2000" ${intervalMs===2000?'selected':''}>2 segundos</option>
-                  <option value="5000" ${intervalMs===5000?'selected':''}>5 segundos</option>
-                  <option value="10000" ${intervalMs===10000?'selected':''}>10 segundos</option>
-                  <option value="15000" ${intervalMs===15000?'selected':''}>15 segundos</option>
-                </select>
-              </label>
-              <div style="display:flex;flex-direction:column;gap:3px">
-                <span style="font-size:9px;color:#89a0ae">VALOR DEMO</span>
-                <div style="display:flex;gap:4px;align-items:center">
-                  <button data-sentinel-action="stake-down" title="Diminuir valor" style="width:27px;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer">−</button>
-                  <div style="flex:1;text-align:center;height:28px;line-height:28px;border:1px solid rgba(255,255,255,.12);border-radius:7px;background:#111d26;font-weight:900">${n(fixedStake,2)}</div>
-                  <button data-sentinel-action="stake-up" title="Aumentar valor" style="width:27px;height:28px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer">+</button>
-                </div>
-              </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:7px">
+              <button data-sentinel-action="start" style="height:30px;border:0;border-radius:7px;background:#55d7a7;color:#071710;font-weight:900;font-size:10px;cursor:pointer" ${runtimeState==='running'?'disabled':''}>▶ INICIAR</button>
+              <button data-sentinel-action="pause" style="height:30px;border:1px solid #29404d;border-radius:7px;background:#162934;color:#e6eff3;font-weight:850;font-size:10px;cursor:pointer" ${runtimeState!=='running'?'disabled':''}>Ⅱ PAUSAR</button>
+              <button data-sentinel-action="stop" style="height:30px;border:1px solid rgba(255,128,141,.32);border-radius:7px;background:rgba(255,100,116,.08);color:#ff9ba7;font-weight:850;font-size:10px;cursor:pointer">■ PARAR</button>
             </div>
-            <div style="display:flex;gap:5px;margin-top:7px">
-              <button data-sentinel-action="start" style="flex:1;height:30px;border:0;border-radius:7px;background:#2fbf8f;color:#07140f;font-weight:900;cursor:pointer" ${runtimeState==='running'?'disabled':''}>▶ INICIAR</button>
-              <button data-sentinel-action="pause" style="flex:1;height:30px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:#1a2934;color:#e7eef2;font-weight:900;cursor:pointer" ${runtimeState!=='running'?'disabled':''}>Ⅱ PAUSAR</button>
-              <button data-sentinel-action="stop" style="flex:1;height:30px;border:1px solid rgba(255,143,154,.24);border-radius:7px;background:rgba(255,143,154,.10);color:#ffadb5;font-weight:900;cursor:pointer">■ PARAR</button>
+            <div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:9px;color:#8fa5b0">
+              <span>BOT <b style="color:${runtimeState==='running'?'#66e0b8':'#d7e1e6'}">${esc(runtimeState.toUpperCase())}</b></span>
+              <span>PRÓX. <b style="color:#d7e1e6">${esc(d.nextEval||'—')}</b></span>
             </div>
-            <div style="display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:10px"><span><b>Bot:</b> ${esc(runtimeState.toUpperCase())}</span><span><b>Próxima:</b> ${esc(d.nextEval||'—')}</span></div>
-            <div style="margin-top:5px"><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
-            <div><b>Saída:</b> ${esc(plan.exit||'Sem entrada')}</div>
-            <div data-sentinel-control-msg style="min-height:12px;margin-top:4px;font-size:9px;color:#7f9aa9"></div>
+            <div data-sentinel-control-msg style="min-height:11px;margin-top:3px;font-size:9px;color:#78a999"></div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;margin-top:9px;color:#d8e3e9">
-            <div>EMA 9: <b>${n(m.fast,5)}</b></div><div>EMA 21: <b>${n(m.slow,5)}</b></div>
-            <div>EMA 50: <b>${n(m.ema50,5)}</b></div><div>EMA 200: <b>${n(m.ema200,5)}</b></div>
-            <div>RSI 14: <b>${n(m.rsi,1)}</b></div><div>MACD H: <b>${n(m.macd?.histogram,5)}</b></div>
-            <div>Estoc.: <b>${n(m.stoch,1)}</b></div><div>ATR: <b>${n(m.atr,5)}</b></div>
-            <div>Suporte: <b>${n(m.sr?.support,5)}</b></div><div>Resist.: <b>${n(m.sr?.resistance,5)}</b></div>
-          </div>
-          <div style="margin-top:8px"><b>Estrutura:</b> ${esc(m.structure?.label||'—')}</div>
-          <div style="margin-top:7px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            <div style="padding:6px;border-radius:8px;background:rgba(102,224,184,.08);border:1px solid rgba(102,224,184,.18)">
-              <div style="font-size:9px;color:#86a89d">FORÇA COMPRA</div><b style="font-size:16px;color:#66e0b8">${n(buyScore,0)}%</b>
-            </div>
-            <div style="padding:6px;border-radius:8px;background:rgba(255,143,154,.08);border:1px solid rgba(255,143,154,.18)">
-              <div style="font-size:9px;color:#ae8a90">FORÇA VENDA</div><b style="font-size:16px;color:#ff8f9a">${n(sellScore,0)}%</b>
+
+          <div style="margin-top:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)">
+            <div style="font-size:10px"><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
+            <div style="font-size:10px;margin-top:2px"><b>Saída:</b> ${esc(plan.exit||'Sem entrada')}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px">
+              <div style="padding:6px;border-radius:8px;background:rgba(102,224,184,.07)"><span style="font-size:8px;color:#7e9f95">COMPRA</span><div style="font-size:16px;font-weight:900;color:#66e0b8">${n(buyScore,0)}%</div></div>
+              <div style="padding:6px;border-radius:8px;background:rgba(255,143,154,.07)"><span style="font-size:8px;color:#a8878c">VENDA</span><div style="font-size:16px;font-weight:900;color:#ff8f9a">${n(sellScore,0)}%</div></div>
             </div>
           </div>
-          <div style="margin-top:7px;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden">
-            <div style="height:100%;width:${confidence}%;background:${tone};transition:width .25s ease"></div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px;margin-top:8px;font-size:9px;color:#aec0c9">
+            <div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div>
+            <div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div>
           </div>
-          <div style="margin-top:3px;font-size:9px;color:#78909f">Confiança do sinal: ${n(confidence,0)}% · não é probabilidade garantida de lucro.</div>
-          ${reasons}
-          <div style="margin-top:8px;font-size:10px;color:#78909f">Ajuda visual para teste DEMO. Em conta real, mantenha confirmação manual antes de qualquer ordem.</div>
+          <div style="margin-top:6px;font-size:9px;color:#8fa5b0"><b>Estrutura:</b> ${esc(m.structure?.label||'—')}</div>
+          <div style="margin-top:5px;font-size:9px;color:#8299a5">${reasons}</div>
+          <div style="margin-top:7px;font-size:8px;color:#627784">Sinal técnico; não representa garantia de lucro. Conta real exige confirmação manual.</div>
         `;
       },payload);
       return true
