@@ -127,39 +127,5 @@ export async function POST(req:NextRequest){
   }
 }
 `);
-  return j;
-}
-
-export async function GET(req:NextRequest){
-  try{
-    const token=req.cookies.get(SESSION_COOKIE)?.value||'';
-    if(!token)return NextResponse.json({ok:false,error:'unauthorized'},{status:401});
-    const j=await rpc('sentinel_master_overview',{p_session_token:token});
-    return NextResponse.json({ok:true,data:j},{headers:{'cache-control':'no-store'}});
-  }catch(e:any){
-    const m=String(e?.message||e);
-    return NextResponse.json({ok:false,error:m},{status:m==='forbidden'?403:400,headers:{'cache-control':'no-store'}});
-  }
-}
-
-export async function POST(req:NextRequest){
-  try{
-    const token=req.cookies.get(SESSION_COOKIE)?.value||'';
-    if(!token)return NextResponse.json({ok:false,error:'unauthorized'},{status:401});
-    const b=await req.json().catch(()=>({}));
-    const j=await rpc('sentinel_master_action',{
-      p_session_token:token,
-      p_action:String(b.action||''),
-      p_account_id:b.accountId||null,
-      p_device_id:b.deviceId||null,
-      p_value:b.value||{}
-    });
-    return NextResponse.json({ok:true,data:j},{headers:{'cache-control':'no-store'}});
-  }catch(e:any){
-    const m=String(e?.message||e);
-    return NextResponse.json({ok:false,error:m},{status:m==='forbidden'?403:400,headers:{'cache-control':'no-store'}});
-  }
-}
-`);
 
 console.log('Sentinel Master private ops patch applied');
