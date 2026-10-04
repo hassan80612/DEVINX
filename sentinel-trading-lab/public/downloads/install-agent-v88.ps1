@@ -20,7 +20,7 @@ try {
   try {
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
       $_.CommandLine -and $_.CommandLine -like '*SentinelTradingLab*' -and
-      ($_.Name -eq 'node.exe' -or $_.Name -like 'powershell*.exe')
+      ($_.Name -eq 'node.exe' -or $_.Name -like 'powershell*.exe' -or $_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe')
     } | ForEach-Object {
       if ($_.ProcessId -ne $PID) { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }
     }
