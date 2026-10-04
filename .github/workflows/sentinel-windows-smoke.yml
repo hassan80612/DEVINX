@@ -216,6 +216,19 @@ jobs:
           const st=d.state('iq_option');
           st.assets=new Set(['EUR/USD OTC','EUR/THB OTC']);
           st.activeMap=new Map([['EURUSDOTC',1],['EURTHBOTC',2]]);
+
+          await testPage.evaluate(()=>{window.__sentinelClickedSymbol='';window.__sentinelClickedSymbolAt=0});
+          await testPage.setContent('<div id="thb" role="tab" aria-selected="false">EUR/THB OTC</div><div id="usd" role="tab" aria-selected="true">EUR/USD OTC</div>');
+          s.page=testPage;s.background=false;
+          st.uiSymbol='EUR/THB OTC';st.symbol='EUR/THB OTC';st.activeId=2;st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];
+          await d.domSnapshot('iq_option',{fast:true});
+          if(st.uiSymbol!=='EUR/USD OTC'||st.symbol!=='EUR/USD OTC'||Number(st.activeId)!==1||st.candles.length!==0)throw new Error('dom_active_tab_switch_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
+          console.log('DOM ACTIVE TAB SWITCH: PASS',st.uiSymbol);
+          await testPage.evaluate(()=>{document.querySelector('#usd').setAttribute('aria-selected','false');document.querySelector('#thb').setAttribute('aria-selected','true')});
+          await d.domSnapshot('iq_option',{fast:true});
+          if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2)throw new Error('dom_second_tab_switch_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId}));
+          console.log('DOM SECOND TAB SWITCH: PASS',st.uiSymbol);
+
           st.uiSymbol='EUR/THB OTC';st.symbol='EUR/THB OTC';st.activeId=2;
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',body:{active_id:1,size:60}}}),'page-out');
           if(st.uiSymbol!=='EUR/USD OTC'||st.symbol!=='EUR/USD OTC'||Number(st.activeId)!==1)throw new Error('broker_active_id_tracking_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId}));
@@ -229,7 +242,10 @@ jobs:
           console.log('ASSET ANALYSIS ISOLATION: PASS');
 
           s.page=testPage;s.background=false;
-          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:0,reasons:[],metrics:{buyScore:0,sellScore:0},plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'20:30:00',durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:0,reasons:[],metrics:{buyScore:0,sellScore:0},forecast30:{side:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'20:30:00',durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
+          const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
+          if(!/PRÉ-SINAL/i.test(overlayText)||!/PUT/i.test(overlayText)||/VALOR DEMO|ATUALIZAÇÃO/i.test(overlayText))throw new Error('overlay_v93_content_failed:'+overlayText);
+          console.log('V9.3 CONTROL CARD CONTENT: PASS');
           const focusedOk=await testPage.evaluate(async()=>{
             const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');
             if(!sel)return false;sel.focus();const same=sel;
