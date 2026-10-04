@@ -499,9 +499,21 @@ export class LocalPlaywrightDriver{
     if(!s.browser){return{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:nowIso()}}
     let snap;try{snap=await this.domSnapshot(provider,{allowAttach:false})}catch{snap={url:s.page?.url?.()||'',title:'',text:'',st:this.state(provider)}}
     let cookies=[];try{cookies=await s.context.cookies([`https://${cfg.domain}`])}catch{}
-    const loginish=/login|signin|entrar|register|cadastro/i.test(`${snap.url} ${snap.title}`);const traderish=/trade|traderoom|platform|portfolio|dashboard/i.test(snap.url);const textHint=/(conta de prática|practice account|practice balance|conta real|real account|saldo|balance|portfolio|carteira|deposit|depósito|withdraw|retirar)/i.test(snap.text||'');
-    const cookieSeen=cookies.length>0;const likelyAuthenticated=cookieSeen&&!loginish&&(traderish||textHint);const sessionPresent=likelyAuthenticated;
-    const info={provider,open:true,sessionPresent,likelyAuthenticated,url:snap.url,title:snap.title,cookieCount:cookies.length,phase:s.background?'background':'attached',background:!!s.background,updatedAt:nowIso()};this.last.set(provider,info);return info;
+    let authCookieSeen=cookies.some(x=>String(x?.name||'').toLowerCase()==='ssid'&&String(x?.value||'').length>8);
+    let loginish=/login|signin|entrar|register|cadastro/i.test(`${snap.url} ${snap.title}`);
+    let traderish=/trade|traderoom|platform|portfolio|dashboard/i.test(snap.url);
+    if(authCookieSeen&&!loginish&&!traderish&&!s.background){
+      try{
+        await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:18000});
+        snap=await this.domSnapshot(provider,{allowAttach:false});
+        loginish=/login|signin|entrar|register|cadastro/i.test(`${snap.url} ${snap.title}`);
+        traderish=/trade|traderoom|platform|portfolio|dashboard/i.test(snap.url);
+      }catch{}
+    }
+    const textHint=/(conta de prática|practice account|practice balance|conta real|real account|saldo|balance|portfolio|carteira|deposit|depósito|withdraw|retirar)/i.test(snap.text||'');
+    const likelyAuthenticated=authCookieSeen&&!loginish&&(traderish||textHint);const sessionPresent=likelyAuthenticated;
+    const phase=loginish?'login-required':sessionPresent?(s.background?'background-authenticated':'traderoom-authenticated'):(s.background?'background':'attached');
+    const info={provider,open:true,sessionPresent,likelyAuthenticated,url:snap.url,title:snap.title,cookieCount:cookies.length,authCookieSeen,phase,background:!!s.background,updatedAt:nowIso()};this.last.set(provider,info);return info;
   }
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
   liveStatus(provider){
