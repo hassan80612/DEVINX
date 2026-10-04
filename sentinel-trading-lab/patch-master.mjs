@@ -3,6 +3,14 @@ import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 const pagePath='src/app/page.tsx';
 let src=readFileSync(pagePath,'utf8');
 
+// Keep the visible Agent release in sync with the EXE published by CI.
+src=src
+  .replaceAll('V8.6.0','V8.7.0')
+  .replaceAll('V8.6','V8.7')
+  .replaceAll('Agent 8.6','Agent 8.7')
+  .replaceAll('Agent v8.6','Agent v8.7');
+
+
 const oldContent="const content=useMemo(()=>s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<Loading/> ,[tab,s,busy,agent,account,pairCode]);";
 const newContent="const content=useMemo(()=>tab==='Master Console'?<Master s={s} act={act} busy={busy}/>:s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<OfflinePanel/>,[tab,s,busy,agent,account,pairCode,isMaster]);";
 if(!src.includes(oldContent)) throw new Error('Sentinel patch: content anchor not found');
