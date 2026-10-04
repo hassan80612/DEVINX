@@ -149,6 +149,47 @@ jobs:
             } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
           } catch {}
 
+      - name: Persistent watchdog host recovers Manager
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:SENTINEL_WORKER_PORT='8787'
+          $env:SENTINEL_MANAGER_PORT='8788'
+          $env:SENTINEL_NODE_PATH=(Get-Command node).Source
+
+          $manager=Start-Process -FilePath node -ArgumentList @('worker/agent-manager.mjs') -WorkingDirectory $PWD -PassThru
+          $ok=$false
+          for($i=0;$i -lt 40;$i++){
+            Start-Sleep -Milliseconds 250
+            try{
+              $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
+              if($h.ok -and $h.workerHealthy){$ok=$true;break}
+            }catch{}
+          }
+          if(-not $ok){throw 'Manager did not start before persistent watchdog test'}
+
+          $host=Start-Process -FilePath powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','worker/watchdog-host.ps1') -WorkingDirectory $PWD -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 2
+          Stop-Process -Id $manager.Id -Force -ErrorAction SilentlyContinue
+
+          $recovered=$false
+          for($i=0;$i -lt 90;$i++){
+            Start-Sleep -Milliseconds 350
+            try{
+              $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
+              if($h.ok -and $h.workerHealthy){$recovered=$true;break}
+            }catch{}
+          }
+          if(-not $recovered){throw 'Persistent watchdog host failed to recover Manager + Worker'}
+          Write-Host 'PERSISTENT WATCHDOG HOST: PASS'
+
+          Stop-Process -Id $host.Id -Force -ErrorAction SilentlyContinue
+          try{
+            Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+              $_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine -like '*agent-manager.mjs*'
+            } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+          }catch{}
+
       - name: Broker visible launch creates CDP session
         shell: powershell
         run: |
