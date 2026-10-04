@@ -196,6 +196,11 @@ jobs:
           $ErrorActionPreference='Stop'
           $script = @'
           import {LocalPlaywrightDriver} from './worker/local-playwright-driver.mjs';
+          import {analyzeMarket} from './src/core/strategy.mjs';
+          const candles=Array.from({length:80},(_,i)=>{const base=1+i*.001;return{from:1700000000+i*60,to:1700000060+i*60,open:base,high:base+.0008,low:base-.0005,close:base+.0005,volume:100+i}});
+          const analysis=analyzeMarket({candles,strategy:'smart_confluence',minConfidence:74,freshnessMs:5000,quoteTs:Date.now(),now:Date.now()});
+          if(!analysis.forecast30||analysis.forecast30.horizonSeconds!==30||!Number.isFinite(Number(analysis.forecast30.callStrength))||!Number.isFinite(Number(analysis.forecast30.putStrength)))throw new Error('forecast30_missing');
+          console.log('30S PRE-SIGNAL: PASS',JSON.stringify(analysis.forecast30));
           const d=new LocalPlaywrightDriver({dataDir:'worker/data/smoke-browser'});
           const s=await d.launchNormal('iq_option',{manual:true});
           const info=await d.sessionInfo('iq_option');
