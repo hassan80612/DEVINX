@@ -91,53 +91,86 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
   const[data,setData]=useState<any>(null);
   const[adminBusy,setAdminBusy]=useState(false);
   const[msg,setMsg]=useState('');
+  const[email,setEmail]=useState('');
+  const[days,setDays]=useState('30');
+
   const load=useCallback(async()=>{try{const r=await fetch('/api/master',{cache:'no-store'});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'master_failed');setData(j.data);setMsg('')}catch(e:any){setMsg(String(e?.message||e))}},[]);
   useEffect(()=>{load();const id=setInterval(load,5000);return()=>clearInterval(id)},[load]);
-  const admin=async(payload:any)=>{setAdminBusy(true);setMsg('');try{const r=await fetch('/api/master',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'master_action_failed');await load()}catch(e:any){setMsg(String(e?.message||e))}finally{setAdminBusy(false)}};
+
+  const admin=async(payload:any)=>{setAdminBusy(true);setMsg('');try{const r=await fetch('/api/master',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'master_action_failed');await load();return true}catch(e:any){setMsg(String(e?.message||e));return false}finally{setAdminBusy(false)}};
+
+  const grantByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}const ok=await admin({action:'grant_agent_by_email',value:{email:clean,days:days==='forever'?null:Number(days)}});if(ok)setMsg(days==='forever'?'Agent liberado sem vencimento para '+clean+'.':'Agent liberado por '+days+' dias para '+clean+'.')};
+  const revokeByEmail=async()=>{const clean=email.trim().toLowerCase();if(!clean){setMsg('Digite o e-mail da conta.');return}if(!window.confirm('Bloquear o Agent desta conta agora?'))return;const ok=await admin({action:'revoke_agent_by_email',value:{email:clean}});if(ok)setMsg('Agent bloqueado para '+clean+'.')};
+
   const accounts=data?.accounts||[];
-  const devices=accounts.flatMap((a:any)=>a.devices||[]);
-  const online=devices.filter((d:any)=>d.online).length;
+  const devices=accounts.flatMap((x:any)=>x.devices||[]);
+  const onlineNow=data?.onlineNow||[];
+  const summary=data?.summary||{};
   return <div className="grid">
     <section className="card span12">
-      <div className="split"><div><div className="eyebrow">MASTER PRIVADA</div><h3>Central administrativa Sentinel</h3><p className="muted">Acesso exclusivo da conta Master. Usuários comuns nunca recebem esta aba nem os endpoints administrativos.</p></div><div className="actions"><Pill tone="good">MASTER ACTIVE</Pill><button className="secondary" disabled={adminBusy} onClick={load}>Atualizar</button></div></div>
+      <div className="split"><div><div className="eyebrow">MASTER PRIVADA</div><h3>Central administrativa Sentinel</h3><p className="muted">Acesso exclusivo da sua conta Master. Controle clientes, licenças do Agent, PCs, sessões e operação remota.</p></div><div className="actions"><Pill tone="good">MASTER ACTIVE</Pill><button className="secondary" disabled={adminBusy} onClick={load}>Atualizar</button></div></div>
       <div className="metrics">
-        <Metric label="Contas" value={String(accounts.length)}/>
-        <Metric label="PCs" value={String(devices.length)}/>
-        <Metric label="PCs online" value={String(online)}/>
-        <Metric label="Runtime atual" value={String(s?.state||'SEM PC').toUpperCase()}/>
+        <Metric label="Contas" value={String(summary.accounts??accounts.length)}/>
+        <Metric label="Acessos Agent" value={String(summary.licensedAccounts??0)}/>
+        <Metric label="Online no site" value={String(summary.webOnline??0)}/>
+        <Metric label="PCs online" value={String(summary.onlineDevices??devices.filter((d:any)=>d.online).length)}/>
       </div>
       {msg&&<div className="alert"><b>Master:</b> {msg}</div>}
     </section>
-    {accounts.map((a:any)=><MasterAccount key={a.id} a={a} admin={admin} busy={adminBusy}/>)}
+
+    <section className="card span7">
+      <div className="split"><div><div className="eyebrow">LIBERAÇÃO RÁPIDA</div><h3>Liberar Agent por e-mail</h3><p className="muted">A conta precisa existir. O mesmo controle depois será alimentado automaticamente pelo pagamento e vencimento.</p></div><Pill tone="good">POR CONTA</Pill></div>
+      <div className="formgrid three topgap">
+        <label className="field"><span>E-mail da conta</span><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="cliente@email.com"/></label>
+        <label className="field"><span>Validade</span><select value={days} onChange={e=>setDays(e.target.value)}><option value="7">7 dias</option><option value="30">30 dias</option><option value="90">90 dias</option><option value="365">1 ano</option><option value="forever">Sem vencimento</option></select></label>
+        <div className="field"><span>Ações</span><div className="actions"><button className="primary" disabled={adminBusy||!email.trim()} onClick={grantByEmail}>Liberar</button><button className="kill" disabled={adminBusy||!email.trim()} onClick={revokeByEmail}>Bloquear</button></div></div>
+      </div>
+    </section>
+
+    <section className="card span5">
+      <div className="split"><div><div className="eyebrow">PRESENÇA</div><h3>Pessoas online</h3></div><Pill tone={onlineNow.length?'good':'neutral'}>{onlineNow.length} agora</Pill></div>
+      <div className="timeline topgap">{onlineNow.slice(0,12).map((x:any)=><div className="event" key={x.id}><time>{x.agentOnline?'PC':x.webOnline?'WEB':'—'}</time><div><b>{x.email}</b><span>{x.agentOnline?'Agent online':x.webOnline?'Painel ativo':'Offline'}{x.lastAgentSeenAt?' · PC '+tm(x.lastAgentSeenAt):''}</span></div></div>)}{!onlineNow.length&&<Empty text="Nenhuma conta ativa agora"/>}</div>
+    </section>
+
+    {accounts.map((x:any)=><MasterAccount key={x.id} a={x} admin={admin} busy={adminBusy}/>)}
     {!accounts.length&&<section className="card span12"><Empty text="Carregando contas da Master..."/></section>}
+
     <section className="card span12">
-      <div className="split"><div><h3>Auditoria Master</h3><p className="muted">As ações administrativas ficam registradas. Senhas, tokens e credenciais da corretora não são exibidos.</p></div><Pill>{String(data?.audit?.length||0)} eventos</Pill></div>
+      <div className="split"><div><h3>Auditoria Master</h3><p className="muted">Liberações, bloqueios, alterações e comandos ficam registrados. Senhas e credenciais da corretora não aparecem aqui.</p></div><Pill>{String(data?.audit?.length||0)} eventos</Pill></div>
       <div className="timeline">{(data?.audit||[]).map((x:any)=><div className="event" key={x.id}><time>{tm(x.createdAt)}</time><div><b>{String(x.action).replaceAll('_',' ')}</b><span>{x.targetDeviceId?'PC '+String(x.targetDeviceId).slice(0,8):x.targetAccountId?'Conta '+String(x.targetAccountId).slice(0,8):'Sistema'}</span></div></div>)}</div>
     </section>
   </div>
 }
 
 function MasterAccount({a,admin,busy}:{a:any,admin:any,busy:boolean}){
-  const[plan,setPlan]=useState(String(a.plan||'development'));
+  const[plan,setPlan]=useState(String(a.plan||'free'));
   const[max,setMax]=useState(String(a.maxDevices||1));
-  useEffect(()=>{setPlan(String(a.plan||'development'));setMax(String(a.maxDevices||1))},[a.plan,a.maxDevices]);
+  useEffect(()=>{setPlan(String(a.plan||'free'));setMax(String(a.maxDevices||1))},[a.plan,a.maxDevices]);
   const cmd=(d:any,command:string)=>admin({action:'device_command',accountId:a.id,deviceId:d.id,value:{command}});
+  const grant30=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:new Date(Date.now()+30*86400000).toISOString()}});
+  const grantForever=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:null}});
+  const blockAgent=()=>window.confirm('Bloquear o Agent desta conta?')&&admin({action:'set_agent_access',accountId:a.id,value:{enabled:false,expiresAt:null}});
+  const expiry=a.accessExpiresAt?new Date(a.accessExpiresAt).toLocaleString('pt-BR'):'Sem vencimento';
+
   return <section className="card span12">
-    <div className="split"><div><div className="eyebrow">{a.role==='master'?'SUA CONTA MASTER':'CONTA CLIENTE'}</div><h3>{a.email}</h3><p className="muted">Criada em {new Date(a.createdAt).toLocaleString('pt-BR')} · {a.sessionCount||0} sessão(ões) ativa(s)</p></div><div className="actions"><Pill tone={a.status==='active'?'good':'bad'}>{String(a.status).toUpperCase()}</Pill><Pill>{String(a.role).toUpperCase()}</Pill></div></div>
+    <div className="split"><div><div className="eyebrow">{a.role==='master'?'SUA CONTA MASTER':'CONTA CLIENTE'}</div><h3>{a.email}</h3><p className="muted">Criada em {new Date(a.createdAt).toLocaleString('pt-BR')} · {a.sessionCount||0} sessão(ões) ativa(s) · último painel {a.lastWebSeenAt?new Date(a.lastWebSeenAt).toLocaleString('pt-BR'):'—'}</p></div><div className="actions"><Pill tone={a.agentOnline?'good':'neutral'}>{a.agentOnline?'PC ONLINE':'PC OFFLINE'}</Pill><Pill tone={a.webOnline?'good':'neutral'}>{a.webOnline?'WEB ONLINE':'WEB OFFLINE'}</Pill><Pill tone={a.accessActive?'good':'bad'}>{a.role==='master'?'MASTER LIVRE':a.accessActive?'AGENT LIBERADO':'AGENT BLOQUEADO'}</Pill><Pill tone={a.status==='active'?'good':'bad'}>{String(a.status).toUpperCase()}</Pill></div></div>
+
     <div className="formgrid three">
-      <label className="field"><span>Plano</span><input value={plan} onChange={e=>setPlan(e.target.value)}/></label>
-      <label className="field"><span>Limite de PCs</span><input type="number" min="1" max="50" value={max} onChange={e=>setMax(e.target.value)}/></label>
-      <div className="field"><span>Administração</span><div className="actions"><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}>Salvar plano</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_max_devices',accountId:a.id,value:{maxDevices:Number(max)}})}>Salvar PCs</button></div></div>
+      <label className="field"><span>Plano</span><input value={plan} disabled={a.role==='master'} onChange={e=>setPlan(e.target.value)}/></label>
+      <label className="field"><span>Limite de PCs</span><input type="number" min="1" max="50" value={max} disabled={a.role==='master'} onChange={e=>setMax(e.target.value)}/></label>
+      <div className="field"><span>Validade do Agent</span><div className="row"><span>{a.agentEnabled?'Habilitado':'Desabilitado'}</span><b>{a.role==='master'?'Permanente':expiry}</b></div></div>
     </div>
+
     <div className="actions topgap">
-      {a.role!=='master'&&<button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button>}
+      {a.role!=='master'&&<><button className="primary" disabled={busy} onClick={grant30}>Liberar 30 dias</button><button className="secondary" disabled={busy} onClick={grantForever}>Liberar sem vencimento</button><button className="kill" disabled={busy||!a.agentEnabled} onClick={blockAgent}>Bloquear Agent</button><button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}>Salvar plano</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_max_devices',accountId:a.id,value:{maxDevices:Number(max)}})}>Salvar PCs</button></>}
       <button className="secondary" disabled={busy} onClick={()=>window.confirm('Encerrar as outras sessões desta conta?')&&admin({action:'revoke_sessions',accountId:a.id,value:{}})}>Encerrar sessões</button>
     </div>
+
     <div className="topgap">{(a.devices||[]).map((d:any)=><div className="card" key={d.id}>
-      <div className="split"><div><b>{d.displayName||'PC Sentinel'}</b><div className="muted">{d.agentVersion||'—'} · {d.lastSeenAt?new Date(d.lastSeenAt).toLocaleString('pt-BR'):'nunca visto'}</div></div><div><Pill tone={d.online?'good':'neutral'}>{d.online?'ONLINE':'OFFLINE'}</Pill> <Pill tone={d.status==='active'?'good':'bad'}>{String(d.status).toUpperCase()}</Pill></div></div>
-      <div className="stack topgap"><Row k="Bot" v={String(d.state?.state||'—').toUpperCase()}/><Row k="Modo" v={String(d.state?.mode||'—').toUpperCase()}/><Row k="Heartbeat" v={d.heartbeatAt?new Date(d.heartbeatAt).toLocaleTimeString('pt-BR'):'—'}/></div>
+      <div className="split"><div><b>{d.displayName||'PC Sentinel'}</b><div className="muted">Agent {d.agentVersion||'—'} · {d.lastSeenAt?new Date(d.lastSeenAt).toLocaleString('pt-BR'):'nunca visto'}</div></div><div><Pill tone={d.online?'good':'neutral'}>{d.online?'ONLINE':'OFFLINE'}</Pill> <Pill tone={d.status==='active'?'good':'bad'}>{String(d.status).toUpperCase()}</Pill></div></div>
+      <div className="stack topgap"><Row k="Bot" v={String(d.state?.state||'—').toUpperCase()}/><Row k="Modo" v={String(d.state?.mode||'—').toUpperCase()}/><Row k="Ativo" v={String(d.state?.liveBroker?.symbol||d.state?.settings?.asset||'—')}/><Row k="Mercado" v={String(d.state?.liveBroker?.marketStatus||'—').toUpperCase()}/><Row k="Heartbeat" v={d.heartbeatAt?new Date(d.heartbeatAt).toLocaleTimeString('pt-BR'):'—'}/></div>
       <div className="actions topgap">
-        <button className="primary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>window.confirm('Iniciar o bot neste PC?')&&cmd(d,'control/start')}>Iniciar</button>
+        <button className="primary" disabled={busy||!d.online||d.status!=='active'||!a.accessActive} onClick={()=>window.confirm('Iniciar o bot neste PC?')&&cmd(d,'control/start')}>Iniciar</button>
         <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/pause')}>Pausar</button>
         <button className="secondary" disabled={busy||!d.online||d.status!=='active'} onClick={()=>cmd(d,'control/stop')}>Parar</button>
         <button className="kill" disabled={busy||!d.online||d.status!=='active'} onClick={()=>window.confirm('Ativar KILL SWITCH neste PC?')&&cmd(d,'control/kill')}>Kill Switch</button>
