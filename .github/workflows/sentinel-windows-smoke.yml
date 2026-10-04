@@ -1,0 +1,57 @@
+name: Sentinel Windows Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - '.github/workflows/sentinel-windows-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: sentinel-trading-lab/agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Install Agent dependencies
+        run: npm install --omit=dev --no-audit --no-fund
+      - name: Start Manager and require Worker health
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:SENTINEL_MANAGER_PORT='8788'
+          $env:SENTINEL_WORKER_PORT='8787'
+          $p=Start-Process -FilePath node -ArgumentList @('worker/agent-manager.mjs') -WorkingDirectory $PWD -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\manager-out.log" -RedirectStandardError "$env:RUNNER_TEMP\manager-err.log"
+          try {
+            $ok=$false
+            for($i=0;$i -lt 60;$i++){
+              Start-Sleep -Milliseconds 250
+              try {
+                $m=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
+                if($m.workerHealthy){
+                  $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 1
+                  if($w.ok -and $w.version -eq '8.8.0'){ $ok=$true; break }
+                }
+              } catch {}
+            }
+            if(-not $ok){
+              Write-Host '=== manager stdout ==='
+              if(Test-Path "$env:RUNNER_TEMP\manager-out.log"){Get-Content "$env:RUNNER_TEMP\manager-out.log"}
+              Write-Host '=== manager stderr ==='
+              if(Test-Path "$env:RUNNER_TEMP\manager-err.log"){Get-Content "$env:RUNNER_TEMP\manager-err.log"}
+              try { Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1 | ConvertTo-Json -Depth 8 | Write-Host } catch {}
+              throw 'Worker did not become healthy on Windows'
+            }
+            Write-Host 'Windows Agent Manager + Worker healthy'
+          } finally {
+            try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
+          }
