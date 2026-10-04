@@ -5,6 +5,23 @@ import {execFileSync} from 'node:child_process';
 
 const SUPABASE_URL='https://vwczyqvptziyseagettp.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_ubJ_fSkmRa68XPdrV_8Q5A_dcYTRWWj';
+function persistentIdentityFile(){
+  if(process.platform==='win32'&&process.env.LOCALAPPDATA)return resolve(process.env.LOCALAPPDATA,'SentinelTradingLabIdentity','remote-device.json');
+  return resolve('worker/data/remote-device.json');
+}
+const LEGACY_IDENTITY_FILE=resolve('worker/data/remote-device.json');
+
+async function seedPersistentIdentity(target){
+  if(resolve(target)===LEGACY_IDENTITY_FILE)return;
+  try{await readFile(target,'utf8');return}catch(e){if(e?.code!=='ENOENT')return}
+  try{
+    const legacy=await readFile(LEGACY_IDENTITY_FILE,'utf8');
+    await mkdir(dirname(target),{recursive:true});
+    await writeFile(target,legacy,{encoding:'utf8',mode:0o600});
+    await chmod(target,0o600).catch(()=>{});
+  }catch{}
+}
+
 const ANON_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3Y3p5cXZwdHppeXNlYWdldHRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2Njc0OTQsImV4cCI6MjEwMzI0MzQ5NH0.TneHtLeLgAZHzdfBTAIBr1fQawTYppKdoYzbcbPW0jE';
 
 function dpapiProtect(text){
@@ -82,8 +99,9 @@ async function loadOrCreateIdentity(file){
 }
 
 export class SentinelRemoteRelay{
-  constructor({file='worker/data/remote-device.json',version='8.8.0'}={}){this.file=resolve(file);this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
+  constructor({file=null,version='8.8.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
   async init(){
+    await seedPersistentIdentity(this.file);
     this.identity=await loadOrCreateIdentity(this.file);
     return this.register();
   }
