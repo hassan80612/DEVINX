@@ -20,7 +20,7 @@ try {
 } catch {}
 
 $created = $false
-$mutex = New-Object System.Threading.Mutex($true, 'Local\SentinelTradingLabTrayV860', [ref]$created)
+$mutex = New-Object System.Threading.Mutex($true, 'Local\SentinelTradingLabTrayV880', [ref]$created)
 if (-not $created) { exit 0 }
 if (Test-Path $exitMarker) { Remove-Item $exitMarker -Force -ErrorAction SilentlyContinue }
 
@@ -43,12 +43,14 @@ if (-not (Get-Health)) { Start-Manager }
 
 $notify = New-Object System.Windows.Forms.NotifyIcon
 try { $notify.Icon = New-Object System.Drawing.Icon($iconPath) } catch { $notify.Icon = [System.Drawing.SystemIcons]::Application }
-$notify.Text = 'Sentinel Agent V8.7'
+$notify.Text = 'Sentinel Agent V8.8'
 $notify.Visible = $true
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $statusItem = New-Object System.Windows.Forms.ToolStripMenuItem
 $statusItem.Text = 'Status: iniciando...'; $statusItem.Enabled = $false
+$accessItem = New-Object System.Windows.Forms.ToolStripMenuItem
+$accessItem.Text = 'Acesso: verificando...'; $accessItem.Enabled = $false
 $openItem = New-Object System.Windows.Forms.ToolStripMenuItem
 $openItem.Text = 'Abrir Sentinel'
 $startItem = New-Object System.Windows.Forms.ToolStripMenuItem
@@ -65,6 +67,7 @@ $pairItem = New-Object System.Windows.Forms.ToolStripMenuItem
 $pairItem.Text = 'Vincular conta: aguardando...'
 $pairItem.Enabled = $false
 [void]$menu.Items.Add($statusItem)
+[void]$menu.Items.Add($accessItem)
 [void]$menu.Items.Add('-')
 [void]$menu.Items.Add($openItem)
 [void]$menu.Items.Add($pairItem)
@@ -148,9 +151,19 @@ $timer.Add_Tick({
   $h = Get-Health
   try {
     $ri = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8787/remote-info' -TimeoutSec 1
-    if ($ri -and $ri.paired) { $pairItem.Text = 'Conta vinculada'; $pairItem.Enabled = $false; $pairItem.Tag = $null }
-    elseif ($ri -and $ri.pairingCode) { $pairItem.Text = 'Vincular conta: ' + $ri.pairingCode; $pairItem.Enabled = $true; $pairItem.Tag = $ri.pairingCode }
-    else { $pairItem.Text = 'Vincular conta: aguardando...'; $pairItem.Enabled = $false; $pairItem.Tag = $null }
+    if ($ri -and $ri.paired) {
+      $pairItem.Text = 'Conta vinculada'; $pairItem.Enabled = $false; $pairItem.Tag = $null
+      if ($ri.accessActive -eq $true) { $accessItem.Text = 'Acesso: ATIVO' }
+      else { $accessItem.Text = 'Acesso: BLOQUEADO' }
+    }
+    elseif ($ri -and $ri.pairingCode) {
+      $pairItem.Text = 'Vincular conta: ' + $ri.pairingCode; $pairItem.Enabled = $true; $pairItem.Tag = $ri.pairingCode
+      $accessItem.Text = 'Acesso: aguardando vínculo'
+    }
+    else {
+      $pairItem.Text = 'Vincular conta: aguardando...'; $pairItem.Enabled = $false; $pairItem.Tag = $null
+      $accessItem.Text = 'Acesso: aguardando vínculo'
+    }
   } catch {}
   if ($h -and $h.ok) {
     $failCount = 0
