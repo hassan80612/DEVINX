@@ -3,7 +3,7 @@ import {dirname,resolve} from 'node:path';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 
-const SUPABASE_URL='https://vwczyqvptziyseagettp.supabase.co';
+const SUPABASE_URL=process.env.SENTINEL_SUPABASE_URL||'https://vwczyqvptziyseagettp.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_ubJ_fSkmRa68XPdrV_8Q5A_dcYTRWWj';
 function persistentIdentityFile(){
   if(process.platform==='win32'&&process.env.LOCALAPPDATA)return resolve(process.env.LOCALAPPDATA,'SentinelTradingLabIdentity','remote-device.json');
