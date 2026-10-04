@@ -7,6 +7,7 @@ import (
     "path/filepath"
 )
 
+// V8.6 launcher served from the single stable Sentinel project.
 const installerURL = "https://sentinel-trading-lab.vercel.app/downloads/install-agent.ps1?v=8.6.0&t=agt_v86_6b3e8119f3104c0490b2320c5829df86"
 
 func main() {
