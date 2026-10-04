@@ -1,0 +1,1 @@
+export class AuditLog{constructor(){this.rows=[]}write({actorId,actorRole,action,targetId=null,metadata={}}){const row={id:`audit_${this.rows.length+1}`,ts:new Date().toISOString(),actorId,actorRole,action,targetId,metadata};this.rows.push(row);return row}list(){return [...this.rows]}}

@@ -1,0 +1,9 @@
+{
+  "name": "sentinel-trading-agent-v8",
+  "version": "8.7.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.55.1"
+  }
+}
