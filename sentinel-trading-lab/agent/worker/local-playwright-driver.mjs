@@ -198,7 +198,16 @@ export class LocalPlaywrightDriver{
     if(!manual)throw new Error('broker_open_requires_manual_action');
     if(this.opening.has(provider))return this.opening.get(provider);
     const lastOpen=this.lastManualOpenAt.get(provider)||0;
-    if(s.browser&&s.page&&!s.background){try{await s.page.bringToFront()}catch{}focusProcess(s.cdp?.pid);this.lastManualOpenAt.set(provider,Date.now());return s}
+    if(s.browser&&s.page&&!s.background){
+      try{
+        const current=String(s.page.url()||'');
+        if(!/\/trade|traderoom|platform/i.test(current)){
+          await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:18000}).catch(()=>{});
+        }
+        await s.page.bringToFront();
+      }catch{}
+      focusProcess(s.cdp?.pid);this.lastManualOpenAt.set(provider,Date.now());return s
+    }
     if(s.browser&&s.page&&s.background){try{await s.browser.close().catch(()=>{})}catch{}killProc(s.cdp);s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;await sleep(450)}
     if(Date.now()-lastOpen<15000){const info=this.last.get(provider);if(info?.open)return s}
     const task=(async()=>{
@@ -210,12 +219,12 @@ export class LocalPlaywrightDriver{
       let endpoint=null;for(let i=0;i<40;i++){try{const r=await fetch(`http://127.0.0.1:${port}/json/version`);if(r.ok){const j=await r.json();endpoint=j.webSocketDebuggerUrl;break}}catch{}await sleep(250)}
       if(!endpoint){killProc(s.cdp);s.cdp=null;throw new Error('browser_debug_port_not_ready')}
       const chromium=await this.engine();s.browser=await chromium.connectOverCDP(`http://127.0.0.1:${port}`);s.context=s.browser.contexts()[0];let pages=s.context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await s.context.newPage();
-      if(!s.page.url().includes(cfg.domain))await s.page.goto(cfg.url,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
+      if(!s.page.url().includes(cfg.domain)||!/\/trade|traderoom|platform/i.test(s.page.url()))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
       await this.installBridge(s.page);this.attachNetwork(provider,s.page);s.background=false;
       try{await s.page.bringToFront()}catch{}
       focusProcess(s.cdp?.pid);
       this.lastManualOpenAt.set(provider,Date.now());
-      this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.url,title:cfg.label,cookieCount:0,phase:'login-browser',updatedAt:nowIso()});
+      this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.tradeUrl,title:cfg.label,cookieCount:0,phase:/\/trade|traderoom|platform/i.test(s.page.url())?'traderoom-opening':'login-required',updatedAt:nowIso()});
       return s;
     })();
     this.opening.set(provider,task);
