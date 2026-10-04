@@ -13,7 +13,10 @@ function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; if ($env:SENTI
 try {
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
   Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
-  try { Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -ErrorAction SilentlyContinue } catch {}
+  try {
+    Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -ErrorAction SilentlyContinue
+    Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLabWatchdog' -ErrorAction SilentlyContinue
+  } catch {}
   try {
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
       $_.CommandLine -and $_.CommandLine -like '*SentinelTradingLab*' -and
@@ -101,20 +104,14 @@ try {
     $env:SENTINEL_MANAGER_PORT='8788'
     Start-Process -FilePath $node -ArgumentList @($manager) -WorkingDirectory $root -WindowStyle Hidden | Out-Null
   } else {
+    $watchdogHost = Join-Path $root 'worker\watchdog-host.ps1'
     $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
+    $watchdogCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$watchdogHost`""
     New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
     Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -Value $runCmd -Force
+    Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLabWatchdog' -Value $watchdogCmd -Force
 
-    # Watchdog independente: religa Manager/Worker se o processo principal morrer.
-    try {
-      $taskName = 'SentinelTradingLabWatchdog'
-      $taskCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$watchdog`""
-      & schtasks.exe /Delete /TN $taskName /F 2>$null | Out-Null
-      & schtasks.exe /Create /TN $taskName /SC MINUTE /MO 1 /TR $taskCmd /F | Out-Null
-    } catch {
-      Write-Host 'Aviso: watchdog agendado nao foi criado; o Agent ainda inicia pela bandeja.' -ForegroundColor Yellow
-    }
-
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',$watchdogHost) -WindowStyle Hidden | Out-Null
     Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',$tray) -WindowStyle Hidden | Out-Null
   }
 
