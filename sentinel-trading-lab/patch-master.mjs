@@ -5,6 +5,7 @@ let src=readFileSync(pagePath,'utf8');
 
 // Keep the visible Agent release in sync with the EXE published by CI.
 src=src
+  .replaceAll('/downloads/Sentinel-Agent-Windows.exe','/downloads/Sentinel-Agent-8.7-Pacote.zip')
   .replaceAll('V8.6.0','V8.7.0')
   .replaceAll('V8.6','V8.7')
   .replaceAll('Agent 8.6','Agent 8.7')
