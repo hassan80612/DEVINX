@@ -224,6 +224,7 @@ export class LocalPlaywrightDriver{
           executablePath:exe,
           headless:false,
           viewport:null,
+          chromiumSandbox:true,
           ignoreDefaultArgs:['--enable-automation'],
           args:[
             '--no-first-run','--no-default-browser-check','--start-maximized',
@@ -270,6 +271,7 @@ export class LocalPlaywrightDriver{
           executablePath:exe,
           headless:true,
           viewport:{width:1280,height:900},
+          chromiumSandbox:true,
           ignoreDefaultArgs:['--enable-automation'],
           args:['--no-first-run','--no-default-browser-check','--disable-blink-features=AutomationControlled']
         });
