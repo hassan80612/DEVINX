@@ -21,14 +21,26 @@ if (Test-Path $exitMarker) { exit 0 }
 if (-not (Test-Path $node) -or -not (Test-Path $manager)) { Log 'arquivos_do_agent_ausentes'; exit 0 }
 
 $ok=$false
+$reason='health_fail'
 try {
   $h=Invoke-RestMethod -UseBasicParsing $health -TimeoutSec 2
   $ok=($h.ok -eq $true -and $h.workerHealthy -eq $true)
+  if ($ok) {
+    try {
+      $ri=Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8787/remote-info' -TimeoutSec 2
+      if ($ri.paired -eq $true -and $ri.lastContactAt) {
+        $age=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()-[int64]$ri.lastContactAt
+        if ($age -gt 75000) { $ok=$false; $reason=('remote_stale_'+$age+'ms') }
+      }
+    } catch {
+      $ok=$false; $reason='remote_info_unreachable'
+    }
+  }
 } catch {}
 
 if ($ok) { exit 0 }
 
-Log 'health_falhou_reiniciando_manager'
+Log ($reason+' reiniciando_manager')
 
 try {
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
