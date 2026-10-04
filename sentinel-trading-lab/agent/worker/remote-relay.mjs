@@ -1,15 +1,88 @@
 import {readFile,writeFile,mkdir,chmod} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 import {randomBytes,randomUUID} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 
 const SUPABASE_URL='https://vwczyqvptziyseagettp.supabase.co';
 const PUBLISHABLE_KEY='sb_publishable_ubJ_fSkmRa68XPdrV_8Q5A_dcYTRWWj';
 const ANON_JWT='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3Y3p5cXZwdHppeXNlYWdldHRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2Njc0OTQsImV4cCI6MjEwMzI0MzQ5NH0.TneHtLeLgAZHzdfBTAIBr1fQawTYppKdoYzbcbPW0jE';
 
+function dpapiProtect(text){
+  if(process.platform!=='win32')return {format:'plain-dev',value:text};
+  const input=Buffer.from(String(text),'utf8').toString('base64');
+  const script=[
+    "$b=[Convert]::FromBase64String($env:SENTINEL_DPAPI_INPUT)",
+    "$e=[Security.Cryptography.ProtectedData]::Protect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)",
+    "[Convert]::ToBase64String($e)"
+  ].join(';');
+  const out=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{
+    encoding:'utf8',
+    windowsHide:true,
+    env:{...process.env,SENTINEL_DPAPI_INPUT:input},
+    timeout:5000
+  }).trim();
+  if(!out)throw new Error('dpapi_protect_failed');
+  return {format:'dpapi-current-user-v1',value:out};
+}
+
+function dpapiUnprotect(record){
+  if(record?.format==='plain-dev')return String(record.value||'');
+  if(process.platform!=='win32')throw new Error('dpapi_windows_required');
+  if(record?.format!=='dpapi-current-user-v1'||!record?.value)throw new Error('dpapi_record_invalid');
+  const script=[
+    "$b=[Convert]::FromBase64String($env:SENTINEL_DPAPI_INPUT)",
+    "$d=[Security.Cryptography.ProtectedData]::Unprotect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)",
+    "[Text.Encoding]::UTF8.GetString($d)"
+  ].join(';');
+  const out=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{
+    encoding:'utf8',
+    windowsHide:true,
+    env:{...process.env,SENTINEL_DPAPI_INPUT:String(record.value)},
+    timeout:5000
+  }).trim();
+  if(!out)throw new Error('dpapi_unprotect_failed');
+  return out;
+}
+
+async function writeIdentity(file,identity){
+  await mkdir(dirname(file),{recursive:true});
+  const protectedToken=dpapiProtect(identity.deviceToken);
+  const stored={format:'sentinel-device-v2',installId:identity.installId,deviceToken:protectedToken};
+  await writeFile(file,JSON.stringify(stored,null,2),{encoding:'utf8',mode:0o600});
+  await chmod(file,0o600).catch(()=>{});
+}
+
+async function loadOrCreateIdentity(file){
+  try{
+    const stored=JSON.parse(await readFile(file,'utf8'));
+    if(stored?.format==='sentinel-device-v2'&&stored?.installId&&stored?.deviceToken){
+      try{
+        const token=dpapiUnprotect(stored.deviceToken);
+        if(token)return {installId:String(stored.installId),deviceToken:token};
+      }catch{
+        // Copied/moved identity cannot be decrypted on another Windows profile/PC.
+        const fresh={installId:randomUUID(),deviceToken:randomBytes(32).toString('base64url')};
+        await writeIdentity(file,fresh);
+        return fresh;
+      }
+    }
+    if(stored?.installId&&stored?.deviceToken&&typeof stored.deviceToken==='string'){
+      const migrated={installId:String(stored.installId),deviceToken:String(stored.deviceToken)};
+      await writeIdentity(file,migrated);
+      return migrated;
+    }
+  }catch(e){
+    if(e?.code!=='ENOENT')throw e;
+  }
+  const fresh={installId:randomUUID(),deviceToken:randomBytes(32).toString('base64url')};
+  await writeIdentity(file,fresh);
+  return fresh;
+}
+
 export class SentinelRemoteRelay{
   constructor({file='worker/data/remote-device.json',version='8.8.0'}={}){this.file=resolve(file);this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
   async init(){
-    try{this.identity=JSON.parse(await readFile(this.file,'utf8'))}catch(e){if(e?.code!=='ENOENT')throw e;await mkdir(dirname(this.file),{recursive:true});this.identity={installId:randomUUID(),deviceToken:randomBytes(32).toString('base64url')};await writeFile(this.file,JSON.stringify(this.identity,null,2),{encoding:'utf8',mode:0o600});await chmod(this.file,0o600).catch(()=>{})}
+    this.identity=await loadOrCreateIdentity(this.file);
     return this.register();
   }
   async rpc(name,args){
