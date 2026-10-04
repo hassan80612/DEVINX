@@ -4,9 +4,18 @@ const pagePath='src/app/page.tsx';
 let src=readFileSync(pagePath,'utf8');
 
 const oldContent="const content=useMemo(()=>s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<Loading/> ,[tab,s,busy,agent,account,pairCode]);";
-const newContent="const content=useMemo(()=>tab==='Master Console'&&isMaster?<Master s={s} act={act} busy={busy}/>:s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<Loading/>,[tab,s,busy,agent,account,pairCode,isMaster]);";
+const newContent="const content=useMemo(()=>tab==='Master Console'&&isMaster?<Master s={s} act={act} busy={busy}/>:s?<Panel name={tab} s={s} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>:<OfflinePanel/>,[tab,s,busy,agent,account,pairCode,isMaster]);";
 if(!src.includes(oldContent)) throw new Error('Sentinel patch: content anchor not found');
 src=src.replace(oldContent,newContent);
+
+const oldNoPc="setErr(m==='pc_nao_vinculado'?'Nenhum PC vinculado a esta conta. Instale o Agent e informe o código SNTL abaixo.':m)";
+const newNoPc="setErr(m==='pc_nao_vinculado'?'':m)";
+if(src.includes(oldNoPc))src=src.replace(oldNoPc,newNoPc);
+
+const loadingAnchor="function Loading(){return <div className=\"grid\"><section className=\"card span12\"><div className=\"skeleton h32\"/><div className=\"skeleton h90\"/></section></div>}\nfunction Panel";
+const loadingReplacement="function Loading(){return <div className=\"grid\"><section className=\"card span12\"><div className=\"skeleton h32\"/><div className=\"skeleton h90\"/></section></div>}\nfunction OfflinePanel(){return <div className=\"grid\"><section className=\"card span12\"><div className=\"eyebrow\">SENTINEL PRONTO</div><h3>Aguardando o PC vinculado</h3><p className=\"muted\">Sua conta está funcionando. Instale ou abra o Agent no PC, use o código SNTL para vincular e o painel começará a receber saldo, mercado e estado do bot automaticamente.</p><div className=\"metrics\"><Metric label=\"Site\" value=\"ONLINE\"/><Metric label=\"Conta\" value=\"ATIVA\"/><Metric label=\"Agent\" value=\"AGUARDANDO\"/><Metric label=\"Bot\" value=\"OFFLINE\"/></div></section></div>}\nfunction Panel";
+if(!src.includes(loadingAnchor))throw new Error('Sentinel patch: loading anchor not found');
+src=src.replace(loadingAnchor,loadingReplacement);
 
 const start=src.indexOf("function Master({s,act,busy}");
 const end=src.indexOf("function Settings(",start);
