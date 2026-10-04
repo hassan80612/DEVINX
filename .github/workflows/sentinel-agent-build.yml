@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'sentinel-trading-lab/agent-launcher.go'
+      - 'sentinel-trading-lab/public/downloads/install-agent-v87.ps1'
+      - 'sentinel-trading-lab/public/downloads/agent_payload_v87.zip'
+      - 'sentinel-trading-lab/public/downloads/Instalar-Sentinel-8.7.cmd'
       - '.github/workflows/sentinel-agent-build.yml'
   workflow_dispatch:
 
@@ -27,12 +30,20 @@ jobs:
           GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
           file public/downloads/Sentinel-Agent-Windows.exe
           sha256sum public/downloads/Sentinel-Agent-Windows.exe
+      - name: Build portable V8.7 package
+        shell: bash
+        run: |
+          cd sentinel-trading-lab/public/downloads
+          rm -f Sentinel-Agent-8.7-Pacote.zip
+          zip -j Sentinel-Agent-8.7-Pacote.zip install-agent-v87.ps1 agent_payload_v87.zip Instalar-Sentinel-8.7.cmd
+          unzip -l Sentinel-Agent-8.7-Pacote.zip
+
       - name: Commit Agent executable
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-8.7-Pacote.zip
           if git diff --cached --quiet; then
             echo 'Agent executable already current.'
             exit 0
