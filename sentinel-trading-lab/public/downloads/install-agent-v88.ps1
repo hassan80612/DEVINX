@@ -60,6 +60,10 @@ try {
     New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
     Copy-Item (Join-Path $dataBackup '*') $dataDir -Recurse -Force -ErrorAction SilentlyContinue
   }
+  # Estado transitório nunca deve sobreviver a uma reinstalação.
+  foreach ($transient in @('agent.exit','manager.pid','worker.pid')) {
+    Remove-Item -LiteralPath (Join-Path $dataDir $transient) -Force -ErrorAction SilentlyContinue
+  }
 
   $node = Join-Path $runtime 'node.exe'
   $npm = Join-Path $runtime 'npm.cmd'
