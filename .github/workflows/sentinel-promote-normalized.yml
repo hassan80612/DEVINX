@@ -1,0 +1,63 @@
+name: Sentinel Promote Normalized Source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sentinel-promote-normalized.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Promote readable source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+
+          # Apply the last compatibility patch once, then make the result canonical source.
+          cp patch-master.mjs normalized/app/patch-master.mjs
+          (
+            cd normalized/app
+            node patch-master.mjs
+            rm -f patch-master.mjs
+          )
+
+          rm -rf src agent
+          cp -R normalized/app/src ./src
+          cp normalized/app/next.config.mjs ./next.config.mjs
+          cp normalized/app/tsconfig.json ./tsconfig.json
+          cp normalized/app/next-env.d.ts ./next-env.d.ts
+          cp -R normalized/agent ./agent
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          p.version='8.8.0';
+          p.scripts.build='next build';
+          fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');
+          NODE
+
+          rm -f app-bundle.b64.* app-bundle.tar.gz patch-master.mjs
+          rm -rf normalized/app
+          git add -A sentinel-trading-lab
+      - name: Commit readable Sentinel source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git diff --cached --quiet; then
+            echo "Readable source already promoted."
+            exit 0
+          fi
+          git commit -m 'refactor(sentinel): promote readable site and Agent source'
+          git pull --rebase origin main
+          git push
