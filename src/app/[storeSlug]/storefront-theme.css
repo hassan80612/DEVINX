@@ -11,7 +11,7 @@
   --sf-muted:#dceaf3;
 }
 .storefrontThemeRoot>main{position:relative;background:var(--sf-bg);color:var(--sf-text);font-family:"Segoe UI Variable","Segoe UI",Inter,system-ui,-apple-system,sans-serif}
-.storefrontThemeRoot>main:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(118deg,transparent 0 27%,rgba(40,145,255,.08) 36%,transparent 46% 63%,rgba(0,116,255,.06) 72%,transparent 82%);mix-blend-mode:screen}
+.storefrontThemeRoot>main:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:linear-gradient(118deg,transparent 0 27%,rgba(40,145,255,.08) 36%,transparent 46% 63%,rgba(0,116,255,.06) 72%,transparent 82%);mix-blend-mode:screen;will-change:transform;transform:translateZ(0);backface-visibility:hidden}
 .storefrontThemeRoot>main>header,.storefrontThemeRoot>main>section,.storefrontThemeRoot>main>footer{position:relative;z-index:1}
 .storefrontThemeRoot>main>header{background:var(--sf-header);border-bottom-color:rgba(66,160,255,.38);box-shadow:0 10px 34px rgba(0,0,0,.25),inset 0 -1px 0 rgba(126,194,255,.08)}
 .storefrontThemeRoot [class*="catalog"]{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important;align-items:stretch!important}
@@ -44,7 +44,7 @@
   .storefrontThemeRoot>main:before{background:linear-gradient(116deg,transparent 0 24%,rgba(49,255,200,.07) 35%,transparent 46% 64%,rgba(0,218,162,.055) 74%,transparent 84%)}
   .storefrontThemeRoot>main>header{border-bottom-color:rgba(83,229,195,.34);box-shadow:0 8px 28px rgba(0,0,0,.24),inset 0 -1px 0 rgba(160,255,232,.06)}
   .storefrontThemeRoot [class*="catalog"]{grid-template-columns:minmax(0,1fr)!important;gap:12px!important;width:calc(100% - 20px)!important}
-  .storefrontThemeRoot [class*="catalog"]>article{grid-template-columns:minmax(0,46%) minmax(0,54%)!important;gap:12px!important;padding:12px!important;border-radius:18px!important;align-items:stretch!important}
+  .storefrontThemeRoot [class*="catalog"]>article{grid-template-columns:minmax(0,46%) minmax(0,54%)!important;gap:12px!important;padding:12px!important;border-radius:18px!important;align-items:stretch!important;content-visibility:auto;contain-intrinsic-size:auto 430px}
   .storefrontThemeRoot [class*="catalog"]>article:hover{transform:none}
   .storefrontThemeRoot .storefrontProductMedia{gap:7px;height:100%}
   .storefrontThemeRoot .storefrontProductMedia [class*="photoBox"]{height:158px!important;min-height:158px!important;border-radius:14px!important}
