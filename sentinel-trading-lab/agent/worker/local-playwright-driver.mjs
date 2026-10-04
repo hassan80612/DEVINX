@@ -1,4 +1,4 @@
-import {mkdir} from 'node:fs/promises';
+import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
 import net from 'node:net';
@@ -18,6 +18,19 @@ function focusProcess(pid){
     const p=spawn('powershell.exe',['-NoProfile','-WindowStyle','Hidden','-Command',script],{windowsHide:true,stdio:'ignore'});
     p.unref?.();
   }catch{}
+}
+async function killSentinelProfileBrowsers(profileDir){
+  if(process.platform!=='win32')return;
+  const safe=String(profileDir||'').replace(/'/g,"''");
+  if(!safe)return;
+  await new Promise(resolveDone=>{
+    const script=`$p='${safe}'; Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { ($_.Name -eq 'chrome.exe' -or $_.Name -eq 'msedge.exe') -and $_.CommandLine -and $_.CommandLine -like ('*--user-data-dir='+$p+'*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
+    const p=spawn('powershell.exe',['-NoProfile','-WindowStyle','Hidden','-Command',script],{windowsHide:true,stdio:'ignore'});
+    p.on('exit',()=>resolveDone());p.on('error',()=>resolveDone());
+  });
+  for(const name of ['SingletonLock','SingletonCookie','SingletonSocket','lockfile']){
+    await rm(join(profileDir,name),{force:true,recursive:true}).catch(()=>{});
+  }
 }
 const nowIso=()=>new Date().toISOString();
 const uniq=(arr)=>[...new Set(arr.filter(Boolean))];
@@ -190,6 +203,7 @@ export class LocalPlaywrightDriver{
     if(Date.now()-lastOpen<15000){const info=this.last.get(provider);if(info?.open)return s}
     const task=(async()=>{
       killProc(s.normal);s.normal=null;killProc(s.cdp);s.cdp=null;
+      await killSentinelProfileBrowsers(s.profileDir);await sleep(250);
       const exe=await this.browserPath();const port=await freePort();s.debugPort=port;
       s.cdp=spawn(exe,[`--user-data-dir=${s.profileDir}`,`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--no-first-run','--no-default-browser-check','--new-window','--start-maximized','--window-position=70,50','--window-size=1360,900','--disable-backgrounding-occluded-windows','--disable-renderer-backgrounding',cfg.url],{detached:false,stdio:'ignore',windowsHide:false});
       s.cdp.on('exit',()=>{s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'browser-closed',updatedAt:nowIso()})});
@@ -214,7 +228,7 @@ export class LocalPlaywrightDriver{
     const task=(async()=>{
       try{if(s.browser)await s.browser.close().catch(()=>{})}catch{}
       killProc(s.normal);s.normal=null;killProc(s.cdp);s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;
-      await sleep(500);
+      await killSentinelProfileBrowsers(s.profileDir);await sleep(500);
       const exe=await this.browserPath(),port=await freePort();s.debugPort=port;
       s.cdp=spawn(exe,[`--user-data-dir=${s.profileDir}`,`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--no-first-run','--no-default-browser-check','--headless=new','--window-size=1280,900',cfg.tradeUrl],{detached:false,stdio:'ignore'});
       s.cdp.on('exit',()=>{s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'background-closed',updatedAt:nowIso()})});
