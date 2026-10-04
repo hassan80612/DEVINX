@@ -129,10 +129,14 @@ try {
 } catch {}
 Start-Sleep -Milliseconds 700
 Remove-Item -LiteralPath '__ROOT__' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $env:LOCALAPPDATA 'SentinelTradingLabIdentity') -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $env:TEMP 'SentinelAgentV88') -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $env:TEMP 'sentinel-agent-v86-payload.zip') -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $env:TEMP 'sentinel-agent-v86-payload') -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $env:TEMP 'sentinel-agent-v87-payload.zip') -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath (Join-Path $env:TEMP 'sentinel-agent-v87-payload') -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $env:TEMP 'sentinel-agent-v88-payload.zip') -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $env:TEMP 'sentinel-agent-v88-payload') -Recurse -Force -ErrorAction SilentlyContinue
 '@
   $cleanup = $cleanup.Replace('__ROOT__',$rootQuoted)
   Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-Command',$cleanup) -WindowStyle Hidden | Out-Null
