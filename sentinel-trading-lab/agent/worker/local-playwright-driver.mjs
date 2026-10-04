@@ -11,6 +11,14 @@ const PROVIDERS={
 const OTC_PREFERRED=['EUR/USD OTC','GBP/USD OTC','EUR/GBP OTC','USD/CHF OTC','EUR/JPY OTC','AUD/USD OTC','USD/CAD OTC','GBP/JPY OTC','XAU/USD OTC','ETH/USD OTC'];
 
 const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+function focusProcess(pid){
+  if(process.platform!=='win32'||!pid)return;
+  try{
+    const script=`Add-Type -AssemblyName Microsoft.VisualBasic; Start-Sleep -Milliseconds 250; [Microsoft.VisualBasic.Interaction]::AppActivate(${Number(pid)}) | Out-Null`;
+    const p=spawn('powershell.exe',['-NoProfile','-WindowStyle','Hidden','-Command',script],{windowsHide:true,stdio:'ignore'});
+    p.unref?.();
+  }catch{}
+}
 const nowIso=()=>new Date().toISOString();
 const uniq=(arr)=>[...new Set(arr.filter(Boolean))];
 function n(v){
@@ -177,7 +185,7 @@ export class LocalPlaywrightDriver{
     if(!manual)throw new Error('broker_open_requires_manual_action');
     if(this.opening.has(provider))return this.opening.get(provider);
     const lastOpen=this.lastManualOpenAt.get(provider)||0;
-    if(s.browser&&s.page&&!s.background){try{await s.page.bringToFront()}catch{}this.lastManualOpenAt.set(provider,Date.now());return s}
+    if(s.browser&&s.page&&!s.background){try{await s.page.bringToFront()}catch{}focusProcess(s.cdp?.pid);this.lastManualOpenAt.set(provider,Date.now());return s}
     if(s.browser&&s.page&&s.background){try{await s.browser.close().catch(()=>{})}catch{}killProc(s.cdp);s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;await sleep(450)}
     if(Date.now()-lastOpen<15000){const info=this.last.get(provider);if(info?.open)return s}
     const task=(async()=>{
@@ -191,6 +199,7 @@ export class LocalPlaywrightDriver{
       if(!s.page.url().includes(cfg.domain))await s.page.goto(cfg.url,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
       await this.installBridge(s.page);this.attachNetwork(provider,s.page);s.background=false;
       try{await s.page.bringToFront()}catch{}
+      focusProcess(s.cdp?.pid);
       this.lastManualOpenAt.set(provider,Date.now());
       this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.url,title:cfg.label,cookieCount:0,phase:'login-browser',updatedAt:nowIso()});
       return s;
