@@ -96,14 +96,14 @@ async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     const accepted={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     loginStates[p.name]=accepted;
-    void (async()=>{
-      try{
-        const info=await withTimeout(driver.call(p.name,'login',{body:{accountMode:'auto',userInitiated:payload.userInitiated===true}}),12000,'broker_open_timeout');
-        loginStates[p.name]=info;
-      }catch(e){
-        loginStates[p.name]={provider:p.name,open:false,phase:'open-error',error:String(e?.message||e),updatedAt:new Date().toISOString()};
-      }
-    })();
+    try{
+      const info=await withTimeout(driver.call(p.name,'login',{body:{accountMode:'auto',userInitiated:payload.userInitiated===true}}),22000,'broker_open_timeout');
+      loginStates[p.name]=info;
+    }catch(e){
+      const err=String(e?.message||e);
+      loginStates[p.name]={provider:p.name,open:false,phase:'open-error',error:err,updatedAt:new Date().toISOString()};
+      throw new Error(err);
+    }
     return status()
   }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
   const err=new Error('not_found');err.status=404;throw err}
@@ -162,7 +162,7 @@ async function remoteLoop(){
     if(cmd?.id&&cmd?.type){
       try{
         const method=cmd.type==='settings'?'PATCH':'POST';
-        const data=await withTimeout(act('/'+cmd.type,method,cmd.payload||{}),15000,'agent_command_timeout');
+        const data=await withTimeout(act('/'+cmd.type,method,cmd.payload||{}),28000,'agent_command_timeout');
         await saveState();
         await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
       }catch(e){

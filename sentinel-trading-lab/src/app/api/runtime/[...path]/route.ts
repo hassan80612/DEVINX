@@ -15,8 +15,8 @@ const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 
 async function waitForCommand(token:string,commandId:string){
   let last:any=null;
-  for(let i=0;i<14;i++){
-    await sleep(i===0?180:320);
+  for(let i=0;i<60;i++){
+    await sleep(i===0?180:500);
     last=await rpc('sentinel_command_status',{p_session_token:token,p_command_id:commandId});
     if(['acked','rejected','expired','canceled'].includes(String(last.status)))break;
   }
