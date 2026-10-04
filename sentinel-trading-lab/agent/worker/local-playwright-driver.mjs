@@ -183,13 +183,14 @@ export class LocalPlaywrightDriver{
     const task=(async()=>{
       killProc(s.normal);s.normal=null;killProc(s.cdp);s.cdp=null;
       const exe=await this.browserPath();const port=await freePort();s.debugPort=port;
-      s.cdp=spawn(exe,[`--user-data-dir=${s.profileDir}`,`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--no-first-run','--no-default-browser-check','--start-maximized',cfg.url],{detached:false,stdio:'ignore'});
+      s.cdp=spawn(exe,[`--user-data-dir=${s.profileDir}`,`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--no-first-run','--no-default-browser-check','--new-window','--start-maximized','--window-position=70,50','--window-size=1360,900','--disable-backgrounding-occluded-windows','--disable-renderer-backgrounding',cfg.url],{detached:false,stdio:'ignore',windowsHide:false});
       s.cdp.on('exit',()=>{s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'browser-closed',updatedAt:nowIso()})});
       let endpoint=null;for(let i=0;i<40;i++){try{const r=await fetch(`http://127.0.0.1:${port}/json/version`);if(r.ok){const j=await r.json();endpoint=j.webSocketDebuggerUrl;break}}catch{}await sleep(250)}
       if(!endpoint){killProc(s.cdp);s.cdp=null;throw new Error('browser_debug_port_not_ready')}
       const chromium=await this.engine();s.browser=await chromium.connectOverCDP(`http://127.0.0.1:${port}`);s.context=s.browser.contexts()[0];let pages=s.context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await s.context.newPage();
       if(!s.page.url().includes(cfg.domain))await s.page.goto(cfg.url,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
       await this.installBridge(s.page);this.attachNetwork(provider,s.page);s.background=false;
+      try{await s.page.bringToFront()}catch{}
       this.lastManualOpenAt.set(provider,Date.now());
       this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.url,title:cfg.label,cookieCount:0,phase:'login-browser',updatedAt:nowIso()});
       return s;
