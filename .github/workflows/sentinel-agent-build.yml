@@ -49,4 +49,5 @@ jobs:
             exit 0
           fi
           git commit -m 'build(sentinel): refresh Windows Agent V8.7'
+          git pull --rebase origin main
           git push
