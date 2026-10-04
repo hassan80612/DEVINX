@@ -8,7 +8,7 @@ $payloadZip = Join-Path $env:TEMP 'sentinel-agent-v88-payload.zip'
 $payloadTmp = Join-Path $env:TEMP 'sentinel-agent-v88-payload'
 
 function Step($t) { Write-Host "`n$t" -ForegroundColor Cyan }
-function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; Read-Host 'Pressione ENTER para fechar'; exit 1 }
+function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; if ($env:SENTINEL_INSTALL_TEST -ne '1') { Read-Host 'Pressione ENTER para fechar' | Out-Null }; exit 1 }
 
 try {
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
@@ -90,24 +90,33 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "npm install falhou ($LASTEXITCODE)" }
   Pop-Location
 
-  Step '5/5 Iniciando Agent na bandeja do Windows...'
+  Step '5/5 Iniciando Agent...'
   $tray = Join-Path $root 'worker\tray-host.ps1'
   $watchdog = Join-Path $root 'worker\watchdog.ps1'
-  $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
-  New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
-  Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -Value $runCmd -Force
+  $manager = Join-Path $root 'worker\agent-manager.mjs'
 
-  # Watchdog independente: religa Manager/Worker se o processo principal morrer.
-  try {
-    $taskName = 'SentinelTradingLabWatchdog'
-    $taskCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$watchdog`""
-    & schtasks.exe /Delete /TN $taskName /F 2>$null | Out-Null
-    & schtasks.exe /Create /TN $taskName /SC MINUTE /MO 1 /TR $taskCmd /F | Out-Null
-  } catch {
-    Write-Host 'Aviso: watchdog agendado nao foi criado; o Agent ainda inicia pela bandeja.' -ForegroundColor Yellow
+  if ($env:SENTINEL_INSTALL_TEST -eq '1') {
+    $env:SENTINEL_WORKER_HOST='127.0.0.1'
+    $env:SENTINEL_WORKER_PORT='8787'
+    $env:SENTINEL_MANAGER_PORT='8788'
+    Start-Process -FilePath $node -ArgumentList @($manager) -WorkingDirectory $root -WindowStyle Hidden | Out-Null
+  } else {
+    $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
+    New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
+    Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -Value $runCmd -Force
+
+    # Watchdog independente: religa Manager/Worker se o processo principal morrer.
+    try {
+      $taskName = 'SentinelTradingLabWatchdog'
+      $taskCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$watchdog`""
+      & schtasks.exe /Delete /TN $taskName /F 2>$null | Out-Null
+      & schtasks.exe /Create /TN $taskName /SC MINUTE /MO 1 /TR $taskCmd /F | Out-Null
+    } catch {
+      Write-Host 'Aviso: watchdog agendado nao foi criado; o Agent ainda inicia pela bandeja.' -ForegroundColor Yellow
+    }
+
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',$tray) -WindowStyle Hidden | Out-Null
   }
-
-  Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',$tray) -WindowStyle Hidden | Out-Null
 
   $ready = $false
   for ($i=0; $i -lt 45; $i++) {
@@ -119,9 +128,12 @@ try {
   }
   if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Execute novamente o Agent V8.8.0.' }
 
-  Write-Host "`nAgent V8.8.0 pronto. O icone S fica na bandeja ao lado do relogio." -ForegroundColor Green
-  Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan
-  Write-Host 'Se o Windows esconder o icone, clique na setinha ^ ao lado do relogio.' -ForegroundColor Yellow
-  Start-Sleep -Seconds 3
+  Write-Host "`nAgent V8.8.0 pronto." -ForegroundColor Green
+  if ($env:SENTINEL_INSTALL_TEST -ne '1') {
+    Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
+    Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan
+    Write-Host 'Se o Windows esconder o icone, clique na setinha ^ ao lado do relogio.' -ForegroundColor Yellow
+    Start-Sleep -Seconds 2
+  }
   exit 0
 } catch { Fail $_.Exception.Message }
