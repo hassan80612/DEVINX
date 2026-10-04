@@ -1,6 +1,6 @@
 import http from 'node:http';
 import {spawn} from 'node:child_process';
-import {writeFile,mkdir,rm} from 'node:fs/promises';
+import {writeFile,mkdir,rm,appendFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 
 const VERSION='8.8.0';
@@ -13,6 +13,7 @@ const PID_DIR=resolve(ROOT,'worker/data');
 const MANAGER_PID=resolve(PID_DIR,'manager.pid');
 const WORKER_PID=resolve(PID_DIR,'worker.pid');
 const EXIT_MARKER=resolve(PID_DIR,'agent.exit');
+const MANAGER_LOG=resolve(PID_DIR,'manager.log');
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);
 const ALLOWED=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
@@ -35,6 +36,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function healthWorker(){try{const r=await fetch(`http://${HOST}:${WORKER_PORT}/health`,{cache:'no-store',signal:AbortSignal.timeout(900)});if(!r.ok)return false;const j=await r.json().catch(()=>null);return !!j?.ok}catch{return false}}
 async function savePid(file,pid){await mkdir(dirname(file),{recursive:true});await writeFile(file,String(pid),'utf8').catch(()=>{})}
 async function removePid(file){await rm(file,{force:true}).catch(()=>{})}
+async function logLine(message){await mkdir(PID_DIR,{recursive:true}).catch(()=>{});await appendFile(MANAGER_LOG,`${new Date().toISOString()} ${message}\n`,'utf8').catch(()=>{})}
 
 function spawnWorker(){
   if(exiting||!workerEnabled)return;
@@ -43,9 +45,9 @@ function spawnWorker(){
   worker=spawn(process.execPath,[WORKER],{cwd:ROOT,env,windowsHide:true,stdio:['ignore','ignore','ignore']});
   lastStart=Date.now();
   savePid(WORKER_PID,worker.pid);
-  worker.on('error',(e)=>{lastExit={code:null,signal:'spawn_error',error:String(e?.message||e),at:Date.now()};worker=null;removePid(WORKER_PID);if(!exiting){clearTimeout(restartTimer);restartTimer=setTimeout(spawnWorker,1200)}});
+  worker.on('error',(e)=>{lastExit={code:null,signal:'spawn_error',error:String(e?.message||e),at:Date.now()};logLine(`worker_error ${String(e?.message||e)}`);worker=null;removePid(WORKER_PID);if(!exiting){clearTimeout(restartTimer);restartTimer=setTimeout(spawnWorker,1200)}});
   worker.on('exit',(code,signal)=>{
-    lastExit={code,signal,at:Date.now()};worker=null;removePid(WORKER_PID);
+    lastExit={code,signal,at:Date.now()};logLine(`worker_exit code=${code} signal=${signal}`);worker=null;removePid(WORKER_PID);
     if(!exiting){clearTimeout(restartTimer);restartTimer=setTimeout(spawnWorker,1200)}
   });
 }
@@ -96,4 +98,4 @@ server.on('error',async e=>{if(e?.code==='EADDRINUSE'){await removePid(MANAGER_P
 server.listen(PORT,HOST);
 
 async function shutdown(){if(exiting)return;exiting=true;await stopWorker();server.close(async()=>{await removePid(MANAGER_PID);process.exit(0)})}
-process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);process.on('uncaughtException',()=>{});process.on('unhandledRejection',()=>{});
+process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);process.on('uncaughtException',(e)=>{logLine(`manager_uncaught ${String(e?.stack||e)}`)});process.on('unhandledRejection',(e)=>{logLine(`manager_rejection ${String(e?.stack||e)}`)});
