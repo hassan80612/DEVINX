@@ -11,6 +11,22 @@ function Step($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; Read-Host 'Pressione ENTER para fechar'; exit 1 }
 
 try {
+  # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
+  Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
+  try { Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -ErrorAction SilentlyContinue } catch {}
+  try {
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+      $_.CommandLine -and $_.CommandLine -like '*SentinelTradingLab*' -and
+      ($_.Name -eq 'node.exe' -or $_.Name -like 'powershell*.exe')
+    } | ForEach-Object {
+      if ($_.ProcessId -ne $PID) { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }
+    }
+  } catch {}
+  try {
+    Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.TaskName -like 'Sentinel*' } | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
+  } catch {}
+  Start-Sleep -Milliseconds 900
+
   Write-Host '========================================' -ForegroundColor DarkCyan
   Write-Host '       SENTINEL WINDOWS AGENT V8.7.0' -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
