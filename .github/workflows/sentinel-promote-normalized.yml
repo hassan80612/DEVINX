@@ -47,7 +47,7 @@ jobs:
 
           rm -f app-bundle.b64.* app-bundle.tar.gz patch-master.mjs
           rm -rf normalized/app
-          git add -A sentinel-trading-lab
+          git add -A .
       - name: Commit readable Sentinel source
         shell: bash
         run: |
