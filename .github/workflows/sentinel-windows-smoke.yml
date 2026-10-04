@@ -24,6 +24,25 @@ jobs:
           node-version: '22.x'
       - name: Install Agent dependencies
         run: npm install --omit=dev --no-audit --no-fund
+      - name: Run Worker directly and capture startup errors
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:SENTINEL_WORKER_PORT='8787'
+          $p=Start-Process -FilePath node -ArgumentList @('worker/index.mjs') -WorkingDirectory $PWD -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\worker-out.log" -RedirectStandardError "$env:RUNNER_TEMP\worker-err.log"
+          Start-Sleep -Seconds 4
+          $p.Refresh()
+          if($p.HasExited){
+            Write-Host '=== worker stdout ==='
+            if(Test-Path "$env:RUNNER_TEMP\worker-out.log"){Get-Content "$env:RUNNER_TEMP\worker-out.log"}
+            Write-Host '=== worker stderr ==='
+            if(Test-Path "$env:RUNNER_TEMP\worker-err.log"){Get-Content "$env:RUNNER_TEMP\worker-err.log"}
+            throw "Worker exited with code $($p.ExitCode)"
+          }
+          $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
+          if(-not $w.ok -or $w.version -ne '8.8.0'){ throw 'Worker health check failed' }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+
       - name: Start Manager and require Worker health
         shell: powershell
         run: |
@@ -37,21 +56,10 @@ jobs:
               Start-Sleep -Milliseconds 250
               try {
                 $m=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-                if($m.workerHealthy){
-                  $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 1
-                  if($w.ok -and $w.version -eq '8.8.0'){ $ok=$true; break }
-                }
+                if($m.workerHealthy){ $ok=$true; break }
               } catch {}
             }
-            if(-not $ok){
-              Write-Host '=== manager stdout ==='
-              if(Test-Path "$env:RUNNER_TEMP\manager-out.log"){Get-Content "$env:RUNNER_TEMP\manager-out.log"}
-              Write-Host '=== manager stderr ==='
-              if(Test-Path "$env:RUNNER_TEMP\manager-err.log"){Get-Content "$env:RUNNER_TEMP\manager-err.log"}
-              try { Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1 | ConvertTo-Json -Depth 8 | Write-Host } catch {}
-              throw 'Worker did not become healthy on Windows'
-            }
-            Write-Host 'Windows Agent Manager + Worker healthy'
+            if(-not $ok){ throw 'Worker did not become healthy through Manager' }
           } finally {
             try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
           }
