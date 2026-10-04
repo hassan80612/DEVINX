@@ -273,7 +273,7 @@ export class LocalPlaywrightDriver{
           viewport:{width:1280,height:900},
           chromiumSandbox:true,
           ignoreDefaultArgs:['--enable-automation'],
-          args:['--no-first-run','--no-default-browser-check','--disable-blink-features=AutomationControlled']
+          args:['--no-first-run','--no-default-browser-check']
         });
       }catch{
         this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'background-launch-error',error:'background_browser_launch_failed',updatedAt:nowIso()});
@@ -305,14 +305,41 @@ export class LocalPlaywrightDriver{
     if(manual)return this.launchNormal(provider,{manual:true});
     return this.launchBackground(provider);
   }
-  async installBridge(page){if(page.__sentinelBridgeInstalled)return;page.__sentinelBridgeInstalled=true;await page.addInitScript(()=>{
-    try{
-      if(window.__sentinelBridgeReady)return;window.__sentinelBridgeReady=true;window.__sentinelSockets=[];
-      const nativeSend=WebSocket.prototype.send;
-      WebSocket.prototype.send=function(data){try{if(!window.__sentinelSockets.includes(this))window.__sentinelSockets.push(this)}catch{}return nativeSend.call(this,data)};
-      window.__sentinelSend=(payload,domain)=>{const text=typeof payload==='string'?payload:JSON.stringify(payload);const sockets=(window.__sentinelSockets||[]).filter(ws=>ws&&ws.readyState===1);const preferred=sockets.find(ws=>String(ws.url||'').includes(domain))||sockets.find(ws=>/iqoption|exnova|websocket|socket/i.test(String(ws.url||'')))||sockets[0];if(!preferred)return{ok:false,count:sockets.length,error:'no_open_websocket'};preferred.send(text);return{ok:true,count:sockets.length,url:String(preferred.url||'')}};
-    }catch{}
-  }).catch(()=>{})}
+  async installBridge(page){
+    if(page.__sentinelBridgeInstalled)return;
+    page.__sentinelBridgeInstalled=true;
+    const install=()=>{
+      try{
+        if(!window.__sentinelBridgeReady){
+          window.__sentinelBridgeReady=true;window.__sentinelSockets=[];
+          const nativeSend=WebSocket.prototype.send;
+          WebSocket.prototype.send=function(data){try{if(!window.__sentinelSockets.includes(this))window.__sentinelSockets.push(this)}catch{}return nativeSend.call(this,data)};
+          window.__sentinelSend=(payload,domain)=>{const text=typeof payload==='string'?payload:JSON.stringify(payload);const sockets=(window.__sentinelSockets||[]).filter(ws=>ws&&ws.readyState===1);const preferred=sockets.find(ws=>String(ws.url||'').includes(domain))||sockets.find(ws=>/iqoption|exnova|websocket|socket/i.test(String(ws.url||'')))||sockets[0];if(!preferred)return{ok:false,count:sockets.length,error:'no_open_websocket'};preferred.send(text);return{ok:true,count:sockets.length,url:String(preferred.url||'')}};
+        }
+        if(!window.__sentinelAssetClickReady){
+          window.__sentinelAssetClickReady=true;
+          const pairFrom=(text)=>{
+            const raw=String(text||'').toUpperCase();
+            const m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);
+            if(!m)return null;
+            return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;
+          };
+          document.addEventListener('click',ev=>{
+            try{
+              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              let node=ev.target;
+              for(let i=0;i<7&&node;i++,node=node.parentElement){
+                const pair=pairFrom(node.textContent||'');
+                if(pair){window.__sentinelClickedSymbol=pair;window.__sentinelClickedSymbolAt=Date.now();break}
+              }
+            }catch{}
+          },true);
+        }
+      }catch{}
+    };
+    await page.addInitScript(install).catch(()=>{});
+    await page.evaluate(install).catch(()=>{});
+  }
   ingest(provider,payload,direction='in'){
     const st=this.state(provider);st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
@@ -517,7 +544,7 @@ export class LocalPlaywrightDriver{
     return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
   }
   async maintain(provider){
-    const st=this.state(provider),now=Date.now();if(st.lastMaintainAt&&now-st.lastMaintainAt<1800)return this.liveStatus(provider);st.lastMaintainAt=now;
+    const st=this.state(provider),now=Date.now();if(st.lastMaintainAt&&now-st.lastMaintainAt<700)return this.liveStatus(provider);st.lastMaintainAt=now;
     const direct=this.feeds.get(provider);const directStatus=direct?.status?.();
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
@@ -533,9 +560,18 @@ export class LocalPlaywrightDriver{
     return this.liveStatus(provider)
   }
   async domSnapshot(provider,{allowAttach=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();text=(await page.locator('body').innerText({timeout:2500})).slice(0,100000)}catch{}
-    let accountText='',instrumentText='';try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const els=[...document.querySelectorAll('[aria-selected="true"],[aria-checked="true"],[class*="active"],[class*="selected"],[data-test*="account"],[data-test*="balance"],[data-test*="asset"],[data-test*="instrument"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const inst=els.map(el=>String(el.textContent||'').trim()).filter(t=>/[A-Z]{3}\s*[\/-]\s*[A-Z]{3}/i.test(t)).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | ')}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||''}catch{}
+    let accountText='',instrumentText='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const els=[...document.querySelectorAll('[aria-selected="true"],[aria-checked="true"],[class*="active"],[class*="selected"],[data-test*="account"],[data-test*="balance"],[data-test*="asset"],[data-test*="instrument"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const inst=els.map(el=>String(el.textContent||'').trim()).filter(t=>/[A-Z]{3}\s*[\/-]\s*[A-Z]{3}/i.test(t)).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`};
-    const activePairs=pairStrings(instrumentText);if(activePairs.length){st.uiSymbol=activePairs[0];if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}else if(!st.uiSymbol){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];if(!st.autoSelected)st.symbol=p[0]}}if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
+    const clickedPairs=clickedSymbol?pairStrings(clickedSymbol):[];const activePairs=clickedPairs.length?clickedPairs:pairStrings(instrumentText);
+    if(activePairs.length){
+      const nextUi=activePairs[0],changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
+      if(changed){
+        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;
+        st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
+        st.marketStatus='switching';st.marketReason=`Trocando leitura para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
+      }else{st.uiSymbol=nextUi;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
+    }else if(!st.uiSymbol){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];if(!st.autoSelected)st.symbol=p[0]}}
+    if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     if(st.quote==null&&st.symbol){try{const q=await page.evaluate((symbol)=>{const all=[...document.querySelectorAll('body *')];const sym=all.find(el=>el.textContent?.trim()===symbol);if(!sym)return null;let node=sym;for(let d=0;d<5&&node;d++,node=node.parentElement){const txt=node.textContent||'';const nums=txt.match(/\b\d{1,5}[.,]\d{2,6}\b/g)||[];for(const x of nums){const v=Number(x.replace(',','.'));if(Number.isFinite(v)&&v>0)return v}}return null},st.symbol);if(q){st.quote=q;st.lastQuoteAt=Date.now()}}catch{}}
     return{provider,open:true,url,title,text,st};
   }
@@ -645,6 +681,7 @@ export class LocalPlaywrightDriver{
         const buyScore=Math.max(0,Math.min(100,Number(m.buyScore)||0));
         const sellScore=Math.max(0,Math.min(100,Number(m.sellScore)||0));
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:3px;color:#aebec8">• '+esc(x)+'</div>').join('');
+        const currentScale=Math.max(.65,Math.min(1.15,Number(el.dataset.scale||el.style.zoom||1)||1));
         if(!el.dataset.sizeControl){
           el.dataset.sizeControl='1';
           el.addEventListener('click',ev=>{
@@ -657,22 +694,22 @@ export class LocalPlaywrightDriver{
             const fixed=Number(next.toFixed(2));
             el.dataset.scale=String(fixed);
             el.style.zoom=String(fixed);
-            try{localStorage.setItem('sentinel-overlay-scale-v1',String(fixed))}catch{}
+            try{localStorage.setItem('sentinel-overlay-scale-v1',String(fixed))}catch{} const label=el.querySelector('[data-sentinel-size="reset"]');if(label)label.textContent=Math.round(fixed*100)+'%'
           });
         }
         el.innerHTML=`
-          <div data-sentinel-drag="1" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;cursor:grab;touch-action:none;padding-bottom:2px">
-            <div><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL DEMO · ${esc(d.strategy||'—')}</div>
-            <div style="font-size:18px;font-weight:900;margin-top:2px">${esc(d.asset||'—')}</div>
-            <div style="font-size:9px;color:#6f8796;margin-top:2px">↕ arraste para mover · use −/+ para tamanho</div></div>
-            <div style="text-align:right">
-              <div style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:3px">
-                <button data-sentinel-size="down" title="Diminuir card" style="width:24px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">−</button>
-                <button data-sentinel-size="reset" title="Tamanho normal" style="min-width:38px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#9db0bd;font-size:9px;cursor:pointer">100%</button>
-                <button data-sentinel-size="up" title="Aumentar card" style="width:24px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">+</button>
-              </div>
-              <div style="font-size:20px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px">
+            <div data-sentinel-drag="1" style="flex:1;min-width:0;cursor:grab;touch-action:none;font-size:9px;color:#6f8796;padding:4px 2px">↕ segure aqui para mover</div>
+            <div style="display:flex;gap:4px;flex:0 0 auto">
+              <button data-sentinel-size="down" title="Diminuir card" style="width:25px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">−</button>
+              <button data-sentinel-size="reset" title="Tamanho atual / voltar a 100%" style="width:42px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#9db0bd;font-size:9px;cursor:pointer">${Math.round(currentScale*100)}%</button>
+              <button data-sentinel-size="up" title="Aumentar card" style="width:25px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">+</button>
             </div>
+          </div>
+          <div data-sentinel-drag="1" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;cursor:grab;touch-action:none;padding-bottom:2px">
+            <div style="min-width:0"><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL DEMO · ${esc(d.strategy||'—')}</div>
+            <div style="font-size:18px;font-weight:900;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.asset||'—')}</div></div>
+            <div style="text-align:right;flex:0 0 auto"><div style="font-size:18px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div></div>
           </div>
           <div style="margin-top:9px;padding:8px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035)">
             <div><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
