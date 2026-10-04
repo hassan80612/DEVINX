@@ -108,6 +108,36 @@ async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&
   }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
   const err=new Error('not_found');err.status=404;throw err}
 
+let autoBrokerBusy=false;
+async function autoConnectVisibleBrokers(){
+  if(autoBrokerBusy)return;autoBrokerBusy=true;
+  try{
+    for(const [name,adapter] of Object.entries(brokers)){
+      if(adapter.connected)continue;
+      const peek=driver.peek?.(name);
+      if(!peek?.open)continue;
+      let info=null;
+      try{
+        info=await withTimeout(driver.sessionInfo(name),5000,'broker_session_probe_timeout');
+        loginStates[name]=info;
+      }catch{continue}
+      if(!info?.sessionPresent)continue;
+      const sessionRef=`local-profile:${name}`;
+      try{
+        if(vault.get(name)!==sessionRef)await vault.put(name,sessionRef);
+        if(adapter.sessionRef!==sessionRef)adapter.attachSessionRef(sessionRef);
+        await withTimeout(adapter.connect(),12000,'broker_auto_connect_timeout');
+        if(adapter.connected){
+          activeProvider=name;
+          syncRuntimeMarket();
+        }
+      }catch{}
+    }
+  }finally{autoBrokerBusy=false}
+}
+setInterval(()=>autoConnectVisibleBrokers().catch(()=>{}),2500).unref();
+setTimeout(()=>autoConnectVisibleBrokers().catch(()=>{}),1200).unref();
+
 async function withTimeout(promise,ms,label='operation_timeout'){
   let timer;
   try{
