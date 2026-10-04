@@ -589,6 +589,10 @@ export class LocalPlaywrightDriver{
               el.style.top=Math.max(0,Math.min(window.innerHeight-80,saved.y))+'px';
               el.style.right='auto';
             }
+            const savedScale=Number(localStorage.getItem('sentinel-overlay-scale-v1')||'1');
+            const safeScale=Number.isFinite(savedScale)?Math.max(.65,Math.min(1.15,savedScale)):1;
+            el.dataset.scale=String(safeScale);
+            el.style.zoom=String(safeScale);
           }catch{}
           document.documentElement.appendChild(el);
 
@@ -603,6 +607,7 @@ export class LocalPlaywrightDriver{
             }catch{}
           };
           el.addEventListener('pointerdown',ev=>{
+            if(ev.target?.closest?.('[data-sentinel-size]'))return;
             const handle=ev.target?.closest?.('[data-sentinel-drag]');
             if(!handle)return;
             const rect=el.getBoundingClientRect();
@@ -640,12 +645,34 @@ export class LocalPlaywrightDriver{
         const buyScore=Math.max(0,Math.min(100,Number(m.buyScore)||0));
         const sellScore=Math.max(0,Math.min(100,Number(m.sellScore)||0));
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:3px;color:#aebec8">• '+esc(x)+'</div>').join('');
+        if(!el.dataset.sizeControl){
+          el.dataset.sizeControl='1';
+          el.addEventListener('click',ev=>{
+            const btn=ev.target?.closest?.('[data-sentinel-size]');
+            if(!btn)return;
+            ev.stopPropagation();
+            const action=btn.getAttribute('data-sentinel-size');
+            const current=Number(el.dataset.scale||el.style.zoom||1)||1;
+            const next=action==='reset'?1:action==='down'?Math.max(.65,current-.1):Math.min(1.15,current+.1);
+            const fixed=Number(next.toFixed(2));
+            el.dataset.scale=String(fixed);
+            el.style.zoom=String(fixed);
+            try{localStorage.setItem('sentinel-overlay-scale-v1',String(fixed))}catch{}
+          });
+        }
         el.innerHTML=`
           <div data-sentinel-drag="1" style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;cursor:grab;touch-action:none;padding-bottom:2px">
             <div><div style="font-size:10px;color:#88a2b2;letter-spacing:.08em;font-weight:800">SENTINEL DEMO · ${esc(d.strategy||'—')}</div>
             <div style="font-size:18px;font-weight:900;margin-top:2px">${esc(d.asset||'—')}</div>
-            <div style="font-size:9px;color:#6f8796;margin-top:2px">↕ arraste este cabeçalho para mover</div></div>
-            <div style="text-align:right"><div style="font-size:20px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div></div>
+            <div style="font-size:9px;color:#6f8796;margin-top:2px">↕ arraste para mover · use −/+ para tamanho</div></div>
+            <div style="text-align:right">
+              <div style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:3px">
+                <button data-sentinel-size="down" title="Diminuir card" style="width:24px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">−</button>
+                <button data-sentinel-size="reset" title="Tamanho normal" style="min-width:38px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#9db0bd;font-size:9px;cursor:pointer">100%</button>
+                <button data-sentinel-size="up" title="Aumentar card" style="width:24px;height:22px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.06);color:#d9e5eb;font-weight:900;cursor:pointer">+</button>
+              </div>
+              <div style="font-size:20px;font-weight:900;color:${tone}">${signal}</div><div style="color:#9db0bd">confiança ${n(confidence,0)}%</div>
+            </div>
           </div>
           <div style="margin-top:9px;padding:8px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035)">
             <div><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
