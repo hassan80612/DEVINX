@@ -11,8 +11,9 @@ function dpapiProtect(text){
   if(process.platform!=='win32')return {format:'plain-dev',value:text};
   const input=Buffer.from(String(text),'utf8').toString('base64');
   const script=[
+    "Add-Type -AssemblyName System.Security",
     "$b=[Convert]::FromBase64String($env:SENTINEL_DPAPI_INPUT)",
-    "$e=[Security.Cryptography.ProtectedData]::Protect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)",
+    "$e=[System.Security.Cryptography.ProtectedData]::Protect($b,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser)",
     "[Convert]::ToBase64String($e)"
   ].join(';');
   const out=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{
@@ -30,8 +31,9 @@ function dpapiUnprotect(record){
   if(process.platform!=='win32')throw new Error('dpapi_windows_required');
   if(record?.format!=='dpapi-current-user-v1'||!record?.value)throw new Error('dpapi_record_invalid');
   const script=[
+    "Add-Type -AssemblyName System.Security",
     "$b=[Convert]::FromBase64String($env:SENTINEL_DPAPI_INPUT)",
-    "$d=[Security.Cryptography.ProtectedData]::Unprotect($b,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser)",
+    "$d=[System.Security.Cryptography.ProtectedData]::Unprotect($b,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser)",
     "[Text.Encoding]::UTF8.GetString($d)"
   ].join(';');
   const out=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{
