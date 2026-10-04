@@ -198,61 +198,104 @@ export class LocalPlaywrightDriver{
     if(!manual)throw new Error('broker_open_requires_manual_action');
     if(this.opening.has(provider))return this.opening.get(provider);
     const lastOpen=this.lastManualOpenAt.get(provider)||0;
-    if(s.browser&&s.page&&!s.background){
+    if(s.context&&s.page&&!s.background){
       try{
         const current=String(s.page.url()||'');
-        if(!/\/trade|traderoom|platform/i.test(current)){
-          await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:18000}).catch(()=>{});
-        }
+        if(!current.includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
         await s.page.bringToFront();
       }catch{}
-      focusProcess(s.cdp?.pid);this.lastManualOpenAt.set(provider,Date.now());return s
+      this.lastManualOpenAt.set(provider,Date.now());return s
     }
-    if(s.browser&&s.page&&s.background){try{await s.browser.close().catch(()=>{})}catch{}killProc(s.cdp);s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;await sleep(450)}
-    if(Date.now()-lastOpen<15000){const info=this.last.get(provider);if(info?.open)return s}
+    if(s.context&&s.page&&s.background){
+      try{await s.context.close()}catch{}
+      s.browser=null;s.context=null;s.page=null;s.background=false;await sleep(350)
+    }
+    if(Date.now()-lastOpen<5000){const info=this.last.get(provider);if(info?.open)return s}
     const task=(async()=>{
-      killProc(s.normal);s.normal=null;killProc(s.cdp);s.cdp=null;
+      try{if(s.context)await s.context.close().catch(()=>{})}catch{}
+      try{if(s.browser)await s.browser.close().catch(()=>{})}catch{}
+      killProc(s.normal);s.normal=null;killProc(s.cdp);s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;
       await killSentinelProfileBrowsers(s.profileDir);await sleep(250);
-      const exe=await this.browserPath();const port=await freePort();s.debugPort=port;
-      s.cdp=spawn(exe,[`--user-data-dir=${s.profileDir}`,`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--no-first-run','--no-default-browser-check','--new-window','--start-maximized','--window-position=70,50','--window-size=1360,900','--disable-backgrounding-occluded-windows','--disable-renderer-backgrounding',cfg.url],{detached:false,stdio:'ignore',windowsHide:false});
-      s.cdp.on('exit',()=>{s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'browser-closed',updatedAt:nowIso()})});
-      let endpoint=null;for(let i=0;i<40;i++){try{const r=await fetch(`http://127.0.0.1:${port}/json/version`);if(r.ok){const j=await r.json();endpoint=j.webSocketDebuggerUrl;break}}catch{}await sleep(250)}
-      if(!endpoint){killProc(s.cdp);s.cdp=null;throw new Error('browser_debug_port_not_ready')}
-      const chromium=await this.engine();s.browser=await chromium.connectOverCDP(`http://127.0.0.1:${port}`);s.context=s.browser.contexts()[0];let pages=s.context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await s.context.newPage();
-      if(!s.page.url().includes(cfg.domain)||!/\/trade|traderoom|platform/i.test(s.page.url()))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
-      await this.installBridge(s.page);this.attachNetwork(provider,s.page);s.background=false;
+      const exe=await this.browserPath();
+      const chromium=await this.engine();
+      let context;
+      try{
+        context=await chromium.launchPersistentContext(s.profileDir,{
+          executablePath:exe,
+          headless:false,
+          viewport:null,
+          ignoreDefaultArgs:['--enable-automation'],
+          args:[
+            '--no-first-run','--no-default-browser-check','--start-maximized',
+            '--window-position=70,50','--window-size=1360,900',
+            '--disable-backgrounding-occluded-windows','--disable-renderer-backgrounding',
+            '--disable-blink-features=AutomationControlled'
+          ]
+        });
+      }catch{
+        this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'browser-launch-error',error:'browser_launch_failed',updatedAt:nowIso()});
+        throw new Error('browser_launch_failed');
+      }
+      s.context=context;
+      s.browser=context.browser?.()||{close:()=>context.close()};
+      s.background=false;
+      const markClosed=()=>{if(s.context===context){s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'browser-closed',updatedAt:nowIso()})}};
+      context.once?.('close',markClosed);
+      let pages=context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await context.newPage();
+      if(!String(s.page.url()||'').includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
+      await this.installBridge(s.page);this.attachNetwork(provider,s.page);
       try{await s.page.bringToFront()}catch{}
-      focusProcess(s.cdp?.pid);
       this.lastManualOpenAt.set(provider,Date.now());
-      this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.tradeUrl,title:cfg.label,cookieCount:0,phase:/\/trade|traderoom|platform/i.test(s.page.url())?'traderoom-opening':'login-required',updatedAt:nowIso()});
+      const info=await this.sessionInfo(provider).catch(()=>null);
+      if(!info?.open)this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.tradeUrl,title:cfg.label,cookieCount:0,phase:'login-required',updatedAt:nowIso()});
       return s;
     })();
     this.opening.set(provider,task);
-    try{return await task}finally{setTimeout(()=>{if(this.opening.get(provider)===task)this.opening.delete(provider)},1000)}
+    try{return await task}finally{setTimeout(()=>{if(this.opening.get(provider)===task)this.opening.delete(provider)},500)}
   }
   async launchBackground(provider,{force=false}={}){
     const cfg=this.config(provider),s=await this.session(provider);await mkdir(s.profileDir,{recursive:true});
-    if(!force&&s.browser&&s.page)return s;
+    if(!force&&s.context&&s.page)return s;
     if(this.opening.has(provider))return this.opening.get(provider);
     const task=(async()=>{
+      try{if(s.context)await s.context.close().catch(()=>{})}catch{}
       try{if(s.browser)await s.browser.close().catch(()=>{})}catch{}
       killProc(s.normal);s.normal=null;killProc(s.cdp);s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;
-      await killSentinelProfileBrowsers(s.profileDir);await sleep(500);
-      const exe=await this.browserPath(),port=await freePort();s.debugPort=port;
-      s.cdp=spawn(exe,[`--user-data-dir=${s.profileDir}`,`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--no-first-run','--no-default-browser-check','--headless=new','--window-size=1280,900',cfg.tradeUrl],{detached:false,stdio:'ignore'});
-      s.cdp.on('exit',()=>{s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'background-closed',updatedAt:nowIso()})});
-      let endpoint=null;for(let i=0;i<40;i++){try{const r=await fetch(`http://127.0.0.1:${port}/json/version`);if(r.ok){const j=await r.json();endpoint=j.webSocketDebuggerUrl;break}}catch{}await sleep(250)}
-      if(!endpoint){killProc(s.cdp);s.cdp=null;throw new Error('background_browser_debug_port_not_ready')}
-      const chromium=await this.engine();s.browser=await chromium.connectOverCDP(`http://127.0.0.1:${port}`);s.context=s.browser.contexts()[0];let pages=s.context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await s.context.newPage();
-      if(!s.page.url().includes(cfg.domain)||!/trade|traderoom|platform/i.test(s.page.url()))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
-      await this.installBridge(s.page);this.attachNetwork(provider,s.page);s.background=true;
+      await killSentinelProfileBrowsers(s.profileDir);await sleep(350);
+      const exe=await this.browserPath();
+      const chromium=await this.engine();
+      let context;
+      try{
+        context=await chromium.launchPersistentContext(s.profileDir,{
+          executablePath:exe,
+          headless:true,
+          viewport:{width:1280,height:900},
+          ignoreDefaultArgs:['--enable-automation'],
+          args:['--no-first-run','--no-default-browser-check','--disable-blink-features=AutomationControlled']
+        });
+      }catch{
+        this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'background-launch-error',error:'background_browser_launch_failed',updatedAt:nowIso()});
+        throw new Error('background_browser_launch_failed');
+      }
+      s.context=context;
+      s.browser=context.browser?.()||{close:()=>context.close()};
+      s.background=true;
+      const markClosed=()=>{if(s.context===context){s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'background-closed',updatedAt:nowIso()})}};
+      context.once?.('close',markClosed);
+      let pages=context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await context.newPage();
+      if(!String(s.page.url()||'').includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
+      await this.installBridge(s.page);this.attachNetwork(provider,s.page);
       this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.tradeUrl,title:cfg.label,cookieCount:0,phase:'background-session',background:true,updatedAt:nowIso()});
       const info=await this.sessionInfo(provider);
-      if(!info.sessionPresent){try{await s.browser.close().catch(()=>{})}catch{}killProc(s.cdp);s.cdp=null;s.browser=null;s.context=null;s.page=null;s.background=false;throw new Error('broker_session_not_detected')}
+      if(!info.sessionPresent){
+        try{await context.close()}catch{}
+        s.browser=null;s.context=null;s.page=null;s.background=false;
+        throw new Error('broker_session_not_detected')
+      }
       return s;
     })();
     this.opening.set(provider,task);
-    try{return await task}finally{setTimeout(()=>{if(this.opening.get(provider)===task)this.opening.delete(provider)},1000)}
+    try{return await task}finally{setTimeout(()=>{if(this.opening.get(provider)===task)this.opening.delete(provider)},500)}
   }
   async attachAutomation(provider,{manual=false}={}){
     const s=await this.session(provider);
