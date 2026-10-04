@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.2.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.3.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.2 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.3 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '9.2.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '9.3.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -196,6 +196,11 @@ jobs:
           $ErrorActionPreference='Stop'
           $script = @'
           import {LocalPlaywrightDriver} from './worker/local-playwright-driver.mjs';
+          import {analyzeMarket} from './src/core/strategy.mjs';
+          const candles=Array.from({length:80},(_,i)=>{const base=1+i*.001;return{from:1700000000+i*60,to:1700000060+i*60,open:base,high:base+.0008,low:base-.0005,close:base+.0005,volume:100+i}});
+          const analysis=analyzeMarket({candles,strategy:'smart_confluence',minConfidence:74,freshnessMs:5000,quoteTs:Date.now(),now:Date.now()});
+          if(!analysis.forecast30||analysis.forecast30.horizonSeconds!==30||!Number.isFinite(Number(analysis.forecast30.callStrength))||!Number.isFinite(Number(analysis.forecast30.putStrength)))throw new Error('forecast30_missing');
+          console.log('30S PRE-SIGNAL: PASS',JSON.stringify(analysis.forecast30));
           const d=new LocalPlaywrightDriver({dataDir:'worker/data/smoke-browser'});
           const s=await d.launchNormal('iq_option',{manual:true});
           const info=await d.sessionInfo('iq_option');
@@ -203,7 +208,7 @@ jobs:
           console.log('BROKER OPEN PASS',JSON.stringify({url:info.url,phase:info.phase,background:info.background||false}));
           const testPage=await s.context.newPage();
           await testPage.setContent('<button id="eurusd">EUR/USD (OTC)</button><button id="eurthb">EUR/THB (OTC)</button>');
-          await d.installBridge(testPage);
+          await d.installBridge(testPage,'iq_option');
           await testPage.click('#eurthb');
           const clicked=await testPage.evaluate(()=>window.__sentinelClickedSymbol||'');
           if(clicked!=='EUR/THB OTC')throw new Error('asset_click_tracking_failed:'+clicked);
@@ -215,6 +220,27 @@ jobs:
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',body:{active_id:1,size:60}}}),'page-out');
           if(st.uiSymbol!=='EUR/USD OTC'||st.symbol!=='EUR/USD OTC'||Number(st.activeId)!==1)throw new Error('broker_active_id_tracking_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId}));
           console.log('BROKER ACTIVE ID TRACKING: PASS',st.uiSymbol);
+
+          st.candles=[];st.activeId=1;
+          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:2,size:60,from:100,to:160,open:2,close:2.1,high:2.2,low:1.9}}),'page-in');
+          if(st.candles.length!==0)throw new Error('cross_asset_candle_leak');
+          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1,size:60,from:100,to:160,open:1,close:1.1,high:1.2,low:.9}}),'page-in');
+          if(st.candles.length!==1||Number(st.candles[0].close)!==1.1)throw new Error('selected_asset_candle_missing');
+          console.log('ASSET ANALYSIS ISOLATION: PASS');
+
+          s.page=testPage;s.background=false;
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:0,reasons:[],metrics:{buyScore:0,sellScore:0},plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'20:30:00',durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
+          const focusedOk=await testPage.evaluate(async()=>{
+            const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');
+            if(!sel)return false;sel.focus();const same=sel;
+            await new Promise(r=>setTimeout(r,40));
+            return document.activeElement===same;
+          });
+          if(!focusedOk)throw new Error('overlay_select_focus_failed');
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:10,reasons:[],metrics:{buyScore:10,sellScore:5},plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'20:30:01',durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
+          const preserved=await testPage.evaluate(()=>{const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');return !!sel&&document.activeElement===sel});
+          if(!preserved)throw new Error('overlay_select_was_rebuilt_while_open');
+          console.log('OVERLAY SELECT STABILITY: PASS');
           try{await s.context?.close()}catch{}
           '@
           $script | Set-Content -LiteralPath "broker-open-smoke.mjs" -Encoding utf8

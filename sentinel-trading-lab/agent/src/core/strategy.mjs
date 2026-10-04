@@ -47,8 +47,42 @@ export function analyzeMarket({candles,strategy='smart_confluence',minConfidence
    if(m.patterns.some(p=>p.side==='BUY'))addScore(box,'BUY',10,'price action comprador confirmado');if(m.patterns.some(p=>p.side==='SELL'))addScore(box,'SELL',10,'price action vendedor confirmado');
  }
  if(strategy==='trend'){if(trendUp)addScore(box,'BUY',12,'tendência confirmada');if(trendDn)addScore(box,'SELL',12,'tendência confirmada')}
- const raw=Math.max(box.buy,box.sell);const conflict=Math.min(box.buy,box.sell);const confidence=clamp(Math.round(raw-conflict*.35),0,100);let side=SignalSide.WAIT;
- if(confidence>=minConfidence&&Math.abs(box.buy-box.sell)>=10)side=box.buy>box.sell?SignalSide.BUY:SignalSide.SELL;
+ const raw=Math.max(box.buy,box.sell),conflict=Math.min(box.buy,box.sell);
+ const confidence=clamp(Math.round(raw-conflict*.35),0,100);
+ const buyEffective=clamp(Math.round(box.buy-box.sell*.35),0,100);
+ const sellEffective=clamp(Math.round(box.sell-box.buy*.35),0,100);
+ const edge=box.buy-box.sell;
+ let side=SignalSide.WAIT;
+ if(confidence>=minConfidence&&Math.abs(edge)>=10)side=edge>0?SignalSide.BUY:SignalSide.SELL;
+
+ // Pré-sinal de curtíssimo prazo: usa a confluência atual + impulso do candle corrente.
+ // É uma projeção técnica, não uma probabilidade garantida.
+ const lastCandle=candles.at(-1)||{},prevCandle=candles.at(-2)||{};
+ const openNow=Number(lastCandle.open??last),prevClose=Number(prevCandle.close??last);
+ const body=last-openNow,recent=last-prevClose,safeVol=Math.max(Math.abs(vol||0),Math.abs(last)*.00001);
+ const microPulse=clamp(Math.round(((body/safeVol)*7)+((recent/safeVol)*5)),-16,16);
+ const projectedBuy=clamp(buyEffective+Math.max(0,microPulse),0,100);
+ const projectedSell=clamp(sellEffective+Math.max(0,-microPulse),0,100);
+ const previewThreshold=Math.max(50,Number(minConfidence||74)-14);
+ let forecastSide=SignalSide.WAIT;
+ if(Math.max(projectedBuy,projectedSell)>=previewThreshold&&Math.abs(projectedBuy-projectedSell)>=6)forecastSide=projectedBuy>projectedSell?SignalSide.BUY:SignalSide.SELL;
+ const forecastConfidence=Math.max(projectedBuy,projectedSell);
+ const callGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedBuy));
+ const putGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedSell));
+
  if(side===SignalSide.WAIT)box.reasons.push(`score ${confidence}% abaixo do filtro ou confluência conflitante`);
- return{side,confidence,reasons:box.reasons.slice(0,12),metrics:{...m,buyScore:box.buy,sellScore:box.sell,strategy}};
+ return{
+   side,confidence,reasons:box.reasons.slice(0,12),
+   forecast30:{
+     side:forecastSide,
+     confidence:forecastConfidence,
+     horizonSeconds:30,
+     callStrength:projectedBuy,
+     putStrength:projectedSell,
+     trigger:Number(minConfidence||74),
+     callGap,putGap,
+     microPulse
+   },
+   metrics:{...m,buyScore:box.buy,sellScore:box.sell,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse,strategy}
+ };
 }

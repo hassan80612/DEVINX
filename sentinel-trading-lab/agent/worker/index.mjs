@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='9.2.0';
+const VERSION='9.3.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -24,6 +24,36 @@ const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({base
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
+const overlayScoreHistory=new Map();
+const clamp=(v,a=0,b=100)=>Math.max(a,Math.min(b,Number(v)||0));
+function buildOverlayForecast({asset,strategy,analysis,minConfidence,lastEvalMs}={}){
+  const key=`${asset||'—'}|${strategy||'—'}`,now=Number(lastEvalMs||Date.now());
+  const m=analysis?.metrics||{},buy=clamp(m.buyScore),sell=clamp(m.sellScore),confidence=clamp(analysis?.confidence),min=clamp(minConfidence||74);
+  let hist=overlayScoreHistory.get(key)||[];
+  if(!hist.length||hist.at(-1)?.ts!==now)hist.push({ts:now,buy,sell,confidence});
+  hist=hist.filter(x=>now-x.ts<=45000).slice(-60);overlayScoreHistory.set(key,hist);
+  const sample=hist.find(x=>now-x.ts>=6000)||hist[0];
+  let projectedBuy=buy,projectedSell=sell;
+  if(sample&&sample!==hist.at(-1)){
+    const dt=Math.max(1,(now-sample.ts)/1000);
+    const buySlope=Math.max(-.8,Math.min(.8,(buy-sample.buy)/dt));
+    const sellSlope=Math.max(-.8,Math.min(.8,(sell-sample.sell)/dt));
+    projectedBuy=clamp(buy+buySlope*30);projectedSell=clamp(sell+sellSlope*30);
+  }
+  const raw=Math.max(projectedBuy,projectedSell),conflict=Math.min(projectedBuy,projectedSell);
+  const projectedConfidence=clamp(Math.round(raw-conflict*.35));
+  const diff=projectedBuy-projectedSell;
+  let projectedSide='WAIT';
+  if(projectedConfidence>=min&&Math.abs(diff)>=10)projectedSide=diff>0?'BUY':'SELL';
+  else if(Math.abs(diff)>=6)projectedSide=diff>0?'BUY_BIAS':'SELL_BIAS';
+  const currentDiff=buy-sell;
+  const currentGap=Math.max(0,min-confidence);
+  return{
+    minConfidence:min,buy,sell,confidence,currentGap,currentDiff,
+    projectedBuy:Math.round(projectedBuy),projectedSell:Math.round(projectedSell),projectedConfidence,projectedSide,
+    samples:hist.length,windowSeconds:hist.length>1?Math.round((now-hist[0].ts)/1000):0
+  }
+}
 function chooseLive(){const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];for(const k of order){const b=brokers[k],m=driver.liveStatus?.(k);if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){return{k,m}}}return null}
 function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
@@ -34,12 +64,6 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   if(action==='start'){ensureAccess('/control/start');if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
   if(action==='pause'){ensureAccess('/control/start');await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
   if(action==='stop'){await runtime.stop('overlay','manual');return{ok:true,message:'Bot parado'}}
-  if(action==='stake-up'||action==='stake-down'){
-    ensureAccess('/settings');
-    const current=Number(runtime.settings.risk.fixedStake||1),max=Math.max(1,Number(runtime.settings.risk.maxStake||999999));
-    const next=Math.max(1,Math.min(max,current+(action==='stake-up'?1:-1)));
-    runtime.patchSettings({risk:{fixedStake:next}},'overlay');await saveState();return{ok:true,message:`Valor: ${next.toFixed(2)}`}
-  }
   if(action==='setting'){
     ensureAccess('/settings');
     const key=String(payload.key||''),value=payload.value;
@@ -50,9 +74,6 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }else if(key==='duration'){
       const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
       runtime.patchSettings({orderDurationMs:n},'overlay');
-    }else if(key==='interval'){
-      const n=Number(value);if(![2000,5000,10000,15000].includes(n))throw new Error('invalid_interval');
-      runtime.patchSettings({schedule:{intervalMs:n}},'overlay');
     }else throw new Error('invalid_overlay_setting');
     await saveState();return{ok:true,message:'Configuração aplicada'}
   }
@@ -81,25 +102,29 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const a=view.lastResult?.analysis||{};
     const m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+    const currentAsset=view.liveBroker?.uiSymbol||view.settings?.asset||'—';
+    const forecast=buildOverlayForecast({asset:currentAsset,strategy:view.settings?.strategy,analysis:a,minConfidence:view.settings?.risk?.minConfidence,lastEvalMs:view.lastEvalMs});
     await driver.updateOverlay?.(activeProvider,{
-      asset:view.liveBroker?.uiSymbol||view.settings?.asset||'—',
+      asset:currentAsset,
       strategy:view.settings?.strategy||'—',
       side:a.side||'WAIT',
       confidence:a.confidence||0,
+      forecast30:a.forecast30||null,
+      minConfidence:view.settings?.risk?.minConfidence||74,
       reasons:a.reasons||view.lastResult?.reasons||[],
       metrics:m,
       plan:view.lastResult?.plan||{},
+      forecast,
       nextEval:next,
       durationMs:view.settings?.orderDurationMs||60000,
-      intervalMs:view.settings?.schedule?.intervalMs||2000,
-      fixedStake:view.settings?.risk?.fixedStake||1,
+      intervalMs:view.settings?.schedule?.intervalMs||1000,
       brokerMode:view.liveBroker?.mode||view.mode,
       mode:view.mode,
       state:view.state
     }).catch(()=>{});
   }
   await saveState()
-}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,1000).unref();
+}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,500).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,agentVersion:VERSION,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
