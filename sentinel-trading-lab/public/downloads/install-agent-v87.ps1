@@ -19,7 +19,7 @@ try {
   Step '1/5 Atualizando arquivos do Agent...'
   New-Item -ItemType Directory -Force -Path $root | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload.zip?v=8.6.0&t=agt_v87_6b3e8119f3104c0490b2320c5829df86" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v87.zip?v=8.7.0&t=agt_v87_bg_20261004" -OutFile $payloadZip }
   if (Test-Path $payloadTmp) { Remove-Item $payloadTmp -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $payloadTmp | Out-Null
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
