@@ -51,23 +51,18 @@ jobs:
           test -f agent/worker/sentinel.ico
           cp agent/worker/sentinel.ico public/favicon.ico
 
-      - name: Build Windows launcher
+      - name: Build single Windows EXE with Sentinel icon
         shell: bash
         run: |
           set -euo pipefail
           cd sentinel-trading-lab
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build             -trimpath -ldflags='-s -w -buildid='             -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
           file public/downloads/Sentinel-Agent-Windows.exe
           sha256sum public/downloads/Sentinel-Agent-Windows.exe
-
-      - name: Build portable V8.8 package
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd sentinel-trading-lab/public/downloads
-          rm -f Sentinel-Agent-8.8-Pacote.zip
-          zip -j Sentinel-Agent-8.8-Pacote.zip             install-agent-v88.ps1             agent_payload_v88.zip             Instalar-Sentinel-8.8.cmd
-          unzip -l Sentinel-Agent-8.8-Pacote.zip
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
 
       - name: Commit generated Agent files
         shell: bash
@@ -76,7 +71,6 @@ jobs:
           tmpdir="$(mktemp -d)"
           cp sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe "$tmpdir/"
           cp sentinel-trading-lab/public/downloads/agent_payload_v88.zip "$tmpdir/"
-          cp sentinel-trading-lab/public/downloads/Sentinel-Agent-8.8-Pacote.zip "$tmpdir/"
           cp sentinel-trading-lab/public/favicon.ico "$tmpdir/favicon.ico"
 
           git fetch origin main
@@ -84,12 +78,11 @@ jobs:
 
           cp "$tmpdir/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/agent_payload_v88.zip" sentinel-trading-lab/public/downloads/
-          cp "$tmpdir/Sentinel-Agent-8.8-Pacote.zip" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/favicon.ico" sentinel-trading-lab/public/favicon.ico
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-8.8-Pacote.zip sentinel-trading-lab/public/favicon.ico
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/favicon.ico
           if git diff --cached --quiet; then
             echo 'Agent 8.8 generated files already current.'
             exit 0
