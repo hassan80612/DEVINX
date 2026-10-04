@@ -3,7 +3,7 @@ import {spawn} from 'node:child_process';
 import {writeFile,mkdir,rm} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 
-const VERSION='8.7.0';
+const VERSION='8.8.0';
 const HOST='127.0.0.1';
 const PORT=Number(process.env.SENTINEL_MANAGER_PORT||8788);
 const WORKER_PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
@@ -25,7 +25,7 @@ let lastStart=null;
 let workerEnabled=true;
 
 function allowedOrigin(origin=''){
-  if(origin===''||origin==='null'||origin==='http://localhost:3000'||origin==='http://127.0.0.1:3000')return true;
+  if(origin===''||origin==='http://localhost:3000'||origin==='http://127.0.0.1:3000')return true;
   if(ALLOWED.has(origin))return true;
   return false;
 }
