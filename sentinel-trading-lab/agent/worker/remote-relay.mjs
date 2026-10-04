@@ -30,7 +30,7 @@ function dpapiProtect(text){
   const script=[
     "Add-Type -AssemblyName System.Security",
     "$b=[Convert]::FromBase64String($env:SENTINEL_DPAPI_INPUT)",
-    "$e=[System.Security.Cryptography.ProtectedData]::Protect($b,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser)",
+    "$e=[System.Security.Cryptography.ProtectedData]::Protect($b,$null,[System.Security.Cryptography.DataProtectionScope]::LocalMachine)",
     "[Convert]::ToBase64String($e)"
   ].join(';');
   const out=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{
@@ -40,17 +40,19 @@ function dpapiProtect(text){
     timeout:5000
   }).trim();
   if(!out)throw new Error('dpapi_protect_failed');
-  return {format:'dpapi-current-user-v1',value:out};
+  return {format:'dpapi-local-machine-v1',value:out};
 }
 
 function dpapiUnprotect(record){
   if(record?.format==='plain-dev')return String(record.value||'');
   if(process.platform!=='win32')throw new Error('dpapi_windows_required');
-  if(record?.format!=='dpapi-current-user-v1'||!record?.value)throw new Error('dpapi_record_invalid');
+  const scope=record?.format==='dpapi-local-machine-v1'?'LocalMachine':
+    record?.format==='dpapi-current-user-v1'?'CurrentUser':null;
+  if(!scope||!record?.value)throw new Error('dpapi_record_invalid');
   const script=[
     "Add-Type -AssemblyName System.Security",
     "$b=[Convert]::FromBase64String($env:SENTINEL_DPAPI_INPUT)",
-    "$d=[System.Security.Cryptography.ProtectedData]::Unprotect($b,$null,[System.Security.Cryptography.DataProtectionScope]::CurrentUser)",
+    `$d=[System.Security.Cryptography.ProtectedData]::Unprotect($b,$null,[System.Security.Cryptography.DataProtectionScope]::${scope})`,
     "[Text.Encoding]::UTF8.GetString($d)"
   ].join(';');
   const out=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{
@@ -77,7 +79,11 @@ async function loadOrCreateIdentity(file){
     if(stored?.format==='sentinel-device-v2'&&stored?.installId&&stored?.deviceToken){
       try{
         const token=dpapiUnprotect(stored.deviceToken);
-        if(token)return {installId:String(stored.installId),deviceToken:token};
+        if(token){
+          const identity={installId:String(stored.installId),deviceToken:token};
+          if(stored.deviceToken?.format!=='dpapi-local-machine-v1')await writeIdentity(file,identity);
+          return identity;
+        }
       }catch{
         // Copied/moved identity cannot be decrypted on another Windows profile/PC.
         const fresh={installId:randomUUID(),deviceToken:randomBytes(32).toString('base64url')};
@@ -99,7 +105,7 @@ async function loadOrCreateIdentity(file){
 }
 
 export class SentinelRemoteRelay{
-  constructor({file=null,version='8.8.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
+  constructor({file=null,version='9.0.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
   async init(){
     await seedPersistentIdentity(this.file);
     this.identity=await loadOrCreateIdentity(this.file);
