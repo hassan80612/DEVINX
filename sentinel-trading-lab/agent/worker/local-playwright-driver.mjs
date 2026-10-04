@@ -364,8 +364,81 @@ export class LocalPlaywrightDriver{
     if(st.mode==='demo')await this.recoverMarket(provider);
     return candleFreshForState(st)&&st.candles.length>=50;
   }
-  async scanExecutionUi(provider){const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;try{const ui=await s.page.evaluate(()=>{const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8};const desc=(el)=>[el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-test'),el.getAttribute('data-testid'),el.className].filter(Boolean).join(' ').toLowerCase();const btn=[...document.querySelectorAll('button,[role=button]')].filter(visible);const buy=btn.find(el=>/(^|\s)(buy|comprar|call|higher|acima)(\s|$)/i.test(desc(el)));const sell=btn.find(el=>/(^|\s)(sell|vender|put|lower|abaixo)(\s|$)/i.test(desc(el)));const inputs=[...document.querySelectorAll('input')].filter(visible);const amount=inputs.find(el=>/amount|investment|investimento|valor|stake/i.test([el.name,el.id,el.placeholder,el.getAttribute('aria-label'),el.getAttribute('data-test'),el.getAttribute('data-testid')].filter(Boolean).join(' ')));return{buy:!!buy,sell:!!sell,amount:!!amount,buyText:buy?desc(buy).slice(0,120):'',sellText:sell?desc(sell).slice(0,120):''}});const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));st.executionUi={...ui,assetMatch,uiSymbol:st.uiSymbol,marketSymbol:st.symbol};st.executionReady=!!(ui.buy&&ui.sell&&ui.amount&&st.mode==='demo'&&assetMatch);return st.executionReady}catch{st.executionReady=false;return false}}
-  async placeDemoOrder(provider,order={}){const st=this.state(provider);await this.domSnapshot(provider).catch(()=>{});await this.scanExecutionUi(provider);if(st.mode!=='demo')throw new Error('demo_order_blocked_account_not_demo');if(!st.executionReady)throw new Error('demo_order_controls_not_detected');if(!st.uiSymbol||!order.asset||pairKey(st.uiSymbol)!==pairKey(order.asset)||pairKey(st.symbol)!==pairKey(order.asset))throw new Error('demo_order_asset_mismatch');const amount=Number(order.amount),side=String(order.side||'').toUpperCase();if(!Number.isFinite(amount)||amount<=0)throw new Error('demo_order_invalid_amount');if(!['BUY','SELL'].includes(side))throw new Error('demo_order_invalid_side');const s=await this.session(provider);const result=await s.page.evaluate(({amount,side})=>{const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8};const desc=(el)=>[el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-test'),el.getAttribute('data-testid'),el.className].filter(Boolean).join(' ').toLowerCase();const btn=[...document.querySelectorAll('button,[role=button]')].filter(visible);const rx=side==='BUY'?/(^|\s)(buy|comprar|call|higher|acima)(\s|$)/i:/(^|\s)(sell|vender|put|lower|abaixo)(\s|$)/i;const target=btn.find(el=>rx.test(desc(el)));const inputs=[...document.querySelectorAll('input')].filter(visible);const input=inputs.find(el=>/amount|investment|investimento|valor|stake/i.test([el.name,el.id,el.placeholder,el.getAttribute('aria-label'),el.getAttribute('data-test'),el.getAttribute('data-testid')].filter(Boolean).join(' ')));if(!target||!input)return{ok:false,error:'trade_controls_missing'};const proto=Object.getPrototypeOf(input),setter=Object.getOwnPropertyDescriptor(proto,'value')?.set||Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;if(setter)setter.call(input,String(amount));else input.value=String(amount);input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));target.click();return{ok:true,button:desc(target).slice(0,120)}} ,{amount,side});if(!result?.ok)throw new Error(result?.error||'demo_order_click_failed');st.lastRequestAt=Date.now();return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button}}
+  async scanExecutionUi(provider){
+    const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;
+    try{
+      const ui=await s.page.evaluate(()=>{
+        const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
+        const desc=(el)=>[el.textContent,el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.getAttribute?.('name'),el.getAttribute?.('id'),el.className].filter(Boolean).join(' ').toLowerCase();
+        const all=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid]')].filter(visible);
+        const score=(el,kind)=>{
+          const d=desc(el);let n=0;
+          const up=/(deal[-_ ]?button[-_ ]?up|button[-_ ]?up|call|higher|comprar|compra|buy|acima|up)/i;
+          const down=/(deal[-_ ]?button[-_ ]?down|button[-_ ]?down|put|lower|vender|venda|sell|abaixo|down)/i;
+          const rx=kind==='buy'?up:down;if(rx.test(d))n+=10;
+          if(el.tagName==='BUTTON'||el.getAttribute?.('role')==='button')n+=3;
+          const r=el.getBoundingClientRect();if(r.width>55&&r.height>28)n+=2;
+          return n;
+        };
+        const ranked=(kind)=>all.map(el=>({el,s:score(el,kind)})).filter(x=>x.s>=10).sort((a,b)=>b.s-a.s)[0]?.el||null;
+        const buy=ranked('buy'),sell=ranked('sell');
+        const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
+        const amount=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
+        return{
+          buy:!!buy,sell:!!sell,amount:!!amount,
+          buyText:buy?desc(buy).slice(0,180):'',
+          sellText:sell?desc(sell).slice(0,180):'',
+          amountText:amount?desc(amount).slice(0,180):'',
+          buttonCount:all.length,amountCandidateCount:amountEls.length
+        };
+      });
+      const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
+      st.executionUi={...ui,assetMatch,uiSymbol:st.uiSymbol,marketSymbol:st.symbol};
+      st.executionReady=!!(ui.buy&&ui.sell&&ui.amount&&st.mode==='demo'&&assetMatch);
+      return st.executionReady
+    }catch(e){
+      st.executionUi={buy:false,sell:false,amount:false,assetMatch:false,error:String(e?.message||e)};
+      st.executionReady=false;return false
+    }
+  }
+  async placeDemoOrder(provider,order={}){
+    const st=this.state(provider);await this.domSnapshot(provider).catch(()=>{});await this.scanExecutionUi(provider);
+    if(st.mode!=='demo')throw new Error('demo_order_blocked_account_not_demo');
+    if(!st.executionReady)throw new Error('demo_order_controls_not_detected');
+    if(!st.uiSymbol||!order.asset||pairKey(st.uiSymbol)!==pairKey(order.asset)||pairKey(st.symbol)!==pairKey(order.asset))throw new Error('demo_order_asset_mismatch');
+    const amount=Number(order.amount),side=String(order.side||'').toUpperCase();
+    if(!Number.isFinite(amount)||amount<=0)throw new Error('demo_order_invalid_amount');
+    if(!['BUY','SELL'].includes(side))throw new Error('demo_order_invalid_side');
+    const s=await this.session(provider);
+    const result=await s.page.evaluate(({amount,side})=>{
+      const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
+      const desc=(el)=>[el.textContent,el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.getAttribute?.('name'),el.getAttribute?.('id'),el.className].filter(Boolean).join(' ').toLowerCase();
+      const all=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid]')].filter(visible);
+      const rx=side==='BUY'?/(deal[-_ ]?button[-_ ]?up|button[-_ ]?up|call|higher|comprar|compra|buy|acima|up)/i:/(deal[-_ ]?button[-_ ]?down|button[-_ ]?down|put|lower|vender|venda|sell|abaixo|down)/i;
+      const target=all.map(el=>({el,d:desc(el)})).filter(x=>rx.test(x.d)).sort((a,b)=>((b.el.tagName==='BUTTON'?3:0)+(b.el.getAttribute?.('role')==='button'?2:0))-((a.el.tagName==='BUTTON'?3:0)+(a.el.getAttribute?.('role')==='button'?2:0)))[0]?.el||null;
+      const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
+      let input=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
+      if(input&&input.tagName!=='INPUT'&&input.querySelector)input=input.querySelector('input,[role=spinbutton],[contenteditable=true]')||input;
+      if(!target||!input)return{ok:false,error:'trade_controls_missing',target:!!target,amount:!!input};
+      try{
+        input.focus?.();
+        if(input.tagName==='INPUT'){
+          const proto=Object.getPrototypeOf(input),setter=Object.getOwnPropertyDescriptor(proto,'value')?.set||Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')?.set;
+          if(setter)setter.call(input,String(amount));else input.value=String(amount);
+        }else if(input.getAttribute?.('contenteditable')==='true')input.textContent=String(amount);
+        else if('value' in input)input.value=String(amount);
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+        input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',code:'Enter',bubbles:true}));
+        input.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true}));
+      }catch(e){return{ok:false,error:'amount_set_failed',detail:String(e?.message||e)}}
+      target.click();
+      return{ok:true,button:desc(target).slice(0,180),amountControl:desc(input).slice(0,180)}
+    },{amount,side});
+    if(!result?.ok)throw new Error(result?.error||'demo_order_click_failed');
+    st.lastRequestAt=Date.now();
+    return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
+  }
   async maintain(provider){
     const st=this.state(provider),now=Date.now();if(st.lastMaintainAt&&now-st.lastMaintainAt<1800)return this.liveStatus(provider);st.lastMaintainAt=now;
     const direct=this.feeds.get(provider);const directStatus=direct?.status?.();
