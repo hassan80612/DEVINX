@@ -63,3 +63,39 @@ jobs:
           } finally {
             try { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue } catch {}
           }
+
+      - name: Watchdog recovers dead Manager
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:SENTINEL_WORKER_PORT='8787'
+          $env:SENTINEL_MANAGER_PORT='8788'
+
+          $manager=Start-Process -FilePath node -ArgumentList @('worker/agent-manager.mjs') -WorkingDirectory $PWD -PassThru
+          $ok=$false
+          for($i=0;$i -lt 40;$i++){
+            Start-Sleep -Milliseconds 250
+            try {
+              $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
+              if($h.ok -and $h.workerHealthy){$ok=$true;break}
+            } catch {}
+          }
+          if(-not $ok){throw 'Manager did not start before watchdog test'}
+
+          Stop-Process -Id $manager.Id -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 1
+
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File worker/watchdog.ps1
+          $recovered=$false
+          for($i=0;$i -lt 40;$i++){
+            Start-Sleep -Milliseconds 250
+            try {
+              $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
+              if($h.ok -and $h.workerHealthy){$recovered=$true;break}
+            } catch {}
+          }
+          if(-not $recovered){
+            if(Test-Path 'worker/data/watchdog.log'){Get-Content 'worker/data/watchdog.log'}
+            throw 'Watchdog failed to recover Manager + Worker'
+          }
+          Write-Host 'Watchdog recovered Manager + Worker successfully'
