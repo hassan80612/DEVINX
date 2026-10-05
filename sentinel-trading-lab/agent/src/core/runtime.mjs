@@ -71,9 +71,9 @@ export class DemoTradingRuntime{
       if(strategy==='none'||!labels[strategy])return{slot:index+1,strategy:'none',label:'Estratégia não selecionada',active:false,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:[]};
       try{
         const a=analyzeMarket({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now});
-        const rawCall=Math.max(0,Number(a?.metrics?.rawBuyScore||0)),rawPut=Math.max(0,Number(a?.metrics?.rawSellScore||0)),total=rawCall+rawPut;
-        const callPct=total>0?Math.round(rawCall/total*100):50,putPct=100-callPct,edge=callPct-putPct;
-        const side=Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
+        const rawCall=Math.max(0,Number(a?.metrics?.rawBuyScore||0)),rawPut=Math.max(0,Number(a?.metrics?.rawSellScore||0));
+        const callPct=Math.max(0,Math.min(100,Math.round(rawCall))),putPct=Math.max(0,Math.min(100,Math.round(rawPut))),edge=callPct-putPct,strongest=Math.max(callPct,putPct);
+        const side=strongest<35||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
         const reasons=(Array.isArray(a?.reasons)?a.reasons:[]).filter(x=>!/entrada aguardando|bloqueado por risco|fluxo \d+s|EMA micro|microestrutura/i.test(String(x))).slice(0,3);
         return{slot:index+1,strategy,label:labels[strategy],active:true,side,callPct,putPct,rawCall,rawPut,reasons};
       }catch{
@@ -83,13 +83,14 @@ export class DemoTradingRuntime{
     const active=cards.filter(x=>x.active&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
     const activeCount=active.length;
     const callPct=activeCount?Math.round(active.reduce((s,x)=>s+Number(x.callPct),0)/activeCount):null;
-    const putPct=activeCount?100-callPct:null;
+    const putPct=activeCount?Math.round(active.reduce((s,x)=>s+Number(x.putPct),0)/activeCount):null;
     const callVotes=active.filter(x=>x.side==='CALL').length,putVotes=active.filter(x=>x.side==='PUT').length;
     let side='AGUARDAR',agreement='SEM ESTRATÉGIAS';
     if(activeCount===1){side=active[0].side;agreement='SEM CONFLUÊNCIA · 1 ESTRATÉGIA ATIVA'}
     else if(activeCount>1){
-      if(callVotes>putVotes&&callPct!=null&&callPct-putPct>=10)side='CALL';
-      else if(putVotes>callVotes&&putPct!=null&&putPct-callPct>=10)side='PUT';
+      const strongest=Math.max(Number(callPct||0),Number(putPct||0)),edge=Number(callPct||0)-Number(putPct||0);
+      if(callVotes>putVotes&&strongest>=35&&edge>=10)side='CALL';
+      else if(putVotes>callVotes&&strongest>=35&&edge<=-10)side='PUT';
       agreement=callVotes===putVotes?'DIVERGÊNCIA':(callVotes>putVotes?`${callVotes}/${activeCount} CONCORDAM EM CALL`:`${putVotes}/${activeCount} CONCORDAM EM PUT`);
     }
     return{cards,confluence:{activeCount,callPct,putPct,callVotes,putVotes,side,agreement}};
