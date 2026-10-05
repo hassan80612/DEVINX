@@ -508,7 +508,7 @@ export class LocalPlaywrightDriver{
     // The broker page's own outbound market subscription is the source of truth for
     // the chart selected by the user. Sentinel's direct requests are "direct-out"
     // and therefore can never retarget the selected asset.
-    if(/page-out/.test(direction)&&st.lastPageActiveAt!==before.lastPageActiveAt&&st.pageActiveId!=null){
+    if(/page-out/.test(direction)&&st.pageActiveId!=null){
       this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page'});
     }
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
