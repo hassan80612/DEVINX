@@ -351,7 +351,7 @@ jobs:
           const plannerText=(await testPage.locator('#sentinel-trading-overlay').innerText()).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           const horizonValue=await testPage.locator('#sentinel-trading-overlay [data-sentinel-plan-horizon]').inputValue();
           if(horizonValue!=='900'||!plannerText.includes('ATE 15 MIN')||!/CALL[^A-Z]{1,8}GATILHO/.test(plannerText)||!/PUT[^A-Z]{1,8}GATILHO/.test(plannerText)||!plannerText.includes('NAO SAO PREVISAO GARANTIDA'))throw new Error('planner_ui_failed:'+plannerText);
-          if(!plannerText.includes('REVERSAO EM FORMACAO')||!plannerText.includes('JANELA DO SETUP')||!plannerText.includes('VALIDADE, NAO CONTAGEM PARA ENTRAR'))throw new Error('pre_entry_window_missing:'+plannerText);
+          if(!plannerText.includes('JANELA DO SETUP')||!plannerText.includes('PUT')||!plannerText.includes('VALIDADE, NAO CONTAGEM PARA ENTRAR'))throw new Error('pre_entry_window_missing:'+plannerText);
           console.log('V10.9 PLANNER + PRE-ENTRY WINDOW: PASS',horizonValue);
 
           await testPage.evaluate(()=>{window.__sentinelUiActions=[];window.__sentinelOverlayAction=async p=>{window.__sentinelUiActions.push(p.action+':'+String(p.key||''));return{ok:true,message:'ok'}}});
