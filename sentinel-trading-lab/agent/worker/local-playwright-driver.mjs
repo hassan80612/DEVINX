@@ -852,10 +852,27 @@ export class LocalPlaywrightDriver{
         const forecastTone=forecast==='CALL'?'#69e1b5':forecast==='PUT'?'#ff8f9c':'#f2cb6f';
         const forecastBias=fBias==='BUY'?'CALL':fBias==='SELL'?'PUT':'AGUARDAR';
         const callStrength=Math.max(0,Math.min(100,Number(f.callStrength)||0)),putStrength=Math.max(0,Math.min(100,Number(f.putStrength)||0));
+        const planner=d.entryPlanner?.horizons||{};
+        const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
         const scale=Math.max(.65,Math.min(1.15,Number(el.dataset.scale||el.style.zoom||1)||1));
-        let forecastOpen=true,detailsOpen=false;
-        try{forecastOpen=localStorage.getItem('sentinel-v101-forecast')!=='0';detailsOpen=localStorage.getItem('sentinel-v101-details')==='1'}catch{}
+        let forecastOpen=true,plannerOpen=false,plannerHorizon='30',detailsOpen=false;
+        try{
+          forecastOpen=localStorage.getItem('sentinel-v101-forecast')!=='0';
+          plannerOpen=localStorage.getItem('sentinel-v102-planner')==='1';
+          plannerHorizon=localStorage.getItem('sentinel-v102-planner-horizon')||String(d.entryPlanner?.defaultHorizonSeconds||30);
+          detailsOpen=localStorage.getItem('sentinel-v101-details')==='1'
+        }catch{}
+        const plan=planner[plannerHorizon]||planner['30']||null;
+        const planTone=plan?.bias==='CALL'?'#69e1b5':plan?.bias==='PUT'?'#ff8f9c':'#f2cb6f';
+        const planHtml=plan?(
+          '<div style="font-size:9px;color:#7f949e;margin-bottom:7px">Preço atual <b style="color:#dce8ed">'+price(plan.currentPrice)+'</b> · viés <b style="color:'+planTone+'">'+esc(plan.bias||'NEUTRO')+'</b></div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+            '<div style="padding:9px;border-radius:10px;background:rgba(105,225,181,.055);border:1px solid rgba(105,225,181,.12)"><div style="font-size:9px;color:#8fb7a8;font-weight:850">CALL SE CHEGAR / CONFIRMAR</div><div style="font-size:18px;font-weight:950;color:#69e1b5;margin-top:2px">'+price(plan.callTrigger)+'</div><div style="font-size:8px;color:#759087;margin-top:3px">invalida abaixo de '+price(plan.callInvalidation)+'</div></div>'+
+            '<div style="padding:9px;border-radius:10px;background:rgba(255,143,156,.055);border:1px solid rgba(255,143,156,.12)"><div style="font-size:9px;color:#bc9499;font-weight:850">PUT SE CHEGAR / CONFIRMAR</div><div style="font-size:18px;font-weight:950;color:#ff8f9c;margin-top:2px">'+price(plan.putTrigger)+'</div><div style="font-size:8px;color:#96767b;margin-top:3px">invalida acima de '+price(plan.putInvalidation)+'</div></div>'+
+          '</div>'+
+          '<div style="margin-top:7px;font-size:9px;color:#8ba0a9"><b>CALL:</b> '+esc(plan.callRule||'—')+'<br><b>PUT:</b> '+esc(plan.putRule||'—')+'<br><span style="color:#6f8690">Base: '+esc(plan.basis||'confluência técnica')+'. Use como gatilho condicional para agendamento manual; não é ordem automática.</span></div>'
+        ):'<div style="font-size:9px;color:#8ba0a9">Aguardando dados suficientes para calcular os níveis.</div>';
 
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
@@ -864,9 +881,11 @@ export class LocalPlaywrightDriver{
             try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
             catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
           };
-          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting]'))el.dataset.selectLock='1'},true);
-          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
+          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon]'))el.dataset.selectLock='1'},true);
+          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
+            const ph=ev.target?.closest?.('[data-sentinel-plan-horizon]');
+            if(ph){try{localStorage.setItem('sentinel-v102-planner-horizon',ph.value)}catch{};setTimeout(()=>{el.dataset.selectLock='0';ph.blur?.()},120);return}
             const x=ev.target?.closest?.('[data-sentinel-setting]');if(!x)return;
             run({action:'setting',key:x.getAttribute('data-sentinel-setting'),value:x.value});
             setTimeout(()=>{el.dataset.selectLock='0';x.blur?.()},160)
@@ -877,7 +896,7 @@ export class LocalPlaywrightDriver{
             const z=ev.target?.closest?.('[data-sentinel-size]');
             if(z){ev.preventDefault();ev.stopPropagation();const cur=Number(el.dataset.scale||1)||1,k=z.getAttribute('data-sentinel-size'),next=k==='reset'?1:k==='down'?Math.max(.65,cur-.1):Math.min(1.15,cur+.1);const fixed=Number(next.toFixed(2));el.dataset.scale=String(fixed);el.style.zoom=String(fixed);try{localStorage.setItem('sentinel-overlay-scale-v1',String(fixed))}catch{};const lab=el.querySelector('[data-sentinel-size="reset"]');if(lab)lab.textContent=Math.round(fixed*100)+'%';return}
             const t=ev.target?.closest?.('[data-sentinel-toggle]');
-            if(t){ev.preventDefault();const key=t.getAttribute('data-sentinel-toggle'),box=el.querySelector('[data-sentinel-section="'+key+'"]'),open=box?.style.display==='none';if(box)box.style.display=open?'block':'none';const arrow=t.querySelector('[data-sentinel-arrow]');if(arrow)arrow.textContent=open?'⌃':'⌄';try{localStorage.setItem(key==='forecast'?'sentinel-v101-forecast':'sentinel-v101-details',open?'1':'0')}catch{}}
+            if(t){ev.preventDefault();const key=t.getAttribute('data-sentinel-toggle'),box=el.querySelector('[data-sentinel-section="'+key+'"]'),open=box?.style.display==='none';if(box)box.style.display=open?'block':'none';const arrow=t.querySelector('[data-sentinel-arrow]');if(arrow)arrow.textContent=open?'⌃':'⌄';try{const sk=key==='forecast'?'sentinel-v101-forecast':key==='planner'?'sentinel-v102-planner':'sentinel-v101-details';localStorage.setItem(sk,open?'1':'0')}catch{}}
           });
         }
 
@@ -935,6 +954,17 @@ export class LocalPlaywrightDriver{
                 <div style="padding:8px;border-radius:9px;background:rgba(255,143,156,.055)"><div style="font-size:9px;color:#bc9499">PUT projetado</div><div style="font-size:18px;font-weight:950;color:#ff8f9c">${n(putStrength,0)}%</div></div>
               </div>
               <div style="margin-top:6px;font-size:9px;color:#81949e">${fReady?'Sinal de 30 s liberado pelo filtro interno.':'Ainda coletando confirmação; trate como viés, não como entrada.'}</div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;border-radius:13px;background:rgba(74,135,175,.035);border:1px solid rgba(101,164,205,.14);overflow:hidden">
+            <button data-sentinel-toggle="planner" style="width:100%;border:0;background:transparent;color:#f3f7f8;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer">
+              <span><span style="display:block;font-size:10px;font-weight:950;letter-spacing:.07em;color:#94b7cb">PREVISÃO / GATILHOS DE PREÇO</span><span style="display:block;font-size:9px;color:#718a96;margin-top:2px">Onde observar CALL ou PUT se o preço chegar ao nível</span></span>
+              <span data-sentinel-arrow style="font-size:16px;color:#94b7cb">${plannerOpen?'⌃':'⌄'}</span>
+            </button>
+            <div data-sentinel-section="planner" style="display:${plannerOpen?'block':'none'};padding:0 12px 11px">
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px"><span style="font-size:9px;font-weight:900;color:#8da4af">HORIZONTE</span><select data-sentinel-plan-horizon style="height:32px;min-width:108px;background:#0d202a;color:#f2f7f9;border:1px solid #385360;border-radius:9px;padding:0 9px;font-size:11px;font-weight:800;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select></label>
+              ${planHtml}
             </div>
           </div>
 
