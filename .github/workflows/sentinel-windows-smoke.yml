@@ -1,4 +1,4 @@
-name: Sentinel Hybrid Smoke V11.6
+name: Sentinel Hybrid Smoke V11.7
 
 on:
   push:
@@ -59,6 +59,10 @@ jobs:
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('CONSENSO GERAL')||!driverSource.includes('generalConsensus'))throw new Error('six_card_consensus_ui_missing');
           if(!runtime.includes('_generalConsensus')||!runtime.includes('prazo + consenso geral dos 6 cards'))throw new Error('six_card_consensus_runtime_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
+          if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
+          if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
+          if(driverSource.includes('operationalReady=operationalPrepare&&(entryReady||triggerMet||setupMatches)'))throw new Error('legacy_permissive_operational_gate_present');
+          if(!driverSource.includes('operationalSignal')||!driverSource.includes('gatilho fixo'))throw new Error('operational_ui_not_bound_to_runtime');
           for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
@@ -71,8 +75,8 @@ jobs:
           if(installer.includes("$_ .Name -eq 'chrome.exe'".replace('$_ ','$_'))||installer.includes("$_ .Name -eq 'msedge.exe'".replace('$_ ','$_')))throw new Error('installer_still_kills_broker_browser');
           if(!worker.includes("runtime.setMode(payload.mode"))throw new Error('mode_route_missing');
           if(worker.includes("async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain"))throw new Error('status_poll_still_runs_heavy_maintain');
-          if(!worker.includes("const VERSION='11.6.0'"))throw new Error('agent_version_not_11_6');
-          console.log('V11.6 STARTUP + LOCAL MODE: PASS');
+          if(!worker.includes("const VERSION='11.7.0'"))throw new Error('agent_version_not_11_6');
+          console.log('V11.7 STARTUP + LOCAL MODE: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -107,7 +111,7 @@ jobs:
           const history=Array.from({length:60},(_,i)=>({id:i+1,from:1700000000+i*60,to:1700000060+i*60,open:7.8+i/10000,max:7.9+i/10000,min:7.7+i/10000,close:7.81+i/10000,volume:10}));
           d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'history-smoke',msg:{candles:history}}),'direct-in');
           if(st.candles.length!==60||Number(st.quote)!==Number(history.at(-1).close))throw new Error('historical_candles_response_not_parsed');
-          console.log('V11.6 HISTORY BACKFILL PARSER: PASS');
+          console.log('V11.7 HISTORY BACKFILL PARSER: PASS');
 
           let requested=[];
           d._requestCandles=async(_provider,args)=>{requested.push(args);return false};
@@ -125,8 +129,8 @@ jobs:
           delayed.ingest('iq_option',JSON.stringify({name:'instrument-map',msg:{symbol:'USD/HKD OTC',active_id:1382}}),'page-in');
           await new Promise(r=>setTimeout(r,30));
           if(late.symbol!=='USD/HKD OTC'||late.uiSymbol!=='USD/HKD OTC'||backfills<1)throw new Error('late_active_map_did_not_bind_and_backfill:'+JSON.stringify({symbol:late.symbol,ui:late.uiSymbol,backfills}));
-          console.log('V11.6 LATE ACTIVE MAP + BACKFILL: PASS');
-          console.log('HYBRID V11.6 CORE: PASS');
+          console.log('V11.7 LATE ACTIVE MAP + BACKFILL: PASS');
+          console.log('HYBRID V11.7 CORE: PASS');
           '@
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-hybrid-smoke.mjs'
@@ -147,12 +151,12 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.6.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.7.0'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
           if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
-          Write-Host 'HYBRID V11.6 INSTALL: PASS'
+          Write-Host 'HYBRID V11.7 INSTALL: PASS'
 
       - name: Cleanup
         if: always()
