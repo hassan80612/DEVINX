@@ -802,9 +802,9 @@ export class LocalPlaywrightDriver{
       const payload=JSON.parse(JSON.stringify(data||{}));
       await s.page.evaluate((d)=>{
         const id='sentinel-trading-overlay';let el=document.getElementById(id);
-        if(el&&el.dataset.uiVersion!=='10.7'){el.remove();el=null}
+        if(el&&el.dataset.uiVersion!=='10.8'){el.remove();el=null}
         if(!el){
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.7';
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.8';
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -871,7 +871,6 @@ export class LocalPlaywrightDriver{
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const confidence=Math.max(0,Math.min(100,Number(d.confidence)||0));
         const buy=Math.max(0,Math.min(100,Number(m.buyScore)||0)),sell=Math.max(0,Math.min(100,Number(m.sellScore)||0));
-        const statusCall=Math.max(0,Math.min(100,Number(m.buyEffective??m.buyScore)||0)),statusPut=Math.max(0,Math.min(100,Number(m.sellEffective??m.sellScore)||0));
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
         const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1200;
@@ -887,6 +886,14 @@ export class LocalPlaywrightDriver{
         const finalPut=Math.max(0,Math.min(100,Number(final.putStrength)||0));
         const finalTone=finalSide==='CALL'?'#72e6b9':finalSide==='PUT'?'#ff8f9d':gold;
         const minConfidence=Math.max(55,Math.min(95,Number(d.minConfidence)||74));
+        const confirmed=q.confirmed||{},stability=q.stability||{};
+        const samples=Math.max(0,Number(confirmed.samples)||0),minSamples=Math.max(1,Number(confirmed.minSamples)||12),winRate=Math.max(0,Math.min(100,Number(confirmed.winRate)||0)),minWinRate=Math.max(1,Number(confirmed.minWinRate)||60);
+        const sampleCoverage=Math.min(100,Math.round(samples/minSamples*100));
+        const validationScore=Math.round(sampleCoverage*.42+Math.min(100,winRate/minWinRate*100)*.58);
+        const stableElapsed=Number(stability.since)>0?Math.max(0,Date.now()-Number(stability.since)):0,stableMin=Math.max(1,Number(stability.minStableMs)||2200),stableCount=Math.max(0,Number(stability.count)||0);
+        const stabilityScore=['BUY','SELL'].includes(raw)?Math.min(100,Math.round(Math.min(1,stableCount/3)*45+Math.min(1,stableElapsed/stableMin)*55)):0;
+        const readiness=(dir,technical)=>{const match=raw===dir,base=Math.max(0,Math.min(100,Number(technical)||0));const score=base*.52+validationScore*.28+(match?stabilityScore:0)*.20;return Math.max(0,Math.min(100,Math.round(score*(match?1:.48))))};
+        const statusCall=readiness('BUY',buy),statusPut=readiness('SELL',sell);
         let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme='dark';
         try{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
