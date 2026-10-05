@@ -324,12 +324,19 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  let buyEffective,sellEffective,side=SignalSide.WAIT;
 
  if(horizon<=60000){
-   // Para 30s/1m a microestrutura é a fonte principal; candles de 60s/5m são só contexto.
-   buyEffective=short.ready?short.callScore:0;
-   sellEffective=short.ready?short.putScore:0;
-   if(short.readyCall)side=SignalSide.BUY;
-   if(short.readyPut)side=SignalSide.SELL;
-   if(!short.ready)box.reasons.push('aguardando microestrutura de 5s')
+   // 30s/1m: a estratégia escolhida define o viés; a microestrutura só confirma o timing.
+   // Isso evita transformar qualquer estratégia em "subiu = CALL / caiu = PUT".
+   const strategyBuy=clamp(Math.round(rawBuy),0,100),strategySell=clamp(Math.round(rawSell),0,100);
+   const microBuy=short.ready?Number(short.callScore||0):0,microSell=short.ready?Number(short.putScore||0):0;
+   const strategyEdge=strategyBuy-strategySell,microEdge=microBuy-microSell;
+   buyEffective=short.ready?clamp(Math.round(strategyBuy*.65+microBuy*.35),0,100):strategyBuy;
+   sellEffective=short.ready?clamp(Math.round(strategySell*.65+microSell*.35),0,100):strategySell;
+   const blendedEdge=buyEffective-sellEffective,blendedStrength=Math.max(buyEffective,sellEffective);
+   const callAligned=strategyEdge>=8&&microEdge>=0&&!short.callReversalRisk&&!short.callOverextended;
+   const putAligned=strategyEdge<=-8&&microEdge<=0&&!short.putReversalRisk&&!short.putOverextended;
+   if(short.ready&&blendedStrength>=Number(minConfidence||74)&&blendedEdge>=12&&callAligned&&(short.flowReadyCall||short.callSetup||short.readyCall))side=SignalSide.BUY;
+   if(short.ready&&blendedStrength>=Number(minConfidence||74)&&blendedEdge<=-12&&putAligned&&(short.flowReadyPut||short.putSetup||short.readyPut))side=SignalSide.SELL;
+   if(!short.ready)box.reasons.push('aguardando microestrutura de 5s para confirmar o timing');
  }else{
    const conflict=Math.min(rawBuy,rawSell);
    buyEffective=clamp(Math.round(rawBuy-rawSell*.35),0,100);
