@@ -331,12 +331,15 @@ export class LocalPlaywrightDriver{
       try{await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}))}catch{}
     }
     if(page.__sentinelBridgeInstalled){
-      const ready=await page.evaluate(()=>!!window.__sentinelBridgeReady&&!!document.__sentinelAssetClickReady&&!!document.__sentinelAmountKeyboardReady).catch(()=>false);
+      const ready=await page.evaluate(()=>!!window.__sentinelBridgeReady&&!!document.getElementById('__sentinel-input-bridge-marker')).catch(()=>false);
       if(ready)return;
     }
     page.__sentinelBridgeInstalled=true;
     const install=()=>{
       try{
+        if(!document.getElementById('__sentinel-input-bridge-marker')){
+          const marker=document.createElement('span');marker.id='__sentinel-input-bridge-marker';marker.style.display='none';(document.documentElement||document.body)?.appendChild(marker);
+        }
         if(!window.__sentinelBridgeReady){
           window.__sentinelBridgeReady=true;window.__sentinelSockets=[];
           const nativeSend=WebSocket.prototype.send;
@@ -372,9 +375,10 @@ export class LocalPlaywrightDriver{
           const visible=(el)=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>4&&r.height>4}catch{return false}};
           const desc=(el)=>[el?.textContent,el?.getAttribute?.('aria-label'),el?.getAttribute?.('title'),el?.getAttribute?.('data-test'),el?.getAttribute?.('data-testid'),el?.getAttribute?.('name'),el?.getAttribute?.('id'),el?.className].filter(Boolean).join(' ').toLowerCase();
           const amountish=(el)=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el));
+          const amountValueish=(el)=>amountish(el)||/investment[-_ ]?value|amount[-_ ]?value|valor[-_ ]?valor/i.test(desc(el));
           const amountContext=(target)=>{
             let n=target;
-            for(let i=0;i<7&&n;i++,n=n.parentElement)if(amountish(n))return n;
+            for(let i=0;i<7&&n;i++,n=n.parentElement)if(amountValueish(n))return n;
             return null
           };
           const controls=()=>{
@@ -383,7 +387,7 @@ export class LocalPlaywrightDriver{
             const plus=pool.find(el=>/increase|increment|plus|aumentar|[+]/i.test(desc(el)))||null;
             const minus=pool.find(el=>/decrease|decrement|minus|diminuir|[−-]/i.test(desc(el)))||null;
             const candidates=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
-            const valueEl=candidates.find(amountish)||candidates[0]||null;
+            const valueEl=candidates.find(amountValueish)||candidates[0]||null;
             return{plus,minus,valueEl}
           };
           const readValue=()=>{
@@ -411,7 +415,7 @@ export class LocalPlaywrightDriver{
             };
             step()
           };
-          document.addEventListener('pointerdown',ev=>{
+          window.addEventListener('pointerdown',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
               const ctx=amountContext(ev.target);
@@ -419,7 +423,7 @@ export class LocalPlaywrightDriver{
               else window.__sentinelAmountFocusUntil=0
             }catch{}
           },true);
-          document.addEventListener('keydown',ev=>{
+          window.addEventListener('keydown',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
               const nativeEditable=ev.target?.matches?.('input:not([readonly]):not([disabled]),textarea:not([readonly]):not([disabled]),[contenteditable="true"]');
