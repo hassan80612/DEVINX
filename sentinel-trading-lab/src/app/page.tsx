@@ -60,7 +60,7 @@ export default function Page(){
     try{const data=await cloudFetch('status');setS(data);setSource('remote');const online=!!data?.remote?.online;setAgent((v:any)=>({...v,remote:online,process:online,worker:online,paired:true,version:data.agentVersion||v.version}));setErr(online?'':'PC vinculado, mas Agent offline.')}catch(e:any){setS(null);setSource('remote');setAgent((v:any)=>({...v,remote:false,process:false,worker:false}));const m=String(e?.message||e);setErr(m==='pc_nao_vinculado'?'':m)}},[]);
   useEffect(()=>{try{const saved=localStorage.getItem('sentinel-theme');const next=saved==='dark'?'dark':'light';setTheme(next);document.documentElement.dataset.theme=next}catch{}},[]);
   useEffect(()=>{try{document.documentElement.dataset.theme=theme;localStorage.setItem('sentinel-theme',theme)}catch{}},[theme]);
-  useEffect(()=>{refreshMe();try{const q=new URLSearchParams(window.location.search);const c=q.get('pair');if(c)setPairCode(c.toUpperCase())}catch{};refresh();const id=setInterval(refresh,1500);return()=>clearInterval(id)},[refresh,refreshMe]);
+  useEffect(()=>{refreshMe();try{const q=new URLSearchParams(window.location.search);const c=q.get('pair');if(c)setPairCode(c.toUpperCase())}catch{};refresh();const id=setInterval(refresh,2500);return()=>clearInterval(id)},[refresh,refreshMe]);
   const act=async(path:string,body:any={})=>{
     const previous=s;
     setBusy(true);setErr('');
