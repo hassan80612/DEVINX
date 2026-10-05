@@ -61,6 +61,9 @@ jobs:
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
           if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
+          if(!runtime.includes("gated.operationalSignal?.actionable!==true")||!runtime.includes("operationalSetup.releasedAt=now"))throw new Error('execution_not_gated_by_operational_timing');
+          if(!runtime.includes("Array.isArray(result.analysis.strategyCards)"))throw new Error('strategy_panel_recomputed_after_gate');
+
           if(driverSource.includes('operationalReady=operationalPrepare&&(entryReady||triggerMet||setupMatches)'))throw new Error('legacy_permissive_operational_gate_present');
           if(!driverSource.includes('operationalSignal')||!driverSource.includes('gatilho fixo'))throw new Error('operational_ui_not_bound_to_runtime');
           for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
