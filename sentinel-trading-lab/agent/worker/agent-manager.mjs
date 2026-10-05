@@ -3,7 +3,7 @@ import {spawn} from 'node:child_process';
 import {writeFile,mkdir,rm,appendFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 
-const VERSION='11.1.0';
+const VERSION='11.2.0';
 const HOST='127.0.0.1';
 const PORT=Number(process.env.SENTINEL_MANAGER_PORT||8788);
 const WORKER_PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
@@ -57,9 +57,9 @@ async function stopWorker(){
   if(p&&!p.killed){try{p.kill('SIGTERM')}catch{};for(let i=0;i<20;i++){if(p.exitCode!=null)break;await sleep(100)};if(p.exitCode==null){try{p.kill('SIGKILL')}catch{}}}
   await removePid(WORKER_PID);
 }
-async function restartWorker(){workerEnabled=true;await stopWorker();await sleep(250);spawnWorker();for(let i=0;i<120;i++){if(await healthWorker())return true;await sleep(250)}return false}
+async function restartWorker(){workerEnabled=true;await stopWorker();await sleep(250);spawnWorker();for(let i=0;i<30;i++){if(await healthWorker())return true;await sleep(250)}return false}
 async function pauseWorker(){workerEnabled=false;await stopWorker();return true}
-async function startWorker(){workerEnabled=true;if(!(await healthWorker()))spawnWorker();for(let i=0;i<120;i++){if(await healthWorker())return true;await sleep(250)}return false}
+async function startWorker(){workerEnabled=true;if(!(await healthWorker()))spawnWorker();for(let i=0;i<30;i++){if(await healthWorker())return true;await sleep(250)}return false}
 
 await removePid(EXIT_MARKER);
 await savePid(MANAGER_PID,process.pid);

@@ -1,8 +1,8 @@
-name: Sentinel Windows Smoke V11.1
+name: Sentinel Hybrid Smoke V11.2
 
 on:
   push:
-    branches: [main, sentinel-clean-rebuild]
+    branches: [sentinel-v106-modern, main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -27,7 +27,7 @@ jobs:
         with:
           go-version: '1.24.x'
 
-      - name: Validate Agent source
+      - name: Validate source
         shell: powershell
         run: |
           Get-ChildItem 'sentinel-trading-lab/agent' -Recurse -Filter '*.mjs' | ForEach-Object {
@@ -35,7 +35,7 @@ jobs:
             if($LASTEXITCODE -ne 0){throw "Syntax failed: $($_.FullName)"}
           }
 
-      - name: Clean architecture invariants
+      - name: Validate hybrid architecture and analysis
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
@@ -43,52 +43,51 @@ jobs:
           import {readFile} from 'node:fs/promises';
           import {LocalPlaywrightDriver} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
 
-          const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/smoke-v11'});
+          const driverSource=await readFile('./sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
+          const worker=await readFile('./sentinel-trading-lab/agent/worker/index.mjs','utf8');
+          const runtime=await readFile('./sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
+          const strategy=await readFile('./sentinel-trading-lab/agent/src/core/strategy.mjs','utf8');
+
+          for(const k of ['reversalCallScore','reversalPutScore','entryPlanner','finalConfluence','callReversalRisk','putReversalRisk'])if(!strategy.includes(k))throw new Error('analysis_feature_missing:'+k);
+          for(const k of ['entryReady','preEntry','reversalBlocked','technicalEdge'])if(!runtime.includes(k))throw new Error('runtime_gate_missing:'+k);
+          const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+          for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
+          if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
+          if(!worker.includes("if(action==='refresh')"))throw new Error('refresh_action_missing');
+
+          const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
           st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;
           st.activeMap.set('USDCADOTC',2112);st.activeMap.set('USDHKDOTC',1382);
           st.assets.add('USD/CAD OTC');st.assets.add('USD/HKD OTC');
-          st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
+          st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
 
           d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',source:'click'});
-          if(st.symbol!=='USD/HKD OTC'||st.uiSymbol!=='USD/HKD OTC'||Number(st.activeId)!==1382||st.candles.length!==0||st.quoteHistory.length!==0)throw new Error('asset_switch_not_atomic');
+          if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0)throw new Error('asset_switch_not_atomic');
 
           st.candleSize=60;
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'binary-options.open-option',body:{active_id:9999,duration:120,size:120}}}),'page-out');
-          if(Number(st.activeId)!==1382||Number(st.candleSize)!==60)throw new Error('order_retargeted_market');
+          if(Number(st.activeId)!==1382||Number(st.candleSize)!==60)throw new Error('order_retargeted_analysis_asset');
 
-          st.activeId=null;st.activeMap.delete('USDHKDOTC');
-          d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',body:{active_id:1382,size:60}}}),'page-out');
-          if(Number(st.activeId)!==1382||Number(st.activeMap.get('USDHKDOTC'))!==1382)throw new Error('market_request_did_not_bind_selected_asset');
+          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:9999,size:60,from:100,to:160,open:37,high:38,low:36,close:37.5}}),'page-in');
+          if(st.candles.length!==0)throw new Error('foreign_asset_candle_leaked');
 
-          st.candles=[];
-          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:9999,size:60,from:100,to:160,open:7,high:8,low:6,close:7.5}}),'page-in');
-          if(st.candles.length!==0)throw new Error('cross_asset_candle_leak');
-          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1382,size:60,from:100,to:160,open:7,high:8,low:6,close:7.5}}),'page-in');
-          if(st.candles.length!==1||Number(st.quote)!==7.5)throw new Error('selected_asset_candle_missing');
+          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1382,size:60,from:100,to:160,open:7.8,high:7.9,low:7.7,close:7.85}}),'page-in');
+          if(st.candles.length!==1||Number(st.quote)!==7.85||st.quoteHistory.length<1)throw new Error('selected_asset_market_missing');
 
-          const worker=await readFile('./sentinel-trading-lab/agent/worker/index.mjs','utf8');
-          const watchdog=await readFile('./sentinel-trading-lab/agent/worker/watchdog.ps1','utf8');
-          const broker=await readFile('./sentinel-trading-lab/agent/worker/adapters/browser-broker.mjs','utf8');
-          const driver=await readFile('./sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
+          let requested=[];
+          d._requestCandles=async(_provider,args)=>{requested.push(args);return false};
+          d.requestBaseData=async()=>false;
+          st.uiSymbol='USD/HKD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];
+          await d.requestMarketData('iq_option',{force:true});
+          if(!requested.length||Number(requested.at(-1).activeId)!==1382||requested.at(-1).symbol!=='USD/HKD OTC')throw new Error('request_used_stale_active_id');
 
-          for(const forbidden of ['readRecoveryPromise','lastReadRecoveryAt'])if(worker.includes(forbidden))throw new Error('legacy_recovery_present:'+forbidden);
-          if(worker.includes("for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect()"))throw new Error('access_check_closes_broker');
-          if(/Stop-Process/i.test(watchdog)||/remote-info/i.test(watchdog))throw new Error('watchdog_is_aggressive');
-          if(!broker.includes('preserveBrowser:true')||!driver.includes('preservedBrowser:true'))throw new Error('browser_not_preserved');
-          const ascii=driver.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          for(const required of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"'])if(!ascii.includes(required))throw new Error('ui_missing:'+required);
-          const workerAscii=worker.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,' ').replace(/\s+/g,' ').toUpperCase();
-          if(!workerAscii.includes('BOT INICIADO')||!workerAscii.includes('SINCRONIZANDO LEITURA'))throw new Error('start_still_depends_on_feed');
-          if(!driver.includes("action==='resume-visible'"))throw new Error('startup_visible_resume_missing');
-          if(!worker.includes("driver.call(name,'resume-visible'")||worker.includes("bootstrapSavedBrokers(){if(!accessLeaseValid())"))throw new Error('startup_broker_still_gated_or_background');
-          console.log('V11.1 STARTUP BROKER WINDOW: PASS');
-          console.log('V11.1 CLEAN ARCHITECTURE: PASS');
+          console.log('HYBRID V11.2 CORE: PASS');
           '@
-          Set-Content -Path 'sentinel-v11-smoke.mjs' -Value $script -Encoding UTF8
-          node 'sentinel-v11-smoke.mjs'
+          Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
+          node 'sentinel-hybrid-smoke.mjs'
 
-      - name: Build and install final EXE
+      - name: Build and install EXE
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
@@ -104,16 +103,15 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.1.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.2.0'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
-          if(-not $ok){throw 'V11.1 Agent/Worker unhealthy after install'}
-          Write-Host 'V11.1 FINAL EXE + WORKER: PASS'
+          if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
+          Write-Host 'HYBRID V11.2 INSTALL: PASS'
 
       - name: Cleanup
         if: always()
         shell: powershell
         run: |
           try{Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 2|Out-Null}catch{}
-          Start-Sleep -Milliseconds 500

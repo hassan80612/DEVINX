@@ -1,9 +1,9 @@
-# V11.1 validated source build
-name: Sentinel Windows Agent V11.1
+# V11.2 validated source build
+name: Sentinel Windows Agent V11.2
 
 on:
   push:
-    branches: [main, sentinel-clean-rebuild]
+    branches: [main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sentinel-agent-${{ github.ref_name }}
+  group: sentinel-agent-main
   cancel-in-progress: true
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
 
-      - name: Build Agent V11.1 payload
+      - name: Build Agent V11.2 payload
         shell: bash
         run: |
           set -euo pipefail
@@ -46,8 +46,7 @@ jobs:
           rm -f public/downloads/agent_payload_v88.zip
           (
             cd agent
-            find . -type f ! -path './node_modules/*' ! -path './worker/data/*' ! -name '*.log' ! -name '.DS_Store' -print0 | sort -z | xargs -0 touch -t 200001010000
-            find . -type f ! -path './node_modules/*' ! -path './worker/data/*' ! -name '*.log' ! -name '.DS_Store' -print | LC_ALL=C sort | zip -X -q ../public/downloads/agent_payload_v88.zip -@
+            zip -qr ../public/downloads/agent_payload_v88.zip .               -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store'
           )
           unzip -l public/downloads/agent_payload_v88.zip | head -80
           test -f agent/worker/sentinel.ico
@@ -75,9 +74,8 @@ jobs:
           cp sentinel-trading-lab/public/downloads/agent_payload_v88.zip "$tmpdir/"
           cp sentinel-trading-lab/public/favicon.ico "$tmpdir/favicon.ico"
 
-          branch="$GITHUB_REF_NAME"
-          git fetch origin "$branch"
-          git reset --hard "origin/$branch"
+          git fetch origin main
+          git reset --hard origin/main
 
           cp "$tmpdir/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/agent_payload_v88.zip" sentinel-trading-lab/public/downloads/
@@ -87,8 +85,8 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/favicon.ico
           if git diff --cached --quiet; then
-            echo 'Agent 11.1 generated files already current.'
+            echo 'Agent 11.2 generated files already current.'
             exit 0
           fi
-          git commit -m 'build(sentinel): refresh Windows Agent V11.1'
-          git push origin "HEAD:$branch"
+          git commit -m 'build(sentinel): refresh Windows Agent V11.2'
+          git push origin HEAD:main

@@ -14,7 +14,7 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
   if(signalGate){
     const gated=await signalGate({analysis,snap,settings,now});
     if(gated?.analysis)analysis=gated.analysis;
-    if(gated?.allowed===false)return{action:'WAIT',analysis,reasons:[...(gated.reasons||[]),'entrada ainda não liberada'],latency:{feedMs:Math.max(0,now-Number(snap.quoteTs||now)),decisionMs:Date.now()-cycleStarted}}
+    if(gated?.allowed===false)return{action:'WAIT',analysis,reasons:[...(gated.reasons||[]),'sinal bloqueado até validação estatística suficiente'],latency:{feedMs:Math.max(0,now-Number(snap.quoteTs||now)),decisionMs:Date.now()-cycleStarted}}
   }
   const feedLatencyMs=Math.max(0,now-Number(snap.quoteTs||now));
   const risk=evaluateRisk({...state,now,mode:settings.mode,signalSide:analysis.side,confidence:analysis.confidence,
