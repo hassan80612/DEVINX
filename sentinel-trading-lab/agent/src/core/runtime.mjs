@@ -39,11 +39,11 @@ export class DemoTradingRuntime{
     this.broker=new DemoBrokerAdapter({balance,payout});
     this.audit=new AuditLog();
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
-    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];
+    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};
     this.settings={
       mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',requireLiveBroker:true,orderDurationMs:60_000,orderProposalTtlMs:60_000,
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:1_000,startAt:null,endAt:null},
-      risk:{minConfidence:74,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
+      risk:{minConfidence:74,signalValidationMinSamples:12,signalValidationMinWinRate:60,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
     };
     this.state={cooldownUntil:null,consecutiveLosses:0,dailyPnl:0,peakBalance:balance,drawdownPct:0,executionError:false};
     this.externalMarket=null;this.executionBroker=null;
@@ -81,6 +81,72 @@ export class DemoTradingRuntime{
       dailyPnl:todayTrades.reduce((s,t)=>s+Number(t.pnl||0),0),maxDailyLoss:this.settings.risk.maxDailyLoss,dailyProfitTarget:this.settings.risk.dailyProfitTarget,drawdownPct:this.state.drawdownPct,
       maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};
   }
+  _validationKey(kind,asset,durationMs,strategy){return [kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence')].join('|')}
+  _validationStats(key){
+    const rows=this.signalValidation.outcomes.filter(x=>x.key===key).slice(-30);
+    const samples=rows.length,wins=rows.filter(x=>x.won===true).length,losses=rows.filter(x=>x.won===false).length,winRate=samples?Math.round(wins/samples*1000)/10:0;
+    const minSamples=Math.max(8,Number(this.settings.risk.signalValidationMinSamples||12));
+    const minWinRate=Math.max(55,Number(this.settings.risk.signalValidationMinWinRate||60));
+    return{key,samples,wins,losses,winRate,minSamples,minWinRate,ready:samples>=minSamples&&winRate>=minWinRate}
+  }
+  _settleSignalValidation(now,snap){
+    const price=Number(snap?.price),asset=String(this.settings.asset||'—').toUpperCase();
+    if(!Number.isFinite(price)||price<=0)return;
+    const keep=[];
+    for(const p of this.signalValidation.pending){
+      if(Number(p.dueAt)>now){keep.push(p);continue}
+      if(String(p.asset||'').toUpperCase()!==asset){if(now-Number(p.dueAt)<15000)keep.push(p);continue}
+      const won=p.side==='BUY'?price>Number(p.referencePrice):price<Number(p.referencePrice);
+      this.signalValidation.outcomes.push({...p,settledAt:now,settledPrice:price,won});
+    }
+    this.signalValidation.pending=keep.slice(-200);
+    this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-500);
+  }
+  _queueSignalCandidate({kind,side,confidence,referencePrice,asset,durationMs,strategy,now}){
+    if(!['BUY','SELL'].includes(String(side||'').toUpperCase()))return;
+    const key=this._validationKey(kind,asset,durationMs,strategy),spacing=Math.max(5000,Math.min(30000,Math.round(Number(durationMs||30000)/2)));
+    const last=Number(this.signalValidation.lastQueued[key]||0);
+    if(now-last<spacing)return;
+    this.signalValidation.lastQueued[key]=now;
+    this.signalValidation.pending.push({key,kind,asset:String(asset||'—'),durationMs:Number(durationMs||0),strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+Number(durationMs||30000)});
+    this.signalValidation.pending=this.signalValidation.pending.slice(-200);
+  }
+  _signalValidationGate({analysis,snap,settings,now}){
+    this._settleSignalValidation(now,snap);
+    const asset=String(settings.asset||'—'),strategy=String(settings.strategy||'smart_confluence'),durationMs=Math.max(15000,Number(settings.orderDurationMs||60000));
+    const rawSide=String(analysis?.side||'WAIT').toUpperCase(),rawForecastSide=String(analysis?.forecast30?.side||'WAIT').toUpperCase();
+    this._queueSignalCandidate({kind:'confirmed',side:rawSide,confidence:analysis?.confidence,referencePrice:snap.price,asset,durationMs,strategy,now});
+    this._queueSignalCandidate({kind:'forecast30',side:rawForecastSide,confidence:analysis?.forecast30?.confidence,referencePrice:snap.price,asset,durationMs:30000,strategy,now});
+    const confirmed=this._validationStats(this._validationKey('confirmed',asset,durationMs,strategy));
+    const forecast=this._validationStats(this._validationKey('forecast30',asset,30000,strategy));
+    const gated={...analysis,quality:{status:confirmed.ready?'VALIDADO':(confirmed.samples>=confirmed.minSamples?'BLOQUEADO':'COLETANDO'),rawSide,confirmed,forecast}};
+    if(gated.forecast30){
+      gated.forecast30={...gated.forecast30,biasSide:rawForecastSide,validation:forecast};
+      if(!forecast.ready)gated.forecast30.side='WAIT';
+    }
+    if(['BUY','SELL'].includes(rawSide)&&!confirmed.ready){
+      gated.side='WAIT';
+      gated.reasons=[...(gated.reasons||[]),`Entrada bloqueada: validação ${confirmed.samples}/${confirmed.minSamples}, acerto ${confirmed.winRate}% (mín. ${confirmed.minWinRate}%).`].slice(0,14);
+      return{allowed:false,analysis:gated,reasons:[`Sinal ainda não validado para ${asset} / ${Math.round(durationMs/1000)}s.`]}
+    }
+    return{allowed:true,analysis:gated}
+  }
+  _bootstrapSignalValidation(){
+    if(this.signalValidation.outcomes.length||!Array.isArray(this.analyses)||this.analyses.length<3)return;
+    const rows=[...this.analyses].filter(x=>x?.ts&&Number.isFinite(Number(x?.metrics?.last))).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+    const seen=new Set();
+    for(let i=0;i<rows.length;i++){
+      const a=rows[i],t0=new Date(a.ts).getTime(),asset=String(a.asset||'—'),strategy=String(a.metrics?.strategy||this.settings.strategy||'smart_confluence'),p0=Number(a.metrics.last);
+      const b=rows.find((x,j)=>j>i&&String(x.asset||'—')===asset&&new Date(x.ts).getTime()>=t0+25000&&new Date(x.ts).getTime()<=t0+40000&&Number.isFinite(Number(x?.metrics?.last)));
+      if(!b)continue;const p1=Number(b.metrics.last);
+      for(const [kind,side,confidence] of [['forecast30',String(a.forecast30?.side||'WAIT').toUpperCase(),Number(a.forecast30?.confidence||0)],['confirmed',String(a.side||'WAIT').toUpperCase(),Number(a.confidence||0)]]){
+        if(!['BUY','SELL'].includes(side))continue;
+        const key=this._validationKey(kind,asset,30000,strategy),bucket=Math.floor(t0/15000),id=key+'|'+bucket;if(seen.has(id))continue;seen.add(id);
+        this.signalValidation.outcomes.push({key,kind,asset,durationMs:30000,strategy,side,confidence,referencePrice:p0,createdAt:t0,dueAt:t0+30000,settledAt:new Date(b.ts).getTime(),settledPrice:p1,won:side==='BUY'?p1>p0:p1<p0,bootstrap:true});
+      }
+    }
+    this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-500);
+  }
   _settleDue(now){
     const price=this._marketSnapshot().price;
     for(const p of [...this.pending]){if(p.settleAt>now)continue;const won=p.side==='BUY'?price>p.referencePrice:price<p.referencePrice;let trade;
@@ -94,7 +160,7 @@ export class DemoTradingRuntime{
   async tick(now=Date.now()){
     this.lastHeartbeat=now;this._settleDue(now);if(this.stateName!=='running')return this.status();if(now<this.nextEvalMs)return this.status();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={action:'WAIT',analysis:{side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return this.status()}if(!this.externalMarket)this.feed.tick(now);
     try{
-      const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;const canUseExternalDemo=this.settings.mode==='demo'&&this.executionBroker&&this.externalMarket?.executionReady===true;const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;const result=await engineCycle({feed,broker:executionBroker,settings:this.settings,state:this._riskState(now),balanceOverride:snap.balance,now});if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas os controles DEMO da corretora ainda não foram validados — nenhuma ordem foi simulada ou clicada.']}else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
+      const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;const canUseExternalDemo=this.settings.mode==='demo'&&this.executionBroker&&this.externalMarket?.executionReady===true;const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:this.settings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas os controles DEMO da corretora ainda não foram validados — nenhuma ordem foi simulada ou clicada.']}else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
       result.plan=signalPlan({analysis:result.analysis,settings:this.settings,price:snap.price,now});this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,this.settings.schedule.intervalMs,now);
       if(result.analysis)this.analyses.unshift({ts:iso(now),asset:this.settings.asset,...result.analysis,latency:result.latency});this.analyses=this.analyses.slice(0,500);
       if(result.action==='DEMO_ORDER'){
@@ -106,12 +172,12 @@ export class DemoTradingRuntime{
       return this.status();
     }catch(error){this.state.executionError=true;this.stateName='error';this.incidents.unshift({ts:iso(now),severity:'error',code:'cycle_error',message:String(error?.message||error)});return this.status()}
   }
-  snapshotPersistent(){return{version:1,settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,500),incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
-  restore(data={}){if(data.settings){this.settings={...this.settings,...data.settings,schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=1000}if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses:[];this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
+  snapshotPersistent(){return{version:2,settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,500),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-500),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
+  restore(data={}){if(data.settings){this.settings={...this.settings,...data.settings,schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=1000}if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses:[];if(data.signalValidation&&typeof data.signalValidation==='object')this.signalValidation={pending:Array.isArray(data.signalValidation.pending)?data.signalValidation.pending:[],outcomes:Array.isArray(data.signalValidation.outcomes)?data.signalValidation.outcomes:[],lastQueued:data.signalValidation.lastQueued&&typeof data.signalValidation.lastQueued==='object'?data.signalValidation.lastQueued:{}};this._bootstrapSignalValidation();this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
   async status(){
     const balance=this.externalMarket?.balance!=null?Number(this.externalMarket.balance):await this.broker.getBalance(),wins=this.trades.filter(x=>x.won).length,losses=this.trades.filter(x=>x.won===false).length,snap=this._marketSnapshot();
     return{state:this.stateName,mode:this.settings.mode,killSwitch:this.killSwitch,masterFrozen:this.masterFrozen,balance,pnl:this.trades.reduce((s,t)=>s+Number(t.pnl||0),0),trades:this.trades.length,wins,losses,winRate:this.trades.length?wins/this.trades.length*100:0,
       drawdownPct:this.state.drawdownPct,consecutiveLosses:this.state.consecutiveLosses,lastHeartbeat:this.lastHeartbeat,lastEvalMs:this.lastEvalMs,nextEvalMs:this.nextEvalMs,lastResult:this.lastResult,
-      feed:{label:snap.source||'OFFLINE',price:snap.price,quoteTs:snap.quoteTs},analysisSource:this.externalMarket?.provider?(snap.feedValidated?'LIVE':'WAITING_LIVE'):(this.settings.requireLiveBroker?'OFFLINE':'SIMULATED'),executionMode:this.settings.mode==='real'?'real_manual':(this.externalMarket?.executionReady===true?'broker_demo':'sentinel_demo'),startBlockedReason:this._startBlockReason(),broker:await this.broker.getStatus(),pending:this.pending.length,recentTrades:this.trades.slice(0,50),recentAnalyses:this.analyses.slice(0,50),incidents:this.incidents.slice(0,50),settings:this.settings,audit:this.audit.list().slice(-100).reverse()}
+      feed:{label:snap.source||'OFFLINE',price:snap.price,quoteTs:snap.quoteTs},analysisSource:this.externalMarket?.provider?(snap.feedValidated?'LIVE':'WAITING_LIVE'):(this.settings.requireLiveBroker?'OFFLINE':'SIMULATED'),executionMode:this.settings.mode==='real'?'real_manual':(this.externalMarket?.executionReady===true?'broker_demo':'sentinel_demo'),startBlockedReason:this._startBlockReason(),broker:await this.broker.getStatus(),pending:this.pending.length,recentTrades:this.trades.slice(0,50),recentAnalyses:this.analyses.slice(0,50),signalValidation:this.lastResult?.analysis?.quality||null,incidents:this.incidents.slice(0,50),settings:this.settings,audit:this.audit.list().slice(-100).reverse()}
   }
 }
