@@ -3,7 +3,7 @@ name: Sentinel Windows Agent V11.0
 
 on:
   push:
-    branches: [main]
+    branches: [main, sentinel-clean-rebuild]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sentinel-agent-main
+  group: sentinel-agent-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -46,7 +46,8 @@ jobs:
           rm -f public/downloads/agent_payload_v88.zip
           (
             cd agent
-            zip -qr ../public/downloads/agent_payload_v88.zip .               -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store'
+            find . -type f ! -path './node_modules/*' ! -path './worker/data/*' ! -name '*.log' ! -name '.DS_Store' -print0 | sort -z | xargs -0 touch -t 200001010000
+            find . -type f ! -path './node_modules/*' ! -path './worker/data/*' ! -name '*.log' ! -name '.DS_Store' -print | LC_ALL=C sort | zip -X -q ../public/downloads/agent_payload_v88.zip -@
           )
           unzip -l public/downloads/agent_payload_v88.zip | head -80
           test -f agent/worker/sentinel.ico
@@ -74,8 +75,9 @@ jobs:
           cp sentinel-trading-lab/public/downloads/agent_payload_v88.zip "$tmpdir/"
           cp sentinel-trading-lab/public/favicon.ico "$tmpdir/favicon.ico"
 
-          git fetch origin main
-          git reset --hard origin/main
+          branch="$GITHUB_REF_NAME"
+          git fetch origin "$branch"
+          git reset --hard "origin/$branch"
 
           cp "$tmpdir/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/agent_payload_v88.zip" sentinel-trading-lab/public/downloads/
@@ -89,4 +91,4 @@ jobs:
             exit 0
           fi
           git commit -m 'build(sentinel): refresh Windows Agent V11.0'
-          git push origin HEAD:main
+          git push origin "HEAD:$branch"
