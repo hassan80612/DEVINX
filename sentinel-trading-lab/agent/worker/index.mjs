@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.7.0';
+const VERSION='10.8.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -98,14 +98,15 @@ async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true})
 await loadState();
 async function bootstrapSavedBrokers(){if(!accessLeaseValid())return;for(const [name,adapter] of Object.entries(brokers)){if(!adapter.sessionRef)continue;try{await adapter.connect();if(adapter.connected){activeProvider=name;await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();if(adapter.validated)break}}catch{}}syncRuntimeMarket()}
 setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),700).unref();
-let lastOverlayAnalysis=null,lastOverlayAnalysisAt=0;
-function overlayAnalysis(view,now=Date.now()){
+const overlayAnalysisCache=new Map();
+function overlayAnalysis(view,asset='—',now=Date.now()){
+  const key=String(asset||'—');
   const current=view.lastResult?.analysis||null;
   const complete=current&&Number.isFinite(Number(current.confidence))&&current.metrics&&Number.isFinite(Number(current.metrics.buyScore))&&Number.isFinite(Number(current.metrics.sellScore))&&current.finalConfluence;
-  if(complete){lastOverlayAnalysis=current;lastOverlayAnalysisAt=now;return{analysis:current,transient:false}}
-  const age=now-lastOverlayAnalysisAt;
-  if(lastOverlayAnalysis&&age<=850)return{analysis:lastOverlayAnalysis,transient:true};
-  return{analysis:current||{},transient:false}
+  if(complete){overlayAnalysisCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false,holdAgeMs:0}}
+  const cached=overlayAnalysisCache.get(key);
+  if(cached){const age=Math.max(0,now-Number(cached.at||now));return{analysis:cached.analysis,transient:true,holdAgeMs:age}}
+  return{analysis:current||{},transient:true,holdAgeMs:null}
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   await enforceAccessLease();
@@ -114,17 +115,18 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
   await runtime.tick(Date.now());
   if(activeProvider){
     const view=await runtime.status();
-    const held=overlayAnalysis(view);
+    const currentAsset=view.liveBroker?.uiSymbol||view.settings?.asset||'—';
+    const held=overlayAnalysis(view,currentAsset);
     const a=held.analysis||{};
     const m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-    const currentAsset=view.liveBroker?.uiSymbol||view.settings?.asset||'—';
     await driver.updateOverlay?.(activeProvider,{
       asset:currentAsset,
       strategy:view.settings?.strategy||'—',
       side:a.side||'WAIT',
       confidence:Number.isFinite(Number(a.confidence))?Number(a.confidence):null,
       analysisTransient:held.transient,
+      analysisHoldAgeMs:held.holdAgeMs,
       forecast30:a.forecast30||null,
       finalConfluence:a.finalConfluence||null,
       entryPlanner:a.entryPlanner||null,

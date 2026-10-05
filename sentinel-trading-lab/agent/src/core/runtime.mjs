@@ -120,52 +120,41 @@ export class DemoTradingRuntime{
     this._queueSignalCandidate({kind:'forecast30',side:rawForecastSide,confidence:analysis?.forecast30?.confidence,referencePrice:snap.price,asset,durationMs:30000,strategy,now});
     const confirmed=this._validationStats(this._validationKey('confirmed',asset,durationMs,strategy));
     const forecast=this._validationStats(this._validationKey('forecast30',asset,30000,strategy));
-
     const threshold=Math.max(55,Number(settings?.risk?.minConfidence||74));
     const technicalBuy=Math.max(0,Math.min(100,Number(analysis?.metrics?.buyScore)||0));
     const technicalSell=Math.max(0,Math.min(100,Number(analysis?.metrics?.sellScore)||0));
-    const technicalScore=rawSide==='BUY'?technicalBuy:rawSide==='SELL'?technicalSell:Math.max(technicalBuy,technicalSell);
     const technicalEdge=Math.abs(technicalBuy-technicalSell);
-    const edgeMin=durationMs<=60000?18:durationMs<=120000?15:12;
-    const scoreReady=['BUY','SELL'].includes(rawSide)&&technicalScore>=threshold&&technicalEdge>=edgeMin;
-
-    const minStableMs=durationMs<=30000?3600:durationMs<=60000?4200:durationMs<=120000?5000:6500;
-    if(['BUY','SELL'].includes(rawSide)){
-      if(this.entryStability.side===rawSide)this.entryStability.count=Number(this.entryStability.count||0)+1;
-      else this.entryStability={side:rawSide,since:now,count:1};
-    }else this.entryStability={side:'WAIT',since:now,count:0};
-    const stable=['BUY','SELL'].includes(rawSide)&&this.entryStability.count>=4&&now-Number(this.entryStability.since||now)>=minStableMs;
-    const stability={side:this.entryStability.side,count:this.entryStability.count,since:this.entryStability.since,minStableMs,ready:stable};
-
-    const reversalGuardMs=durationMs<=60000?6500:durationMs<=120000?8000:10000;
+    const leader=technicalBuy>=technicalSell?'BUY':'SELL',leaderScore=Math.max(technicalBuy,technicalSell);
+    const short=analysis?.metrics?.shortModel||{},shortHorizon=durationMs<=60000;
+    let blockCode=null,blockLabel=null,blockDetail=null;
+    if(!['BUY','SELL'].includes(rawSide)){
+      if(shortHorizon&&!short.ready){blockCode='microflow';blockLabel='COLETANDO FLUXO';blockDetail='Aguardando microestrutura suficiente para confirmar o movimento.'}
+      else if(leaderScore<threshold){blockCode='filter';blockLabel='ABAIXO DO FILTRO';blockDetail=`Força ${Math.round(leaderScore)} pts · filtro ${Math.round(threshold)} pts.`}
+      else if(shortHorizon&&technicalEdge<15){blockCode='edge';blockLabel='VANTAGEM INSUFICIENTE';blockDetail=`Diferença CALL/PUT de ${Math.round(technicalEdge)} pts; a estratégia exige separação clara.`}
+      else if(shortHorizon&&((leader==='BUY'&&short.callReversalRisk)||(leader==='SELL'&&short.putReversalRisk))){blockCode='reversal';blockLabel='RISCO DE REVERSÃO';blockDetail='A força atingiu o filtro, mas a microestrutura indica risco de entrar no fim do movimento.'}
+      else if(shortHorizon&&((leader==='BUY'&&!short.flowReadyCall)||(leader==='SELL'&&!short.flowReadyPut))){blockCode='flow';blockLabel='AGUARDANDO FLUXO';blockDetail='Filtro atingido; falta alinhamento do fluxo de 5/15/30 segundos.'}
+      else if(shortHorizon&&((leader==='BUY'&&!short.structureReadyCall)||(leader==='SELL'&&!short.structureReadyPut))){blockCode='structure';blockLabel='AGUARDANDO ESTRUTURA';blockDetail='Filtro atingido; falta confirmação da estrutura curta.'}
+      else {blockCode='strategy';blockLabel='AGUARDAR';blockDetail='A estratégia ainda não confirmou uma entrada completa.'}
+    }
+    const minConfirmMs=durationMs<=30000?650:durationMs<=60000?850:durationMs<=120000?1050:1500;
+    if(['BUY','SELL'].includes(rawSide)){if(this.entryStability.side===rawSide)this.entryStability.count=Number(this.entryStability.count||0)+1;else this.entryStability={side:rawSide,since:now,count:1}}
+    else this.entryStability={side:'WAIT',since:now,count:0};
+    const stable=['BUY','SELL'].includes(rawSide)&&this.entryStability.count>=2&&now-Number(this.entryStability.since||now)>=minConfirmMs;
+    const stability={side:this.entryStability.side,count:this.entryStability.count,since:this.entryStability.since,minStableMs:minConfirmMs,ready:stable};
+    const reversalGuardMs=durationMs<=30000?3000:durationMs<=60000?4000:durationMs<=120000?5000:7000;
     const lastReleaseSide=String(this.entryRelease?.side||'WAIT').toUpperCase();
     const reversalBlocked=['BUY','SELL'].includes(rawSide)&&['BUY','SELL'].includes(lastReleaseSide)&&rawSide!==lastReleaseSide&&now-Number(this.entryRelease?.at||0)<reversalGuardMs;
-
+    if(['BUY','SELL'].includes(rawSide)&&!stable){blockCode='confirming';blockLabel='CONFIRMANDO';blockDetail='Sinal completo detectado; confirmando mais um ciclo para evitar uma indicação de um único instante.'}
+    if(reversalBlocked){blockCode='reversal_guard';blockLabel='REVERSÃO — AGUARDE';blockDetail='O lado oposto apareceu logo após uma entrada; o Sentinel exige nova confirmação antes de inverter.'}
     const historyStatus=confirmed.ready?'VALIDADO':(confirmed.samples>=confirmed.minSamples?'HISTÓRICO FRACO':'EM TESTE');
-    const quality={status:historyStatus,rawSide,confirmed,forecast,stability,entryReady:false,entrySide:'WAIT',threshold,technicalScore,technicalEdge,edgeMin,historicalReady:confirmed.ready,reversalGuardMs,reversalBlocked};
+    const entryReady=['BUY','SELL'].includes(rawSide)&&stable&&!reversalBlocked;
+    const quality={status:historyStatus,rawSide,confirmed,forecast,stability,entryReady,entrySide:entryReady?rawSide:'WAIT',threshold,technicalScore:rawSide==='BUY'?technicalBuy:rawSide==='SELL'?technicalSell:leaderScore,technicalBuy,technicalSell,technicalEdge,leader,leaderScore,strategyReady:['BUY','SELL'].includes(rawSide),historicalReady:confirmed.ready,reversalGuardMs,reversalBlocked,blockCode,blockLabel,blockDetail};
     const gated={...analysis,quality};
     if(gated.forecast30)gated.forecast30={...gated.forecast30,biasSide:rawForecastSide,validation:forecast,provisional:!forecast.ready};
-
-    if(['BUY','SELL'].includes(rawSide)&&!scoreReady){
-      gated.automationBlocked=true;gated.automationBlockReason='technical';
-      gated.reasons=[...(gated.reasons||[]),`Sinal ${rawSide}; aguardando força mínima ${threshold} e vantagem técnica de ${edgeMin} pts.`].slice(0,14);
-      return{allowed:false,analysis:gated,reasons:[`Força técnica ainda insuficiente para ${asset}.`]}
-    }
-    if(['BUY','SELL'].includes(rawSide)&&!stable){
-      gated.automationBlocked=true;gated.automationBlockReason='stability';
-      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; aguardando ${(minStableMs/1000).toFixed(1)}s de estabilidade.`].slice(0,14);
-      return{allowed:false,analysis:gated,reasons:[`Sinal estabilizando para ${asset}.`]}
-    }
-    if(reversalBlocked){
-      gated.automationBlocked=true;gated.automationBlockReason='reversal_guard';
-      gated.reasons=[...(gated.reasons||[]),'Mudança brusca de direção detectada; aguardando nova confirmação antes de liberar o lado oposto.'].slice(0,14);
-      return{allowed:false,analysis:gated,reasons:[`Reversão recente em ${asset}; aguardando nova confirmação.`]}
-    }
-
-    if(['BUY','SELL'].includes(rawSide)&&scoreReady&&stable){
-      gated.quality.entryReady=true;gated.quality.entrySide=rawSide;this.entryRelease={side:rawSide,at:now};
-      if(!confirmed.ready)gated.reasons=[...(gated.reasons||[]),`Histórico ${confirmed.samples}/${confirmed.minSamples} · ${confirmed.winRate}%: ainda em validação, sem bloquear a leitura técnica.`].slice(0,14);
-    }
+    if(!['BUY','SELL'].includes(rawSide)){gated.automationBlocked=true;gated.automationBlockReason=blockCode;return{allowed:false,analysis:gated,reasons:[blockDetail||'Aguardando confirmação da estratégia.']}}
+    if(!stable||reversalBlocked){gated.automationBlocked=true;gated.automationBlockReason=blockCode;return{allowed:false,analysis:gated,reasons:[blockDetail||'Aguardando confirmação da entrada.']}}
+    this.entryRelease={side:rawSide,at:now};
+    if(!confirmed.ready)gated.reasons=[...(gated.reasons||[]),`Histórico ${confirmed.samples}/${confirmed.minSamples} · ${confirmed.winRate}%: em validação, sem bloquear a leitura técnica.`].slice(0,14);
     return{allowed:true,analysis:gated}
   }
   _bootstrapSignalValidation(){

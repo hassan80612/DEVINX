@@ -860,17 +860,17 @@ export class LocalPlaywrightDriver{
         }
 
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-        const n=(v,dg=0)=>Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
+        const n=(v,dg=0)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{};
         const analysisTransient=d.analysisTransient===true;
         const side=String(d.side||'WAIT').toUpperCase(),raw=String(q.rawSide||side||'WAIT').toUpperCase();
         const entryGateReady=q.entryReady===true;
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
         const signal=entryGateReady?(side==='BUY'?'CALL':side==='SELL'?'PUT':'AGUARDAR'):'AGUARDAR';
-        const gold='#e8c85f',goldSoft='#f4df9a';
+        const gold='#c9a65b',goldSoft='#ecd28d';
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
-        const confidence=Math.max(0,Math.min(100,Number(d.confidence)||0));
-        const buy=Math.max(0,Math.min(100,Number(m.buyScore)||0)),sell=Math.max(0,Math.min(100,Number(m.sellScore)||0));
+        const confidence=d.confidence==null?null:Math.max(0,Math.min(100,Number(d.confidence)));
+        const buy=m.buyScore==null?null:Math.max(0,Math.min(100,Number(m.buyScore))),sell=m.sellScore==null?null:Math.max(0,Math.min(100,Number(m.sellScore)));
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
         const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1800;
@@ -881,37 +881,42 @@ export class LocalPlaywrightDriver{
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
         const final=d.finalConfluence||{};
         const finalSide=String(final.side||'AGUARDAR').toUpperCase();
-        const finalStrength=Math.max(0,Math.min(100,Number(final.strength)||0));
-        const finalCall=Math.max(0,Math.min(100,Number(final.callStrength)||0));
-        const finalPut=Math.max(0,Math.min(100,Number(final.putStrength)||0));
+        const finalStrength=final.strength==null?null:Math.max(0,Math.min(100,Number(final.strength)));
+        const finalCall=final.callStrength==null?null:Math.max(0,Math.min(100,Number(final.callStrength)));
+        const finalPut=final.putStrength==null?null:Math.max(0,Math.min(100,Number(final.putStrength)));
         const finalTone=finalSide==='CALL'?'#72e6b9':finalSide==='PUT'?'#ff8f9d':gold;
         const minConfidence=Math.max(55,Math.min(95,Number(d.minConfidence)||74));
         const confirmed=q.confirmed||{},stability=q.stability||{};
         const samples=Math.max(0,Number(confirmed.samples)||0),minSamples=Math.max(1,Number(confirmed.minSamples)||12),winRate=Math.max(0,Math.min(100,Number(confirmed.winRate)||0)),minWinRate=Math.max(1,Number(confirmed.minWinRate)||60);
         const stableElapsed=Number(stability.since)>0?Math.max(0,Date.now()-Number(stability.since)):0,stableMin=Math.max(1,Number(stability.minStableMs)||3600),stableCount=Math.max(0,Number(stability.count)||0);
         const stabilityScore=['BUY','SELL'].includes(raw)?Math.min(100,Math.round(Math.min(1,stableCount/4)*40+Math.min(1,stableElapsed/stableMin)*60)):0;
-        const statusCall=Math.round(buy),statusPut=Math.round(sell);
-        const gateReason=!liveNow||!analysisFresh?'ATUALIZANDO':q.automationBlockReason==='reversal_guard'?'REVERSÃO — AGUARDE':q.automationBlockReason==='stability'?'ESTABILIZANDO':q.automationBlockReason==='technical'?'ABAIXO DO FILTRO':entryGateReady?'PRONTO':String(q.status||'AGUARDAR');
+        const statusCall=buy==null?null:Math.round(buy),statusPut=sell==null?null:Math.round(sell);
+        const gateReason=analysisTransient||!liveNow||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
+        const gateDetail=analysisTransient?'Corretora atualizando · mantendo a última análise técnica válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
         let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme='dark';
         try{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
         el.dataset.theme=uiTheme;
-        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(150deg,#ffffff,#edf3f6)',color:'#07151e',border:'1px solid rgba(34,72,88,.38)',boxShadow:'0 24px 68px rgba(15,39,50,.24), inset 0 1px #fff'}:{background:'linear-gradient(150deg,#04080b,#0b141a)',color:'#ffffff',border:'1px solid rgba(226,190,89,.50)',boxShadow:'0 28px 84px rgba(0,0,0,.74), inset 0 1px rgba(255,255,255,.06)'});
+        const ink=uiTheme==='light'?'#171511':'#f8f5ee',muted=uiTheme==='light'?'#625c52':'#bbb5ab',subtle=uiTheme==='light'?'#857967':'#8e887f';
+        const fieldBg=uiTheme==='light'?'#fffdfa':'#111114',fieldInk=uiTheme==='light'?'#171511':'#f8f5ee',fieldBorder=uiTheme==='light'?'rgba(137,105,52,.34)':'rgba(201,166,91,.34)';
+        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#fffefa,#f5f1e9)':'linear-gradient(145deg,#111114,#09090b)';
+        const panelBorder=uiTheme==='light'?'rgba(137,105,52,.22)':'rgba(201,166,91,.26)';
+        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(150deg,#faf8f3,#eee9df)',color:'#171511',border:'1px solid rgba(137,105,52,.34)',boxShadow:'0 24px 68px rgba(73,61,38,.18), inset 0 1px #fff'}:{background:'linear-gradient(150deg,#060607,#101012)',color:'#f8f5ee',border:'1px solid rgba(201,166,91,.38)',boxShadow:'0 30px 88px rgba(0,0,0,.76), inset 0 1px rgba(255,255,255,.045)'});
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
-        const entryReady=liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
+        const entryReady=!analysisTransient&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const outlook=liveNow&&analysisFresh&&plannerPlan?.outlookReady?plannerPlan.bias:'SEM LEITURA';
         const outlookTone=outlook==='CALL'?'#69e1b5':outlook==='PUT'?'#ff8f9c':'#e8c85f';
         const planHtml=plannerPlan?.outlookReady&&liveNow&&analysisFresh?(
-          '<div style="font-size:8.5px;color:#9cb3bd;margin-bottom:5px">Preço de referência <b style="color:#f0f6f8">'+price(plannerPlan.currentPrice)+'</b> · expiração configurada '+esc(({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[Math.round(duration/1000)]||'—')+'</div>'+
+          '<div style="font-size:8.5px;color:'+muted+';margin-bottom:5px">Preço de referência <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b> · expiração configurada '+esc(({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[Math.round(duration/1000)]||'—')+'</div>'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:#8fb7a8;font-weight:800">CALL — gatilho</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:#759087;margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8px;color:#bc9499;font-weight:800">PUT — gatilho</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.5px;color:#96767b;margin-top:2px">invalida &gt; '+price(plannerPlan.putInvalidation)+'</div></div>'+
           '</div>'+
-          '<div style="margin-top:6px;font-size:8px;line-height:1.35;color:#8297a1"><b style="color:#9eb0b8">CALL:</b> '+esc(plannerPlan.callRule||'—')+' · <b style="color:#9eb0b8">PUT:</b> '+esc(plannerPlan.putRule||'—')+'</div>'+
-          '<div style="margin-top:5px;font-size:8px;line-height:1.3;color:#92a8b2">'+(plannerPlan.outlookReady?'Cenário condicional: '+esc(plannerPlan.basis||'confluência técnica')+'.':'Histórico ou microfluxo insuficiente neste prazo.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
-        ):'<div style="font-size:9px;color:#b2c4cb">Sem níveis acionáveis até a leitura deste prazo ficar atual.</div>';
+          '<div style="margin-top:6px;font-size:8px;line-height:1.35;color:'+muted+'"><b style="color:'+ink+'">CALL:</b> '+esc(plannerPlan.callRule||'—')+' · <b style="color:'+ink+'">PUT:</b> '+esc(plannerPlan.putRule||'—')+'</div>'+
+          '<div style="margin-top:5px;font-size:8px;line-height:1.3;color:'+muted+'">'+(plannerPlan.outlookReady?'Cenário condicional: '+esc(plannerPlan.basis||'confluência técnica')+'.':'Histórico ou microfluxo insuficiente neste prazo.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
+        ):'<div style="font-size:9px;color:'+muted+'">Sem níveis acionáveis até a leitura deste prazo ficar atual.</div>';
 
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
@@ -942,36 +947,35 @@ export class LocalPlaywrightDriver{
 
         const focused=document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select')))return;
 
-        const ink=uiTheme==='light'?'#07151e':'#ffffff',muted=uiTheme==='light'?'#3d5663':'#c4d0d5',subtle=uiTheme==='light'?'#627b88':'#92a2aa';
-        const fieldBg=uiTheme==='light'?'#ffffff':'#0a1217',fieldInk=uiTheme==='light'?'#07151e':'#ffffff',fieldBorder=uiTheme==='light'?'rgba(36,76,94,.38)':'rgba(226,190,89,.38)';
+        
         el.innerHTML=`
-          <div data-sentinel-drag style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;padding:2px 2px 10px;border-bottom:1px solid ${uiTheme==='light'?'rgba(177,137,47,.20)':'rgba(205,166,67,.17)'}">
+          <div data-sentinel-drag style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;padding:2px 2px 10px;border-bottom:1px solid ${panelBorder}">
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.7.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.8.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
-              <div style="display:flex;align-items:center;padding:2px;border-radius:999px;background:${uiTheme==='light'?'rgba(27,51,62,.07)':'rgba(255,255,255,.045)'};border:1px solid ${uiTheme==='light'?'rgba(27,51,62,.10)':'rgba(255,255,255,.065)'}">
-                <button data-sentinel-theme="light" title="Tema claro" style="border:0;border-radius:7px;padding:6px 9px;background:${uiTheme==='light'?'#fff':'transparent'};color:${uiTheme==='light'?'#233942':'#718690'};font:900 8px/1 inherit;cursor:pointer;box-shadow:${uiTheme==='light'?'0 2px 8px rgba(15,32,40,.12)':'none'}">CLARO</button>
-                <button data-sentinel-theme="dark" title="Tema escuro" style="border:0;border-radius:7px;padding:6px 9px;background:${uiTheme==='dark'?'rgba(216,184,94,.14)':'transparent'};color:${uiTheme==='dark'?'#e7c96f':'#718690'};font:900 8px/1 inherit;cursor:pointer">ESCURO</button>
+              <div style="display:flex;align-items:center;padding:2px;border-radius:999px;background:${uiTheme==='light'?'rgba(126,101,58,.08)':'rgba(255,255,255,.035)'};border:1px solid ${panelBorder}">
+                <button data-sentinel-theme="light" title="Tema claro" style="border:0;border-radius:7px;padding:6px 9px;background:${uiTheme==='light'?'#fff':'transparent'};color:${uiTheme==='light'?'#2b241b':'#8e887f'};font:900 8px/1 inherit;cursor:pointer;box-shadow:${uiTheme==='light'?'0 2px 8px rgba(15,32,40,.12)':'none'}">CLARO</button>
+                <button data-sentinel-theme="dark" title="Tema escuro" style="border:0;border-radius:7px;padding:6px 9px;background:${uiTheme==='dark'?'rgba(216,184,94,.14)':'transparent'};color:${uiTheme==='dark'?gold:'#746957'};font:900 8px/1 inherit;cursor:pointer">ESCURO</button>
               </div>
             </div>
           </div>
 
           <div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:9px;margin-top:10px">
-            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef4f7)':'linear-gradient(145deg,#0b1217,#05090c)'};border:1px solid ${uiTheme==='light'?'rgba(36,76,94,.30)':'rgba(226,190,89,.34)'};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.09)':'0 12px 28px rgba(0,0,0,.28)'}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${uiTheme==='light'?'#405862':'#b9c8ce'}">CONFLUÊNCIA TÉCNICA</span><span style="font-size:8px;color:${uiTheme==='light'?'#617780':'#7f959f'}">FORÇA DO MERCADO</span></div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:#d7bd70">Confiança <b style="font-size:12px;color:#f1d37b">${n(confidence,0)}%</b></span></div>
+            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${panelBg};border:1px solid ${panelBorder};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.09)':'0 12px 28px rgba(0,0,0,.28)'}">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${ink}">CONFLUÊNCIA TÉCNICA</span><span style="font-size:8px;color:${subtle}">FORÇA DO MERCADO</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:${subtle}">Confiança <b style="font-size:12px;color:${gold}">${n(confidence,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
                 <div style="padding:7px 8px;border-radius:9px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:8px;color:#3c8068;font-weight:850">CALL</span><b style="display:block;font-size:16px;line-height:1.1;color:#72e6b9">${n(finalCall,0)}%</b><small style="display:block;margin-top:3px;font-size:8px;color:#6f8f84">${n(finalCall,0)} pts</small></div>
                 <div style="padding:7px 8px;border-radius:9px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,157,.10);text-align:center"><span style="display:block;font-size:8px;color:#9b5962;font-weight:850">PUT</span><b style="display:block;font-size:16px;line-height:1.1;color:#ff8f9d">${n(finalPut,0)}%</b><small style="display:block;margin-top:3px;font-size:8px;color:#96777c">${n(finalPut,0)} pts</small></div>
               </div>
             </div>
 
-            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#edf3f6)':'linear-gradient(145deg,#11100a,#070b0e)'};border:1px solid ${entryReady?tone:(uiTheme==='light'?'rgba(36,76,94,.34)':'rgba(226,190,89,.46)')};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.11)':'0 12px 28px rgba(0,0,0,.30)'}">
+            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${panelBg};border:1px solid ${entryReady?tone:panelBorder};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.11)':'0 12px 28px rgba(0,0,0,.30)'}">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:950;letter-spacing:.065em;color:${ink}">PRONTIDÃO DE ENTRADA</span><span style="font-size:8px;font-weight:950;color:${entryReady?'#63ddb0':uiTheme==='light'?'#7a5200':'#f2cf66'}">${esc(gateReason)}</span></div>
               <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:7px">
                 <div>
@@ -980,11 +984,11 @@ export class LocalPlaywrightDriver{
                 </div>
                 <div style="text-align:right"><div style="font-size:7.5px;font-weight:900;letter-spacing:.08em;color:${muted}">CONFIANÇA</div><div style="font-size:17px;font-weight:950;color:${entryReady?tone:'#f2cf66'}">${n(confidence,0)}%</div><div style="font-size:20px;font-weight:950;line-height:1.05;margin-top:3px;color:${entryReady?tone:'#f2cf66'};text-shadow:0 0 18px rgba(216,184,94,.16)">${entryReady?signal:'AGUARDAR'}</div></div>
               </div>
-              <div style="margin-top:7px;padding-top:6px;border-top:1px solid ${uiTheme==='light'?'rgba(36,76,94,.16)':'rgba(226,190,89,.18)'};font-size:8px;line-height:1.35;color:${muted}">filtro <b style="color:${ink}">${n(minConfidence,0)}%</b> · estabilidade <b style="color:${ink}">${n(stabilityScore,0)}%</b> · histórico <b style="color:${ink}">${n(winRate,1)}%</b> (${samples}/${minSamples})</div>
+              <div style="margin-top:7px;padding-top:7px;border-top:1px solid ${panelBorder};font-size:8px;line-height:1.4;color:${muted}"><div style="color:${ink};font-weight:750;margin-bottom:3px">${esc(gateDetail)}</div>filtro <b style="color:${ink}">${n(minConfidence,0)} pts</b> · diferença <b style="color:${ink}">${n(q.technicalEdge,0)} pts</b> · histórico <b style="color:${ink}">${n(winRate,1)}%</b> (${samples}/${minSamples})</div>
             </div>
           </div>
 
-          <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef4f7)':'linear-gradient(145deg,#0b1b24,#07141a)'};border-radius:10px;box-sizing:border-box">
+          <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div style="font-size:9px;font-weight:900;letter-spacing:.045em;color:${ink}">CENÁRIO POR PRAZO · ${esc(d.asset||'—')}</div>
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
@@ -994,7 +998,7 @@ export class LocalPlaywrightDriver{
             ${planHtml}
           </div>
 
-          <div style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.78)':'rgba(255,255,255,.026)'};border:1px solid ${uiTheme==='light'?'rgba(39,68,80,.10)':'rgba(255,255,255,.06)'}">
+          <div style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.72)':'rgba(255,255,255,.024)'};border:1px solid ${panelBorder}">
             <div style="font-size:10px;font-weight:900;color:${ink};margin-bottom:7px">Configuração</div>
             <div style="display:grid;grid-template-columns:1.45fr .72fr .72fr;gap:8px">
               <label><span style="display:block;font-size:9px;font-weight:800;color:${muted};margin:0 0 3px 2px">Estratégia</span><select data-sentinel-setting="strategy" style="width:100%;height:34px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:9px;padding:0 9px;font-size:10.5px;font-weight:700;outline:none"><option value="smart_confluence" ${strategy==='smart_confluence'?'selected':''}>Smart Confluence</option><option value="price_action" ${strategy==='price_action'?'selected':''}>Price Action</option><option value="trendline_breakout" ${strategy==='trendline_breakout'?'selected':''}>Trendline Breakout</option><option value="support_resistance" ${strategy==='support_resistance'?'selected':''}>Suporte / Resistência</option><option value="fibonacci_retest" ${strategy==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option><option value="trend" ${strategy==='trend'?'selected':''}>Trend Following</option><option value="mean_reversion" ${strategy==='mean_reversion'?'selected':''}>Mean Reversion</option><option value="breakout" ${strategy==='breakout'?'selected':''}>Breakout</option></select></label>
@@ -1005,10 +1009,10 @@ export class LocalPlaywrightDriver{
 
           
 
-          <div data-sentinel-role="realtime-force" style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(6,17,23,.50)'};border:1px solid ${uiTheme==='light'?'rgba(39,68,80,.10)':'rgba(255,255,255,.06)'};display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center">
+          <div data-sentinel-role="realtime-force" style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.72)':'rgba(255,255,255,.024)'};border:1px solid ${panelBorder};display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center">
             <div style="min-width:0">
               <div style="font-size:10px;font-weight:850;letter-spacing:.02em;color:${ink}">Força técnica agora</div>
-              <div style="font-size:8px;color:${liveNow?'#72e6b9':gold};margin-top:3px;white-space:nowrap">● ${liveNow?'AO VIVO':'ATUALIZANDO'} <span style="color:#607781">· microestrutura + contexto</span></div>
+              <div style="font-size:8px;color:${liveNow?'#72e6b9':gold};margin-top:3px;white-space:nowrap">● ${liveNow?'AO VIVO':'ATUALIZANDO'} <span style="color:${subtle}">· microestrutura + contexto</span></div>
             </div>
             <div style="display:grid;grid-template-columns:58px 58px;gap:5px">
               <div style="padding:5px 6px;border-radius:8px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:7px;color:#8fb6a7;font-weight:750">CALL</span><b style="font-size:13px;color:#72e6b9;font-weight:850">${n(buy,0)}%</b><small style="display:block;font-size:8px;color:#6f8f84;margin-top:2px">${n(buy,0)} pts</small><b style="display:none"></b></div>
@@ -1018,15 +1022,15 @@ export class LocalPlaywrightDriver{
 
           
 
-          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef3f5)':'linear-gradient(145deg,#0d1d25,#071218)'};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
+          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${panelBg};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
               <span style="font-size:9px;font-weight:900;letter-spacing:.04em;color:${ink}">Controle do bot</span>
               <span style="font-size:8px;font-weight:800;line-height:1;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#93a5ad'};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box">
-              <button data-sentinel-action="start" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(114,230,185,.18);border-radius:7px;background:${runtime==='running'?'linear-gradient(180deg,rgba(54,112,90,.72),rgba(30,72,58,.78))':'rgba(114,230,185,.12)'};color:#9cebc9;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
-              <button data-sentinel-action="pause" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(232,200,95,.15);border-radius:7px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(96,81,40,.66),rgba(58,49,28,.74))':'rgba(232,200,95,.10)'};color:${runtime==='paused'?goldSoft:'#d5dee2'};font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
-              <button data-sentinel-action="stop" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(255,143,157,.17);border-radius:7px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(81,43,50,.63),rgba(50,29,34,.72))':'rgba(255,143,157,.10)'};color:#f2a1ac;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
+              <button data-sentinel-action="start" style="width:100%;min-width:0;height:34px;box-sizing:border-box;border:1px solid rgba(102,205,160,.38);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,rgba(45,116,85,.88),rgba(25,76,56,.92))':'rgba(73,160,120,.16)'};color:${uiTheme==='light'?'#17613f':'#baf0d8'};font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.045em;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
+              <button data-sentinel-action="pause" style="width:100%;min-width:0;height:34px;box-sizing:border-box;border:1px solid rgba(201,166,91,.38);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(111,88,37,.88),rgba(69,53,25,.92))':'rgba(201,166,91,.16)'};color:${runtime==='paused'?goldSoft:(uiTheme==='light'?'#6c572a':'#e5dcc8')};font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.045em;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
+              <button data-sentinel-action="stop" style="width:100%;min-width:0;height:34px;box-sizing:border-box;border:1px solid rgba(211,111,121,.36);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(108,48,56,.84),rgba(68,30,35,.90))':'rgba(190,83,94,.15)'};color:${uiTheme==='light'?'#8b2e3a':'#f2b4bc'};font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.045em;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
             </div>
             <div data-sentinel-control-msg style="min-height:7px;margin:2px 1px 0;font-size:8px;font-weight:700;color:#79b9a3;line-height:1.1"></div>
           </div>
@@ -1035,7 +1039,7 @@ export class LocalPlaywrightDriver{
 
           <div style="margin-top:7px">
             <button data-sentinel-toggle="details" style="width:100%;border:0;background:transparent;color:${muted};padding:6px 2px;display:flex;justify-content:space-between;cursor:pointer;font-size:8.5px;font-weight:800"><span>Detalhes técnicos</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span></button>
-            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:#859aa4">${reasons}</div></div>
+            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:${muted}">${reasons}</div></div>
           </div>
 
           <div style="height:12px;position:relative"><span style="position:absolute;right:-7px;bottom:-9px;color:#65808c;font-size:18px;pointer-events:none">◢</span></div>
