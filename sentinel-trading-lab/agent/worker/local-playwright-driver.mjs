@@ -283,8 +283,12 @@ export class LocalPlaywrightDriver{
       const markClosed=()=>{if(s.context===context){s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'browser-closed',updatedAt:nowIso()})}};
       context.once?.('close',markClosed);
       let pages=context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await context.newPage();
-      if(!String(s.page.url()||'').includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
+      const startupUrl=String(s.page.url()||'');
       await this.installBridge(s.page,provider);this.attachNetwork(provider,s.page);
+      if(!startupUrl.includes(cfg.domain)||!/traderoom|platform|trade/i.test(startupUrl))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
+      else await s.page.reload({waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
+      await this.installBridge(s.page,provider).catch(()=>{});
+      await sleep(180);
       try{await s.page.bringToFront()}catch{}
       this.lastManualOpenAt.set(provider,Date.now());
       const info=await this.sessionInfo(provider).catch(()=>null);
@@ -325,8 +329,12 @@ export class LocalPlaywrightDriver{
       const markClosed=()=>{if(s.context===context){s.browser=null;s.context=null;s.page=null;s.background=false;this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,phase:'background-closed',updatedAt:nowIso()})}};
       context.once?.('close',markClosed);
       let pages=context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await context.newPage();
-      if(!String(s.page.url()||'').includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
+      const startupUrl=String(s.page.url()||'');
       await this.installBridge(s.page,provider);this.attachNetwork(provider,s.page);
+      if(!startupUrl.includes(cfg.domain)||!/traderoom|platform|trade/i.test(startupUrl))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
+      else await s.page.reload({waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
+      await this.installBridge(s.page,provider).catch(()=>{});
+      await sleep(180);
       this.last.set(provider,{provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:s.page.url()||cfg.tradeUrl,title:cfg.label,cookieCount:0,phase:'background-session',background:true,updatedAt:nowIso()});
       const info=await this.sessionInfo(provider);
       if(!info.sessionPresent){
@@ -495,6 +503,18 @@ export class LocalPlaywrightDriver{
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
+    if(st.pageActiveId!=null){
+      const resolvedPageSymbol=symbolForActiveId(st,st.pageActiveId);
+      if(resolvedPageSymbol)this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page-late'});
+    }
+    if(st.symbol){
+      const mappedId=st.activeMap.get(pairKey(st.symbol));
+      if(mappedId!=null){
+        const idChanged=st.activeId==null||Number(st.activeId)!==Number(mappedId);
+        st.activeId=Number(mappedId);
+        if(st.candles.length<50&&(idChanged||!st.lastCandleRequest))setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
+      }
+    }
     if(!st.symbol&&st.activeId!=null){
       const resolved=symbolForActiveId(st,st.activeId);
       if(resolved){
@@ -752,7 +772,7 @@ export class LocalPlaywrightDriver{
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
-    if(changed&&source!=='click'&&current){
+    if(changed&&source!=='click'&&!String(source).startsWith('protocol-page')&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
       st.pendingUiHits=Number(st.pendingUiHits||0)+1;
       if(st.pendingUiHits<2)return false;
