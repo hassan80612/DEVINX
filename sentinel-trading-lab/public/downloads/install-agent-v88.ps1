@@ -38,7 +38,7 @@ try {
   Step '1/5 Atualizando arquivos do Agent...'
   New-Item -ItemType Directory -Force -Path $root | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=11.7.0&release=sentinel-v117-six-card-consensus" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=11.7.0-r3&release=sentinel-v117-frozen-timing-r3" -OutFile $payloadZip }
   if (Test-Path $payloadTmp) { Remove-Item $payloadTmp -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $payloadTmp | Out-Null
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
