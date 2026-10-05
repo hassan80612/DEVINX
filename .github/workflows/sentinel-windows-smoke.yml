@@ -55,10 +55,10 @@ jobs:
           for(const k of ['strategy2','strategy3','_strategyPanel','strategyCards','strategyConfluence'])if(!runtime.includes(k))throw new Error('strategy_panel_missing:'+k);
           for(const k of ['SINAL OPERACIONAL','data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
+          const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('CONSENSO GERAL')||!driverSource.includes('generalConsensus'))throw new Error('six_card_consensus_ui_missing');
           if(!runtime.includes('_generalConsensus')||!runtime.includes('prazo + consenso geral dos 6 cards'))throw new Error('six_card_consensus_runtime_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
-          const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
