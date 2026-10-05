@@ -1,5 +1,5 @@
-# V10.10 validated source build
-name: Sentinel Windows Agent V10.10
+# V10.11 validated source build
+name: Sentinel Windows Agent V10.11
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
 
-      - name: Build Agent V10.10 payload
+      - name: Build Agent V10.11 payload
         shell: bash
         run: |
           set -euo pipefail
@@ -85,8 +85,8 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/favicon.ico
           if git diff --cached --quiet; then
-            echo 'Agent 10.10 generated files already current.'
+            echo 'Agent 10.11 generated files already current.'
             exit 0
           fi
-          git commit -m 'build(sentinel): refresh Windows Agent V10.10'
+          git commit -m 'build(sentinel): refresh Windows Agent V10.11'
           git push origin HEAD:main

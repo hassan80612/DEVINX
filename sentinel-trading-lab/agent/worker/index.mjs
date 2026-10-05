@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.10.0';
+const VERSION='10.11.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -25,7 +25,7 @@ const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter(
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 function chooseLive(){const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];for(const k of order){const b=brokers[k],m=driver.liveStatus?.(k);if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){return{k,m}}}return null}
-function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;return live}
+function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;const marketTs=Math.max(Number(m.lastQuoteAt||0),Number(m.lastCandleAt||0),Number(m.latestCandleTs||0));runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,quoteTs:marketTs});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
@@ -111,11 +111,13 @@ const overlayAnalysisCache=new Map();
 function overlayAnalysis(view,asset='—',now=Date.now()){
   const key=String(asset||'—');
   const current=view.lastResult?.analysis||null;
-  const complete=current&&Number.isFinite(Number(current.confidence))&&current.metrics&&Number.isFinite(Number(current.metrics.buyScore))&&Number.isFinite(Number(current.metrics.sellScore))&&current.finalConfluence;
-  if(complete){overlayAnalysisCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false,holdAgeMs:0}}
+  const shortWindow=Number(view.settings?.orderDurationMs||60000)<=60000;
+  const shortReady=current?.metrics?.shortModel?.ready===true;
+  const complete=current&&Number.isFinite(Number(current.confidence))&&current.metrics&&Number.isFinite(Number(current.metrics.buyScore))&&Number.isFinite(Number(current.metrics.sellScore))&&current.finalConfluence&&(!shortWindow||shortReady);
+  if(complete){overlayAnalysisCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false,stale:false,holdAgeMs:0}}
   const cached=overlayAnalysisCache.get(key);
-  if(cached){const age=Math.max(0,now-Number(cached.at||now));return{analysis:cached.analysis,transient:true,holdAgeMs:age}}
-  return{analysis:current||{},transient:true,holdAgeMs:null}
+  if(cached){const age=Math.max(0,now-Number(cached.at||now));return{analysis:cached.analysis,transient:true,stale:age>3200,holdAgeMs:age}}
+  return{analysis:current||{},transient:true,stale:true,holdAgeMs:null}
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   await enforceAccessLease();
@@ -135,6 +137,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       side:a.side||'WAIT',
       confidence:Number.isFinite(Number(a.confidence))?Number(a.confidence):null,
       analysisTransient:held.transient,
+      analysisStale:held.stale,
       analysisHoldAgeMs:held.holdAgeMs,
       forecast30:a.forecast30||null,
       finalConfluence:a.finalConfluence||null,
@@ -146,7 +149,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       plan:view.lastResult?.plan||{},
       nextEval:next,
       realtime:true,
-      liveAgeMs:view.liveBroker?.lastQuoteAt?Math.max(0,Date.now()-Number(view.liveBroker.lastQuoteAt)):null,
+      liveAgeMs:(()=>{const ts=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));return ts>0?Math.max(0,Date.now()-ts):null})(),
       analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
       durationMs:view.settings?.orderDurationMs||60000,
       intervalMs:view.settings?.schedule?.intervalMs||1000,

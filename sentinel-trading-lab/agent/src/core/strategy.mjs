@@ -52,7 +52,7 @@ function quoteBars(quoteHistory=[],bucketMs=5000,now=Date.now()){
 }
 function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence=74,now=Date.now()}){
  const bars=quoteBars(quoteHistory,5000,now);
- if(bars.length<10||!micro.ready)return{ready:false,bars:bars.length,callScore:0,putScore:0,readyCall:false,readyPut:false,reasons:['microestrutura ainda insuficiente']};
+ if(bars.length<10||!micro.ready)return{ready:false,bars:bars.length,callScore:null,putScore:null,reversalCallScore:null,reversalPutScore:null,readyCall:false,readyPut:false,reasons:['microestrutura ainda insuficiente']};
  const closes=bars.map(b=>Number(b.close)),lastBar=bars.at(-1),prior=bars.slice(0,-1);
  const fast=ema(closes,3),slow=ema(closes,8),microRsi=rsi(closes,7),microMom=momentum(closes,3),microMacd=macd(closes,5,10,4);
  const structure=marketStructure(bars),sr=supportResistance(prior,Math.min(24,prior.length)),lines=trendLines(bars),patterns=candlePatterns(bars),retest=breakoutRetest(bars,Math.min(12,Math.max(4,bars.length-3)));
@@ -87,8 +87,33 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  const weakeningDown=micro.delta15<0&&rate5<0&&prior10Rate<0&&rate5>prior10Rate*.45;
  const localHigh=prevBar&&prev2Bar&&Number(lastBar.high)>=Math.max(Number(prevBar.high),Number(prev2Bar.high));
  const localLow=prevBar&&prev2Bar&&Number(lastBar.low)<=Math.min(Number(prevBar.low),Number(prev2Bar.low));
- const reversalPutCandidate=(nearResistance||failedBreakUp||localHigh)&&(rejectionDown||failedBreakUp||turnDown||(weakeningUp&&microRsi!=null&&microRsi>=66));
- const reversalCallCandidate=(nearSupport||failedBreakDown||localLow)&&(rejectionUp||failedBreakDown||turnUp||(weakeningDown&&microRsi!=null&&microRsi<=34));
+
+ // Score independente de reversão. Ele mede sinais de exaustão + localização + gatilho,
+ // e não é a mesma coisa que o score direcional da entrada.
+ let reversalCallScore=0,reversalPutScore=0;
+ if(nearSupport)reversalCallScore+=15;
+ if(nearResistance)reversalPutScore+=15;
+ if(failedBreakDown)reversalCallScore+=25;
+ if(failedBreakUp)reversalPutScore+=25;
+ if(turnUp)reversalCallScore+=24;
+ if(turnDown)reversalPutScore+=24;
+ if(weakeningDown)reversalCallScore+=12;
+ if(weakeningUp)reversalPutScore+=12;
+ if(rejectionUp)reversalCallScore+=12;
+ if(rejectionDown)reversalPutScore+=12;
+ if(localLow)reversalCallScore+=7;
+ if(localHigh)reversalPutScore+=7;
+ if(microRsi!=null&&microRsi<=34)reversalCallScore+=10;
+ if(microRsi!=null&&microRsi>=66)reversalPutScore+=10;
+ if(micro.p15<=-1.65)reversalCallScore+=7;
+ if(micro.p15>=1.65)reversalPutScore+=7;
+ if(micro.p5>0&&micro.p15<0)reversalCallScore+=8;
+ if(micro.p5<0&&micro.p15>0)reversalPutScore+=8;
+ reversalCallScore=clamp(Math.round(reversalCallScore),0,100);
+ reversalPutScore=clamp(Math.round(reversalPutScore),0,100);
+
+ const reversalPutCandidate=reversalPutScore>=55&&(nearResistance||failedBreakUp||localHigh)&&(rejectionDown||failedBreakUp||turnDown||weakeningUp);
+ const reversalCallCandidate=reversalCallScore>=55&&(nearSupport||failedBreakDown||localLow)&&(rejectionUp||failedBreakDown||turnUp||weakeningDown);
 
  let call=0,put=0;const callReasons=[],putReasons=[];
  // Família 1: fluxo real (máx. 30)
@@ -159,7 +184,7 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  return{
    ready:true,bars:bars.length,callScore:call,putScore:put,edge,readyCall,readyPut,
    flowReadyCall,flowReadyPut,structureReadyCall,structureReadyPut,callReversalRisk,putReversalRisk,
-   callOverextended,putOverextended,callSetup,putSetup,callRoom,putRoom,callRoomOk,putRoomOk,accelUp,accelDown,reversalCallCandidate,reversalPutCandidate,turnUp,turnDown,weakeningUp,weakeningDown,failedBreakUp,failedBreakDown,
+   callOverextended,putOverextended,callSetup,putSetup,callRoom,putRoom,callRoomOk,putRoomOk,accelUp,accelDown,reversalCallScore,reversalPutScore,reversalCallCandidate,reversalPutCandidate,turnUp,turnDown,weakeningUp,weakeningDown,failedBreakUp,failedBreakDown,
    fast,slow,rsi:microRsi,momentum:microMom,macd:microMacd,structure,sr,trendlines:lines,
    patterns:patterns.map(p=>p.name),retest,range,callReasons:callReasons.slice(0,9),putReasons:putReasons.slice(0,9)
  }

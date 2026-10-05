@@ -747,16 +747,18 @@ export class LocalPlaywrightDriver{
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
     let nextUi=null,uiSource=null;
-    if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
-    else if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
+    if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
+    else if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
     else if(instrumentPairs.length===1){nextUi=instrumentPairs[0];uiSource='dom-single'}
     else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
     if(nextUi){
       const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
         st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
-        st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
+        st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
+        try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:nextUi,uiSymbol:nextUi,activeId:st.activeId,source:uiSource,assetChanged:true})).catch(()=>{})}catch{}
+        setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
       }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
     }else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
@@ -789,7 +791,7 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);
     const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh);
     const marketStatus=candleFresh?'open':(st.marketStatus||'stale');const marketReason=candleFresh?`${st.symbol||'Ativo'} atualizado`:(st.marketReason||'Sem candle recente');
-    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi}
+    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:Math.max(Number(st.lastQuoteAt||0),Number(st.lastCandleAt||0),Number(latestCandleTs||0)),lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -799,15 +801,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='10.10'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='10.11'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.10';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.11';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.10';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.11';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -859,58 +861,67 @@ export class LocalPlaywrightDriver{
 
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         const n=(v,dg=0)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
-        const m=d.metrics||{},plan=d.plan||{},q=d.quality||{};
-        const analysisTransient=d.analysisTransient===true;
+        const m=d.metrics||{},plan=d.plan||{},q=d.quality||{},short=m.shortModel||{};
+        const analysisTransient=d.analysisTransient===true,analysisStale=d.analysisStale===true;
         const side=String(d.side||'WAIT').toUpperCase(),raw=String(q.rawSide||side||'WAIT').toUpperCase();
         const entryGateReady=q.entryReady===true;
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
         const signal=entryGateReady?(side==='BUY'?'CALL':side==='SELL'?'PUT':'AGUARDAR'):'AGUARDAR';
         const gold='#c9a65b',goldSoft='#ecd28d';
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
-        const confidence=d.confidence==null?null:Math.max(0,Math.min(100,Number(d.confidence)));
-        const buy=m.buyScore==null?null:Math.max(0,Math.min(100,Number(m.buyScore))),sell=m.sellScore==null?null:Math.max(0,Math.min(100,Number(m.sellScore)));
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
+        const shortWindow=duration<=60000,shortReady=!shortWindow||short.ready===true;
+        const confidence=!analysisStale&&shortReady&&d.confidence!=null?Math.max(0,Math.min(100,Number(d.confidence))):null;
+        const buy=!analysisStale&&shortReady&&m.buyScore!=null?Math.max(0,Math.min(100,Number(m.buyScore))):null;
+        const sell=!analysisStale&&shortReady&&m.sellScore!=null?Math.max(0,Math.min(100,Number(m.sellScore))):null;
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
-        const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1800;
-        const liveLabel=analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
-        const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<2400;
+        const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
+        const liveLabel=analysisStale?'SINCRONIZANDO FEED':analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
+        const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
         const planner=d.entryPlanner?.horizons||{};
         const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
         const final=d.finalConfluence||{};
-        const finalSide=String(final.side||'AGUARDAR').toUpperCase();
-        const finalStrength=final.strength==null?null:Math.max(0,Math.min(100,Number(final.strength)));
-        const finalCall=final.callStrength==null?null:Math.max(0,Math.min(100,Number(final.callStrength)));
-        const finalPut=final.putStrength==null?null:Math.max(0,Math.min(100,Number(final.putStrength)));
-        const finalTone=finalSide==='CALL'?'#72e6b9':finalSide==='PUT'?'#ff8f9d':gold;
+        const finalSide=analysisStale?'SINCRONIZANDO':String(final.side||'AGUARDAR').toUpperCase();
+        const finalStrength=analysisStale||final.strength==null?null:Math.max(0,Math.min(100,Number(final.strength)));
+        const finalCall=analysisStale||final.callStrength==null?null:Math.max(0,Math.min(100,Number(final.callStrength)));
+        const finalPut=analysisStale||final.putStrength==null?null:Math.max(0,Math.min(100,Number(final.putStrength)));
         const minConfidence=Math.max(55,Math.min(95,Number(d.minConfidence)||74));
         const stability=q.stability||{},pre=q.preEntry||{};
-        const statusCall=buy==null?null:Math.round(buy),statusPut=sell==null?null:Math.round(sell);
+        const statusCall=buy==null?null:Math.round(buy),statusPut=sell==null?null:Math.round(sell),entryEdge=shortReady&&!analysisStale&&q.technicalEdge!=null?Number(q.technicalEdge):null;
         const preSide=pre.side==='BUY'?'CALL':pre.side==='SELL'?'PUT':null;
         const preRemaining=pre.active===true&&Number.isFinite(Number(pre.expiresAt))?Math.max(0,Math.ceil((Number(pre.expiresAt)-Date.now())/1000)):null;
-        const gateReason=analysisTransient||!liveNow||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
-        const gateDetail=analysisTransient?'Corretora atualizando · mantendo a última análise técnica válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
+        const reversalCall=!analysisStale&&short.reversalCallScore!=null?Math.max(0,Math.min(100,Number(short.reversalCallScore))):null;
+        const reversalPut=!analysisStale&&short.reversalPutScore!=null?Math.max(0,Math.min(100,Number(short.reversalPutScore))):null;
+        const reversalSide=reversalCall==null||reversalPut==null?'AGUARDAR':reversalCall>=reversalPut?'CALL':'PUT';
+        const reversalStrength=reversalCall==null||reversalPut==null?null:Math.max(reversalCall,reversalPut);
+        const reversalTimer=pre.kind==='reversal'&&preRemaining!=null&&preRemaining>0?preRemaining:null;
+        const gateReason=analysisStale||!liveNow?'SINCRONIZANDO':analysisTransient||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
+        const gateDetail=analysisStale?'Feed temporariamente fora de sincronia; aguardando leitura atual.':analysisTransient?'Atualizando a análise sem zerar a última leitura válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
         let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme='dark';
         try{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
         el.dataset.theme=uiTheme;
-        const ink=uiTheme==='light'?'#15130f':'#f7f3e8',muted=uiTheme==='light'?'#514b42':'#bcb5a8',subtle=uiTheme==='light'?'#756b5b':'#8f887a';
-        const fieldBg=uiTheme==='light'?'#fffefb':'#0f0f11',fieldInk=uiTheme==='light'?'#15130f':'#f7f3e8',fieldBorder=uiTheme==='light'?'rgba(128,94,39,.40)':'rgba(201,166,91,.34)';
-        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f1ece1)':'linear-gradient(145deg,#111113,#070708)';
-        const panelBorder=uiTheme==='light'?'rgba(137,105,52,.22)':'rgba(201,166,91,.26)';
+        const ink=uiTheme==='light'?'#0f0d0a':'#f7f3e8',muted=uiTheme==='light'?'#39342d':'#c8c0b2',subtle=uiTheme==='light'?'#5b5246':'#9b9385';
+        const fieldBg=uiTheme==='light'?'#ffffff':'#0f0f11',fieldInk=uiTheme==='light'?'#0f0d0a':'#f7f3e8',fieldBorder=uiTheme==='light'?'rgba(104,72,24,.48)':'rgba(201,166,91,.34)';
+        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eee7da)':'linear-gradient(145deg,#111113,#070708)';
+        const panelBorder=uiTheme==='light'?'rgba(104,72,24,.30)':'rgba(201,166,91,.26)';
+        const callTone=uiTheme==='light'?'#086344':'#72e6b9',putTone=uiTheme==='light'?'#922537':'#ff8f9d',warnTone=uiTheme==='light'?'#7b5600':'#f2cf66';
+        const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
-        const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisTransient?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
+        const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
-        const entryReady=!analysisTransient&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
-        const outlook=liveNow&&analysisFresh&&plannerPlan?.outlookReady?plannerPlan.bias:'SEM LEITURA';
-        const outlookTone=outlook==='CALL'?'#69e1b5':outlook==='PUT'?'#ff8f9c':'#e8c85f';
-        const planHtml=plannerPlan?.outlookReady&&liveNow&&analysisFresh?(
+        const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
+        const plannerUsable=!analysisStale&&liveNow&&plannerPlan?.outlookReady&&(analysisFresh||analysisTransient);
+        const outlook=plannerUsable?plannerPlan.bias:'SEM LEITURA';
+        const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:warnTone;
+        const planHtml=plannerUsable?(
           '<div style="font-size:8.5px;color:'+muted+';margin-bottom:5px">Preço de referência <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b> · expiração configurada '+esc(({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[Math.round(duration/1000)]||'—')+'</div>'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+
-            '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:#8fb7a8;font-weight:800">CALL — gatilho</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:#759087;margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
-            '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8px;color:#bc9499;font-weight:800">PUT — gatilho</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.5px;color:#96767b;margin-top:2px">invalida &gt; '+price(plannerPlan.putInvalidation)+'</div></div>'+
+            '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:'+callTone+';font-weight:800">CALL — gatilho</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
+            '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8px;color:'+putTone+';font-weight:800">PUT — gatilho</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &gt; '+price(plannerPlan.putInvalidation)+'</div></div>'+
           '</div>'+
           '<div style="margin-top:6px;font-size:8px;line-height:1.35;color:'+muted+'"><b style="color:'+ink+'">CALL:</b> '+esc(plannerPlan.callRule||'—')+' · <b style="color:'+ink+'">PUT:</b> '+esc(plannerPlan.putRule||'—')+'</div>'+
           '<div style="margin-top:5px;font-size:8px;line-height:1.3;color:'+muted+'">'+(plannerPlan.outlookReady?'Cenário condicional: '+esc(plannerPlan.basis||'confluência técnica')+'.':'Histórico ou microfluxo insuficiente neste prazo.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
@@ -951,7 +962,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.10.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.11.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -966,33 +977,61 @@ export class LocalPlaywrightDriver{
           <div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:9px;margin-top:10px">
             <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${panelBg};border:1px solid ${panelBorder};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.09)':'0 12px 28px rgba(0,0,0,.28)'}">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${ink}">CONFLUÊNCIA TÉCNICA</span><span style="font-size:8px;color:${subtle}">DIREÇÃO / CONTEXTO</span></div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:${subtle}">Confiança <b style="font-size:12px;color:${gold}">${n(confidence,0)}%</b></span></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:${subtle}">Força <b style="font-size:12px;color:${gold}">${n(finalStrength,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
-                <div style="padding:7px 8px;border-radius:9px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:8px;color:#3c8068;font-weight:850">CALL</span><b style="display:block;font-size:16px;line-height:1.1;color:#72e6b9">${n(finalCall,0)}%</b><small style="display:block;margin-top:3px;font-size:8px;color:#6f8f84">${n(finalCall,0)} pts</small></div>
-                <div style="padding:7px 8px;border-radius:9px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,157,.10);text-align:center"><span style="display:block;font-size:8px;color:#9b5962;font-weight:850">PUT</span><b style="display:block;font-size:16px;line-height:1.1;color:#ff8f9d">${n(finalPut,0)}%</b><small style="display:block;margin-top:3px;font-size:8px;color:#96777c">${n(finalPut,0)} pts</small></div>
+                <div style="padding:7px 8px;border-radius:9px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:8px;color:${callTone};font-weight:850">CALL</span><b style="display:block;font-size:16px;line-height:1.1;color:${callTone}">${n(finalCall,0)}%</b><small style="display:block;margin-top:3px;font-size:8px;color:${muted}">${n(finalCall,0)} pts</small></div>
+                <div style="padding:7px 8px;border-radius:9px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,157,.10);text-align:center"><span style="display:block;font-size:8px;color:${putTone};font-weight:850">PUT</span><b style="display:block;font-size:16px;line-height:1.1;color:${putTone}">${n(finalPut,0)}%</b><small style="display:block;margin-top:3px;font-size:8px;color:${muted}">${n(finalPut,0)} pts</small></div>
               </div>
             </div>
 
             <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${panelBg};border:1px solid ${entryReady?tone:panelBorder};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.11)':'0 12px 28px rgba(0,0,0,.30)'}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:950;letter-spacing:.065em;color:${ink}">PRONTIDÃO DE ENTRADA</span><span style="font-size:8px;font-weight:950;color:${entryReady?'#63ddb0':uiTheme==='light'?'#7a5200':'#f2cf66'}">${esc(gateReason)}</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:950;letter-spacing:.065em;color:${ink}">PRONTIDÃO DE ENTRADA</span><span style="font-size:8px;font-weight:950;color:${entryReady?callTone:warnTone}">${esc(gateReason)}</span></div>
               <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:7px">
                 <div>
-                  <div style="font-size:9px;font-weight:900;color:#63ddb0">CALL <b style="font-size:18px">${n(statusCall,0)}%</b></div>
-                  <div style="font-size:9px;font-weight:900;color:#ff8695;margin-top:4px">PUT <b style="font-size:18px">${n(statusPut,0)}%</b></div>
+                  <div style="font-size:9px;font-weight:900;color:${callTone}">CALL <b style="font-size:18px">${n(statusCall,0)}%</b></div>
+                  <div style="font-size:9px;font-weight:900;color:${putTone};margin-top:4px">PUT <b style="font-size:18px">${n(statusPut,0)}%</b></div>
                 </div>
-                <div style="text-align:right"><div style="font-size:7.5px;font-weight:900;letter-spacing:.08em;color:${muted}">CONFIANÇA</div><div style="font-size:17px;font-weight:950;color:${entryReady?tone:'#f2cf66'}">${n(confidence,0)}%</div><div style="font-size:20px;font-weight:950;line-height:1.05;margin-top:3px;color:${entryReady?tone:'#f2cf66'};text-shadow:0 0 18px rgba(216,184,94,.16)">${entryReady?signal:'AGUARDAR'}</div></div>
+                <div style="text-align:right"><div style="font-size:7.5px;font-weight:900;letter-spacing:.08em;color:${muted}">CONFIANÇA</div><div style="font-size:17px;font-weight:950;color:${entryReady?tone:warnTone}">${n(confidence,0)}%</div><div style="font-size:20px;font-weight:950;line-height:1.05;margin-top:3px;color:${entryReady?tone:warnTone};text-shadow:0 0 18px rgba(216,184,94,.16)">${entryReady?signal:'AGUARDAR'}</div></div>
               </div>
-              <div style="margin-top:7px;padding-top:7px;border-top:1px solid ${panelBorder};font-size:8px;line-height:1.4;color:${muted}"><div style="color:${ink};font-weight:750;margin-bottom:3px">${esc(gateDetail)}</div>filtro <b style="color:${ink}">${n(minConfidence,0)} pts</b> · diferença <b style="color:${ink}">${n(q.technicalEdge,0)} pts</b>${setupWindowHtml}</div>
+              <div style="margin-top:7px;padding-top:7px;border-top:1px solid ${panelBorder};font-size:8px;line-height:1.4;color:${muted}"><div style="color:${ink};font-weight:750;margin-bottom:3px">${esc(gateDetail)}</div>filtro <b style="color:${ink}">${n(minConfidence,0)} pts</b> · diferença <b style="color:${ink}">${n(entryEdge,0)} pts</b></div>
             </div>
+          </div>
+
+
+          <div data-sentinel-role="reversal" style="margin-top:7px;padding:9px 11px;border-radius:12px;background:${panelBg};border:1px solid ${panelBorder};box-shadow:${uiTheme==='light'?'0 9px 22px rgba(78,56,12,.08)':'0 10px 24px rgba(0,0,0,.24)'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <span style="font-size:9px;font-weight:950;letter-spacing:.06em;color:${ink}">VIRADA / REVERSÃO</span>
+              <span style="font-size:7.5px;font-weight:850;color:${subtle}">ESTIMATIVA TÉCNICA</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-top:7px">
+              <div style="padding:7px 8px;border-radius:9px;background:rgba(114,230,185,.05);border:1px solid rgba(114,230,185,.12);text-align:center">
+                <span style="display:block;font-size:8px;font-weight:900;color:${callTone}">VIRADA CALL</span>
+                <b style="display:block;font-size:19px;line-height:1.05;color:${callTone}">${n(reversalCall,0)}%</b>
+              </div>
+              <div style="padding:7px 8px;border-radius:9px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,157,.12);text-align:center">
+                <span style="display:block;font-size:8px;font-weight:900;color:${putTone}">VIRADA PUT</span>
+                <b style="display:block;font-size:19px;line-height:1.05;color:${putTone}">${n(reversalPut,0)}%</b>
+              </div>
+              <div style="min-width:108px;text-align:right">
+                <div style="font-size:7px;font-weight:900;letter-spacing:.07em;color:${subtle}">MAIOR SINAL</div>
+                <div style="font-size:14px;font-weight:950;color:${reversalSide==='CALL'?callTone:reversalSide==='PUT'?putTone:warnTone}">${reversalStrength==null?'AGUARDAR':reversalSide}</div>
+                <div style="font-size:10px;font-weight:900;color:${ink}">${n(reversalStrength,0)}%</div>
+              </div>
+            </div>
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid ${panelBorder};display:flex;justify-content:space-between;gap:8px;align-items:center;color:${muted};font-size:8px;line-height:1.35">
+              <span>${reversalStrength==null?'Coletando microestrutura para calcular a virada.':reversalStrength>=55?'Sinais de exaustão/reversão relevantes detectados.':'Sem reversão forte confirmada agora.'}</span>
+              <b style="white-space:nowrap;color:${reversalTimer!=null?warnTone:subtle}">${reversalTimer!=null?'JANELA '+reversalTimer+'s':'SEM JANELA'}</b>
+            </div>
+            <div style="margin-top:3px;font-size:7px;color:${subtle}">Percentual = score técnico de reversão, não probabilidade garantida de acerto.</div>
           </div>
 
           <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-              <div style="font-size:9px;font-weight:900;letter-spacing:.045em;color:${ink}">CENÁRIO POR PRAZO · ${esc(d.asset||'—')}</div>
+              <div style="font-size:9px;font-weight:900;letter-spacing:.045em;color:${ink}">CENÁRIO POR PRAZO</div>
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
             </div>
             <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${muted};font-size:9px;font-weight:650">até ${horizonLabel} · ${liveLabel}</span></div>
-            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${!liveNow||!analysisFresh?'Leitura desatualizada. Aguarde nova análise.':!plannerPlan?.outlookReady?'Aguardando histórico suficiente para este prazo.':outlook==='NEUTRO'?'Sem direção consistente neste prazo. Aguarde confirmação.':`Viés ${outlook} condicionado ao gatilho abaixo; não indica entrada imediata.`}</div>
+            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerPlan?.outlookReady?'Aguardando histórico suficiente para este prazo.':outlook==='NEUTRO'?'Sem direção consistente neste prazo. Aguarde confirmação.':`Viés ${outlook} condicionado ao gatilho abaixo; não indica entrada imediata.`}</div>
             ${planHtml}
           </div>
 
@@ -1010,14 +1049,14 @@ export class LocalPlaywrightDriver{
           <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${panelBg};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
               <span style="font-size:9px;font-weight:900;letter-spacing:.04em;color:${ink}">Controle do bot</span>
-              <span style="font-size:8px;font-weight:800;line-height:1;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#93a5ad'};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
+              <span style="font-size:8px;font-weight:800;line-height:1;color:${runtime==='running'?callTone:runtime==='paused'?warnTone:subtle};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box">
               <button data-sentinel-action="start" style="width:100%;min-width:0;height:34px;box-sizing:border-box;border:1px solid rgba(102,205,160,.38);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,rgba(45,116,85,.88),rgba(25,76,56,.92))':'rgba(73,160,120,.16)'};color:${uiTheme==='light'?'#17613f':'#baf0d8'};font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.045em;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
               <button data-sentinel-action="pause" style="width:100%;min-width:0;height:34px;box-sizing:border-box;border:1px solid rgba(201,166,91,.38);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(111,88,37,.88),rgba(69,53,25,.92))':'rgba(201,166,91,.16)'};color:${runtime==='paused'?goldSoft:(uiTheme==='light'?'#6c572a':'#e5dcc8')};font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.045em;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
               <button data-sentinel-action="stop" style="width:100%;min-width:0;height:34px;box-sizing:border-box;border:1px solid rgba(211,111,121,.36);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(108,48,56,.84),rgba(68,30,35,.90))':'rgba(190,83,94,.15)'};color:${uiTheme==='light'?'#8b2e3a':'#f2b4bc'};font-family:inherit;font-size:8px;font-weight:800;letter-spacing:.045em;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
             </div>
-            <div data-sentinel-control-msg style="min-height:7px;margin:2px 1px 0;font-size:8px;font-weight:700;color:#79b9a3;line-height:1.1"></div>
+            <div data-sentinel-control-msg style="min-height:7px;margin:2px 1px 0;font-size:8px;font-weight:700;color:${callTone};line-height:1.1"></div>
           </div>
 
 
@@ -1027,7 +1066,7 @@ export class LocalPlaywrightDriver{
             <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>CALL score <b>${n(buy,0)} pts</b></div><div>PUT score <b>${n(sell,0)} pts</b></div><div>Diferença <b>${n(q.technicalEdge,0)} pts</b></div><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:${muted}">${reasons}</div></div>
           </div>
 
-          <div style="height:12px;position:relative"><span style="position:absolute;right:-7px;bottom:-9px;color:#65808c;font-size:18px;pointer-events:none">◢</span></div>
+          <div style="height:12px;position:relative"><span style="position:absolute;right:-7px;bottom:-9px;color:${subtle};font-size:18px;pointer-events:none">◢</span></div>
 
         `;
 
