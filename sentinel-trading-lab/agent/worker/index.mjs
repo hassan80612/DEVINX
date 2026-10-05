@@ -31,15 +31,18 @@ const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FIL
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
-let realtimeKick=null;
+let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0;
 driver.setMarketUpdateHandler?.((provider)=>{
   if(provider!==activeProvider||runtime.stateName!=='running')return;
+  const now=Date.now();
+  if(now-lastRealtimeEvalAt<450)return;
+  lastRealtimeEvalAt=now;
   runtime.requestImmediateEvaluation?.();
   if(realtimeKick)return;
   realtimeKick=setTimeout(()=>{
     realtimeKick=null;
     loop().catch(()=>{});
-  },70);
+  },120);
 });
 async function ensureLocalCockpitBroker(provider){
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
@@ -74,10 +77,12 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
-    if(key==='strategy'){
+    if(key==='strategy'||key==='strategy2'||key==='strategy3'){
       const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
-      if(!allowed.includes(String(value)))throw new Error('invalid_strategy');
-      runtime.patchSettings({strategy:String(value)},'overlay');
+      const optional=key!=='strategy';
+      if(!(optional&&String(value)==='none')&&!allowed.includes(String(value)))throw new Error('invalid_strategy');
+      runtime.patchSettings({[key]:String(value)},'overlay');
+      runtime.requestImmediateEvaluation?.();
     }else if(key==='duration'){
       const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
       runtime.patchSettings({orderDurationMs:n},'overlay');
@@ -130,7 +135,7 @@ function overlayAnalysis(view,asset,now=Date.now()){
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   await enforceAccessLease();
-  if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
+  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=800){lastBrokerMaintainAt=Date.now();await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
   syncRuntimeMarket();
   await runtime.tick(Date.now());
   if(activeProvider){
@@ -141,7 +146,11 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));
     await driver.updateOverlay?.(activeProvider,{
       asset:currentAsset,
-      strategy:view.settings?.strategy||'—',
+      strategy:view.settings?.strategy||'smart_confluence',
+      strategy2:view.settings?.strategy2||'none',
+      strategy3:view.settings?.strategy3||'none',
+      strategyCards:a.strategyCards||[],
+      strategyConfluence:a.strategyConfluence||null,
       side:a.side||'WAIT',
       confidence:a.confidence||0,
       forecast30:a.forecast30||null,
@@ -167,7 +176,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     }).catch(()=>{});
   }
   await saveState()
-}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
+}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,300).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,agentVersion:VERSION,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
