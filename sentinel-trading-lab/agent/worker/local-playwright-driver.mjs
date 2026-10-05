@@ -822,10 +822,10 @@ export class LocalPlaywrightDriver{
               el.style.height=Math.max(360,Math.min(window.innerHeight-18,savedSize.h))+'px'
             }
           }catch{}
-          if(!document.getElementById('__sentinel-overlay-style')){
-            const st=document.createElement('style');st.id='__sentinel-overlay-style';
+          {
+            let st=document.getElementById('__sentinel-overlay-style');
+            if(!st){st=document.createElement('style');st.id='__sentinel-overlay-style';(document.head||document.documentElement).appendChild(st)}
             st.textContent='#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:#385461;border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:#4a6875}';
-            (document.head||document.documentElement).appendChild(st)
           }
           document.documentElement.appendChild(el);
           try{
