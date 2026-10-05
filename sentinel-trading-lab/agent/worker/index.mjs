@@ -98,6 +98,15 @@ async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true})
 await loadState();
 async function bootstrapSavedBrokers(){if(!accessLeaseValid())return;for(const [name,adapter] of Object.entries(brokers)){if(!adapter.sessionRef)continue;try{await adapter.connect();if(adapter.connected){activeProvider=name;await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();if(adapter.validated)break}}catch{}}syncRuntimeMarket()}
 setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),700).unref();
+let lastOverlayAnalysis=null,lastOverlayAnalysisAt=0;
+function overlayAnalysis(view,now=Date.now()){
+  const current=view.lastResult?.analysis||null;
+  const complete=current&&Number.isFinite(Number(current.confidence))&&current.metrics&&Number.isFinite(Number(current.metrics.buyScore))&&Number.isFinite(Number(current.metrics.sellScore))&&current.finalConfluence;
+  if(complete){lastOverlayAnalysis=current;lastOverlayAnalysisAt=now;return{analysis:current,transient:false}}
+  const age=now-lastOverlayAnalysisAt;
+  if(lastOverlayAnalysis&&age<=4500)return{analysis:lastOverlayAnalysis,transient:true};
+  return{analysis:current||{},transient:false}
+}
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   await enforceAccessLease();
   if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
@@ -105,7 +114,8 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
   await runtime.tick(Date.now());
   if(activeProvider){
     const view=await runtime.status();
-    const a=view.lastResult?.analysis||{};
+    const held=overlayAnalysis(view);
+    const a=held.analysis||{};
     const m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
     const currentAsset=view.liveBroker?.uiSymbol||view.settings?.asset||'—';
@@ -113,7 +123,8 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       asset:currentAsset,
       strategy:view.settings?.strategy||'—',
       side:a.side||'WAIT',
-      confidence:a.confidence||0,
+      confidence:Number.isFinite(Number(a.confidence))?Number(a.confidence):null,
+      analysisTransient:held.transient,
       forecast30:a.forecast30||null,
       finalConfluence:a.finalConfluence||null,
       entryPlanner:a.entryPlanner||null,
