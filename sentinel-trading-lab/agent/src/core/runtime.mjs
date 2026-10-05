@@ -354,7 +354,7 @@ export class DemoTradingRuntime{
       for(const [kind,side,confidence] of [['forecast30',String(a.forecast30?.side||'WAIT').toUpperCase(),Number(a.forecast30?.confidence||0)],['confirmed',String(a.side||'WAIT').toUpperCase(),Number(a.confidence||0)]]){
         if(!['BUY','SELL'].includes(side))continue;
         const key=this._validationKey(kind,asset,30000,strategy),bucket=Math.floor(t0/15000),id=key+'|'+bucket;if(seen.has(id))continue;seen.add(id);
-        this.signalValidation.outcomes.push({key,kind,asset,durationMs:30000,strategy,side,confidence,referencePrice:p0,createdAt:t0,dueAt:t0+30000,settledAt:new Date(b.ts).getTime(),settledPrice:p1,won:side==='BUY'?p1>p0:p1<p0,bootstrap:true});
+        this.signalValidation.outcomes.push({key,kind,asset,durationMs:30000,strategy,side,confidence,referencePrice:p0,createdAt:t0,dueAt:t0+30000,settledAt:new Date(b.ts).getTime(),settledPrice:p1,won:side==='BUY'?p1>p0:p1<p0,bootstrap:true,settlementQuality:'approx'});
       }
     }
     this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-500);
