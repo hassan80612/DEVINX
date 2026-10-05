@@ -287,17 +287,17 @@ jobs:
           if(viewport.resize!=='both')throw new Error('card_not_resizable:'+viewport.resize);
           if(!cardRect||cardRect.width<380||cardRect.x<0||cardRect.y<0||cardRect.x+cardRect.width>viewport.w+1||cardRect.y+Math.min(cardRect.height,viewport.h)>viewport.h+1)throw new Error('v105_card_outside_viewport:'+JSON.stringify({cardRect,viewport}));
           console.log('V10.5 PREMIUM RESIZABLE CARD: PASS',JSON.stringify({cardRect,viewport}));
-          const hierarchy=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{
-            const textOf=s=>[...el.querySelectorAll('*')].find(x=>x.textContent?.trim()===s);
-            const a=textOf('Confluência final')?.getBoundingClientRect(),b=textOf('Status da entrada')?.getBoundingClientRect();
-            const force=textOf('Força técnica em tempo real')?.getBoundingClientRect(),bot=textOf('Controle do bot')?.getBoundingClientRect();
-            return{confX:a?.x,statusX:b?.x,forceY:force?.y,botY:bot?.y}
-          });
-          if(!(hierarchy.confX<hierarchy.statusX)&&!(hierarchy.botY>hierarchy.forceY))throw new Error('v105_visual_hierarchy_failed:'+JSON.stringify(hierarchy));
-          if(!(hierarchy.confX<hierarchy.statusX))throw new Error('v105_confluence_not_left:'+JSON.stringify(hierarchy));
-          if(!(hierarchy.botY>hierarchy.forceY))throw new Error('v105_bot_not_below_force:'+JSON.stringify(hierarchy));
+          const confBox=await testPage.getByText('Confluência final',{exact:true}).boundingBox();
+          const statusBox=await testPage.getByText('Status da entrada',{exact:true}).boundingBox();
+          const forceBox=await testPage.getByText('Força técnica em tempo real',{exact:true}).boundingBox();
+          const botBox=await testPage.getByText('Controle do bot',{exact:true}).boundingBox();
+          const hierarchy={confX:confBox?.x,statusX:statusBox?.x,forceY:forceBox?.y,botY:botBox?.y};
+          if(!confBox||!statusBox||!forceBox||!botBox)throw new Error('v105_visual_labels_missing:'+JSON.stringify(hierarchy));
+          if(!(confBox.x<statusBox.x))throw new Error('v105_confluence_not_left:'+JSON.stringify(hierarchy));
+          if(!(botBox.y>forceBox.y))throw new Error('v105_bot_not_below_force:'+JSON.stringify(hierarchy));
           if(!/STATUS DA ENTRADA[\s\S]{0,80}(AGUARDAR|CALL|PUT)[\s\S]{0,40}\d+%/.test(overlayAscii))throw new Error('v105_entry_percentage_missing:'+overlayAscii);
-          console.log('V10.5 VISUAL HIERARCHY: PASS',JSON.stringify(hierarchy));
+          if(!/CONFLUENCIA FINAL[\s\S]{0,80}(AGUARDAR|CALL|PUT)[\s\S]{0,40}\d+%/.test(overlayAscii))throw new Error('v105_confluence_percentage_missing:'+overlayAscii);
+          console.log('V10.5 VISUAL HIERARCHY + PERCENTAGES: PASS',JSON.stringify(hierarchy));
           await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{el.style.height='420px';el.scrollTop=0});
           const scrollState=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>({clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,overflowY:getComputedStyle(el).overflowY,resize:getComputedStyle(el).resize}));
           if(scrollState.overflowY!=='auto'||scrollState.resize!=='both'||scrollState.scrollHeight<=scrollState.clientHeight)throw new Error('card_scroll_container_failed:'+JSON.stringify(scrollState));
@@ -313,7 +313,7 @@ jobs:
           await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.5.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},plan:{entry:'Aguardar',exit:'Sem entrada'},realtime:true,liveAgeMs:90,durationMs:30000,mode:'demo',brokerMode:'demo',state:'stopped'});
           const plannerText=(await testPage.locator('#sentinel-trading-overlay').innerText()).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           const horizonValue=await testPage.locator('#sentinel-trading-overlay [data-sentinel-plan-horizon]').inputValue();
-          if(horizonValue!=='900'||!plannerText.includes('CALL SE CHEGAR / CONFIRMAR')||!plannerText.includes('PUT SE CHEGAR / CONFIRMAR')||!plannerText.includes('NAO E ORDEM AUTOMATICA'))throw new Error('planner_ui_failed:'+plannerText);
+          if(horizonValue!=='900'||!plannerText.includes('CALL — GATILHO')||!plannerText.includes('PUT — GATILHO')||!plannerText.includes('SEM ORDEM AUTOMATICA'))throw new Error('planner_ui_failed:'+plannerText);
           console.log('V10.5 PLANNER UI: PASS',horizonValue);
 
           await testPage.evaluate(()=>{window.__sentinelUiActions=[];window.__sentinelOverlayAction=async p=>{window.__sentinelUiActions.push(p.action+':'+String(p.key||''));return{ok:true,message:'ok'}}});
