@@ -331,20 +331,23 @@ export class LocalPlaywrightDriver{
       try{await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}))}catch{}
     }
     if(page.__sentinelBridgeInstalled){
-      const ready=await page.evaluate(()=>!!window.__sentinelBridgeReady&&!!document.__sentinelAssetClickReady&&!!document.__sentinelAmountKeyboardReady).catch(()=>false);
+      const ready=await page.evaluate(()=>!!window.__sentinelBridgeReady&&!!document.getElementById('__sentinel-input-bridge-marker')).catch(()=>false);
       if(ready)return;
     }
     page.__sentinelBridgeInstalled=true;
     const install=()=>{
       try{
+        if(!document.getElementById('__sentinel-input-bridge-marker')){
+          const marker=document.createElement('span');marker.id='__sentinel-input-bridge-marker';marker.style.display='none';(document.documentElement||document.body)?.appendChild(marker);
+        }
         if(!window.__sentinelBridgeReady){
           window.__sentinelBridgeReady=true;window.__sentinelSockets=[];
           const nativeSend=WebSocket.prototype.send;
           WebSocket.prototype.send=function(data){try{if(!window.__sentinelSockets.includes(this))window.__sentinelSockets.push(this)}catch{}return nativeSend.call(this,data)};
           window.__sentinelSend=(payload,domain)=>{const text=typeof payload==='string'?payload:JSON.stringify(payload);const sockets=(window.__sentinelSockets||[]).filter(ws=>ws&&ws.readyState===1);const preferred=sockets.find(ws=>String(ws.url||'').includes(domain))||sockets.find(ws=>/iqoption|exnova|websocket|socket/i.test(String(ws.url||'')))||sockets[0];if(!preferred)return{ok:false,count:sockets.length,error:'no_open_websocket'};preferred.send(text);return{ok:true,count:sockets.length,url:String(preferred.url||'')}};
         }
-        if(!document.__sentinelAssetClickReady){
-          document.__sentinelAssetClickReady=true;
+        if(!document.getElementById('__sentinel-asset-listener-marker')){
+          const assetMarker=document.createElement('span');assetMarker.id='__sentinel-asset-listener-marker';assetMarker.style.display='none';(document.documentElement||document.body)?.appendChild(assetMarker);
           const pairsFrom=(text)=>{
             const raw=String(text||'').toUpperCase();
             const ms=[...raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g)];
@@ -364,17 +367,18 @@ export class LocalPlaywrightDriver{
             }catch{}
           },true);
         }
-        if(!document.__sentinelAmountKeyboardReady){
-          document.__sentinelAmountKeyboardReady=true;
+        if(!document.getElementById('__sentinel-amount-listener-marker')){
+          const amountMarker=document.createElement('span');amountMarker.id='__sentinel-amount-listener-marker';amountMarker.style.display='none';(document.documentElement||document.body)?.appendChild(amountMarker);
           window.__sentinelAmountBuffer='';
           window.__sentinelAmountFocusUntil=0;
           let applyTimer=null;
           const visible=(el)=>{try{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>4&&r.height>4}catch{return false}};
           const desc=(el)=>[el?.textContent,el?.getAttribute?.('aria-label'),el?.getAttribute?.('title'),el?.getAttribute?.('data-test'),el?.getAttribute?.('data-testid'),el?.getAttribute?.('name'),el?.getAttribute?.('id'),el?.className].filter(Boolean).join(' ').toLowerCase();
           const amountish=(el)=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el));
+          const amountValueish=(el)=>amountish(el)||/investment[-_ ]?value|amount[-_ ]?value|valor[-_ ]?valor/i.test(desc(el));
           const amountContext=(target)=>{
             let n=target;
-            for(let i=0;i<7&&n;i++,n=n.parentElement)if(amountish(n))return n;
+            for(let i=0;i<7&&n;i++,n=n.parentElement)if(amountValueish(n))return n;
             return null
           };
           const controls=()=>{
@@ -383,7 +387,7 @@ export class LocalPlaywrightDriver{
             const plus=pool.find(el=>/increase|increment|plus|aumentar|[+]/i.test(desc(el)))||null;
             const minus=pool.find(el=>/decrease|decrement|minus|diminuir|[−-]/i.test(desc(el)))||null;
             const candidates=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
-            const valueEl=candidates.find(amountish)||candidates[0]||null;
+            const valueEl=candidates.find(amountValueish)||candidates[0]||null;
             return{plus,minus,valueEl}
           };
           const readValue=()=>{
@@ -411,7 +415,7 @@ export class LocalPlaywrightDriver{
             };
             step()
           };
-          document.addEventListener('pointerdown',ev=>{
+          window.addEventListener('pointerdown',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
               const ctx=amountContext(ev.target);
@@ -419,7 +423,7 @@ export class LocalPlaywrightDriver{
               else window.__sentinelAmountFocusUntil=0
             }catch{}
           },true);
-          document.addEventListener('keydown',ev=>{
+          window.addEventListener('keydown',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
               const nativeEditable=ev.target?.matches?.('input:not([readonly]):not([disabled]),textarea:not([readonly]):not([disabled]),[contenteditable="true"]');
@@ -815,9 +819,12 @@ export class LocalPlaywrightDriver{
         }
         const esc=(v)=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         const n=(v,d=2)=>Number.isFinite(Number(v))?Number(v).toFixed(d):'—';
-        const m=d.metrics||{},plan=d.plan||{},side=String(d.side||'WAIT').toUpperCase();
-        const signal=side==='BUY'?'CALL / COMPRA':side==='SELL'?'PUT / VENDA':'AGUARDAR';
-        const tone=side==='BUY'?'#66e0b8':side==='SELL'?'#ff8f9a':'#f2ca68';
+        const m=d.metrics||{},plan=d.plan||{},side=String(d.side||'WAIT').toUpperCase(),q=d.quality||{};
+        const validationStatus=String(q.status||'').toUpperCase(),validationReady=validationStatus==='VALIDADO';
+        const rawSide=String(q.rawSide||side||'WAIT').toUpperCase();
+        const rawLabel=rawSide==='BUY'?'CALL':rawSide==='SELL'?'PUT':'AGUARDAR';
+        const signal=validationStatus&&!validationReady?'NÃO ENTRAR':side==='BUY'?'CALL / COMPRA':side==='SELL'?'PUT / VENDA':'AGUARDAR';
+        const tone=validationStatus&&!validationReady?'#f2ca68':side==='BUY'?'#66e0b8':side==='SELL'?'#ff8f9a':'#f2ca68';
         const confidence=Math.max(0,Math.min(100,Number(d.confidence)||0));
         const buyScore=Math.max(0,Math.min(100,Number(m.buyScore)||0));
         const sellScore=Math.max(0,Math.min(100,Number(m.sellScore)||0));
@@ -830,10 +837,12 @@ export class LocalPlaywrightDriver{
         const brokerMode=String(d.brokerMode||d.mode||'').toUpperCase();
         const liveAgeMs=Number.isFinite(Number(d.liveAgeMs))?Math.max(0,Number(d.liveAgeMs)):null;
         const liveText=liveAgeMs==null?'AGUARDANDO FEED':liveAgeMs<1000?'TEMPO REAL · AGORA':'TEMPO REAL · '+(liveAgeMs/1000).toFixed(1)+'s';
-        const f=d.forecast30||{};
-        const forecastSide=String(f.side||'WAIT').toUpperCase();
-        const forecastSignal=forecastSide==='BUY'?'CALL':forecastSide==='SELL'?'PUT':'AGUARDAR';
-        const forecastTone=forecastSide==='BUY'?'#66e0b8':forecastSide==='SELL'?'#ff8f9a':'#f2ca68';
+        const f=d.forecast30||{},fq=q.forecast||f.validation||{},cq=q.confirmed||{};
+        const forecastReady=fq.ready===true;
+        const forecastSide=String(f.side||'WAIT').toUpperCase(),forecastBias=String(f.biasSide||forecastSide||'WAIT').toUpperCase();
+        const forecastBiasLabel=forecastBias==='BUY'?'CALL':forecastBias==='SELL'?'PUT':'AGUARDAR';
+        const forecastSignal=forecastReady?(forecastSide==='BUY'?'CALL':forecastSide==='SELL'?'PUT':'AGUARDAR'):'EM VALIDAÇÃO';
+        const forecastTone=forecastReady?(forecastSide==='BUY'?'#66e0b8':forecastSide==='SELL'?'#ff8f9a':'#f2ca68'):'#f2ca68';
         const callStrength=Math.max(0,Math.min(100,Number(f.callStrength)||0));
         const putStrength=Math.max(0,Math.min(100,Number(f.putStrength)||0));
         const trigger=Math.max(1,Math.min(100,Number(f.trigger||d.minConfidence||74)));
@@ -915,15 +924,19 @@ export class LocalPlaywrightDriver{
               <div style="font-size:22px;font-weight:950;line-height:1.06;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.asset||'—')}</div>
             </div>
             <div style="text-align:right;flex:0 0 auto">
-              <div style="font-size:9px;color:#78909f;font-weight:900">SINAL AGORA</div>
+              <div style="font-size:9px;color:#78909f;font-weight:900">${validationReady?'SINAL VALIDADO':'STATUS DA ENTRADA'}</div>
               <div style="font-size:22px;font-weight:950;color:${tone};line-height:1.05">${signal}</div>
-              <div style="font-size:16px;font-weight:900;color:#d9e5ea;margin-top:2px">${n(confidence,0)}%</div>
+              <div style="font-size:11px;font-weight:800;color:#b9c8ce;margin-top:3px">${validationReady?n(confidence,0)+'% confiança':'viés '+rawLabel+' · '+n(confidence,0)+'% força'}</div>
             </div>
           </div>
 
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:9px;background:rgba(102,224,184,.055);border:1px solid rgba(102,224,184,.12);margin-bottom:9px">
             <span style="font-size:10px;font-weight:900;color:#7de0bb">${esc(liveText)}</span>
             <span style="font-size:10px;color:#9cb0ba">BOT <b style="color:${runtimeState==='running'?'#66e0b8':runtimeState==='error'?'#ff8f9a':'#d9e4e9'}">${esc(runtimeLabel)}</b></span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 9px;border-radius:9px;background:${validationReady?'rgba(102,224,184,.06)':'rgba(242,202,104,.06)'};border:1px solid ${validationReady?'rgba(102,224,184,.16)':'rgba(242,202,104,.16)'};margin-bottom:9px">
+            <div><div style="font-size:9px;font-weight:900;color:${validationReady?'#66e0b8':'#f2ca68'}">VALIDAÇÃO DO SINAL</div><div style="font-size:9px;color:#8fa3ad;margin-top:2px">${cq.samples||0}/${cq.minSamples||12} amostras · acerto ${n(cq.winRate||0,1)}%</div></div>
+            <div style="font-size:11px;font-weight:950;color:${validationReady?'#66e0b8':'#f2ca68'}">${validationReady?'LIBERADO':'BLOQUEADO'}</div>
           </div>
 
           <div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.075)">
@@ -960,7 +973,8 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div style="margin-top:9px;padding:9px;border-radius:11px;background:rgba(8,18,24,.6);border:1px solid rgba(255,255,255,.07)">
-            <div style="font-size:9px;color:#7d949f;font-weight:900;letter-spacing:.08em">FORÇA EM TEMPO REAL</div>
+            <div style="font-size:9px;color:#7d949f;font-weight:900;letter-spacing:.08em">FORÇA TÉCNICA EM TEMPO REAL</div>
+            <div style="font-size:8px;color:#6f8590;margin-top:2px">Não é probabilidade de vitória. É somente força dos indicadores neste instante.</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:6px">
               <div style="padding:8px;border-radius:9px;background:rgba(102,224,184,.065);border:1px solid rgba(102,224,184,.12)">
                 <div style="font-size:9px;color:#7e9f95;font-weight:800">CALL / COMPRA</div>
@@ -975,7 +989,7 @@ export class LocalPlaywrightDriver{
 
           <div style="margin-top:8px;border:1px solid rgba(242,202,104,.14);border-radius:11px;overflow:hidden;background:rgba(242,202,104,.035)">
             <button data-sentinel-toggle="forecast" style="width:100%;border:0;background:transparent;color:#eef5f7;padding:9px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;text-align:left">
-              <span><span style="display:block;font-size:9px;color:#9b915f;font-weight:900;letter-spacing:.08em">PRÓXIMOS 30 SEGUNDOS</span><b style="font-size:20px;color:${forecastTone}">${forecastSignal}</b> <span style="font-size:11px;color:#aebbc1">${n(Number(f.confidence)||0,0)}%</span></span>
+              <span><span style="display:block;font-size:9px;color:#9b915f;font-weight:900;letter-spacing:.08em">PRÓXIMOS 30 SEGUNDOS</span><b style="font-size:20px;color:${forecastTone}">${forecastSignal}</b> <span style="font-size:11px;color:#aebbc1">${forecastReady?n(Number(f.confidence)||0,0)+'%':'viés '+forecastBiasLabel}</span></span>
               <span data-sentinel-arrow style="font-size:16px;color:#9b915f">${forecastOpen?'⌃':'⌄'}</span>
             </button>
             <div data-sentinel-section="forecast" style="display:${forecastOpen?'block':'none'};padding:0 10px 10px">
@@ -983,7 +997,8 @@ export class LocalPlaywrightDriver{
                 <div style="padding:8px;border-radius:9px;background:rgba(102,224,184,.06)"><div style="font-size:9px;color:#7e9f95">CALL projetado</div><div style="font-size:18px;font-weight:950;color:#66e0b8">${n(callStrength,0)}%</div><div style="font-size:9px;color:#78909f">${callGap<=0?'gatilho atingido':'faltam '+n(callGap,0)+' pts'}</div></div>
                 <div style="padding:8px;border-radius:9px;background:rgba(255,143,154,.06)"><div style="font-size:9px;color:#a8878c">PUT projetado</div><div style="font-size:18px;font-weight:950;color:#ff8f9a">${n(putStrength,0)}%</div><div style="font-size:9px;color:#78909f">${putGap<=0?'gatilho atingido':'faltam '+n(putGap,0)+' pts'}</div></div>
               </div>
-              <div style="margin-top:6px;font-size:9px;color:#8b9da6">Gatilho técnico atual: ${n(trigger,0)}%. O pré-sinal muda junto com o mercado.</div>
+              <div style="margin-top:6px;font-size:9px;color:#8b9da6">Validação 30s: ${fq.samples||0}/${fq.minSamples||12} · acerto ${n(fq.winRate||0,1)}% · mínimo ${n(fq.minWinRate||60,0)}%.</div>
+              <div style="margin-top:3px;font-size:9px;color:#8b9da6">Gatilho técnico atual: ${n(trigger,0)}%. Enquanto não validar, CALL/PUT fica apenas como viés e não como entrada.</div>
             </div>
           </div>
 
