@@ -477,7 +477,20 @@ export class LocalPlaywrightDriver{
       }
     }
     if(out.symbol&&(!st.uiSymbol||pairKey(out.symbol)===pairKey(st.uiSymbol)))st.symbol=out.symbol;
-    if(marketMatches){st.candles=mergeCandles(st.candles,out.candles);st.lastCandleAt=out.lastCandleAt||st.lastCandleAt}
+    if(marketMatches){
+      st.candles=mergeCandles(st.candles,out.candles);st.lastCandleAt=out.lastCandleAt||st.lastCandleAt;
+      // Candle-generated updates are real broker market updates too. Use the live close
+      // as a supplemental micro tick when quote frames are sparse.
+      const liveClose=Number(st.candles.at(-1)?.close),tickTs=Number(st.lastCandleAt||Date.now());
+      const candleUpdated=before.lastCandleAt!==st.lastCandleAt||before.lastClose!==liveClose;
+      if(candleUpdated&&Number.isFinite(liveClose)&&liveClose>0&&Number.isFinite(tickTs)){
+        const prev=st.quoteHistory?.at?.(-1);
+        if(!prev||prev.price!==liveClose||tickTs-Number(prev.ts||0)>=1000){
+          st.quoteHistory=[...(st.quoteHistory||[]),{ts:tickTs,price:liveClose,source:'candle-close'}]
+            .filter(x=>tickTs-Number(x.ts||0)<=15*60*1000).slice(-1800)
+        }
+      }
+    }
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol})).catch(()=>{})}catch{}}
@@ -822,15 +835,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='10.15'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='10.16'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.15';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.16';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.15';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.16';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -984,7 +997,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.15.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.16.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>

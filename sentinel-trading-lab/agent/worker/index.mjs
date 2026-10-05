@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.15.0';
+const VERSION='10.16.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -131,12 +131,21 @@ const overlayAnalysisCache=new Map();
 function overlayAnalysis(view,asset='—',now=Date.now()){
   const key=String(asset||'—');
   const current=view.lastResult?.analysis||null;
-  const shortWindow=Number(view.settings?.orderDurationMs||60000)<=60000;
-  const shortReady=current?.metrics?.shortModel?.ready===true;
-  const complete=current&&Number.isFinite(Number(current.confidence))&&current.metrics&&Number.isFinite(Number(current.metrics.buyScore))&&Number.isFinite(Number(current.metrics.sellScore))&&current.finalConfluence&&(!shortWindow||shortReady);
-  if(complete){overlayAnalysisCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false,stale:false,holdAgeMs:0}}
+  // A falta temporária de microfluxo curto não torna a análise inteira "stale".
+  // Confluência/contexto continuam válidos com candles atuais; prontidão/reversão
+  // podem permanecer em coleta até o shortModel ficar pronto.
+  const contextReady=current&&current.metrics&&current.finalConfluence
+    &&Number.isFinite(Number(current.finalConfluence.callStrength))
+    &&Number.isFinite(Number(current.finalConfluence.putStrength));
+  if(contextReady){
+    overlayAnalysisCache.set(key,{analysis:current,at:now});
+    return{analysis:current,transient:false,stale:false,holdAgeMs:0}
+  }
   const cached=overlayAnalysisCache.get(key);
-  if(cached){const age=Math.max(0,now-Number(cached.at||now));return{analysis:cached.analysis,transient:true,stale:age>3200,holdAgeMs:age}}
+  if(cached){
+    const age=Math.max(0,now-Number(cached.at||now));
+    return{analysis:cached.analysis,transient:true,stale:age>3200,holdAgeMs:age}
+  }
   return{analysis:current||{},transient:true,stale:true,holdAgeMs:null}
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
