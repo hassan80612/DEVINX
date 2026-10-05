@@ -1072,7 +1072,7 @@ export class LocalPlaywrightDriver{
         const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
         const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&liveNow&&analysisFresh;
         const operationalPrepare=operationalState==='PREPARAR'&&['CALL','PUT'].includes(operationalSide)&&liveNow&&analysisFresh;
-        const operationalDisplay=operationalReady?operationalSide:operationalPrepare?'PREPARAR '+operationalSide:'AGUARDAR';
+        const operationalDisplay=operationalReady?operationalSide:operationalPrepare?'PREPARAR '+operationalSide:['AJUSTAR PRAZO','VERIFICAR PRAZO'].includes(operationalState)?operationalState:'AGUARDAR';
         const operationalTime=operationalReady&&Number.isFinite(Number(operational.entryAt))?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
         const operationalTrigger=Number.isFinite(Number(operational.trigger))?Number(operational.trigger):null;
         const operationalInvalidation=Number.isFinite(Number(operational.invalidation))?Number(operational.invalidation):null;
@@ -1083,7 +1083,7 @@ export class LocalPlaywrightDriver{
         const expiryInfo=operational.expiration||{},brokerExpiryMs=Number.isFinite(Number(expiryInfo.brokerMs))?Number(expiryInfo.brokerMs):Number.isFinite(Number(d.brokerExpirationDurationMs))?Number(d.brokerExpirationDurationMs):null;
         const expiryDetected=expiryInfo.detected===true,expiryMatch=expiryInfo.match===true;
         const expiryLabel=!expiryDetected?'NÃO VERIFICADA':expiryMatch?'CONFIRMADA':'DIVERGENTE';
-        const expiryTone=expiryMatch?callTone:putTone;
+        const expiryTone=expiryMatch?callTone:expiryDetected?putTone:warnTone;
         const expiryDurationLabel=brokerExpiryMs==null?'—':brokerExpiryMs>=60000?(brokerExpiryMs/60000).toFixed(brokerExpiryMs%60000===0?0:1)+' min':Math.round(brokerExpiryMs/1000)+' s';
 
         if(!el.dataset.controlReady){
