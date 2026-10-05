@@ -793,9 +793,9 @@ export class LocalPlaywrightDriver{
       const payload=JSON.parse(JSON.stringify(data||{}));
       await s.page.evaluate((d)=>{
         const id='sentinel-trading-overlay';let el=document.getElementById(id);
-        if(el&&el.dataset.uiVersion!=='10.5'){el.remove();el=null}
+        if(el&&el.dataset.uiVersion!=='10.6'){el.remove();el=null}
         if(!el){
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.5';
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.6';
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -857,16 +857,18 @@ export class LocalPlaywrightDriver{
         const validationReady=String(q.status||'').toUpperCase()==='VALIDADO';
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
         const signal=validationReady?(side==='BUY'?'CALL':side==='SELL'?'PUT':'AGUARDAR'):(String(q.status||'')?'NÃO ENTRAR':rawLabel);
-        const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':signal==='NÃO ENTRAR'?'#f2cb6f':'#f2cb6f';
+        const gold='#e8c85f',goldSoft='#f4df9a';
+        const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const confidence=Math.max(0,Math.min(100,Number(d.confidence)||0));
         const buy=Math.max(0,Math.min(100,Number(m.buyScore)||0)),sell=Math.max(0,Math.min(100,Number(m.sellScore)||0));
+        const statusCall=Math.max(0,Math.min(100,Number(m.buyEffective??m.buyScore)||0)),statusPut=Math.max(0,Math.min(100,Number(m.sellEffective??m.sellScore)||0));
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
         const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1200;
         const liveLabel=liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
         const fq=q.forecast||f.validation||{},fReady=fq.ready===true,fSide=String(f.side||'WAIT').toUpperCase(),fBias=String(f.biasSide||fSide||'WAIT').toUpperCase();
         const forecast=fReady?(fSide==='BUY'?'CALL':fSide==='SELL'?'PUT':'AGUARDAR'):'EM VALIDAÇÃO';
-        const forecastTone=forecast==='CALL'?'#69e1b5':forecast==='PUT'?'#ff8f9c':'#f2cb6f';
+        const forecastTone=forecast==='CALL'?'#69e1b5':forecast==='PUT'?'#ff8f9c':gold;
         const forecastBias=fBias==='BUY'?'CALL':fBias==='SELL'?'PUT':'AGUARDAR';
         const callStrength=Math.max(0,Math.min(100,Number(f.callStrength)||0)),putStrength=Math.max(0,Math.min(100,Number(f.putStrength)||0));
         const planner=d.entryPlanner?.horizons||{};
@@ -877,7 +879,7 @@ export class LocalPlaywrightDriver{
         const finalStrength=Math.max(0,Math.min(100,Number(final.strength)||0));
         const finalCall=Math.max(0,Math.min(100,Number(final.callStrength)||0));
         const finalPut=Math.max(0,Math.min(100,Number(final.putStrength)||0));
-        const finalTone=finalSide==='CALL'?'#72e6b9':finalSide==='PUT'?'#ff8f9d':'#f3ce73';
+        const finalTone=finalSide==='CALL'?'#72e6b9':finalSide==='PUT'?'#ff8f9d':gold;
         const minConfidence=Math.max(55,Math.min(95,Number(d.minConfidence)||74));
         let forecastOpen=true,plannerOpen=el.dataset.plannerOpen==='1',plannerHorizon=el.dataset.plannerHorizon||String(d.entryPlanner?.defaultHorizonSeconds||30),detailsOpen=false;
         try{
@@ -929,7 +931,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:12px;font-weight:850;letter-spacing:.075em;color:#e8f0f3">SENTINEL <span style="color:#6f8793;font-weight:700">V${esc(d.agentVersion||'10.5.0')}</span></div>
+                <div style="font-size:12px;font-weight:850;letter-spacing:.075em;color:#e8f0f3">SENTINEL <span style="color:#6f8793;font-weight:700">V${esc(d.agentVersion||'10.6.0')}</span></div>
                 <div style="font-size:8.5px;font-weight:650;color:#617985;margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -937,22 +939,29 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div style="display:grid;grid-template-columns:.72fr 1.28fr;gap:9px;margin-top:10px">
-            <div style="padding:9px 10px;border-radius:12px;background:linear-gradient(145deg,rgba(72,124,151,.07),rgba(63,100,123,.035));border:1px solid rgba(110,165,194,.12)">
-              <div style="font-size:8px;font-weight:800;letter-spacing:.065em;color:#819daa">Confluência final</div>
-              <div style="display:flex;align-items:baseline;gap:5px;margin-top:4px">
-                <span style="font-size:15px;font-weight:850;color:${finalTone}">${finalSide}</span>
-                <span style="font-size:11px;font-weight:800;color:${finalTone}">${n(finalStrength,0)}%</span>
+            <div data-sentinel-role="confluence" style="padding:9px 10px;border-radius:12px;background:linear-gradient(145deg,rgba(72,124,151,.065),rgba(63,100,123,.03));border:1px solid rgba(110,165,194,.11)">
+              <div style="font-size:8px;font-weight:800;letter-spacing:.06em;color:#819daa">Confluência final</div>
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-top:4px">
+                <span style="font-size:14px;font-weight:850;color:${finalTone}">${finalSide}</span>
+                <span style="font-size:11px;font-weight:850;color:${finalTone}">${n(finalStrength,0)}%</span>
               </div>
-              <div style="font-size:7.5px;color:#687f8a;margin-top:4px">CALL ${n(finalCall,0)} · PUT ${n(finalPut,0)}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px">
+                <div style="padding:5px 6px;border-radius:7px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.09);text-align:center"><div style="font-size:7px;color:#88aa9d;font-weight:750">CALL</div><div style="font-size:12px;color:#72e6b9;font-weight:850">${n(finalCall,0)}%</div></div>
+                <div style="padding:5px 6px;border-radius:7px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,157,.09);text-align:center"><div style="font-size:7px;color:#b38f95;font-weight:750">PUT</div><div style="font-size:12px;color:#ff8f9d;font-weight:850">${n(finalPut,0)}%</div></div>
+              </div>
             </div>
 
-            <div style="padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.085);box-shadow:inset 0 1px rgba(255,255,255,.02)">
+            <div data-sentinel-role="entry-status" style="padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.042);border:1px solid rgba(255,255,255,.085);box-shadow:inset 0 1px rgba(255,255,255,.02)">
               <div style="font-size:8.5px;font-weight:850;letter-spacing:.07em;color:#8da1ab">Status da entrada</div>
-              <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:4px">
                 <span style="font-size:22px;font-weight:900;line-height:1;color:${tone}">${signal==='NÃO ENTRAR'?'AGUARDAR':signal}</span>
-                <span style="font-size:14px;font-weight:850;color:${tone}">${n(confidence,0)}%</span>
+                <span style="font-size:15px;font-weight:900;color:${tone}">${n(confidence,0)}%</span>
               </div>
-              <div style="font-size:9px;color:#8297a1;margin-top:5px">viés <b style="color:#dce6ea">${rawLabel}</b> · esta é a leitura principal</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px">
+                <div style="padding:6px 7px;border-radius:8px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.09)"><span style="font-size:7.5px;color:#8fb6a7;font-weight:800">CALL</span><b style="float:right;font-size:12px;color:#72e6b9">${n(statusCall,0)}%</b></div>
+                <div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,157,.09)"><span style="font-size:7.5px;color:#ba959a;font-weight:800">PUT</span><b style="float:right;font-size:12px;color:#ff8f9d">${n(statusPut,0)}%</b></div>
+              </div>
+              <div style="font-size:8px;color:#70858f;margin-top:5px">Leitura principal · viés ${rawLabel}</div>
             </div>
           </div>
 
@@ -965,10 +974,10 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
 
-          <div style="margin-top:9px;border-radius:12px;background:rgba(242,206,115,.032);border:1px solid rgba(242,206,115,.105);overflow:hidden">
+          <div style="margin-top:9px;border-radius:12px;background:rgba(232,200,95,.045);border:1px solid rgba(232,200,95,.16);overflow:hidden">
             <button data-sentinel-toggle="forecast" style="width:100%;border:0;background:transparent;color:#f4f8fa;padding:9px 10px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer">
-              <span><span style="display:block;font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#b6a96e">Próximos 30 segundos</span><b style="font-size:18px;color:${forecastTone};line-height:1.08">${fReady?forecast:'AGUARDAR'}</b> <span style="font-size:9px;color:#94a6ae">viés ${forecastBias}</span></span>
-              <span data-sentinel-arrow style="font-size:14px;color:#aa9c67">${forecastOpen?'⌃':'⌄'}</span>
+              <span><span style="display:block;font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#d6ba62">Próximos 30 segundos</span><b style="font-size:18px;color:${forecastTone};line-height:1.08">${fReady?forecast:'AGUARDAR'}</b> <span style="font-size:9px;color:#94a6ae">viés ${forecastBias}</span></span>
+              <span data-sentinel-arrow style="font-size:14px;color:#c7aa57">${forecastOpen?'⌃':'⌄'}</span>
             </button>
             <div data-sentinel-section="forecast" style="display:${forecastOpen?'block':'none'};padding:0 10px 9px">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
@@ -990,17 +999,17 @@ export class LocalPlaywrightDriver{
             <div style="font-size:7.5px;color:#617883;margin-top:4px">Indicadores atuais; não é probabilidade garantida de vitória.</div>
           </div>
 
-          <div style="margin-top:9px;padding:9px 10px;border-radius:12px;background:linear-gradient(145deg,rgba(28,50,60,.58),rgba(14,31,40,.78));border:1px solid rgba(110,146,160,.12)">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
-              <span style="font-size:8.5px;font-weight:850;letter-spacing:.065em;color:#9fb2ba">Controle do bot</span>
-              <span style="font-size:8px;font-weight:850;color:${runtime==='running'?'#72e6b9':runtime==='paused'?'#f3ce73':'#9aabb2'};padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)">${runtimeLabel}</span>
+          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 12px 11px;border-radius:12px;background:linear-gradient(145deg,rgba(28,50,60,.58),rgba(14,31,40,.78));border:1px solid rgba(110,146,160,.12);box-sizing:border-box;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+              <span style="font-size:8.5px;font-weight:850;letter-spacing:.06em;color:#9fb2ba">Controle do bot</span>
+              <span style="font-size:8px;font-weight:850;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#9aabb2'};padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)">${runtimeLabel}</span>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
-              <button data-sentinel-action="start" style="height:34px;border:1px solid rgba(114,230,185,.26);border-radius:9px;background:linear-gradient(180deg,rgba(44,91,75,.66),rgba(26,62,52,.72));color:#9af0ca;font-weight:800;font-size:10px;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.04)">▶&nbsp; Iniciar</button>
-              <button data-sentinel-action="pause" style="height:34px;border:1px solid rgba(149,177,190,.17);border-radius:9px;background:linear-gradient(180deg,rgba(34,55,65,.82),rgba(20,39,48,.86));color:#d9e5e9;font-weight:800;font-size:10px;cursor:pointer">Ⅱ&nbsp; Pausar</button>
-              <button data-sentinel-action="stop" style="height:34px;border:1px solid rgba(255,143,157,.22);border-radius:9px;background:linear-gradient(180deg,rgba(78,42,48,.66),rgba(52,29,35,.78));color:#ffabb5;font-weight:800;font-size:10px;cursor:pointer">■&nbsp; Parar</button>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:0 4px;box-sizing:border-box;width:100%">
+              <button data-sentinel-action="start" style="width:100%;min-width:0;box-sizing:border-box;height:34px;border:1px solid rgba(114,230,185,.26);border-radius:9px;background:linear-gradient(180deg,rgba(44,91,75,.66),rgba(26,62,52,.72));color:#9af0ca;font-weight:800;font-size:9.5px;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.04);padding:0 6px;overflow:hidden;white-space:nowrap">▶&nbsp; Iniciar</button>
+              <button data-sentinel-action="pause" style="width:100%;min-width:0;box-sizing:border-box;height:34px;border:1px solid rgba(149,177,190,.17);border-radius:9px;background:linear-gradient(180deg,rgba(34,55,65,.82),rgba(20,39,48,.86));color:#d9e5e9;font-weight:800;font-size:9.5px;cursor:pointer;padding:0 6px;overflow:hidden;white-space:nowrap">Ⅱ&nbsp; Pausar</button>
+              <button data-sentinel-action="stop" style="width:100%;min-width:0;box-sizing:border-box;height:34px;border:1px solid rgba(255,143,157,.22);border-radius:9px;background:linear-gradient(180deg,rgba(78,42,48,.66),rgba(52,29,35,.78));color:#ffabb5;font-weight:800;font-size:9.5px;cursor:pointer;padding:0 6px;overflow:hidden;white-space:nowrap">■&nbsp; Parar</button>
             </div>
-            <div data-sentinel-control-msg style="min-height:9px;margin-top:3px;font-size:8px;font-weight:650;color:#79b9a3"></div>
+            <div data-sentinel-control-msg style="min-height:9px;margin:3px 4px 0;font-size:8px;font-weight:650;color:#79b9a3"></div>
           </div>
 
           <div style="margin-top:9px;border-radius:12px;background:rgba(74,135,175,.025);border:1px solid rgba(101,164,205,.105);overflow:hidden">
