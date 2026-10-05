@@ -283,8 +283,12 @@ jobs:
           await new Promise(r=>setTimeout(r,30));
           await testPage.evaluate(()=>{document.querySelector('#usd').setAttribute('aria-selected','false');document.querySelector('#thb').setAttribute('aria-selected','true')});
           await new Promise(r=>setTimeout(r,80));
-          if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2||st.candles.length!==0)throw new Error('instant_asset_bridge_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
-          console.log('INSTANT ACTIVE-ASSET BRIDGE: PASS',st.uiSymbol);
+          if(st.uiSymbol!=='EUR/USD OTC'||st.symbol!=='EUR/USD OTC'||Number(st.activeId)!==1||st.candles.length!==1)throw new Error('unconfirmed_bridge_switch_should_preserve_feed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
+          await d.domSnapshot('iq_option',{fast:true});
+          await new Promise(r=>setTimeout(r,180));await d.domSnapshot('iq_option',{fast:true});
+          await new Promise(r=>setTimeout(r,180));await d.domSnapshot('iq_option',{fast:true});
+          if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2||st.candles.length!==0)throw new Error('confirmed_asset_bridge_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
+          console.log('CONFIRMED ACTIVE-ASSET BRIDGE: PASS',st.uiSymbol);
 
           st.uiSymbol='EUR/THB OTC';st.symbol='EUR/THB OTC';st.activeId=2;st.candles=[{from:1,to:2,open:2,high:2.1,low:1.9,close:2}];
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'binary-options.open-option',body:{active_id:1,size:60}}}),'page-out');
