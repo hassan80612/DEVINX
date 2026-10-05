@@ -1078,7 +1078,13 @@ export class LocalPlaywrightDriver{
         const operationalInvalidation=Number.isFinite(Number(operational.invalidation))?Number(operational.invalidation):null;
         const operationalReason=String(operational.reason||'Aguardando consenso suficiente.');
         const operationalValidation=operational.validation||{};
-        const operationalSamples=Math.max(0,Number(operationalValidation.samples||0)),operationalWinRate=Number(operationalValidation.winRate||0);
+        const operationalSamples=Math.max(0,Number(operationalValidation.samples||0)),operationalWinRate=Number(operationalValidation.winRate||0),operationalSmoothedWinRate=Number(operationalValidation.smoothedWinRate||0);
+        const operationalTechnicalConfidence=Number.isFinite(Number(operational.technicalConfidence))?Math.max(0,Math.min(100,Number(operational.technicalConfidence))):Math.max(0,Math.min(100,Number(generalStrength||0)));
+        const expiryInfo=operational.expiration||{},brokerExpiryMs=Number.isFinite(Number(expiryInfo.brokerMs))?Number(expiryInfo.brokerMs):Number.isFinite(Number(d.brokerExpirationDurationMs))?Number(d.brokerExpirationDurationMs):null;
+        const expiryDetected=expiryInfo.detected===true,expiryMatch=expiryInfo.match===true;
+        const expiryLabel=!expiryDetected?'NÃO VERIFICADA':expiryMatch?'CONFIRMADA':'DIVERGENTE';
+        const expiryTone=expiryMatch?callTone:putTone;
+        const expiryDurationLabel=brokerExpiryMs==null?'—':brokerExpiryMs>=60000?(brokerExpiryMs/60000).toFixed(brokerExpiryMs%60000===0?0:1)+' min':Math.round(brokerExpiryMs/1000)+' s';
 
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
@@ -1172,8 +1178,12 @@ export class LocalPlaywrightDriver{
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-size:8px;font-weight:950;color:${ink}">SINAL OPERACIONAL</div><div style="font-size:7px;color:${subtle}">consenso + setup fixo + timing + prazo</div></div>
               <div style="margin-top:5px;font-size:17px;font-weight:950;color:${operationalReady?operationalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
               <div style="margin-top:4px;font-size:8px;color:${muted}">${operationalReady?'ENTRADA AGORA · '+operationalTime:esc(operationalReason)}</div>
-              <div style="margin-top:5px;padding-top:5px;border-top:1px solid ${panelBorder};font-size:8px;color:${muted}">Expiração: <b style="color:${ink}">${durationText}</b>${operationalTrigger!=null?' · gatilho fixo '+price(operationalTrigger):''}${operationalInvalidation!=null?' · invalida '+price(operationalInvalidation):''}</div>
-              <div style="margin-top:3px;font-size:7.5px;color:${subtle}">${operationalSamples>0?'Histórico desta combinação: '+operationalSamples+' sinais · '+n(operationalWinRate,1)+'% acerto.':'Histórico desta combinação começando agora; o sinal continua técnico até acumular amostra.'}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px">
+                <div style="padding:6px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid ${panelBorder}"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">CONFIANÇA TÉCNICA</span><b style="display:block;margin-top:2px;font-size:13px;color:${goldSoft}">${n(operationalTechnicalConfidence,0)}/100</b></div>
+                <div style="padding:6px;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid ${panelBorder}"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">ACERTO HISTÓRICO</span><b style="display:block;margin-top:2px;font-size:13px;color:${operationalSamples>=30?(operationalSmoothedWinRate>=60?callTone:putTone):muted}">${operationalSamples? n(operationalWinRate,1)+'%':'—'}</b><span style="display:block;font-size:6.8px;color:${subtle};margin-top:1px">${operationalSamples} sinais válidos</span></div>
+              </div>
+              <div style="margin-top:5px;padding-top:5px;border-top:1px solid ${panelBorder};font-size:8px;color:${muted}">Sentinel: <b style="color:${ink}">${durationText}</b> · Corretora: <b style="color:${expiryTone}">${expiryDurationLabel} · ${expiryLabel}</b>${operationalTrigger!=null?' · gatilho fixo '+price(operationalTrigger):''}${operationalInvalidation!=null?' · invalida '+price(operationalInvalidation):''}</div>
+              <div style="margin-top:3px;font-size:7.5px;color:${subtle}">${operationalSamples>=30?'Histórico desta combinação usa apenas vencimentos com preço medido próximo do instante exato.':operationalSamples>0?'Histórico em formação: '+operationalSamples+'/30 sinais mínimos.':'Histórico desta combinação começando agora; confiança técnica não é probabilidade de acerto.'}</div>
             </div>
           </div>
           <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
