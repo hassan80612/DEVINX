@@ -331,7 +331,7 @@ export class LocalPlaywrightDriver{
       try{await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}))}catch{}
     }
     if(page.__sentinelBridgeInstalled){
-      const ready=await page.evaluate(()=>!!window.__sentinelBridgeReady&&!!window.__sentinelAssetClickReady&&!!window.__sentinelAmountKeyboardReady).catch(()=>false);
+      const ready=await page.evaluate(()=>!!window.__sentinelBridgeReady&&!!document.__sentinelAssetClickReady&&!!document.__sentinelAmountKeyboardReady).catch(()=>false);
       if(ready)return;
     }
     page.__sentinelBridgeInstalled=true;
@@ -343,8 +343,8 @@ export class LocalPlaywrightDriver{
           WebSocket.prototype.send=function(data){try{if(!window.__sentinelSockets.includes(this))window.__sentinelSockets.push(this)}catch{}return nativeSend.call(this,data)};
           window.__sentinelSend=(payload,domain)=>{const text=typeof payload==='string'?payload:JSON.stringify(payload);const sockets=(window.__sentinelSockets||[]).filter(ws=>ws&&ws.readyState===1);const preferred=sockets.find(ws=>String(ws.url||'').includes(domain))||sockets.find(ws=>/iqoption|exnova|websocket|socket/i.test(String(ws.url||'')))||sockets[0];if(!preferred)return{ok:false,count:sockets.length,error:'no_open_websocket'};preferred.send(text);return{ok:true,count:sockets.length,url:String(preferred.url||'')}};
         }
-        if(!window.__sentinelAssetClickReady){
-          window.__sentinelAssetClickReady=true;
+        if(!document.__sentinelAssetClickReady){
+          document.__sentinelAssetClickReady=true;
           const pairsFrom=(text)=>{
             const raw=String(text||'').toUpperCase();
             const ms=[...raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g)];
@@ -364,8 +364,8 @@ export class LocalPlaywrightDriver{
             }catch{}
           },true);
         }
-        if(!window.__sentinelAmountKeyboardReady){
-          window.__sentinelAmountKeyboardReady=true;
+        if(!document.__sentinelAmountKeyboardReady){
+          document.__sentinelAmountKeyboardReady=true;
           window.__sentinelAmountBuffer='';
           window.__sentinelAmountFocusUntil=0;
           let applyTimer=null;
