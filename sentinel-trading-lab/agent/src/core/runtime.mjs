@@ -148,7 +148,9 @@ export class DemoTradingRuntime{
     const price=Number(snap?.price??analysis?.metrics?.last),strength=Math.max(0,Number(general.strength||0)),edge=Math.abs(Number(general.edge||0));
     const validation=this._validationStats(this._validationKey('operational',asset,durationMs,combo));
     const historyBlocked=validation.samples>=validation.minSamples&&validation.winRate<validation.minWinRate;
-    const brokerExpirationDurationMs=Number(snap?.brokerExpirationDurationMs),brokerExpirationKind=String(snap?.brokerExpirationKind||''),brokerExpirationRaw=snap?.brokerExpirationRaw||null,brokerExpirationConfidence=Number(snap?.brokerExpirationConfidence||0);
+    const brokerExpirationKind=String(snap?.brokerExpirationKind||''),brokerExpirationRaw=snap?.brokerExpirationRaw||null,brokerExpirationConfidence=Number(snap?.brokerExpirationConfidence||0),brokerExpirationUpdatedAt=Number(snap?.brokerExpirationUpdatedAt||0);
+    const scannedBrokerDuration=Number(snap?.brokerExpirationDurationMs);
+    const brokerExpirationDurationMs=Number.isFinite(scannedBrokerDuration)&&brokerExpirationKind==='clock'&&brokerExpirationUpdatedAt>0?Math.max(0,scannedBrokerDuration-Math.max(0,now-brokerExpirationUpdatedAt)):scannedBrokerDuration;
     const expirationDetected=Number.isFinite(brokerExpirationDurationMs)&&brokerExpirationDurationMs>=10000&&brokerExpirationConfidence>=32;
     const expirationToleranceMs=brokerExpirationKind==='clock'?Math.max(5000,Math.min(12000,durationMs*.15)):Math.max(2000,Math.min(5000,durationMs*.06));
     const expirationDeltaMs=expirationDetected?Math.abs(brokerExpirationDurationMs-durationMs):null;
