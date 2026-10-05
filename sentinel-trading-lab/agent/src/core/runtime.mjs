@@ -13,11 +13,14 @@ function dayKey(ts,timeZone='UTC'){
 }
 const AUTO_STOP_REASONS=new Set(['horário final atingido','perda diária máxima atingida','meta diária atingida','drawdown máximo atingido','limite de perdas consecutivas','limite diário de operações']);
 function signalPlan({analysis,settings,price,now=Date.now()}={}){
-  const side=String(analysis?.side||'WAIT').toUpperCase();
-  const confidence=Number(analysis?.confidence||0);
+  const operational=analysis?.operationalSignal||null;
+  const rawSide=String(analysis?.side||'WAIT').toUpperCase();
+  const operationalSide=String(operational?.side||'').toUpperCase()==='CALL'?'BUY':String(operational?.side||'').toUpperCase()==='PUT'?'SELL':'WAIT';
+  const side=operational?operationalSide:rawSide;
+  const confidence=Number(operational?.strength??analysis?.confidence??0);
   const duration=Math.max(15000,Number(settings?.orderDurationMs||60000));
   const min=Number(settings?.risk?.minConfidence||0);
-  const valid=(side==='BUY'||side==='SELL')&&confidence>=min;
+  const valid=operational?operational.ready===true&&['BUY','SELL'].includes(side):(side==='BUY'||side==='SELL')&&confidence>=min;
   return {
     signal:valid?(side==='BUY'?'CALL':'PUT'):'WAIT',
     side:valid?side:'WAIT',
@@ -25,9 +28,9 @@ function signalPlan({analysis,settings,price,now=Date.now()}={}){
     price:Number(price||0),
     confidence,
     minConfidence:min,
-    entry:valid?'Após fechamento/validação da candle atual':'Aguardar confluência mínima',
+    entry:valid?'ENTRADA AGORA no gatilho validado':String(operational?.reason||'Aguardar confluência mínima'),
     entryReady:valid,
-    exit:valid?`Expiração DEMO em ${Math.round(duration/1000)}s`:'Sem entrada',
+    exit:valid?`Expiração em ${Math.round(duration/1000)}s`:'Sem entrada',
     durationMs:duration,
     expiresAt:valid?new Date(now+duration).toISOString():null,
     nextCheckHint:`Nova avaliação conforme agenda (${Math.round(Number(settings?.schedule?.intervalMs||60000)/1000)}s)`
