@@ -127,17 +127,12 @@ function protocolScan(data,st,direction='in'){
   const activeRaw=body?.active_id??body?.activeId??data?.msg?.active_id??data?.active_id;
   const sizeRaw=body?.size??body?.duration??data?.msg?.size??data?.msg?.duration;
   if(/page-out/.test(direction)&&activeRaw!=null){
+    // active_id também aparece em mensagens de ordem CALL/PUT.
+    // Saída da rede nunca redefine o ativo visível: a fonte de verdade é o DOM/clique da corretora.
     const aid=n(activeRaw);
-    if(aid!=null){
-      st.activeId=aid;
-      const mapped=[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null;
-      if(mapped){
-        const found=[...st.assets].find(x=>pairKey(x)===mapped)||(mapped.endsWith('OTC')?`${mapped.slice(0,3)}/${mapped.slice(3,6)} OTC`:`${mapped.slice(0,3)}/${mapped.slice(3,6)}`);
-        if(found&&pairKey(found)!==pairKey(st.uiSymbol||'')){
-          st.uiSymbol=found;st.symbol=found;st.lastUiSignalAt=Date.now();st.uiSymbolSource='protocol';st.candles=[];st.quote=null;st.quoteHistory=[];st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${found}`;st.lastRequestAt=null;st.autoSelected=false;
-        }
-      }
-    }
+    const currentKey=pairKey(st.uiSymbol||st.symbol||'');
+    const mapped=aid!=null?[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null:null;
+    if(aid!=null&&(!currentKey||!mapped||mapped===currentKey))st.activeId=aid;
     const sz=n(sizeRaw);if(sz!=null&&sz>0&&sz<=86400)st.candleSize=sz
   }
 
@@ -372,7 +367,7 @@ export class LocalPlaywrightDriver{
           };
           document.addEventListener('click',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              if(ev.target?.closest?.('#sentinel-trading-overlay,#sentinel-trading-overlay-host'))return;
               const nodes=[];let node=ev.target;
               for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
               if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
@@ -434,7 +429,7 @@ export class LocalPlaywrightDriver{
           };
           window.addEventListener('pointerdown',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              if(ev.target?.closest?.('#sentinel-trading-overlay,#sentinel-trading-overlay-host'))return;
               const ctx=amountContext(ev.target);
               if(ctx){window.__sentinelAmountFocusUntil=Date.now()+12000;window.__sentinelAmountBuffer='';showHint('Digite o valor no teclado')}
               else window.__sentinelAmountFocusUntil=0
@@ -442,7 +437,7 @@ export class LocalPlaywrightDriver{
           },true);
           window.addEventListener('keydown',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              if(ev.target?.closest?.('#sentinel-trading-overlay,#sentinel-trading-overlay-host'))return;
               const nativeEditable=ev.target?.matches?.('input:not([readonly]):not([disabled]),textarea:not([readonly]):not([disabled]),[contenteditable="true"]');
               if(nativeEditable)return;
               const focused=Date.now()<Number(window.__sentinelAmountFocusUntil||0);
@@ -801,10 +796,18 @@ export class LocalPlaywrightDriver{
     try{
       const payload=JSON.parse(JSON.stringify(data||{}));
       await s.page.evaluate((d)=>{
-        const id='sentinel-trading-overlay';let el=document.getElementById(id);
-        if(el&&el.dataset.uiVersion!=='10.8'){el.remove();el=null}
+        const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
+        let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
+        const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
+        if(host&&host.dataset.uiVersion!=='10.9'){host.remove();host=null;el=null}
         if(!el){
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.8';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.9';
+          Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
+          const shadow=host.attachShadow({mode:'open'});
+          const reset=document.createElement('style');
+          reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
+          shadow.appendChild(reset);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.9';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -831,12 +834,7 @@ export class LocalPlaywrightDriver{
               el.style.height=Math.max(360,Math.min(window.innerHeight-18,savedSize.h))+'px'
             }
           }catch{}
-          {
-            let st=document.getElementById('__sentinel-overlay-style');
-            if(!st){st=document.createElement('style');st.id='__sentinel-overlay-style';(document.head||document.documentElement).appendChild(st)}
-            st.textContent='#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:#385461;border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:#4a6875}';
-          }
-          document.documentElement.appendChild(el);
+          document.documentElement.appendChild(host);
           try{
             const ro=new ResizeObserver(()=>{try{const rr=el.getBoundingClientRect();localStorage.setItem('sentinel-overlay-size-v104',JSON.stringify({w:Math.round(rr.width),h:Math.round(rr.height)}))}catch{}});
             ro.observe(el);el.__sentinelResizeObserver=ro
@@ -886,11 +884,10 @@ export class LocalPlaywrightDriver{
         const finalPut=final.putStrength==null?null:Math.max(0,Math.min(100,Number(final.putStrength)));
         const finalTone=finalSide==='CALL'?'#72e6b9':finalSide==='PUT'?'#ff8f9d':gold;
         const minConfidence=Math.max(55,Math.min(95,Number(d.minConfidence)||74));
-        const confirmed=q.confirmed||{},stability=q.stability||{};
-        const samples=Math.max(0,Number(confirmed.samples)||0),minSamples=Math.max(1,Number(confirmed.minSamples)||12),winRate=Math.max(0,Math.min(100,Number(confirmed.winRate)||0)),minWinRate=Math.max(1,Number(confirmed.minWinRate)||60);
-        const stableElapsed=Number(stability.since)>0?Math.max(0,Date.now()-Number(stability.since)):0,stableMin=Math.max(1,Number(stability.minStableMs)||3600),stableCount=Math.max(0,Number(stability.count)||0);
-        const stabilityScore=['BUY','SELL'].includes(raw)?Math.min(100,Math.round(Math.min(1,stableCount/4)*40+Math.min(1,stableElapsed/stableMin)*60)):0;
+        const stability=q.stability||{},pre=q.preEntry||{};
         const statusCall=buy==null?null:Math.round(buy),statusPut=sell==null?null:Math.round(sell);
+        const preSide=pre.side==='BUY'?'CALL':pre.side==='SELL'?'PUT':null;
+        const preRemaining=pre.active===true&&Number.isFinite(Number(pre.expiresAt))?Math.max(0,Math.ceil((Number(pre.expiresAt)-Date.now())/1000)):null;
         const gateReason=analysisTransient||!liveNow||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
         const gateDetail=analysisTransient?'Corretora atualizando · mantendo a última análise técnica válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
         let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme='dark';
@@ -898,11 +895,12 @@ export class LocalPlaywrightDriver{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
         el.dataset.theme=uiTheme;
-        const ink=uiTheme==='light'?'#171511':'#f8f5ee',muted=uiTheme==='light'?'#625c52':'#bbb5ab',subtle=uiTheme==='light'?'#857967':'#8e887f';
-        const fieldBg=uiTheme==='light'?'#fffdfa':'#111114',fieldInk=uiTheme==='light'?'#171511':'#f8f5ee',fieldBorder=uiTheme==='light'?'rgba(137,105,52,.34)':'rgba(201,166,91,.34)';
-        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#fffefa,#f5f1e9)':'linear-gradient(145deg,#111114,#09090b)';
+        const ink=uiTheme==='light'?'#15130f':'#f7f3e8',muted=uiTheme==='light'?'#514b42':'#bcb5a8',subtle=uiTheme==='light'?'#756b5b':'#8f887a';
+        const fieldBg=uiTheme==='light'?'#fffefb':'#0f0f11',fieldInk=uiTheme==='light'?'#15130f':'#f7f3e8',fieldBorder=uiTheme==='light'?'rgba(128,94,39,.40)':'rgba(201,166,91,.34)';
+        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f1ece1)':'linear-gradient(145deg,#111113,#070708)';
         const panelBorder=uiTheme==='light'?'rgba(137,105,52,.22)':'rgba(201,166,91,.26)';
-        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(150deg,#faf8f3,#eee9df)',color:'#171511',border:'1px solid rgba(137,105,52,.34)',boxShadow:'0 24px 68px rgba(73,61,38,.18), inset 0 1px #fff'}:{background:'linear-gradient(150deg,#060607,#101012)',color:'#f8f5ee',border:'1px solid rgba(201,166,91,.38)',boxShadow:'0 30px 88px rgba(0,0,0,.76), inset 0 1px rgba(255,255,255,.045)'});
+        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
+        const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisTransient?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
         const entryReady=!analysisTransient&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
@@ -953,7 +951,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.8.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.9.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -967,7 +965,7 @@ export class LocalPlaywrightDriver{
 
           <div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:9px;margin-top:10px">
             <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${panelBg};border:1px solid ${panelBorder};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.09)':'0 12px 28px rgba(0,0,0,.28)'}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${ink}">CONFLUÊNCIA TÉCNICA</span><span style="font-size:8px;color:${subtle}">FORÇA DO MERCADO</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${ink}">CONFLUÊNCIA TÉCNICA</span><span style="font-size:8px;color:${subtle}">DIREÇÃO / CONTEXTO</span></div>
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:${subtle}">Confiança <b style="font-size:12px;color:${gold}">${n(confidence,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
                 <div style="padding:7px 8px;border-radius:9px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:8px;color:#3c8068;font-weight:850">CALL</span><b style="display:block;font-size:16px;line-height:1.1;color:#72e6b9">${n(finalCall,0)}%</b><small style="display:block;margin-top:3px;font-size:8px;color:#6f8f84">${n(finalCall,0)} pts</small></div>
@@ -984,7 +982,7 @@ export class LocalPlaywrightDriver{
                 </div>
                 <div style="text-align:right"><div style="font-size:7.5px;font-weight:900;letter-spacing:.08em;color:${muted}">CONFIANÇA</div><div style="font-size:17px;font-weight:950;color:${entryReady?tone:'#f2cf66'}">${n(confidence,0)}%</div><div style="font-size:20px;font-weight:950;line-height:1.05;margin-top:3px;color:${entryReady?tone:'#f2cf66'};text-shadow:0 0 18px rgba(216,184,94,.16)">${entryReady?signal:'AGUARDAR'}</div></div>
               </div>
-              <div style="margin-top:7px;padding-top:7px;border-top:1px solid ${panelBorder};font-size:8px;line-height:1.4;color:${muted}"><div style="color:${ink};font-weight:750;margin-bottom:3px">${esc(gateDetail)}</div>filtro <b style="color:${ink}">${n(minConfidence,0)} pts</b> · diferença <b style="color:${ink}">${n(q.technicalEdge,0)} pts</b> · histórico <b style="color:${ink}">${n(winRate,1)}%</b> (${samples}/${minSamples})</div>
+              <div style="margin-top:7px;padding-top:7px;border-top:1px solid ${panelBorder};font-size:8px;line-height:1.4;color:${muted}"><div style="color:${ink};font-weight:750;margin-bottom:3px">${esc(gateDetail)}</div>filtro <b style="color:${ink}">${n(minConfidence,0)} pts</b> · diferença <b style="color:${ink}">${n(q.technicalEdge,0)} pts</b>${setupWindowHtml}</div>
             </div>
           </div>
 
@@ -1009,19 +1007,6 @@ export class LocalPlaywrightDriver{
 
           
 
-          <div data-sentinel-role="realtime-force" style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.72)':'rgba(255,255,255,.024)'};border:1px solid ${panelBorder};display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center">
-            <div style="min-width:0">
-              <div style="font-size:10px;font-weight:850;letter-spacing:.02em;color:${ink}">Força técnica agora</div>
-              <div style="font-size:8px;color:${liveNow?'#72e6b9':gold};margin-top:3px;white-space:nowrap">● ${liveNow?'AO VIVO':'ATUALIZANDO'} <span style="color:${subtle}">· microestrutura + contexto</span></div>
-            </div>
-            <div style="display:grid;grid-template-columns:58px 58px;gap:5px">
-              <div style="padding:5px 6px;border-radius:8px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:7px;color:#8fb6a7;font-weight:750">CALL</span><b style="font-size:13px;color:#72e6b9;font-weight:850">${n(buy,0)}%</b><small style="display:block;font-size:8px;color:#6f8f84;margin-top:2px">${n(buy,0)} pts</small><b style="display:none"></b></div>
-              <div style="padding:5px 6px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,157,.10);text-align:center"><span style="display:block;font-size:7px;color:#ba959a;font-weight:750">PUT</span><b style="font-size:13px;color:#ff8f9d;font-weight:850">${n(sell,0)}%</b><small style="display:block;font-size:8px;color:#96777c;margin-top:2px">${n(sell,0)} pts</small><b style="display:none"></b></div>
-            </div>
-          </div>
-
-          
-
           <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${panelBg};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
               <span style="font-size:9px;font-weight:900;letter-spacing:.04em;color:${ink}">Controle do bot</span>
@@ -1039,7 +1024,7 @@ export class LocalPlaywrightDriver{
 
           <div style="margin-top:7px">
             <button data-sentinel-toggle="details" style="width:100%;border:0;background:transparent;color:${muted};padding:6px 2px;display:flex;justify-content:space-between;cursor:pointer;font-size:8.5px;font-weight:800"><span>Detalhes técnicos</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span></button>
-            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:${muted}">${reasons}</div></div>
+            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>CALL score <b>${n(buy,0)} pts</b></div><div>PUT score <b>${n(sell,0)} pts</b></div><div>Diferença <b>${n(q.technicalEdge,0)} pts</b></div><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:${muted}">${reasons}</div></div>
           </div>
 
           <div style="height:12px;position:relative"><span style="position:absolute;right:-7px;bottom:-9px;color:#65808c;font-size:18px;pointer-events:none">◢</span></div>

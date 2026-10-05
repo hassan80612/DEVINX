@@ -26,10 +26,11 @@ function liveMicro(quoteHistory=[],last,vol,baseSeconds,now=Date.now()){
  const ready=points.length>=10&&span>=12000;
  const safeBase=Math.max(5,Number(baseSeconds||60));
  const expected=(secs)=>Math.max(Math.abs(current)*.000005,Math.abs(vol||0)*Math.sqrt(Math.max(1,secs)/safeBase));
- const p5=d5/expected(5),p15=d15/expected(15),p30=d30/expected(30);
+ const expected5=expected(5),expected15=expected(15),expected30=expected(30);
+ const p5=d5/expected5,p15=d15/expected15,p30=d30/expected30;
  const pulse=ready?clamp(Math.round(p5*4.8+p15*3.2+p30*1.8),-24,24):0;
  const trend=pulse>=4?'UP':pulse<=-4?'DOWN':'FLAT';
- return{ready,points:points.length,spanMs:span,last:current,delta5:d5,delta15:d15,delta30:d30,delta60:d60,pulse,trend}
+ return{ready,points:points.length,spanMs:span,last:current,delta5:d5,delta15:d15,delta30:d30,delta60:d60,p5,p15,p30,expected5,expected15,expected30,pulse,trend}
 }
 function quoteBars(quoteHistory=[],bucketMs=5000,now=Date.now()){
  const pts=(Array.isArray(quoteHistory)?quoteHistory:[])
@@ -66,6 +67,28 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  const resistanceReversalZone=nearResistance&&!breakUp;
  const flowBuy=[micro.delta5>0,micro.delta15>0,micro.delta30>0].filter(Boolean).length;
  const flowSell=[micro.delta5<0,micro.delta15<0,micro.delta30<0].filter(Boolean).length;
+ const prior10=micro.delta15-micro.delta5;
+ const rate5=micro.delta5/5,prior10Rate=prior10/10;
+ const accelFloor=Math.max(Math.abs(vol||0)*.006,Math.abs(last)*.0000006);
+ const accelUp=micro.delta5>0&&micro.delta30>=-tol*.35&&rate5>Math.max(accelFloor,prior10Rate*1.18);
+ const accelDown=micro.delta5<0&&micro.delta30<=tol*.35&&rate5<Math.min(-accelFloor,prior10Rate*1.18);
+ const callRoom=Number.isFinite(sr.resistance)?Number(sr.resistance)-last:null;
+ const putRoom=Number.isFinite(sr.support)?last-Number(sr.support):null;
+ const minRoom=Math.max(tol*1.25,Math.abs(vol||0)*.18);
+ const prevBar=prior.at(-1)||null,prev2Bar=prior.at(-2)||null;
+ const upperWick=Number(lastBar.high)-Math.max(Number(lastBar.open),Number(lastBar.close));
+ const lowerWick=Math.min(Number(lastBar.open),Number(lastBar.close))-Number(lastBar.low);
+ const bodyAbs=Math.max(Math.abs(body),range*.08);
+ const failedBreakUp=Number.isFinite(sr.resistance)&&Number(lastBar.high)>Number(sr.resistance)+tol*.05&&Number(lastBar.close)<=Number(sr.resistance)+tol*.08&&upperWick>bodyAbs*.8;
+ const failedBreakDown=Number.isFinite(sr.support)&&Number(lastBar.low)<Number(sr.support)-tol*.05&&Number(lastBar.close)>=Number(sr.support)-tol*.08&&lowerWick>bodyAbs*.8;
+ const turnDown=micro.delta15>0&&micro.delta5<0&&rate5<Math.min(-accelFloor,prior10Rate*.35);
+ const turnUp=micro.delta15<0&&micro.delta5>0&&rate5>Math.max(accelFloor,prior10Rate*.35);
+ const weakeningUp=micro.delta15>0&&rate5>0&&prior10Rate>0&&rate5<prior10Rate*.45;
+ const weakeningDown=micro.delta15<0&&rate5<0&&prior10Rate<0&&rate5>prior10Rate*.45;
+ const localHigh=prevBar&&prev2Bar&&Number(lastBar.high)>=Math.max(Number(prevBar.high),Number(prev2Bar.high));
+ const localLow=prevBar&&prev2Bar&&Number(lastBar.low)<=Math.min(Number(prevBar.low),Number(prev2Bar.low));
+ const reversalPutCandidate=(nearResistance||failedBreakUp||localHigh)&&(rejectionDown||failedBreakUp||turnDown||(weakeningUp&&microRsi!=null&&microRsi>=66));
+ const reversalCallCandidate=(nearSupport||failedBreakDown||localLow)&&(rejectionUp||failedBreakDown||turnUp||(weakeningDown&&microRsi!=null&&microRsi<=34));
 
  let call=0,put=0;const callReasons=[],putReasons=[];
  // Família 1: fluxo real (máx. 30)
@@ -73,6 +96,10 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  if(micro.delta15>0){call+=10;callReasons.push('fluxo 15s ↑')}else if(micro.delta15<0){put+=10;putReasons.push('fluxo 15s ↓')}
  if(micro.delta30>0){call+=6;callReasons.push('fluxo 30s ↑')}else if(micro.delta30<0){put+=6;putReasons.push('fluxo 30s ↓')}
  if(micro.pulse>=8)call+=3;if(micro.pulse<=-8)put+=3;
+ if(accelUp){call+=7;callReasons.push('aceleração inicial ↑')}
+ if(accelDown){put+=7;putReasons.push('aceleração inicial ↓')}
+ if(reversalCallCandidate){call+=14;callReasons.push('possível reversão ↑')}
+ if(reversalPutCandidate){put+=14;putReasons.push('possível reversão ↓')}
 
  // Família 2: tendência/estrutura micro (máx. 25)
  if(fast!=null&&slow!=null&&fast>slow){call+=10;callReasons.push('EMA micro 3>8')}else if(fast!=null&&slow!=null&&fast<slow){put+=10;putReasons.push('EMA micro 3<8')}
@@ -101,27 +128,40 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  if(context.aboveEma50)ctxCall+=2;else if(context.belowEma50)ctxPut+=2;
  call+=Math.min(10,ctxCall);put+=Math.min(10,ctxPut);
 
- // Penalidades de reversão/entrada atrasada.
- const callReversalRisk=(resistanceReversalZone&&(microRsi!=null&&microRsi>=68))||flowSell>=2||rejectionDown;
- const putReversalRisk=(supportReversalZone&&(microRsi!=null&&microRsi<=32))||flowBuy>=2||rejectionUp;
+ // Penalidades de reversão e, principalmente, de perseguição do movimento já esticado.
+ const callReversalRisk=!reversalCallCandidate&&((resistanceReversalZone&&(microRsi!=null&&microRsi>=68))||flowSell>=2||rejectionDown);
+ const putReversalRisk=!reversalPutCandidate&&((supportReversalZone&&(microRsi!=null&&microRsi<=32))||flowBuy>=2||rejectionUp);
+ const callOverextended=!reversalCallCandidate&&((micro.p5>=1.8&&micro.p15>=1.8)||micro.p15>=2.6||(microRsi!=null&&microRsi>=74&&micro.p5>.75)||(resistanceReversalZone&&micro.delta5>0));
+ const putOverextended=!reversalPutCandidate&&((micro.p5<=-1.8&&micro.p15<=-1.8)||micro.p15<=-2.6||(microRsi!=null&&microRsi<=26&&micro.p5<-.75)||(supportReversalZone&&micro.delta5<0));
  if(callReversalRisk)call-=24;
  if(putReversalRisk)put-=24;
+ if(callOverextended)call-=18;
+ if(putOverextended)put-=18;
  if(micro.delta5<0)call-=10;if(micro.delta5>0)put-=10;
  if(flowBuy===3)put-=8;if(flowSell===3)call-=8;
 
  call=clamp(Math.round(call),0,100);put=clamp(Math.round(put),0,100);
  const edge=call-put,threshold=Math.max(60,Number(minConfidence||74));
- const flowReadyCall=micro.delta5>0&&micro.delta15>0&&micro.delta30>=-tol*.25;
- const flowReadyPut=micro.delta5<0&&micro.delta15<0&&micro.delta30<=tol*.25;
- const structureReadyCall=(fast!=null&&slow!=null&&fast>slow)&&(structure.bias!=='bearish');
- const structureReadyPut=(fast!=null&&slow!=null&&fast<slow)&&(structure.bias!=='bullish');
- const readyCall=call>=threshold&&edge>=15&&flowReadyCall&&structureReadyCall&&!callReversalRisk;
- const readyPut=put>=threshold&&edge<=-15&&flowReadyPut&&structureReadyPut&&!putReversalRisk;
+ const flowReadyCall=(micro.delta5>0&&micro.delta15>=-tol*.10&&micro.delta30>=-tol*.35)||reversalCallCandidate;
+ const flowReadyPut=(micro.delta5<0&&micro.delta15<=tol*.10&&micro.delta30<=tol*.35)||reversalPutCandidate;
+ const structureReadyCall=((fast!=null&&slow!=null&&fast>=slow*.99998)&&(structure.bias!=='bearish'))||reversalCallCandidate;
+ const structureReadyPut=((fast!=null&&slow!=null&&fast<=slow*1.00002)&&(structure.bias!=='bullish'))||reversalPutCandidate;
+ const callRoomOk=breakUp||reversalCallCandidate||callRoom==null||callRoom>minRoom;
+ const putRoomOk=breakDown||reversalPutCandidate||putRoom==null||putRoom>minRoom;
+ const callSetup=reversalCallCandidate||(retest?.side==='BUY')||(nearSupport&&rejectionUp)||(accelUp&&structureReadyCall&&!nearResistance)||(breakUp&&micro.p5>0&&micro.p5<1.55);
+ const putSetup=reversalPutCandidate||(retest?.side==='SELL')||(nearResistance&&rejectionDown)||(accelDown&&structureReadyPut&&!nearSupport)||(breakDown&&micro.p5<0&&micro.p5>-1.55);
+ const callContinuation=flowReadyCall&&structureReadyCall&&callRoomOk&&micro.p5<1.55&&micro.p15<2.15;
+ const putContinuation=flowReadyPut&&structureReadyPut&&putRoomOk&&micro.p5>-1.55&&micro.p15>-2.15;
+ const callReversalTrigger=reversalCallCandidate&&micro.delta5>0;
+ const putReversalTrigger=reversalPutCandidate&&micro.delta5<0;
+ const readyCall=call>=threshold&&edge>=15&&callRoomOk&&((callReversalTrigger)||(!reversalCallCandidate&&flowReadyCall&&structureReadyCall&&(callSetup||callContinuation)))&&!callReversalRisk&&!callOverextended;
+ const readyPut=put>=threshold&&edge<=-15&&putRoomOk&&((putReversalTrigger)||(!reversalPutCandidate&&flowReadyPut&&structureReadyPut&&(putSetup||putContinuation)))&&!putReversalRisk&&!putOverextended;
  return{
    ready:true,bars:bars.length,callScore:call,putScore:put,edge,readyCall,readyPut,
-   flowReadyCall,flowReadyPut,callReversalRisk,putReversalRisk,
+   flowReadyCall,flowReadyPut,structureReadyCall,structureReadyPut,callReversalRisk,putReversalRisk,
+   callOverextended,putOverextended,callSetup,putSetup,callRoom,putRoom,callRoomOk,putRoomOk,accelUp,accelDown,reversalCallCandidate,reversalPutCandidate,turnUp,turnDown,weakeningUp,weakeningDown,failedBreakUp,failedBreakDown,
    fast,slow,rsi:microRsi,momentum:microMom,macd:microMacd,structure,sr,trendlines:lines,
-   patterns:patterns.map(p=>p.name),retest,range,callReasons:callReasons.slice(0,8),putReasons:putReasons.slice(0,8)
+   patterns:patterns.map(p=>p.name),retest,range,callReasons:callReasons.slice(0,9),putReasons:putReasons.slice(0,9)
  }
 }
 
@@ -212,8 +252,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const forecastConfidence=Math.max(projectedBuy,projectedSell);
  const callGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedBuy)),putGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedSell));
 
- const finalCall=clamp(Math.round(buyEffective*.62+projectedBuy*.38),0,100);
- const finalPut=clamp(Math.round(sellEffective*.62+projectedSell*.38),0,100);
+ const contextBuy=clamp(Math.round(rawBuy),0,100),contextSell=clamp(Math.round(rawSell),0,100);
+ const finalCall=horizon<=60000?clamp(Math.round(contextBuy*.62+buyEffective*.38),0,100):clamp(Math.round(buyEffective*.62+projectedBuy*.38),0,100);
+ const finalPut=horizon<=60000?clamp(Math.round(contextSell*.62+sellEffective*.38),0,100):clamp(Math.round(sellEffective*.62+projectedSell*.38),0,100);
  const finalEdge=finalCall-finalPut,finalStrength=Math.max(finalCall,finalPut);
  const finalSide=finalStrength>=Number(minConfidence||74)&&Math.abs(finalEdge)>=12&&micro.ready?(finalEdge>0?'CALL':'PUT'):'AGUARDAR';
 
@@ -262,7 +303,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  return{
    side,confidence,reasons:box.reasons.slice(0,14),
    forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:projectedBuy,putStrength:projectedSell,trigger:Number(minConfidence||74),callGap,putGap,microPulse:micro.pulse,microReady:micro.ready},
-   finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:horizon<=60000?'microestrutura 5s + fluxo 5/15/30s + contexto 60s':'contexto técnico + microfluxo'},
+   finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:horizon<=60000?'contexto técnico 60s/5m + microestrutura curta':'contexto técnico + microfluxo'},
    entryPlanner:{defaultHorizonSeconds:30,horizons:planner},
    metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy}
  }

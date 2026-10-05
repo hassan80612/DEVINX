@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.8.0';
+const VERSION='10.9.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -50,20 +50,29 @@ async function ensureLocalCockpitBroker(provider){
     await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});
     adapter.connected=true;adapter._step?.('session',true,'sessão local conectada pelo card');
   }
-  await driver.maintain?.(provider).catch(()=>{});
-  adapter.refreshFromLive?.();
-  const live=syncRuntimeMarket();
-  if(!live)throw new Error('Aguardando leitura do ativo atual.');
-  return live
+  let live=null,lastReason='Aguardando leitura do ativo atual.';
+  for(let attempt=0;attempt<5;attempt++){
+    await driver.maintain?.(provider).catch(()=>{});
+    await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});
+    await adapter.validateReadOnly?.({soft:true}).catch(()=>{});
+    adapter.refreshFromLive?.();
+    live=syncRuntimeMarket();
+    if(live?.m?.feedValidated===true&&Array.isArray(live.m.candles)&&live.m.candles.length>=50&&live.m.quote!=null)return live;
+    lastReason=String(live?.m?.marketReason||adapter.lastError||lastReason);
+    await new Promise(resolve=>setTimeout(resolve,300));
+  }
+  throw new Error(`Leitura do mercado não ficou pronta: ${lastReason}`);
 }
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
   if(action==='start'){
-    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     await ensureLocalCockpitBroker(provider);
+    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     await runtime.start('overlay');
+    runtime.requestImmediateEvaluation?.();
+    await runtime.tick(Date.now());
     await saveState();
-    return{ok:true,message:'Bot iniciado pelo card'}
+    return{ok:true,message:'Bot iniciado · leitura ao vivo confirmada'}
   }
   if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
   if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado'}}
@@ -174,7 +183,7 @@ function ensureAccess(path){
   if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
   if(!accessLeaseValid())throw new Error('agent_access_unverified');
 }
-async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(!activeProvider)await autoConnectVisibleBrokers().catch(()=>{});if(!activeProvider)throw new Error('Abra/conecte a corretora antes de iniciar.');await ensureLocalCockpitBroker(activeProvider);const started=await runtime.start(payload.actor||'user');runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now());return started};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{

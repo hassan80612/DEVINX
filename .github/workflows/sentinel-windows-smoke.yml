@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '10.8.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '10.9.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 10.8 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 10.9 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '10.8.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '10.9.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -215,15 +215,18 @@ jobs:
           const bearCandles=Array.from({length:100},(_,i)=>{const base=1.20-i*.00045;return{from:1701000000+i*60,to:1701000060+i*60,open:base+.00012,high:base+.00028,low:base-.00028,close:base,volume:100+i}});
           const tNow=Date.now();
           const risingQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.945+i*.000025+Math.sin(i*Math.PI*2/18)*.00045+(i>=70?(i-69)*.00022:0)}));
-          const fallingQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.958-i*.000025+Math.sin(i*Math.PI*2/18)*.00045-(i>=70?(i-69)*.00022:0)}));
+          const fallingQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.958-i*.000025+Math.sin(i*Math.PI*2/18)*.00005}));
+          const chasingDownQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.958-i*.000025+Math.sin(i*Math.PI*2/18)*.00005-(i>=70?(i-69)*.00022:0)}));
           const oppose=analyzeMarket({candles:bearCandles,quoteHistory:risingQuotes,strategy:'smart_confluence',minConfidence:74,durationMs:30000,freshnessMs:5000,quoteTs:tNow,now:tNow});
           const aligned=analyzeMarket({candles:bearCandles,quoteHistory:fallingQuotes,strategy:'smart_confluence',minConfidence:74,durationMs:30000,freshnessMs:5000,quoteTs:tNow,now:tNow});
+          const chased=analyzeMarket({candles:bearCandles,quoteHistory:chasingDownQuotes,strategy:'smart_confluence',minConfidence:74,durationMs:30000,freshnessMs:5000,quoteTs:tNow,now:tNow});
           if(!oppose.metrics?.micro?.ready||oppose.metrics.micro.pulse<=0||!aligned.metrics?.micro?.ready||aligned.metrics.micro.pulse>=0)throw new Error('microflow_direction_failed:'+JSON.stringify({oppose:oppose.metrics?.micro,aligned:aligned.metrics?.micro}));
           if(!oppose.metrics?.shortModel?.ready||!aligned.metrics?.shortModel?.ready)throw new Error('five_second_microstructure_not_ready:'+JSON.stringify({oppose:oppose.metrics?.shortModel,aligned:aligned.metrics?.shortModel}));
           if(Number(oppose.metrics.sellEffective)>=Number(aligned.metrics.sellEffective))throw new Error('microstructure_did_not_penalize_late_put:'+JSON.stringify({oppose:oppose.metrics.sellEffective,aligned:aligned.metrics.sellEffective}));
           if(oppose.side==='SELL')throw new Error('late_put_not_blocked:'+JSON.stringify({side:oppose.side,confidence:oppose.confidence,micro:oppose.metrics.micro,short:oppose.metrics.shortModel}));
-          if(aligned.side!=='SELL'||Number(aligned.confidence)<74)throw new Error('aligned_put_not_released:'+JSON.stringify({side:aligned.side,confidence:aligned.confidence,short:aligned.metrics.shortModel}));
-          console.log('5S MICROSTRUCTURE ENTRY ENGINE: PASS',JSON.stringify({opposeSide:oppose.side,opposeSell:oppose.metrics.sellEffective,alignedSide:aligned.side,alignedSell:aligned.metrics.sellEffective,opposePulse:oppose.metrics.micro.pulse,alignedPulse:aligned.metrics.micro.pulse}));
+          if(aligned.side!=='SELL'||Number(aligned.confidence)<74||aligned.metrics?.shortModel?.putOverextended)throw new Error('aligned_put_not_released:'+JSON.stringify({side:aligned.side,confidence:aligned.confidence,short:aligned.metrics.shortModel}));
+          if(chased.side==='SELL'||chased.metrics?.shortModel?.putOverextended!==true)throw new Error('extended_put_chasing_not_blocked:'+JSON.stringify({side:chased.side,confidence:chased.confidence,short:chased.metrics?.shortModel,micro:chased.metrics?.micro}));
+          console.log('5S ENTRY + ANTI-CHASE ENGINE: PASS',JSON.stringify({opposeSide:oppose.side,alignedSide:aligned.side,chasedSide:chased.side,chasedExtended:chased.metrics.shortModel.putOverextended}));
           const rt=new DemoTradingRuntime();
           rt.settings.asset='EUR/USD OTC';rt.settings.strategy='smart_confluence';rt.settings.orderDurationMs=30000;
           const badKey=rt._validationKey('confirmed','EUR/USD OTC',30000,'smart_confluence');
@@ -231,17 +234,16 @@ jobs:
           const bad=rt._validationStats(badKey);
           if(bad.ready||bad.winRate!==25)throw new Error('bad_signal_validation_not_blocked:'+JSON.stringify(bad));
           const gateNow=Date.now();
-          const g1=rt._signalValidationGate({analysis:{side:'SELL',confidence:90,reasons:[],forecast30:{side:'SELL',confidence:90}},snap:{price:1.1},settings:rt.settings,now:gateNow});
-          const g2=rt._signalValidationGate({analysis:{side:'SELL',confidence:90,reasons:[],forecast30:{side:'SELL',confidence:90}},snap:{price:1.1},settings:rt.settings,now:gateNow+1000});
-          const gated=rt._signalValidationGate({analysis:{side:'SELL',confidence:90,reasons:[],forecast30:{side:'SELL',confidence:90}},snap:{price:1.1},settings:rt.settings,now:gateNow+2600});
-          if(g1.allowed!==false||g1.analysis.side!=='SELL'||g1.analysis.automationBlockReason!=='stability')throw new Error('signal_stability_display_failed:'+JSON.stringify(g1));
-          if(gated.allowed!==false||gated.analysis.side!=='SELL'||gated.analysis.automationBlockReason!=='validation')throw new Error('signal_validation_display_failed:'+JSON.stringify(gated));
+          const syntheticSell={side:'SELL',confidence:90,reasons:[],forecast30:{side:'SELL',confidence:90},metrics:{buyScore:18,sellScore:90,shortModel:{ready:true}}};
+          const g1=rt._signalValidationGate({analysis:syntheticSell,snap:{price:1.1},settings:rt.settings,now:gateNow});
+          const g2=rt._signalValidationGate({analysis:syntheticSell,snap:{price:1.1},settings:rt.settings,now:gateNow+400});
+          if(g1.allowed!==false||g1.analysis.side!=='SELL'||g1.analysis.automationBlockReason!=='confirming')throw new Error('short_confirmation_failed:'+JSON.stringify(g1));
+          if(g2.allowed!==true||g2.analysis.side!=='SELL'||g2.analysis.quality?.entryReady!==true)throw new Error('technical_entry_not_released:'+JSON.stringify(g2));
+          if(g2.analysis.quality?.historicalReady!==false)throw new Error('history_should_remain_informational:'+JSON.stringify(g2.analysis.quality));
           rt.signalValidation.outcomes=Array.from({length:12},(_,i)=>({key:badKey,won:i<8}));
           const good=rt._validationStats(badKey);
-          if(!good.ready||good.winRate<60)throw new Error('good_signal_validation_not_released:'+JSON.stringify(good));
-          const released=rt._signalValidationGate({analysis:{side:'SELL',confidence:90,reasons:[],forecast30:{side:'SELL',confidence:90}},snap:{price:1.1},settings:rt.settings,now:gateNow+3600});
-          if(released.allowed!==true||released.analysis.side!=='SELL')throw new Error('validated_signal_not_released:'+JSON.stringify(released));
-          console.log('VISIBLE SIGNAL + AUTOMATION QUALITY GATE: PASS',JSON.stringify({bad,good,g1:g1.analysis.automationBlockReason,gated:gated.analysis.automationBlockReason,released:released.allowed}));
+          if(!good.ready||good.winRate<60)throw new Error('good_signal_validation_stats_failed:'+JSON.stringify(good));
+          console.log('ENTRY READINESS + INFORMATIONAL HISTORY: PASS',JSON.stringify({bad,good,g1:g1.analysis.automationBlockReason,g2:g2.allowed}));
           const d=new LocalPlaywrightDriver({dataDir:'worker/data/smoke-browser'});
           const s=await d.launchNormal('iq_option',{manual:true});
           const info=await d.sessionInfo('iq_option');
@@ -278,10 +280,10 @@ jobs:
           if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2||st.candles.length!==0)throw new Error('instant_asset_bridge_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
           console.log('INSTANT ACTIVE-ASSET BRIDGE: PASS',st.uiSymbol);
 
-          st.uiSymbol='EUR/THB OTC';st.symbol='EUR/THB OTC';st.activeId=2;
-          d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',body:{active_id:1,size:60}}}),'page-out');
-          if(st.uiSymbol!=='EUR/USD OTC'||st.symbol!=='EUR/USD OTC'||Number(st.activeId)!==1)throw new Error('broker_active_id_tracking_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId}));
-          console.log('BROKER ACTIVE ID TRACKING: PASS',st.uiSymbol);
+          st.uiSymbol='EUR/THB OTC';st.symbol='EUR/THB OTC';st.activeId=2;st.candles=[{from:1,to:2,open:2,high:2.1,low:1.9,close:2}];
+          d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'binary-options.open-option',body:{active_id:1,size:60}}}),'page-out');
+          if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2||st.candles.length!==1)throw new Error('outbound_order_retargeted_asset:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
+          console.log('OUTBOUND ORDER DOES NOT RETARGET MARKET: PASS',st.uiSymbol);
 
           st.candles=[];st.activeId=1;
           let realtimeEvents=0;d.setMarketUpdateHandler(()=>{realtimeEvents++});
@@ -301,52 +303,56 @@ jobs:
           console.log('LIVE QUOTE HISTORY: PASS',st.quoteHistory.length);
 
           s.page=testPage;s.background=false;
-          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.8.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',confirmed:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60},forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:30000,mode:'demo',brokerMode:'demo',state:'stopped'});
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.9.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',confirmed:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60},forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:30000,mode:'demo',brokerMode:'demo',state:'stopped'});
           const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
           const overlayAscii=overlayText.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!overlayAscii.includes('SENTINEL V10.8.0')||!overlayAscii.includes('CENARIO POR PRAZO')||!overlayAscii.includes('PRONTIDAO DE ENTRADA')||!overlayAscii.includes('CONFLUENCIA')||!overlayAscii.includes('FILTRO')||!overlayAscii.includes('PONTOS')||!overlayAscii.includes('FORCA TECNICA AGORA')||!overlayAscii.includes('CONTROLE DO BOT')||!overlayAscii.includes('INICIAR')||!overlayAscii.includes('PAUSAR')||!overlayAscii.includes('PARAR'))throw new Error('overlay_outlook_required_content_missing:'+overlayAscii);
-          if(overlayAscii.includes('ATIVO EM ANALISE')||overlayAscii.includes('TAMANHO DO CARD')||overlayAscii.includes('100%')||overlayAscii.includes('VALIDACAO DO SINAL')||overlayAscii.includes('BLOQUEADO')||overlayAscii.includes('0/12')||overlayAscii.includes('MINIMO 60'))throw new Error('overlay_removed_content_present:'+overlayAscii);
+          if(!overlayAscii.includes('SENTINEL V10.9.0')||!overlayAscii.includes('CENARIO POR PRAZO')||!overlayAscii.includes('PRONTIDAO DE ENTRADA')||!overlayAscii.includes('CONFLUENCIA TECNICA')||!overlayAscii.includes('DIRECAO / CONTEXTO')||!overlayAscii.includes('FILTRO')||!overlayAscii.includes('CONTROLE DO BOT')||!overlayAscii.includes('INICIAR')||!overlayAscii.includes('PAUSAR')||!overlayAscii.includes('PARAR'))throw new Error('overlay_outlook_required_content_missing:'+overlayAscii);
+          if(overlayAscii.includes('ATIVO EM ANALISE')||overlayAscii.includes('TAMANHO DO CARD')||overlayAscii.includes('VALIDACAO DO SINAL')||overlayAscii.includes('BLOQUEADO')||overlayAscii.includes('0/12')||overlayAscii.includes('MINIMO 60')||overlayAscii.includes('FORCA TECNICA AGORA')||overlayAscii.includes('HISTORICO'))throw new Error('overlay_removed_content_present:'+overlayAscii);
           if(!overlayAscii.includes('SEM LEITURA')||!overlayAscii.includes('LEITURA DESATUALIZADA')||overlayAscii.includes('CALL — GATILHO'))throw new Error('stale_outlook_not_hidden:'+overlayAscii);
           const cardRect=await testPage.locator('#sentinel-trading-overlay').boundingBox();
-          const viewport=await testPage.evaluate(()=>({w:innerWidth,h:innerHeight,resize:getComputedStyle(document.querySelector('#sentinel-trading-overlay')).resize}));
+          const viewport=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>({w:innerWidth,h:innerHeight,resize:getComputedStyle(el).resize}));
           if(viewport.resize!=='both')throw new Error('card_not_resizable:'+viewport.resize);
-          if(!cardRect||cardRect.width<380||cardRect.x<0||cardRect.y<0||cardRect.x+cardRect.width>viewport.w+1||cardRect.y+Math.min(cardRect.height,viewport.h)>viewport.h+1)throw new Error('v107_card_outside_viewport:'+JSON.stringify({cardRect,viewport}));
-          console.log('V10.8 PREMIUM RESIZABLE CARD: PASS',JSON.stringify({cardRect,viewport}));
-          const scorePanels=await testPage.evaluate(()=>{
-            const root=document.querySelector('#sentinel-trading-overlay');
-            const read=s=>String(root?.querySelector(s)?.innerText||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-            return{status:read('[data-sentinel-role="entry-status"]'),confluence:read('[data-sentinel-role="confluence"]'),force:read('[data-sentinel-role="realtime-force"]')}
+          if(!cardRect||cardRect.width<380||cardRect.x<0||cardRect.y<0||cardRect.x+cardRect.width>viewport.w+1||cardRect.y+Math.min(cardRect.height,viewport.h)>viewport.h+1)throw new Error('v109_card_outside_viewport:'+JSON.stringify({cardRect,viewport}));
+          console.log('V10.9 PREMIUM RESIZABLE CARD: PASS',JSON.stringify({cardRect,viewport}));
+          const shadowInfo=await testPage.evaluate(()=>{
+            const host=document.querySelector('#sentinel-trading-overlay-host'),root=host?.shadowRoot,overlay=root?.getElementById('sentinel-trading-overlay');
+            const read=sel=>String(root?.querySelector(sel)?.innerText||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+            return{host:!!host,shadow:!!root,overlay:!!overlay,status:read('[data-sentinel-role="entry-status"]'),confluence:read('[data-sentinel-role="confluence"]'),force:!!root?.querySelector('[data-sentinel-role="realtime-force"]')}
           });
-          for(const [k,t] of Object.entries(scorePanels)){if(!t.includes('CALL')||!t.includes('PUT')||!(t.match(/\d+ PTS/g)||[]).length||/\d+%/.test(t))throw new Error('score_panel_misleading_'+k+':'+t)}
-          console.log('HORIZON CARD SCORES: PASS',JSON.stringify(scorePanels));
+          if(!shadowInfo.host||!shadowInfo.shadow||!shadowInfo.overlay)throw new Error('overlay_shadow_isolation_missing:'+JSON.stringify(shadowInfo));
+          if(shadowInfo.force)throw new Error('duplicate_force_card_still_present');
+          if(!shadowInfo.status.includes('PRONTIDAO DE ENTRADA')||!shadowInfo.status.includes('CALL')||!shadowInfo.status.includes('PUT'))throw new Error('entry_status_missing:'+shadowInfo.status);
+          if(!shadowInfo.confluence.includes('CONFLUENCIA TECNICA')||!shadowInfo.confluence.includes('DIRECAO / CONTEXTO')||!shadowInfo.confluence.includes('CALL')||!shadowInfo.confluence.includes('PUT'))throw new Error('confluence_context_missing:'+shadowInfo.confluence);
+          if(shadowInfo.status===shadowInfo.confluence)throw new Error('confluence_and_entry_are_identical');
+          console.log('SHADOW ISOLATION + DISTINCT CONFLUENCE/ENTRY: PASS',JSON.stringify(shadowInfo));
           const hierarchy=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{
             const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
             const find=t=>{const node=[...el.querySelectorAll('*')].find(x=>norm(x.textContent)===t);if(!node)return null;const r=node.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}};
-            const confBox=find('CONFLUENCIA PONTOS NAO CHANCE DE ACERTO'),statusBox=find('PRONTIDAO DE ENTRADA'),forceBox=find('FORCA TECNICA AGORA PONTOS'),botBox=find('CONTROLE DO BOT');
-            return{confBox,statusBox,forceBox,botBox,confX:confBox?.x,statusX:statusBox?.x,forceY:forceBox?.y,botY:botBox?.y}
+            const confBox=find('CONFLUENCIA TECNICA'),statusBox=find('PRONTIDAO DE ENTRADA'),botBox=find('CONTROLE DO BOT');
+            return{confBox,statusBox,botBox}
           });
-          const {confBox,statusBox,forceBox,botBox}=hierarchy;
-          if(!confBox||!statusBox||!forceBox||!botBox)throw new Error('v107_visual_labels_missing:'+JSON.stringify(hierarchy));
-          if(!(confBox.x<statusBox.x))throw new Error('v107_confluence_not_left:'+JSON.stringify(hierarchy));
-          if(!(botBox.y>forceBox.y))throw new Error('v107_bot_not_below_force:'+JSON.stringify(hierarchy));
-          if(!/PRONTIDAO DE ENTRADA[\s\S]{0,80}AGUARDAR[\s\S]{0,40}\d+ PTS/.test(overlayAscii))throw new Error('stale_entry_not_waiting:'+overlayAscii);
-          console.log('V10.8 VISUAL HIERARCHY + SCORE LABELS: PASS',JSON.stringify(hierarchy));
+          const {confBox,statusBox,botBox}=hierarchy;
+          if(!confBox||!statusBox||!botBox)throw new Error('v109_visual_labels_missing:'+JSON.stringify(hierarchy));
+          if(!(confBox.x<statusBox.x))throw new Error('v109_confluence_not_left:'+JSON.stringify(hierarchy));
+          if(!(botBox.y>statusBox.y))throw new Error('v109_bot_not_below_decision_cards:'+JSON.stringify(hierarchy));
+          console.log('V10.9 VISUAL HIERARCHY: PASS',JSON.stringify(hierarchy));
           await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{el.style.height='420px';el.scrollTop=0});
           const scrollState=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>({clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,overflowY:getComputedStyle(el).overflowY,resize:getComputedStyle(el).resize}));
           if(scrollState.overflowY!=='auto'||scrollState.resize!=='both'||scrollState.scrollHeight<=scrollState.clientHeight)throw new Error('card_scroll_container_failed:'+JSON.stringify(scrollState));
           await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{el.scrollTop=el.scrollHeight});
           const scrolled=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>el.scrollTop>0);
           if(!scrolled)throw new Error('card_scroll_failed');
-          console.log('V10.8 CARD SCROLL + RESIZE: PASS',JSON.stringify(scrollState));
+          console.log('V10.9 CARD SCROLL + RESIZE: PASS',JSON.stringify(scrollState));
 
           const plannerSelect=await testPage.locator('#sentinel-trading-overlay [data-sentinel-plan-horizon]');
           await plannerSelect.selectOption('900');
           await new Promise(r=>setTimeout(r,260));
-          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.8.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,quality:{status:'COLETANDO',rawSide:'SELL',forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},plan:{entry:'Aguardar',exit:'Sem entrada'},realtime:true,liveAgeMs:90,analysisAgeMs:100,durationMs:30000,mode:'demo',brokerMode:'demo',state:'running'});
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.9.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,quality:{status:'EM TESTE',rawSide:'WAIT',blockLabel:'REVERSÃO EM FORMAÇÃO — PUT',blockDetail:'O movimento de alta está perdendo força em região relevante; aguardando o gatilho curto de queda.',technicalEdge:18,preEntry:{active:true,side:'SELL',kind:'reversal',expiresAt:Date.now()+8000}},plan:{entry:'Aguardar',exit:'Sem entrada'},realtime:true,liveAgeMs:90,analysisAgeMs:100,durationMs:30000,mode:'demo',brokerMode:'demo',state:'running'});
           const plannerText=(await testPage.locator('#sentinel-trading-overlay').innerText()).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           const horizonValue=await testPage.locator('#sentinel-trading-overlay [data-sentinel-plan-horizon]').inputValue();
           if(horizonValue!=='900'||!plannerText.includes('ATE 15 MIN')||!/CALL[^A-Z]{1,8}GATILHO/.test(plannerText)||!/PUT[^A-Z]{1,8}GATILHO/.test(plannerText)||!plannerText.includes('NAO SAO PREVISAO GARANTIDA'))throw new Error('planner_ui_failed:'+plannerText);
-          console.log('V10.8 PLANNER UI: PASS',horizonValue);
+          if(!plannerText.includes('REVERSAO EM FORMACAO')||!plannerText.includes('JANELA DO SETUP')||!plannerText.includes('VALIDADE, NAO CONTAGEM PARA ENTRAR'))throw new Error('pre_entry_window_missing:'+plannerText);
+          console.log('V10.9 PLANNER + PRE-ENTRY WINDOW: PASS',horizonValue);
 
           await testPage.evaluate(()=>{window.__sentinelUiActions=[];window.__sentinelOverlayAction=async p=>{window.__sentinelUiActions.push(p.action+':'+String(p.key||''));return{ok:true,message:'ok'}}});
           await testPage.click('#sentinel-trading-overlay [data-sentinel-action="start"]');
@@ -361,17 +367,16 @@ jobs:
             return{panel:{x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height},buttons:bs}
           });
           if(botFit.buttons.length!==3||botFit.buttons.some(b=>b.x<botFit.panel.x||b.right>botFit.panel.right||b.y<botFit.panel.y||b.bottom>botFit.panel.bottom||b.h<29))throw new Error('bot_buttons_outside_panel:'+JSON.stringify(botFit));
-          console.log('V10.8 BOT BUTTON FIT: PASS',JSON.stringify(botFit));
+          console.log('V10.9 BOT BUTTON FIT: PASS',JSON.stringify(botFit));
 
-          const focusedOk=await testPage.evaluate(async()=>{
-            const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');
+          const focusedOk=await testPage.locator('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]').evaluate(async sel=>{
             if(!sel)return false;sel.focus();const same=sel;
             await new Promise(r=>setTimeout(r,40));
-            return document.activeElement===same;
+            return sel.getRootNode()?.activeElement===same;
           });
           if(!focusedOk)throw new Error('overlay_select_focus_failed');
           await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:10,reasons:[],metrics:{buyScore:10,sellScore:5},plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'20:30:01',durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
-          const preserved=await testPage.evaluate(()=>{const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');return !!sel&&document.activeElement===sel});
+          const preserved=await testPage.locator('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]').evaluate(sel=>!!sel&&sel.getRootNode()?.activeElement===sel);
           if(!preserved)throw new Error('overlay_select_was_rebuilt_while_open');
           console.log('OVERLAY SELECT STABILITY: PASS');
 
