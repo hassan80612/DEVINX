@@ -330,7 +330,10 @@ export class LocalPlaywrightDriver{
       page.__sentinelOverlayControlExposed=true;
       try{await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}))}catch{}
     }
-    if(page.__sentinelBridgeInstalled)return;
+    if(page.__sentinelBridgeInstalled){
+      const ready=await page.evaluate(()=>!!window.__sentinelBridgeReady&&!!window.__sentinelAssetClickReady&&!!window.__sentinelAmountKeyboardReady).catch(()=>false);
+      if(ready)return;
+    }
     page.__sentinelBridgeInstalled=true;
     const install=()=>{
       try{
