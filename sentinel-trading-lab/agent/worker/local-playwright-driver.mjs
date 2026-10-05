@@ -886,10 +886,12 @@ export class LocalPlaywrightDriver{
         const finalPut=Math.max(0,Math.min(100,Number(final.putStrength)||0));
         const finalTone=finalSide==='CALL'?'#72e6b9':finalSide==='PUT'?'#ff8f9d':gold;
         const minConfidence=Math.max(55,Math.min(95,Number(d.minConfidence)||74));
-        let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false;
+        let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme='dark';
         try{
-          detailsOpen=localStorage.getItem('sentinel-v101-details')==='1'
+          detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
+        el.dataset.theme=uiTheme;
+        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,rgba(248,250,251,.995),rgba(235,241,244,.992))',color:'#14232b',border:'1px solid rgba(81,111,125,.24)',boxShadow:'0 24px 72px rgba(18,35,44,.22), inset 0 1px rgba(255,255,255,.9)'}:{background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',border:'1px solid rgba(111,174,192,.24)',boxShadow:'0 24px 72px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.035)'});
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
         const entryReady=liveNow&&analysisFresh&&validationReady&&q.stability?.ready===true&&['BUY','SELL'].includes(side);
@@ -923,6 +925,8 @@ export class LocalPlaywrightDriver{
             setTimeout(()=>{el.dataset.selectLock='0';x.blur?.()},160)
           });
           el.addEventListener('click',ev=>{
+            const theme=ev.target?.closest?.('[data-sentinel-theme]');
+            if(theme){ev.preventDefault();ev.stopPropagation();const next=theme.getAttribute('data-sentinel-theme')==='light'?'light':'dark';try{localStorage.setItem('sentinel-overlay-theme-v1',next)}catch{}el.dataset.theme=next;return}
             const a=ev.target?.closest?.('[data-sentinel-action]');
             if(a){ev.preventDefault();ev.stopPropagation();run({action:a.getAttribute('data-sentinel-action')});return}
             const t=ev.target?.closest?.('[data-sentinel-toggle]');
@@ -941,12 +945,17 @@ export class LocalPlaywrightDriver{
                 <div style="font-size:8.5px;font-weight:650;color:#617985;margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
-            <div style="font-size:8px;color:#607783">arraste pelo topo · redimensione pelo canto</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="display:flex;align-items:center;padding:2px;border-radius:999px;background:${uiTheme==='light'?'rgba(27,51,62,.07)':'rgba(255,255,255,.045)'};border:1px solid ${uiTheme==='light'?'rgba(27,51,62,.10)':'rgba(255,255,255,.065)'}">
+                <button data-sentinel-theme="light" title="Tema claro" style="border:0;border-radius:999px;padding:5px 8px;background:${uiTheme==='light'?'#fff':'transparent'};color:${uiTheme==='light'?'#233942':'#718690'};font:800 8px/1 inherit;cursor:pointer;box-shadow:${uiTheme==='light'?'0 2px 8px rgba(15,32,40,.12)':'none'}">CLARO</button>
+                <button data-sentinel-theme="dark" title="Tema escuro" style="border:0;border-radius:999px;padding:5px 8px;background:${uiTheme==='dark'?'rgba(216,184,94,.14)':'transparent'};color:${uiTheme==='dark'?'#e7c96f':'#718690'};font:800 8px/1 inherit;cursor:pointer">ESCURO</button>
+              </div>
+            </div>
           </div>
 
           <div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:9px;margin-top:10px">
-            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:linear-gradient(145deg,rgba(18,42,54,.98),rgba(8,25,34,.98));border:1px solid rgba(210,174,82,.18);box-shadow:0 10px 26px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.035)">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:8px;font-weight:850;letter-spacing:.08em;color:#a7bac2">CONFLUÊNCIA</span><span style="font-size:7px;color:#708791">score técnico</span></div>
+            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f2f6f7)':'linear-gradient(145deg,rgba(18,42,54,.98),rgba(8,25,34,.98))'};border:1px solid rgba(210,174,82,.18);box-shadow:0 10px 26px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.035)">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${uiTheme==='light'?'#405862':'#b9c8ce'}">CONFLUÊNCIA</span><span style="font-size:8px;color:${uiTheme==='light'?'#617780':'#7f959f'}">score técnico</span></div>
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:#d7bd70">Confiança <b style="font-size:12px;color:#f1d37b">${n(confidence,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
                 <div style="padding:7px 8px;border-radius:9px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:7px;color:#8fb6a7;font-weight:800">CALL</span><b style="display:block;font-size:16px;line-height:1.1;color:#72e6b9">${n(finalCall,0)}%</b><small style="display:block;margin-top:3px;font-size:7px;color:#6f8f84">${n(finalCall,0)} pts</small></div>
@@ -954,8 +963,8 @@ export class LocalPlaywrightDriver{
               </div>
             </div>
 
-            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:linear-gradient(145deg,rgba(24,47,58,.98),rgba(9,26,35,.98));border:1px solid rgba(210,174,82,.22);box-shadow:0 10px 28px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.04)">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:8px;font-weight:850;letter-spacing:.08em;color:#a7bac2">STATUS DA ENTRADA</span><span style="font-size:7px;color:#d7bd70">Confiança <b style="font-size:11px;color:#f1d37b">${n(confidence,0)}%</b></span></div>
+            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f1f5f7)':'linear-gradient(145deg,rgba(24,47,58,.98),rgba(9,26,35,.98))'};border:1px solid rgba(210,174,82,.22);box-shadow:0 10px 28px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.04)">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${uiTheme==='light'?'#405862':'#b9c8ce'}">STATUS DA ENTRADA</span><span style="font-size:7px;color:#d7bd70">Confiança <b style="font-size:11px;color:#f1d37b">${n(confidence,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:7px">
                 <div>
                   <div style="font-size:9px;font-weight:800;color:#72e6b9">CALL <b style="font-size:15px">${n(statusCall,0)}%</b></div>
@@ -967,7 +976,7 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
 
-          <div data-sentinel-role="horizon-outlook" style="margin-top:10px;padding:13px 14px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:linear-gradient(145deg,#102632,#0b202a);border-radius:12px;box-sizing:border-box">
+          <div data-sentinel-role="horizon-outlook" style="margin-top:10px;padding:13px 14px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef4f6)':'linear-gradient(145deg,#102632,#0b202a)'};border-radius:12px;box-sizing:border-box">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div style="font-size:9px;font-weight:800;color:#a9c2cc">CENÁRIO POR PRAZO · ${esc(d.asset||'—')}</div>
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:30px;min-width:98px;background:#0a1c25;color:#f1f6f8;border:1px solid #406472;border-radius:4px;padding:0 8px;font-size:10px;font-weight:800;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
@@ -977,7 +986,7 @@ export class LocalPlaywrightDriver{
             ${planHtml}
           </div>
 
-          <div style="margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.026);border:1px solid rgba(255,255,255,.06)">
+          <div style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.78)':'rgba(255,255,255,.026)'};border:1px solid ${uiTheme==='light'?'rgba(39,68,80,.10)':'rgba(255,255,255,.06)'}">
             <div style="font-size:9px;font-weight:850;color:#a8bac2;margin-bottom:7px">Configuração</div>
             <div style="display:grid;grid-template-columns:1.45fr .72fr .72fr;gap:8px">
               <label><span style="display:block;font-size:8px;font-weight:800;color:#7f949f;margin:0 0 3px 2px">Estratégia</span><select data-sentinel-setting="strategy" style="width:100%;height:34px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:9px;padding:0 9px;font-size:10.5px;font-weight:700;outline:none"><option value="smart_confluence" ${strategy==='smart_confluence'?'selected':''}>Smart Confluence</option><option value="price_action" ${strategy==='price_action'?'selected':''}>Price Action</option><option value="trendline_breakout" ${strategy==='trendline_breakout'?'selected':''}>Trendline Breakout</option><option value="support_resistance" ${strategy==='support_resistance'?'selected':''}>Suporte / Resistência</option><option value="fibonacci_retest" ${strategy==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option><option value="trend" ${strategy==='trend'?'selected':''}>Trend Following</option><option value="mean_reversion" ${strategy==='mean_reversion'?'selected':''}>Mean Reversion</option><option value="breakout" ${strategy==='breakout'?'selected':''}>Breakout</option></select></label>
@@ -988,7 +997,7 @@ export class LocalPlaywrightDriver{
 
           
 
-          <div data-sentinel-role="realtime-force" style="margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(6,17,23,.50);border:1px solid rgba(255,255,255,.06);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center">
+          <div data-sentinel-role="realtime-force" style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(6,17,23,.50)'};border:1px solid ${uiTheme==='light'?'rgba(39,68,80,.10)':'rgba(255,255,255,.06)'};display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center">
             <div style="min-width:0">
               <div style="font-size:9px;font-weight:750;letter-spacing:.025em;color:#a8bac2">Força técnica agora</div>
               <div style="font-size:8px;color:${liveNow?'#72e6b9':gold};margin-top:3px;white-space:nowrap">● ${liveNow?'AO VIVO':'ATUALIZANDO'} <span style="color:#607781">· microestrutura + contexto</span></div>
@@ -1001,15 +1010,15 @@ export class LocalPlaywrightDriver{
 
           
 
-          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:linear-gradient(145deg,rgba(16,37,48,.96),rgba(8,24,32,.96));border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
+          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#edf3f5)':'linear-gradient(145deg,rgba(16,37,48,.96),rgba(8,24,32,.96))'};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
               <span style="font-size:8.5px;font-weight:800;letter-spacing:.035em;color:#9fb2ba">Controle do bot</span>
               <span style="font-size:8px;font-weight:800;line-height:1;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#93a5ad'};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box">
-              <button data-sentinel-action="start" style="width:100%;min-width:0;height:28px;box-sizing:border-box;border:1px solid rgba(114,230,185,.18);border-radius:7px;background:${runtime==='running'?'linear-gradient(180deg,rgba(54,112,90,.72),rgba(30,72,58,.78))':'rgba(114,230,185,.035)'};color:#9cebc9;font-family:inherit;font-size:8.5px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
-              <button data-sentinel-action="pause" style="width:100%;min-width:0;height:28px;box-sizing:border-box;border:1px solid rgba(232,200,95,.15);border-radius:7px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(96,81,40,.66),rgba(58,49,28,.74))':'rgba(232,200,95,.025)'};color:${runtime==='paused'?goldSoft:'#d5dee2'};font-family:inherit;font-size:8.5px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
-              <button data-sentinel-action="stop" style="width:100%;min-width:0;height:28px;box-sizing:border-box;border:1px solid rgba(255,143,157,.17);border-radius:7px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(81,43,50,.63),rgba(50,29,34,.72))':'rgba(255,143,157,.025)'};color:#f2a1ac;font-family:inherit;font-size:8.5px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
+              <button data-sentinel-action="start" style="width:100%;min-width:0;height:28px;box-sizing:border-box;border:1px solid rgba(114,230,185,.18);border-radius:7px;background:${runtime==='running'?'linear-gradient(180deg,rgba(54,112,90,.72),rgba(30,72,58,.78))':'rgba(114,230,185,.035)'};color:#9cebc9;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
+              <button data-sentinel-action="pause" style="width:100%;min-width:0;height:28px;box-sizing:border-box;border:1px solid rgba(232,200,95,.15);border-radius:7px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(96,81,40,.66),rgba(58,49,28,.74))':'rgba(232,200,95,.025)'};color:${runtime==='paused'?goldSoft:'#d5dee2'};font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
+              <button data-sentinel-action="stop" style="width:100%;min-width:0;height:28px;box-sizing:border-box;border:1px solid rgba(255,143,157,.17);border-radius:7px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(81,43,50,.63),rgba(50,29,34,.72))':'rgba(255,143,157,.025)'};color:#f2a1ac;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
             </div>
             <div data-sentinel-control-msg style="min-height:7px;margin:2px 1px 0;font-size:7.5px;font-weight:650;color:#79b9a3;line-height:1.1"></div>
           </div>
