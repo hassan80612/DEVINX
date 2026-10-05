@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.4.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.5.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.4 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.5 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '9.4.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '9.5.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -197,10 +197,23 @@ jobs:
           $script = @'
           import {LocalPlaywrightDriver} from './worker/local-playwright-driver.mjs';
           import {analyzeMarket} from './src/core/strategy.mjs';
+          import {DemoTradingRuntime} from './src/core/runtime.mjs';
           const candles=Array.from({length:80},(_,i)=>{const base=1+i*.001;return{from:1700000000+i*60,to:1700000060+i*60,open:base,high:base+.0008,low:base-.0005,close:base+.0005,volume:100+i}});
           const analysis=analyzeMarket({candles,strategy:'smart_confluence',minConfidence:74,freshnessMs:5000,quoteTs:Date.now(),now:Date.now()});
           if(!analysis.forecast30||analysis.forecast30.horizonSeconds!==30||!Number.isFinite(Number(analysis.forecast30.callStrength))||!Number.isFinite(Number(analysis.forecast30.putStrength)))throw new Error('forecast30_missing');
           console.log('30S PRE-SIGNAL: PASS',JSON.stringify(analysis.forecast30));
+          const rt=new DemoTradingRuntime();
+          rt.settings.asset='EUR/USD OTC';rt.settings.strategy='smart_confluence';rt.settings.orderDurationMs=30000;
+          const badKey=rt._validationKey('confirmed','EUR/USD OTC',30000,'smart_confluence');
+          rt.signalValidation.outcomes=Array.from({length:12},(_,i)=>({key:badKey,won:i<3}));
+          const bad=rt._validationStats(badKey);
+          if(bad.ready||bad.winRate!==25)throw new Error('bad_signal_validation_not_blocked:'+JSON.stringify(bad));
+          const gated=rt._signalValidationGate({analysis:{side:'SELL',confidence:90,reasons:[],forecast30:{side:'SELL',confidence:90}},snap:{price:1.1},settings:rt.settings,now:Date.now()});
+          if(gated.allowed!==false||gated.analysis.side!=='WAIT')throw new Error('signal_gate_failed:'+JSON.stringify(gated));
+          rt.signalValidation.outcomes=Array.from({length:12},(_,i)=>({key:badKey,won:i<8}));
+          const good=rt._validationStats(badKey);
+          if(!good.ready||good.winRate<60)throw new Error('good_signal_validation_not_released:'+JSON.stringify(good));
+          console.log('SIGNAL QUALITY GATE: PASS',JSON.stringify({bad,good}));
           const d=new LocalPlaywrightDriver({dataDir:'worker/data/smoke-browser'});
           const s=await d.launchNormal('iq_option',{manual:true});
           const info=await d.sessionInfo('iq_option');
@@ -250,7 +263,7 @@ jobs:
           const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
           const overlayAscii=overlayText.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(!overlayAscii.includes('ATIVO EM ANALISE')||!overlayAscii.includes('EUR/USD OTC')||!overlayAscii.includes('TEMPO REAL')||!overlayAscii.includes('PROXIMOS 30 SEGUNDOS')||!overlayAscii.includes('PUT')||overlayAscii.includes('VALOR DEMO')||overlayAscii.includes('ATUALIZACAO'))throw new Error('overlay_v94_content_failed:'+overlayAscii);
-          console.log('V9.4 REALTIME CONTROL CARD CONTENT: PASS');
+          console.log('V9.5 REALTIME CONTROL CARD CONTENT: PASS');
           const focusedOk=await testPage.evaluate(async()=>{
             const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');
             if(!sel)return false;sel.focus();const same=sel;
