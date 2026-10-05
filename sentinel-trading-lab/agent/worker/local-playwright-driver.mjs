@@ -875,15 +875,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='11.6'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='11.7'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.6';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.7';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.6';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.7';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -944,7 +944,7 @@ export class LocalPlaywrightDriver{
         const gold='#c9a65b',goldSoft='#ecd28d';
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence'),strategy2=String(d.strategy2||'none'),strategy3=String(d.strategy3||'none');
-        const strategyCards=Array.isArray(d.strategyCards)?d.strategyCards:[],strategyConfluence=d.strategyConfluence||{},generalConsensus=d.generalConsensus||{};
+        const strategyCards=Array.isArray(d.strategyCards)?d.strategyCards:[],strategyConfluence=d.strategyConfluence||{},generalConsensus=d.generalConsensus||{},operational=d.operationalSignal||{};
         const shortWindow=duration<=60000,shortReady=!shortWindow||short.ready===true;
         const confidence=!analysisStale&&d.confidence!=null?Math.max(0,Math.min(100,Number(d.confidence))):null;
         const contextBuy=!analysisStale&&m.buyScore!=null?Math.max(0,Math.min(100,Number(m.buyScore))):null;
@@ -1023,15 +1023,18 @@ export class LocalPlaywrightDriver{
         const generalStrength=Number.isFinite(Number(generalConsensus.strength))?Number(generalConsensus.strength):Math.max(Number(generalCall||0),Number(generalPut||0));
         const generalEdge=Number.isFinite(Number(generalConsensus.edge))?Math.abs(Number(generalConsensus.edge)):Math.abs(Number(generalCall||0)-Number(generalPut||0));
         const generalTone=generalSide==='CALL'?callTone:generalSide==='PUT'?putTone:warnTone;
-        const currentPlanPrice=Number(executionPlan?.currentPrice),callTriggerPrice=Number(executionPlan?.callTrigger),putTriggerPrice=Number(executionPlan?.putTrigger);
-        const triggerMet=generalSide==='CALL'&&Number.isFinite(currentPlanPrice)&&Number.isFinite(callTriggerPrice)?currentPlanPrice>=callTriggerPrice:generalSide==='PUT'&&Number.isFinite(currentPlanPrice)&&Number.isFinite(putTriggerPrice)?currentPlanPrice<=putTriggerPrice:false;
-        const setupMatches=preSide===generalSide&&preRemaining!=null&&preRemaining>0;
-        const operationalPrepare=['CALL','PUT'].includes(generalSide)&&generalState==='ALINHADO'&&generalStrength>=45&&generalEdge>=10&&liveNow&&analysisFresh;
-        const operationalReady=operationalPrepare&&(entryReady||triggerMet||setupMatches);
-        const operationalDisplay=operationalReady?generalSide:operationalPrepare?'PREPARAR '+generalSide:'AGUARDAR';
-        const operationalTime=operationalReady?new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
-        const operationalTrigger=generalSide==='CALL'?executionPlan?.callTrigger:generalSide==='PUT'?executionPlan?.putTrigger:null;
-        const operationalRule=generalSide==='CALL'?executionPlan?.callRule:generalSide==='PUT'?executionPlan?.putRule:null;
+        const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
+        const operationalSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():generalSide;
+        const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
+        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&liveNow&&analysisFresh;
+        const operationalPrepare=operationalState==='PREPARAR'&&['CALL','PUT'].includes(operationalSide)&&liveNow&&analysisFresh;
+        const operationalDisplay=operationalReady?operationalSide:operationalPrepare?'PREPARAR '+operationalSide:'AGUARDAR';
+        const operationalTime=operationalReady&&Number.isFinite(Number(operational.entryAt))?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
+        const operationalTrigger=Number.isFinite(Number(operational.trigger))?Number(operational.trigger):null;
+        const operationalInvalidation=Number.isFinite(Number(operational.invalidation))?Number(operational.invalidation):null;
+        const operationalReason=String(operational.reason||'Aguardando consenso suficiente.');
+        const operationalValidation=operational.validation||{};
+        const operationalSamples=Math.max(0,Number(operationalValidation.samples||0)),operationalWinRate=Number(operationalValidation.winRate||0);
 
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
@@ -1068,7 +1071,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.6.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.7.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1121,12 +1124,12 @@ export class LocalPlaywrightDriver{
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(generalCall,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(generalPut,0)}%</b></div></div>
               </div>
             </div>
-            <div style="margin-top:7px;padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${operationalReady?generalTone:operationalPrepare?gold:panelBorder}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-size:8px;font-weight:950;color:${ink}">SINAL OPERACIONAL</div><div style="font-size:7px;color:${subtle}">consenso geral + gatilho + prazo</div></div>
-              <div style="margin-top:5px;font-size:17px;font-weight:950;color:${operationalReady?generalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
-              <div style="margin-top:4px;font-size:8px;color:${muted}">${operationalReady?'ENTRADA AGORA · '+operationalTime:operationalPrepare?'Direção definida; aguardando apenas o gatilho de entrada.':generalState==='DIVERGÊNCIA'?'Leitura rápida e estratégias estão divergentes.':'Aguardando consenso suficiente.'}</div>
-              <div style="margin-top:5px;padding-top:5px;border-top:1px solid ${panelBorder};font-size:8px;color:${muted}">Expiração sugerida: <b style="color:${ink}">${durationText}</b>${operationalTrigger!=null?' · gatilho '+price(operationalTrigger):''}</div>
-              <div style="margin-top:3px;font-size:7.5px;color:${subtle}">${operationalReady?'Leitura rápida e estratégias alinhadas no mesmo sentido.':operationalPrepare?(operationalRule?esc(operationalRule):'Aguardando confirmação curta do preço.'):'O sinal não exige 100%; exige alinhamento e diferença mínima entre CALL e PUT.'}</div>
+            <div style="margin-top:7px;padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${operationalReady?operationalTone:operationalPrepare?gold:panelBorder}">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-size:8px;font-weight:950;color:${ink}">SINAL OPERACIONAL</div><div style="font-size:7px;color:${subtle}">consenso + setup fixo + timing + prazo</div></div>
+              <div style="margin-top:5px;font-size:17px;font-weight:950;color:${operationalReady?operationalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
+              <div style="margin-top:4px;font-size:8px;color:${muted}">${operationalReady?'ENTRADA AGORA · '+operationalTime:esc(operationalReason)}</div>
+              <div style="margin-top:5px;padding-top:5px;border-top:1px solid ${panelBorder};font-size:8px;color:${muted}">Expiração: <b style="color:${ink}">${durationText}</b>${operationalTrigger!=null?' · gatilho fixo '+price(operationalTrigger):''}${operationalInvalidation!=null?' · invalida '+price(operationalInvalidation):''}</div>
+              <div style="margin-top:3px;font-size:7.5px;color:${subtle}">${operationalSamples>0?'Histórico desta combinação: '+operationalSamples+' sinais · '+n(operationalWinRate,1)+'% acerto.':'Histórico desta combinação começando agora; o sinal continua técnico até acumular amostra.'}</div>
             </div>
           </div>
           <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
