@@ -1,4 +1,4 @@
-name: Sentinel Windows Smoke V11
+name: Sentinel Windows Smoke V11.1
 
 on:
   push:
@@ -80,7 +80,10 @@ jobs:
           for(const required of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"'])if(!ascii.includes(required))throw new Error('ui_missing:'+required);
           const workerAscii=worker.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,' ').replace(/\s+/g,' ').toUpperCase();
           if(!workerAscii.includes('BOT INICIADO')||!workerAscii.includes('SINCRONIZANDO LEITURA'))throw new Error('start_still_depends_on_feed');
-          console.log('V11 CLEAN ARCHITECTURE: PASS');
+          if(!driver.includes("action==='resume-visible'"))throw new Error('startup_visible_resume_missing');
+          if(!worker.includes("driver.call(name,'resume-visible'")||worker.includes("bootstrapSavedBrokers(){if(!accessLeaseValid())"))throw new Error('startup_broker_still_gated_or_background');
+          console.log('V11.1 STARTUP BROKER WINDOW: PASS');
+          console.log('V11.1 CLEAN ARCHITECTURE: PASS');
           '@
           Set-Content -Path 'sentinel-v11-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-v11-smoke.mjs'
@@ -101,12 +104,12 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.0.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.1.0'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
-          if(-not $ok){throw 'V11 Agent/Worker unhealthy after install'}
-          Write-Host 'V11 FINAL EXE + WORKER: PASS'
+          if(-not $ok){throw 'V11.1 Agent/Worker unhealthy after install'}
+          Write-Host 'V11.1 FINAL EXE + WORKER: PASS'
 
       - name: Cleanup
         if: always()

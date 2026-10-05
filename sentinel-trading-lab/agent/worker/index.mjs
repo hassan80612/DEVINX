@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='11.0.0';
+const VERSION='11.1.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -74,8 +74,22 @@ async function enforceAccessLease(){if(accessLeaseValid()||localCockpitLeaseVali
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
-async function bootstrapSavedBrokers(){if(!accessLeaseValid())return;for(const [name,adapter] of Object.entries(brokers)){if(!adapter.sessionRef)continue;try{await adapter.connect();if(adapter.connected){activeProvider=name;await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();if(adapter.validated)break}}catch{}}syncRuntimeMarket()}
-setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),700).unref();
+async function bootstrapSavedBrokers(){
+  for(const [name,adapter] of Object.entries(brokers)){
+    if(!adapter.sessionRef)continue;
+    try{
+      const info=await driver.call(name,'resume-visible',{body:{startup:true}});
+      loginStates[name]=info;
+      activeProvider=name;
+      try{await adapter.connect()}catch{}
+      await driver.maintain?.(name).catch(()=>{});
+      adapter.refreshFromLive?.();
+      break
+    }catch{}
+  }
+  syncRuntimeMarket()
+}
+setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),1200).unref();
 const overlayAnalysisCache=new Map();
 function overlayAnalysis(view,asset='—',now=Date.now()){const key=String(asset||'—'),current=view.lastResult?.analysis||null;const ready=current&&current.metrics&&current.finalConfluence&&Number.isFinite(Number(current.finalConfluence.callStrength))&&Number.isFinite(Number(current.finalConfluence.putStrength));if(ready){overlayAnalysisCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false,stale:false,holdAgeMs:0}}const cached=overlayAnalysisCache.get(key);if(cached){const age=Math.max(0,now-Number(cached.at||now));if(age<=1000)return{analysis:cached.analysis,transient:true,stale:false,holdAgeMs:age}}return{analysis:current||{},transient:true,stale:true,holdAgeMs:null}}
 

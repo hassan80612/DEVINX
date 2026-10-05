@@ -31,14 +31,14 @@ try {
   Start-Sleep -Milliseconds 900
 
   Write-Host '========================================' -ForegroundColor DarkCyan
-  Write-Host '       SENTINEL WINDOWS AGENT V11.0.0' -ForegroundColor White
+  Write-Host '       SENTINEL WINDOWS AGENT V11.1.0' -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
   Write-Host '========================================' -ForegroundColor DarkCyan
 
   Step '1/5 Atualizando arquivos do Agent...'
   New-Item -ItemType Directory -Force -Path $root | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=11.0.0&release=sentinel-v1100" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=11.1.0&release=sentinel-v1110" -OutFile $payloadZip }
   if (Test-Path $payloadTmp) { Remove-Item $payloadTmp -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $payloadTmp | Out-Null
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
@@ -123,16 +123,16 @@ try {
   for ($i=0; $i -lt 120; $i++) {
     try {
       $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq '11.0.0') { $ready = $true; break }
+      if ($h.ok -and $h.workerHealthy -and $h.version -eq '11.1.0') { $ready = $true; break }
       if ($h.ok -and -not $h.workerHealthy -and ($i % 10 -eq 0)) {
         try { Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/start' -Method Post -TimeoutSec 12 | Out-Null } catch {}
       }
     } catch {}
     Start-Sleep -Milliseconds 500
   }
-  if (-not $ready) { throw 'Agent V11.0 iniciou, mas o Worker nao ficou saudavel em 60 segundos.' }
+  if (-not $ready) { throw 'Agent V11.1 iniciou, mas o Worker nao ficou saudavel em 60 segundos.' }
 
-  Write-Host "`nAgent V11.0.0 pronto." -ForegroundColor Green
+  Write-Host "`nAgent V11.1.0 pronto." -ForegroundColor Green
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan
