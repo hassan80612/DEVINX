@@ -936,12 +936,12 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div style="display:grid;grid-template-columns:.78fr 1.22fr;gap:9px;margin-top:10px">
-            <div style="padding:10px 11px;border-radius:12px;background:linear-gradient(145deg,rgba(72,124,151,.07),rgba(63,100,123,.035));border:1px solid rgba(110,165,194,.12)">
+            <div data-sentinel-role="confluence" style="padding:10px 11px;border-radius:12px;background:linear-gradient(145deg,rgba(72,124,151,.07),rgba(63,100,123,.035));border:1px solid rgba(110,165,194,.12)">
               <div style="font-size:8px;font-weight:800;letter-spacing:.055em;color:#8da9b7">Confluência final</div>
               <div style="display:flex;align-items:baseline;gap:6px;margin-top:5px"><span style="font-size:16px;font-weight:800;color:${finalTone}">${finalSide}</span><span style="font-size:12px;font-weight:750;color:${finalTone}">${n(finalStrength,0)}%</span></div>
               <div style="font-size:8px;color:#718793;margin-top:5px">CALL ${n(finalCall,0)} · PUT ${n(finalPut,0)}</div>
             </div>
-            <div style="padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.037);border:1px solid rgba(255,255,255,.08)">
+            <div data-sentinel-role="entry-status" style="padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.037);border:1px solid rgba(255,255,255,.08)">
               <div style="font-size:8px;font-weight:800;letter-spacing:.055em;color:#8399a4">Status da entrada</div>
               <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px;min-width:0">
                 <span style="font-size:23px;font-weight:850;line-height:1.02;color:${tone};white-space:nowrap">${signal==='NÃO ENTRAR'?'AGUARDAR':signal}</span>
@@ -973,7 +973,7 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
 
-          <div style="margin-top:9px;padding:9px 11px;border-radius:12px;background:rgba(6,17,23,.5);border:1px solid rgba(255,255,255,.06)">
+          <div data-sentinel-role="realtime-force" style="margin-top:9px;padding:9px 11px;border-radius:12px;background:rgba(6,17,23,.5);border:1px solid rgba(255,255,255,.06)">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
               <span style="font-size:8px;font-weight:800;letter-spacing:.06em;color:#a8bac2">Força técnica em tempo real</span>
               <span style="font-size:8px;color:${liveNow?'#72e6b9':'#f3ce73'}">● ${liveNow?'AO VIVO':'ATUALIZANDO'}</span>
@@ -985,7 +985,7 @@ export class LocalPlaywrightDriver{
             <div style="font-size:8px;color:#617883;margin-top:5px">Indicadores atuais; não é probabilidade garantida de vitória.</div>
           </div>
 
-          <div style="margin-top:9px;padding:9px 11px;border-radius:12px;background:rgba(255,255,255,.026);border:1px solid rgba(255,255,255,.06)">
+          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:9px 11px;border-radius:12px;background:rgba(255,255,255,.026);border:1px solid rgba(255,255,255,.06)">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
               <div>
                 <div style="font-size:9px;font-weight:800;color:#a8bac2">Controle do bot</div>
@@ -1001,7 +1001,7 @@ export class LocalPlaywrightDriver{
             <div data-sentinel-control-msg style="min-height:10px;margin-top:4px;font-size:8px;font-weight:700;color:#79b9a3"></div>
           </div>
 
-          <div style="margin-top:9px;border-radius:12px;background:rgba(74,135,175,.028);border:1px solid rgba(101,164,205,.11);overflow:hidden">
+          <div data-sentinel-role="planner" style="margin-top:9px;border-radius:12px;background:rgba(74,135,175,.028);border:1px solid rgba(101,164,205,.11);overflow:hidden">
             <button data-sentinel-toggle="planner" style="width:100%;border:0;background:transparent;color:#f3f7f8;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer">
               <span><span style="display:block;font-size:8px;font-weight:800;letter-spacing:.06em;color:#91b3c6">Previsão / gatilhos de preço</span><span style="display:block;font-size:8px;color:#667f8b;margin-top:2px">Níveis condicionais para CALL ou PUT</span></span>
               <span data-sentinel-arrow style="font-size:14px;color:#91b3c6">${plannerOpen?'⌃':'⌄'}</span>
