@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='9.5.0';
+const VERSION='10.0.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -41,11 +41,10 @@ driver.setMarketUpdateHandler?.((provider)=>{
 });
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
-  if(action==='start'){ensureAccess('/control/start');if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
-  if(action==='pause'){ensureAccess('/control/start');await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
+  if(action==='start'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
+  if(action==='pause'){await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
   if(action==='stop'){await runtime.stop('overlay','manual');return{ok:true,message:'Bot parado'}}
   if(action==='setting'){
-    ensureAccess('/settings');
     const key=String(payload.key||''),value=payload.value;
     if(key==='strategy'){
       const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
