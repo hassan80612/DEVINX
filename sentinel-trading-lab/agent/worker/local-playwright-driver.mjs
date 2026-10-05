@@ -119,6 +119,16 @@ function applyKnownBalance(st){
   const eligible=arr.filter(x=>[1,4].includes(Number(x?.type)));if(!selected&&eligible.length===1)selected=eligible[0];
   if(!selected)return false;const typ=Number(selected.type);if(typ===1)st.mode='real';if(typ===4)st.mode='demo';const id=n(selected.id);if(id!=null)st.balanceId=id;const val=n(selected.amount??selected.balance);if(val!=null){st.balance=val;st.balanceSource='protocol:balances';return true}return false
 }
+function appendMarketQuote(st,price,ts=Date.now(),source='quote'){
+  const q=Number(price),t=Number(ts)||Date.now();
+  if(!Number.isFinite(q)||q<=0)return false;
+  st.quote=q;st.lastQuoteAt=t;
+  const prev=st.quoteHistory?.at?.(-1);
+  if(!prev||Math.abs(Number(prev.price)-q)>1e-12||t-Number(prev.ts||0)>=250){
+    st.quoteHistory=[...(st.quoteHistory||[]),{ts:t,price:q,source}].filter(x=>t-Number(x.ts||0)<=15*60*1000).slice(-1800);
+  }
+  return true
+}
 function protocolScan(data,st,direction='in'){
   if(!data||typeof data!=='object')return;
   const outer=String(data.name||data.event||'');
@@ -127,12 +137,22 @@ function protocolScan(data,st,direction='in'){
   const activeRaw=body?.active_id??body?.activeId??data?.msg?.active_id??data?.active_id;
   const sizeRaw=body?.size??body?.duration??data?.msg?.size??data?.msg?.duration;
   if(/page-out/.test(direction)&&activeRaw!=null){
-    // active_id também aparece em mensagens de ordem CALL/PUT.
-    // Saída da rede nunca redefine o ativo visível: a fonte de verdade é o DOM/clique da corretora.
     const aid=n(activeRaw);
-    const currentKey=pairKey(st.uiSymbol||st.symbol||'');
+    const command=`${outer} ${inner}`.toLowerCase();
+    const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
     const mapped=aid!=null?[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null:null;
-    if(aid!=null&&(!currentKey||!mapped||mapped===currentKey))st.activeId=aid;
+    if(aid!=null&&marketCommand){
+      const found=mapped?([...st.assets].find(x=>pairKey(x)===mapped)||(mapped.endsWith('OTC')?`${mapped.slice(0,3)}/${mapped.slice(3,6)} OTC`:`${mapped.slice(0,3)}/${mapped.slice(3,6)}`)):null;
+      const changed=found&&pairKey(found)!==pairKey(st.symbol||'');
+      st.activeId=aid;
+      if(found){
+        st.symbol=found;st.uiSymbol=found;st.uiSymbolSource='protocol-market';st.lastUiSignalAt=Date.now();st.autoSelected=false;
+        if(changed){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null}
+      }
+    }else if(aid!=null){
+      const currentKey=pairKey(st.uiSymbol||st.symbol||'');
+      if(!currentKey||!mapped||mapped===currentKey)st.activeId=aid;
+    }
     const sz=n(sizeRaw);if(sz!=null&&sz>0&&sz<=86400)st.candleSize=sz
   }
 
@@ -159,12 +179,25 @@ function protocolScan(data,st,direction='in'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
     const matches=aid==null||st.activeId==null||Number(aid)===Number(st.activeId);
     const arr=Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];
-    if(matches&&arr.length){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now()}}
+    if(matches&&arr.length){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null)appendMarketQuote(st,last.close,Date.now(),'candle-response')}
   }
   if(outer==='candle-generated'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
     const matches=aid==null||st.activeId==null||Number(aid)===Number(st.activeId);
-    const candle=candleOf(data.msg);if(matches&&candle){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const sz=n(data?.msg?.size);if(sz!=null&&sz>0)st.candleSize=sz}
+    const candle=candleOf(data.msg);if(matches&&candle){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();appendMarketQuote(st,candle.close,Date.now(),'candle-generated');const sz=n(data?.msg?.size);if(sz!=null&&sz>0)st.candleSize=sz}
+  }
+  if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){
+    const rows=Array.isArray(data?.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:[data?.msg||data];
+    for(const row of rows.slice(0,500)){
+      if(!row||typeof row!=='object')continue;
+      const aid=n(row.active_id??row.activeId??row.instrument_active_id??row.asset_id);
+      if(aid!=null&&st.activeId!=null&&Number(aid)!==Number(st.activeId))continue;
+      const bid=n(row.bid),ask=n(row.ask);
+      const q=n(row.price??row.value??row.close??row.current_price??row.spot_price)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
+      const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at);
+      const ts=rawTs==null?Date.now():(rawTs<1e12?rawTs*1000:rawTs);
+      if(q!=null){if(aid!=null&&st.activeId==null)st.activeId=aid;appendMarketQuote(st,q,ts,'quote-event')}
+    }
   }
 }
 function chooseCandidate(candidates=[],modeHint=null){
@@ -459,38 +492,13 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close};st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
     try{protocolScan(data,st,direction)}catch{}
-    const out={balanceCandidates:[],modeCandidates:[],assets:new Set(st.assets),activeMap:new Map(st.activeMap),quote:st.quote,symbol:st.symbol,candles:[...st.candles],lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt};
+    const out={balanceCandidates:[],modeCandidates:[],assets:new Set(st.assets),activeMap:new Map(st.activeMap),quote:null,symbol:null,candles:[],lastQuoteAt:null,lastCandleAt:null};
     try{recursiveScan(data,out)}catch{}
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
-    const rawActive=n(data?.msg?.body?.active_id??data?.msg?.params?.routingFilters?.active_id??data?.msg?.active_id??data?.body?.active_id??data?.active_id);
-    const marketMatches=rawActive==null||st.activeId==null||Number(rawActive)===Number(st.activeId);
-    if(marketMatches&&out.quote!=null){
-      const q=Number(out.quote),ts=Number(out.lastQuoteAt||Date.now());
-      st.quote=q;st.lastQuoteAt=ts;
-      if(Number.isFinite(q)&&q>0){
-        const prev=st.quoteHistory?.at?.(-1);
-        if(!prev||prev.price!==q||ts-Number(prev.ts||0)>=250){
-          st.quoteHistory=[...(st.quoteHistory||[]),{ts,price:q}].filter(x=>ts-Number(x.ts||0)<=15*60*1000).slice(-1800)
-        }
-      }
-    }
-    if(out.symbol&&(!st.uiSymbol||pairKey(out.symbol)===pairKey(st.uiSymbol)))st.symbol=out.symbol;
-    if(marketMatches){
-      st.candles=mergeCandles(st.candles,out.candles);st.lastCandleAt=out.lastCandleAt||st.lastCandleAt;
-      // Candle-generated updates are real broker market updates too. Use the live close
-      // as a supplemental micro tick when quote frames are sparse.
-      const liveClose=Number(st.candles.at(-1)?.close),tickTs=Number(st.lastCandleAt||Date.now());
-      const candleUpdated=before.lastCandleAt!==st.lastCandleAt||before.lastClose!==liveClose;
-      if(candleUpdated&&Number.isFinite(liveClose)&&liveClose>0&&Number.isFinite(tickTs)){
-        const prev=st.quoteHistory?.at?.(-1);
-        if(!prev||prev.price!==liveClose||tickTs-Number(prev.ts||0)>=1000){
-          st.quoteHistory=[...(st.quoteHistory||[]),{ts:tickTs,price:liveClose,source:'candle-close'}]
-            .filter(x=>tickTs-Number(x.ts||0)<=15*60*1000).slice(-1800)
-        }
-      }
-    }
+    // Generic recursive scan is metadata discovery only. Prices and candles are
+    // accepted only by protocolScan when they belong to the selected active_id.
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol})).catch(()=>{})}catch{}}
@@ -835,15 +843,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='10.16'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='10.17'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.16';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.17';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.16';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.17';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -905,9 +913,10 @@ export class LocalPlaywrightDriver{
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
         const shortWindow=duration<=60000,shortReady=!shortWindow||short.ready===true;
-        const confidence=!analysisStale&&shortReady&&d.confidence!=null?Math.max(0,Math.min(100,Number(d.confidence))):null;
-        const buy=!analysisStale&&shortReady&&m.buyScore!=null?Math.max(0,Math.min(100,Number(m.buyScore))):null;
-        const sell=!analysisStale&&shortReady&&m.sellScore!=null?Math.max(0,Math.min(100,Number(m.sellScore))):null;
+        const confidence=!analysisStale&&d.confidence!=null?Math.max(0,Math.min(100,Number(d.confidence))):null;
+        const contextBuy=!analysisStale&&m.buyScore!=null?Math.max(0,Math.min(100,Number(m.buyScore))):null;
+        const contextSell=!analysisStale&&m.sellScore!=null?Math.max(0,Math.min(100,Number(m.sellScore))):null;
+        const buy=shortReady?contextBuy:null,sell=shortReady?contextSell:null;
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
         const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
         const liveLabel=analysisStale?'SINCRONIZANDO FEED':analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
@@ -925,13 +934,13 @@ export class LocalPlaywrightDriver{
         const statusCall=buy==null?null:Math.round(buy),statusPut=sell==null?null:Math.round(sell),entryEdge=shortReady&&!analysisStale&&q.technicalEdge!=null?Number(q.technicalEdge):null;
         const preSide=pre.side==='BUY'?'CALL':pre.side==='SELL'?'PUT':null;
         const preRemaining=pre.active===true&&Number.isFinite(Number(pre.expiresAt))?Math.max(0,Math.ceil((Number(pre.expiresAt)-Date.now())/1000)):null;
-        const reversalCall=!analysisStale&&short.reversalCallScore!=null?Math.max(0,Math.min(100,Number(short.reversalCallScore))):null;
-        const reversalPut=!analysisStale&&short.reversalPutScore!=null?Math.max(0,Math.min(100,Number(short.reversalPutScore))):null;
+        const reversalCall=!analysisStale&&shortReady&&short.reversalCallScore!=null?Math.max(0,Math.min(100,Number(short.reversalCallScore))):null;
+        const reversalPut=!analysisStale&&shortReady&&short.reversalPutScore!=null?Math.max(0,Math.min(100,Number(short.reversalPutScore))):null;
         const reversalSide=reversalCall==null||reversalPut==null?'AGUARDAR':reversalCall>=reversalPut?'CALL':'PUT';
         const reversalStrength=reversalCall==null||reversalPut==null?null:Math.max(reversalCall,reversalPut);
         const reversalTimer=pre.kind==='reversal'&&preRemaining!=null&&preRemaining>0?preRemaining:null;
-        const gateReason=analysisStale||!liveNow?'SINCRONIZANDO':analysisTransient||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
-        const gateDetail=analysisStale?'Feed temporariamente fora de sincronia; aguardando leitura atual.':analysisTransient?'Atualizando a análise sem zerar a última leitura válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
+        const gateReason=analysisStale||!liveNow?'SINCRONIZANDO':shortWindow&&!shortReady?'COLETANDO MICROESTRUTURA':analysisTransient||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
+        const gateDetail=analysisStale?'Feed temporariamente fora de sincronia; aguardando leitura atual.':shortWindow&&!shortReady?`Microestrutura curta em formação · ${Number(short.bars||0)}/10 barras mínimas.`:analysisTransient?'Atualizando a análise sem zerar a última leitura válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
         let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme=el.dataset.themePreference==='light'?'light':el.dataset.themePreference==='dark'?'dark':'dark';
         try{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';
@@ -997,7 +1006,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.16.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.17.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
