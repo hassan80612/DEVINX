@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.0.0';
+const VERSION='10.1.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -41,11 +41,32 @@ driver.setMarketUpdateHandler?.((provider)=>{
     loop().catch(()=>{});
   },70);
 });
+async function ensureLocalCockpitBroker(provider){
+  const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
+  activeProvider=provider;
+  const info=await driver.sessionInfo?.(provider).catch(()=>null);
+  if(!info?.open)throw new Error('Abra a corretora antes de iniciar.');
+  if(!adapter.connected){
+    await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});
+    adapter.connected=true;adapter._step?.('session',true,'sessão local conectada pelo card');
+  }
+  await driver.maintain?.(provider).catch(()=>{});
+  adapter.refreshFromLive?.();
+  const live=syncRuntimeMarket();
+  if(!live)throw new Error('Aguardando leitura do ativo atual.');
+  return live
+}
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
-  if(action==='start'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
-  if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
-  if(action==='stop'){localCockpitLeaseUntil=0;await runtime.stop('overlay','manual');return{ok:true,message:'Bot parado'}}
+  if(action==='start'){
+    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
+    await ensureLocalCockpitBroker(provider);
+    await runtime.start('overlay');
+    await saveState();
+    return{ok:true,message:'Bot iniciado pelo card'}
+  }
+  if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
+  if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado'}}
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
