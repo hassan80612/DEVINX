@@ -54,6 +54,15 @@ function pairStrings(text=''){
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
 function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z]/g,'')}
+function symbolForActiveId(st,activeId){
+  const aid=n(activeId);if(aid==null)return null;
+  const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null;
+  if(!key)return null;
+  const known=[...st.assets].find(x=>pairKey(x)===key);if(known)return known;
+  const otc=key.endsWith('OTC'),base=otc?key.slice(0,-3):key;
+  if(base.length<6)return null;
+  return `${base.slice(0,3)}/${base.slice(3,6)}${otc?' OTC':''}`
+}
 function epochMs(v){const x=Number(v);if(!Number.isFinite(x)||x<=0)return null;if(x>1e17)return Math.round(x/1e6);if(x>1e14)return Math.round(x/1e3);if(x<1e12)return Math.round(x*1e3);return Math.round(x)}
 function mergeCandles(a=[],b=[]){const m=new Map();for(const c of [...a,...b]){const x=candleOf(c);if(!x)continue;const k=String(x.from??x.to??`${x.open}:${x.close}:${m.size}`);m.set(k,x)}return [...m.values()].sort((x,y)=>Number(x.from||0)-Number(y.from||0)).slice(-600)}
 function reqId(prefix='sentinel'){return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`}
@@ -130,8 +139,9 @@ function protocolScan(data,st,direction='in'){
     const aid=n(activeRaw),command=`${outer} ${inner}`.toLowerCase();
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
     if(aid!=null&&marketCommand){
+      st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
       const selected=st.uiSymbol||st.symbol||null;
-      if(selected){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected);st.symbol=selected;st.uiSymbol=selected;st.activeId=aid}
+      if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected)}
       const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
     }
   }
@@ -157,13 +167,13 @@ function protocolScan(data,st,direction='in'){
   }
   if(outer==='candles'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
-    const matches=aid==null||st.activeId==null||Number(aid)===Number(st.activeId);
+    const matches=st.activeId!=null&&(aid==null||Number(aid)===Number(st.activeId));
     const arr=Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];
     if(matches&&arr.length){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800)}}
   }
   if(outer==='candle-generated'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
-    const matches=aid==null||st.activeId==null||Number(aid)===Number(st.activeId);
+    const matches=st.activeId!=null&&(aid==null||Number(aid)===Number(st.activeId));
     const candle=candleOf(data.msg);if(matches&&candle){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
   }
   if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){
@@ -171,7 +181,8 @@ function protocolScan(data,st,direction='in'){
     for(const row of rows.slice(0,500)){
       if(!row||typeof row!=='object')continue;
       const aid=n(row.active_id??row.activeId??row.instrument_active_id??row.asset_id);
-      if(aid!=null&&st.activeId!=null&&Number(aid)!==Number(st.activeId))continue;
+      if(st.activeId==null)continue;
+      if(aid!=null&&Number(aid)!==Number(st.activeId))continue;
       if(aid==null&&rows.length>1)continue;
       const bid=n(row.bid),ask=n(row.ask),q=n(row.price??row.value??row.close??row.current_price??row.spot_price)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
       if(q==null)continue;
@@ -217,7 +228,7 @@ export class LocalPlaywrightDriver{
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setMarketUpdateHandler(handler){this.marketUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
-  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null});return this.live.get(provider)}
+  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null});return this.live.get(provider)}
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
   async browserPath(){for(const p of findBrowser())if(await exists(p))return p;throw new Error('chrome_or_edge_not_found')}
   async session(provider){if(!this.sessions.has(provider))this.sessions.set(provider,{provider,normal:null,cdp:null,browser:null,context:null,page:null,background:false,debugPort:null,profileDir:resolve(this.dataDir,provider)});return this.sessions.get(provider)}
@@ -362,8 +373,11 @@ export class LocalPlaywrightDriver{
           const marker=document.createElement('span');marker.id='__sentinel-asset-listener-marker';marker.style.display='none';(document.documentElement||document.body)?.appendChild(marker);
           const pairsFrom=(text)=>{
             const raw=String(text||'').toUpperCase();
-            const ms=[...raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g)];
-            return [...new Set(ms.map(m=>`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`))];
+            const codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);
+            const out=[];
+            for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            return [...new Set(out)];
           };
           const selectedPair=()=>{
             const selectors='[aria-selected="true"],[aria-checked="true"],[aria-current="true"],[data-state="active"],[data-state="selected"],[role="tab"].active,[role="tab"].selected,[class*=" active"],[class^="active"],[class*=" selected"],[class^="selected"]';
@@ -469,7 +483,7 @@ export class LocalPlaywrightDriver{
     await page.evaluate(install).catch(()=>{});
   }
   ingest(provider,payload,direction='in'){
-    const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close};st.lastFrameAt=Date.now();let data=payload;
+    const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt};st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
     try{protocolScan(data,st,direction)}catch{}
     const out={balanceCandidates:[],modeCandidates:[],assets:new Set(st.assets),activeMap:new Map(st.activeMap),quote:null,symbol:null,candles:[],lastQuoteAt:null,lastCandleAt:null};
@@ -477,6 +491,12 @@ export class LocalPlaywrightDriver{
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
+    // The broker page's own outbound market subscription is the source of truth for
+    // the chart selected by the user. Sentinel's direct requests are "direct-out"
+    // and therefore can never retarget the selected asset.
+    if(/page-out/.test(direction)&&st.lastPageActiveAt!==before.lastPageActiveAt&&st.pageActiveId!=null){
+      this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page'});
+    }
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
