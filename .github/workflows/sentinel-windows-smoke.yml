@@ -1,4 +1,4 @@
-name: Sentinel Hybrid Smoke V11.3
+name: Sentinel Hybrid Smoke V11.4
 
 on:
   push:
@@ -61,7 +61,7 @@ jobs:
           if(worker.includes("for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect()"))throw new Error('remote_failure_can_close_broker');
           if(installer.includes("$_ .Name -eq 'chrome.exe'".replace('$_ ','$_'))||installer.includes("$_ .Name -eq 'msedge.exe'".replace('$_ ','$_')))throw new Error('installer_still_kills_broker_browser');
           if(!worker.includes("runtime.setMode(payload.mode"))throw new Error('mode_route_missing');
-          console.log('V11.3 STARTUP + LOCAL MODE: PASS');
+          console.log('V11.4 STARTUP + LOCAL MODE: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -101,7 +101,17 @@ jobs:
           await d.requestMarketData('iq_option',{force:true});
           if(!requested.length||Number(requested.at(-1).activeId)!==1382||requested.at(-1).symbol!=='USD/HKD OTC')throw new Error('request_used_stale_active_id');
 
-          console.log('HYBRID V11.3 CORE: PASS');
+
+          const delayed=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/late-map-smoke'});
+          const late=delayed.state('iq_option');
+          late.activeId=1382;late.quote=7.84;late.candles=Array.from({length:20},(_,i)=>({from:100+i*60,to:160+i*60,open:7.8,high:7.9,low:7.7,close:7.84}));
+          let backfills=0;
+          delayed.requestMarketData=async()=>{backfills++;return false};
+          delayed.ingest('iq_option',JSON.stringify({name:'instrument-map',msg:{symbol:'USD/HKD OTC',active_id:1382}}),'page-in');
+          await new Promise(r=>setTimeout(r,30));
+          if(late.symbol!=='USD/HKD OTC'||late.uiSymbol!=='USD/HKD OTC'||backfills<1)throw new Error('late_active_map_did_not_bind_and_backfill:'+JSON.stringify({symbol:late.symbol,ui:late.uiSymbol,backfills}));
+          console.log('V11.4 LATE ACTIVE MAP + BACKFILL: PASS');
+          console.log('HYBRID V11.4 CORE: PASS');
           '@
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-hybrid-smoke.mjs'
@@ -122,12 +132,12 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.3.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.4.0'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
           if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
-          Write-Host 'HYBRID V11.3 INSTALL: PASS'
+          Write-Host 'HYBRID V11.4 INSTALL: PASS'
 
       - name: Cleanup
         if: always()
