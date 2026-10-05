@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='11.4.0';
+const VERSION='11.5.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -31,18 +31,18 @@ const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FIL
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
-let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0;
+let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0,lastOverlayAt=0,lastPersistAt=0;
 driver.setMarketUpdateHandler?.((provider)=>{
   if(provider!==activeProvider||runtime.stateName!=='running')return;
   const now=Date.now();
-  if(now-lastRealtimeEvalAt<450)return;
+  if(now-lastRealtimeEvalAt<500)return;
   lastRealtimeEvalAt=now;
   runtime.requestImmediateEvaluation?.();
   if(realtimeKick)return;
   realtimeKick=setTimeout(()=>{
     realtimeKick=null;
     loop().catch(()=>{});
-  },120);
+  },100);
 });
 async function ensureLocalCockpitBroker(provider){
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
@@ -135,7 +135,7 @@ function overlayAnalysis(view,asset,now=Date.now()){
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   await enforceAccessLease();
-  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=800){lastBrokerMaintainAt=Date.now();await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
+  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
   syncRuntimeMarket();
   await runtime.tick(Date.now());
   if(activeProvider){
@@ -144,6 +144,8 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
     const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));
+    if(Date.now()-lastOverlayAt>=700){
+      lastOverlayAt=Date.now();
     await driver.updateOverlay?.(activeProvider,{
       asset:currentAsset,
       strategy:view.settings?.strategy||'smart_confluence',
@@ -174,9 +176,10 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       state:view.state,
       agentVersion:VERSION
     }).catch(()=>{});
+    }
   }
-  await saveState()
-}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,300).unref();
+  if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}
+}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,400).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,agentVersion:VERSION,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
