@@ -1,0 +1,45 @@
+name: Sentinel Fast Feed Smoke
+
+on:
+  push:
+    branches: [sentinel-v106-modern]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - '.github/workflows/sentinel-fast-feed-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Syntax
+        run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Active ID reverse binding
+        run: |
+          cat > sentinel-fast.mjs <<'EOF'
+          import {LocalPlaywrightDriver} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+          const d=new LocalPlaywrightDriver({dataDir:'/tmp/sentinel-fast'});
+          const st=d.state('iq_option');
+          st.activeMap.set('USDHKDOTC',1382);
+          st.assets.add('USD/HKD OTC');
+          st.activeId=1382;
+          st.symbol=null;
+          st.uiSymbol=null;
+          st.candles=Array.from({length:13},(_,i)=>({from:100+i*60,to:160+i*60,open:7.8,high:7.9,low:7.7,close:7.85}));
+          st.quote=7.85;
+          let requested=[];
+          d._requestCandles=async(_provider,args)=>{requested.push(args);return false};
+          d.ingest('iq_option',JSON.stringify({name:'get-initialization-data',msg:{active:{id:1382,name:'USD/HKD OTC'}}}),'page-in');
+          await new Promise(r=>setTimeout(r,50));
+          if(st.symbol!=='USD/HKD OTC'||st.uiSymbol!=='USD/HKD OTC')throw new Error('reverse_bind_failed:'+JSON.stringify({symbol:st.symbol,ui:st.uiSymbol}));
+          if(requested.length<1||Number(requested.at(-1).activeId)!==1382||requested.at(-1).symbol!=='USD/HKD OTC')throw new Error('history_bootstrap_failed:'+JSON.stringify(requested));
+          console.log('FAST FEED SMOKE PASS',st.symbol,requested.at(-1));
+          EOF
+          node sentinel-fast.mjs
