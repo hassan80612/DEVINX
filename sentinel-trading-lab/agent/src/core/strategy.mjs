@@ -70,6 +70,21 @@ export function analyzeMarket({candles,strategy='smart_confluence',minConfidence
  const callGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedBuy));
  const putGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedSell));
 
+ // Confluência final: combina a força técnica atual com a projeção de 30 s.
+ // É um score de confluência, nunca uma probabilidade garantida de vitória.
+ const currentLeader=buyEffective-sellEffective;
+ const futureLeader=projectedBuy-projectedSell;
+ const alignedCall=currentLeader>=6&&futureLeader>=6;
+ const alignedPut=currentLeader<=-6&&futureLeader<=-6;
+ const disagreement=currentLeader*futureLeader<0;
+ const alignmentBonus=alignedCall||alignedPut?6:0;
+ const disagreementPenalty=disagreement?10:0;
+ const finalCall=clamp(Math.round(buyEffective*.50+projectedBuy*.50+(alignedCall?alignmentBonus:0)-(futureLeader<0?disagreementPenalty:0)),0,100);
+ const finalPut=clamp(Math.round(sellEffective*.50+projectedSell*.50+(alignedPut?alignmentBonus:0)-(futureLeader>0?disagreementPenalty:0)),0,100);
+ const finalEdge=finalCall-finalPut;
+ const finalStrength=Math.max(finalCall,finalPut);
+ const finalSide=finalStrength>=Number(minConfidence||74)&&Math.abs(finalEdge)>=8?(finalEdge>0?'CALL':'PUT'):'AGUARDAR';
+
  // Planejador de gatilhos por horizonte. Ele não prevê o futuro nem envia ordem:
  // calcula níveis condicionais onde a estratégia atual exigiria nova confirmação.
  const plannerHorizons=[30,60,120,300,600,900];
@@ -141,6 +156,16 @@ export function analyzeMarket({candles,strategy='smart_confluence',minConfidence
      trigger:Number(minConfidence||74),
      callGap,putGap,
      microPulse
+   },
+   finalConfluence:{
+     side:finalSide,
+     strength:finalStrength,
+     callStrength:finalCall,
+     putStrength:finalPut,
+     minConfidence:Number(minConfidence||74),
+     aligned:alignedCall||alignedPut,
+     disagreement,
+     basis:'força técnica atual + projeção de 30 s'
    },
    entryPlanner:{defaultHorizonSeconds:30,horizons:planner},
    metrics:{...m,buyScore:box.buy,sellScore:box.sell,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse,strategy}
