@@ -859,8 +859,8 @@ export class LocalPlaywrightDriver{
         let forecastOpen=true,plannerOpen=false,plannerHorizon='30',detailsOpen=false;
         try{
           forecastOpen=localStorage.getItem('sentinel-v101-forecast')!=='0';
-          plannerOpen=localStorage.getItem('sentinel-v102-planner')==='1';
-          plannerHorizon=localStorage.getItem('sentinel-v102-planner-horizon')||String(d.entryPlanner?.defaultHorizonSeconds||30);
+          plannerOpen=el.dataset.plannerOpen==='1'||localStorage.getItem('sentinel-v102-planner')==='1';
+          plannerHorizon=el.dataset.plannerHorizon||localStorage.getItem('sentinel-v102-planner-horizon')||String(d.entryPlanner?.defaultHorizonSeconds||30);
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1'
         }catch{}
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
@@ -885,7 +885,7 @@ export class LocalPlaywrightDriver{
           el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
             const ph=ev.target?.closest?.('[data-sentinel-plan-horizon]');
-            if(ph){try{localStorage.setItem('sentinel-v102-planner-horizon',ph.value)}catch{};setTimeout(()=>{el.dataset.selectLock='0';ph.blur?.()},120);return}
+            if(ph){el.dataset.plannerHorizon=ph.value;try{localStorage.setItem('sentinel-v102-planner-horizon',ph.value)}catch{};setTimeout(()=>{el.dataset.selectLock='0';ph.blur?.()},120);return}
             const x=ev.target?.closest?.('[data-sentinel-setting]');if(!x)return;
             run({action:'setting',key:x.getAttribute('data-sentinel-setting'),value:x.value});
             setTimeout(()=>{el.dataset.selectLock='0';x.blur?.()},160)
@@ -896,7 +896,7 @@ export class LocalPlaywrightDriver{
             const z=ev.target?.closest?.('[data-sentinel-size]');
             if(z){ev.preventDefault();ev.stopPropagation();const cur=Number(el.dataset.scale||1)||1,k=z.getAttribute('data-sentinel-size'),next=k==='reset'?1:k==='down'?Math.max(.65,cur-.1):Math.min(1.15,cur+.1);const fixed=Number(next.toFixed(2));el.dataset.scale=String(fixed);el.style.zoom=String(fixed);try{localStorage.setItem('sentinel-overlay-scale-v1',String(fixed))}catch{};const lab=el.querySelector('[data-sentinel-size="reset"]');if(lab)lab.textContent=Math.round(fixed*100)+'%';return}
             const t=ev.target?.closest?.('[data-sentinel-toggle]');
-            if(t){ev.preventDefault();const key=t.getAttribute('data-sentinel-toggle'),box=el.querySelector('[data-sentinel-section="'+key+'"]'),open=box?.style.display==='none';if(box)box.style.display=open?'block':'none';const arrow=t.querySelector('[data-sentinel-arrow]');if(arrow)arrow.textContent=open?'⌃':'⌄';try{const sk=key==='forecast'?'sentinel-v101-forecast':key==='planner'?'sentinel-v102-planner':'sentinel-v101-details';localStorage.setItem(sk,open?'1':'0')}catch{}}
+            if(t){ev.preventDefault();const key=t.getAttribute('data-sentinel-toggle'),box=el.querySelector('[data-sentinel-section="'+key+'"]'),open=box?.style.display==='none';if(box)box.style.display=open?'block':'none';const arrow=t.querySelector('[data-sentinel-arrow]');if(arrow)arrow.textContent=open?'⌃':'⌄';if(key==='planner')el.dataset.plannerOpen=open?'1':'0';try{const sk=key==='forecast'?'sentinel-v101-forecast':key==='planner'?'sentinel-v102-planner':'sentinel-v101-details';localStorage.setItem(sk,open?'1':'0')}catch{}}
           });
         }
 
