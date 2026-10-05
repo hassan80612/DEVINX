@@ -620,3 +620,5 @@ html[data-theme='dark'] .demoDisclaimer{background:#302817;border-color:#715f2b;
 
 
 .analysisDetails>summary{cursor:pointer;font-size:15px;font-weight:800;color:var(--text);padding:4px 0}.analysisDetails[open]>summary{margin-bottom:14px}.signalBadge small{font-size:14px;margin-left:4px}
+
+.signalCockpit .signalBadge span{font-size:24px;font-weight:900;line-height:1.1}

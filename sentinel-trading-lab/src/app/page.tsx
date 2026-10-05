@@ -152,7 +152,7 @@ function Market({s}:{s:Status}){
   const signal=!fresh?(s.state==='running'?'SINCRONIZANDO':s.state==='paused'?'PAUSADO':'PARADO'):actionable?op.side:op.state==='PREPARAR'?'PREPARAR '+op.side:op.state||'AGUARDAR';
   const confidence=fresh?Number(op.technicalConfidence??op.strength??0):null;
   const next=s.nextEvalMs?new Date(s.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-  const orderExpiry=plan.expiresAt?new Date(plan.expiresAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
+  const orderExpiry=actionable&&plan.expiresAt?new Date(plan.expiresAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
   const trend=m.structure?.bias==='bullish'?'ALTA':m.structure?.bias==='bearish'?'BAIXA':'LATERAL';
   const macdState=m.macd?.histogram>0?'POSITIVO':m.macd?.histogram<0?'NEGATIVO':'NEUTRO';
   const rsiState=m.rsi==null?'—':m.rsi>=70?'SOBRECOMPRADO':m.rsi<=30?'SOBREVENDIDO':m.rsi>=52?'FORÇA COMPRADORA':m.rsi<=48?'FORÇA VENDEDORA':'NEUTRO';
@@ -171,18 +171,18 @@ function Market({s}:{s:Status}){
         </div>
       </div>
       <div className="cockpitPlan">
-        <div><small>Estratégia</small><b>{String(s.settings?.strategy||'—').replaceAll('_',' ')}</b></div>
-        <div><small>Entrada</small><b>{plan.entry||'Aguardar confirmação'}</b></div>
-        <div><small>Saída / expiração</small><b>{plan.exit||'Sem entrada'}</b></div>
+        <div><small>Estratégia</small><b>{String(op.combo||s.settings?.strategy||'—').replaceAll('_',' ').replaceAll('+',' + ')}</b></div>
+        <div><small>Entrada</small><b>{actionable?'ENTRADA AGORA':fresh?(op.reason||'Aguardar gatilho'):'Aguardar análise atual'}</b></div>
+        <div><small>Saída / expiração</small><b>{actionable?(plan.exit||'Expiração confirmada'):'Sem entrada'}</b></div>
         <div><small>Expira às</small><b>{orderExpiry}</b></div>
         <div><small>Próxima análise</small><b>{next}</b></div>
         <div><small>Estado</small><b>{String(s.state||'—').toUpperCase()}</b></div>
       </div>
       <div className="confidence"><i style={{width:String(confidence||0)+'%'}}/></div>
-      <p className="muted">Confiança técnica em pontos · filtro {s.settings?.risk?.minConfidence}/100 · prazo {Math.round(Number(s.settings?.orderDurationMs||60000)/1000)}s. Pontos não representam taxa de acerto.</p><div className="reasonlist large">{(a.reasons||s.lastResult?.reasons||['Aguardando análise']).slice(0,6).map((x:string,i:number)=><div key={i}>• {x}</div>)}</div>
+      <p className="muted">Confiança técnica em pontos · filtro {s.settings?.risk?.minConfidence}/100 · prazo {Math.round(Number(s.settings?.orderDurationMs||60000)/1000)}s. Pontos não representam taxa de acerto.</p>
     </section>
 
-    <details className="card span12 analysisDetails"><summary>Detalhes das análises e indicadores</summary><div className="grid">
+    <details className="card span12 analysisDetails"><summary>Detalhes das análises e indicadores</summary><div className="reasonlist large">{(a.reasons||s.lastResult?.reasons||['Aguardando análise']).slice(0,6).map((x:string,i:number)=><div key={i}>• {x}</div>)}</div><div className="grid">
     <section className="card span8">
       <div className="split"><div><div className="eyebrow">INDICADORES</div><h3>Leitura técnica ao vivo</h3></div><Pill tone={side==='WAIT'?'warn':'good'}>{signal}</Pill></div>
       <div className="indicatorGrid">
