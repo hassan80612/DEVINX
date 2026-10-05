@@ -140,24 +140,17 @@ function protocolScan(data,st,direction='in'){
     const aid=n(activeRaw);
     const command=`${outer} ${inner}`.toLowerCase();
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
-    const mapped=aid!=null?[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null:null;
     if(aid!=null&&marketCommand){
-      const currentUi=st.uiSymbol||st.symbol||null;
-      const fallbackKey=currentUi?pairKey(currentUi):null;
-      if(!mapped&&fallbackKey){st.activeMap.set(fallbackKey,aid);st.assets.add(currentUi)}
-      const resolved=mapped||fallbackKey;
-      const found=resolved?([...st.assets].find(x=>pairKey(x)===resolved)||(resolved.endsWith('OTC')?`${resolved.slice(0,3)}/${resolved.slice(3,6)} OTC`:`${resolved.slice(0,3)}/${resolved.slice(3,6)}`)):null;
-      const changed=found&&pairKey(found)!==pairKey(st.symbol||'');
-      st.activeId=aid;
-      if(found){
-        st.symbol=found;st.uiSymbol=found;st.uiSymbolSource='protocol-market';st.lastUiSignalAt=Date.now();st.autoSelected=false;
-        if(changed){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null}
+      const selected=st.uiSymbol||st.symbol||null;
+      if(selected){
+        const key=pairKey(selected);
+        st.activeMap.set(key,aid);st.assets.add(selected);
+        st.uiSymbol=selected;st.symbol=selected;st.activeId=aid;
+        st.uiSymbolSource=st.uiSymbolSource||'protocol-market';
       }
-    }else if(aid!=null){
-      const currentKey=pairKey(st.uiSymbol||st.symbol||'');
-      if(!currentKey||!mapped||mapped===currentKey)st.activeId=aid;
+      const sz=n(sizeRaw);
+      if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz);
     }
-    const sz=n(sizeRaw);if(sz!=null&&sz>0&&sz<=86400)st.candleSize=sz
   }
 
   if(outer==='profile'&&data.msg&&typeof data.msg==='object'){
@@ -528,7 +521,9 @@ export class LocalPlaywrightDriver{
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
     const targetId=activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
-    const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId);
+    const requestedSize=Number(st.candleSize||60),size=[5,10,15,30,60,300,900,1800,3600].includes(requestedSize)?requestedSize:60;
+    if(size!==requestedSize)st.candleSize=size;
+    const changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId);
     if(changed&&st.subscribedActiveId!=null){
       await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(st.subscribedActiveId),size}}},request_id:reqId('unsub')}).catch(()=>{});
     }
@@ -609,34 +604,17 @@ export class LocalPlaywrightDriver{
     return false;
   }
   async requestMarketData(provider,{force=false}={}){
-    const st=this.state(provider);
-    const screenSymbol=st.uiSymbol||st.symbol;
+    const st=this.state(provider),screenSymbol=st.uiSymbol||st.symbol;
     if(!screenSymbol)return false;
     const key=pairKey(screenSymbol);
-    if(!st.symbol||pairKey(st.symbol)!==key){
-      st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.autoSelected=false;st.suggestedSymbol=null;
-    }
+    if(pairKey(st.symbol||'')!==key)this.applyActiveSelection(provider,{symbol:screenSymbol,source:'market-sync'});
     let targetId=st.activeMap.get(key);
-    if(targetId==null){
-      await this.requestBaseData(provider).catch(()=>{});
-      await sleep(120);
-      targetId=st.activeMap.get(key);
-    }
-    if(targetId==null){
-      st.activeId=null;
-      st.marketStatus='syncing';
-      st.marketReason=`Identificando o ativo atual ${screenSymbol} antes de solicitar candles`;
-      return false;
-    }
+    if(targetId==null){await this.requestBaseData(provider).catch(()=>{});await sleep(120);targetId=st.activeMap.get(key)}
+    if(targetId==null){st.activeId=null;st.marketStatus='syncing';st.marketReason=`Identificando ${screenSymbol}`;return false}
     st.activeId=Number(targetId);
     await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(targetId),force});
-    if(candleFreshForState(st)&&st.candles.length>=50){
-      st.marketStatus='open';st.marketReason=`Ativo da tela ${screenSymbol} com candles atuais`;st.suggestedSymbol=null;return true;
-    }
-    const age=latestCandleAgeMs(st);
-    st.marketStatus='stale';st.marketReason=age==null?`Aguardando candles do ativo da tela ${screenSymbol}`:`Última candle de ${screenSymbol} há ${Math.round(age/60000)} min`;
-    if(st.mode==='demo')await this.recoverMarket(provider);
-    return candleFreshForState(st)&&st.candles.length>=50;
+    if(candleFreshForState(st)&&st.candles.length>=50){st.marketStatus='open';st.marketReason=`${screenSymbol} atualizado`;return true}
+    const age=latestCandleAgeMs(st);st.marketStatus='stale';st.marketReason=age==null?`Aguardando candles de ${screenSymbol}`:`Última candle há ${Math.round(age/1000)}s`;return false
   }
   async scanExecutionUi(provider){
     const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;
@@ -742,34 +720,32 @@ export class LocalPlaywrightDriver{
     return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
-    const st=this.state(provider);
-    const aid=Number(activeId);
+    const st=this.state(provider),aid=Number(activeId);
     let next=symbol?pairStrings(symbol)[0]||null:null;
     if(!next&&Number.isFinite(aid)){
       const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===aid)?.[0]||null;
       if(key)next=[...st.assets].find(x=>pairKey(x)===key)||(key.endsWith('OTC')?`${key.slice(0,3)}/${key.slice(3,6)} OTC`:`${key.slice(0,3)}/${key.slice(3,6)}`);
     }
     if(!next)return false;
-    let changed=pairKey(next)!==pairKey(st.uiSymbol||'')||pairKey(next)!==pairKey(st.symbol||'');
-    const explicit=source==='click';
-    if(changed&&!explicit&&st.uiSymbol){
-      const key=pairKey(next),now=Date.now();
-      if(st.pendingUiKey===key){st.pendingUiHits=Number(st.pendingUiHits||0)+1}
-      else{st.pendingUiKey=key;st.pendingUiHits=1;st.pendingUiSince=now}
-      const confirmed=st.pendingUiHits>=3&&now-Number(st.pendingUiSince||now)>=300;
-      if(!confirmed)return false;
+    const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
+    if(changed&&source!=='click'&&current){
+      if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
+      st.pendingUiHits=Number(st.pendingUiHits||0)+1;
+      if(st.pendingUiHits<2)return false;
     }
     st.pendingUiKey=null;st.pendingUiHits=0;st.pendingUiSince=0;
-    st.uiSymbol=next;st.symbol=next;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;
-    const mapped=st.activeMap.get(pairKey(next));
-    if(mapped!=null)st.activeId=mapped;else if(Number.isFinite(aid))st.activeId=aid;
-    if(changed){
-      st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;
-      st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;
-      st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${next}`;
-      try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source})).catch(()=>{})}catch{}
-      setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
+    if(!changed){
+      st.uiSymbol=next;st.symbol=next;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;
+      const mapped=st.activeMap.get(key);if(mapped!=null)st.activeId=Number(mapped);
+      return true;
     }
+    st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??(Number.isFinite(aid)?aid:null);
+    st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;
+    st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;
+    st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;
+    st.marketStatus='switching';st.marketReason=`Sincronizando ${next}`;
+    try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source,assetChanged:true})).catch(()=>{})}catch{}
+    setTimeout(()=>{this.requestBaseData(provider).catch(()=>{});this.requestMarketData(provider,{force:true}).catch(()=>{})},0);
     return true
   }
   async maintain(provider){
@@ -793,32 +769,15 @@ export class LocalPlaywrightDriver{
   async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;await this.installBridge(page,provider).catch(()=>{});const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
     let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const m=String(t||'').toUpperCase().match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);return m?`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`:''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[data-test*="account"],[data-test*="balance"],[data-test*="asset"],[data-test*="instrument"],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{const cls=String(el.className||'').toLowerCase(),state=String(el.getAttribute?.('data-state')||'').toLowerCase(),cur=String(el.getAttribute?.('aria-current')||'').toLowerCase();let n=0;if(el.getAttribute?.('aria-selected')==='true')n+=100;if(el.getAttribute?.('aria-checked')==='true')n+=90;if(cur&&cur!=='false')n+=80;if(/active|selected|current|checked/.test(state))n+=75;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=60;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
-    const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
+    const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;
+    const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[],domActive=activeSymbol?pairStrings(activeSymbol):[],instrumentPairs=pairStrings(instrumentText);
     let nextUi=null,uiSource=null;
     if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
     else if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
     else if(instrumentPairs.length===1){nextUi=instrumentPairs[0];uiSource='dom-single'}
     else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
-    if(nextUi){
-      let changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
-      if(changed&&uiSource!=='click'&&st.uiSymbol){
-        const key=pairKey(nextUi),now=Date.now();
-        if(st.pendingUiKey===key){st.pendingUiHits=Number(st.pendingUiHits||0)+1}
-        else{st.pendingUiKey=key;st.pendingUiHits=1;st.pendingUiSince=now}
-        const confirmed=st.pendingUiHits>=3&&now-Number(st.pendingUiSince||now)>=300;
-        if(!confirmed){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved';changed=false}
-      }else if(uiSource==='click'||!changed){
-        st.pendingUiKey=null;st.pendingUiHits=0;st.pendingUiSince=0;
-      }
-      if(changed){
-        st.pendingUiKey=null;st.pendingUiHits=0;st.pendingUiSince=0;
-        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
-        st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
-        st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
-        try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:nextUi,uiSymbol:nextUi,activeId:st.activeId,source:uiSource,assetChanged:true})).catch(()=>{})}catch{}
-        setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
-      }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
-    }else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
+    if(nextUi)this.applyActiveSelection(provider,{symbol:nextUi,source:uiSource});
+    else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1)this.applyActiveSelection(provider,{symbol:p[0],source:'body-single'})}
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     if(st.quote==null&&st.symbol){try{const q=await page.evaluate((symbol)=>{const all=[...document.querySelectorAll('body *')];const sym=all.find(el=>el.textContent?.trim()===symbol);if(!sym)return null;let node=sym;for(let d=0;d<5&&node;d++,node=node.parentElement){const txt=node.textContent||'';const nums=txt.match(/\b\d{1,5}[.,]\d{2,6}\b/g)||[];for(const x of nums){const v=Number(x.replace(',','.'));if(Number.isFinite(v)&&v>0)return v}}return null},st.symbol);if(q){st.quote=q;st.lastQuoteAt=Date.now()}}catch{}}
     return{provider,open:true,url,title,text,st};
@@ -847,7 +806,7 @@ export class LocalPlaywrightDriver{
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);
-    const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh);
+    const feedValidated=!!(st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh);
     const marketStatus=candleFresh?'open':(st.marketStatus||'stale');const marketReason=candleFresh?`${st.symbol||'Ativo'} atualizado`:(st.marketReason||'Sem candle recente');
     return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:Math.max(Number(st.lastQuoteAt||0),Number(st.lastCandleAt||0),Number(latestCandleTs||0)),lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi}
   }
@@ -861,15 +820,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='10.18'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='11.0'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.18';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.0';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.18';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.0';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -1024,7 +983,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.18.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.0.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1155,7 +1114,7 @@ export class LocalPlaywrightDriver{
     if(action==='session'){await this.attachAutomation(provider,{manual:true});return this.sessionInfo(provider)}
     if(action==='background'){await this.launchBackground(provider,{force:true});return this.sessionInfo(provider)}
     if(action==='connect'){await this.attachAutomation(provider,{manual:false});const info=await this.sessionInfo(provider);if(!info.open)throw new Error('broker_window_not_open');if(!info.sessionPresent)throw new Error('broker_session_not_detected');await this.domSnapshot(provider).catch(()=>{});await this.requestBaseData(provider).catch(()=>{});await sleep(350);await this.domSnapshot(provider).catch(()=>{});await this.requestMarketData(provider,{force:true}).catch(()=>{});return{connected:true,accountMode:this.state(provider).mode||'unknown',...info}}
-    if(action==='disconnect'){const s=await this.session(provider);await this.feeds.get(provider)?.close?.().catch(()=>{});this.feeds.delete(provider);if(s.browser)await s.browser.close().catch(()=>{});killProc(s.normal);killProc(s.cdp);this.sessions.delete(provider);this.last.set(provider,{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:nowIso()});return{connected:false}}
+    if(action==='disconnect'){await this.feeds.get(provider)?.close?.().catch(()=>{});this.feeds.delete(provider);return{connected:false,preservedBrowser:true}}
     const snap=await this.domSnapshot(provider);const st=snap.st;
     if(action==='account')return{mode:st.mode||'unknown',provider};
     if(action==='balance'){if(st.balance==null){await this.requestBaseData(provider).catch(()=>{});await sleep(350)}if(st.balance==null)throw new Error(`${provider}_balance_not_found`);return{balance:st.balance,source:st.lastFrameAt?'network':'dom'}}

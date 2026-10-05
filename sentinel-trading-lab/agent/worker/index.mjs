@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.18.0';
+const VERSION='11.0.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -30,7 +30,7 @@ async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
 let localCockpitLeaseUntil=0;
-const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
+const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider;
 let realtimeKick=null;
 driver.setMarketUpdateHandler?.((provider)=>{
   if(provider!==activeProvider||runtime.stateName!=='running')return;
@@ -41,166 +41,45 @@ driver.setMarketUpdateHandler?.((provider)=>{
     loop().catch(()=>{});
   },70);
 });
-let readRecoveryPromise=null,lastReadRecoveryAt=0;
-async function refreshMarketReading(provider,{manual=false}={}){
-  const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
-  if(readRecoveryPromise)return readRecoveryPromise;
-  if(!manual&&Date.now()-lastReadRecoveryAt<2800)return syncRuntimeMarket();
-  lastReadRecoveryAt=Date.now();
-  readRecoveryPromise=(async()=>{
-    activeProvider=provider;
-    const info=await driver.sessionInfo?.(provider).catch(()=>null);
-    if(!info?.open)throw new Error('Abra a corretora antes de atualizar a leitura.');
-    if(!adapter.connected){
-      await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});
-      adapter.connected=true;adapter._step?.('session',true,'sessão local conectada');
-    }
-    await driver.maintain?.(provider).catch(()=>{});
-    await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});
-    try{await adapter.validateReadOnly?.({soft:!manual})}catch(e){adapter.lastError=String(e?.message||e)}
-    adapter.refreshFromLive?.();
-    const live=syncRuntimeMarket();
-    runtime.requestImmediateEvaluation?.();
-    await runtime.tick(Date.now()).catch(()=>{});
-    return live
-  })();
-  try{return await readRecoveryPromise}finally{readRecoveryPromise=null}
-}
 async function ensureLocalCockpitBroker(provider){
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
-  let live=null,lastReason='Aguardando leitura do ativo atual.';
-  for(let attempt=0;attempt<3;attempt++){
-    live=await refreshMarketReading(provider,{manual:attempt===0}).catch(()=>null);
-    if(live?.m?.feedValidated===true&&Array.isArray(live.m.candles)&&live.m.candles.length>=50&&live.m.quote!=null)return live;
-    lastReason=String(live?.m?.marketReason||adapter.lastError||lastReason);
-    await new Promise(resolve=>setTimeout(resolve,250));
-  }
-  if(adapter.connected||live)return live;
-  throw new Error(`Não foi possível conectar a corretora: ${lastReason}`);
+  activeProvider=provider;const info=await driver.sessionInfo?.(provider).catch(()=>null);
+  if(!info?.open)throw new Error('Abra a corretora antes de iniciar.');
+  if(!adapter.connected){await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});adapter.connected=true;adapter._step?.('session',true,'sessão local conectada')}
+  await driver.maintain?.(provider).catch(()=>{});adapter.refreshFromLive?.();return syncRuntimeMarket()
 }
+async function refreshMarketReading(provider){
+  const adapter=brokers[provider];activeProvider=provider;await ensureLocalCockpitBroker(provider);
+  await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});
+  adapter.refreshFromLive?.();const live=syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return live
+}
+
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
-  if(action==='start'){
-    const live=await ensureLocalCockpitBroker(provider);
-    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
-    await runtime.start('overlay');
-    runtime.requestImmediateEvaluation?.();
-    await runtime.tick(Date.now()).catch(()=>{});
-    if(live?.m?.feedValidated!==true&&!readRecoveryPromise)refreshMarketReading(provider,{manual:false}).catch(()=>{});
-    await saveState();
-    return{ok:true,message:live?.m?.feedValidated===true?'Bot iniciado · leitura ao vivo confirmada':'Bot iniciado · sincronizando leitura ao vivo'}
-  }
-  if(action==='refresh'){
-    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
-    const live=await refreshMarketReading(provider,{manual:true});
-    const ok=live?.m?.feedValidated===true;
-    return{ok,message:ok?'Leitura atualizada':'Atualização enviada · aguardando candles/cotação atuais'}
-  }
-  if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
-  if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado'}}
-  if(action==='setting'){
-    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
-    const key=String(payload.key||''),value=payload.value;
-    if(key==='strategy'){
-      const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
-      if(!allowed.includes(String(value)))throw new Error('invalid_strategy');
-      runtime.patchSettings({strategy:String(value)},'overlay');
-    }else if(key==='duration'){
-      const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
-      runtime.patchSettings({orderDurationMs:n},'overlay');
-    }else if(key==='minConfidence'){
-      const n=Math.round(Number(value));if(!Number.isFinite(n)||n<55||n>95)throw new Error('invalid_min_confidence');
-      runtime.patchSettings({risk:{minConfidence:n}},'overlay');
-    }else throw new Error('invalid_overlay_setting');
-    await saveState();return{ok:true,message:'Configuração aplicada'}
-  }
+  if(action==='start'){activeProvider=provider;localCockpitLeaseUntil=Date.now()+12*60*60*1000;const live=await ensureLocalCockpitBroker(provider);await runtime.start('overlay');runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});await saveState();return{ok:true,message:live?.m?.feedValidated===true?'Bot iniciado · leitura ao vivo':'Bot iniciado · sincronizando leitura'}}
+  if(action==='refresh'){activeProvider=provider;localCockpitLeaseUntil=Date.now()+12*60*60*1000;const live=await refreshMarketReading(provider);return{ok:true,message:live?.m?.feedValidated===true?'Leitura atualizada':'Sincronizando leitura'}}
+  if(action==='pause'){activeProvider=provider;localCockpitLeaseUntil=Date.now()+12*60*60*1000;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
+  if(action==='stop'){activeProvider=provider;localCockpitLeaseUntil=Date.now()+12*60*60*1000;await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado'}}
+  if(action==='setting'){activeProvider=provider;localCockpitLeaseUntil=Date.now()+12*60*60*1000;const key=String(payload.key||''),value=payload.value;
+    if(key==='strategy'){const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];if(!allowed.includes(String(value)))throw new Error('invalid_strategy');runtime.patchSettings({strategy:String(value)},'overlay')}
+    else if(key==='duration'){const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');runtime.patchSettings({orderDurationMs:n},'overlay')}
+    else if(key==='minConfidence'){const n=Math.round(Number(value));if(!Number.isFinite(n)||n<55||n>95)throw new Error('invalid_min_confidence');runtime.patchSettings({risk:{minConfidence:n}},'overlay')}
+    else throw new Error('invalid_overlay_setting');await saveState();return{ok:true,message:'Configuração aplicada'}}
   throw new Error('invalid_overlay_action')
 });
 const ACCESS_LEASE_GRACE_MS=120000;
 function accessLeaseValid(){return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&remoteRelay.info.lastContactAt!=null&&(Date.now()-Number(remoteRelay.info.lastContactAt))<=ACCESS_LEASE_GRACE_MS}
-async function enforceAccessLease(){
-  if(accessLeaseValid()||localCockpitLeaseValid())return true;
-  if(runtime.stateName==='running')await runtime.stop('system','agent_access_unverified');
-  for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
-  activeProvider=null;syncRuntimeMarket();return false;
-}
+async function enforceAccessLease(){if(accessLeaseValid()||localCockpitLeaseValid())return true;if(runtime.stateName==='running')await runtime.stop('system','agent_access_unverified');return false;}
+
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
 async function bootstrapSavedBrokers(){if(!accessLeaseValid())return;for(const [name,adapter] of Object.entries(brokers)){if(!adapter.sessionRef)continue;try{await adapter.connect();if(adapter.connected){activeProvider=name;await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();if(adapter.validated)break}}catch{}}syncRuntimeMarket()}
 setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),700).unref();
 const overlayAnalysisCache=new Map();
-function overlayAnalysis(view,asset='—',now=Date.now()){
-  const key=String(asset||'—');
-  const current=view.lastResult?.analysis||null;
-  // A falta temporária de microfluxo curto não torna a análise inteira "stale".
-  // Confluência/contexto continuam válidos com candles atuais; prontidão/reversão
-  // podem permanecer em coleta até o shortModel ficar pronto.
-  const contextReady=current&&current.metrics&&current.finalConfluence
-    &&Number.isFinite(Number(current.finalConfluence.callStrength))
-    &&Number.isFinite(Number(current.finalConfluence.putStrength));
-  if(contextReady){
-    overlayAnalysisCache.set(key,{analysis:current,at:now});
-    return{analysis:current,transient:false,stale:false,holdAgeMs:0}
-  }
-  const cached=overlayAnalysisCache.get(key);
-  if(cached){
-    const age=Math.max(0,now-Number(cached.at||now));
-    return{analysis:cached.analysis,transient:true,stale:age>3200,holdAgeMs:age}
-  }
-  return{analysis:current||{},transient:true,stale:true,holdAgeMs:null}
-}
-let busy=false;async function loop(){if(busy)return;busy=true;try{
-  await enforceAccessLease();
-  if(activeProvider&&brokers[activeProvider]?.connected){
-    await driver.maintain?.(activeProvider).catch(()=>{});
-    brokers[activeProvider].refreshFromLive?.();
-    const md=driver.liveStatus?.(activeProvider)||null;
-    const newest=Math.max(Number(md?.lastQuoteAt||0),Number(md?.lastCandleAt||0),Number(md?.latestCandleTs||0));
-    const staleNow=!md?.feedValidated||md?.quote==null||!Array.isArray(md?.candles)||md.candles.length<50||!newest||Date.now()-newest>4500;
-    if(runtime.stateName==='running'&&staleNow&&!readRecoveryPromise&&Date.now()-lastReadRecoveryAt>=2800){
-      refreshMarketReading(activeProvider,{manual:false}).catch(()=>{});
-    }
-  }
-  syncRuntimeMarket();
-  await runtime.tick(Date.now());
-  if(activeProvider){
-    const view=await runtime.status();
-    const currentAsset=view.liveBroker?.uiSymbol||view.settings?.asset||'—';
-    const held=overlayAnalysis(view,currentAsset);
-    const a=held.analysis||{};
-    const m=a.metrics||{};
-    const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-    await driver.updateOverlay?.(activeProvider,{
-      asset:currentAsset,
-      strategy:view.settings?.strategy||'—',
-      side:a.side||'WAIT',
-      confidence:Number.isFinite(Number(a.confidence))?Number(a.confidence):null,
-      analysisTransient:held.transient,
-      analysisStale:held.stale,
-      analysisHoldAgeMs:held.holdAgeMs,
-      forecast30:a.forecast30||null,
-      finalConfluence:a.finalConfluence||null,
-      entryPlanner:a.entryPlanner||null,
-      quality:a.quality||view.signalValidation||null,
-      minConfidence:view.settings?.risk?.minConfidence||74,
-      reasons:a.reasons||view.lastResult?.reasons||[],
-      metrics:m,
-      plan:view.lastResult?.plan||{},
-      nextEval:next,
-      realtime:true,
-      liveAgeMs:(()=>{const ts=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));return ts>0?Math.max(0,Date.now()-ts):null})(),
-      analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
-      durationMs:view.settings?.orderDurationMs||60000,
-      intervalMs:view.settings?.schedule?.intervalMs||1000,
-      brokerMode:view.liveBroker?.mode||view.mode,
-      mode:view.mode,
-      state:view.state,
-      agentVersion:VERSION
-    }).catch(()=>{});
-  }
-  await saveState()
-}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
+function overlayAnalysis(view,asset='—',now=Date.now()){const key=String(asset||'—'),current=view.lastResult?.analysis||null;const ready=current&&current.metrics&&current.finalConfluence&&Number.isFinite(Number(current.finalConfluence.callStrength))&&Number.isFinite(Number(current.finalConfluence.putStrength));if(ready){overlayAnalysisCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false,stale:false,holdAgeMs:0}}const cached=overlayAnalysisCache.get(key);if(cached){const age=Math.max(0,now-Number(cached.at||now));if(age<=1000)return{analysis:cached.analysis,transient:true,stale:false,holdAgeMs:age}}return{analysis:current||{},transient:true,stale:true,holdAgeMs:null}}
+
+let busy=false;async function loop(){if(busy)return;busy=true;try{await enforceAccessLease();if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.tick(Date.now());if(activeProvider){const view=await runtime.status(),currentAsset=view.liveBroker?.uiSymbol||view.liveBroker?.symbol||view.settings?.asset||'—',held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{},next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—',liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));await driver.updateOverlay?.(activeProvider,{asset:currentAsset,strategy:view.settings?.strategy||'—',side:a.side||'WAIT',confidence:Number.isFinite(Number(a.confidence))?Number(a.confidence):null,analysisTransient:held.transient,analysisStale:held.stale,analysisHoldAgeMs:held.holdAgeMs,forecast30:a.forecast30||null,finalConfluence:a.finalConfluence||null,entryPlanner:a.entryPlanner||null,quality:a.quality||view.signalValidation||null,minConfidence:view.settings?.risk?.minConfidence||74,reasons:a.reasons||view.lastResult?.reasons||[],metrics:m,plan:view.lastResult?.plan||{},nextEval:next,realtime:true,liveAgeMs:liveTs>0?Math.max(0,Date.now()-liveTs):null,analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,durationMs:view.settings?.orderDurationMs||60000,intervalMs:view.settings?.schedule?.intervalMs||1000,brokerMode:view.liveBroker?.mode||view.mode,mode:view.mode,state:view.state,agentVersion:VERSION}).catch(()=>{})}await saveState()}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,250).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,agentVersion:VERSION,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
@@ -226,7 +105,7 @@ function ensureAccess(path){
   if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
   if(!accessLeaseValid())throw new Error('agent_access_unverified');
 }
-async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(!activeProvider)await autoConnectVisibleBrokers().catch(()=>{});if(!activeProvider)throw new Error('Abra/conecte a corretora antes de iniciar.');const live=await ensureLocalCockpitBroker(activeProvider);const started=await runtime.start(payload.actor||'user');runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});if(live?.m?.feedValidated!==true&&!readRecoveryPromise)refreshMarketReading(activeProvider,{manual:false}).catch(()=>{});return{...started,feedReady:live?.m?.feedValidated===true,message:live?.m?.feedValidated===true?'Bot iniciado · leitura ao vivo confirmada':'Bot iniciado · sincronizando leitura ao vivo'}};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(!activeProvider)await autoConnectVisibleBrokers().catch(()=>{});if(!activeProvider)throw new Error('Abra/conecte a corretora antes de iniciar.');localCockpitLeaseUntil=Date.now()+12*60*60*1000;const live=await ensureLocalCockpitBroker(activeProvider);const started=await runtime.start(payload.actor||'user');runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{...started,feedReady:live?.m?.feedValidated===true,message:live?.m?.feedValidated===true?'Bot iniciado · leitura ao vivo':'Bot iniciado · sincronizando leitura'}};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{
@@ -239,38 +118,12 @@ async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&
       loginStates[p.name]={provider:p.name,open:false,phase:'open-error',error:err,updatedAt:new Date().toISOString()};
       throw new Error(err)
     }
-  }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){await refreshMarketReading(p.name,{manual:true}).catch(e=>{adapter.lastError=String(e?.message||e)});return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
+  }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){await refreshMarketReading(p.name).catch(e=>{adapter.lastError=String(e?.message||e)});return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
   const err=new Error('not_found');err.status=404;throw err}
 
 let autoBrokerBusy=false;
-async function autoConnectVisibleBrokers(){
-  if(autoBrokerBusy)return;autoBrokerBusy=true;
-  try{
-    for(const [name,adapter] of Object.entries(brokers)){
-      if(adapter.connected)continue;
-      const peek=driver.peek?.(name);
-      if(!peek?.open)continue;
-      let info=null;
-      try{
-        info=await withTimeout(driver.sessionInfo(name),5000,'broker_session_probe_timeout');
-        loginStates[name]=info;
-      }catch{continue}
-      if(!info?.sessionPresent)continue;
-      const sessionRef=`local-profile:${name}`;
-      try{
-        if(vault.get(name)!==sessionRef)await vault.put(name,sessionRef);
-        if(adapter.sessionRef!==sessionRef)adapter.attachSessionRef(sessionRef);
-        await withTimeout(adapter.connect(),12000,'broker_auto_connect_timeout');
-        if(adapter.connected){
-          activeProvider=name;
-          syncRuntimeMarket();
-        }
-      }catch{}
-    }
-  }finally{autoBrokerBusy=false}
-}
-setInterval(()=>autoConnectVisibleBrokers().catch(()=>{}),2500).unref();
-setTimeout(()=>autoConnectVisibleBrokers().catch(()=>{}),1200).unref();
+async function autoConnectVisibleBrokers(){if(autoBrokerBusy||(activeProvider&&brokers[activeProvider]?.connected))return;autoBrokerBusy=true;try{for(const [name,adapter] of Object.entries(brokers)){const peek=driver.peek?.(name);if(!peek?.open)continue;let info=null;try{info=await withTimeout(driver.sessionInfo(name),5000,'broker_session_probe_timeout');loginStates[name]=info}catch{continue}if(!info?.sessionPresent)continue;const sessionRef=`local-profile:${name}`;try{if(vault.get(name)!==sessionRef)await vault.put(name,sessionRef);if(adapter.sessionRef!==sessionRef)adapter.attachSessionRef(sessionRef);await withTimeout(adapter.connect(),12000,'broker_auto_connect_timeout');if(adapter.connected){activeProvider=name;syncRuntimeMarket();break}}catch{}}}finally{autoBrokerBusy=false}}
+setInterval(()=>autoConnectVisibleBrokers().catch(()=>{}),3000).unref();setTimeout(()=>autoConnectVisibleBrokers().catch(()=>{}),1200).unref();
 
 async function withTimeout(promise,ms,label='operation_timeout'){
   let timer;
@@ -309,11 +162,7 @@ async function remoteLoop(){
     if(last>0&&Date.now()-last>ACCESS_LEASE_GRACE_MS){
       remoteRelay.info.accessActive=false;
       remoteRelay.info.accessReason='license_check_unavailable';
-      if(!localCockpitLeaseValid()){
-        if(runtime.stateName==='running')await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
-        for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
-        activeProvider=null;syncRuntimeMarket();
-      }
+      if(!localCockpitLeaseValid()&&runtime.stateName==='running')await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
     }
   }finally{remoteBusy=false}
 }
