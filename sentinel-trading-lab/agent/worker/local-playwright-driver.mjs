@@ -169,7 +169,7 @@ function protocolScan(data,st,direction='in'){
   if(outer==='candles'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
     const matches=st.activeId!=null&&(aid==null||Number(aid)===Number(st.activeId));
-    const arr=Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];
+    const arr=Array.isArray(data?.msg?.candles)?data.msg.candles:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];
     if(matches&&arr.length){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800)}}
   }
   if(outer==='candle-generated'){

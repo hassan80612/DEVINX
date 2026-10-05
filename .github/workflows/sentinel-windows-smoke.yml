@@ -94,6 +94,12 @@ jobs:
           d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1382,size:60,from:100,to:160,open:7.8,high:7.9,low:7.7,close:7.85}}),'page-in');
           if(st.candles.length!==1||Number(st.quote)!==7.85||st.quoteHistory.length<1)throw new Error('selected_asset_market_missing');
 
+          st.candles=[];st.quote=null;st.quoteHistory=[];
+          const history=Array.from({length:60},(_,i)=>({id:i+1,from:1700000000+i*60,to:1700000060+i*60,open:7.8+i/10000,max:7.9+i/10000,min:7.7+i/10000,close:7.81+i/10000,volume:10}));
+          d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'history-smoke',msg:{candles:history}}),'direct-in');
+          if(st.candles.length!==60||Number(st.quote)!==Number(history.at(-1).close))throw new Error('historical_candles_response_not_parsed');
+          console.log('V11.4 HISTORY BACKFILL PARSER: PASS');
+
           let requested=[];
           d._requestCandles=async(_provider,args)=>{requested.push(args);return false};
           d.requestBaseData=async()=>false;
