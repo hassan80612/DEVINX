@@ -95,6 +95,34 @@ export class DemoTradingRuntime{
     return{cards,confluence:{activeCount,callPct,putPct,callVotes,putVotes,side,agreement}};
   }
 
+  _mergeScenarioConfluence(analysis,strategyPanel){
+    const planner=analysis?.entryPlanner?.horizons;
+    if(!planner||typeof planner!=='object')return;
+    const strategies=strategyPanel?.confluence||{};
+    const strategySide=String(strategies.side||'AGUARDAR').toUpperCase();
+    const technicalSide=String(analysis?.finalConfluence?.side||'AGUARDAR').toUpperCase();
+    const activeCount=Math.max(0,Number(strategies.activeCount||0));
+    for(const plan of Object.values(planner)){
+      if(!plan||typeof plan!=='object')continue;
+      const horizonSide=String(plan.bias||'NEUTRO').toUpperCase();
+      let score=0;const sources=[];
+      if(horizonSide==='CALL'){score+=2;sources.push('prazo CALL')}
+      else if(horizonSide==='PUT'){score-=2;sources.push('prazo PUT')}
+      if(activeCount>=2&&strategySide==='CALL'){score+=1;sources.push(`${activeCount} estratégias CALL`)}
+      else if(activeCount>=2&&strategySide==='PUT'){score-=1;sources.push(`${activeCount} estratégias PUT`)}
+      if(technicalSide==='CALL'){score+=1;sources.push('confluência técnica CALL')}
+      else if(technicalSide==='PUT'){score-=1;sources.push('confluência técnica PUT')}
+      const merged=score>=2?'CALL':score<=-2?'PUT':'NEUTRO';
+      plan.rawBias=horizonSide;
+      plan.strategyBias=activeCount>=2?strategySide:'AGUARDAR';
+      plan.technicalBias=technicalSide;
+      plan.consensusScore=score;
+      plan.bias=merged;
+      plan.basis=activeCount>=2?'prazo + estratégias selecionadas + confluência técnica':'prazo + confluência técnica';
+      plan.consensusSources=sources;
+    }
+  }
+
   async start(actor='user'){const reason=this._startBlockReason();if(reason)throw new Error(reason);this.stateName='running';this.nextEvalMs=Date.now();this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.start'});return this.status()}
   async pause(actor='user'){this.stateName='paused';this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.pause'});return this.status()}
   async stop(actor='user',reason='manual'){this.stateName='stopped';this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.stop',metadata:{reason}});return this.status()}
@@ -238,7 +266,11 @@ export class DemoTradingRuntime{
     try{
       const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;const canUseExternalDemo=this.settings.mode==='demo'&&this.executionBroker&&this.externalMarket?.executionReady===true;const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:this.settings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
       const strategyPanel=this._strategyPanel(snap,now);
-      if(result.analysis){result.analysis.strategyCards=strategyPanel.cards;result.analysis.strategyConfluence=strategyPanel.confluence}
+      if(result.analysis){
+        result.analysis.strategyCards=strategyPanel.cards;
+        result.analysis.strategyConfluence=strategyPanel.confluence;
+        this._mergeScenarioConfluence(result.analysis,strategyPanel);
+      }
       if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas os controles DEMO da corretora ainda não foram validados — nenhuma ordem foi simulada ou clicada.']}else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
       result.plan=signalPlan({analysis:result.analysis,settings:this.settings,price:snap.price,now});this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,this.settings.schedule.intervalMs,now);
       if(result.analysis)this.analyses.unshift({ts:iso(now),asset:this.settings.asset,...result.analysis,latency:result.latency});this.analyses=this.analyses.slice(0,500);
