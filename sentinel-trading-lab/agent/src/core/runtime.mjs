@@ -47,7 +47,7 @@ export class DemoTradingRuntime{
     this.settings={
       mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,orderDurationMs:60_000,orderProposalTtlMs:60_000,
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:1_000,startAt:null,endAt:null},
-      risk:{minConfidence:74,signalValidationMinSamples:12,signalValidationMinWinRate:60,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
+      risk:{minConfidence:74,signalValidationMinSamples:30,signalValidationMinWinRate:60,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
     };
     this.state={cooldownUntil:null,consecutiveLosses:0,dailyPnl:0,peakBalance:balance,drawdownPct:0,executionError:false};
     this.externalMarket=null;this.executionBroker=null;
@@ -62,7 +62,7 @@ export class DemoTradingRuntime{
     return this
   }
   _marketSnapshot(){
-    if(this.externalMarket){const ready=this.externalMarket.feedValidated!==false&&this.externalMarket.candles?.length>=50&&Number.isFinite(Number(this.externalMarket.quote));return{candles:ready?[...this.externalMarket.candles]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready}}
+    if(this.externalMarket){const ready=this.externalMarket.feedValidated!==false&&this.externalMarket.candles?.length>=50&&Number.isFinite(Number(this.externalMarket.quote));return{candles:ready?[...this.externalMarket.candles]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0)}}
     if(this.settings.requireLiveBroker)return{candles:[],quoteTs:0,price:0,source:'OFFLINE',balance:null,provider:null,mode:this.settings.mode,waitingLive:true,feedValidated:false};
     return this.feed.snapshot()
   }
@@ -148,11 +148,25 @@ export class DemoTradingRuntime{
     const price=Number(snap?.price??analysis?.metrics?.last),strength=Math.max(0,Number(general.strength||0)),edge=Math.abs(Number(general.edge||0));
     const validation=this._validationStats(this._validationKey('operational',asset,durationMs,combo));
     const historyBlocked=validation.samples>=validation.minSamples&&validation.winRate<validation.minWinRate;
-    const base={side,state:'AGUARDAR',ready:false,actionable:false,price,strength,edge,combo,durationMs,validation,historyBlocked,trigger:null,invalidation:null,triggerMet:false,armed:false,createdAt:null,expiresAt:null,reason:'Aguardando consenso geral.'};
+    const brokerExpirationDurationMs=Number(snap?.brokerExpirationDurationMs),brokerExpirationKind=String(snap?.brokerExpirationKind||''),brokerExpirationRaw=snap?.brokerExpirationRaw||null,brokerExpirationConfidence=Number(snap?.brokerExpirationConfidence||0);
+    const expirationDetected=Number.isFinite(brokerExpirationDurationMs)&&brokerExpirationDurationMs>=10000&&brokerExpirationConfidence>=32;
+    const expirationToleranceMs=brokerExpirationKind==='clock'?Math.max(5000,Math.min(12000,durationMs*.15)):Math.max(2000,Math.min(5000,durationMs*.06));
+    const expirationDeltaMs=expirationDetected?Math.abs(brokerExpirationDurationMs-durationMs):null;
+    const expirationMatch=expirationDetected?expirationDeltaMs<=expirationToleranceMs:false;
+    const base={side,state:'AGUARDAR',ready:false,actionable:false,price,strength,technicalConfidence:strength,edge,combo,durationMs,validation,historyBlocked,trigger:null,invalidation:null,triggerMet:false,armed:false,createdAt:null,expiresAt:null,expiration:{detected:expirationDetected,match:expirationMatch,requestedMs:durationMs,brokerMs:expirationDetected?brokerExpirationDurationMs:null,deltaMs:expirationDeltaMs,toleranceMs:expirationToleranceMs,kind:brokerExpirationKind||null,raw:brokerExpirationRaw,confidence:brokerExpirationConfidence},reason:'Aguardando consenso geral.'};
     if(!Number.isFinite(price)||price<=0||!plan)return{...base,reason:'Aguardando preço e cenário do prazo.'};
     if(side==='AGUARDAR'||String(general.state||'').toUpperCase()!=='ALINHADO'){
       if(this.operationalSetup&&this.operationalSetup.asset===asset&&this.operationalSetup.combo===combo)this.operationalSetup=null;
       return{...base,reason:String(general.state||'').toUpperCase()==='DIVERGÊNCIA'?'Leitura rápida e estratégias divergentes.':'Aguardando alinhamento entre leitura rápida e estratégias.'};
+    }
+    if(!expirationDetected){
+      this.operationalSetup=null;
+      return{...base,side,state:'VERIFICAR PRAZO',reason:'Expiração da corretora ainda não foi confirmada pelo Agent.'};
+    }
+    if(!expirationMatch){
+      this.operationalSetup=null;
+      const brokerLabel=brokerExpirationDurationMs>=60000?`${Math.round(brokerExpirationDurationMs/60000)} min`:`${Math.round(brokerExpirationDurationMs/1000)} s`;
+      return{...base,side,state:'AJUSTAR PRAZO',reason:`Prazo da corretora (${brokerLabel}) não corresponde ao Sentinel (${Math.round(durationMs/1000)} s).`};
     }
     if(historyBlocked){
       this.operationalSetup=null;
@@ -183,7 +197,7 @@ export class DemoTradingRuntime{
     const ready=triggerMet&&timingConfirmed&&strength>=45&&edge>=10;
     if(ready&&!setup.firedAt){
       setup.firedAt=now;
-      this._queueSignalCandidate({kind:'operational',side:side==='CALL'?'BUY':'SELL',confidence:strength,referencePrice:price,asset,durationMs,strategy:combo,now});
+      this._queueSignalCandidate({kind:'operational',side:side==='CALL'?'BUY':'SELL',confidence:strength,referencePrice:price,asset,durationMs,strategy:combo,now,settleDurationMs:brokerExpirationDurationMs,expirationSource:brokerExpirationRaw||brokerExpirationKind||'broker-ui'});
     }
     const activeWindow=Number(setup.firedAt||0)>0&&now-Number(setup.firedAt)<=6000;
     const actionable=activeWindow&&!Number(setup.releasedAt||0);
@@ -209,34 +223,47 @@ export class DemoTradingRuntime{
       dailyPnl:todayTrades.reduce((s,t)=>s+Number(t.pnl||0),0),maxDailyLoss:this.settings.risk.maxDailyLoss,dailyProfitTarget:this.settings.risk.dailyProfitTarget,drawdownPct:this.state.drawdownPct,
       maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};
   }
-  _validationKey(kind,asset,durationMs,strategy){return ['micro-v3',kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence')].join('|')}
+  _validationKey(kind,asset,durationMs,strategy){return ['micro-v4',kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence')].join('|')}
   _validationStats(key){
-    const rows=this.signalValidation.outcomes.filter(x=>x.key===key).slice(-30);
+    const rows=this.signalValidation.outcomes.filter(x=>x.key===key&&x.settlementQuality!=='approx').slice(-100);
     const samples=rows.length,wins=rows.filter(x=>x.won===true).length,losses=rows.filter(x=>x.won===false).length,winRate=samples?Math.round(wins/samples*1000)/10:0;
-    const minSamples=Math.max(8,Number(this.settings.risk.signalValidationMinSamples||12));
+    const minSamples=Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30));
     const minWinRate=Math.max(55,Number(this.settings.risk.signalValidationMinWinRate||60));
-    return{key,samples,wins,losses,winRate,minSamples,minWinRate,ready:samples>=minSamples&&winRate>=minWinRate}
+    const smoothedWinRate=Math.round(((wins+10)/(samples+20))*1000)/10;
+    return{key,samples,wins,losses,winRate,smoothedWinRate,minSamples,minWinRate,ready:samples>=minSamples&&smoothedWinRate>=minWinRate}
+  }
+  _priceAtExpiry(snap,dueAt,now=Date.now()){
+    const rows=(Array.isArray(snap?.quoteHistory)?snap.quoteHistory:[]).map(x=>({ts:Number(x?.ts),price:Number(x?.price)})).filter(x=>Number.isFinite(x.ts)&&Number.isFinite(x.price)&&x.price>0).sort((a,b)=>a.ts-b.ts);
+    const exact=rows.filter(x=>Math.abs(x.ts-dueAt)<=1500).sort((a,b)=>Math.abs(a.ts-dueAt)-Math.abs(b.ts-dueAt))[0];
+    if(exact)return{price:exact.price,ts:exact.ts,quality:'exact',offsetMs:exact.ts-dueAt};
+    const near=rows.filter(x=>Math.abs(x.ts-dueAt)<=5000).sort((a,b)=>Math.abs(a.ts-dueAt)-Math.abs(b.ts-dueAt))[0];
+    if(near&&now-dueAt>=5000)return{price:near.price,ts:near.ts,quality:'approx',offsetMs:near.ts-dueAt};
+    return null
   }
   _settleSignalValidation(now,snap){
-    const price=Number(snap?.price),asset=String(this.settings.asset||'—').toUpperCase();
-    if(!Number.isFinite(price)||price<=0)return;
+    const currentPrice=Number(snap?.price),asset=String(this.settings.asset||'—').toUpperCase();
+    if(!Number.isFinite(currentPrice)||currentPrice<=0)return;
     const keep=[];
     for(const p of this.signalValidation.pending){
-      if(Number(p.dueAt)>now){keep.push(p);continue}
-      if(String(p.asset||'').toUpperCase()!==asset){if(now-Number(p.dueAt)<15000)keep.push(p);continue}
-      const won=p.side==='BUY'?price>Number(p.referencePrice):price<Number(p.referencePrice);
-      this.signalValidation.outcomes.push({...p,settledAt:now,settledPrice:price,won});
+      const dueAt=Number(p.dueAt||0);
+      if(dueAt>now){keep.push(p);continue}
+      if(String(p.asset||'').toUpperCase()!==asset){if(now-dueAt<15000)keep.push(p);continue}
+      const atExpiry=this._priceAtExpiry(snap,dueAt,now);
+      if(!atExpiry){if(now-dueAt<15000)keep.push(p);continue}
+      const won=p.side==='BUY'?atExpiry.price>Number(p.referencePrice):atExpiry.price<Number(p.referencePrice);
+      this.signalValidation.outcomes.push({...p,settledAt:atExpiry.ts,settledPrice:atExpiry.price,settlementQuality:atExpiry.quality,settlementOffsetMs:atExpiry.offsetMs,won});
     }
     this.signalValidation.pending=keep.slice(-200);
-    this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-500);
+    this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-1000);
   }
-  _queueSignalCandidate({kind,side,confidence,referencePrice,asset,durationMs,strategy,now}){
+  _queueSignalCandidate({kind,side,confidence,referencePrice,asset,durationMs,strategy,now,settleDurationMs=null,expirationSource=null}){
     if(!['BUY','SELL'].includes(String(side||'').toUpperCase()))return;
-    const key=this._validationKey(kind,asset,durationMs,strategy),spacing=Math.max(5000,Math.min(30000,Math.round(Number(durationMs||30000)/2)));
+    const requestedDuration=Math.max(10000,Number(durationMs||30000)),actualDuration=Number.isFinite(Number(settleDurationMs))?Math.max(10000,Number(settleDurationMs)):requestedDuration;
+    const key=this._validationKey(kind,asset,requestedDuration,strategy),spacing=Math.max(5000,Math.min(30000,Math.round(requestedDuration/2)));
     const last=Number(this.signalValidation.lastQueued[key]||0);
     if(now-last<spacing)return;
     this.signalValidation.lastQueued[key]=now;
-    this.signalValidation.pending.push({key,kind,asset:String(asset||'—'),durationMs:Number(durationMs||0),strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+Number(durationMs||30000)});
+    this.signalValidation.pending.push({key,kind,asset:String(asset||'—'),durationMs:requestedDuration,settleDurationMs:actualDuration,strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+actualDuration,expirationSource:expirationSource||null});
     this.signalValidation.pending=this.signalValidation.pending.slice(-200);
   }
   _signalValidationGate({analysis,snap,settings,now}){
@@ -365,7 +392,7 @@ export class DemoTradingRuntime{
       return this.status();
     }catch(error){this.state.executionError=true;this.stateName='error';this.incidents.unshift({ts:iso(now),severity:'error',code:'cycle_error',message:String(error?.message||error)});return this.status()}
   }
-  snapshotPersistent(){return{version:2,settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,500),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-500),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
+  snapshotPersistent(){return{version:2,settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,500),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
   restore(data={}){if(data.settings){this.settings={...this.settings,...data.settings,schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=1000}if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses:[];if(data.signalValidation&&typeof data.signalValidation==='object')this.signalValidation={pending:Array.isArray(data.signalValidation.pending)?data.signalValidation.pending:[],outcomes:Array.isArray(data.signalValidation.outcomes)?data.signalValidation.outcomes:[],lastQueued:data.signalValidation.lastQueued&&typeof data.signalValidation.lastQueued==='object'?data.signalValidation.lastQueued:{}};this._bootstrapSignalValidation();this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
   async status(){
     const balance=this.externalMarket?.balance!=null?Number(this.externalMarket.balance):await this.broker.getBalance(),wins=this.trades.filter(x=>x.won).length,losses=this.trades.filter(x=>x.won===false).length,snap=this._marketSnapshot();
