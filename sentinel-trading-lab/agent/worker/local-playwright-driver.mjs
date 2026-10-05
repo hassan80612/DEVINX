@@ -856,11 +856,11 @@ export class LocalPlaywrightDriver{
         const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
         const scale=Math.max(.65,Math.min(1.15,Number(el.dataset.scale||el.style.zoom||1)||1));
-        let forecastOpen=true,plannerOpen=false,plannerHorizon='30',detailsOpen=false;
+        let forecastOpen=true,plannerOpen=el.dataset.plannerOpen==='1',plannerHorizon=el.dataset.plannerHorizon||String(d.entryPlanner?.defaultHorizonSeconds||30),detailsOpen=false;
         try{
           forecastOpen=localStorage.getItem('sentinel-v101-forecast')!=='0';
-          plannerOpen=el.dataset.plannerOpen==='1'||localStorage.getItem('sentinel-v102-planner')==='1';
-          plannerHorizon=el.dataset.plannerHorizon||localStorage.getItem('sentinel-v102-planner-horizon')||String(d.entryPlanner?.defaultHorizonSeconds||30);
+          plannerOpen=plannerOpen||localStorage.getItem('sentinel-v102-planner')==='1';
+          plannerHorizon=el.dataset.plannerHorizon||localStorage.getItem('sentinel-v102-planner-horizon')||plannerHorizon;
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1'
         }catch{}
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
