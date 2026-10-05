@@ -751,10 +751,10 @@ export class LocalPlaywrightDriver{
         if(!el){
           el=document.createElement('div');el.id=id;
           Object.assign(el.style,{
-            position:'fixed',right:'14px',top:'14px',zIndex:'2147483647',width:'320px',maxWidth:'calc(100vw - 28px)',
-            background:'rgba(13,22,30,.94)',color:'#f4f7f9',border:'1px solid rgba(93,224,186,.42)',borderRadius:'14px',
-            boxShadow:'0 18px 50px rgba(0,0,0,.38)',backdropFilter:'blur(12px)',fontFamily:'Inter,Segoe UI,Arial,sans-serif',
-            fontSize:'12px',lineHeight:'1.35',padding:'12px',pointerEvents:'auto',userSelect:'none'
+            position:'fixed',right:'14px',top:'14px',zIndex:'2147483647',width:'350px',maxWidth:'calc(100vw - 28px)',
+            background:'linear-gradient(160deg,rgba(8,20,27,.97),rgba(12,27,36,.96))',color:'#f4f7f9',border:'1px solid rgba(100,222,187,.32)',borderRadius:'16px',
+            boxShadow:'0 22px 60px rgba(0,0,0,.45)',backdropFilter:'blur(14px)',fontFamily:'Inter,Segoe UI,Arial,sans-serif',
+            fontSize:'12px',lineHeight:'1.35',padding:'13px',pointerEvents:'auto',userSelect:'none'
           });
           try{
             const saved=JSON.parse(localStorage.getItem('sentinel-overlay-pos-v1')||'null');
@@ -821,10 +821,12 @@ export class LocalPlaywrightDriver{
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:3px;color:#aebec8">• '+esc(x)+'</div>').join('');
         const currentScale=Math.max(.65,Math.min(1.15,Number(el.dataset.scale||el.style.zoom||1)||1));
         const durationMs=Number(d.durationMs||60000);
-        const intervalMs=Number(d.intervalMs||5000);
         const runtimeState=String(d.state||'stopped').toLowerCase();
+        const runtimeLabel=runtimeState==='running'?'ATIVO':runtimeState==='paused'?'PAUSADO':runtimeState==='error'?'ERRO':'PARADO';
         const strategy=String(d.strategy||'smart_confluence');
         const brokerMode=String(d.brokerMode||d.mode||'').toUpperCase();
+        const liveAgeMs=Number.isFinite(Number(d.liveAgeMs))?Math.max(0,Number(d.liveAgeMs)):null;
+        const liveText=liveAgeMs==null?'AGUARDANDO FEED':liveAgeMs<1000?'TEMPO REAL · AGORA':'TEMPO REAL · '+(liveAgeMs/1000).toFixed(1)+'s';
         const f=d.forecast30||{};
         const forecastSide=String(f.side||'WAIT').toUpperCase();
         const forecastSignal=forecastSide==='BUY'?'CALL':forecastSide==='SELL'?'PUT':'AGUARDAR';
@@ -833,10 +835,11 @@ export class LocalPlaywrightDriver{
         const putStrength=Math.max(0,Math.min(100,Number(f.putStrength)||0));
         const trigger=Math.max(1,Math.min(100,Number(f.trigger||d.minConfidence||74)));
         const callGap=Math.max(0,Number(f.callGap)||0),putGap=Math.max(0,Number(f.putGap)||0);
-        let forecastOpen=true,detailsOpen=false;
+        let forecastOpen=true,detailsOpen=false,sizeOpen=false;
         try{
           forecastOpen=localStorage.getItem('sentinel-overlay-forecast-open-v1')!=='0';
           detailsOpen=localStorage.getItem('sentinel-overlay-details-open-v1')==='1';
+          sizeOpen=localStorage.getItem('sentinel-overlay-size-open-v1')==='1';
         }catch{}
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
@@ -899,28 +902,31 @@ export class LocalPlaywrightDriver{
         }
         const focused=document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select')))return;
         el.innerHTML=`
-          <div style="display:flex;align-items:flex-start;gap:9px;margin-bottom:9px">
-            <div data-sentinel-drag="1" style="flex:1;min-width:0;cursor:grab;touch-action:none">
-              <div style="font-size:8px;letter-spacing:.14em;color:#738a96;font-weight:900">SENTINEL ${esc(brokerMode||'—')}</div>
-              <div style="font-size:20px;font-weight:950;line-height:1.05;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.asset||'—')}</div>
-              <div style="font-size:8px;color:#607884;margin-top:3px">↕ arraste pelo cabeçalho</div>
+          <div data-sentinel-drag="1" style="display:flex;align-items:center;gap:10px;cursor:grab;touch-action:none;padding:1px 1px 9px">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;font-size:9px;font-weight:900;letter-spacing:.12em;color:#86a0ad">
+                <span style="width:7px;height:7px;border-radius:999px;background:#66e0b8;box-shadow:0 0 10px rgba(102,224,184,.75)"></span>
+                SENTINEL · ${esc(brokerMode||'—')}
+              </div>
+              <div style="font-size:9px;color:#6f8794;margin-top:5px;font-weight:800">ATIVO EM ANÁLISE</div>
+              <div style="font-size:22px;font-weight:950;line-height:1.06;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.asset||'—')}</div>
             </div>
             <div style="text-align:right;flex:0 0 auto">
-              <div style="font-size:8px;color:#78909f;font-weight:800">AGORA</div>
-              <div style="font-size:18px;font-weight:950;color:${tone};line-height:1.05">${signal}</div>
-              <div style="font-size:9px;color:#9db0bd;margin-top:2px">${n(confidence,0)}% força do sinal</div>
-              <div style="display:flex;gap:3px;justify-content:flex-end;margin-top:5px">
-                <button data-sentinel-size="down" style="width:24px;height:21px;border:1px solid #29404d;border-radius:6px;background:#11202a;color:#d8e4ea;cursor:pointer">−</button>
-                <button data-sentinel-size="reset" style="width:40px;height:21px;border:1px solid #29404d;border-radius:6px;background:#11202a;color:#9fb3bd;font-size:9px;cursor:pointer">${Math.round(currentScale*100)}%</button>
-                <button data-sentinel-size="up" style="width:24px;height:21px;border:1px solid #29404d;border-radius:6px;background:#11202a;color:#d8e4ea;cursor:pointer">+</button>
-              </div>
+              <div style="font-size:9px;color:#78909f;font-weight:900">SINAL AGORA</div>
+              <div style="font-size:22px;font-weight:950;color:${tone};line-height:1.05">${signal}</div>
+              <div style="font-size:16px;font-weight:900;color:#d9e5ea;margin-top:2px">${n(confidence,0)}%</div>
             </div>
           </div>
 
-          <div style="padding:9px;border:1px solid rgba(101,139,158,.19);border-radius:11px;background:linear-gradient(180deg,rgba(14,31,41,.86),rgba(8,20,27,.86))">
-            <div style="display:grid;grid-template-columns:1.35fr .8fr;gap:7px">
-              <label style="display:block"><span style="display:block;font-size:8px;color:#78909f;margin:0 0 3px 2px">ESTRATÉGIA</span>
-                <select data-sentinel-setting="strategy" style="width:100%;height:30px;background:#0f1e27;color:#edf5f8;border:1px solid #29404d;border-radius:8px;padding:0 8px;font-size:10px;outline:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:9px;background:rgba(102,224,184,.055);border:1px solid rgba(102,224,184,.12);margin-bottom:9px">
+            <span style="font-size:10px;font-weight:900;color:#7de0bb">${esc(liveText)}</span>
+            <span style="font-size:10px;color:#9cb0ba">BOT <b style="color:${runtimeState==='running'?'#66e0b8':runtimeState==='error'?'#ff8f9a':'#d9e4e9'}">${esc(runtimeLabel)}</b></span>
+          </div>
+
+          <div style="padding:10px;border-radius:12px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.075)">
+            <div style="display:grid;grid-template-columns:1.35fr .75fr;gap:8px">
+              <label><span style="display:block;font-size:9px;color:#8399a5;font-weight:850;margin:0 0 4px 2px">ESTRATÉGIA</span>
+                <select data-sentinel-setting="strategy" style="width:100%;height:34px;background:#0c1c25;color:#f1f6f8;border:1px solid #29404d;border-radius:9px;padding:0 9px;font-size:12px;font-weight:700;outline:none">
                   <option value="smart_confluence" ${strategy==='smart_confluence'?'selected':''}>Smart Confluence</option>
                   <option value="price_action" ${strategy==='price_action'?'selected':''}>Price Action</option>
                   <option value="trendline_breakout" ${strategy==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
@@ -931,8 +937,8 @@ export class LocalPlaywrightDriver{
                   <option value="breakout" ${strategy==='breakout'?'selected':''}>Breakout</option>
                 </select>
               </label>
-              <label style="display:block"><span style="display:block;font-size:8px;color:#78909f;margin:0 0 3px 2px">OPERAÇÃO</span>
-                <select data-sentinel-setting="duration" style="width:100%;height:30px;background:#0f1e27;color:#edf5f8;border:1px solid #29404d;border-radius:8px;padding:0 8px;font-size:10px;outline:none">
+              <label><span style="display:block;font-size:9px;color:#8399a5;font-weight:850;margin:0 0 4px 2px">OPERAÇÃO</span>
+                <select data-sentinel-setting="duration" style="width:100%;height:34px;background:#0c1c25;color:#f1f6f8;border:1px solid #29404d;border-radius:9px;padding:0 9px;font-size:12px;font-weight:800;outline:none">
                   <option value="30000" ${durationMs===30000?'selected':''}>30 s</option>
                   <option value="60000" ${durationMs===60000?'selected':''}>1 min</option>
                   <option value="120000" ${durationMs===120000?'selected':''}>2 min</option>
@@ -942,59 +948,77 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:8px">
-              <button data-sentinel-action="start" style="height:30px;border:0;border-radius:8px;background:#5be0ad;color:#061610;font-weight:950;font-size:9px;cursor:pointer;opacity:${runtimeState==='running'?.45:1}" ${runtimeState==='running'?'disabled':''}>▶ INICIAR</button>
-              <button data-sentinel-action="pause" style="height:30px;border:1px solid #29404d;border-radius:8px;background:#142731;color:#e7eff3;font-weight:900;font-size:9px;cursor:pointer;opacity:${runtimeState!=='running'?.45:1}" ${runtimeState!=='running'?'disabled':''}>Ⅱ PAUSAR</button>
-              <button data-sentinel-action="stop" style="height:30px;border:1px solid rgba(255,128,141,.32);border-radius:8px;background:rgba(255,100,116,.08);color:#ff9ba7;font-weight:900;font-size:9px;cursor:pointer">■ PARAR</button>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px">
+              <button data-sentinel-action="start" style="height:38px;border:0;border-radius:9px;background:#5be0ad;color:#061610;font-weight:950;font-size:11px;cursor:pointer;opacity:${runtimeState==='running'?.45:1}" ${runtimeState==='running'?'disabled':''}>▶ INICIAR</button>
+              <button data-sentinel-action="pause" style="height:38px;border:1px solid #35505d;border-radius:9px;background:#142731;color:#e7eff3;font-weight:950;font-size:11px;cursor:pointer;opacity:${runtimeState!=='running'?.45:1}" ${runtimeState!=='running'?'disabled':''}>Ⅱ PAUSAR</button>
+              <button data-sentinel-action="stop" style="height:38px;border:1px solid rgba(255,128,141,.42);border-radius:9px;background:rgba(255,100,116,.11);color:#ff9ba7;font-weight:950;font-size:11px;cursor:pointer">■ PARAR</button>
             </div>
-            <div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:8px;color:#8299a5">
-              <span>BOT <b style="color:${runtimeState==='running'?'#66e0b8':'#d7e1e6'}">${esc(runtimeState.toUpperCase())}</b></span>
-              <span>ANÁLISE <b style="color:#d7e1e6">${esc(d.nextEval||'—')}</b></span>
-            </div>
-            <div data-sentinel-control-msg style="min-height:10px;margin-top:2px;font-size:8px;color:#73a997"></div>
+            <div data-sentinel-control-msg style="min-height:12px;margin-top:4px;font-size:9px;color:#73a997"></div>
           </div>
 
-          <div style="margin-top:8px;border:1px solid rgba(255,255,255,.08);border-radius:11px;overflow:hidden;background:rgba(255,255,255,.025)">
-            <button data-sentinel-toggle="forecast" style="width:100%;border:0;background:transparent;color:#eef5f7;padding:8px 9px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;text-align:left">
-              <span><span style="display:block;font-size:8px;color:#77909c;font-weight:900;letter-spacing:.08em">PRÉ-SINAL · PRÓXIMOS 30s</span><b style="font-size:16px;color:${forecastTone}">${forecastSignal}</b> <span style="font-size:9px;color:#8ea3ad">${n(Number(f.confidence)||0,0)}% força projetada</span></span>
-              <span data-sentinel-arrow style="font-size:14px;color:#78909f">${forecastOpen?'⌃':'⌄'}</span>
-            </button>
-            <div data-sentinel-section="forecast" style="display:${forecastOpen?'block':'none'};padding:0 9px 9px">
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                <div style="padding:7px;border-radius:8px;background:rgba(102,224,184,.07);border:1px solid rgba(102,224,184,.12)">
-                  <div style="font-size:8px;color:#7e9f95">CALL / COMPRA</div>
-                  <div style="font-size:17px;font-weight:950;color:#66e0b8">${n(callStrength,0)}%</div>
-                  <div style="font-size:8px;color:#78909f">${callGap<=0?'gatilho atingido':'faltam '+n(callGap,0)+' pts p/ '+n(trigger,0)+'%'}</div>
-                </div>
-                <div style="padding:7px;border-radius:8px;background:rgba(255,143,154,.07);border:1px solid rgba(255,143,154,.12)">
-                  <div style="font-size:8px;color:#a8878c">PUT / VENDA</div>
-                  <div style="font-size:17px;font-weight:950;color:#ff8f9a">${n(putStrength,0)}%</div>
-                  <div style="font-size:8px;color:#78909f">${putGap<=0?'gatilho atingido':'faltam '+n(putGap,0)+' pts p/ '+n(trigger,0)+'%'}</div>
-                </div>
+          <div style="margin-top:9px;padding:9px;border-radius:11px;background:rgba(8,18,24,.6);border:1px solid rgba(255,255,255,.07)">
+            <div style="font-size:9px;color:#7d949f;font-weight:900;letter-spacing:.08em">FORÇA EM TEMPO REAL</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:6px">
+              <div style="padding:8px;border-radius:9px;background:rgba(102,224,184,.065);border:1px solid rgba(102,224,184,.12)">
+                <div style="font-size:9px;color:#7e9f95;font-weight:800">CALL / COMPRA</div>
+                <div style="font-size:21px;font-weight:950;color:#66e0b8">${n(buyScore,0)}%</div>
               </div>
-              <div style="margin-top:6px;font-size:8px;color:#8298a3">Pré-sinal acompanha o impulso atual e a confluência; pode mudar antes dos 30s.</div>
+              <div style="padding:8px;border-radius:9px;background:rgba(255,143,154,.065);border:1px solid rgba(255,143,154,.12)">
+                <div style="font-size:9px;color:#a8878c;font-weight:800">PUT / VENDA</div>
+                <div style="font-size:21px;font-weight:950;color:#ff8f9a">${n(sellScore,0)}%</div>
+              </div>
             </div>
           </div>
 
-          <div style="margin-top:8px;padding:8px 9px;border-radius:10px;background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.065)">
-            <div style="font-size:10px"><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
-            <div style="font-size:9px;color:#9aadb6;margin-top:2px"><b>Saída:</b> ${esc(plan.exit||'Sem entrada')}</div>
+          <div style="margin-top:8px;border:1px solid rgba(242,202,104,.14);border-radius:11px;overflow:hidden;background:rgba(242,202,104,.035)">
+            <button data-sentinel-toggle="forecast" style="width:100%;border:0;background:transparent;color:#eef5f7;padding:9px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;text-align:left">
+              <span><span style="display:block;font-size:9px;color:#9b915f;font-weight:900;letter-spacing:.08em">PRÓXIMOS 30 SEGUNDOS</span><b style="font-size:20px;color:${forecastTone}">${forecastSignal}</b> <span style="font-size:11px;color:#aebbc1">${n(Number(f.confidence)||0,0)}%</span></span>
+              <span data-sentinel-arrow style="font-size:16px;color:#9b915f">${forecastOpen?'⌃':'⌄'}</span>
+            </button>
+            <div data-sentinel-section="forecast" style="display:${forecastOpen?'block':'none'};padding:0 10px 10px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+                <div style="padding:8px;border-radius:9px;background:rgba(102,224,184,.06)"><div style="font-size:9px;color:#7e9f95">CALL projetado</div><div style="font-size:18px;font-weight:950;color:#66e0b8">${n(callStrength,0)}%</div><div style="font-size:9px;color:#78909f">${callGap<=0?'gatilho atingido':'faltam '+n(callGap,0)+' pts'}</div></div>
+                <div style="padding:8px;border-radius:9px;background:rgba(255,143,154,.06)"><div style="font-size:9px;color:#a8878c">PUT projetado</div><div style="font-size:18px;font-weight:950;color:#ff8f9a">${n(putStrength,0)}%</div><div style="font-size:9px;color:#78909f">${putGap<=0?'gatilho atingido':'faltam '+n(putGap,0)+' pts'}</div></div>
+              </div>
+              <div style="margin-top:6px;font-size:9px;color:#8b9da6">Gatilho técnico atual: ${n(trigger,0)}%. O pré-sinal muda junto com o mercado.</div>
+            </div>
+          </div>
+
+          <div style="margin-top:8px;padding:8px 9px;border-radius:10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.065)">
+            <div style="font-size:11px"><b>Entrada:</b> ${esc(plan.entry||'Aguardar')}</div>
+            <div style="font-size:10px;color:#9aadb6;margin-top:3px"><b>Saída:</b> ${esc(plan.exit||'Sem entrada')}</div>
           </div>
 
           <div style="margin-top:7px;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden">
-            <button data-sentinel-toggle="details" style="width:100%;border:0;background:rgba(255,255,255,.025);color:#b9cad2;padding:7px 9px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:9px;font-weight:850">
+            <button data-sentinel-toggle="details" style="width:100%;border:0;background:rgba(255,255,255,.02);color:#c5d2d8;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;font-size:10px;font-weight:900">
               <span>DETALHES TÉCNICOS</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span>
             </button>
-            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:8px 9px">
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 7px;font-size:8px;color:#a9bcc5">
+            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:9px 10px">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px 8px;font-size:9px;color:#a9bcc5">
                 <div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div>
                 <div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div>
               </div>
-              <div style="margin-top:6px;font-size:8px;color:#8fa5b0"><b>Estrutura:</b> ${esc(m.structure?.label||'—')}</div>
-              <div style="margin-top:5px;font-size:8px;color:#8299a5">${reasons}</div>
+              <div style="margin-top:7px;font-size:9px;color:#8fa5b0"><b>Estrutura:</b> ${esc(m.structure?.label||'—')}</div>
+              <div style="margin-top:6px;font-size:9px;color:#8299a5">${reasons}</div>
             </div>
           </div>
-          <div style="margin-top:6px;font-size:7px;color:#5f7580;text-align:center">Força técnica, não probabilidade garantida. Conta real exige confirmação manual.</div>
+
+          <div style="margin-top:7px;border:1px solid rgba(255,255,255,.055);border-radius:9px;overflow:hidden">
+            <button data-sentinel-toggle="size" style="width:100%;border:0;background:transparent;color:#758c97;padding:6px 9px;display:flex;justify-content:space-between;cursor:pointer;font-size:9px">
+              <span>AJUSTES DO CARD</span><span data-sentinel-arrow>${sizeOpen?'⌃':'⌄'}</span>
+            </button>
+            <div data-sentinel-section="size" style="display:${sizeOpen?'block':'none'};padding:0 9px 8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:7px">
+                <span style="font-size:9px;color:#8399a5">Tamanho</span>
+                <div style="display:flex;gap:5px">
+                  <button data-sentinel-size="down" style="width:32px;height:26px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#d8e4ea;font-weight:900;cursor:pointer">−</button>
+                  <button data-sentinel-size="reset" style="width:48px;height:26px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#aebfc7;font-size:10px;cursor:pointer">${Math.round(currentScale*100)}%</button>
+                  <button data-sentinel-size="up" style="width:32px;height:26px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#d8e4ea;font-weight:900;cursor:pointer">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:7px;font-size:8px;color:#5f7580;text-align:center">Sinais são análise técnica, não garantia. Conta real exige confirmação manual.</div>
         `;
       },payload);
       return true
