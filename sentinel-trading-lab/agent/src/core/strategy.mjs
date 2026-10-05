@@ -62,6 +62,8 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  const nearSupport=near(last,sr.support,tol),nearResistance=near(last,sr.resistance,tol);
  const breakUp=Number.isFinite(sr.resistance)&&last>Number(sr.resistance)+tol*.10;
  const breakDown=Number.isFinite(sr.support)&&last<Number(sr.support)-tol*.10;
+ const supportReversalZone=nearSupport&&!breakDown;
+ const resistanceReversalZone=nearResistance&&!breakUp;
  const flowBuy=[micro.delta5>0,micro.delta15>0,micro.delta30>0].filter(Boolean).length;
  const flowSell=[micro.delta5<0,micro.delta15<0,micro.delta30<0].filter(Boolean).length;
 
@@ -100,8 +102,8 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  call+=Math.min(10,ctxCall);put+=Math.min(10,ctxPut);
 
  // Penalidades de reversão/entrada atrasada.
- const callReversalRisk=(nearResistance&&(microRsi!=null&&microRsi>=68))||flowSell>=2||rejectionDown;
- const putReversalRisk=(nearSupport&&(microRsi!=null&&microRsi<=32))||flowBuy>=2||rejectionUp;
+ const callReversalRisk=(resistanceReversalZone&&(microRsi!=null&&microRsi>=68))||flowSell>=2||rejectionDown;
+ const putReversalRisk=(supportReversalZone&&(microRsi!=null&&microRsi<=32))||flowBuy>=2||rejectionUp;
  if(callReversalRisk)call-=24;
  if(putReversalRisk)put-=24;
  if(micro.delta5<0)call-=10;if(micro.delta5>0)put-=10;
