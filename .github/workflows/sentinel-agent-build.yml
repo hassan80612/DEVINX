@@ -1,9 +1,9 @@
-# V11.8 validated source build
-name: Sentinel Windows Agent V11.8
+# V11.9 validated source build
+name: Sentinel Windows Agent V11.9
 
 on:
   push:
-    branches: [main]
+    branches: [main, sentinel-v119-reliable-panel]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sentinel-agent-main
+  group: sentinel-agent-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -36,18 +36,29 @@ jobs:
         run: |
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test sentinel-trading-lab/agent/test/signal-contract.test.mjs
 
-      - name: Build Agent V11.8 payload
+      - name: Build Agent V11.9 payload
         shell: bash
         run: |
           set -euo pipefail
           cd sentinel-trading-lab
           mkdir -p public/downloads
           rm -f public/downloads/agent_payload_v88.zip
-          (
-            cd agent
-            zip -qr ../public/downloads/agent_payload_v88.zip .               -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store'
-          )
+          python3 - <<'PYZIP'
+          from pathlib import Path
+          import zipfile
+          root=Path('agent')
+          with zipfile.ZipFile('public/downloads/agent_payload_v88.zip','w',compression=zipfile.ZIP_DEFLATED,compresslevel=9) as archive:
+              for path in sorted(root.rglob('*')):
+                  if not path.is_file(): continue
+                  name=path.relative_to(root).as_posix()
+                  if name.startswith(('node_modules/','worker/data/')) or name.endswith(('.log','.DS_Store')): continue
+                  info=zipfile.ZipInfo(name,(2026,1,1,0,0,0))
+                  info.compress_type=zipfile.ZIP_DEFLATED
+                  info.external_attr=0o100644 << 16
+                  archive.writestr(info,path.read_bytes(),compresslevel=9)
+          PYZIP
           unzip -l public/downloads/agent_payload_v88.zip | head -80
           test -f agent/worker/sentinel.ico
           cp agent/worker/sentinel.ico public/favicon.ico
@@ -74,8 +85,12 @@ jobs:
           cp sentinel-trading-lab/public/downloads/agent_payload_v88.zip "$tmpdir/"
           cp sentinel-trading-lab/public/favicon.ico "$tmpdir/favicon.ico"
 
-          git fetch origin main
-          git reset --hard origin/main
+          branch="${GITHUB_REF_NAME}"
+          git fetch origin "$branch"
+          if [ "$(git rev-parse "origin/$branch")" != "$GITHUB_SHA" ]; then
+            echo 'Source branch advanced; refusing to publish an older Agent.'
+            exit 1
+          fi
 
           cp "$tmpdir/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/agent_payload_v88.zip" sentinel-trading-lab/public/downloads/
@@ -85,8 +100,9 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/favicon.ico
           if git diff --cached --quiet; then
-            echo 'Agent 11.8 generated files already current.'
+            echo 'Agent 11.9 generated files already current.'
             exit 0
           fi
-          git commit -m 'build(sentinel): refresh Windows Agent V11.8'
-          git push origin HEAD:main
+          git commit -m 'build(sentinel): refresh Windows Agent V11.9'
+          git push origin "HEAD:$branch"
+

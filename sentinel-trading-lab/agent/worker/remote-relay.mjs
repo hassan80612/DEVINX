@@ -105,7 +105,7 @@ async function loadOrCreateIdentity(file){
 }
 
 export class SentinelRemoteRelay{
-  constructor({file=null,version='11.8.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
+  constructor({file=null,version='11.9.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
   async init(){
     await seedPersistentIdentity(this.file);
     this.identity=await loadOrCreateIdentity(this.file);
@@ -128,3 +128,4 @@ export class SentinelRemoteRelay{
   async poll(){try{const j=await this.rpc('sentinel_agent_poll',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken});return this._apply(j)}catch(e){this.info.lastError=String(e?.message||e);return null}}
   async ack(commandId,ok,result={}){try{const j=await this.rpc('sentinel_agent_ack',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken,p_command_id:commandId,p_ok:!!ok,p_result:result||{}});return this._apply(j)}catch(e){this.info.lastError=String(e?.message||e);return null}}
 }
+

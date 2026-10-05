@@ -43,7 +43,7 @@ if (-not (Get-Health)) { Start-Manager }
 
 $notify = New-Object System.Windows.Forms.NotifyIcon
 try { $notify.Icon = New-Object System.Drawing.Icon($iconPath) } catch { $notify.Icon = [System.Drawing.SystemIcons]::Application }
-$notify.Text = 'Sentinel Agent V11.8'
+$notify.Text = 'Sentinel Agent V11.9'
 $notify.Visible = $true
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -211,3 +211,4 @@ $notify.ShowBalloonTip(4500)
 $timer.Stop(); $notify.Visible = $false; $notify.Dispose()
 try { $mutex.ReleaseMutex() } catch {}
 $mutex.Dispose()
+

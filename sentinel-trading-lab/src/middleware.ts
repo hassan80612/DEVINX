@@ -21,6 +21,7 @@ export async function middleware(req:NextRequest){
   if(p.startsWith('/downloads/')||p==='/favicon.ico'||p.startsWith('/_next/'))return NextResponse.next();
   if(p==='/login'||p.startsWith('/api/auth/'))return NextResponse.next();
 
+  if(p.startsWith('/api/runtime/')||p==='/api/master'||p.startsWith('/api/devices'))return NextResponse.next();
   const token=req.cookies.get(SESSION_COOKIE)?.value||'';
   if(await valid(token))return NextResponse.next();
 
@@ -32,3 +33,4 @@ export async function middleware(req:NextRequest){
 }
 
 export const config={matcher:['/((?!_next/static|_next/image).*)']};
+

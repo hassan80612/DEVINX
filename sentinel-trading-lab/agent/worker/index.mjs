@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='11.8.0';
+const VERSION='11.9.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -25,7 +25,7 @@ const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter(
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 function chooseLive(){const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];for(const k of order){const b=brokers[k],m=driver.liveStatus?.(k);if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){return{k,m}}}return null}
-function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,expirationDurationMs:m.expirationDurationMs,expirationRaw:m.expirationRaw,expirationKind:m.expirationKind,expirationConfidence:m.expirationConfidence,expirationUpdatedAt:m.expirationUpdatedAt,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;return live}
+function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,expirationDurationMs:m.expirationDurationMs,expirationRaw:m.expirationRaw,expirationKind:m.expirationKind,expirationConfidence:m.expirationConfidence,expirationUpdatedAt:m.expirationUpdatedAt,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['real','demo'].includes(m.mode)&&runtime.settings.mode!==m.mode){runtime.settings.mode=m.mode;runtime.resetAnalysis('Conta ativa alterada; recalculando leitura.')}return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
@@ -133,9 +133,12 @@ function overlayAnalysis(view,asset,now=Date.now()){
   const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=850)return{analysis:cached.analysis,transient:true};
   return{analysis:current||{},transient:false}
 }
+let overlayTask=null,persistTask=null;
+let maintainTask=null;
+function maintainInBackground(){if(!activeProvider||!brokers[activeProvider]?.connected||maintainTask||Date.now()-lastBrokerMaintainAt<2500)return;const provider=activeProvider;lastBrokerMaintainAt=Date.now();maintainTask=driver.maintain?.(provider).catch(()=>{}).then(()=>brokers[provider].refreshFromLive?.()).finally(()=>{maintainTask=null})}
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   await enforceAccessLease();
-  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
+  maintainInBackground();
   syncRuntimeMarket();
   await runtime.tick(Date.now());
   if(activeProvider){
@@ -144,9 +147,9 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
     const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));
-    if(Date.now()-lastOverlayAt>=700){
+    if(!overlayTask&&Date.now()-lastOverlayAt>=700){
       lastOverlayAt=Date.now();
-    await driver.updateOverlay?.(activeProvider,{
+    overlayTask=driver.updateOverlay?.(activeProvider,{
       asset:currentAsset,
       strategy:view.settings?.strategy||'smart_confluence',
       strategy2:view.settings?.strategy2||'none',
@@ -180,11 +183,13 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       brokerMode:view.liveBroker?.mode||view.mode,
       mode:view.mode,
       state:view.state,
+      killSwitch:view.killSwitch,
+      masterFrozen:view.masterFrozen,
       agentVersion:VERSION
-    }).catch(()=>{});
+    }).catch(()=>{}).finally(()=>{overlayTask=null});
     }
   }
-  if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}
+  if(!persistTask&&Date.now()-lastPersistAt>=10000){lastPersistAt=Date.now();persistTask=saveState().finally(()=>{persistTask=null})}
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,400).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
@@ -270,6 +275,8 @@ async function withTimeout(promise,ms,label='operation_timeout'){
 let remoteBusy=false;
 async function remoteState(){
   const x=await status();
+  const compactMarket=m=>m?{...m,candles:m.candles?.slice(-1)||[],candleCount:m.candles?.length||0,quoteHistory:undefined}:null;
+  x.liveBroker=compactMarket(x.liveBroker);x.brokers=Object.fromEntries(Object.entries(x.brokers||{}).map(([k,b])=>[k,{...b,marketData:compactMarket(b.marketData)}]));x.recentAnalyses=x.recentAnalyses?.slice(0,3)||[];
   return {agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
 }
 async function remoteLoop(){
@@ -305,3 +312,4 @@ setInterval(remoteLoop,1500).unref();setTimeout(remoteLoop,350).unref();
 
 const server=http.createServer(async(req,res)=>{try{if(req.method==='OPTIONS'){res.writeHead(204,cors(req));return res.end()}const origin=String(req.headers.origin||'');if(origin&&!allowedOrigin(origin))return json(req,res,403,{ok:false,error:'origin_not_allowed'});const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);if(url.pathname==='/health')return json(req,res,200,{ok:true,service:'sentinel-worker',version:VERSION,runtimeKind:'persistent-worker',driverConfigured:driver.available,vaultConfigured:true,remoteRelay:{...remoteRelay.info},ts:new Date().toISOString()});if(url.pathname==='/remote-info')return json(req,res,200,{ok:true,...remoteRelay.info,version:VERSION});if(!authorized(req))return json(req,res,401,{ok:false,error:'unauthorized'});const payload=['POST','PATCH','PUT','DELETE'].includes(req.method||'')?await body(req):{};const addr=String(req.socket?.remoteAddress||'');const local=addr==='127.0.0.1'||addr==='::1'||addr==='::ffff:127.0.0.1';const data=await act(url.pathname,req.method||'GET',payload,{local});await saveState();return json(req,res,200,{ok:true,data})}catch(e){return json(req,res,Number(e?.status||400),{ok:false,error:String(e?.message||e)})}});
 server.listen(PORT,HOST,()=>console.log(`Sentinel worker v${VERSION} listening on http://${HOST}:${PORT}`));process.on('SIGTERM',async()=>{await saveState();server.close(()=>process.exit(0))});process.on('SIGINT',async()=>{await saveState();server.close(()=>process.exit(0))});
+

@@ -2,6 +2,7 @@ import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
 import net from 'node:net';
+import {parseBrokerExpiry} from '../src/core/expiry-parser.mjs';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 
 const PROVIDERS={
@@ -684,57 +685,35 @@ export class LocalPlaywrightDriver{
         const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|[+]/.test(desc(el)))||null;
         const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|[−-]/.test(desc(el)))||null;
         const expiryEls=[...document.querySelectorAll('input,button,[role=button],[role=spinbutton],[data-test],[data-testid],[class*="expir" i],[class*="duration" i],[class*="time" i]')].filter(visible);
-        const expiryHint=el=>{let out='',node=el;for(let i=0;i<3&&node;i++,node=node.parentElement)out+=' '+desc(node);return out.slice(0,900)};
+        const expiryHint=el=>{let out=desc(el),node=el.parentElement;for(let i=0;i<2&&node&&!['BODY','HTML'].includes(node.tagName);i++,node=node.parentElement){const text=String(node.textContent||'');if(text.length>200||node.childElementCount>6)break;out+=' '+desc(node)}return out.slice(0,900)};
         const rawValue=el=>String(el?.value??el?.getAttribute?.('aria-valuenow')??el?.getAttribute?.('data-value')??el?.textContent??'').trim();
-        const parseClock=(h,m,s=0)=>{const now=new Date(),target=new Date(now);target.setHours(h,m,s,0);if(target.getTime()<=now.getTime()-1500)target.setDate(target.getDate()+1);const delta=target.getTime()-now.getTime();return delta>=10000&&delta<=3600000?delta:null};
-        const parseExpiry=(raw,hint='')=>{
-          const t=String(raw||'').trim().toLowerCase().replace(/\s+/g,' ');if(!t)return null;
-          const strongDuration=/duration|duraç|duracao|prazo|tempo de opera|trade time/.test(hint);
-          const strongExpiry=/expiration|expiry|expiraç|expiracao|expira|vencimento/.test(hint);
-          let total=0,unit=false,m;
-          const hr=t.match(/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hora|horas)\b/);if(hr){total+=Number(hr[1].replace(',','.'))*3600000;unit=true}
-          const mn=t.match(/(\d+(?:[.,]\d+)?)\s*(?:m|min|mins|minuto|minutos)\b/);if(mn){total+=Number(mn[1].replace(',','.'))*60000;unit=true}
-          const sc=t.match(/(\d+(?:[.,]\d+)?)\s*(?:s|seg|segs|segundo|segundos)\b/);if(sc){total+=Number(sc[1].replace(',','.'))*1000;unit=true}
-          if(unit&&total>=10000&&total<=3600000)return{ms:Math.round(total),kind:'duration'};
-          m=t.match(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/);
-          if(m){
-            const a=Number(m[1]),b=Number(m[2]),cc=m[3]==null?null:Number(m[3]);
-            if(cc!=null){
-              if((strongExpiry&&!strongDuration&&a>=3)||a>2){const ms=parseClock(a,b,cc);if(ms!=null)return{ms,kind:'clock'}}
-              const ms=((a*60+b)*60+cc)*1000;if(ms>=10000&&ms<=3600000)return{ms,kind:'duration'}
-            }else{
-              const nowH=new Date().getHours();
-              if(strongExpiry&&!strongDuration&&(a===nowH||a===((nowH+1)%24)||a>15)){const ms=parseClock(a,b,0);if(ms!=null)return{ms,kind:'clock'}}
-              const ms=(a*60+b)*1000;if(ms>=10000&&ms<=3600000)return{ms,kind:'duration'}
-            }
-          }
-          m=t.match(/^\s*(\d{1,4})\s*$/);if(m&&strongDuration){const v=Number(m[1]);const ms=v<=30?v*1000:v<=60?v*1000:v*60000;if(ms>=10000&&ms<=3600000)return{ms,kind:'duration'}}
-          return null
-        };
         const expiryCandidates=expiryEls.map(el=>{
-          const hint=expiryHint(el),raw=rawValue(el);
+          const own=desc(el),hint=expiryHint(el),raw=rawValue(el);
+          if(/amount|investment|investimento|stake|chart|candle|timeframe/.test(own)&&!/expir|duration|duraç|duracao|prazo/.test(own))return null;
           if(!/expiration|expiry|expiraç|expiracao|expira|vencimento|duration|duraç|duracao|prazo|tempo de opera|trade time/.test(hint))return null;
           if(/chart|candle|interval|timeframe|gráfico|grafico/.test(hint)&&!/expiration|expiry|expiraç|expiracao|vencimento/.test(hint))return null;
-          const parsed=parseExpiry(raw,hint);if(!parsed)return null;
+          if(!raw||raw.length>80)return null;
           let score=0;if(/expiration|expiry|expiraç|expiracao|vencimento/.test(hint))score+=40;if(/duration|duraç|duracao|prazo|tempo de opera|trade time/.test(hint))score+=32;
           if(/data-test|data-testid/.test(hint))score+=5;if(el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')score+=4;
-          return{ms:parsed.ms,kind:parsed.kind,raw:raw.slice(0,80),hint:hint.slice(0,180),score}
+          return{raw:raw.slice(0,80),hint:hint.slice(0,900),score}
         }).filter(Boolean).sort((a,b)=>b.score-a.score);
-        const expiry=expiryCandidates[0]||null;
+
         return{
           buy:!!buy,sell:!!sell,amount:!!amount||!!(plus&&minus),amountStepper:!!(plus&&minus),
-          expirationDurationMs:expiry?.ms??null,expirationRaw:expiry?.raw||'',expirationKind:expiry?.kind||null,expirationConfidence:expiry?.score||0,
+          expiryCandidates,
           buyText:buy?desc(buy).slice(0,180):'',
           sellText:sell?desc(sell).slice(0,180):'',
           amountText:amount?desc(amount).slice(0,180):((plus&&minus)?'stepper +/-':''),
           buttonCount:all.length,amountCandidateCount:amountEls.length
         };
       });
+      const expiry=(ui.expiryCandidates||[]).map(c=>{const parsed=parseBrokerExpiry(c.raw,c.hint);return parsed?{...c,...parsed}:null}).filter(Boolean).sort((a,b)=>b.score-a.score)[0]||null;
+      ui.expirationDurationMs=expiry?.ms??null;ui.expirationRaw=expiry?.raw||null;ui.expirationKind=expiry?.kind||null;ui.expirationConfidence=expiry?.score||0;delete ui.expiryCandidates;
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
       if(Number.isFinite(Number(ui.expirationDurationMs))&&Number(ui.expirationDurationMs)>=10000){
         st.expirationDurationMs=Number(ui.expirationDurationMs);st.expirationRaw=String(ui.expirationRaw||'');st.expirationKind=ui.expirationKind||null;st.expirationConfidence=Number(ui.expirationConfidence||0);st.expirationUpdatedAt=Date.now();
-      }else if(st.expirationUpdatedAt&&Date.now()-Number(st.expirationUpdatedAt)>15000){
-        st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;
+      }else{
+        st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;st.expirationUpdatedAt=Date.now();
       }
       st.executionUi={...ui,assetMatch,uiSymbol:st.uiSymbol,marketSymbol:st.symbol,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence};
       st.executionReady=!!(ui.buy&&ui.sell&&ui.amount&&st.mode==='demo'&&assetMatch);
@@ -829,7 +808,7 @@ export class LocalPlaywrightDriver{
     }
     st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??(Number.isFinite(aid)?aid:null);
     st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;
-    st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;
+    st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;st.expirationUpdatedAt=null;
     st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;
     st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${next}`;
     try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source,assetChanged:true})).catch(()=>{})}catch{}
@@ -845,16 +824,16 @@ export class LocalPlaywrightDriver{
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
     }
-    if(!st.lastFullDomAt||now-st.lastFullDomAt>6000){
+    if(!st.lastFullDomAt||now-st.lastFullDomAt>15000){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }
-    if(!st.lastRequestAt||now-st.lastRequestAt>9000||st.balance==null)await this.requestBaseData(provider).catch(()=>{});
+    if(!st.lastRequestAt||now-st.lastRequestAt>20000||st.balance==null)await this.requestBaseData(provider).catch(()=>{});
     const actualAge=latestCandleAgeMs(st);const stale=actualAge==null||actualAge>Math.max(90000,Number(st.candleSize||60)*2000);
-    if(st.candles.length<50||stale||!st.lastCandleRequest||now-Number(st.lastCandleRequest||0)>9000)await this.requestMarketData(provider,{force:st.candles.length<50||stale}).catch(()=>{});
+    if(st.candles.length<50||stale||!st.lastCandleRequest)await this.requestMarketData(provider,{force:st.candles.length<50||stale}).catch(()=>{});
     if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=`${st.symbol||'Ativo'} com candles atuais`}
     else if(st.marketStatus!=='recovering'&&st.marketStatus!=='closed'){st.marketStatus='stale';st.marketReason='Feed conectado, mas sem candle recente'}
-    if(!st.lastExecutionScanAt||now-st.lastExecutionScanAt>5000){
+    if(!st.lastExecutionScanAt||now-st.lastExecutionScanAt>2200){
       st.lastExecutionScanAt=now;
       await this.scanExecutionUi(provider).catch(()=>{});
     }
@@ -873,7 +852,7 @@ export class LocalPlaywrightDriver{
       const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
         st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
-        st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
+        st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;st.expirationUpdatedAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
       }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
     }else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
@@ -919,15 +898,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='11.8'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='11.9'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.8';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.9';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.8';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.9';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -936,7 +915,7 @@ export class LocalPlaywrightDriver{
             background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',
             border:'1px solid rgba(111,174,192,.24)',borderRadius:'18px',
             boxShadow:'0 24px 72px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.035)',
-            backdropFilter:'blur(18px)',
+            backdropFilter:'none',
             fontFamily:'"Segoe UI Variable Display","Aptos Display","Inter","Segoe UI",Arial,sans-serif',
             fontSize:'12px',lineHeight:'1.3',padding:'14px',pointerEvents:'auto',userSelect:'none',
             scrollbarWidth:'thin',scrollbarColor:'#385461 transparent'
@@ -997,7 +976,7 @@ export class LocalPlaywrightDriver{
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
         const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
         const liveLabel=analysisStale?'SINCRONIZANDO FEED':analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
-        const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
+        const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
         const planner=d.entryPlanner?.horizons||{};
         const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
@@ -1052,7 +1031,7 @@ export class LocalPlaywrightDriver{
           if(!card.active)return '<div style="padding:9px 10px;border-radius:11px;background:'+panelBg+';border:1px dashed '+panelBorder+';min-width:0"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:8px;font-size:10px;font-weight:850;color:'+muted+'">Não selecionada</div><div style="margin-top:5px;font-size:8px;color:'+subtle+'">Não participa da confluência.</div></div>';
           const sSide=String(card.side||'NEUTRO').toUpperCase(),sTone=sSide==='CALL'?callTone:sSide==='PUT'?putTone:warnTone;
           const why=(card.reasons||[]).slice(0,2).map(x=>esc(x)).join(' · ');
-          return '<div style="padding:9px 10px;border-radius:11px;background:'+panelBg+';border:1px solid '+panelBorder+';min-width:0"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:3px;font-size:10px;font-weight:950;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(card.label||'')+'">'+esc(card.label||'—')+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;gap:6px"><b style="font-size:14px;color:'+sTone+'">'+sSide+'</b><span style="font-size:8px;color:'+subtle+'">análise própria</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(card.callPct,0)+'%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(card.putPct,0)+'%</b></div></div><div style="margin-top:6px;font-size:7.5px;line-height:1.3;color:'+muted+'">'+(why||'Sem gatilho técnico forte neste ciclo.')+'</div></div>';
+          return '<div style="padding:9px 10px;border-radius:11px;background:'+panelBg+';border:1px solid '+panelBorder+';min-width:0"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:3px;font-size:10px;font-weight:950;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(card.label||'')+'">'+esc(card.label||'—')+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;gap:6px"><b style="font-size:14px;color:'+sTone+'">'+sSide+'</b><span style="font-size:8px;color:'+subtle+'">pontuação técnica</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(card.callPct,0)+' pts</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(card.putPct,0)+' pts</b></div></div><div style="margin-top:6px;font-size:7.5px;line-height:1.3;color:'+muted+'">'+(why||'Sem gatilho técnico forte neste ciclo.')+'</div></div>';
         }).join('');
         const strategyFinalSide=String(strategyConfluence.side||'AGUARDAR').toUpperCase();
         const strategyFinalTone=strategyFinalSide==='CALL'?callTone:strategyFinalSide==='PUT'?putTone:warnTone;
@@ -1070,17 +1049,15 @@ export class LocalPlaywrightDriver{
         const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
         const operationalSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():generalSide;
         const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
-        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&liveNow&&analysisFresh;
+        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&liveNow&&analysisFresh&&!analysisTransient;
         const operationalPrepare=operationalState==='PREPARAR'&&['CALL','PUT'].includes(operationalSide)&&liveNow&&analysisFresh;
-        const operationalDisplay=operationalReady?operationalSide:operationalPrepare?'PREPARAR '+operationalSide:['AJUSTAR PRAZO','VERIFICAR PRAZO'].includes(operationalState)?operationalState:'AGUARDAR';
+        const operationalDisplay=runtime!=='running'?runtimeLabel:!liveNow||!analysisFresh?'SINCRONIZANDO':operationalReady?operationalSide:operationalPrepare?'PREPARAR '+operationalSide:['AJUSTAR PRAZO','VERIFICAR PRAZO'].includes(operationalState)?operationalState:'AGUARDAR';
         const operationalTime=operationalReady&&Number.isFinite(Number(operational.entryAt))?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
-        const operationalTrigger=Number.isFinite(Number(operational.trigger))?Number(operational.trigger):null;
-        const operationalInvalidation=Number.isFinite(Number(operational.invalidation))?Number(operational.invalidation):null;
+        const operationalTrigger=operational.trigger!=null&&Number.isFinite(Number(operational.trigger))?Number(operational.trigger):null;
+        const operationalInvalidation=operational.invalidation!=null&&Number.isFinite(Number(operational.invalidation))?Number(operational.invalidation):null;
         const operationalReason=String(operational.reason||'Aguardando consenso suficiente.');
-        const operationalValidation=operational.validation||{};
-        const operationalSamples=Math.max(0,Number(operationalValidation.samples||0)),operationalWinRate=Number(operationalValidation.winRate||0),operationalSmoothedWinRate=Number(operationalValidation.smoothedWinRate||0);
-        const operationalTechnicalConfidence=Number.isFinite(Number(operational.technicalConfidence))?Math.max(0,Math.min(100,Number(operational.technicalConfidence))):Math.max(0,Math.min(100,Number(generalStrength||0)));
-        const expiryInfo=operational.expiration||{},brokerExpiryMs=Number.isFinite(Number(expiryInfo.brokerMs))?Number(expiryInfo.brokerMs):Number.isFinite(Number(d.brokerExpirationDurationMs))?Number(d.brokerExpirationDurationMs):null;
+        const operationalTechnicalConfidence=operational.technicalConfidence!=null&&Number.isFinite(Number(operational.technicalConfidence))?Math.max(0,Math.min(100,Number(operational.technicalConfidence))):Math.max(0,Math.min(100,Number(operational.strength??generalStrength??0)));
+        const expiryInfo=operational.expiration||{},brokerExpiryMs=expiryInfo.brokerMs!=null&&Number.isFinite(Number(expiryInfo.brokerMs))?Number(expiryInfo.brokerMs):d.brokerExpirationDurationMs!=null&&Number.isFinite(Number(d.brokerExpirationDurationMs))?Number(d.brokerExpirationDurationMs):null;
         const expiryDetected=expiryInfo.detected===true,expiryMatch=expiryInfo.match===true;
         const expiryLabel=!expiryDetected?'NÃO VERIFICADA':expiryMatch?'CONFIRMADA':'DIVERGENTE';
         const expiryTone=expiryMatch?callTone:expiryDetected?putTone:warnTone;
@@ -1109,19 +1086,21 @@ export class LocalPlaywrightDriver{
             const a=ev.target?.closest?.('[data-sentinel-action]');
             if(a){ev.preventDefault();ev.stopPropagation();run({action:a.getAttribute('data-sentinel-action')});return}
             const t=ev.target?.closest?.('[data-sentinel-toggle]');
-            if(t){ev.preventDefault();const key=t.getAttribute('data-sentinel-toggle'),box=el.querySelector('[data-sentinel-section="'+key+'"]'),open=box?.style.display==='none';if(box)box.style.display=open?'block':'none';const arrow=t.querySelector('[data-sentinel-arrow]');if(arrow)arrow.textContent=open?'⌃':'⌄';try{if(key==='details')localStorage.setItem('sentinel-v101-details',open?'1':'0')}catch{}}
+            if(t){ev.preventDefault();const key=t.getAttribute('data-sentinel-toggle'),box=el.querySelector('[data-sentinel-section="'+key+'"]'),open=box?.style.display==='none';if(box)box.style.display=open?'block':'none';const arrow=t.querySelector('[data-sentinel-arrow]');if(arrow)arrow.textContent=open?'⌃':'⌄';try{if(key==='analysis'){el.dataset.analysisOpen=open?'1':'0';queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData))}if(key==='details')localStorage.setItem('sentinel-v101-details',open?'1':'0')}catch{}}
           });
         }
 
         const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select')))return;
 
         
+        const renderKey=JSON.stringify(d)+'|'+el.dataset.plannerHorizon+'|'+el.dataset.themePreference+'|'+el.dataset.analysisOpen;
+        if(el.__sentinelRenderKey===renderKey)return;el.__sentinelRenderKey=renderKey;
         el.innerHTML=`
           <div data-sentinel-drag style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;padding:2px 2px 10px;border-bottom:1px solid ${panelBorder}">
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.8.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.9.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1134,6 +1113,19 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
 
+          <section data-sentinel-role="main-signal" style="margin-top:10px;padding:16px;border-radius:14px;background:${panelBg};border:2px solid ${operationalReady?operationalTone:panelBorder}">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:12px;color:${ink}">SINAL OPERACIONAL</b><span style="font-size:11px;color:${muted}">${durationText} · ${esc(d.asset||'—')}</span></div>
+            <div style="font-size:30px;font-weight:950;margin-top:7px;color:${operationalReady?operationalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
+            <p style="margin:6px 0;font-size:12px;line-height:1.45;color:${ink}">${runtime!=='running'?'Inicie o bot para acompanhar a análise.':!analysisFresh||!liveNow?'Aguardando dados atuais do mesmo ativo.':esc(operationalReason)}</p>
+            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;color:${muted};font-size:12px"><span>Confiança técnica <b style="color:${goldSoft}">${analysisFresh?n(operationalTechnicalConfidence,0):'—'}/100</b></span><span>Filtro <b style="color:${ink}">${n(minConfidence,0)}/100</b></span></div>
+            <div style="margin-top:8px;font-size:11px;color:${muted}">Prazo da corretora: <b style="color:${expiryTone}">${expiryDurationLabel} · ${expiryLabel}</b>${operationalTrigger!=null&&operationalTrigger>0?' · gatilho '+price(operationalTrigger):''}</div>
+            <div style="margin-top:5px;font-size:10px;color:${subtle}">Pontos de força técnica. O sinal é condicional ao preço e ao prazo.</div>
+          </section>
+          <div style="display:flex;gap:7px;margin-top:9px"><button data-sentinel-action="start" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${callTone};font-weight:850">Iniciar</button><button data-sentinel-action="pause" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${gold};font-weight:850">Pausar</button><button data-sentinel-action="stop" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${putTone};font-weight:850">Parar</button></div>
+          <div data-sentinel-control-msg style="font-size:11px;color:${muted};margin-top:4px"></div>
+          <button data-sentinel-toggle="analysis" style="width:100%;padding:11px;margin-top:8px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${ink};font-size:12px;font-weight:850">Detalhes das análises <span data-sentinel-arrow>${el.dataset.analysisOpen==='1'?'⌃':'⌄'}</span></button>
+          <div data-sentinel-section="analysis" style="display:${el.dataset.analysisOpen==='1'?'block':'none'}">
+${el.dataset.analysisOpen==='1'?`
           <div data-sentinel-role="market-reading" style="margin-top:10px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.72)':'rgba(255,255,255,.024)'};border:1px solid ${panelBorder}">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px">
               <div style="font-size:9px;font-weight:950;letter-spacing:.055em;color:${ink}">LEITURA RÁPIDA DO MERCADO</div>
@@ -1142,49 +1134,39 @@ export class LocalPlaywrightDriver{
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px">
             <div data-sentinel-role="confluence" style="padding:9px 9px;border-radius:12px;background:${panelBg};border:1px solid ${panelBorder};min-width:0">
               <div style="font-size:8px;font-weight:950;letter-spacing:.055em;color:${ink}">CONFLUÊNCIA TÉCNICA</div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:5px;margin-top:6px"><b style="font-size:14px;color:${finalTone}">${finalSide}</b><span style="font-size:7px;color:${subtle}">força <b style="font-size:10px;color:${gold}">${n(finalStrength,0)}%</b></span></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(finalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(finalPut,0)}%</b></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:5px;margin-top:6px"><b style="font-size:14px;color:${finalTone}">${finalSide}</b><span style="font-size:7px;color:${subtle}">força <b style="font-size:10px;color:${gold}">${n(finalStrength,0)} pts</b></span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(finalCall,0)} pts</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(finalPut,0)} pts</b></div></div>
             </div>
             <div data-sentinel-role="entry-status" style="padding:9px 9px;border-radius:12px;background:${panelBg};border:1px solid ${entryReady?tone:panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;gap:5px"><span style="font-size:8px;font-weight:950;color:${ink}">PRONTIDÃO DE ENTRADA</span><span style="font-size:7px;font-weight:900;color:${entryReady?callTone:warnTone}">${esc(gateReason)}</span></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(statusCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(statusPut,0)}%</b></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(statusCall,0)} pts</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(statusPut,0)} pts</b></div></div>
               <div style="margin-top:5px;font-size:8px;font-weight:950;color:${entryReady?tone:warnTone};text-align:center">${entryReady?signal:'AGUARDAR'}</div>
             </div>
             <div data-sentinel-role="reversal" style="padding:9px 9px;border-radius:12px;background:${panelBg};border:1px solid ${panelBorder};min-width:0">
               <div style="font-size:8px;font-weight:950;letter-spacing:.055em;color:${ink}">VIRADA / REVERSÃO</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(reversalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(reversalPut,0)}%</b></div></div>
-              <div style="margin-top:5px;text-align:center;font-size:8px;font-weight:950;color:${reversalSide==='CALL'?callTone:reversalSide==='PUT'?putTone:warnTone}">${reversalStrength==null?'AGUARDAR':reversalSide+' '+n(reversalStrength,0)+'%'}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(reversalCall,0)} pts</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(reversalPut,0)} pts</b></div></div>
+              <div style="margin-top:5px;text-align:center;font-size:8px;font-weight:950;color:${reversalSide==='CALL'?callTone:reversalSide==='PUT'?putTone:warnTone}">${reversalStrength==null?'AGUARDAR':reversalSide+' '+n(reversalStrength,0)+' pts'}</div>
             </div>
           </div>
 
           </div>
 
           <div style="margin-top:8px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.72)':'rgba(255,255,255,.024)'};border:1px solid ${panelBorder}">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px"><div style="font-size:9px;font-weight:950;letter-spacing:.055em;color:${ink}">ANÁLISE DAS ESTRATÉGIAS</div><div style="font-size:7.5px;color:${subtle}">independentes da força da vela acima</div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px"><div style="font-size:9px;font-weight:950;letter-spacing:.055em;color:${ink}">ANÁLISE DAS ESTRATÉGIAS</div><div style="font-size:7.5px;color:${subtle}">leituras técnicas · dados compartilhados</div></div>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">${strategyCardsHtml}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">
               <div style="padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${panelBorder}">
                 <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONFLUÊNCIA DAS ESTRATÉGIAS</span><span style="font-size:7px;color:${subtle}">${esc(strategyAgreement)}</span></div>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${strategyFinalTone}">${strategyFinalSide}</b><span style="font-size:8px;color:${muted}">${strategyActiveCount}/3 ativas</span></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(strategyCallPct,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(strategyPutPct,0)}%</b></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(strategyCallPct,0)} pts</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(strategyPutPct,0)} pts</b></div></div>
               </div>
               <div style="padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${generalState==='ALINHADO'?generalTone:panelBorder}">
                 <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONSENSO GERAL</span><span style="font-size:7px;color:${subtle}">40% rápida · 60% estratégias</span></div>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${generalTone}">${generalSide}</b><span style="font-size:8px;font-weight:850;color:${generalState==='DIVERGÊNCIA'?putTone:generalState==='ALINHADO'?callTone:warnTone}">${generalState}</span></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(generalCall,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(generalPut,0)}%</b></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(generalCall,0)} pts</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(generalPut,0)} pts</b></div></div>
               </div>
             </div>
-            <div style="margin-top:7px;padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${operationalReady?operationalTone:operationalPrepare?gold:panelBorder}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div style="font-size:8px;font-weight:950;color:${ink}">SINAL OPERACIONAL</div><div style="font-size:7px;color:${subtle}">consenso + setup fixo + timing + prazo</div></div>
-              <div style="margin-top:5px;font-size:17px;font-weight:950;color:${operationalReady?operationalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
-              <div style="margin-top:4px;font-size:8px;color:${muted}">${operationalReady?'ENTRADA AGORA · '+operationalTime:esc(operationalReason)}</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px">
-                <div style="padding:6px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid ${panelBorder}"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">CONFIANÇA TÉCNICA</span><b style="display:block;margin-top:2px;font-size:13px;color:${goldSoft}">${n(operationalTechnicalConfidence,0)}/100</b></div>
-                <div style="padding:6px;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid ${panelBorder}"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">ACERTO HISTÓRICO</span><b style="display:block;margin-top:2px;font-size:13px;color:${operationalSamples>=30?(operationalSmoothedWinRate>=60?callTone:putTone):muted}">${operationalSamples? n(operationalWinRate,1)+'%':'—'}</b><span style="display:block;font-size:6.8px;color:${subtle};margin-top:1px">${operationalSamples} sinais válidos</span></div>
-              </div>
-              <div style="margin-top:5px;padding-top:5px;border-top:1px solid ${panelBorder};font-size:8px;color:${muted}">Sentinel: <b style="color:${ink}">${durationText}</b> · Corretora: <b style="color:${expiryTone}">${expiryDurationLabel} · ${expiryLabel}</b>${operationalTrigger!=null?' · gatilho fixo '+price(operationalTrigger):''}${operationalInvalidation!=null?' · invalida '+price(operationalInvalidation):''}</div>
-              <div style="margin-top:3px;font-size:7.5px;color:${subtle}">${operationalSamples>=30?'Histórico desta combinação usa apenas vencimentos com preço medido próximo do instante exato.':operationalSamples>0?'Histórico em formação: '+operationalSamples+'/30 sinais mínimos.':'Histórico desta combinação começando agora; confiança técnica não é probabilidade de acerto.'}</div>
-            </div>
+
           </div>
           <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1196,6 +1178,8 @@ export class LocalPlaywrightDriver{
             ${planHtml}
           </div>
 
+`:''}
+          </div>
           <div style="margin-top:9px;padding:9px 10px;border-radius:12px;background:${uiTheme==='light'?'rgba(255,255,255,.72)':'rgba(255,255,255,.024)'};border:1px solid ${panelBorder}">
             <div style="font-size:10px;font-weight:900;color:${ink};margin-bottom:7px">Configuração</div>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
@@ -1269,3 +1253,4 @@ export class LocalPlaywrightDriver{
     throw new Error(`unsupported_driver_action:${provider}:${method}:${action}`);
   }
 }
+

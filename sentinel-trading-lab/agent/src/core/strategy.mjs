@@ -190,14 +190,14 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  }
 }
 
-export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,freshnessMs=5000,quoteTs=Date.now(),now=Date.now()}){
+export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,freshnessMs=5000,quoteTs=Date.now(),now=Date.now(),preparedMetrics=null}){
  if(!Array.isArray(candles)||candles.length<35)return{side:SignalSide.WAIT,confidence:0,reasons:['dados insuficientes: mínimo 35 candles'],metrics:{sourceCandles:candles?.length||0}};
  if(now-quoteTs>freshnessMs)return{side:SignalSide.WAIT,confidence:0,reasons:['feed atrasado'],metrics:{sourceCandles:candles.length}};
 
  const closes=candles.map(c=>Number(c.close)),prior=candles.slice(0,-1),candleLast=closes.at(-1),vol=atr(candles,14)||Math.abs(candleLast)*.001;
- const baseSeconds=candleSeconds(candles),micro=liveMicro(quoteHistory,candleLast,vol,baseSeconds,now),last=Number(micro.last||candleLast);
+ const baseSeconds=preparedMetrics?.baseCandleSeconds||candleSeconds(candles),micro=preparedMetrics?.micro||liveMicro(quoteHistory,candleLast,vol,baseSeconds,now),last=Number(micro.last||candleLast);
  const higher=aggregateCandles(candles,5),higherCloses=higher.map(c=>Number(c.close));
- const m={
+ const m=preparedMetrics?{...preparedMetrics}:{
    fast:ema(closes,9),slow:ema(closes,21),ema50:ema(closes,50),ema200:ema(closes,200),rsi:rsi(closes,14),atr:vol,bb:bollinger(closes,20,2),momentum:momentum(closes,10),
    sr:supportResistance(prior,50),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),trendlines:trendLines(candles),fib:fibonacci(candles,80),patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
    higherTF:{fast:ema(higherCloses,9),slow:ema(higherCloses,21),structure:marketStructure(higher),candles:higher.length},sourceCandles:candles.length,baseCandleSeconds:baseSeconds,micro
@@ -314,7 +314,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const box=strategy==='smart_confluence'?scoreSmart():(scorers[strategy]?.()||scoreSmart());
 
  const horizon=Math.max(30000,Number(durationMs||60000));
- const short=shortHorizonModel({
+ const short=preparedMetrics?.shortModel||shortHorizonModel({
    quoteHistory,micro,last,vol,minConfidence,now,
    context:{trendUp,trendDn,structure:m.structure.bias,higherUp,higherDn,aboveEma50:m.ema50!=null&&last>m.ema50,belowEma50:m.ema50!=null&&last<m.ema50}
  });
@@ -353,8 +353,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 
  const edge=buyEffective-sellEffective,confidence=Math.max(buyEffective,sellEffective);
  const previewThreshold=Math.max(55,Number(minConfidence||74)-10);
- const projectedBuy=horizon<=60000?buyEffective:clamp(Math.round(buyEffective*.72+Math.max(0,micro.pulse)*1.1),0,100);
- const projectedSell=horizon<=60000?sellEffective:clamp(Math.round(sellEffective*.72+Math.max(0,-micro.pulse)*1.1),0,100);
+ const projectedBuy=short.ready?clamp(Math.round(clamp(rawBuy,0,100)*.65+Number(short.callScore||0)*.35),0,100):0;
+ const projectedSell=short.ready?clamp(Math.round(clamp(rawSell,0,100)*.65+Number(short.putScore||0)*.35),0,100):0;
  let forecastSide=SignalSide.WAIT;
  if(micro.ready&&Math.max(projectedBuy,projectedSell)>=previewThreshold&&Math.abs(projectedBuy-projectedSell)>=12){
    if(projectedBuy>projectedSell&&!short.callReversalRisk)forecastSide=SignalSide.BUY;
@@ -413,9 +413,10 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 
  return{
    side,confidence,reasons:box.reasons.slice(0,14),
-   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:projectedBuy,putStrength:projectedSell,trigger:Number(minConfidence||74),callGap,putGap,microPulse:micro.pulse,microReady:micro.ready},
+   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,basis:'cenário técnico condicional; pontos, não probabilidade',callStrength:projectedBuy,putStrength:projectedSell,trigger:Number(minConfidence||74),callGap,putGap,microPulse:micro.pulse,microReady:micro.ready},
    finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:horizon<=60000?'contexto técnico 60s/5m + microestrutura curta':'contexto técnico + microfluxo'},
    entryPlanner:{defaultHorizonSeconds:30,horizons:planner},
    metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy}
  }
 }
+

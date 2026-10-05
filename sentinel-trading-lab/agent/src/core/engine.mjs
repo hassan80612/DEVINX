@@ -5,7 +5,7 @@ import {scheduleGate} from './scheduler.mjs';
 export async function engineCycle({feed,broker,settings,state,balanceOverride=null,signalGate=null,now=Date.now()}){
   const cycleStarted=Date.now();
   const gate=scheduleGate(settings.schedule,new Date(now));
-  if(!gate.allowed)return{action:'WAIT',reasons:[gate.reason],latency:{decisionMs:Date.now()-cycleStarted}};
+
   const snap=feed.snapshot();
   let analysis=analyzeMarket({
     candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:settings.strategy,minConfidence:settings.risk.minConfidence,
@@ -14,8 +14,9 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
   if(signalGate){
     const gated=await signalGate({analysis,snap,settings,now});
     if(gated?.analysis)analysis=gated.analysis;
-    if(gated?.allowed===false)return{action:'WAIT',analysis,reasons:[...(gated.reasons||[]),'sinal bloqueado até validação estatística suficiente'],latency:{feedMs:Math.max(0,now-Number(snap.quoteTs||now)),decisionMs:Date.now()-cycleStarted}}
+    if(gated?.allowed===false)return{action:'WAIT',analysis,reasons:[...(gated.reasons||[]),'entrada aguardando confirmação técnica'],latency:{feedMs:Math.max(0,now-Number(snap.quoteTs||now)),decisionMs:Date.now()-cycleStarted}}
   }
+  if(!gate.allowed)return{action:'WAIT',analysis,reasons:[gate.reason],latency:{decisionMs:Date.now()-cycleStarted}};
   const feedLatencyMs=Math.max(0,now-Number(snap.quoteTs||now));
   const risk=evaluateRisk({...state,now,mode:settings.mode,signalSide:analysis.side,confidence:analysis.confidence,
     minConfidence:settings.risk.minConfidence,maxFeedLatencyMs:settings.risk.maxFeedLatencyMs,
@@ -49,3 +50,4 @@ export async function executePreparedOrder({proposal,broker,settings,state,now=D
   const order=await broker.placeOrder({...proposal,humanConfirmed:true});
   return{action:settings.mode==='real'?'REAL_ORDER':'DEMO_ORDER',order,executionMs:Date.now()-started};
 }
+
