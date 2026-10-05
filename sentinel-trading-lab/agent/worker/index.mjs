@@ -125,6 +125,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       nextEval:next,
       realtime:true,
       liveAgeMs:view.liveBroker?.lastQuoteAt?Math.max(0,Date.now()-Number(view.liveBroker.lastQuoteAt)):null,
+      analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
       durationMs:view.settings?.orderDurationMs||60000,
       intervalMs:view.settings?.schedule?.intervalMs||1000,
       brokerMode:view.liveBroker?.mode||view.mode,

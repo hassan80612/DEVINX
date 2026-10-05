@@ -225,6 +225,18 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const reversalMode=strategy==='mean_reversion'||strategy==='support_resistance';
  const planner=Object.fromEntries(plannerHorizons.map(seconds=>{
    const scale=Math.sqrt(Math.max(.5,seconds/60)),expectedMove=Math.max(safeVol*.35,safeVol*scale),triggerBuffer=Math.max(safeVol*.08,expectedMove*.24);
+   const barsBack=Math.max(2,Math.ceil(seconds/baseSeconds));
+   const enoughHistory=closes.length>=barsBack*2+1;
+   const recent=seconds<=60?micro[seconds===30?'delta30':'delta60']:enoughHistory?last-closes.at(-1-barsBack):0;
+   const previous=enoughHistory?closes.at(-1-barsBack)-closes.at(-1-barsBack*2):0;
+   const enoughFlow=seconds>60||micro.ready&&(seconds===30?micro.spanMs>=30000:micro.spanMs>=60000);
+   const material=Math.max(safeVol*.12*scale,Math.abs(last)*.000005);
+   const up=recent>material,down=recent< -material;
+   const aligned=seconds<=60?(up&&micro.pulse>=4||down&&micro.pulse<=-4):(up&&previous>0||down&&previous<0);
+   const contextUp=seconds<=60?!short.callReversalRisk:trendUp||higherUp;
+   const contextDown=seconds<=60?!short.putReversalRisk:trendDn||higherDn;
+   const outlookReady=enoughHistory&&enoughFlow&&(seconds>60||short.ready);
+   const bias=outlookReady&&aligned&&up&&contextUp?'CALL':outlookReady&&aligned&&down&&contextDown?'PUT':'NEUTRO';
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
    if(reversalMode){
      const lower=nearestLower??(last-expectedMove),upper=nearestUpper??(last+expectedMove);
@@ -237,11 +249,10 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      callInvalidation=Math.max(last-triggerBuffer*.50,nearestLower??(last-triggerBuffer*.50));putInvalidation=Math.min(last+triggerBuffer*.50,nearestUpper??(last+triggerBuffer*.50));
      callRule='CALL somente após romper e sustentar acima do gatilho';putRule='PUT somente após romper e sustentar abaixo do gatilho'
    }
-   const bias=projectedBuy-projectedSell>=12?'CALL':projectedSell-projectedBuy>=12?'PUT':'NEUTRO';
-   return[String(seconds),{horizonSeconds:seconds,currentPrice:last,expectedMove,expectedLow:last-expectedMove,expectedHigh:last+expectedMove,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,bias,callStrength:projectedBuy,putStrength:projectedSell,basis:reversalMode?'reação em suporte/resistência':'rompimento + confirmação',automaticExecution:false}]
+   return[String(seconds),{horizonSeconds:seconds,currentPrice:last,expectedMove,expectedLow:last-expectedMove,expectedHigh:last+expectedMove,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,bias,outlookReady,observedMove:recent,windowSeconds:barsBack*baseSeconds,basis:reversalMode?'reação em suporte/resistência':'rompimento + confirmação',automaticExecution:false}]
  }));
 
- if(side===SignalSide.WAIT)box.reasons.push(`entrada aguardando: CALL ${buyEffective}% · PUT ${sellEffective}% · filtro ${Number(minConfidence||74)}%`);
+ if(side===SignalSide.WAIT)box.reasons.push(`entrada aguardando: CALL ${buyEffective} pts · PUT ${sellEffective} pts · filtro ${Number(minConfidence||74)} pts`);
  if(horizon<=60000&&short.ready){
    if(short.callReversalRisk)box.reasons.push('CALL bloqueado por risco de reversão');
    if(short.putReversalRisk)box.reasons.push('PUT bloqueado por risco de reversão');
