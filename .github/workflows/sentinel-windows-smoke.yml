@@ -287,11 +287,13 @@ jobs:
           if(viewport.resize!=='both')throw new Error('card_not_resizable:'+viewport.resize);
           if(!cardRect||cardRect.width<380||cardRect.x<0||cardRect.y<0||cardRect.x+cardRect.width>viewport.w+1||cardRect.y+Math.min(cardRect.height,viewport.h)>viewport.h+1)throw new Error('v105_card_outside_viewport:'+JSON.stringify({cardRect,viewport}));
           console.log('V10.5 PREMIUM RESIZABLE CARD: PASS',JSON.stringify({cardRect,viewport}));
-          const confBox=await testPage.getByText('Confluência final',{exact:true}).boundingBox();
-          const statusBox=await testPage.getByText('Status da entrada',{exact:true}).boundingBox();
-          const forceBox=await testPage.getByText('Força técnica em tempo real',{exact:true}).boundingBox();
-          const botBox=await testPage.getByText('Controle do bot',{exact:true}).boundingBox();
-          const hierarchy={confX:confBox?.x,statusX:statusBox?.x,forceY:forceBox?.y,botY:botBox?.y};
+          const hierarchy=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{
+            const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+            const find=t=>{const node=[...el.querySelectorAll('*')].find(x=>norm(x.textContent)===t);if(!node)return null;const r=node.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}};
+            const confBox=find('CONFLUENCIA FINAL'),statusBox=find('STATUS DA ENTRADA'),forceBox=find('FORCA TECNICA EM TEMPO REAL'),botBox=find('CONTROLE DO BOT');
+            return{confBox,statusBox,forceBox,botBox,confX:confBox?.x,statusX:statusBox?.x,forceY:forceBox?.y,botY:botBox?.y}
+          });
+          const {confBox,statusBox,forceBox,botBox}=hierarchy;
           if(!confBox||!statusBox||!forceBox||!botBox)throw new Error('v105_visual_labels_missing:'+JSON.stringify(hierarchy));
           if(!(confBox.x<statusBox.x))throw new Error('v105_confluence_not_left:'+JSON.stringify(hierarchy));
           if(!(botBox.y>forceBox.y))throw new Error('v105_bot_not_below_force:'+JSON.stringify(hierarchy));
