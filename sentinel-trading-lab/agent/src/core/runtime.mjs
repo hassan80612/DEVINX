@@ -49,6 +49,7 @@ export class DemoTradingRuntime{
     this.externalMarket=null;this.executionBroker=null;
   }
   setExecutionBroker(broker=null){this.executionBroker=broker||null;return this}
+  requestImmediateEvaluation(){if(this.stateName==='running')this.nextEvalMs=0;return this}
   setExternalMarket(market=null){
     if(!market){this.externalMarket=null;return this}
     const candles=Array.isArray(market.candles)?market.candles.filter(c=>[c?.open,c?.high,c?.low,c?.close].every(v=>Number.isFinite(Number(v)))):[];
