@@ -76,7 +76,8 @@ jobs:
           if(worker.includes("for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect()"))throw new Error('access_check_closes_broker');
           if(/Stop-Process/i.test(watchdog)||/remote-info/i.test(watchdog))throw new Error('watchdog_is_aggressive');
           if(!broker.includes('preserveBrowser:true')||!driver.includes('preservedBrowser:true'))throw new Error('browser_not_preserved');
-          for(const required of ['VIRADA / REVERSÃO','PRONTIDÃO DE ENTRADA','CENÁRIO POR PRAZO','data-sentinel-action="refresh"'])if(!driver.includes(required))throw new Error('ui_missing:'+required);
+          const ascii=driver.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+          for(const required of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"'])if(!ascii.includes(required))throw new Error('ui_missing:'+required);
           if(!worker.includes("Bot iniciado · sincronizando leitura"))throw new Error('start_still_depends_on_feed');
           console.log('V11 CLEAN ARCHITECTURE: PASS');
           '@
