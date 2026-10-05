@@ -285,20 +285,20 @@ jobs:
           if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2||st.candles.length!==1)throw new Error('outbound_order_retargeted_asset:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
           console.log('OUTBOUND ORDER DOES NOT RETARGET MARKET: PASS',st.uiSymbol);
 
-          st.candles=[];st.activeId=1;
+          st.candles=[];st.activeId=2;
           let realtimeEvents=0;d.setMarketUpdateHandler(()=>{realtimeEvents++});
-          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:2,size:60,from:100,to:160,open:2,close:2.1,high:2.2,low:1.9}}),'page-in');
-          if(st.candles.length!==0)throw new Error('cross_asset_candle_leak');
           d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1,size:60,from:100,to:160,open:1,close:1.1,high:1.2,low:.9}}),'page-in');
+          if(st.candles.length!==0)throw new Error('cross_asset_candle_leak');
+          d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:2,size:60,from:100,to:160,open:1,close:1.1,high:1.2,low:.9}}),'page-in');
           await new Promise(r=>setTimeout(r,20));
           if(st.candles.length!==1||Number(st.candles[0].close)!==1.1)throw new Error('selected_asset_candle_missing');
           if(realtimeEvents<1)throw new Error('realtime_market_event_missing');
           console.log('ASSET ANALYSIS ISOLATION: PASS');
           console.log('REALTIME MARKET EVENT: PASS',realtimeEvents);
           st.quoteHistory=[];
-          d.ingest('iq_option',JSON.stringify({name:'instrument-quotes-generated',msg:{active_id:1,price:1.101}}),'page-in');
+          d.ingest('iq_option',JSON.stringify({name:'instrument-quotes-generated',msg:{active_id:2,price:1.101}}),'page-in');
           await new Promise(r=>setTimeout(r,5));
-          d.ingest('iq_option',JSON.stringify({name:'instrument-quotes-generated',msg:{active_id:1,price:1.102}}),'page-in');
+          d.ingest('iq_option',JSON.stringify({name:'instrument-quotes-generated',msg:{active_id:2,price:1.102}}),'page-in');
           if((st.quoteHistory||[]).length<2||Number(st.quoteHistory.at(-1)?.price)!==1.102)throw new Error('live_quote_history_missing:'+JSON.stringify(st.quoteHistory));
           console.log('LIVE QUOTE HISTORY: PASS',st.quoteHistory.length);
 
