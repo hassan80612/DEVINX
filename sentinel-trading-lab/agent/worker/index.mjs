@@ -237,9 +237,11 @@ async function remoteLoop(){
     if(last>0&&Date.now()-last>ACCESS_LEASE_GRACE_MS){
       remoteRelay.info.accessActive=false;
       remoteRelay.info.accessReason='license_check_unavailable';
-      if(runtime.stateName==='running')await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
-      for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
-      activeProvider=null;syncRuntimeMarket();
+      if(!localCockpitLeaseValid()){
+        if(runtime.stateName==='running')await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
+        for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
+        activeProvider=null;syncRuntimeMarket();
+      }
     }
   }finally{remoteBusy=false}
 }
