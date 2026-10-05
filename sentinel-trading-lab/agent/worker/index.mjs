@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='9.5.0';
+const VERSION='10.0.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -29,6 +29,8 @@ function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExtern
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
+let localCockpitLeaseUntil=0;
+const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
 let realtimeKick=null;
 driver.setMarketUpdateHandler?.((provider)=>{
   if(provider!==activeProvider||runtime.stateName!=='running')return;
@@ -41,11 +43,11 @@ driver.setMarketUpdateHandler?.((provider)=>{
 });
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
-  if(action==='start'){ensureAccess('/control/start');if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
-  if(action==='pause'){ensureAccess('/control/start');await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
-  if(action==='stop'){await runtime.stop('overlay','manual');return{ok:true,message:'Bot parado'}}
+  if(action==='start'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();await runtime.start('overlay');return{ok:true,message:'Bot iniciado'}}
+  if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;await runtime.pause('overlay');return{ok:true,message:'Bot pausado'}}
+  if(action==='stop'){localCockpitLeaseUntil=0;await runtime.stop('overlay','manual');return{ok:true,message:'Bot parado'}}
   if(action==='setting'){
-    ensureAccess('/settings');
+    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
     if(key==='strategy'){
       const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
@@ -62,7 +64,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
 const ACCESS_LEASE_GRACE_MS=120000;
 function accessLeaseValid(){return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&remoteRelay.info.lastContactAt!=null&&(Date.now()-Number(remoteRelay.info.lastContactAt))<=ACCESS_LEASE_GRACE_MS}
 async function enforceAccessLease(){
-  if(accessLeaseValid())return true;
+  if(accessLeaseValid()||localCockpitLeaseValid())return true;
   if(runtime.stateName==='running')await runtime.stop('system','agent_access_unverified');
   for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
   activeProvider=null;syncRuntimeMarket();return false;
