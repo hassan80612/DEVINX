@@ -39,9 +39,9 @@ function quoteBars(quoteHistory=[],bucketMs=5000,now=Date.now()){
  const out=[];let cur=null;
  for(const p of pts){
    const k=Math.floor(p.ts/bucketMs)*bucketMs;
-   if(!cur||cur.from!==k){
+   if(!cur||cur.bucket!==k){
      if(cur)out.push(cur);
-     cur={from:k/1000,to:(k+bucketMs)/1000,ts:k,open:p.price,high:p.price,low:p.price,close:p.price,volume:1}
+     cur={bucket:k,from:k/1000,to:(k+bucketMs)/1000,ts:k,open:p.price,high:p.price,low:p.price,close:p.price,volume:1}
    }else{
      cur.high=Math.max(cur.high,p.price);cur.low=Math.min(cur.low,p.price);cur.close=p.price;cur.volume++
    }
