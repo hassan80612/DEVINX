@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.3.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.4.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.3 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.4 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '9.3.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '9.4.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -235,18 +235,22 @@ jobs:
           console.log('BROKER ACTIVE ID TRACKING: PASS',st.uiSymbol);
 
           st.candles=[];st.activeId=1;
+          let realtimeEvents=0;d.setMarketUpdateHandler(()=>{realtimeEvents++});
           d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:2,size:60,from:100,to:160,open:2,close:2.1,high:2.2,low:1.9}}),'page-in');
           if(st.candles.length!==0)throw new Error('cross_asset_candle_leak');
           d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1,size:60,from:100,to:160,open:1,close:1.1,high:1.2,low:.9}}),'page-in');
+          await new Promise(r=>setTimeout(r,20));
           if(st.candles.length!==1||Number(st.candles[0].close)!==1.1)throw new Error('selected_asset_candle_missing');
+          if(realtimeEvents<1)throw new Error('realtime_market_event_missing');
           console.log('ASSET ANALYSIS ISOLATION: PASS');
+          console.log('REALTIME MARKET EVENT: PASS',realtimeEvents);
 
           s.page=testPage;s.background=false;
-          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:0,reasons:[],metrics:{buyScore:0,sellScore:0},forecast30:{side:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'20:30:00',durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:[],metrics:{buyScore:51,sellScore:44},forecast30:{side:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
           const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
           const overlayAscii=overlayText.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!overlayAscii.includes('PRE-SINAL')||!overlayAscii.includes('PUT')||overlayAscii.includes('VALOR DEMO')||overlayAscii.includes('ATUALIZACAO'))throw new Error('overlay_v93_content_failed:'+overlayAscii);
-          console.log('V9.3 CONTROL CARD CONTENT: PASS');
+          if(!overlayAscii.includes('ATIVO EM ANALISE')||!overlayAscii.includes('EUR/USD OTC')||!overlayAscii.includes('TEMPO REAL')||!overlayAscii.includes('PROXIMOS 30 SEGUNDOS')||!overlayAscii.includes('PUT')||overlayAscii.includes('VALOR DEMO')||overlayAscii.includes('ATUALIZACAO'))throw new Error('overlay_v94_content_failed:'+overlayAscii);
+          console.log('V9.4 REALTIME CONTROL CARD CONTENT: PASS');
           const focusedOk=await testPage.evaluate(async()=>{
             const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');
             if(!sel)return false;sel.focus();const same=sel;
@@ -258,6 +262,16 @@ jobs:
           const preserved=await testPage.evaluate(()=>{const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');return !!sel&&document.activeElement===sel});
           if(!preserved)throw new Error('overlay_select_was_rebuilt_while_open');
           console.log('OVERLAY SELECT STABILITY: PASS');
+
+          await testPage.setContent(`<div class="investment amount-box"><span data-test="investment-value">5</span><button data-test="investment-minus" onclick="const v=document.querySelector('[data-test=investment-value]');v.textContent=String(Math.max(1,Number(v.textContent)-1))">−</button><button data-test="investment-plus" onclick="const v=document.querySelector('[data-test=investment-value]');v.textContent=String(Number(v.textContent)+1)">+</button></div>`);
+          await d.installBridge(testPage,'iq_option');
+          await testPage.click('[data-test="investment-value"]');
+          await testPage.keyboard.type('12');
+          await testPage.keyboard.press('Enter');
+          await new Promise(r=>setTimeout(r,900));
+          const manualAmount=await testPage.locator('[data-test="investment-value"]').innerText();
+          if(manualAmount!=='12')throw new Error('manual_amount_keyboard_failed:'+manualAmount);
+          console.log('MANUAL AMOUNT KEYBOARD: PASS',manualAmount);
           try{await s.context?.close()}catch{}
           '@
           $script | Set-Content -LiteralPath "broker-open-smoke.mjs" -Encoding utf8
