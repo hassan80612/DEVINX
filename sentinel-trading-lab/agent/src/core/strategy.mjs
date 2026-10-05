@@ -202,37 +202,116 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    sr:supportResistance(prior,50),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),trendlines:trendLines(candles),fib:fibonacci(candles,80),patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
    higherTF:{fast:ema(higherCloses,9),slow:ema(higherCloses,21),structure:marketStructure(higher),candles:higher.length},sourceCandles:candles.length,baseCandleSeconds:baseSeconds,micro
  };
- const box={buy:0,sell:0,reasons:[]};
  const trendUp=m.fast!=null&&m.slow!=null&&m.fast>m.slow,trendDn=m.fast!=null&&m.slow!=null&&m.fast<m.slow;
  const higherUp=m.higherTF.fast!=null&&m.higherTF.slow!=null&&m.higherTF.fast>m.higherTF.slow,higherDn=m.higherTF.fast!=null&&m.higherTF.slow!=null&&m.higherTF.fast<m.higherTF.slow;
+ const lastCandle=candles.at(-1)||{},prevCandle=candles.at(-2)||{};
+ const candleRange=Math.max(1e-12,Number(lastCandle.high)-Number(lastCandle.low));
+ const candleBody=Number(lastCandle.close)-Number(lastCandle.open),bodyAbs=Math.abs(candleBody),bodyRatio=bodyAbs/candleRange;
+ const upperWick=Number(lastCandle.high)-Math.max(Number(lastCandle.open),Number(lastCandle.close));
+ const lowerWick=Math.min(Number(lastCandle.open),Number(lastCandle.close))-Number(lastCandle.low);
+ const bullishBody=candleBody>0,bearishBody=candleBody<0;
+ const bullishReject=bullishBody&&lowerWick>Math.max(bodyAbs*.65,candleRange*.18);
+ const bearishReject=bearishBody&&upperWick>Math.max(bodyAbs*.65,candleRange*.18);
+ const srNearSupport=near(last,m.sr?.support,vol*.48),srNearResistance=near(last,m.sr?.resistance,vol*.48);
+ const failedSupport=Number.isFinite(Number(m.sr?.support))&&Number(lastCandle.low)<Number(m.sr.support)-vol*.05&&Number(lastCandle.close)>=Number(m.sr.support);
+ const failedResistance=Number.isFinite(Number(m.sr?.resistance))&&Number(lastCandle.high)>Number(m.sr.resistance)+vol*.05&&Number(lastCandle.close)<=Number(m.sr.resistance);
+ const lineResistance=Number(m.trendlines?.resistance?.value),lineSupport=Number(m.trendlines?.support?.value);
+ const lineBreakUp=Number.isFinite(lineResistance)&&last>lineResistance+vol*.08;
+ const lineBreakDown=Number.isFinite(lineSupport)&&last<lineSupport-vol*.08;
+ const srBreakUp=Number.isFinite(Number(m.sr?.resistance))&&last>Number(m.sr.resistance)+vol*.08;
+ const srBreakDown=Number.isFinite(Number(m.sr?.support))&&last<Number(m.sr.support)-vol*.08;
+ const strongBull=bullishBody&&bodyRatio>=.56,strongBear=bearishBody&&bodyRatio>=.56;
+ const mk=()=>({buy:0,sell:0,reasons:[]});
+ const add=(b,side,points,reason)=>addScore(b,side,points,reason);
+ const patternScore=(b,limit=2,points=16)=>{for(const p of (m.patterns||[]).slice(0,limit)){if(p.side==='BUY')add(b,'BUY',points,p.label);if(p.side==='SELL')add(b,'SELL',points,p.label)}};
 
- const applyCore=()=>{
-   if(trendUp)addScore(box,'BUY',15,'EMA 9 acima da EMA 21');if(trendDn)addScore(box,'SELL',15,'EMA 9 abaixo da EMA 21');
-   if(m.ema50!=null){if(last>m.ema50)addScore(box,'BUY',6,'preço acima da EMA 50');else addScore(box,'SELL',6,'preço abaixo da EMA 50')}
-   if(m.macd?.histogram>0)addScore(box,'BUY',11,'MACD positivo');if(m.macd?.histogram<0)addScore(box,'SELL',11,'MACD negativo');
-   if(m.momentum>0)addScore(box,'BUY',8,'momentum positivo');if(m.momentum<0)addScore(box,'SELL',8,'momentum negativo');
-   if(m.structure.bias==='bullish')addScore(box,'BUY',16,'estrutura HH + HL');if(m.structure.bias==='bearish')addScore(box,'SELL',16,'estrutura LH + LL');
-   if(higherUp)addScore(box,'BUY',12,'timeframe superior alta');if(higherDn)addScore(box,'SELL',12,'timeframe superior baixa');
-   for(const p of m.patterns){if(p.side==='BUY')addScore(box,'BUY',12,p.label);if(p.side==='SELL')addScore(box,'SELL',12,p.label)}
-   if(m.rsi!=null&&m.rsi>=52&&m.rsi<=68)addScore(box,'BUY',5,'RSI confirma alta');if(m.rsi!=null&&m.rsi<=48&&m.rsi>=32)addScore(box,'SELL',5,'RSI confirma baixa')
+ const scoreTrend=()=>{
+   const b=mk();
+   if(trendUp)add(b,'BUY',24,'EMA 9 acima da EMA 21');if(trendDn)add(b,'SELL',24,'EMA 9 abaixo da EMA 21');
+   if(m.ema50!=null){if(last>m.ema50)add(b,'BUY',10,'preço acima da EMA 50');else add(b,'SELL',10,'preço abaixo da EMA 50')}
+   if(m.macd?.histogram>0)add(b,'BUY',16,'MACD confirma tendência');if(m.macd?.histogram<0)add(b,'SELL',16,'MACD confirma tendência');
+   if(m.momentum>0)add(b,'BUY',10,'momentum acompanha alta');if(m.momentum<0)add(b,'SELL',10,'momentum acompanha baixa');
+   if(m.structure.bias==='bullish')add(b,'BUY',20,'estrutura HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',20,'estrutura LH + LL');
+   if(higherUp)add(b,'BUY',20,'timeframe superior alta');if(higherDn)add(b,'SELL',20,'timeframe superior baixa');
+   return b
  };
- if(['trend','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest'].includes(strategy))applyCore();
- if(strategy==='mean_reversion'){
-   if(m.bb&&last<=m.bb.lower)addScore(box,'BUY',28,'banda inferior');if(m.bb&&last>=m.bb.upper)addScore(box,'SELL',28,'banda superior');
-   if(m.rsi!=null&&m.rsi<30)addScore(box,'BUY',28,'RSI sobrevendido');if(m.rsi!=null&&m.rsi>70)addScore(box,'SELL',28,'RSI sobrecomprado');
-   if(m.stoch!=null&&m.stoch<20)addScore(box,'BUY',18,'estocástico sobrevenda');if(m.stoch!=null&&m.stoch>80)addScore(box,'SELL',18,'estocástico sobrecompra')
- }
- if(['breakout','trendline_breakout','smart_confluence'].includes(strategy)){
-   if(m.retest?.side==='BUY')addScore(box,'BUY',24,'rompimento + reteste');if(m.retest?.side==='SELL')addScore(box,'SELL',24,'rompimento + reteste');
-   const rtl=m.trendlines.resistance,stl=m.trendlines.support;
-   if(rtl&&last>rtl.value+vol*.08)addScore(box,'BUY',14,'rompimento linha superior');if(stl&&last<stl.value-vol*.08)addScore(box,'SELL',14,'rompimento linha inferior')
- }
- if(['support_resistance','smart_confluence','price_action'].includes(strategy)){
-   if(near(last,m.sr.support,vol*.45))addScore(box,'BUY',14,'suporte');if(near(last,m.sr.resistance,vol*.45))addScore(box,'SELL',14,'resistência')
- }
- if(['fibonacci_retest','smart_confluence'].includes(strategy)){
-   const f=m.fib?.nearest;if(f&&f.distance<=vol*.6){if(m.fib.direction==='up'&&trendUp)addScore(box,'BUY',12,'Fibonacci');if(m.fib.direction==='down'&&trendDn)addScore(box,'SELL',12,'Fibonacci')}
- }
+ const scorePriceAction=()=>{
+   const b=mk();
+   if(m.structure.bias==='bullish')add(b,'BUY',24,'estrutura de preço HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',24,'estrutura de preço LH + LL');
+   if(strongBull)add(b,'BUY',14,'candle de força compradora');if(strongBear)add(b,'SELL',14,'candle de força vendedora');
+   patternScore(b,2,18);
+   if(srNearSupport&&bullishReject)add(b,'BUY',26,'rejeição de suporte');if(srNearResistance&&bearishReject)add(b,'SELL',26,'rejeição de resistência');
+   if(failedSupport)add(b,'BUY',24,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',24,'falso rompimento da resistência');
+   if(m.retest?.side==='BUY')add(b,'BUY',18,'reteste confirmado para cima');if(m.retest?.side==='SELL')add(b,'SELL',18,'reteste confirmado para baixo');
+   return b
+ };
+ const scoreTrendlineBreakout=()=>{
+   const b=mk();
+   if(lineBreakUp)add(b,'BUY',40,'rompimento da linha superior');if(lineBreakDown)add(b,'SELL',40,'rompimento da linha inferior');
+   if(m.retest?.side==='BUY')add(b,'BUY',30,'rompimento + reteste');if(m.retest?.side==='SELL')add(b,'SELL',30,'rompimento + reteste');
+   if(Number.isFinite(lineResistance)&&near(last,lineResistance,vol*.35)&&strongBull)add(b,'BUY',14,'pressão na linha de resistência');
+   if(Number.isFinite(lineSupport)&&near(last,lineSupport,vol*.35)&&strongBear)add(b,'SELL',14,'pressão na linha de suporte');
+   if(lineBreakUp&&m.momentum>0)add(b,'BUY',12,'momentum confirma rompimento');if(lineBreakDown&&m.momentum<0)add(b,'SELL',12,'momentum confirma rompimento');
+   if(lineBreakUp&&m.structure.bias!=='bearish')add(b,'BUY',10,'estrutura confirma rompimento');if(lineBreakDown&&m.structure.bias!=='bullish')add(b,'SELL',10,'estrutura confirma rompimento');
+   return b
+ };
+ const scoreSupportResistance=()=>{
+   const b=mk();
+   if(srNearSupport)add(b,'BUY',34,'preço em suporte');if(srNearResistance)add(b,'SELL',34,'preço em resistência');
+   if(srNearSupport&&bullishReject)add(b,'BUY',30,'rejeição compradora no suporte');if(srNearResistance&&bearishReject)add(b,'SELL',30,'rejeição vendedora na resistência');
+   if(failedSupport)add(b,'BUY',28,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',28,'falso rompimento da resistência');
+   if(srNearSupport&&m.rsi!=null&&m.rsi<=42)add(b,'BUY',14,'RSI favorece reação no suporte');
+   if(srNearResistance&&m.rsi!=null&&m.rsi>=58)add(b,'SELL',14,'RSI favorece reação na resistência');
+   if(srNearSupport&&(m.patterns||[]).some(p=>p.side==='BUY'))add(b,'BUY',16,'padrão comprador no suporte');
+   if(srNearResistance&&(m.patterns||[]).some(p=>p.side==='SELL'))add(b,'SELL',16,'padrão vendedor na resistência');
+   return b
+ };
+ const scoreFibonacci=()=>{
+   const b=mk(),fib=m.fib?.nearest;
+   if(!fib||!Number.isFinite(Number(fib.distance))||Number(fib.distance)>vol*.90)return b;
+   if(m.fib.direction==='up'){
+     add(b,'BUY',42,'reteste em nível de Fibonacci');
+     if(trendUp)add(b,'BUY',20,'Fibonacci alinhado à tendência');
+     if(bullishReject||strongBull)add(b,'BUY',18,'reação compradora no nível');
+     if(m.momentum>0)add(b,'BUY',10,'momentum confirma reação')
+   }else if(m.fib.direction==='down'){
+     add(b,'SELL',42,'reteste em nível de Fibonacci');
+     if(trendDn)add(b,'SELL',20,'Fibonacci alinhado à tendência');
+     if(bearishReject||strongBear)add(b,'SELL',18,'reação vendedora no nível');
+     if(m.momentum<0)add(b,'SELL',10,'momentum confirma reação')
+   }
+   return b
+ };
+ const scoreMeanReversion=()=>{
+   const b=mk();
+   if(m.bb&&last<=m.bb.lower)add(b,'BUY',30,'preço na banda inferior');if(m.bb&&last>=m.bb.upper)add(b,'SELL',30,'preço na banda superior');
+   if(m.rsi!=null&&m.rsi<32)add(b,'BUY',26,'RSI sobrevendido');if(m.rsi!=null&&m.rsi>68)add(b,'SELL',26,'RSI sobrecomprado');
+   if(m.stoch!=null&&m.stoch<22)add(b,'BUY',18,'estocástico em sobrevenda');if(m.stoch!=null&&m.stoch>78)add(b,'SELL',18,'estocástico em sobrecompra');
+   if(m.slow!=null&&last<m.slow-vol*.55)add(b,'BUY',14,'preço afastado abaixo da média');if(m.slow!=null&&last>m.slow+vol*.55)add(b,'SELL',14,'preço afastado acima da média');
+   if(srNearSupport)add(b,'BUY',12,'suporte favorece retorno à média');if(srNearResistance)add(b,'SELL',12,'resistência favorece retorno à média');
+   return b
+ };
+ const scoreBreakout=()=>{
+   const b=mk();
+   if(srBreakUp)add(b,'BUY',38,'rompimento de resistência');if(srBreakDown)add(b,'SELL',38,'rompimento de suporte');
+   if(m.retest?.side==='BUY')add(b,'BUY',28,'reteste após rompimento');if(m.retest?.side==='SELL')add(b,'SELL',28,'reteste após rompimento');
+   if(srBreakUp&&strongBull)add(b,'BUY',14,'candle confirma rompimento');if(srBreakDown&&strongBear)add(b,'SELL',14,'candle confirma rompimento');
+   if(srBreakUp&&m.momentum>0)add(b,'BUY',12,'momentum confirma rompimento');if(srBreakDown&&m.momentum<0)add(b,'SELL',12,'momentum confirma rompimento');
+   if(lineBreakUp)add(b,'BUY',10,'linha de tendência rompida');if(lineBreakDown)add(b,'SELL',10,'linha de tendência rompida');
+   return b
+ };
+ const scorers={trend:scoreTrend,price_action:scorePriceAction,trendline_breakout:scoreTrendlineBreakout,support_resistance:scoreSupportResistance,fibonacci_retest:scoreFibonacci,mean_reversion:scoreMeanReversion,breakout:scoreBreakout};
+ const scoreSmart=()=>{
+   const b=mk();
+   for(const name of ['trend','price_action','trendline_breakout','support_resistance','fibonacci_retest','mean_reversion','breakout']){
+     const x=scorers[name](),total=x.buy+x.sell;if(total<10)continue;
+     const norm=Math.max(1,total),edge=(x.buy-x.sell)/norm,weight=Math.min(18,6+total*.12);
+     if(edge>0)add(b,'BUY',Math.round(weight*Math.abs(edge)),`${name}: viés comprador`);
+     if(edge<0)add(b,'SELL',Math.round(weight*Math.abs(edge)),`${name}: viés vendedor`)
+   }
+   return b
+ };
+ const box=strategy==='smart_confluence'?scoreSmart():(scorers[strategy]?.()||scoreSmart());
 
  const horizon=Math.max(30000,Number(durationMs||60000));
  const short=shortHorizonModel({
