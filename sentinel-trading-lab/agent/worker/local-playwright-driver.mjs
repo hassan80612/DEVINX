@@ -1021,19 +1021,12 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
 
-          <div style="margin-top:7px;border:1px solid rgba(255,255,255,.055);border-radius:9px;overflow:hidden">
-            <button data-sentinel-toggle="size" style="width:100%;border:0;background:transparent;color:#758c97;padding:6px 9px;display:flex;justify-content:space-between;cursor:pointer;font-size:9px">
-              <span>AJUSTES DO CARD</span><span data-sentinel-arrow>${sizeOpen?'⌃':'⌄'}</span>
-            </button>
-            <div data-sentinel-section="size" style="display:${sizeOpen?'block':'none'};padding:0 9px 8px">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:7px">
-                <span style="font-size:9px;color:#8399a5">Tamanho</span>
-                <div style="display:flex;gap:5px">
-                  <button data-sentinel-size="down" style="width:32px;height:26px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#d8e4ea;font-weight:900;cursor:pointer">−</button>
-                  <button data-sentinel-size="reset" style="width:48px;height:26px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#aebfc7;font-size:10px;cursor:pointer">${Math.round(currentScale*100)}%</button>
-                  <button data-sentinel-size="up" style="width:32px;height:26px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#d8e4ea;font-weight:900;cursor:pointer">+</button>
-                </div>
-              </div>
+          <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border-radius:9px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.055)">
+            <span style="font-size:9px;color:#758c97">TAMANHO DO CARD</span>
+            <div style="display:flex;align-items:center;gap:5px">
+              <button data-sentinel-size="down" title="Diminuir card" style="width:30px;height:25px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#d8e4ea;font-weight:900;cursor:pointer">−</button>
+              <button data-sentinel-size="reset" title="Restaurar tamanho" style="width:48px;height:25px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#aebfc7;font-size:10px;font-weight:800;cursor:pointer">${Math.round(currentScale*100)}%</button>
+              <button data-sentinel-size="up" title="Aumentar card" style="width:30px;height:25px;border:1px solid #29404d;border-radius:7px;background:#11202a;color:#d8e4ea;font-weight:900;cursor:pointer">+</button>
             </div>
           </div>
           <div style="margin-top:7px;font-size:8px;color:#5f7580;text-align:center">Sinais são análise técnica, não garantia. Conta real exige confirmação manual.</div>
