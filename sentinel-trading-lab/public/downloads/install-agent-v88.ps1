@@ -38,7 +38,7 @@ try {
   Step '1/5 Atualizando arquivos do Agent...'
   New-Item -ItemType Directory -Force -Path $root | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=11.5.0&release=sentinel-v115" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=11.5.0-r2&release=sentinel-v115-engine-r2" -OutFile $payloadZip }
   if (Test-Path $payloadTmp) { Remove-Item $payloadTmp -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $payloadTmp | Out-Null
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
