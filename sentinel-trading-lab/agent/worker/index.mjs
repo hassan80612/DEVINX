@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.2.0';
+const VERSION='10.3.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -77,6 +77,9 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }else if(key==='duration'){
       const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
       runtime.patchSettings({orderDurationMs:n},'overlay');
+    }else if(key==='minConfidence'){
+      const n=Math.round(Number(value));if(!Number.isFinite(n)||n<55||n>95)throw new Error('invalid_min_confidence');
+      runtime.patchSettings({risk:{minConfidence:n}},'overlay');
     }else throw new Error('invalid_overlay_setting');
     await saveState();return{ok:true,message:'Configuração aplicada'}
   }
@@ -112,6 +115,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       side:a.side||'WAIT',
       confidence:a.confidence||0,
       forecast30:a.forecast30||null,
+      finalConfluence:a.finalConfluence||null,
       entryPlanner:a.entryPlanner||null,
       quality:a.quality||view.signalValidation||null,
       minConfidence:view.settings?.risk?.minConfidence||74,
@@ -125,7 +129,8 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       intervalMs:view.settings?.schedule?.intervalMs||1000,
       brokerMode:view.liveBroker?.mode||view.mode,
       mode:view.mode,
-      state:view.state
+      state:view.state,
+      agentVersion:VERSION
     }).catch(()=>{});
   }
   await saveState()
