@@ -214,8 +214,8 @@ jobs:
           console.log('FINAL CONFLUENCE: PASS',JSON.stringify(fc));
           const bearCandles=Array.from({length:100},(_,i)=>{const base=1.20-i*.00045;return{from:1701000000+i*60,to:1701000060+i*60,open:base+.00012,high:base+.00028,low:base-.00028,close:base,volume:100+i}});
           const tNow=Date.now();
-          const risingQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.945+i*.00016}));
-          const fallingQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.958-i*.00016}));
+          const risingQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.945+i*.00010+Math.sin(i*Math.PI*2/20)*.00045}));
+          const fallingQuotes=Array.from({length:80},(_,i)=>({ts:tNow-(79-i)*1000,price:.958-i*.00010+Math.sin(i*Math.PI*2/20)*.00045}));
           const oppose=analyzeMarket({candles:bearCandles,quoteHistory:risingQuotes,strategy:'smart_confluence',minConfidence:74,durationMs:30000,freshnessMs:5000,quoteTs:tNow,now:tNow});
           const aligned=analyzeMarket({candles:bearCandles,quoteHistory:fallingQuotes,strategy:'smart_confluence',minConfidence:74,durationMs:30000,freshnessMs:5000,quoteTs:tNow,now:tNow});
           if(!oppose.metrics?.micro?.ready||oppose.metrics.micro.pulse<=0||!aligned.metrics?.micro?.ready||aligned.metrics.micro.pulse>=0)throw new Error('microflow_direction_failed:'+JSON.stringify({oppose:oppose.metrics?.micro,aligned:aligned.metrics?.micro}));
