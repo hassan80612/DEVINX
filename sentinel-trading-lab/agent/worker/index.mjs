@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='11.2.0';
+const VERSION='11.3.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -44,8 +44,11 @@ driver.setMarketUpdateHandler?.((provider)=>{
 async function ensureLocalCockpitBroker(provider){
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
   activeProvider=provider;
-  const info=await driver.sessionInfo?.(provider).catch(()=>null);
-  if(!info?.open)throw new Error('Abra a corretora antes de iniciar.');
+  let info=await driver.sessionInfo?.(provider).catch(()=>null);
+  if(!info?.open){
+    info=await driver.call(provider,'resume-visible',{body:{startup:false}}).catch(()=>null);
+    if(!info?.open)throw new Error('Não foi possível abrir a corretora.');
+  }
   if(!adapter.connected){
     await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});
     adapter.connected=true;adapter._step?.('session',true,'sessão local conectada pelo card');
@@ -97,8 +100,26 @@ async function enforceAccessLease(){
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
-async function bootstrapSavedBrokers(){if(!accessLeaseValid())return;for(const [name,adapter] of Object.entries(brokers)){if(!adapter.sessionRef)continue;try{await adapter.connect();if(adapter.connected){activeProvider=name;await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();if(adapter.validated)break}}catch{}}syncRuntimeMarket()}
-setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),700).unref();
+async function bootstrapSavedBrokers(){
+  const preferred=vault.get('iq_option')?'iq_option':vault.get('exnova')?'exnova':'iq_option';
+  const order=[preferred,...Object.keys(brokers).filter(x=>x!==preferred)];
+  for(const name of order){
+    const adapter=brokers[name];if(!adapter)continue;
+    if(name!==preferred&&!adapter.sessionRef)continue;
+    try{
+      const info=await driver.call(name,'resume-visible',{body:{startup:true}});
+      loginStates[name]=info;activeProvider=name;
+      if(info?.sessionPresent){
+        const sessionRef=adapter.sessionRef||`local-profile:${name}`;
+        if(!adapter.sessionRef){await vault.put(name,sessionRef);adapter.attachSessionRef(sessionRef)}
+        await adapter.connect().catch(()=>{});
+      }
+      await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();break
+    }catch{}
+  }
+  syncRuntimeMarket()
+}
+setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),900).unref();
 const overlayCache=new Map();
 function overlayAnalysis(view,asset,now=Date.now()){
   const key=String(asset||'—'),current=view.lastResult?.analysis||null;
@@ -166,13 +187,14 @@ function requiresAccess(path){
   if(path==='/status'||path==='/control/stop'||path==='/control/kill')return false;
   return path==='/control/start'||path==='/mode'||path==='/settings'||path.startsWith('/brokers/');
 }
-function ensureAccess(path){
+function ensureAccess(path,{local=false}={}){
   if(!requiresAccess(path))return;
+  if(local)return;
   if(!remoteRelay.info.paired)throw new Error('agent_not_paired');
   if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
   if(!accessLeaseValid())throw new Error('agent_access_unverified');
 }
-async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{
@@ -255,15 +277,13 @@ async function remoteLoop(){
     if(last>0&&Date.now()-last>ACCESS_LEASE_GRACE_MS){
       remoteRelay.info.accessActive=false;
       remoteRelay.info.accessReason='license_check_unavailable';
-      if(!localCockpitLeaseValid()){
-        if(runtime.stateName==='running')await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
-        for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect().catch(()=>{});
-        activeProvider=null;syncRuntimeMarket();
+      if(!localCockpitLeaseValid()&&runtime.stateName==='running'){
+        await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
       }
     }
   }finally{remoteBusy=false}
 }
 setInterval(remoteLoop,1500).unref();setTimeout(remoteLoop,350).unref();
 
-const server=http.createServer(async(req,res)=>{try{if(req.method==='OPTIONS'){res.writeHead(204,cors(req));return res.end()}const origin=String(req.headers.origin||'');if(origin&&!allowedOrigin(origin))return json(req,res,403,{ok:false,error:'origin_not_allowed'});const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);if(url.pathname==='/health')return json(req,res,200,{ok:true,service:'sentinel-worker',version:VERSION,runtimeKind:'persistent-worker',driverConfigured:driver.available,vaultConfigured:true,remoteRelay:{...remoteRelay.info},ts:new Date().toISOString()});if(url.pathname==='/remote-info')return json(req,res,200,{ok:true,...remoteRelay.info,version:VERSION});if(!authorized(req))return json(req,res,401,{ok:false,error:'unauthorized'});const payload=['POST','PATCH','PUT','DELETE'].includes(req.method||'')?await body(req):{};const data=await act(url.pathname,req.method||'GET',payload);await saveState();return json(req,res,200,{ok:true,data})}catch(e){return json(req,res,Number(e?.status||400),{ok:false,error:String(e?.message||e)})}});
+const server=http.createServer(async(req,res)=>{try{if(req.method==='OPTIONS'){res.writeHead(204,cors(req));return res.end()}const origin=String(req.headers.origin||'');if(origin&&!allowedOrigin(origin))return json(req,res,403,{ok:false,error:'origin_not_allowed'});const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);if(url.pathname==='/health')return json(req,res,200,{ok:true,service:'sentinel-worker',version:VERSION,runtimeKind:'persistent-worker',driverConfigured:driver.available,vaultConfigured:true,remoteRelay:{...remoteRelay.info},ts:new Date().toISOString()});if(url.pathname==='/remote-info')return json(req,res,200,{ok:true,...remoteRelay.info,version:VERSION});if(!authorized(req))return json(req,res,401,{ok:false,error:'unauthorized'});const payload=['POST','PATCH','PUT','DELETE'].includes(req.method||'')?await body(req):{};const addr=String(req.socket?.remoteAddress||'');const local=addr==='127.0.0.1'||addr==='::1'||addr==='::ffff:127.0.0.1';const data=await act(url.pathname,req.method||'GET',payload,{local});await saveState();return json(req,res,200,{ok:true,data})}catch(e){return json(req,res,Number(e?.status||400),{ok:false,error:String(e?.message||e)})}});
 server.listen(PORT,HOST,()=>console.log(`Sentinel worker v${VERSION} listening on http://${HOST}:${PORT}`));process.on('SIGTERM',async()=>{await saveState();server.close(()=>process.exit(0))});process.on('SIGINT',async()=>{await saveState();server.close(()=>process.exit(0))});

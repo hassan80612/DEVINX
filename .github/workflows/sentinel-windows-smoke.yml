@@ -1,4 +1,4 @@
-name: Sentinel Hybrid Smoke V11.2
+name: Sentinel Hybrid Smoke V11.3
 
 on:
   push:
@@ -54,6 +54,14 @@ jobs:
           for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
           if(!worker.includes("if(action==='refresh')"))throw new Error('refresh_action_missing');
+          const installer=await readFile('./sentinel-trading-lab/public/downloads/install-agent-v88.ps1','utf8');
+          if(!driverSource.includes("action==='resume-visible'"))throw new Error('visible_broker_resume_missing');
+          if(!worker.includes("driver.call(name,'resume-visible'")||worker.includes("bootstrapSavedBrokers(){if(!accessLeaseValid())"))throw new Error('startup_broker_not_visible_or_still_gated');
+          if(!worker.includes("if(local)return;")||!worker.includes("{local});await saveState()"))throw new Error('local_mode_still_depends_on_remote_heartbeat');
+          if(worker.includes("for(const adapter of Object.values(brokers))if(adapter.connected)await adapter.disconnect()"))throw new Error('remote_failure_can_close_broker');
+          if(installer.includes("$_ .Name -eq 'chrome.exe'".replace('$_ ','$_'))||installer.includes("$_ .Name -eq 'msedge.exe'".replace('$_ ','$_')))throw new Error('installer_still_kills_broker_browser');
+          if(!worker.includes("runtime.setMode(payload.mode"))throw new Error('mode_route_missing');
+          console.log('V11.3 STARTUP + LOCAL MODE: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -82,7 +90,7 @@ jobs:
           await d.requestMarketData('iq_option',{force:true});
           if(!requested.length||Number(requested.at(-1).activeId)!==1382||requested.at(-1).symbol!=='USD/HKD OTC')throw new Error('request_used_stale_active_id');
 
-          console.log('HYBRID V11.2 CORE: PASS');
+          console.log('HYBRID V11.3 CORE: PASS');
           '@
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-hybrid-smoke.mjs'
@@ -103,12 +111,12 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.2.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '11.3.0'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
           if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
-          Write-Host 'HYBRID V11.2 INSTALL: PASS'
+          Write-Host 'HYBRID V11.3 INSTALL: PASS'
 
       - name: Cleanup
         if: always()
