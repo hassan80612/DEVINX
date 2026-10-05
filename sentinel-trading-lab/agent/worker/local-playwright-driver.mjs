@@ -863,15 +863,15 @@ export class LocalPlaywrightDriver{
           plannerHorizon=localStorage.getItem('sentinel-v102-planner-horizon')||String(d.entryPlanner?.defaultHorizonSeconds||30);
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1'
         }catch{}
-        const plan=planner[plannerHorizon]||planner['30']||null;
-        const planTone=plan?.bias==='CALL'?'#69e1b5':plan?.bias==='PUT'?'#ff8f9c':'#f2cb6f';
-        const planHtml=plan?(
-          '<div style="font-size:9px;color:#7f949e;margin-bottom:7px">Preço atual <b style="color:#dce8ed">'+price(plan.currentPrice)+'</b> · viés <b style="color:'+planTone+'">'+esc(plan.bias||'NEUTRO')+'</b></div>'+
+        const plannerPlan=planner[plannerHorizon]||planner['30']||null;
+        const planTone=plannerPlan?.bias==='CALL'?'#69e1b5':plannerPlan?.bias==='PUT'?'#ff8f9c':'#f2cb6f';
+        const planHtml=plannerPlan?(
+          '<div style="font-size:9px;color:#7f949e;margin-bottom:7px">Preço atual <b style="color:#dce8ed">'+price(plannerPlan.currentPrice)+'</b> · viés <b style="color:'+planTone+'">'+esc(plannerPlan.bias||'NEUTRO')+'</b></div>'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
-            '<div style="padding:9px;border-radius:10px;background:rgba(105,225,181,.055);border:1px solid rgba(105,225,181,.12)"><div style="font-size:9px;color:#8fb7a8;font-weight:850">CALL SE CHEGAR / CONFIRMAR</div><div style="font-size:18px;font-weight:950;color:#69e1b5;margin-top:2px">'+price(plan.callTrigger)+'</div><div style="font-size:8px;color:#759087;margin-top:3px">invalida abaixo de '+price(plan.callInvalidation)+'</div></div>'+
-            '<div style="padding:9px;border-radius:10px;background:rgba(255,143,156,.055);border:1px solid rgba(255,143,156,.12)"><div style="font-size:9px;color:#bc9499;font-weight:850">PUT SE CHEGAR / CONFIRMAR</div><div style="font-size:18px;font-weight:950;color:#ff8f9c;margin-top:2px">'+price(plan.putTrigger)+'</div><div style="font-size:8px;color:#96767b;margin-top:3px">invalida acima de '+price(plan.putInvalidation)+'</div></div>'+
+            '<div style="padding:9px;border-radius:10px;background:rgba(105,225,181,.055);border:1px solid rgba(105,225,181,.12)"><div style="font-size:9px;color:#8fb7a8;font-weight:850">CALL SE CHEGAR / CONFIRMAR</div><div style="font-size:18px;font-weight:950;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:8px;color:#759087;margin-top:3px">invalida abaixo de '+price(plannerPlan.callInvalidation)+'</div></div>'+
+            '<div style="padding:9px;border-radius:10px;background:rgba(255,143,156,.055);border:1px solid rgba(255,143,156,.12)"><div style="font-size:9px;color:#bc9499;font-weight:850">PUT SE CHEGAR / CONFIRMAR</div><div style="font-size:18px;font-weight:950;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:8px;color:#96767b;margin-top:3px">invalida acima de '+price(plannerPlan.putInvalidation)+'</div></div>'+
           '</div>'+
-          '<div style="margin-top:7px;font-size:9px;color:#8ba0a9"><b>CALL:</b> '+esc(plan.callRule||'—')+'<br><b>PUT:</b> '+esc(plan.putRule||'—')+'<br><span style="color:#6f8690">Base: '+esc(plan.basis||'confluência técnica')+'. Use como gatilho condicional para agendamento manual; não é ordem automática.</span></div>'
+          '<div style="margin-top:7px;font-size:9px;color:#8ba0a9"><b>CALL:</b> '+esc(plannerPlan.callRule||'—')+'<br><b>PUT:</b> '+esc(plannerPlan.putRule||'—')+'<br><span style="color:#6f8690">Base: '+esc(plannerPlan.basis||'confluência técnica')+'. Use como gatilho condicional para agendamento manual; não é ordem automática.</span></div>'
         ):'<div style="font-size:9px;color:#8ba0a9">Aguardando dados suficientes para calcular os níveis.</div>';
 
         if(!el.dataset.controlReady){
