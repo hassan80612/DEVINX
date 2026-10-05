@@ -862,6 +862,7 @@ export class LocalPlaywrightDriver{
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         const n=(v,dg=0)=>Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{};
+        const analysisTransient=d.analysisTransient===true;
         const side=String(d.side||'WAIT').toUpperCase(),raw=String(q.rawSide||side||'WAIT').toUpperCase();
         const validationReady=String(q.status||'').toUpperCase()==='VALIDADO';
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
@@ -874,7 +875,7 @@ export class LocalPlaywrightDriver{
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
         const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1200;
-        const liveLabel=liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
+        const liveLabel=analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
         const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<6000;
         const planner=d.entryPlanner?.horizons||{};
         const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
@@ -891,7 +892,7 @@ export class LocalPlaywrightDriver{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
         el.dataset.theme=uiTheme;
-        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,rgba(248,250,251,.995),rgba(235,241,244,.992))',color:'#14232b',border:'1px solid rgba(81,111,125,.24)',boxShadow:'0 24px 72px rgba(18,35,44,.22), inset 0 1px rgba(255,255,255,.9)'}:{background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',border:'1px solid rgba(111,174,192,.24)',boxShadow:'0 24px 72px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.035)'});
+        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffefb,#f5f1e8)',color:'#241f18',border:'1px solid rgba(154,119,43,.24)',boxShadow:'0 24px 72px rgba(73,54,20,.18), inset 0 1px #fff'}:{background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',border:'1px solid rgba(111,174,192,.24)',boxShadow:'0 24px 72px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.035)'});
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
         const entryReady=liveNow&&analysisFresh&&validationReady&&q.stability?.ready===true&&['BUY','SELL'].includes(side);
@@ -954,7 +955,7 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:9px;margin-top:10px">
-            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f2f6f7)':'linear-gradient(145deg,rgba(18,42,54,.98),rgba(8,25,34,.98))'};border:1px solid rgba(210,174,82,.18);box-shadow:0 10px 26px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.035)">
+            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f8f3e8)':'linear-gradient(145deg,rgba(18,42,54,.98),rgba(8,25,34,.98))'};border:1px solid rgba(210,174,82,.18);box-shadow:0 10px 26px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.035)">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${uiTheme==='light'?'#405862':'#b9c8ce'}">CONFLUÊNCIA</span><span style="font-size:8px;color:${uiTheme==='light'?'#617780':'#7f959f'}">score técnico</span></div>
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:#d7bd70">Confiança <b style="font-size:12px;color:#f1d37b">${n(confidence,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
@@ -963,7 +964,7 @@ export class LocalPlaywrightDriver{
               </div>
             </div>
 
-            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f1f5f7)':'linear-gradient(145deg,rgba(24,47,58,.98),rgba(9,26,35,.98))'};border:1px solid rgba(210,174,82,.22);box-shadow:0 10px 28px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.04)">
+            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f7f1e5)':'linear-gradient(145deg,rgba(24,47,58,.98),rgba(9,26,35,.98))'};border:1px solid rgba(210,174,82,.22);box-shadow:0 10px 28px rgba(0,0,0,.2),inset 0 1px rgba(255,255,255,.04)">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${uiTheme==='light'?'#405862':'#b9c8ce'}">STATUS DA ENTRADA</span><span style="font-size:7px;color:#d7bd70">Confiança <b style="font-size:11px;color:#f1d37b">${n(confidence,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:7px">
                 <div>
@@ -972,17 +973,17 @@ export class LocalPlaywrightDriver{
                 </div>
                 <div style="font-size:19px;font-weight:950;line-height:1;color:${entryReady?tone:'#d8b85e'};text-shadow:0 0 18px rgba(216,184,94,.12)">${entryReady?signal:'AGUARDAR'}</div>
               </div>
-              <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.055);font-size:7px;color:#78909a">CALL ${n(statusCall,0)} pts · PUT ${n(statusPut,0)} pts · filtro ${n(minConfidence,0)} pts</div>
+              <div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.055);font-size:8px;color:${uiTheme==='light'?'#75684f':'#8ca0a8'}">CALL ${n(statusCall,0)} pts · PUT ${n(statusPut,0)} pts · filtro ${n(minConfidence,0)} pts</div>
             </div>
           </div>
 
-          <div data-sentinel-role="horizon-outlook" style="margin-top:10px;padding:13px 14px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef4f6)':'linear-gradient(145deg,#102632,#0b202a)'};border-radius:12px;box-sizing:border-box">
+          <div data-sentinel-role="horizon-outlook" style="margin-top:8px;padding:9px 11px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f8f2e6)':'linear-gradient(145deg,#102632,#0b202a)'};border-radius:12px;box-sizing:border-box">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div style="font-size:9px;font-weight:800;color:#a9c2cc">CENÁRIO POR PRAZO · ${esc(d.asset||'—')}</div>
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:30px;min-width:98px;background:#0a1c25;color:#f1f6f8;border:1px solid #406472;border-radius:4px;padding:0 8px;font-size:10px;font-weight:800;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
             </div>
-            <div style="display:flex;align-items:baseline;gap:10px;margin:7px 0 5px;flex-wrap:wrap"><b style="font-size:25px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:#91aeba;font-size:9px">até ${horizonLabel} · ${liveLabel}</span></div>
-            <div style="color:#adc1ca;font-size:9px;line-height:1.4;margin-bottom:10px">${!liveNow||!analysisFresh?'Leitura desatualizada. Aguarde nova análise.':!plannerPlan?.outlookReady?'Aguardando histórico suficiente para este prazo.':outlook==='NEUTRO'?'Sem direção consistente neste prazo. Aguarde confirmação.':`Viés ${outlook} condicionado ao gatilho abaixo; não indica entrada imediata.`}</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:20px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:#91aeba;font-size:9px">até ${horizonLabel} · ${liveLabel}</span></div>
+            <div style="color:#adc1ca;font-size:9px;line-height:1.35;margin-bottom:7px">${!liveNow||!analysisFresh?'Leitura desatualizada. Aguarde nova análise.':!plannerPlan?.outlookReady?'Aguardando histórico suficiente para este prazo.':outlook==='NEUTRO'?'Sem direção consistente neste prazo. Aguarde confirmação.':`Viés ${outlook} condicionado ao gatilho abaixo; não indica entrada imediata.`}</div>
             ${planHtml}
           </div>
 
@@ -1010,7 +1011,7 @@ export class LocalPlaywrightDriver{
 
           
 
-          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#edf3f5)':'linear-gradient(145deg,rgba(16,37,48,.96),rgba(8,24,32,.96))'};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
+          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f7f0e4)':'linear-gradient(145deg,rgba(16,37,48,.96),rgba(8,24,32,.96))'};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
               <span style="font-size:8.5px;font-weight:800;letter-spacing:.035em;color:#9fb2ba">Controle do bot</span>
               <span style="font-size:8px;font-weight:800;line-height:1;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#93a5ad'};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
