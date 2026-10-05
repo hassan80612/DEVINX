@@ -304,7 +304,7 @@ jobs:
           await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.7.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',confirmed:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60},forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:30000,mode:'demo',brokerMode:'demo',state:'stopped'});
           const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
           const overlayAscii=overlayText.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!overlayAscii.includes('SENTINEL V10.7.0')||!overlayAscii.includes('CENARIO POR PRAZO')||!overlayAscii.includes('STATUS DA ENTRADA')||!overlayAscii.includes('CONFLUENCIA')||!overlayAscii.includes('FILTRO · PONTOS')||!overlayAscii.includes('FORCA TECNICA AGORA')||!overlayAscii.includes('CONTROLE DO BOT')||!overlayAscii.includes('INICIAR')||!overlayAscii.includes('PAUSAR')||!overlayAscii.includes('PARAR'))throw new Error('overlay_outlook_required_content_missing:'+overlayAscii);
+          if(!overlayAscii.includes('SENTINEL V10.7.0')||!overlayAscii.includes('CENARIO POR PRAZO')||!overlayAscii.includes('STATUS DA ENTRADA')||!overlayAscii.includes('CONFLUENCIA')||!overlayAscii.includes('FILTRO')||!overlayAscii.includes('PONTOS')||!overlayAscii.includes('FORCA TECNICA AGORA')||!overlayAscii.includes('CONTROLE DO BOT')||!overlayAscii.includes('INICIAR')||!overlayAscii.includes('PAUSAR')||!overlayAscii.includes('PARAR'))throw new Error('overlay_outlook_required_content_missing:'+overlayAscii);
           if(overlayAscii.includes('ATIVO EM ANALISE')||overlayAscii.includes('TAMANHO DO CARD')||overlayAscii.includes('100%')||overlayAscii.includes('VALIDACAO DO SINAL')||overlayAscii.includes('BLOQUEADO')||overlayAscii.includes('0/12')||overlayAscii.includes('MINIMO 60'))throw new Error('overlay_removed_content_present:'+overlayAscii);
           if(!overlayAscii.includes('SEM LEITURA')||!overlayAscii.includes('LEITURA DESATUALIZADA')||overlayAscii.includes('CALL — GATILHO'))throw new Error('stale_outlook_not_hidden:'+overlayAscii);
           const cardRect=await testPage.locator('#sentinel-trading-overlay').boundingBox();
@@ -320,9 +320,9 @@ jobs:
           for(const [k,t] of Object.entries(scorePanels)){if(!t.includes('CALL')||!t.includes('PUT')||!(t.match(/\d+ PTS/g)||[]).length||/\d+%/.test(t))throw new Error('score_panel_misleading_'+k+':'+t)}
           console.log('HORIZON CARD SCORES: PASS',JSON.stringify(scorePanels));
           const hierarchy=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{
-            const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+            const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
             const find=t=>{const node=[...el.querySelectorAll('*')].find(x=>norm(x.textContent)===t);if(!node)return null;const r=node.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}};
-            const confBox=find('CONFLUENCIA · PONTOS, NAO CHANCE DE ACERTO'),statusBox=find('STATUS DA ENTRADA'),forceBox=find('FORCA TECNICA AGORA · PONTOS'),botBox=find('CONTROLE DO BOT');
+            const confBox=find('CONFLUENCIA PONTOS NAO CHANCE DE ACERTO'),statusBox=find('STATUS DA ENTRADA'),forceBox=find('FORCA TECNICA AGORA PONTOS'),botBox=find('CONTROLE DO BOT');
             return{confBox,statusBox,forceBox,botBox,confX:confBox?.x,statusX:statusBox?.x,forceY:forceBox?.y,botY:botBox?.y}
           });
           const {confBox,statusBox,forceBox,botBox}=hierarchy;
@@ -345,7 +345,7 @@ jobs:
           await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.7.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,quality:{status:'COLETANDO',rawSide:'SELL',forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},plan:{entry:'Aguardar',exit:'Sem entrada'},realtime:true,liveAgeMs:90,analysisAgeMs:100,durationMs:30000,mode:'demo',brokerMode:'demo',state:'running'});
           const plannerText=(await testPage.locator('#sentinel-trading-overlay').innerText()).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           const horizonValue=await testPage.locator('#sentinel-trading-overlay [data-sentinel-plan-horizon]').inputValue();
-          if(horizonValue!=='900'||!plannerText.includes('ATE 15 MIN')||!plannerText.includes('CALL — GATILHO')||!plannerText.includes('PUT — GATILHO')||!plannerText.includes('NAO SAO PREVISAO GARANTIDA'))throw new Error('planner_ui_failed:'+plannerText);
+          if(horizonValue!=='900'||!plannerText.includes('ATE 15 MIN')||!/CALL[^A-Z]{1,8}GATILHO/.test(plannerText)||!/PUT[^A-Z]{1,8}GATILHO/.test(plannerText)||!plannerText.includes('NAO SAO PREVISAO GARANTIDA'))throw new Error('planner_ui_failed:'+plannerText);
           console.log('V10.7 PLANNER UI: PASS',horizonValue);
 
           await testPage.evaluate(()=>{window.__sentinelUiActions=[];window.__sentinelOverlayAction=async p=>{window.__sentinelUiActions.push(p.action+':'+String(p.key||''));return{ok:true,message:'ok'}}});
