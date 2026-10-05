@@ -99,31 +99,39 @@ export class DemoTradingRuntime{
   _mergeScenarioConfluence(analysis,strategyPanel){
     const planner=analysis?.entryPlanner?.horizons;
     if(!planner||typeof planner!=='object')return;
-    const strategies=strategyPanel?.confluence||{};
-    const strategySide=String(strategies.side||'AGUARDAR').toUpperCase();
-    const technicalSide=String(analysis?.finalConfluence?.side||'AGUARDAR').toUpperCase();
-    const activeCount=Math.max(0,Number(strategies.activeCount||0));
+    const general=analysis?.generalConsensus||{};
+    const generalSide=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
     for(const plan of Object.values(planner)){
       if(!plan||typeof plan!=='object')continue;
       const horizonSide=String(plan.bias||'NEUTRO').toUpperCase();
-      let score=0;const sources=[];
-      if(horizonSide==='CALL'){score+=2;sources.push('prazo CALL')}
-      else if(horizonSide==='PUT'){score-=2;sources.push('prazo PUT')}
-      if(activeCount>=2&&strategySide==='CALL'){score+=1;sources.push(`${activeCount} estratégias CALL`)}
-      else if(activeCount>=2&&strategySide==='PUT'){score-=1;sources.push(`${activeCount} estratégias PUT`)}
-      if(technicalSide==='CALL'){score+=1;sources.push('confluência técnica CALL')}
-      else if(technicalSide==='PUT'){score-=1;sources.push('confluência técnica PUT')}
-      const merged=score>=2?'CALL':score<=-2?'PUT':'NEUTRO';
       plan.rawBias=horizonSide;
-      plan.strategyBias=activeCount>=2?strategySide:'AGUARDAR';
-      plan.technicalBias=technicalSide;
-      plan.consensusScore=score;
-      plan.bias=merged;
-      plan.basis=activeCount>=2?'prazo + estratégias selecionadas + confluência técnica':'prazo + confluência técnica';
-      plan.consensusSources=sources;
+      plan.generalBias=generalSide;
+      if(generalSide!=='AGUARDAR')plan.bias=horizonSide===generalSide?generalSide:'NEUTRO';
+      plan.basis=generalSide!=='AGUARDAR'?'prazo + consenso geral dos 6 cards':'prazo + leitura técnica disponível';
+      plan.consensusSources=generalSide!=='AGUARDAR'?['prazo '+horizonSide,'consenso geral '+generalSide]:['prazo '+horizonSide];
     }
   }
-
+  _generalConsensus(analysis,strategyPanel){
+    const final=analysis?.finalConfluence||{},q=analysis?.quality||{},m=analysis?.metrics||{},short=m.shortModel||{};
+    const avg=rows=>rows.length?Math.round(rows.reduce((s,v)=>s+v,0)/rows.length):null;
+    const finite=v=>Number.isFinite(Number(v));
+    const rapidCallRows=[final.callStrength,q.technicalBuy??m.buyScore,short.reversalCallScore].filter(finite).map(Number);
+    const rapidPutRows=[final.putStrength,q.technicalSell??m.sellScore,short.reversalPutScore].filter(finite).map(Number);
+    const rapidCall=avg(rapidCallRows),rapidPut=avg(rapidPutRows);
+    const rapidEdge=rapidCall==null||rapidPut==null?0:rapidCall-rapidPut,rapidStrength=Math.max(Number(rapidCall||0),Number(rapidPut||0));
+    const rapidSide=rapidStrength>=35&&Math.abs(rapidEdge)>=8?(rapidEdge>0?'CALL':'PUT'):'AGUARDAR';
+    const sc=strategyPanel?.confluence||{},strategyCall=finite(sc.callPct)?Number(sc.callPct):null,strategyPut=finite(sc.putPct)?Number(sc.putPct):null;
+    const strategySide=['CALL','PUT'].includes(String(sc.side||'').toUpperCase())?String(sc.side).toUpperCase():'AGUARDAR';
+    const hasRapid=rapidCall!=null&&rapidPut!=null,hasStrategy=strategyCall!=null&&strategyPut!=null&&Number(sc.activeCount||0)>=2;
+    const callScore=hasRapid&&hasStrategy?Math.round(rapidCall*.40+strategyCall*.60):hasStrategy?Math.round(strategyCall):hasRapid?Math.round(rapidCall):null;
+    const putScore=hasRapid&&hasStrategy?Math.round(rapidPut*.40+strategyPut*.60):hasStrategy?Math.round(strategyPut):hasRapid?Math.round(rapidPut):null;
+    const edge=callScore==null||putScore==null?0:callScore-putScore,strength=Math.max(Number(callScore||0),Number(putScore||0));
+    const aligned=hasRapid&&hasStrategy&&['CALL','PUT'].includes(rapidSide)&&rapidSide===strategySide;
+    const divergent=hasRapid&&hasStrategy&&['CALL','PUT'].includes(rapidSide)&&['CALL','PUT'].includes(strategySide)&&rapidSide!==strategySide;
+    const side=aligned&&strength>=45&&Math.abs(edge)>=10?(edge>0?'CALL':'PUT'):'AGUARDAR';
+    const state=aligned?'ALINHADO':divergent?'DIVERGÊNCIA':'FORMANDO';
+    return{side,state,aligned,divergent,callScore,putScore,strength,edge,weights:{rapid:40,strategies:60},rapid:{side:rapidSide,callScore:rapidCall,putScore:rapidPut,strength:rapidStrength,edge:rapidEdge},strategies:{side:strategySide,callScore:strategyCall,putScore:strategyPut,activeCount:Number(sc.activeCount||0)}};
+  }
   async start(actor='user'){const reason=this._startBlockReason();if(reason)throw new Error(reason);this.stateName='running';this.nextEvalMs=Date.now();this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.start'});return this.status()}
   async pause(actor='user'){this.stateName='paused';this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.pause'});return this.status()}
   async stop(actor='user',reason='manual'){this.stateName='stopped';this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.stop',metadata:{reason}});return this.status()}
@@ -270,6 +278,7 @@ export class DemoTradingRuntime{
       if(result.analysis){
         result.analysis.strategyCards=strategyPanel.cards;
         result.analysis.strategyConfluence=strategyPanel.confluence;
+        result.analysis.generalConsensus=this._generalConsensus(result.analysis,strategyPanel);
         this._mergeScenarioConfluence(result.analysis,strategyPanel);
       }
       if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas os controles DEMO da corretora ainda não foram validados — nenhuma ordem foi simulada ou clicada.']}else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
