@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.13.0';
+const VERSION='10.14.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -41,25 +41,39 @@ driver.setMarketUpdateHandler?.((provider)=>{
     loop().catch(()=>{});
   },70);
 });
-async function ensureLocalCockpitBroker(provider){
+let readRecoveryPromise=null,lastReadRecoveryAt=0;
+async function refreshMarketReading(provider,{manual=false}={}){
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
-  activeProvider=provider;
-  const info=await driver.sessionInfo?.(provider).catch(()=>null);
-  if(!info?.open)throw new Error('Abra a corretora antes de iniciar.');
-  if(!adapter.connected){
-    await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});
-    adapter.connected=true;adapter._step?.('session',true,'sessão local conectada pelo card');
-  }
-  let live=null,lastReason='Aguardando leitura do ativo atual.';
-  for(let attempt=0;attempt<5;attempt++){
+  if(readRecoveryPromise)return readRecoveryPromise;
+  if(!manual&&Date.now()-lastReadRecoveryAt<2800)return syncRuntimeMarket();
+  lastReadRecoveryAt=Date.now();
+  readRecoveryPromise=(async()=>{
+    activeProvider=provider;
+    const info=await driver.sessionInfo?.(provider).catch(()=>null);
+    if(!info?.open)throw new Error('Abra a corretora antes de atualizar a leitura.');
+    if(!adapter.connected){
+      await driver.call(provider,'connect',{body:{sessionRef:adapter.sessionRef||null,accountMode:'auto'}});
+      adapter.connected=true;adapter._step?.('session',true,'sessão local conectada');
+    }
     await driver.maintain?.(provider).catch(()=>{});
     await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});
-    await adapter.validateReadOnly?.({soft:true}).catch(()=>{});
+    try{await adapter.validateReadOnly?.({soft:!manual})}catch(e){adapter.lastError=String(e?.message||e)}
     adapter.refreshFromLive?.();
-    live=syncRuntimeMarket();
+    const live=syncRuntimeMarket();
+    runtime.requestImmediateEvaluation?.();
+    await runtime.tick(Date.now()).catch(()=>{});
+    return live
+  })();
+  try{return await readRecoveryPromise}finally{readRecoveryPromise=null}
+}
+async function ensureLocalCockpitBroker(provider){
+  const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
+  let live=null,lastReason='Aguardando leitura do ativo atual.';
+  for(let attempt=0;attempt<5;attempt++){
+    live=await refreshMarketReading(provider,{manual:attempt===0}).catch(()=>null);
     if(live?.m?.feedValidated===true&&Array.isArray(live.m.candles)&&live.m.candles.length>=50&&live.m.quote!=null)return live;
     lastReason=String(live?.m?.marketReason||adapter.lastError||lastReason);
-    await new Promise(resolve=>setTimeout(resolve,300));
+    await new Promise(resolve=>setTimeout(resolve,350));
   }
   throw new Error(`Leitura do mercado não ficou pronta: ${lastReason}`);
 }
@@ -73,6 +87,12 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     await runtime.tick(Date.now());
     await saveState();
     return{ok:true,message:'Bot iniciado · leitura ao vivo confirmada'}
+  }
+  if(action==='refresh'){
+    localCockpitLeaseUntil=Date.now()+12*60*60*1000;
+    const live=await refreshMarketReading(provider,{manual:true});
+    const ok=live?.m?.feedValidated===true;
+    return{ok,message:ok?'Leitura atualizada':'Atualização enviada · aguardando candles/cotação atuais'}
   }
   if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
   if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado'}}
@@ -121,7 +141,16 @@ function overlayAnalysis(view,asset='—',now=Date.now()){
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   await enforceAccessLease();
-  if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
+  if(activeProvider&&brokers[activeProvider]?.connected){
+    await driver.maintain?.(activeProvider).catch(()=>{});
+    brokers[activeProvider].refreshFromLive?.();
+    const md=driver.liveStatus?.(activeProvider)||null;
+    const newest=Math.max(Number(md?.lastQuoteAt||0),Number(md?.lastCandleAt||0),Number(md?.latestCandleTs||0));
+    const staleNow=!md?.feedValidated||md?.quote==null||!Array.isArray(md?.candles)||md.candles.length<50||!newest||Date.now()-newest>4500;
+    if(runtime.stateName==='running'&&staleNow&&!readRecoveryPromise&&Date.now()-lastReadRecoveryAt>=2800){
+      refreshMarketReading(activeProvider,{manual:false}).catch(()=>{});
+    }
+  }
   syncRuntimeMarket();
   await runtime.tick(Date.now());
   if(activeProvider){
@@ -199,7 +228,7 @@ async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&
       loginStates[p.name]={provider:p.name,open:false,phase:'open-error',error:err,updatedAt:new Date().toISOString()};
       throw new Error(err)
     }
-  }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
+  }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){await refreshMarketReading(p.name,{manual:true}).catch(e=>{adapter.lastError=String(e?.message||e)});return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder()}
   const err=new Error('not_found');err.status=404;throw err}
 
 let autoBrokerBusy=false;

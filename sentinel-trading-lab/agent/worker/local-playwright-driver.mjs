@@ -747,13 +747,23 @@ export class LocalPlaywrightDriver{
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
     let nextUi=null,uiSource=null;
-    if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
-    else if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
+    if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
+    else if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
     else if(instrumentPairs.length===1){nextUi=instrumentPairs[0];uiSource='dom-single'}
     else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
     if(nextUi){
-      const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
+      let changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
+      if(changed&&uiSource!=='click'&&st.uiSymbol){
+        const key=pairKey(nextUi),now=Date.now();
+        if(st.pendingUiKey===key){st.pendingUiHits=Number(st.pendingUiHits||0)+1}
+        else{st.pendingUiKey=key;st.pendingUiHits=1;st.pendingUiSince=now}
+        const confirmed=st.pendingUiHits>=3&&now-Number(st.pendingUiSince||now)>=300;
+        if(!confirmed){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved';changed=false}
+      }else if(uiSource==='click'||!changed){
+        st.pendingUiKey=null;st.pendingUiHits=0;st.pendingUiSince=0;
+      }
       if(changed){
+        st.pendingUiKey=null;st.pendingUiHits=0;st.pendingUiSince=0;
         st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
         st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
@@ -803,15 +813,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='10.13'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='10.14'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.13';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.14';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.13';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.14';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -965,7 +975,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.13.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.14.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -974,6 +984,7 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-theme="light" title="Tema claro" style="border:0;border-radius:7px;padding:6px 9px;background:${uiTheme==='light'?'#fff':'transparent'};color:${uiTheme==='light'?'#2b241b':'#8e887f'};font:900 8px/1 inherit;cursor:pointer;box-shadow:${uiTheme==='light'?'0 2px 8px rgba(15,32,40,.12)':'none'}">CLARO</button>
                 <button data-sentinel-theme="dark" title="Tema escuro" style="border:0;border-radius:7px;padding:6px 9px;background:${uiTheme==='dark'?'rgba(216,184,94,.14)':'transparent'};color:${uiTheme==='dark'?gold:'#746957'};font:900 8px/1 inherit;cursor:pointer">ESCURO</button>
               </div>
+              <button data-sentinel-action="refresh" title="Forçar nova leitura da corretora" style="border:1px solid ${panelBorder};border-radius:8px;padding:6px 8px;background:${uiTheme==='light'?'rgba(255,255,255,.76)':'rgba(255,255,255,.035)'};color:${muted};font:850 7.5px/1 inherit;cursor:pointer;white-space:nowrap">↻ LEITURA</button>
             </div>
           </div>
 
