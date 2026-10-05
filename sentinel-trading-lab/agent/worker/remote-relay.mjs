@@ -105,7 +105,7 @@ async function loadOrCreateIdentity(file){
 }
 
 export class SentinelRemoteRelay{
-  constructor({file=null,version='10.17.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
+  constructor({file=null,version='10.18.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
   async init(){
     await seedPersistentIdentity(this.file);
     this.identity=await loadOrCreateIdentity(this.file);

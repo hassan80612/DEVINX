@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.17.0';
+const VERSION='10.18.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -69,24 +69,26 @@ async function refreshMarketReading(provider,{manual=false}={}){
 async function ensureLocalCockpitBroker(provider){
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
   let live=null,lastReason='Aguardando leitura do ativo atual.';
-  for(let attempt=0;attempt<5;attempt++){
+  for(let attempt=0;attempt<3;attempt++){
     live=await refreshMarketReading(provider,{manual:attempt===0}).catch(()=>null);
     if(live?.m?.feedValidated===true&&Array.isArray(live.m.candles)&&live.m.candles.length>=50&&live.m.quote!=null)return live;
     lastReason=String(live?.m?.marketReason||adapter.lastError||lastReason);
-    await new Promise(resolve=>setTimeout(resolve,350));
+    await new Promise(resolve=>setTimeout(resolve,250));
   }
-  throw new Error(`Leitura do mercado não ficou pronta: ${lastReason}`);
+  if(adapter.connected||live)return live;
+  throw new Error(`Não foi possível conectar a corretora: ${lastReason}`);
 }
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
   if(action==='start'){
-    await ensureLocalCockpitBroker(provider);
+    const live=await ensureLocalCockpitBroker(provider);
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     await runtime.start('overlay');
     runtime.requestImmediateEvaluation?.();
-    await runtime.tick(Date.now());
+    await runtime.tick(Date.now()).catch(()=>{});
+    if(live?.m?.feedValidated!==true&&!readRecoveryPromise)refreshMarketReading(provider,{manual:false}).catch(()=>{});
     await saveState();
-    return{ok:true,message:'Bot iniciado · leitura ao vivo confirmada'}
+    return{ok:true,message:live?.m?.feedValidated===true?'Bot iniciado · leitura ao vivo confirmada':'Bot iniciado · sincronizando leitura ao vivo'}
   }
   if(action==='refresh'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
@@ -224,7 +226,7 @@ function ensureAccess(path){
   if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
   if(!accessLeaseValid())throw new Error('agent_access_unverified');
 }
-async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(!activeProvider)await autoConnectVisibleBrokers().catch(()=>{});if(!activeProvider)throw new Error('Abra/conecte a corretora antes de iniciar.');await ensureLocalCockpitBroker(activeProvider);const started=await runtime.start(payload.actor||'user');runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now());return started};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+async function act(path,method,payload){ensureAccess(path);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(!activeProvider)await autoConnectVisibleBrokers().catch(()=>{});if(!activeProvider)throw new Error('Abra/conecte a corretora antes de iniciar.');const live=await ensureLocalCockpitBroker(activeProvider);const started=await runtime.start(payload.actor||'user');runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});if(live?.m?.feedValidated!==true&&!readRecoveryPromise)refreshMarketReading(activeProvider,{manual:false}).catch(()=>{});return{...started,feedReady:live?.m?.feedValidated===true,message:live?.m?.feedValidated===true?'Bot iniciado · leitura ao vivo confirmada':'Bot iniciado · sincronizando leitura ao vivo'}};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{

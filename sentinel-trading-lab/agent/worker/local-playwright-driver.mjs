@@ -142,7 +142,11 @@ function protocolScan(data,st,direction='in'){
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
     const mapped=aid!=null?[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null:null;
     if(aid!=null&&marketCommand){
-      const found=mapped?([...st.assets].find(x=>pairKey(x)===mapped)||(mapped.endsWith('OTC')?`${mapped.slice(0,3)}/${mapped.slice(3,6)} OTC`:`${mapped.slice(0,3)}/${mapped.slice(3,6)}`)):null;
+      const currentUi=st.uiSymbol||st.symbol||null;
+      const fallbackKey=currentUi?pairKey(currentUi):null;
+      if(!mapped&&fallbackKey){st.activeMap.set(fallbackKey,aid);st.assets.add(currentUi)}
+      const resolved=mapped||fallbackKey;
+      const found=resolved?([...st.assets].find(x=>pairKey(x)===resolved)||(resolved.endsWith('OTC')?`${resolved.slice(0,3)}/${resolved.slice(3,6)} OTC`:`${resolved.slice(0,3)}/${resolved.slice(3,6)}`)):null;
       const changed=found&&pairKey(found)!==pairKey(st.symbol||'');
       st.activeId=aid;
       if(found){
@@ -523,7 +527,7 @@ export class LocalPlaywrightDriver{
   ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();if(ok)st.protocol='active-websocket';return ok}
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
-    const targetId=activeId??st.activeMap.get(pairKey(targetSymbol))??st.activeId;if(targetId==null)return false;
+    const targetId=activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
     const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId);
     if(changed&&st.subscribedActiveId!=null){
       await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(st.subscribedActiveId),size}}},request_id:reqId('unsub')}).catch(()=>{});
@@ -608,10 +612,24 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider);
     const screenSymbol=st.uiSymbol||st.symbol;
     if(!screenSymbol)return false;
-    if(!st.symbol||pairKey(st.symbol)!==pairKey(screenSymbol)){
-      st.symbol=screenSymbol;st.activeId=st.activeMap.get(pairKey(screenSymbol))??st.activeId;st.candles=[];st.quote=null;st.quoteHistory=[];st.subscribedSymbol=null;st.subscribedActiveId=null;st.autoSelected=false;st.suggestedSymbol=null;
+    const key=pairKey(screenSymbol);
+    if(!st.symbol||pairKey(st.symbol)!==key){
+      st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.autoSelected=false;st.suggestedSymbol=null;
     }
-    await this._requestCandles(provider,{symbol:screenSymbol,activeId:st.activeMap.get(pairKey(screenSymbol))??st.activeId,force});
+    let targetId=st.activeMap.get(key);
+    if(targetId==null){
+      await this.requestBaseData(provider).catch(()=>{});
+      await sleep(120);
+      targetId=st.activeMap.get(key);
+    }
+    if(targetId==null){
+      st.activeId=null;
+      st.marketStatus='syncing';
+      st.marketReason=`Identificando o ativo atual ${screenSymbol} antes de solicitar candles`;
+      return false;
+    }
+    st.activeId=Number(targetId);
+    await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(targetId),force});
     if(candleFreshForState(st)&&st.candles.length>=50){
       st.marketStatus='open';st.marketReason=`Ativo da tela ${screenSymbol} com candles atuais`;st.suggestedSymbol=null;return true;
     }
@@ -843,15 +861,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='10.17'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='10.18'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.17';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='10.18';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.17';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.18';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -1006,7 +1024,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.17.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'10.18.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
