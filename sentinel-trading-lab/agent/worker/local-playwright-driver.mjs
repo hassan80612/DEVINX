@@ -482,14 +482,25 @@ export class LocalPlaywrightDriver{
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
-    // The broker page's own outbound market subscription is the source of truth for
-    // the chart selected by the user. Sentinel's direct requests are "direct-out"
-    // and therefore can never retarget the selected asset.
+    // The page subscription is preferred. If its label is truncated, bind the
+    // already-observed activeId back to the now-known initialization map.
+    let boundFromActiveId=false;
     if(/page-out/.test(direction)&&st.lastPageActiveAt!==before.lastPageActiveAt&&st.pageActiveId!=null){
       this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page'});
     }
+    if(!st.symbol&&st.activeId!=null){
+      const activeKey=[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(st.activeId))?.[0]||null;
+      if(activeKey){
+        const found=[...st.assets].find(x=>pairKey(x)===activeKey)||(activeKey.endsWith('OTC')?`${activeKey.slice(0,3)}/${activeKey.slice(3,6)} OTC`:(activeKey.length>=6?`${activeKey.slice(0,3)}/${activeKey.slice(3,6)}`:null));
+        if(found){
+          st.symbol=found;st.uiSymbol=st.uiSymbol||found;st.uiSymbolSource=st.uiSymbolSource||'active-id-map';
+          boundFromActiveId=true;
+        }
+      }
+    }
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
+    if(boundFromActiveId)setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0)
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol})).catch(()=>{})}catch{}}
   }
@@ -810,7 +821,8 @@ export class LocalPlaywrightDriver{
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);
     const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh);
-    const marketStatus=candleFresh?'open':(st.marketStatus||'stale');const marketReason=candleFresh?`${st.symbol||'Ativo'} atualizado`:(st.marketReason||'Sem candle recente');
+    const marketStatus=feedValidated?'open':(!st.symbol?'syncing':st.candles.length<50?'syncing':(st.marketStatus||'stale'));
+    const marketReason=feedValidated?`${st.symbol} atualizado`:!st.symbol&&st.activeId!=null?`Identificando ativo pelo ID ${st.activeId}`:st.candles.length<50?`Carregando histórico ${st.candles.length}/50`:(st.marketReason||'Sem candle recente');
     return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi}
   }
   async updateOverlay(provider,data={}){

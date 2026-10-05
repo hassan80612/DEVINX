@@ -73,6 +73,13 @@ jobs:
           st.uiSymbol=null;st.symbol=null;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];
           d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
           if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_bootstrap_failed');
+          st.uiSymbol=null;st.symbol=null;st.activeId=1382;st.candles=Array.from({length:13},(_,i)=>({from:100+i*60,to:160+i*60,open:7.8,high:7.9,low:7.7,close:7.85}));st.quote=7.85;st.quoteHistory=[];
+          let reverseRequests=[];
+          d._requestCandles=async(_provider,args)=>{reverseRequests.push(args);return false};
+          d.ingest('iq_option',JSON.stringify({name:'get-initialization-data',msg:{active:{id:1382,name:'USD/HKD OTC'}}}),'page-in');
+          await new Promise(r=>setTimeout(r,30));
+          if(st.symbol!=='USD/HKD OTC'||st.uiSymbol!=='USD/HKD OTC'||reverseRequests.length<1||Number(reverseRequests.at(-1).activeId)!==1382)throw new Error('active_id_reverse_binding_failed:'+JSON.stringify({symbol:st.symbol,ui:st.uiSymbol,requests:reverseRequests}));
+          console.log('ACTIVE-ID REVERSE BIND + HISTORY BOOTSTRAP: PASS');
 
           st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
           d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
