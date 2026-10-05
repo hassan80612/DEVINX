@@ -70,6 +70,65 @@ export function analyzeMarket({candles,strategy='smart_confluence',minConfidence
  const callGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedBuy));
  const putGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedSell));
 
+ // Planejador de gatilhos por horizonte. Ele não prevê o futuro nem envia ordem:
+ // calcula níveis condicionais onde a estratégia atual exigiria nova confirmação.
+ const plannerHorizons=[30,60,120,300,600,900];
+ const upperLevels=[
+   m.sr?.resistance,
+   m.trendlines?.resistance?.value,
+   m.bb?.upper
+ ].map(Number).filter(v=>Number.isFinite(v)&&v>last).sort((a,b)=>a-b);
+ const lowerLevels=[
+   m.sr?.support,
+   m.trendlines?.support?.value,
+   m.bb?.lower
+ ].map(Number).filter(v=>Number.isFinite(v)&&v<last).sort((a,b)=>b-a);
+ const nearestUpper=upperLevels[0]??null,nearestLower=lowerLevels[0]??null;
+ const reversalMode=strategy==='mean_reversion'||strategy==='support_resistance';
+ const planner=Object.fromEntries(plannerHorizons.map(seconds=>{
+   const scale=Math.sqrt(Math.max(.5,seconds/60));
+   const expectedMove=Math.max(safeVol*.35,safeVol*scale);
+   const triggerBuffer=Math.max(safeVol*.08,expectedMove*.24);
+   let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
+   if(reversalMode){
+     const lower=nearestLower??(last-expectedMove),upper=nearestUpper??(last+expectedMove);
+     callTrigger=lower+triggerBuffer*.10;
+     putTrigger=upper-triggerBuffer*.10;
+     callInvalidation=lower-triggerBuffer*.40;
+     putInvalidation=upper+triggerBuffer*.40;
+     callRule='CALL somente se tocar a região e reagir para cima';
+     putRule='PUT somente se tocar a região e rejeitar para baixo';
+   }else{
+     const upper=nearestUpper!=null&&nearestUpper<=last+expectedMove*2?nearestUpper:last+expectedMove*.45;
+     const lower=nearestLower!=null&&nearestLower>=last-expectedMove*2?nearestLower:last-expectedMove*.45;
+     callTrigger=Math.max(last+triggerBuffer*.55,upper+triggerBuffer*.10);
+     putTrigger=Math.min(last-triggerBuffer*.55,lower-triggerBuffer*.10);
+     callInvalidation=Math.max(last-triggerBuffer*.50,nearestLower??(last-triggerBuffer*.50));
+     putInvalidation=Math.min(last+triggerBuffer*.50,nearestUpper??(last+triggerBuffer*.50));
+     callRule='CALL somente após romper e sustentar acima do gatilho';
+     putRule='PUT somente após romper e sustentar abaixo do gatilho';
+   }
+   const bias=projectedBuy-projectedSell>=8?'CALL':projectedSell-projectedBuy>=8?'PUT':'NEUTRO';
+   return[String(seconds),{
+     horizonSeconds:seconds,
+     currentPrice:last,
+     expectedMove,
+     expectedLow:last-expectedMove,
+     expectedHigh:last+expectedMove,
+     callTrigger,
+     putTrigger,
+     callInvalidation,
+     putInvalidation,
+     callRule,
+     putRule,
+     bias,
+     callStrength:projectedBuy,
+     putStrength:projectedSell,
+     basis:reversalMode?'reação em suporte/resistência':'rompimento + confirmação',
+     automaticExecution:false
+   }]
+ }));
+
  if(side===SignalSide.WAIT)box.reasons.push(`score ${confidence}% abaixo do filtro ou confluência conflitante`);
  return{
    side,confidence,reasons:box.reasons.slice(0,12),
@@ -83,6 +142,7 @@ export function analyzeMarket({candles,strategy='smart_confluence',minConfidence
      callGap,putGap,
      microPulse
    },
+   entryPlanner:{defaultHorizonSeconds:30,horizons:planner},
    metrics:{...m,buyScore:box.buy,sellScore:box.sell,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse,strategy}
  };
 }

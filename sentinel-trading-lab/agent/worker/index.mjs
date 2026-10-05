@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='10.1.0';
+const VERSION='10.2.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -112,6 +112,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       side:a.side||'WAIT',
       confidence:a.confidence||0,
       forecast30:a.forecast30||null,
+      entryPlanner:a.entryPlanner||null,
       quality:a.quality||view.signalValidation||null,
       minConfidence:view.settings?.risk?.minConfidence||74,
       reasons:a.reasons||view.lastResult?.reasons||[],
