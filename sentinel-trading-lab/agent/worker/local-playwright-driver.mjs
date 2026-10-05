@@ -54,15 +54,6 @@ function pairStrings(text=''){
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
 function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z]/g,'')}
-function symbolForActiveId(st,activeId){
-  const aid=n(activeId);if(aid==null)return null;
-  const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===Number(aid))?.[0]||null;
-  if(!key)return null;
-  const known=[...st.assets].find(x=>pairKey(x)===key);if(known)return known;
-  const otc=key.endsWith('OTC'),base=otc?key.slice(0,-3):key;
-  if(base.length<6)return null;
-  return `${base.slice(0,3)}/${base.slice(3,6)}${otc?' OTC':''}`
-}
 function epochMs(v){const x=Number(v);if(!Number.isFinite(x)||x<=0)return null;if(x>1e17)return Math.round(x/1e6);if(x>1e14)return Math.round(x/1e3);if(x<1e12)return Math.round(x*1e3);return Math.round(x)}
 function mergeCandles(a=[],b=[]){const m=new Map();for(const c of [...a,...b]){const x=candleOf(c);if(!x)continue;const k=String(x.from??x.to??`${x.open}:${x.close}:${m.size}`);m.set(k,x)}return [...m.values()].sort((x,y)=>Number(x.from||0)-Number(y.from||0)).slice(-600)}
 function reqId(prefix='sentinel'){return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`}
