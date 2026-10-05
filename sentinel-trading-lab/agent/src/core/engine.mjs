@@ -8,8 +8,8 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
   if(!gate.allowed)return{action:'WAIT',reasons:[gate.reason],latency:{decisionMs:Date.now()-cycleStarted}};
   const snap=feed.snapshot();
   let analysis=analyzeMarket({
-    candles:snap.candles,strategy:settings.strategy,minConfidence:settings.risk.minConfidence,
-    freshnessMs:settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now
+    candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:settings.strategy,minConfidence:settings.risk.minConfidence,
+    durationMs:settings.orderDurationMs,freshnessMs:settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now
   });
   if(signalGate){
     const gated=await signalGate({analysis,snap,settings,now});
