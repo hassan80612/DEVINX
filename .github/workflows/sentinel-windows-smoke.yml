@@ -51,7 +51,8 @@ jobs:
           for(const k of ['reversalCallScore','reversalPutScore','entryPlanner','finalConfluence','callReversalRisk','putReversalRisk'])if(!strategy.includes(k))throw new Error('analysis_feature_missing:'+k);
           for(const k of ['entryReady','preEntry','reversalBlocked','technicalEdge'])if(!runtime.includes(k))throw new Error('runtime_gate_missing:'+k);
           for(const k of ['strategy2','strategy3','_strategyPanel','strategyCards','strategyConfluence'])if(!runtime.includes(k))throw new Error('strategy_panel_missing:'+k);
-          for(const k of ['ANÁLISE DAS ESTRATÉGIAS','CONFLUÊNCIA DAS ESTRATÉGIAS','SINAL OPERACIONAL','data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
+          for(const k of ['SINAL OPERACIONAL','data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
+          if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
