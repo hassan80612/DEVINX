@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '9.5.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '10.0.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 9.5 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 10.0 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '9.5.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '10.0.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -198,6 +198,10 @@ jobs:
           import {LocalPlaywrightDriver} from './worker/local-playwright-driver.mjs';
           import {analyzeMarket} from './src/core/strategy.mjs';
           import {DemoTradingRuntime} from './src/core/runtime.mjs';
+          import {readFile} from 'node:fs/promises';
+          const workerSource=await readFile('./worker/index.mjs','utf8');
+          if(workerSource.includes("if(action==='start'){ensureAccess('/control/start')")||!workerSource.includes('localCockpitLeaseValid'))throw new Error('local_start_still_depends_on_remote_lease');
+          console.log('LOCAL COCKPIT START: PASS');
           const candles=Array.from({length:80},(_,i)=>{const base=1+i*.001;return{from:1700000000+i*60,to:1700000060+i*60,open:base,high:base+.0008,low:base-.0005,close:base+.0005,volume:100+i}});
           const analysis=analyzeMarket({candles,strategy:'smart_confluence',minConfidence:74,freshnessMs:5000,quoteTs:Date.now(),now:Date.now()});
           if(!analysis.forecast30||analysis.forecast30.horizonSeconds!==30||!Number.isFinite(Number(analysis.forecast30.callStrength))||!Number.isFinite(Number(analysis.forecast30.putStrength)))throw new Error('forecast30_missing');
@@ -242,6 +246,14 @@ jobs:
           if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2)throw new Error('dom_second_tab_switch_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId}));
           console.log('DOM SECOND TAB SWITCH: PASS',st.uiSymbol);
 
+          st.uiSymbol='EUR/USD OTC';st.symbol='EUR/USD OTC';st.activeId=1;st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];
+          await testPage.evaluate(()=>{document.querySelector('#usd').setAttribute('aria-selected','true');document.querySelector('#thb').setAttribute('aria-selected','false')});
+          await new Promise(r=>setTimeout(r,30));
+          await testPage.evaluate(()=>{document.querySelector('#usd').setAttribute('aria-selected','false');document.querySelector('#thb').setAttribute('aria-selected','true')});
+          await new Promise(r=>setTimeout(r,80));
+          if(st.uiSymbol!=='EUR/THB OTC'||st.symbol!=='EUR/THB OTC'||Number(st.activeId)!==2||st.candles.length!==0)throw new Error('instant_asset_bridge_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId,candles:st.candles.length}));
+          console.log('INSTANT ACTIVE-ASSET BRIDGE: PASS',st.uiSymbol);
+
           st.uiSymbol='EUR/THB OTC';st.symbol='EUR/THB OTC';st.activeId=2;
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',body:{active_id:1,size:60}}}),'page-out');
           if(st.uiSymbol!=='EUR/USD OTC'||st.symbol!=='EUR/USD OTC'||Number(st.activeId)!==1)throw new Error('broker_active_id_tracking_failed:'+JSON.stringify({ui:st.uiSymbol,symbol:st.symbol,id:st.activeId}));
@@ -262,17 +274,21 @@ jobs:
           await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:[],metrics:{buyScore:51,sellScore:44},forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',confirmed:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60},forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
           const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
           const overlayAscii=overlayText.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!overlayAscii.includes('ATIVO EM ANALISE')||!overlayAscii.includes('EUR/USD OTC')||!overlayAscii.includes('TEMPO REAL')||!overlayAscii.includes('PROXIMOS 30 SEGUNDOS')||!overlayAscii.includes('NAO ENTRAR')||!overlayAscii.includes('BLOQUEADO')||!overlayAscii.includes('EM VALIDACAO')||overlayAscii.includes('VALOR DEMO')||overlayAscii.includes('ATUALIZACAO'))throw new Error('overlay_v95_content_failed:'+overlayAscii);
-          console.log('V9.5 REALTIME VALIDATION CARD CONTENT: PASS');
+          if(!overlayAscii.includes('ATIVO EM ANALISE')||!overlayAscii.includes('EUR/USD OTC')||!overlayAscii.includes('TEMPO REAL')||!overlayAscii.includes('PROXIMOS 30 SEGUNDOS')||!overlayAscii.includes('NAO ENTRAR')||!overlayAscii.includes('EM VALIDACAO')||!overlayAscii.includes('FORCA TECNICA')||overlayAscii.includes('VALIDACAO DO SINAL')||overlayAscii.includes('BLOQUEADO')||overlayAscii.includes('VALOR DEMO')||overlayAscii.includes('ATUALIZACAO'))throw new Error('overlay_v10_content_failed:'+overlayAscii);
+          const cardRect=await testPage.locator('#sentinel-trading-overlay').boundingBox();
+          const viewport=await testPage.evaluate(()=>({w:innerWidth,h:innerHeight}));
+          if(!cardRect||cardRect.y<0||cardRect.x<0||cardRect.x+cardRect.width>viewport.w+1||cardRect.y+cardRect.height>viewport.h+1)throw new Error('premium_card_outside_viewport:'+JSON.stringify({cardRect,viewport}));
+          if(!overlayAscii.includes('TAMANHO')||!overlayAscii.includes('100%'))throw new Error('zoom_controls_missing');
+          console.log('V10 PREMIUM CARD: PASS',JSON.stringify({cardRect,viewport}));
           const focusedOk=await testPage.evaluate(async()=>{
-            const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');
+            const sel=document.querySelector('#sentinel-trading-overlay select[data-setting="strategy"]');
             if(!sel)return false;sel.focus();const same=sel;
             await new Promise(r=>setTimeout(r,40));
             return document.activeElement===same;
           });
           if(!focusedOk)throw new Error('overlay_select_focus_failed');
           await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:10,reasons:[],metrics:{buyScore:10,sellScore:5},plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'20:30:01',durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
-          const preserved=await testPage.evaluate(()=>{const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');return !!sel&&document.activeElement===sel});
+          const preserved=await testPage.evaluate(()=>{const sel=document.querySelector('#sentinel-trading-overlay select[data-setting="strategy"]');return !!sel&&document.activeElement===sel});
           if(!preserved)throw new Error('overlay_select_was_rebuilt_while_open');
           console.log('OVERLAY SELECT STABILITY: PASS');
 
