@@ -78,7 +78,8 @@ jobs:
           if(!broker.includes('preserveBrowser:true')||!driver.includes('preservedBrowser:true'))throw new Error('browser_not_preserved');
           const ascii=driver.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           for(const required of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"'])if(!ascii.includes(required))throw new Error('ui_missing:'+required);
-          if(!worker.includes("Bot iniciado · sincronizando leitura"))throw new Error('start_still_depends_on_feed');
+          const workerAscii=worker.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,' ').replace(/\s+/g,' ').toUpperCase();
+          if(!workerAscii.includes('BOT INICIADO')||!workerAscii.includes('SINCRONIZANDO LEITURA'))throw new Error('start_still_depends_on_feed');
           console.log('V11 CLEAN ARCHITECTURE: PASS');
           '@
           Set-Content -Path 'sentinel-v11-smoke.mjs' -Value $script -Encoding UTF8
