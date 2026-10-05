@@ -259,11 +259,11 @@ jobs:
           console.log('REALTIME MARKET EVENT: PASS',realtimeEvents);
 
           s.page=testPage;s.background=false;
-          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:[],metrics:{buyScore:51,sellScore:44},forecast30:{side:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:[],metrics:{buyScore:51,sellScore:44},forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',confirmed:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60},forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:60000,mode:'demo',brokerMode:'demo',state:'running'});
           const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
           const overlayAscii=overlayText.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!overlayAscii.includes('ATIVO EM ANALISE')||!overlayAscii.includes('EUR/USD OTC')||!overlayAscii.includes('TEMPO REAL')||!overlayAscii.includes('PROXIMOS 30 SEGUNDOS')||!overlayAscii.includes('PUT')||overlayAscii.includes('VALOR DEMO')||overlayAscii.includes('ATUALIZACAO'))throw new Error('overlay_v94_content_failed:'+overlayAscii);
-          console.log('V9.5 REALTIME CONTROL CARD CONTENT: PASS');
+          if(!overlayAscii.includes('ATIVO EM ANALISE')||!overlayAscii.includes('EUR/USD OTC')||!overlayAscii.includes('TEMPO REAL')||!overlayAscii.includes('PROXIMOS 30 SEGUNDOS')||!overlayAscii.includes('NAO ENTRAR')||!overlayAscii.includes('BLOQUEADO')||!overlayAscii.includes('EM VALIDACAO')||overlayAscii.includes('VALOR DEMO')||overlayAscii.includes('ATUALIZACAO'))throw new Error('overlay_v95_content_failed:'+overlayAscii);
+          console.log('V9.5 REALTIME VALIDATION CARD CONTENT: PASS');
           const focusedOk=await testPage.evaluate(async()=>{
             const sel=document.querySelector('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]');
             if(!sel)return false;sel.focus();const same=sel;
