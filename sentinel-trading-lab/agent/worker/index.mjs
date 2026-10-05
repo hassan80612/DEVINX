@@ -104,7 +104,7 @@ function overlayAnalysis(view,now=Date.now()){
   const complete=current&&Number.isFinite(Number(current.confidence))&&current.metrics&&Number.isFinite(Number(current.metrics.buyScore))&&Number.isFinite(Number(current.metrics.sellScore))&&current.finalConfluence;
   if(complete){lastOverlayAnalysis=current;lastOverlayAnalysisAt=now;return{analysis:current,transient:false}}
   const age=now-lastOverlayAnalysisAt;
-  if(lastOverlayAnalysis&&age<=4500)return{analysis:lastOverlayAnalysis,transient:true};
+  if(lastOverlayAnalysis&&age<=850)return{analysis:lastOverlayAnalysis,transient:true};
   return{analysis:current||{},transient:false}
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{

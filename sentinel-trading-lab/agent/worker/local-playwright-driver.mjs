@@ -864,18 +864,18 @@ export class LocalPlaywrightDriver{
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{};
         const analysisTransient=d.analysisTransient===true;
         const side=String(d.side||'WAIT').toUpperCase(),raw=String(q.rawSide||side||'WAIT').toUpperCase();
-        const validationReady=String(q.status||'').toUpperCase()==='VALIDADO';
+        const entryGateReady=q.entryReady===true;
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
-        const signal=validationReady?(side==='BUY'?'CALL':side==='SELL'?'PUT':'AGUARDAR'):(String(q.status||'')?'NÃO ENTRAR':rawLabel);
+        const signal=entryGateReady?(side==='BUY'?'CALL':side==='SELL'?'PUT':'AGUARDAR'):'AGUARDAR';
         const gold='#e8c85f',goldSoft='#f4df9a';
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const confidence=Math.max(0,Math.min(100,Number(d.confidence)||0));
         const buy=Math.max(0,Math.min(100,Number(m.buyScore)||0)),sell=Math.max(0,Math.min(100,Number(m.sellScore)||0));
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
-        const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1200;
+        const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1800;
         const liveLabel=analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
-        const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<6000;
+        const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<2400;
         const planner=d.entryPlanner?.horizons||{};
         const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
@@ -888,21 +888,19 @@ export class LocalPlaywrightDriver{
         const minConfidence=Math.max(55,Math.min(95,Number(d.minConfidence)||74));
         const confirmed=q.confirmed||{},stability=q.stability||{};
         const samples=Math.max(0,Number(confirmed.samples)||0),minSamples=Math.max(1,Number(confirmed.minSamples)||12),winRate=Math.max(0,Math.min(100,Number(confirmed.winRate)||0)),minWinRate=Math.max(1,Number(confirmed.minWinRate)||60);
-        const sampleCoverage=Math.min(100,Math.round(samples/minSamples*100));
-        const validationScore=Math.round(sampleCoverage*.42+Math.min(100,winRate/minWinRate*100)*.58);
-        const stableElapsed=Number(stability.since)>0?Math.max(0,Date.now()-Number(stability.since)):0,stableMin=Math.max(1,Number(stability.minStableMs)||2200),stableCount=Math.max(0,Number(stability.count)||0);
-        const stabilityScore=['BUY','SELL'].includes(raw)?Math.min(100,Math.round(Math.min(1,stableCount/3)*45+Math.min(1,stableElapsed/stableMin)*55)):0;
-        const readiness=(dir,technical)=>{const match=raw===dir,base=Math.max(0,Math.min(100,Number(technical)||0));const score=base*.52+validationScore*.28+(match?stabilityScore:0)*.20;return Math.max(0,Math.min(100,Math.round(score*(match?1:.48))))};
-        const statusCall=readiness('BUY',buy),statusPut=readiness('SELL',sell);
+        const stableElapsed=Number(stability.since)>0?Math.max(0,Date.now()-Number(stability.since)):0,stableMin=Math.max(1,Number(stability.minStableMs)||3600),stableCount=Math.max(0,Number(stability.count)||0);
+        const stabilityScore=['BUY','SELL'].includes(raw)?Math.min(100,Math.round(Math.min(1,stableCount/4)*40+Math.min(1,stableElapsed/stableMin)*60)):0;
+        const statusCall=Math.round(buy),statusPut=Math.round(sell);
+        const gateReason=!liveNow||!analysisFresh?'ATUALIZANDO':q.automationBlockReason==='reversal_guard'?'REVERSÃO — AGUARDE':q.automationBlockReason==='stability'?'ESTABILIZANDO':q.automationBlockReason==='technical'?'ABAIXO DO FILTRO':entryGateReady?'PRONTO':String(q.status||'AGUARDAR');
         let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme='dark';
         try{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
         el.dataset.theme=uiTheme;
-        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(150deg,#fffef9,#f2e7cf)',color:'#241c11',border:'1px solid rgba(184,142,43,.52)',boxShadow:'0 24px 68px rgba(73,51,10,.20), inset 0 1px #fff'}:{background:'linear-gradient(150deg,#07090b,#12181b)',color:'#f7f2e8',border:'1px solid rgba(211,171,69,.34)',boxShadow:'0 26px 78px rgba(0,0,0,.62), inset 0 1px rgba(255,255,255,.035)'});
+        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(150deg,#ffffff,#edf3f6)',color:'#07151e',border:'1px solid rgba(34,72,88,.38)',boxShadow:'0 24px 68px rgba(15,39,50,.24), inset 0 1px #fff'}:{background:'linear-gradient(150deg,#04080b,#0b141a)',color:'#ffffff',border:'1px solid rgba(226,190,89,.50)',boxShadow:'0 28px 84px rgba(0,0,0,.74), inset 0 1px rgba(255,255,255,.06)'});
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
-        const entryReady=liveNow&&analysisFresh&&validationReady&&q.stability?.ready===true&&['BUY','SELL'].includes(side);
+        const entryReady=liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const outlook=liveNow&&analysisFresh&&plannerPlan?.outlookReady?plannerPlan.bias:'SEM LEITURA';
         const outlookTone=outlook==='CALL'?'#69e1b5':outlook==='PUT'?'#ff8f9c':'#e8c85f';
         const planHtml=plannerPlan?.outlookReady&&liveNow&&analysisFresh?(
@@ -944,8 +942,8 @@ export class LocalPlaywrightDriver{
 
         const focused=document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select')))return;
 
-        const ink=uiTheme==='light'?'#241d13':'#f5f0e6',muted=uiTheme==='light'?'#6e6048':'#a4adb1',subtle=uiTheme==='light'?'#a18a60':'#6c7a80';
-        const fieldBg=uiTheme==='light'?'#fffdfa':'#101619',fieldInk=uiTheme==='light'?'#302517':'#f5f1e8',fieldBorder=uiTheme==='light'?'rgba(177,137,47,.34)':'rgba(205,166,67,.26)';
+        const ink=uiTheme==='light'?'#07151e':'#ffffff',muted=uiTheme==='light'?'#3d5663':'#c4d0d5',subtle=uiTheme==='light'?'#627b88':'#92a2aa';
+        const fieldBg=uiTheme==='light'?'#ffffff':'#0a1217',fieldInk=uiTheme==='light'?'#07151e':'#ffffff',fieldBorder=uiTheme==='light'?'rgba(36,76,94,.38)':'rgba(226,190,89,.38)';
         el.innerHTML=`
           <div data-sentinel-drag style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;padding:2px 2px 10px;border-bottom:1px solid ${uiTheme==='light'?'rgba(177,137,47,.20)':'rgba(205,166,67,.17)'}">
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -964,7 +962,7 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div style="display:grid;grid-template-columns:.9fr 1.1fr;gap:9px;margin-top:10px">
-            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f9f1df)':'linear-gradient(145deg,#151a1d,#0b1013)'};border:1px solid ${uiTheme==='light'?'rgba(177,137,47,.30)':'rgba(205,166,67,.22)'};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.09)':'0 12px 28px rgba(0,0,0,.28)'}">
+            <div data-sentinel-role="confluence" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef4f7)':'linear-gradient(145deg,#0b1217,#05090c)'};border:1px solid ${uiTheme==='light'?'rgba(36,76,94,.30)':'rgba(226,190,89,.34)'};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.09)':'0 12px 28px rgba(0,0,0,.28)'}">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${uiTheme==='light'?'#405862':'#b9c8ce'}">CONFLUÊNCIA TÉCNICA</span><span style="font-size:8px;color:${uiTheme==='light'?'#617780':'#7f959f'}">FORÇA DO MERCADO</span></div>
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><b style="font-size:16px;color:${finalTone}">${finalSide}</b><span style="font-size:8px;color:#d7bd70">Confiança <b style="font-size:12px;color:#f1d37b">${n(confidence,0)}%</b></span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
@@ -973,20 +971,20 @@ export class LocalPlaywrightDriver{
               </div>
             </div>
 
-            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#fffdf7,#f4ead2)':'linear-gradient(145deg,#18160f,#0f1112)'};border:1px solid ${entryReady?tone:'rgba(205,166,67,.30)'};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.11)':'0 12px 28px rgba(0,0,0,.30)'}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:900;letter-spacing:.065em;color:${uiTheme==='light'?'#405862':'#b9c8ce'}">PRONTIDÃO DE ENTRADA</span><span style="font-size:8px;font-weight:900;color:${validationReady?'#63ddb0':uiTheme==='light'?'#8a681e':'#d8b85e'}">${esc(String(q.status||'COLETANDO'))}</span></div>
+            <div data-sentinel-role="entry-status" style="padding:11px 12px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#edf3f6)':'linear-gradient(145deg,#11100a,#070b0e)'};border:1px solid ${entryReady?tone:(uiTheme==='light'?'rgba(36,76,94,.34)':'rgba(226,190,89,.46)')};box-shadow:${uiTheme==='light'?'0 10px 24px rgba(78,56,12,.11)':'0 12px 28px rgba(0,0,0,.30)'}">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:9px;font-weight:950;letter-spacing:.065em;color:${ink}">PRONTIDÃO DE ENTRADA</span><span style="font-size:8px;font-weight:950;color:${entryReady?'#63ddb0':uiTheme==='light'?'#7a5200':'#f2cf66'}">${esc(gateReason)}</span></div>
               <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;margin-top:7px">
                 <div>
                   <div style="font-size:9px;font-weight:900;color:#63ddb0">CALL <b style="font-size:18px">${n(statusCall,0)}%</b></div>
                   <div style="font-size:9px;font-weight:900;color:#ff8695;margin-top:4px">PUT <b style="font-size:18px">${n(statusPut,0)}%</b></div>
                 </div>
-                <div style="font-size:21px;font-weight:950;line-height:1;color:${entryReady?tone:'#d8b85e'};text-shadow:0 0 18px rgba(216,184,94,.12)">${entryReady?signal:'AGUARDAR'}</div>
+                <div style="text-align:right"><div style="font-size:7.5px;font-weight:900;letter-spacing:.08em;color:${muted}">CONFIANÇA</div><div style="font-size:17px;font-weight:950;color:${entryReady?tone:'#f2cf66'}">${n(confidence,0)}%</div><div style="font-size:20px;font-weight:950;line-height:1.05;margin-top:3px;color:${entryReady?tone:'#f2cf66'};text-shadow:0 0 18px rgba(216,184,94,.16)">${entryReady?signal:'AGUARDAR'}</div></div>
               </div>
-              <div style="margin-top:7px;padding-top:6px;border-top:1px solid ${uiTheme==='light'?'rgba(177,137,47,.16)':'rgba(205,166,67,.12)'};font-size:8px;line-height:1.35;color:${muted}">histórico <b style="color:${ink}">${n(winRate,1)}%</b> · amostras <b style="color:${ink}">${samples}/${minSamples}</b> · estabilidade <b style="color:${ink}">${n(stabilityScore,0)}%</b></div>
+              <div style="margin-top:7px;padding-top:6px;border-top:1px solid ${uiTheme==='light'?'rgba(36,76,94,.16)':'rgba(226,190,89,.18)'};font-size:8px;line-height:1.35;color:${muted}">filtro <b style="color:${ink}">${n(minConfidence,0)}%</b> · estabilidade <b style="color:${ink}">${n(stabilityScore,0)}%</b> · histórico <b style="color:${ink}">${n(winRate,1)}%</b> (${samples}/${minSamples})</div>
             </div>
           </div>
 
-          <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f8f2e6)':'linear-gradient(145deg,#102632,#0b202a)'};border-radius:10px;box-sizing:border-box">
+          <div data-sentinel-role="horizon-outlook" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef4f7)':'linear-gradient(145deg,#0b1b24,#07141a)'};border-radius:10px;box-sizing:border-box">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div style="font-size:9px;font-weight:900;letter-spacing:.045em;color:${ink}">CENÁRIO POR PRAZO · ${esc(d.asset||'—')}</div>
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
@@ -1020,15 +1018,15 @@ export class LocalPlaywrightDriver{
 
           
 
-          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#fffefb,#f7f0e4)':'linear-gradient(145deg,rgba(16,37,48,.96),rgba(8,24,32,.96))'};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
+          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:10px 11px;border-radius:14px;background:${uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eef3f5)':'linear-gradient(145deg,#0d1d25,#071218)'};border:1px solid rgba(210,174,82,.14);box-shadow:0 10px 24px rgba(0,0,0,.16);box-sizing:border-box;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
               <span style="font-size:9px;font-weight:900;letter-spacing:.04em;color:${ink}">Controle do bot</span>
               <span style="font-size:8px;font-weight:800;line-height:1;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#93a5ad'};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box">
-              <button data-sentinel-action="start" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(114,230,185,.18);border-radius:7px;background:${runtime==='running'?'linear-gradient(180deg,rgba(54,112,90,.72),rgba(30,72,58,.78))':'rgba(114,230,185,.035)'};color:#9cebc9;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
-              <button data-sentinel-action="pause" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(232,200,95,.15);border-radius:7px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(96,81,40,.66),rgba(58,49,28,.74))':'rgba(232,200,95,.025)'};color:${runtime==='paused'?goldSoft:'#d5dee2'};font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
-              <button data-sentinel-action="stop" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(255,143,157,.17);border-radius:7px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(81,43,50,.63),rgba(50,29,34,.72))':'rgba(255,143,157,.025)'};color:#f2a1ac;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
+              <button data-sentinel-action="start" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(114,230,185,.18);border-radius:7px;background:${runtime==='running'?'linear-gradient(180deg,rgba(54,112,90,.72),rgba(30,72,58,.78))':'rgba(114,230,185,.12)'};color:#9cebc9;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
+              <button data-sentinel-action="pause" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(232,200,95,.15);border-radius:7px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(96,81,40,.66),rgba(58,49,28,.74))':'rgba(232,200,95,.10)'};color:${runtime==='paused'?goldSoft:'#d5dee2'};font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
+              <button data-sentinel-action="stop" style="width:100%;min-width:0;height:30px;box-sizing:border-box;border:1px solid rgba(255,143,157,.17);border-radius:7px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(81,43,50,.63),rgba(50,29,34,.72))':'rgba(255,143,157,.10)'};color:#f2a1ac;font-family:inherit;font-size:9px;font-weight:850;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
             </div>
             <div data-sentinel-control-msg style="min-height:7px;margin:2px 1px 0;font-size:8px;font-weight:700;color:#79b9a3;line-height:1.1"></div>
           </div>

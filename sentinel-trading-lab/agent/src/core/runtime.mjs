@@ -39,7 +39,7 @@ export class DemoTradingRuntime{
     this.broker=new DemoBrokerAdapter({balance,payout});
     this.audit=new AuditLog();
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
-    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};
+    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};
     this.settings={
       mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',requireLiveBroker:true,orderDurationMs:60_000,orderProposalTtlMs:60_000,
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:1_000,startAt:null,endAt:null},
@@ -121,36 +121,50 @@ export class DemoTradingRuntime{
     const confirmed=this._validationStats(this._validationKey('confirmed',asset,durationMs,strategy));
     const forecast=this._validationStats(this._validationKey('forecast30',asset,30000,strategy));
 
-    // Exige persistência do mesmo lado antes de liberar a entrada.
-    const minStableMs=durationMs<=60000?2200:durationMs<=120000?3000:4500;
+    const threshold=Math.max(55,Number(settings?.risk?.minConfidence||74));
+    const technicalBuy=Math.max(0,Math.min(100,Number(analysis?.metrics?.buyScore)||0));
+    const technicalSell=Math.max(0,Math.min(100,Number(analysis?.metrics?.sellScore)||0));
+    const technicalScore=rawSide==='BUY'?technicalBuy:rawSide==='SELL'?technicalSell:Math.max(technicalBuy,technicalSell);
+    const technicalEdge=Math.abs(technicalBuy-technicalSell);
+    const edgeMin=durationMs<=60000?18:durationMs<=120000?15:12;
+    const scoreReady=['BUY','SELL'].includes(rawSide)&&technicalScore>=threshold&&technicalEdge>=edgeMin;
+
+    const minStableMs=durationMs<=30000?3600:durationMs<=60000?4200:durationMs<=120000?5000:6500;
     if(['BUY','SELL'].includes(rawSide)){
-      if(this.entryStability.side===rawSide){
-        this.entryStability.count=Number(this.entryStability.count||0)+1
-      }else{
-        this.entryStability={side:rawSide,since:now,count:1}
-      }
-    }else{
-      this.entryStability={side:'WAIT',since:now,count:0}
-    }
-    const stable=['BUY','SELL'].includes(rawSide)&&this.entryStability.count>=3&&now-Number(this.entryStability.since||now)>=minStableMs;
+      if(this.entryStability.side===rawSide)this.entryStability.count=Number(this.entryStability.count||0)+1;
+      else this.entryStability={side:rawSide,since:now,count:1};
+    }else this.entryStability={side:'WAIT',since:now,count:0};
+    const stable=['BUY','SELL'].includes(rawSide)&&this.entryStability.count>=4&&now-Number(this.entryStability.since||now)>=minStableMs;
     const stability={side:this.entryStability.side,count:this.entryStability.count,since:this.entryStability.since,minStableMs,ready:stable};
 
-    const gated={...analysis,quality:{status:confirmed.ready?'VALIDADO':(confirmed.samples>=confirmed.minSamples?'BLOQUEADO':'COLETANDO'),rawSide,confirmed,forecast,stability}};
-    if(gated.forecast30){
-      gated.forecast30={...gated.forecast30,biasSide:rawForecastSide,validation:forecast};
-      if(!forecast.ready)gated.forecast30.side='WAIT';
+    const reversalGuardMs=durationMs<=60000?6500:durationMs<=120000?8000:10000;
+    const lastReleaseSide=String(this.entryRelease?.side||'WAIT').toUpperCase();
+    const reversalBlocked=['BUY','SELL'].includes(rawSide)&&['BUY','SELL'].includes(lastReleaseSide)&&rawSide!==lastReleaseSide&&now-Number(this.entryRelease?.at||0)<reversalGuardMs;
+
+    const historyStatus=confirmed.ready?'VALIDADO':(confirmed.samples>=confirmed.minSamples?'HISTÓRICO FRACO':'EM TESTE');
+    const quality={status:historyStatus,rawSide,confirmed,forecast,stability,entryReady:false,entrySide:'WAIT',threshold,technicalScore,technicalEdge,edgeMin,historicalReady:confirmed.ready,reversalGuardMs,reversalBlocked};
+    const gated={...analysis,quality};
+    if(gated.forecast30)gated.forecast30={...gated.forecast30,biasSide:rawForecastSide,validation:forecast,provisional:!forecast.ready};
+
+    if(['BUY','SELL'].includes(rawSide)&&!scoreReady){
+      gated.automationBlocked=true;gated.automationBlockReason='technical';
+      gated.reasons=[...(gated.reasons||[]),`Sinal ${rawSide}; aguardando força mínima ${threshold} e vantagem técnica de ${edgeMin} pts.`].slice(0,14);
+      return{allowed:false,analysis:gated,reasons:[`Força técnica ainda insuficiente para ${asset}.`]}
     }
     if(['BUY','SELL'].includes(rawSide)&&!stable){
-      gated.automationBlocked=true;
-      gated.automationBlockReason='stability';
-      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; automação aguardando estabilidade temporal.`].slice(0,14);
-      return{allowed:false,analysis:gated,reasons:[`Sinal ainda estabilizando para ${asset}.`]}
+      gated.automationBlocked=true;gated.automationBlockReason='stability';
+      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; aguardando ${(minStableMs/1000).toFixed(1)}s de estabilidade.`].slice(0,14);
+      return{allowed:false,analysis:gated,reasons:[`Sinal estabilizando para ${asset}.`]}
     }
-    if(['BUY','SELL'].includes(rawSide)&&!confirmed.ready){
-      gated.automationBlocked=true;
-      gated.automationBlockReason='validation';
-      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; automação aguardando validação histórica.`].slice(0,14);
-      return{allowed:false,analysis:gated,reasons:[`Sinal ainda não validado para ${asset} / ${Math.round(durationMs/1000)}s.`]}
+    if(reversalBlocked){
+      gated.automationBlocked=true;gated.automationBlockReason='reversal_guard';
+      gated.reasons=[...(gated.reasons||[]),'Mudança brusca de direção detectada; aguardando nova confirmação antes de liberar o lado oposto.'].slice(0,14);
+      return{allowed:false,analysis:gated,reasons:[`Reversão recente em ${asset}; aguardando nova confirmação.`]}
+    }
+
+    if(['BUY','SELL'].includes(rawSide)&&scoreReady&&stable){
+      gated.quality.entryReady=true;gated.quality.entrySide=rawSide;this.entryRelease={side:rawSide,at:now};
+      if(!confirmed.ready)gated.reasons=[...(gated.reasons||[]),`Histórico ${confirmed.samples}/${confirmed.minSamples} · ${confirmed.winRate}%: ainda em validação, sem bloquear a leitura técnica.`].slice(0,14);
     }
     return{allowed:true,analysis:gated}
   }
