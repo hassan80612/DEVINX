@@ -793,37 +793,45 @@ export class LocalPlaywrightDriver{
       const payload=JSON.parse(JSON.stringify(data||{}));
       await s.page.evaluate((d)=>{
         const id='sentinel-trading-overlay';let el=document.getElementById(id);
-        if(el&&el.dataset.uiVersion!=='10.3'){el.remove();el=null}
+        if(el&&el.dataset.uiVersion!=='10.4'){el.remove();el=null}
         if(!el){
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.3';
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.4';
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
-            width:'430px',minWidth:'380px',maxWidth:'min(620px, calc(100vw - 18px))',
-            minHeight:'420px',maxHeight:'calc(100vh - 18px)',resize:'both',
-            overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',overscrollBehavior:'contain',
-            background:'linear-gradient(155deg,rgba(7,17,24,.988),rgba(10,27,36,.982))',color:'#f4f8fa',
-            border:'1px solid rgba(111,174,192,.26)',borderRadius:'18px',
+            width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
+            minHeight:'360px',maxHeight:'calc(100vh - 18px)',resize:'both',
+            overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',overscrollBehavior:'contain',scrollbarGutter:'stable',
+            background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',
+            border:'1px solid rgba(111,174,192,.24)',borderRadius:'18px',
             boxShadow:'0 24px 72px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.035)',
             backdropFilter:'blur(18px)',
             fontFamily:'"Segoe UI Variable Display","Aptos Display","Inter","Segoe UI",Arial,sans-serif',
             fontSize:'12px',lineHeight:'1.3',padding:'14px',pointerEvents:'auto',userSelect:'none',
-            scrollbarWidth:'none'
+            scrollbarWidth:'thin',scrollbarColor:'#385461 transparent'
           });
           try{
             const saved=JSON.parse(localStorage.getItem('sentinel-overlay-pos-v1')||'null');
             if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
-              el.style.left=Math.max(8,Math.min(window.innerWidth-340,saved.x))+'px';
+              el.style.left=Math.max(8,Math.min(window.innerWidth-390,saved.x))+'px';
               el.style.top=Math.max(8,Math.min(window.innerHeight-100,saved.y))+'px';
               el.style.right='auto'
             }
-
+            const savedSize=JSON.parse(localStorage.getItem('sentinel-overlay-size-v104')||'null');
+            if(savedSize&&Number.isFinite(savedSize.w)&&Number.isFinite(savedSize.h)){
+              el.style.width=Math.max(390,Math.min(window.innerWidth-18,savedSize.w))+'px';
+              el.style.height=Math.max(360,Math.min(window.innerHeight-18,savedSize.h))+'px'
+            }
           }catch{}
           if(!document.getElementById('__sentinel-overlay-style')){
             const st=document.createElement('style');st.id='__sentinel-overlay-style';
-            st.textContent='#sentinel-trading-overlay::-webkit-scrollbar{width:0;height:0}';
+            st.textContent='#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:#385461;border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:#4a6875}';
             (document.head||document.documentElement).appendChild(st)
           }
           document.documentElement.appendChild(el);
+          try{
+            const ro=new ResizeObserver(()=>{try{const rr=el.getBoundingClientRect();localStorage.setItem('sentinel-overlay-size-v104',JSON.stringify({w:Math.round(rr.width),h:Math.round(rr.height)}))}catch{}});
+            ro.observe(el);el.__sentinelResizeObserver=ro
+          }catch{}
           let drag=null;
           const stop=()=>{if(!drag)return;drag=null;try{const r=el.getBoundingClientRect();localStorage.setItem('sentinel-overlay-pos-v1',JSON.stringify({x:r.left,y:r.top}))}catch{}};
           el.addEventListener('pointerdown',ev=>{
@@ -855,7 +863,7 @@ export class LocalPlaywrightDriver{
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence');
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
         const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<1200;
-        const liveLabel=liveNow?'TEMPO REAL · AGORA':Number.isFinite(liveAge)?'TEMPO REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
+        const liveLabel=liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
         const fq=q.forecast||f.validation||{},fReady=fq.ready===true,fSide=String(f.side||'WAIT').toUpperCase(),fBias=String(f.biasSide||fSide||'WAIT').toUpperCase();
         const forecast=fReady?(fSide==='BUY'?'CALL':fSide==='SELL'?'PUT':'AGUARDAR'):'EM VALIDAÇÃO';
         const forecastTone=forecast==='CALL'?'#69e1b5':forecast==='PUT'?'#ff8f9c':'#f2cb6f';
@@ -924,31 +932,31 @@ export class LocalPlaywrightDriver{
                 <div style="font-size:9px;font-weight:700;color:#617985;margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
-            <div style="font-size:9px;color:#637b86">arraste pelo topo</div>
+            <div style="font-size:9px;color:#637b86">arraste pelo topo · redimensione pelo canto</div>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px">
             <div style="padding:11px 12px;border-radius:13px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.075)">
-              <div style="font-size:9px;font-weight:850;letter-spacing:.07em;color:#8399a4">STATUS DA ENTRADA</div>
-              <div style="font-size:24px;font-weight:900;line-height:1.05;color:${tone};margin-top:4px">${signal==='NÃO ENTRAR'?'AGUARDAR':signal}</div>
+              <div style="font-size:9px;font-weight:850;letter-spacing:.07em;color:#8399a4">Status da entrada</div>
+              <div style="font-size:20px;font-weight:850;line-height:1.05;color:${tone};margin-top:4px">${signal==='NÃO ENTRAR'?'AGUARDAR':signal}</div>
               <div style="font-size:10px;color:#8398a2;margin-top:5px">viés <b style="color:#dce6ea">${rawLabel}</b> · força ${n(confidence,0)}%</div>
             </div>
             <div style="padding:11px 12px;border-radius:13px;background:linear-gradient(145deg,rgba(72,124,151,.09),rgba(63,100,123,.04));border:1px solid rgba(110,165,194,.14)">
-              <div style="font-size:9px;font-weight:850;letter-spacing:.07em;color:#8da9b7">CONFLUÊNCIA FINAL</div>
-              <div style="display:flex;align-items:baseline;gap:7px;margin-top:4px"><span style="font-size:24px;font-weight:900;color:${finalTone}">${finalSide}</span><span style="font-size:16px;font-weight:850;color:${finalTone}">${n(finalStrength,0)}%</span></div>
+              <div style="font-size:9px;font-weight:850;letter-spacing:.07em;color:#8da9b7">Confluência final</div>
+              <div style="display:flex;align-items:baseline;gap:7px;margin-top:4px"><span style="font-size:20px;font-weight:850;color:${finalTone}">${finalSide}</span><span style="font-size:14px;font-weight:800;color:${finalTone}">${n(finalStrength,0)}%</span></div>
               <div style="font-size:9px;color:#718793;margin-top:5px">CALL ${n(finalCall,0)} · PUT ${n(finalPut,0)} · score combinado</div>
             </div>
           </div>
 
           <div style="margin-top:9px;padding:10px 11px;border-radius:13px;background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.065)">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
-              <span style="font-size:10px;font-weight:850;color:#a8bac2;letter-spacing:.04em">CONFIGURAÇÃO</span>
+              <span style="font-size:10px;font-weight:850;color:#a8bac2;letter-spacing:.04em">Configuração</span>
               <span style="font-size:9px;font-weight:850;color:${runtime==='running'?'#72e6b9':runtime==='paused'?'#f3ce73':'#9aabb2'};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)">BOT ${runtimeLabel}</span>
             </div>
             <div style="display:grid;grid-template-columns:1.45fr .72fr .72fr;gap:8px">
-              <label><span style="display:block;font-size:9px;font-weight:800;color:#7f949f;margin:0 0 4px 2px">ESTRATÉGIA</span><select data-sentinel-setting="strategy" style="width:100%;height:36px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:9px;padding:0 9px;font-size:11px;font-weight:700;outline:none"><option value="smart_confluence" ${strategy==='smart_confluence'?'selected':''}>Smart Confluence</option><option value="price_action" ${strategy==='price_action'?'selected':''}>Price Action</option><option value="trendline_breakout" ${strategy==='trendline_breakout'?'selected':''}>Trendline Breakout</option><option value="support_resistance" ${strategy==='support_resistance'?'selected':''}>Suporte / Resistência</option><option value="fibonacci_retest" ${strategy==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option><option value="trend" ${strategy==='trend'?'selected':''}>Trend Following</option><option value="mean_reversion" ${strategy==='mean_reversion'?'selected':''}>Mean Reversion</option><option value="breakout" ${strategy==='breakout'?'selected':''}>Breakout</option></select></label>
-              <label><span style="display:block;font-size:9px;font-weight:800;color:#7f949f;margin:0 0 4px 2px">TEMPO</span><select data-sentinel-setting="duration" style="width:100%;height:36px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:9px;padding:0 8px;font-size:11px;font-weight:750;outline:none"><option value="30000" ${duration===30000?'selected':''}>30 s</option><option value="60000" ${duration===60000?'selected':''}>1 min</option><option value="120000" ${duration===120000?'selected':''}>2 min</option><option value="300000" ${duration===300000?'selected':''}>5 min</option><option value="600000" ${duration===600000?'selected':''}>10 min</option><option value="900000" ${duration===900000?'selected':''}>15 min</option></select></label>
-              <label><span style="display:block;font-size:9px;font-weight:800;color:#7f949f;margin:0 0 4px 2px">FILTRO MÍN.</span><select data-sentinel-setting="minConfidence" title="Score mínimo de confluência. Não é taxa garantida de acerto." style="width:100%;height:36px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:9px;padding:0 8px;font-size:11px;font-weight:750;outline:none"><option value="55" ${minConfidence===55?'selected':''}>55%</option><option value="60" ${minConfidence===60?'selected':''}>60%</option><option value="65" ${minConfidence===65?'selected':''}>65%</option><option value="70" ${minConfidence===70?'selected':''}>70%</option><option value="75" ${minConfidence===75?'selected':''}>75%</option><option value="80" ${minConfidence===80?'selected':''}>80%</option><option value="85" ${minConfidence===85?'selected':''}>85%</option><option value="90" ${minConfidence===90?'selected':''}>90%</option><option value="95" ${minConfidence===95?'selected':''}>95%</option></select></label>
+              <label><span style="display:block;font-size:9px;font-weight:800;color:#7f949f;margin:0 0 4px 2px">Estratégia</span><select data-sentinel-setting="strategy" style="width:100%;height:36px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:9px;padding:0 9px;font-size:11px;font-weight:700;outline:none"><option value="smart_confluence" ${strategy==='smart_confluence'?'selected':''}>Smart Confluence</option><option value="price_action" ${strategy==='price_action'?'selected':''}>Price Action</option><option value="trendline_breakout" ${strategy==='trendline_breakout'?'selected':''}>Trendline Breakout</option><option value="support_resistance" ${strategy==='support_resistance'?'selected':''}>Suporte / Resistência</option><option value="fibonacci_retest" ${strategy==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option><option value="trend" ${strategy==='trend'?'selected':''}>Trend Following</option><option value="mean_reversion" ${strategy==='mean_reversion'?'selected':''}>Mean Reversion</option><option value="breakout" ${strategy==='breakout'?'selected':''}>Breakout</option></select></label>
+              <label><span style="display:block;font-size:9px;font-weight:800;color:#7f949f;margin:0 0 4px 2px">Tempo</span><select data-sentinel-setting="duration" style="width:100%;height:36px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:9px;padding:0 8px;font-size:11px;font-weight:750;outline:none"><option value="30000" ${duration===30000?'selected':''}>30 s</option><option value="60000" ${duration===60000?'selected':''}>1 min</option><option value="120000" ${duration===120000?'selected':''}>2 min</option><option value="300000" ${duration===300000?'selected':''}>5 min</option><option value="600000" ${duration===600000?'selected':''}>10 min</option><option value="900000" ${duration===900000?'selected':''}>15 min</option></select></label>
+              <label><span style="display:block;font-size:9px;font-weight:800;color:#7f949f;margin:0 0 4px 2px">Filtro mín.</span><select data-sentinel-setting="minConfidence" title="Score mínimo de confluência. Não é taxa garantida de acerto." style="width:100%;height:36px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:9px;padding:0 8px;font-size:11px;font-weight:750;outline:none"><option value="55" ${minConfidence===55?'selected':''}>55%</option><option value="60" ${minConfidence===60?'selected':''}>60%</option><option value="65" ${minConfidence===65?'selected':''}>65%</option><option value="70" ${minConfidence===70?'selected':''}>70%</option><option value="75" ${minConfidence===75?'selected':''}>75%</option><option value="80" ${minConfidence===80?'selected':''}>80%</option><option value="85" ${minConfidence===85?'selected':''}>85%</option><option value="90" ${minConfidence===90?'selected':''}>90%</option><option value="95" ${minConfidence===95?'selected':''}>95%</option></select></label>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:9px">
               <button data-sentinel-action="start" style="height:38px;border:0;border-radius:9px;background:linear-gradient(180deg,#78e8bd,#55c99f);color:#071813;font-weight:850;font-size:11px;cursor:pointer;box-shadow:inset 0 1px rgba(255,255,255,.28),0 5px 14px rgba(46,161,120,.12)">▶ INICIAR</button>
@@ -960,7 +968,7 @@ export class LocalPlaywrightDriver{
 
           <div style="margin-top:9px;border-radius:13px;background:rgba(242,206,115,.035);border:1px solid rgba(242,206,115,.11);overflow:hidden">
             <button data-sentinel-toggle="forecast" style="width:100%;border:0;background:transparent;color:#f4f8fa;padding:10px 11px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer">
-              <span><span style="display:block;font-size:9px;font-weight:850;letter-spacing:.07em;color:#b6a96e">PRÓXIMOS 30 SEGUNDOS</span><b style="font-size:20px;color:${forecastTone};line-height:1.08">${fReady?forecast:'AGUARDAR'}</b> <span style="font-size:10px;color:#94a6ae">viés ${forecastBias}</span></span>
+              <span><span style="display:block;font-size:9px;font-weight:850;letter-spacing:.07em;color:#b6a96e">Próximos 30 segundos</span><b style="font-size:20px;color:${forecastTone};line-height:1.08">${fReady?forecast:'AGUARDAR'}</b> <span style="font-size:10px;color:#94a6ae">viés ${forecastBias}</span></span>
               <span data-sentinel-arrow style="font-size:15px;color:#aa9c67">${forecastOpen?'⌃':'⌄'}</span>
             </button>
             <div data-sentinel-section="forecast" style="display:${forecastOpen?'block':'none'};padding:0 11px 10px">
@@ -973,7 +981,7 @@ export class LocalPlaywrightDriver{
 
           <div style="margin-top:9px;padding:10px 11px;border-radius:13px;background:rgba(6,17,23,.52);border:1px solid rgba(255,255,255,.065)">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-              <span style="font-size:9px;font-weight:850;letter-spacing:.07em;color:#a8bac2">FORÇA TÉCNICA EM TEMPO REAL</span>
+              <span style="font-size:9px;font-weight:850;letter-spacing:.07em;color:#a8bac2">FORÇA TÉCNICA EM Tempo REAL</span>
               <span style="font-size:9px;color:${liveNow?'#72e6b9':'#f3ce73'}">● ${liveNow?'AO VIVO':'ATUALIZANDO'}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">
@@ -985,28 +993,28 @@ export class LocalPlaywrightDriver{
 
           <div style="margin-top:9px;border-radius:13px;background:rgba(74,135,175,.03);border:1px solid rgba(101,164,205,.12);overflow:hidden">
             <button data-sentinel-toggle="planner" style="width:100%;border:0;background:transparent;color:#f3f7f8;padding:10px 11px;display:flex;justify-content:space-between;align-items:center;text-align:left;cursor:pointer">
-              <span><span style="display:block;font-size:9px;font-weight:850;letter-spacing:.07em;color:#91b3c6">PREVISÃO / GATILHOS DE PREÇO</span><span style="display:block;font-size:8px;color:#667f8b;margin-top:2px">Níveis condicionais para CALL ou PUT</span></span>
+              <span><span style="display:block;font-size:9px;font-weight:850;letter-spacing:.07em;color:#91b3c6">Previsão / gatilhos de preço</span><span style="display:block;font-size:8px;color:#667f8b;margin-top:2px">Níveis condicionais para CALL ou PUT</span></span>
               <span data-sentinel-arrow style="font-size:15px;color:#91b3c6">${plannerOpen?'⌃':'⌄'}</span>
             </button>
             <div data-sentinel-section="planner" style="display:${plannerOpen?'block':'none'};padding:0 11px 10px">
-              <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px"><span style="font-size:9px;font-weight:800;color:#8197a1">HORIZONTE</span><select data-sentinel-plan-horizon style="height:31px;min-width:106px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:8px;padding:0 8px;font-size:10px;font-weight:750;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select></label>
+              <label style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px"><span style="font-size:9px;font-weight:800;color:#8197a1">Horizonte</span><select data-sentinel-plan-horizon style="height:31px;min-width:106px;background:#0d2029;color:#f1f6f8;border:1px solid #314a56;border-radius:8px;padding:0 8px;font-size:10px;font-weight:750;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select></label>
               ${planHtml}
             </div>
           </div>
 
           <div style="margin-top:8px">
-            <button data-sentinel-toggle="details" style="width:100%;border:0;background:transparent;color:#8fa3ad;padding:7px 2px;display:flex;justify-content:space-between;cursor:pointer;font-size:9px;font-weight:850"><span>DETALHES TÉCNICOS</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span></button>
+            <button data-sentinel-toggle="details" style="width:100%;border:0;background:transparent;color:#8fa3ad;padding:7px 2px;display:flex;justify-content:space-between;cursor:pointer;font-size:9px;font-weight:850"><span>Detalhes técnicos</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span></button>
             <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:9px;border-radius:10px;background:rgba(255,255,255,.025);font-size:9px;color:#adbec5"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px 8px"><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:6px;color:#859aa4">${reasons}</div></div>
           </div>
 
-          <div style="height:10px;position:relative"><span style="position:absolute;right:-6px;bottom:-7px;color:#526b76;font-size:16px;pointer-events:none">⌟</span></div>
+          <div style="height:12px;position:relative"><span style="position:absolute;right:-7px;bottom:-9px;color:#65808c;font-size:18px;pointer-events:none">◢</span></div>
 
         `;
 
         requestAnimationFrame(()=>{
           const r=el.getBoundingClientRect();
-          if(r.width>window.innerWidth-16)el.style.width=Math.max(380,window.innerWidth-16)+'px';
-          if(r.height>window.innerHeight-16)el.style.height=Math.max(420,window.innerHeight-16)+'px';
+          if(r.width>window.innerWidth-16)el.style.width=Math.max(390,window.innerWidth-16)+'px';
+          if(r.height>window.innerHeight-16)el.style.height=Math.max(360,window.innerHeight-16)+'px';
           const rr=el.getBoundingClientRect();
           if(rr.right>window.innerWidth-8){el.style.left=Math.max(8,window.innerWidth-rr.width-8)+'px';el.style.right='auto'}
           if(rr.bottom>window.innerHeight-8)el.style.top=Math.max(8,window.innerHeight-rr.height-8)+'px';
