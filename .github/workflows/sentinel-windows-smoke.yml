@@ -52,10 +52,10 @@ jobs:
             Start-Sleep -Milliseconds 300
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '10.12.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '10.13.0'){$ok=$true;break}
             }catch{}
           }
-          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 10.12 + Worker'}
+          if(-not $ok){throw 'Installed EXE did not produce a healthy Agent 10.13 + Worker'}
 
           Write-Host 'FINAL EXE INSTALLER: PASS'
           try{
@@ -83,7 +83,7 @@ jobs:
             throw "Worker exited with code $($p.ExitCode)"
           }
           $w=Invoke-RestMethod 'http://127.0.0.1:8787/health' -TimeoutSec 2
-          if(-not $w.ok -or $w.version -ne '10.12.0'){ throw 'Worker health check failed' }
+          if(-not $w.ok -or $w.version -ne '10.13.0'){ throw 'Worker health check failed' }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
 
       - name: Start Manager and require Worker health
@@ -311,17 +311,17 @@ jobs:
           console.log('FRESHEST QUOTE/CANDLE CLOCK: PASS',freshnessStatus.quoteTs);
 
           s.page=testPage;s.background=false;
-          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.12.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',confirmed:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60},forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:30000,mode:'demo',brokerMode:'demo',state:'stopped'});
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.13.0',strategy:'smart_confluence',side:'WAIT',confidence:36,reasons:['teste de estrutura'],metrics:{buyScore:51,sellScore:44,fast:1.1,slow:1.2,rsi:48,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,forecast30:{side:'WAIT',biasSide:'SELL',confidence:66,horizonSeconds:30,callStrength:32,putStrength:66,trigger:74,callGap:42,putGap:8,validation:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},quality:{status:'COLETANDO',rawSide:'SELL',confirmed:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60},forecast:{ready:false,samples:3,minSamples:12,winRate:33.3,minWinRate:60}},minConfidence:74,plan:{entry:'Aguardar',exit:'Sem entrada'},nextEval:'—',realtime:true,liveAgeMs:90,durationMs:30000,mode:'demo',brokerMode:'demo',state:'stopped'});
           const overlayText=await testPage.locator('#sentinel-trading-overlay').innerText();
           const overlayAscii=overlayText.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!overlayAscii.includes('SENTINEL V10.12.0')||!overlayAscii.includes('CENARIO POR PRAZO')||!overlayAscii.includes('PRONTIDAO DE ENTRADA')||!overlayAscii.includes('CONFLUENCIA TECNICA')||!overlayAscii.includes('DIRECAO / CONTEXTO')||!overlayAscii.includes('VIRADA / REVERSAO')||!overlayAscii.includes('ESTIMATIVA TECNICA')||!overlayAscii.includes('FILTRO')||!overlayAscii.includes('CONTROLE DO BOT')||!overlayAscii.includes('INICIAR')||!overlayAscii.includes('PAUSAR')||!overlayAscii.includes('PARAR'))throw new Error('overlay_outlook_required_content_missing:'+overlayAscii);
+          if(!overlayAscii.includes('SENTINEL V10.13.0')||!overlayAscii.includes('CENARIO POR PRAZO')||!overlayAscii.includes('PRONTIDAO DE ENTRADA')||!overlayAscii.includes('CONFLUENCIA TECNICA')||!overlayAscii.includes('DIRECAO / CONTEXTO')||!overlayAscii.includes('VIRADA / REVERSAO')||!overlayAscii.includes('ESTIMATIVA TECNICA')||!overlayAscii.includes('FILTRO')||!overlayAscii.includes('CONTROLE DO BOT')||!overlayAscii.includes('INICIAR')||!overlayAscii.includes('PAUSAR')||!overlayAscii.includes('PARAR'))throw new Error('overlay_outlook_required_content_missing:'+overlayAscii);
           if(overlayAscii.includes('ATIVO EM ANALISE')||overlayAscii.includes('TAMANHO DO CARD')||overlayAscii.includes('VALIDACAO DO SINAL')||overlayAscii.includes('BLOQUEADO')||overlayAscii.includes('0/12')||overlayAscii.includes('MINIMO 60')||overlayAscii.includes('FORCA TECNICA AGORA')||overlayAscii.includes('HISTORICO'))throw new Error('overlay_removed_content_present:'+overlayAscii);
           if(!overlayAscii.includes('SEM LEITURA')||(!overlayAscii.includes('ATUALIZANDO CALCULO')&&!overlayAscii.includes('SINCRONIZANDO'))||overlayAscii.includes('CALL — GATILHO'))throw new Error('stale_outlook_not_hidden:'+overlayAscii);
           const cardRect=await testPage.locator('#sentinel-trading-overlay').boundingBox();
           const viewport=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>({w:innerWidth,h:innerHeight,resize:getComputedStyle(el).resize}));
           if(viewport.resize!=='both')throw new Error('card_not_resizable:'+viewport.resize);
           if(!cardRect||cardRect.width<380||cardRect.x<0||cardRect.y<0||cardRect.x+cardRect.width>viewport.w+1||cardRect.y+Math.min(cardRect.height,viewport.h)>viewport.h+1)throw new Error('v109_card_outside_viewport:'+JSON.stringify({cardRect,viewport}));
-          console.log('V10.12 PREMIUM RESIZABLE CARD: PASS',JSON.stringify({cardRect,viewport}));
+          console.log('V10.13 PREMIUM RESIZABLE CARD: PASS',JSON.stringify({cardRect,viewport}));
           const shadowInfo=await testPage.evaluate(()=>{
             const host=document.querySelector('#sentinel-trading-overlay-host'),root=host?.shadowRoot,overlay=root?.getElementById('sentinel-trading-overlay');
             const read=sel=>String(root?.querySelector(sel)?.innerText||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
@@ -342,7 +342,7 @@ jobs:
           });
           if(lightContrast.theme!=='light'||!lightContrast.title.includes('15, 13, 10')||!lightContrast.status.includes('15, 13, 10'))throw new Error('light_theme_contrast_failed:'+JSON.stringify(lightContrast));
           await testPage.click('#sentinel-trading-overlay [data-sentinel-theme="dark"]');
-          console.log('V10.12 LIGHT THEME CONTRAST: PASS',JSON.stringify(lightContrast));
+          console.log('V10.13 LIGHT THEME CONTRAST: PASS',JSON.stringify(lightContrast));
           const hierarchy=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{
             const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
             const find=t=>{const node=[...el.querySelectorAll('*')].find(x=>norm(x.textContent)===t);if(!node)return null;const r=node.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}};
@@ -353,26 +353,26 @@ jobs:
           if(!confBox||!statusBox||!botBox)throw new Error('v109_visual_labels_missing:'+JSON.stringify(hierarchy));
           if(!(confBox.x<statusBox.x))throw new Error('v109_confluence_not_left:'+JSON.stringify(hierarchy));
           if(!(botBox.y>statusBox.y))throw new Error('v109_bot_not_below_decision_cards:'+JSON.stringify(hierarchy));
-          console.log('V10.12 VISUAL HIERARCHY: PASS',JSON.stringify(hierarchy));
+          console.log('V10.13 VISUAL HIERARCHY: PASS',JSON.stringify(hierarchy));
           await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{el.style.height='420px';el.scrollTop=0});
           const scrollState=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>({clientHeight:el.clientHeight,scrollHeight:el.scrollHeight,overflowY:getComputedStyle(el).overflowY,resize:getComputedStyle(el).resize}));
           if(scrollState.overflowY!=='auto'||scrollState.resize!=='both'||scrollState.scrollHeight<=scrollState.clientHeight)throw new Error('card_scroll_container_failed:'+JSON.stringify(scrollState));
           await testPage.locator('#sentinel-trading-overlay').evaluate(el=>{el.scrollTop=el.scrollHeight});
           const scrolled=await testPage.locator('#sentinel-trading-overlay').evaluate(el=>el.scrollTop>0);
           if(!scrolled)throw new Error('card_scroll_failed');
-          console.log('V10.12 CARD SCROLL + RESIZE: PASS',JSON.stringify(scrollState));
+          console.log('V10.13 CARD SCROLL + RESIZE: PASS',JSON.stringify(scrollState));
 
           const plannerSelect=await testPage.locator('#sentinel-trading-overlay [data-sentinel-plan-horizon]');
           await plannerSelect.selectOption('900');
           await new Promise(r=>setTimeout(r,260));
-          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.12.0',strategy:'smart_confluence',side:'WAIT',confidence:67,reasons:['teste de estrutura'],metrics:{buyScore:48,sellScore:67,shortModel:{ready:true,reversalCallScore:28,reversalPutScore:72},fast:1.1,slow:1.2,rsi:68,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,quality:{status:'EM TESTE',rawSide:'WAIT',blockLabel:'REVERSÃO EM FORMAÇÃO — PUT',blockDetail:'O movimento de alta está perdendo força em região relevante; aguardando o gatilho curto de queda.',technicalEdge:19,preEntry:{active:true,side:'SELL',kind:'reversal',expiresAt:Date.now()+8000}},plan:{entry:'Aguardar',exit:'Sem entrada'},realtime:true,liveAgeMs:90,analysisAgeMs:100,durationMs:30000,mode:'demo',brokerMode:'demo',state:'running'});
+          await d.updateOverlay('iq_option',{asset:'EUR/USD OTC',agentVersion:'10.13.0',strategy:'smart_confluence',side:'WAIT',confidence:67,reasons:['teste de estrutura'],metrics:{buyScore:48,sellScore:67,shortModel:{ready:true,reversalCallScore:28,reversalPutScore:72},fast:1.1,slow:1.2,rsi:68,macd:{histogram:.01},stoch:52,atr:.003},finalConfluence:analysis.finalConfluence,entryPlanner:analysis.entryPlanner,quality:{status:'EM TESTE',rawSide:'WAIT',blockLabel:'REVERSÃO EM FORMAÇÃO — PUT',blockDetail:'O movimento de alta está perdendo força em região relevante; aguardando o gatilho curto de queda.',technicalEdge:19,preEntry:{active:true,side:'SELL',kind:'reversal',expiresAt:Date.now()+8000}},plan:{entry:'Aguardar',exit:'Sem entrada'},realtime:true,liveAgeMs:90,analysisAgeMs:100,durationMs:30000,mode:'demo',brokerMode:'demo',state:'running'});
           const plannerText=(await testPage.locator('#sentinel-trading-overlay').innerText()).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           const horizonValue=await testPage.locator('#sentinel-trading-overlay [data-sentinel-plan-horizon]').inputValue();
           if(horizonValue!=='900'||!plannerText.includes('ATE 15 MIN')||!/CALL[^A-Z]{1,8}GATILHO/.test(plannerText)||!/PUT[^A-Z]{1,8}GATILHO/.test(plannerText)||!plannerText.includes('NAO SAO PREVISAO GARANTIDA'))throw new Error('planner_ui_failed:'+plannerText);
           if(!plannerText.includes('VIRADA / REVERSAO')||!plannerText.includes('VIRADA PUT')||!plannerText.includes('72%')||!plannerText.includes('JANELA 8S'))throw new Error('reversal_card_missing:'+plannerText);
           const horizonCard=(await testPage.locator('#sentinel-trading-overlay [data-sentinel-role="horizon-outlook"]').innerText()).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(/EUR\/[A-Z]{3}/.test(horizonCard))throw new Error('scenario_should_not_show_asset:'+horizonCard);
-          console.log('V10.12 PLANNER + REVERSAL CARD: PASS',horizonValue);
+          console.log('V10.13 PLANNER + REVERSAL CARD: PASS',horizonValue);
 
           await testPage.evaluate(()=>{window.__sentinelUiActions=[];window.__sentinelOverlayAction=async p=>{window.__sentinelUiActions.push(p.action+':'+String(p.key||''));return{ok:true,message:'ok'}}});
           await testPage.click('#sentinel-trading-overlay [data-sentinel-action="start"]');
@@ -387,7 +387,7 @@ jobs:
             return{panel:{x:r.x,y:r.y,right:r.right,bottom:r.bottom,w:r.width,h:r.height},buttons:bs}
           });
           if(botFit.buttons.length!==3||botFit.buttons.some(b=>b.x<botFit.panel.x||b.right>botFit.panel.right||b.y<botFit.panel.y||b.bottom>botFit.panel.bottom||b.h<29))throw new Error('bot_buttons_outside_panel:'+JSON.stringify(botFit));
-          console.log('V10.12 BOT BUTTON FIT: PASS',JSON.stringify(botFit));
+          console.log('V10.13 BOT BUTTON FIT: PASS',JSON.stringify(botFit));
 
           const focusedOk=await testPage.locator('#sentinel-trading-overlay select[data-sentinel-setting="strategy"]').evaluate(async sel=>{
             if(!sel)return false;sel.focus();const same=sel;
