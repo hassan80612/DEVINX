@@ -797,7 +797,7 @@ export class LocalPlaywrightDriver{
           el=document.createElement('section');el.id=id;
           Object.assign(el.style,{
             position:'fixed',right:'10px',top:'10px',zIndex:'2147483647',width:'352px',maxWidth:'calc(100vw - 18px)',
-            maxHeight:'calc(100vh - 18px)',overflowY:'auto',overflowX:'hidden',
+            maxHeight:'calc(100vh - 18px)',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',overscrollBehavior:'contain',
             background:'linear-gradient(165deg,rgba(7,19,27,.985),rgba(12,30,39,.975))',color:'#f3f8fa',
             border:'1px solid rgba(103,222,188,.28)',borderRadius:'18px',boxShadow:'0 24px 70px rgba(0,0,0,.52)',
             backdropFilter:'blur(16px)',fontFamily:'"Segoe UI Variable Display","Inter","Segoe UI",Arial,sans-serif',
