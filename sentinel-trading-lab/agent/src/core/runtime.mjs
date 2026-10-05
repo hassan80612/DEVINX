@@ -141,13 +141,15 @@ export class DemoTradingRuntime{
       if(!forecast.ready)gated.forecast30.side='WAIT';
     }
     if(['BUY','SELL'].includes(rawSide)&&!stable){
-      gated.side='WAIT';
-      gated.reasons=[...(gated.reasons||[]),`Entrada aguardando confirmação temporal de ${rawSide}.`].slice(0,14);
+      gated.automationBlocked=true;
+      gated.automationBlockReason='stability';
+      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; automação aguardando estabilidade temporal.`].slice(0,14);
       return{allowed:false,analysis:gated,reasons:[`Sinal ainda estabilizando para ${asset}.`]}
     }
     if(['BUY','SELL'].includes(rawSide)&&!confirmed.ready){
-      gated.side='WAIT';
-      gated.reasons=[...(gated.reasons||[]),`Entrada bloqueada: validação ${confirmed.samples}/${confirmed.minSamples}, acerto ${confirmed.winRate}% (mín. ${confirmed.minWinRate}%).`].slice(0,14);
+      gated.automationBlocked=true;
+      gated.automationBlockReason='validation';
+      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; automação aguardando validação histórica.`].slice(0,14);
       return{allowed:false,analysis:gated,reasons:[`Sinal ainda não validado para ${asset} / ${Math.round(durationMs/1000)}s.`]}
     }
     return{allowed:true,analysis:gated}
