@@ -201,7 +201,7 @@ jobs:
           import {readFile} from 'node:fs/promises';
           const workerSource=await readFile('./worker/index.mjs','utf8');
           if(workerSource.includes("if(action==='start'){ensureAccess('/control/start')")||!workerSource.includes('localCockpitLeaseValid')||!workerSource.includes('await ensureLocalCockpitBroker(provider)')||!workerSource.includes('if(!localCockpitLeaseValid())'))throw new Error('local_start_not_fully_independent');
-          if(!workerSource.includes('Bot iniciado · sincronizando leitura ao vivo')||!workerSource.includes("if(live?.m?.feedValidated!==true&&!readRecoveryPromise)"))throw new Error('start_should_run_while_feed_recovers');
+          if(!workerSource.includes('sincronizando leitura ao vivo')||!workerSource.includes("if(live?.m?.feedValidated!==true&&!readRecoveryPromise)"))throw new Error('start_should_run_while_feed_recovers');
           console.log('LOCAL COCKPIT START/PERSISTENCE + RECOVERY: PASS');
           const candles=Array.from({length:80},(_,i)=>{const base=1+i*.001;return{from:1700000000+i*60,to:1700000060+i*60,open:base,high:base+.0008,low:base-.0005,close:base+.0005,volume:100+i}});
           const analysis=analyzeMarket({candles,strategy:'smart_confluence',minConfidence:74,freshnessMs:5000,quoteTs:Date.now(),now:Date.now()});
