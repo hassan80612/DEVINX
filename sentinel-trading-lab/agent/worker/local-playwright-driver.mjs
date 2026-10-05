@@ -802,9 +802,9 @@ export class LocalPlaywrightDriver{
       const payload=JSON.parse(JSON.stringify(data||{}));
       await s.page.evaluate((d)=>{
         const id='sentinel-trading-overlay';let el=document.getElementById(id);
-        if(el&&el.dataset.uiVersion!=='10.6'){el.remove();el=null}
+        if(el&&el.dataset.uiVersion!=='10.7'){el.remove();el=null}
         if(!el){
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.6';
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='10.7';
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -940,7 +940,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:12px;font-weight:850;letter-spacing:.075em;color:#e8f0f3">SENTINEL <span style="color:#6f8793;font-weight:700">V${esc(d.agentVersion||'10.6.0')}</span></div>
+                <div style="font-size:12px;font-weight:850;letter-spacing:.075em;color:#e8f0f3">SENTINEL <span style="color:#6f8793;font-weight:700">V${esc(d.agentVersion||'10.7.0')}</span></div>
                 <div style="font-size:8.5px;font-weight:650;color:#617985;margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1003,7 +1003,7 @@ export class LocalPlaywrightDriver{
           <div data-sentinel-role="realtime-force" style="margin-top:9px;padding:9px 10px;border-radius:12px;background:rgba(6,17,23,.50);border:1px solid rgba(255,255,255,.06);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center">
             <div style="min-width:0">
               <div style="font-size:9px;font-weight:750;letter-spacing:.025em;color:#a8bac2">Força técnica em tempo real</div>
-              <div style="font-size:8px;color:${liveNow?'#72e6b9':gold};margin-top:3px">● ${liveNow?'AO VIVO':'ATUALIZANDO'} <span style="color:#607781">· estratégia ajustada ao timing</span></div>
+              <div style="font-size:8px;color:${liveNow?'#72e6b9':gold};margin-top:3px;white-space:nowrap">● ${liveNow?'AO VIVO':'ATUALIZANDO'} <span style="color:#607781">· microestrutura + contexto</span></div>
             </div>
             <div style="display:grid;grid-template-columns:58px 58px;gap:5px">
               <div style="padding:5px 6px;border-radius:8px;background:rgba(114,230,185,.055);border:1px solid rgba(114,230,185,.10);text-align:center"><span style="display:block;font-size:7px;color:#8fb6a7;font-weight:750">CALL</span><b style="font-size:13px;color:#72e6b9;font-weight:850">${n(buy,0)}%</b></div>
@@ -1011,17 +1011,17 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
 
-          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:9px 10px 10px;border-radius:12px;background:linear-gradient(145deg,rgba(22,42,51,.72),rgba(10,26,34,.84));border:1px solid rgba(110,146,160,.12);box-sizing:border-box;overflow:hidden">
+          <div data-sentinel-role="bot-controls" style="margin-top:9px;padding:8px 10px;border-radius:12px;background:rgba(12,28,36,.76);border:1px solid rgba(110,146,160,.11);box-sizing:border-box;overflow:hidden">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px">
-              <span style="font-size:9px;font-weight:750;letter-spacing:.025em;color:#9fb2ba">Controle do bot</span>
-              <span style="font-size:8px;font-weight:800;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#93a5ad'};padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
+              <span style="font-size:8.5px;font-weight:800;letter-spacing:.035em;color:#9fb2ba">Controle do bot</span>
+              <span style="font-size:8px;font-weight:800;line-height:1;color:${runtime==='running'?'#72e6b9':runtime==='paused'?gold:'#93a5ad'};padding:4px 7px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.055)">${runtimeLabel}</span>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;border:1px solid rgba(255,255,255,.075);border-radius:10px;overflow:hidden;background:#0a171e;box-sizing:border-box">
-              <button data-sentinel-action="start" style="min-width:0;height:36px;border:0;border-right:1px solid rgba(255,255,255,.065);background:${runtime==='running'?'linear-gradient(180deg,rgba(55,113,91,.68),rgba(28,69,56,.76))':'transparent'};color:#8ee9c2;font-weight:750;font-size:10px;cursor:pointer;letter-spacing:.01em">●&nbsp; Iniciar</button>
-              <button data-sentinel-action="pause" style="min-width:0;height:36px;border:0;border-right:1px solid rgba(255,255,255,.065);background:${runtime==='paused'?'linear-gradient(180deg,rgba(95,80,39,.62),rgba(57,49,28,.72))':'transparent'};color:${runtime==='paused'?goldSoft:'#c9d5da'};font-weight:750;font-size:10px;cursor:pointer;letter-spacing:.01em">Ⅱ&nbsp; Pausar</button>
-              <button data-sentinel-action="stop" style="min-width:0;height:36px;border:0;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(81,43,50,.60),rgba(50,29,34,.72))':'transparent'};color:#f2a1ac;font-weight:750;font-size:10px;cursor:pointer;letter-spacing:.01em">■&nbsp; Parar</button>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;box-sizing:border-box">
+              <button data-sentinel-action="start" style="width:100%;min-width:0;height:31px;box-sizing:border-box;border:1px solid rgba(114,230,185,.18);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,rgba(54,112,90,.72),rgba(30,72,58,.78))':'rgba(114,230,185,.035)'};color:#9cebc9;font-family:inherit;font-size:9px;font-weight:800;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">●</span><span style="line-height:1">Iniciar</span></button>
+              <button data-sentinel-action="pause" style="width:100%;min-width:0;height:31px;box-sizing:border-box;border:1px solid rgba(232,200,95,.15);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,rgba(96,81,40,.66),rgba(58,49,28,.74))':'rgba(232,200,95,.025)'};color:${runtime==='paused'?goldSoft:'#d5dee2'};font-family:inherit;font-size:9px;font-weight:800;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:9px;line-height:1">Ⅱ</span><span style="line-height:1">Pausar</span></button>
+              <button data-sentinel-action="stop" style="width:100%;min-width:0;height:31px;box-sizing:border-box;border:1px solid rgba(255,143,157,.17);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(81,43,50,.63),rgba(50,29,34,.72))':'rgba(255,143,157,.025)'};color:#f2a1ac;font-family:inherit;font-size:9px;font-weight:800;line-height:1;padding:0 7px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;overflow:hidden"><span style="font-size:7px;line-height:1">■</span><span style="line-height:1">Parar</span></button>
             </div>
-            <div data-sentinel-control-msg style="min-height:8px;margin:3px 2px 0;font-size:8px;font-weight:650;color:#79b9a3"></div>
+            <div data-sentinel-control-msg style="min-height:7px;margin:2px 1px 0;font-size:7.5px;font-weight:650;color:#79b9a3;line-height:1.1"></div>
           </div>
 
           <div style="margin-top:9px;border-radius:12px;background:rgba(74,135,175,.025);border:1px solid rgba(101,164,205,.105);overflow:hidden">

@@ -39,7 +39,7 @@ export class DemoTradingRuntime{
     this.broker=new DemoBrokerAdapter({balance,payout});
     this.audit=new AuditLog();
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
-    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};
+    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};
     this.settings={
       mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',requireLiveBroker:true,orderDurationMs:60_000,orderProposalTtlMs:60_000,
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:1_000,startAt:null,endAt:null},
@@ -82,7 +82,7 @@ export class DemoTradingRuntime{
       dailyPnl:todayTrades.reduce((s,t)=>s+Number(t.pnl||0),0),maxDailyLoss:this.settings.risk.maxDailyLoss,dailyProfitTarget:this.settings.risk.dailyProfitTarget,drawdownPct:this.state.drawdownPct,
       maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};
   }
-  _validationKey(kind,asset,durationMs,strategy){return ['micro-v2',kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence')].join('|')}
+  _validationKey(kind,asset,durationMs,strategy){return ['micro-v3',kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence')].join('|')}
   _validationStats(key){
     const rows=this.signalValidation.outcomes.filter(x=>x.key===key).slice(-30);
     const samples=rows.length,wins=rows.filter(x=>x.won===true).length,losses=rows.filter(x=>x.won===false).length,winRate=samples?Math.round(wins/samples*1000)/10:0;
@@ -120,14 +120,36 @@ export class DemoTradingRuntime{
     this._queueSignalCandidate({kind:'forecast30',side:rawForecastSide,confidence:analysis?.forecast30?.confidence,referencePrice:snap.price,asset,durationMs:30000,strategy,now});
     const confirmed=this._validationStats(this._validationKey('confirmed',asset,durationMs,strategy));
     const forecast=this._validationStats(this._validationKey('forecast30',asset,30000,strategy));
-    const gated={...analysis,quality:{status:confirmed.ready?'VALIDADO':(confirmed.samples>=confirmed.minSamples?'BLOQUEADO':'COLETANDO'),rawSide,confirmed,forecast}};
+
+    // Exige persistência do mesmo lado antes de liberar a entrada.
+    const minStableMs=durationMs<=60000?2200:durationMs<=120000?3000:4500;
+    if(['BUY','SELL'].includes(rawSide)){
+      if(this.entryStability.side===rawSide){
+        this.entryStability.count=Number(this.entryStability.count||0)+1
+      }else{
+        this.entryStability={side:rawSide,since:now,count:1}
+      }
+    }else{
+      this.entryStability={side:'WAIT',since:now,count:0}
+    }
+    const stable=['BUY','SELL'].includes(rawSide)&&this.entryStability.count>=3&&now-Number(this.entryStability.since||now)>=minStableMs;
+    const stability={side:this.entryStability.side,count:this.entryStability.count,since:this.entryStability.since,minStableMs,ready:stable};
+
+    const gated={...analysis,quality:{status:confirmed.ready?'VALIDADO':(confirmed.samples>=confirmed.minSamples?'BLOQUEADO':'COLETANDO'),rawSide,confirmed,forecast,stability}};
     if(gated.forecast30){
       gated.forecast30={...gated.forecast30,biasSide:rawForecastSide,validation:forecast};
       if(!forecast.ready)gated.forecast30.side='WAIT';
     }
+    if(['BUY','SELL'].includes(rawSide)&&!stable){
+      gated.automationBlocked=true;
+      gated.automationBlockReason='stability';
+      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; automação aguardando estabilidade temporal.`].slice(0,14);
+      return{allowed:false,analysis:gated,reasons:[`Sinal ainda estabilizando para ${asset}.`]}
+    }
     if(['BUY','SELL'].includes(rawSide)&&!confirmed.ready){
-      gated.side='WAIT';
-      gated.reasons=[...(gated.reasons||[]),`Entrada bloqueada: validação ${confirmed.samples}/${confirmed.minSamples}, acerto ${confirmed.winRate}% (mín. ${confirmed.minWinRate}%).`].slice(0,14);
+      gated.automationBlocked=true;
+      gated.automationBlockReason='validation';
+      gated.reasons=[...(gated.reasons||[]),`Sinal técnico ${rawSide}; automação aguardando validação histórica.`].slice(0,14);
       return{allowed:false,analysis:gated,reasons:[`Sinal ainda não validado para ${asset} / ${Math.round(durationMs/1000)}s.`]}
     }
     return{allowed:true,analysis:gated}
