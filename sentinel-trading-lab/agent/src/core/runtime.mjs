@@ -57,6 +57,17 @@ export class DemoTradingRuntime{
   requestImmediateEvaluation(){if(this.stateName==='running')this.nextEvalMs=0;return this}
   setExternalMarket(market=null){
     if(!market){this.externalMarket=null;return this}
+    const incomingAsset=String(market.symbol||market.uiSymbol||'').trim().toUpperCase();
+    const currentAsset=String(this.settings.asset||'').trim().toUpperCase();
+    if(incomingAsset&&incomingAsset!==currentAsset){
+      this.settings.asset=incomingAsset;
+      this.operationalSetup=null;
+      this.generalConsensusDisplay=null;
+      this.entryStability={side:'WAIT',since:0,count:0};
+      this.entryRelease={side:'WAIT',at:0};
+      this.lastResult={asset:incomingAsset,action:'WAIT',analysis:{asset:incomingAsset,side:'WAIT',confidence:0,reasons:['Atualizando análise para o novo ativo.']},reasons:['Atualizando análise para o novo ativo.']};
+      this.nextEvalMs=0
+    }
     const candles=Array.isArray(market.candles)?market.candles.filter(c=>[c?.open,c?.high,c?.low,c?.close].every(v=>Number.isFinite(Number(v)))):[];
     const quoteHistory=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number.isFinite(Number(x?.price))&&Number(x.price)>0).slice(-900):[];
     this.externalMarket={...market,candles,quoteHistory,quote:Number(market.quote??market.price??quoteHistory.at(-1)?.price??candles.at(-1)?.close),quoteTs:Number(market.quoteTs||market.lastFrameAt||market.lastDomAt||Date.now()),source:market.source||String(market.provider||'LIVE').toUpperCase()};
@@ -102,19 +113,39 @@ export class DemoTradingRuntime{
     return{cards,confluence:{activeCount,callPct,putPct,callVotes,putVotes,side,agreement}};
   }
 
-  _mergeScenarioConfluence(analysis,strategyPanel){
+  _mergeScenarioConfluence(analysis,strategyPanel,snap,now=Date.now()){
     const planner=analysis?.entryPlanner?.horizons;
     if(!planner||typeof planner!=='object')return;
     const general=analysis?.generalConsensus||{};
     const generalSide=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
-    for(const plan of Object.values(planner)){
+    const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
+    for(const [secondsKey,plan] of Object.entries(planner)){
       if(!plan||typeof plan!=='object')continue;
-      const horizonSide=String(plan.bias||'NEUTRO').toUpperCase();
-      plan.rawBias=horizonSide;
+      const rawBias=['CALL','PUT'].includes(String(plan.bias||'').toUpperCase())?String(plan.bias).toUpperCase():'NEUTRO';
+      const durationMs=Math.max(10000,Number(secondsKey||plan.horizonSeconds||30)*1000);
+      plan.rawBias=rawBias;
       plan.generalBias=generalSide;
-      if(generalSide!=='AGUARDAR')plan.bias=horizonSide===generalSide?generalSide:'NEUTRO';
-      plan.basis=generalSide!=='AGUARDAR'?'prazo + consenso geral dos 6 cards':'prazo + leitura técnica disponível';
-      plan.consensusSources=generalSide!=='AGUARDAR'?['prazo '+horizonSide,'consenso geral '+generalSide]:['prazo '+horizonSide];
+      plan.consensusAligned=generalSide!=='AGUARDAR'&&rawBias!=='NEUTRO'&&generalSide===rawBias;
+      plan.executionBias=plan.consensusAligned?rawBias:'NEUTRO';
+      plan.modelConfidence=Math.max(0,Number(plan.modelConfidence??plan.confidence??0));
+      if(plan.outlookReady===true&&rawBias!=='NEUTRO'&&Number.isFinite(Number(snap?.price))&&Number(snap.price)>0){
+        this._queueSignalCandidate({
+          kind:'horizon_forecast_v2',
+          side:rawBias==='CALL'?'BUY':'SELL',
+          confidence:plan.modelConfidence,
+          referencePrice:Number(snap.price),
+          asset,durationMs,
+          strategy:'future-v2:'+combo,
+          now
+        })
+      }
+      const validation=this._validationStats(this._validationKey('horizon_forecast_v2',asset,durationMs,'future-v2:'+combo));
+      const historyWeight=validation.samples>=10?Math.min(.25,validation.samples/120):0;
+      const calibrated=historyWeight>0?Math.round(plan.modelConfidence*(1-historyWeight)+validation.smoothedWinRate*historyWeight):Math.round(plan.modelConfidence);
+      plan.confidence=Math.max(0,Math.min(100,calibrated));
+      plan.validation={samples:validation.samples,wins:validation.wins,losses:validation.losses,winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,calibrated:historyWeight>0};
+      plan.basis='previsão futura multi-fator'+(plan.consensusAligned?' + consenso atual alinhado':generalSide==='AGUARDAR'?' + consenso atual ainda formando':' + consenso atual divergente');
+      plan.consensusSources=['previsão '+rawBias+' '+Math.round(plan.confidence)+'%','consenso atual '+generalSide]
     }
   }
   _generalConsensus(analysis,strategyPanel){
@@ -173,7 +204,11 @@ export class DemoTradingRuntime{
     const durationMs=Math.max(15000,Number(this.settings.orderDurationMs||60000)),durationKey=String(Math.round(durationMs/1000));
     const plan=plans[durationKey]||plans['30']||Object.values(plans)[0]||null;
     const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
-    const side=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
+    const currentSide=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
+    const futureSide=plan&&['CALL','PUT'].includes(String(plan.rawBias||plan.bias||'').toUpperCase())?String(plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
+    const futureConfidence=Math.max(0,Number(plan?.confidence||plan?.modelConfidence||0));
+    const futureReady=!!plan&&plan.outlookReady===true&&futureSide!=='NEUTRO'&&futureConfidence>=58;
+    const side=futureReady&&currentSide===futureSide?futureSide:'AGUARDAR';
     const price=Number(snap?.price??analysis?.metrics?.last),strength=Math.max(0,Number(general.strength||0)),edge=Math.abs(Number(general.edge||0));
     const validation=this._validationStats(this._validationKey('operational',asset,durationMs,combo));
     const historyBlocked=validation.samples>=validation.minSamples&&validation.winRate<validation.minWinRate;
@@ -184,11 +219,19 @@ export class DemoTradingRuntime{
     const expirationToleranceMs=brokerExpirationKind==='clock'?Math.max(5000,Math.min(12000,durationMs*.15)):Math.max(2000,Math.min(5000,durationMs*.06));
     const expirationDeltaMs=expirationDetected?Math.abs(brokerExpirationDurationMs-durationMs):null;
     const expirationMatch=expirationDetected?expirationDeltaMs<=expirationToleranceMs:false;
-    const base={side,state:'AGUARDAR',ready:false,actionable:false,price,strength,technicalConfidence:strength,edge,combo,durationMs,validation,historyBlocked,trigger:null,invalidation:null,triggerMet:false,armed:false,createdAt:null,expiresAt:null,expiration:{detected:expirationDetected,match:expirationMatch,requestedMs:durationMs,brokerMs:expirationDetected?brokerExpirationDurationMs:null,deltaMs:expirationDeltaMs,toleranceMs:expirationToleranceMs,kind:brokerExpirationKind||null,raw:brokerExpirationRaw,confidence:brokerExpirationConfidence},reason:'Aguardando consenso geral.'};
-    if(!Number.isFinite(price)||price<=0||!plan)return{...base,reason:'Aguardando preço e cenário do prazo.'};
-    if(side==='AGUARDAR'||String(general.state||'').toUpperCase()!=='ALINHADO'){
+    const base={side,state:'AGUARDAR',ready:false,actionable:false,price,strength,technicalConfidence:strength,edge,combo,durationMs,validation,historyBlocked,currentSide,futureSide,futureConfidence,futureReady,trigger:null,invalidation:null,triggerMet:false,armed:false,createdAt:null,expiresAt:null,expiration:{detected:expirationDetected,match:expirationMatch,requestedMs:durationMs,brokerMs:expirationDetected?brokerExpirationDurationMs:null,deltaMs:expirationDeltaMs,toleranceMs:expirationToleranceMs,kind:brokerExpirationKind||null,raw:brokerExpirationRaw,confidence:brokerExpirationConfidence},reason:'Aguardando previsão futura e consenso atual.'};
+    if(!Number.isFinite(price)||price<=0||!plan)return{...base,reason:'Aguardando preço e previsão do prazo.'};
+    if(!futureReady){
+      this.operationalSetup=null;
+      return{...base,reason:'Previsão futura deste prazo ainda sem confiança suficiente.'};
+    }
+    if(currentSide==='AGUARDAR'||String(general.state||'').toUpperCase()!=='ALINHADO'){
       if(this.operationalSetup&&this.operationalSetup.asset===asset&&this.operationalSetup.combo===combo)this.operationalSetup=null;
-      return{...base,reason:String(general.state||'').toUpperCase()==='DIVERGÊNCIA'?'Leitura rápida e estratégias divergentes.':'Aguardando alinhamento entre leitura rápida e estratégias.'};
+      return{...base,reason:String(general.state||'').toUpperCase()==='DIVERGÊNCIA'?'Leituras atuais divergentes; previsão futura não liberada para entrada.':'Previsão futura definida; aguardando os 6 cards atuais alinharem.'};
+    }
+    if(currentSide!==futureSide){
+      this.operationalSetup=null;
+      return{...base,reason:'Previsão futura '+futureSide+' diverge do consenso atual '+currentSide+'.'};
     }
     if(!expirationDetected){
       this.operationalSetup=null;
@@ -225,7 +268,7 @@ export class DemoTradingRuntime{
     const entrySide=String(quality.entrySide||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.entrySide||'WAIT').toUpperCase()==='SELL'?'PUT':null;
     const preSide=quality.preEntry?.active===true?(String(quality.preEntry.side||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.preEntry.side||'WAIT').toUpperCase()==='SELL'?'PUT':null):null;
     const timingConfirmed=(quality.entryReady===true&&entrySide===side)||(triggerMet&&preSide===side&&Number(quality.technicalEdge||0)>=12);
-    const ready=triggerMet&&timingConfirmed&&strength>=45&&edge>=10;
+    const ready=triggerMet&&timingConfirmed&&futureReady&&currentSide===futureSide&&strength>=45&&edge>=10;
     if(ready&&!setup.firedAt){
       setup.firedAt=now;
       this._queueSignalCandidate({kind:'operational',side:side==='CALL'?'BUY':'SELL',confidence:strength,referencePrice:price,asset,durationMs,strategy:combo,now,settleDurationMs:brokerExpirationDurationMs,expirationSource:brokerExpirationRaw||brokerExpirationKind||'broker-ui'});
@@ -233,7 +276,7 @@ export class DemoTradingRuntime{
     const activeWindow=Number(setup.firedAt||0)>0&&now-Number(setup.firedAt)<=6000;
     const actionable=activeWindow&&!Number(setup.releasedAt||0);
     if(Number(setup.firedAt||0)>0&&!activeWindow)return{...base,side,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet:true,armed:setup.armed,createdAt:setup.createdAt,expiresAt:setup.expiresAt,reason:'Janela de entrada encerrada; aguardando novo setup.'};
-    return{...base,side,state:activeWindow?'ENTRADA':'PREPARAR',ready:activeWindow,actionable,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet,armed:setup.armed,createdAt:setup.createdAt,expiresAt:setup.expiresAt,entryAt:activeWindow?setup.firedAt:null,reason:activeWindow?'Gatilho fixo confirmado com timing alinhado.':reversal&&!setup.armed?'Aguardando tocar a região de reversão.':reversal&&setup.armed&&!triggerMet?'Região tocada; aguardando reação confirmada.':!triggerMet?'Direção definida; aguardando o preço atingir o gatilho fixo.':'Gatilho atingido; aguardando confirmação curta da entrada.'};
+    return{...base,side,state:activeWindow?'ENTRADA':'PREPARAR',ready:activeWindow,actionable,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet,armed:setup.armed,createdAt:setup.createdAt,expiresAt:setup.expiresAt,entryAt:activeWindow?setup.firedAt:null,reason:activeWindow?'Previsão futura + consenso atual + gatilho confirmados.':reversal&&!setup.armed?'Previsão alinhada; aguardando tocar a região de reversão.':reversal&&setup.armed&&!triggerMet?'Região tocada; aguardando reação confirmada.':!triggerMet?'Previsão futura alinhada; aguardando o preço atingir o gatilho.':'Gatilho atingido; aguardando confirmação curta da entrada.'};
   }
   async start(actor='user'){const reason=this._startBlockReason();if(reason)throw new Error(reason);this.stateName='running';this.nextEvalMs=Date.now();this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.start'});return this.status()}
   async pause(actor='user'){this.stateName='paused';this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.pause'});return this.status()}
@@ -399,7 +442,7 @@ export class DemoTradingRuntime{
       this.audit.write({actorId:'engine',actorRole:'system',action:'trade.settle',metadata:{orderId:p.orderId,won,pnl:trade.pnl,external:!!p.external}})}
   }
   async tick(now=Date.now()){
-    this.lastHeartbeat=now;this._settleDue(now);if(this.stateName!=='running')return this.status();if(now<this.nextEvalMs)return this.status();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={action:'WAIT',analysis:{side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return this.status()}if(!this.externalMarket)this.feed.tick(now);
+    this.lastHeartbeat=now;this._settleDue(now);if(this.stateName!=='running')return this.status();if(now<this.nextEvalMs)return this.status();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={asset:this.settings.asset,action:'WAIT',analysis:{asset:this.settings.asset,side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return this.status()}if(!this.externalMarket)this.feed.tick(now);
     try{
       const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;const canUseExternalDemo=this.settings.mode==='demo'&&this.executionBroker&&this.externalMarket?.executionReady===true;const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:this.settings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
       let strategyPanel=null;
@@ -408,12 +451,13 @@ export class DemoTradingRuntime{
         result.analysis.strategyCards=strategyPanel.cards;
         result.analysis.strategyConfluence=strategyPanel.confluence;
         result.analysis.generalConsensus=this._generalConsensus(result.analysis,strategyPanel);
-        this._mergeScenarioConfluence(result.analysis,strategyPanel);
+        this._mergeScenarioConfluence(result.analysis,strategyPanel,snap,now);
+        result.analysis.asset=this.settings.asset;
         result.analysis.operationalSignal=this._operationalSignalState(result.analysis,snap,now);
       }
       if(['DEMO_ORDER','PREPARE_REAL'].includes(String(result.action||''))&&this.operationalSetup?.firedAt)this.operationalSetup.releasedAt=now;
       if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas os controles DEMO da corretora ainda não foram validados — nenhuma ordem foi simulada ou clicada.']}else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
-      result.plan=signalPlan({analysis:result.analysis,settings:this.settings,price:snap.price,now});this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,this.settings.schedule.intervalMs,now);
+      result.asset=this.settings.asset;result.plan=signalPlan({analysis:result.analysis,settings:this.settings,price:snap.price,now});this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,this.settings.schedule.intervalMs,now);
       if(result.analysis)this.analyses.unshift({ts:iso(now),asset:this.settings.asset,...result.analysis,latency:result.latency});this.analyses=this.analyses.slice(0,500);
       if(result.action==='DEMO_ORDER'){
         this.pending.push({orderId:result.order.id,side:result.order.side,referencePrice:result.order.referencePrice,amount:result.order.amount??result.amount,asset:result.order.asset||this.settings.asset,openedAt:result.order.openedAt||iso(now),external:!!result.order.external,provider:result.order.provider||this.externalMarket?.provider,settleAt:now+this.settings.orderDurationMs});
