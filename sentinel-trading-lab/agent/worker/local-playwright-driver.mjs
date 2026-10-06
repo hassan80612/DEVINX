@@ -1080,7 +1080,8 @@ export class LocalPlaywrightDriver{
     if(!st.lastRequestAt||now-st.lastRequestAt>9000||st.balance==null)await this.requestBaseData(provider).catch(()=>{});
     const actualAge=latestCandleAgeMs(st);const stale=actualAge==null||actualAge>Math.max(90000,Number(st.candleSize||60)*2000);
     if(st.candles.length<50||stale||!st.lastCandleRequest||now-Number(st.lastCandleRequest||0)>9000)await this.requestMarketData(provider,{force:st.candles.length<50||stale}).catch(()=>{});
-    if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=`${st.symbol||'Ativo'} com candles atuais`}
+    if(candleFreshForState(st)&&st.candles.length>=50){st.marketStatus='open';st.marketReason=`${st.symbol||'Ativo'} com histórico e candles atuais`}
+    else if(candleFreshForState(st)){st.marketStatus='syncing';st.marketReason=`Coletando histórico · ${st.candles.length}/50 candles`}
     else if(st.marketStatus!=='recovering'&&st.marketStatus!=='closed'){st.marketStatus='stale';st.marketReason='Feed conectado, mas sem candle recente'}
     if(!st.lastExecutionScanAt||now-st.lastExecutionScanAt>5000){
       st.lastExecutionScanAt=now;
