@@ -141,7 +141,7 @@ function overlayAnalysis(view,asset,now=Date.now()){
   const current=sameAsset?(view.lastResult?.analysis||null):null;
   const complete=current&&current.metrics&&current.finalConfluence&&Number.isFinite(Number(current.confidence));
   if(complete){overlayCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false}}
-  const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200)return{analysis:cached.analysis,transient:true};
+  const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=15000)return{analysis:cached.analysis,transient:true};
   return{analysis:current||{},transient:false}
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
