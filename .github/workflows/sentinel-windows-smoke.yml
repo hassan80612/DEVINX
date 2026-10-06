@@ -2,7 +2,7 @@ name: Sentinel Hybrid Smoke V13
 
 on:
   push:
-    branches: [sentinel-v12-clean-restore-20261006, sentinel-v13-premium-ui-20261006, main]
+    branches: [sentinel-v12-clean-restore-20261006, main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
