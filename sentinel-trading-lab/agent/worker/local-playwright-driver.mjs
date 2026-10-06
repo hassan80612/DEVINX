@@ -55,7 +55,7 @@ function pairStrings(text=''){
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
 function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z0-9]/g,'')}
-export function instrumentLabel(text=''){
+export export function instrumentLabel(text=''){
   const raw0=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
   const pairs=pairStrings(raw0);if(pairs.length===1)return pairs[0];
   if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(raw0))return null;
@@ -1310,7 +1310,7 @@ export class LocalPlaywrightDriver{
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
-        const plannerConfirmed=plannerReadable&&plannerPlan?.outlookReady===true;
+        const plannerConfirmed=plannerReadable&&plannerPlan?.directionReady===true;
         const outlook=plannerReadable?String(plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:warnTone;
         const futureConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.confidence||plannerPlan?.modelConfidence||0))):0;
@@ -1535,7 +1535,7 @@ export class LocalPlaywrightDriver{
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
             </div>
             <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${outlook!=='NEUTRO'&&plannerConfirmed?callTone:warnTone};font-size:8px;font-weight:900">${plannerReadable?(outlook!=='NEUTRO'&&plannerConfirmed?'PREVISÃO ATIVA':'EM FORMAÇÃO'):'SEM DADOS'}</span><span style="color:${goldSoft};font-size:8px;font-weight:900">${plannerReadable?'CONF '+n(futureConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9px;font-weight:650">para ${horizonLabel} · ${liveLabel}</span></div>
-            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?'Cenário em formação; os níveis já estão sendo calculados.':outlook==='NEUTRO'?'A previsão futura ainda não tem vantagem direcional suficiente neste prazo.':`Previsão futura ${outlook} para o fim deste prazo; a entrada ainda exige alinhamento e gatilho.`}</div>
+            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?'Previsão direcional em formação; CALL/PUT já mostram o viés futuro, mas a entrada ainda não está confirmada.':outlook==='NEUTRO'?'A previsão futura ainda não tem vantagem direcional suficiente neste prazo.':`Previsão futura ${outlook} para o fim deste prazo; a entrada ainda exige alinhamento e gatilho.`}</div>
             ${planHtml}
           </div>
 
