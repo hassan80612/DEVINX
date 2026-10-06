@@ -42,6 +42,8 @@ jobs:
           $script=@'
           import {readFile} from 'node:fs/promises';
           import {LocalPlaywrightDriver} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+          import {analyzeMarket} from './sentinel-trading-lab/agent/src/core/strategy.mjs';
+          import {DemoTradingRuntime} from './sentinel-trading-lab/agent/src/core/runtime.mjs';
 
           const driverSource=await readFile('./sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
           const worker=await readFile('./sentinel-trading-lab/agent/worker/index.mjs','utf8');
@@ -74,7 +76,7 @@ jobs:
           if(!runtime.includes('_priceAtExpiry')||!runtime.includes("settlementQuality!=='approx'")||!runtime.includes('expirationMatch')||!runtime.includes('brokerExpirationDurationMs'))throw new Error('exact_expiry_validation_missing');
           if(!runtime.includes('Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30))'))throw new Error('statistical_sample_floor_missing');
           if(!worker.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
-          for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
+          for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO FUTURO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
           if(!worker.includes("if(action==='refresh')"))throw new Error('refresh_action_missing');
@@ -88,6 +90,26 @@ jobs:
           if(worker.includes("async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain"))throw new Error('status_poll_still_runs_heavy_maintain');
           if(!worker.includes("const VERSION='11.8.0'"))throw new Error('agent_version_not_11_8');
           console.log('V11.8 STARTUP + LOCAL MODE: PASS');
+
+          const forecastNow=Date.now();
+          const forecastCandles=Array.from({length:120},(_,i)=>{
+            const base=1.2000+i*.000035+Math.sin(i/7)*.00008;
+            return{from:Math.floor((forecastNow-(120-i)*60000)/1000),to:Math.floor((forecastNow-(119-i)*60000)/1000),open:base-.00002,high:base+.00008,low:base-.00007,close:base,volume:10+i%7}
+          });
+          const forecastQuotes=Array.from({length:160},(_,i)=>({ts:forecastNow-(159-i)*1000,price:1.2040+i*.0000015+Math.sin(i/9)*.00001}));
+          const future=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'smart_confluence',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
+          if(future?.entryPlanner?.modelVersion!=='future-v2')throw new Error('future_v2_model_missing');
+          for(const h of ['30','60','120','300','600','900']){
+            const p=future?.entryPlanner?.horizons?.[h];
+            if(!p||p.modelVersion!=='future-v2'||!Number.isFinite(Number(p.confidence))||!Number.isFinite(Number(p.projectedPrice)))throw new Error('future_horizon_invalid:'+h);
+            if(Math.round(Number(p.callProbability||0)+Number(p.putProbability||0))!==100)throw new Error('future_probability_invalid:'+h)
+          }
+          if(Number(future.forecast30?.callStrength)!==Number(future.entryPlanner.horizons['30'].callProbability))throw new Error('forecast30_not_bound_to_future_engine');
+          const assetRuntime=new DemoTradingRuntime();
+          assetRuntime.lastResult={asset:'EUR/USD',action:'WAIT',analysis:{side:'WAIT',confidence:0}};
+          assetRuntime.setExternalMarket({symbol:'GBP/CAD',provider:'iq_option',feedValidated:false,candles:[],quoteHistory:[],quote:0});
+          if(assetRuntime.settings.asset!=='GBP/CAD'||assetRuntime.lastResult?.asset!=='GBP/CAD'||!String(assetRuntime.lastResult?.reasons?.[0]||'').includes('novo ativo'))throw new Error('runtime_asset_scenario_not_invalidated');
+          console.log('V11.8 FUTURE V2 + ASSET INVALIDATION: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
