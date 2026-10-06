@@ -56,7 +56,7 @@ jobs:
           for(const k of ['SINAL OPERACIONAL','data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('LEITURA GERAL DO MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
+          if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
           if(!runtime.includes('_generalConsensus')||!runtime.includes('prazo + consenso geral dos 6 cards'))throw new Error('six_card_consensus_runtime_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
