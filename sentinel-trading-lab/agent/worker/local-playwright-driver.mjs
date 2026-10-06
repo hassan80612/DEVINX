@@ -55,13 +55,15 @@ function pairStrings(text=''){
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
 function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z0-9]/g,'')}
-function instrumentLabel(text=''){
+export function instrumentLabel(text=''){
   const raw0=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
   const pairs=pairStrings(raw0);if(pairs.length===1)return pairs[0];
-  let raw=raw0.replace(/\b(?:BLITZ|BINARY|DIGITAL|TURBO|FOREX)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+  if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(raw0))return null;
+  let raw=raw0.replace(/^front\./i,'').replace(/\b(?:BLITZ|BINARY|DIGITAL|TURBO|FOREX)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
   raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
   if(!raw||raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw))return null;
   if(/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO)$/i.test(raw))return null;
+  if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return null;
   if(/^\d[\d.,\s]*$/.test(raw))return null;
   return raw
 }
@@ -415,16 +417,19 @@ export class LocalPlaywrightDriver{
           const pairsFrom=(text)=>{
             const raw=String(text||'').toUpperCase();
             const codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);
+            const bad=new Set(['COM','GTM','WWW','HTTP','HTTPS','API','APP','ORG','NET','CDN','IMG','JS','CSS','ING']);
             const out=[];
-            for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
-            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
             return [...new Set(out)];
           };
           const instrumentFrom=(text)=>{
-            const ps=pairsFrom(text);if(ps.length===1)return ps[0];
-            let raw=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
-            raw=raw.replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+            const src=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
+            const ps=pairsFrom(src);if(ps.length===1)return ps[0];
+            if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(src))return'';
+            let raw=src.replace(/^front\./i,'').replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
             if(raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR)$/i.test(raw))return'';
+            if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return'';
             return raw
           };
           const selectedPair=()=>{
@@ -445,7 +450,7 @@ export class LocalPlaywrightDriver{
           };
           document.addEventListener('click',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              if(ev.target?.closest?.('#sentinel-trading-overlay,#sentinel-trading-overlay-host'))return;
               const nodes=[];let node=ev.target;
               for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
               if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
@@ -1059,12 +1064,14 @@ export class LocalPlaywrightDriver{
     return this.liveStatus(provider)
   }
   async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;await this.installBridge(page,provider).catch(()=>{});const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
-    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const src=String(t||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim(),raw=src.toUpperCase();let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;const clean=src.replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();if(clean.length<2||clean.length>48||!/[A-Za-zÀ-ÿ]/.test(clean)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR)$/i.test(clean))return'';return clean};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
+    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const src=String(t||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim(),raw=src.toUpperCase();const codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']),bad=new Set(['COM','GTM','WWW','HTTP','HTTPS','API','APP','ORG','NET','CDN','IMG','JS','CSS','ING']);let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m&&!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);if(m&&!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(src))return'';const clean=src.replace(/^front\./i,'').replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();if(clean.length<2||clean.length>48||!/[A-Za-zÀ-ÿ]/.test(clean)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR)$/i.test(clean)||/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(clean))return'';return clean};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;
     const clickedInstrument=clickedFresh&&clickedSymbol?instrumentLabel(clickedSymbol):null;
-    const domActiveInstrument=activeSymbol?instrumentLabel(activeSymbol):null;
-    const instrumentCandidates=uniq(String(instrumentText||'').split('|').map(x=>instrumentLabel(x)).filter(Boolean));
+    if(st.uiSymbol&&!instrumentLabel(st.uiSymbol)){st.uiSymbol=null;st.symbol=null;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.marketStatus='syncing';st.marketReason='Identificando o gráfico visível'}
+    const candidateKnown=x=>!!x&&(pairStrings(x).length===1||st.activeMap.has(pairKey(x))||x===clickedInstrument);
+    const domActiveInstrument=activeSymbol&&candidateKnown(instrumentLabel(activeSymbol))?instrumentLabel(activeSymbol):null;
+    const instrumentCandidates=uniq(String(instrumentText||'').split('|').map(x=>instrumentLabel(x)).filter(candidateKnown));
     let nextUi=null,uiSource=null;
     if(clickedInstrument){nextUi=clickedInstrument;uiSource='click'}
     else if(domActiveInstrument){nextUi=domActiveInstrument;uiSource='dom-active'}
