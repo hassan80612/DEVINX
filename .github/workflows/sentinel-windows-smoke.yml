@@ -68,7 +68,7 @@ jobs:
           if(!driverSource.includes('operationalSignal')||!driverSource.includes('operationalTrigger')||!driverSource.includes('operationalDisplayThreshold'))throw new Error('operational_ui_not_bound_to_runtime');
           if(!driverSource.includes('expirationDurationMs')||!driverSource.includes('parseExpiry')||!driverSource.includes('expiryLabel'))throw new Error('broker_expiry_detection_missing');
           if(!uiAscii.includes('CONFIANCA')||!uiAscii.includes('MOSTRAR CALL / PUT A PARTIR DE'))throw new Error('summary_confidence_threshold_ui_missing');
-          if(!driverSource.includes('data-sentinel-reading-pause')||!driverSource.includes('TOTAL MERCADO')||!driverSource.includes('TOTAL ESTRATEGIAS')||!driverSource.includes('TOTAL DOS 6'))throw new Error('pause_aware_three_totals_ui_missing');
+          if(!driverSource.includes('data-sentinel-reading-pause')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6'))throw new Error('pause_aware_three_totals_ui_missing');
           if(!runtime.includes('_priceAtExpiry')||!runtime.includes("settlementQuality!=='approx'")||!runtime.includes('expirationMatch')||!runtime.includes('brokerExpirationDurationMs'))throw new Error('exact_expiry_validation_missing');
           if(!runtime.includes('Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30))'))throw new Error('statistical_sample_floor_missing');
           if(!worker.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
