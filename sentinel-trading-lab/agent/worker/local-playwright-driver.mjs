@@ -1,3 +1,4 @@
+// V11.8 deployment checkpoint: pause-aware compact panel + stable live geometry
 import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
