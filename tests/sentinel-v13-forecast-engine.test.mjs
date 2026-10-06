@@ -21,18 +21,22 @@ function quoteFlow(last,{direction=1,now=Date.now()}={}){
   }))
 }
 
-test('V13 future engine exposes 30s through 1h horizons',()=>{
+test('V13.1 future engine exposes 30s through 1h horizons',()=>{
   const now=Date.now(),candles=trendCandles({now}),last=candles.at(-1).close,quotes=quoteFlow(last,{direction:1,now});
   const a=analyzeMarket({candles,quoteHistory:quotes,strategy:'trend',minConfidence:70,durationMs:300000,freshnessMs:5000,quoteTs:now,now});
-  assert.equal(a.entryPlanner.modelVersion,'future-v4');
+  assert.equal(a.entryPlanner.modelVersion,'future-v4.1');
   for(const h of ['30','60','120','300','600','900','3600'])assert.ok(a.entryPlanner.horizons[h],`missing horizon ${h}`);
   for(const h of ['300','900','3600']){
     const p=a.entryPlanner.horizons[h];
-    assert.equal(p.modelVersion,'future-v4');
+    assert.equal(p.modelVersion,'future-v4.1');
     assert.ok(p.callProbability>50,`expected CALL bias on trend horizon ${h}: ${JSON.stringify(p)}`);
     assert.equal(p.bias,'CALL');
     assert.ok(p.regime?.label);
     assert.ok(p.evidenceFamilies&&Object.keys(p.evidenceFamilies).length>=5);
+    assert.ok(p.reliability&&Number.isFinite(Number(p.reliability.familyAgreement)));
+    assert.ok(Number(p.reliability.evidenceFamilyCount)>=1&&Number(p.reliability.evidenceFamilyCount)<=5);
+    assert.ok(Number(p.reliability.correlationPenalty)>=0&&Number(p.reliability.correlationPenalty)<=6);
+    assert.ok(Number(p.modelConfidence)<=Number(p.reliability.baseModelConfidence));
   }
 });
 
@@ -60,15 +64,17 @@ test('advanced market structure helpers return quality instead of a single blind
   assert.ok(Number.isFinite(Number(vol.ratio)));
 });
 
-test('V13 forecast calibration uses non-overlapping samples and real outcome quality',()=>{
+test('V13.1 forecast calibration uses confidence bands, decision-grade stats and non-overlapping exact samples',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   rt.settings.asset='GOLD';
-  const key=rt._validationKey('horizon_forecast_v4','GOLD',60000,'future-v4:smart_confluence:trend');
+  const modelKey='future-v4.1:smart_confluence:trend';
+  const key=rt._validationKey('horizon_forecast_v41','GOLD',60000,modelKey);
   rt.signalValidation.outcomes=Array.from({length:120},(_,i)=>({
-    key,settlementQuality:'exact',won:i<78,probability:78
+    key,settlementQuality:'exact',won:i<78,probability:82,probabilityBucket:'80-89'
   }));
-  const stats=rt._validationStats(key);
+  const stats=rt._validationStats(key),bucket=rt._validationStats(key,{bucket:'80-89'});
   assert.equal(stats.samples,120);
+  assert.equal(bucket.samples,120);
   assert.ok(stats.brierScore!=null);
   assert.ok(stats.calibrationError!=null);
 
@@ -77,21 +83,43 @@ test('V13 forecast calibration uses non-overlapping samples and real outcome qua
     metrics:{regime:{label:'trend'}},
     entryPlanner:{horizons:{'60':{
       bias:'CALL',rawCallProbability:82,rawPutProbability:18,callProbability:82,putProbability:18,
-      modelConfidence:80,confidence:80,outlookReady:true,directionReady:true,regime:{label:'trend',confidence:82}
+      modelConfidence:80,confidence:80,outlookReady:true,directionReady:true,agreement:70,
+      regime:{label:'trend',confidence:82},reliability:{evidenceFamilyCount:4,correlationPenalty:2}
     }}}
   };
-  rt._mergeScenarioConfluence(analysis,{cards:[]},{price:4200},Date.now());
+  rt._mergeScenarioConfluence(analysis,{cards:[]},{price:4200,payout:.82},Date.now());
   const p=analysis.entryPlanner.horizons['60'];
+  assert.equal(p.modelVersion,'future-v4.1');
   assert.equal(p.executionBias,'CALL');
   assert.equal(p.entryAligned,false);
-  assert.ok(p.validation.historyWeight>=35);
-  assert.ok(p.callProbability<82,'historical calibration should pull an overconfident raw probability toward empirical accuracy');
+  assert.ok(p.validation.historyWeight>=45);
+  assert.equal(p.validation.bucket,'80-89');
+  assert.ok(p.validation.bucketSamples>=120);
+  assert.ok(p.callProbability<82,'band-aware calibration should pull an overconfident raw probability toward empirical accuracy');
+  assert.ok(rt.signalValidation.pending.some(x=>x.kind==='horizon_decision_v13_1'),'decision-grade prediction should be audited separately');
 
   rt.signalValidation.pending=[];rt.signalValidation.lastQueued={};
   const t=Date.now();
-  rt._queueSignalCandidate({kind:'horizon_forecast_v4',side:'BUY',confidence:70,probability:70,regime:'trend',referencePrice:4200,asset:'GOLD',durationMs:60000,strategy:'future-v4:smart_confluence:trend',now:t});
-  rt._queueSignalCandidate({kind:'horizon_forecast_v4',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:'future-v4:smart_confluence:trend',now:t+30000});
+  rt._queueSignalCandidate({kind:'horizon_forecast_v41',side:'BUY',confidence:70,probability:70,regime:'trend',referencePrice:4200,asset:'GOLD',durationMs:60000,strategy:modelKey,now:t});
+  rt._queueSignalCandidate({kind:'horizon_forecast_v41',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:modelKey,now:t+30000});
   assert.equal(rt.signalValidation.pending.length,1,'overlapping horizon samples must not inflate accuracy');
-  rt._queueSignalCandidate({kind:'horizon_forecast_v4',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:'future-v4:smart_confluence:trend',now:t+60000});
+  rt._queueSignalCandidate({kind:'horizon_forecast_v41',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:modelKey,now:t+60000});
   assert.equal(rt.signalValidation.pending.length,2);
+});
+
+test('V13.1 exact tie is recorded as draw and excluded from forecast win-rate samples',()=>{
+  const rt=new DemoTradingRuntime({seed:13,balance:10000});
+  const now=Date.now(),key=rt._validationKey('horizon_forecast_v41','EUR/USD',30000,'future-v4.1:trend:range');
+  rt.signalValidation.pending=[{
+    key,kind:'horizon_forecast_v41',asset:'EUR/USD',durationMs:30000,settleDurationMs:30000,
+    strategy:'future-v4.1:trend:range',side:'BUY',confidence:74,probability:74,probabilityBucket:'70-79',
+    referencePrice:1.085,createdAt:now-30000,dueAt:now
+  }];
+  rt._settleSignalValidation(now,{price:1.085,quoteHistory:[{ts:now,price:1.085}]});
+  assert.equal(rt.signalValidation.outcomes.length,1);
+  assert.equal(rt.signalValidation.outcomes[0].draw,true);
+  assert.equal(rt.signalValidation.outcomes[0].won,null);
+  const stats=rt._validationStats(key);
+  assert.equal(stats.samples,0);
+  assert.equal(stats.draws,1);
 });
