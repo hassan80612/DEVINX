@@ -1197,14 +1197,12 @@ export class LocalPlaywrightDriver{
         const reversalSide=reversalCall==null||reversalPut==null?'AGUARDAR':reversalCall>=reversalPut?'CALL':'PUT';
         const reversalStrength=reversalCall==null||reversalPut==null?null:Math.max(reversalCall,reversalPut);
         const reversalTimer=pre.kind==='reversal'&&preRemaining!=null&&preRemaining>0?preRemaining:null;
-        const marketAvg=rows=>rows.length?rows.reduce((a,b)=>a+b,0)/rows.length:null;
-        const marketCallAvg=marketAvg([finalCall,statusCall,reversalCall].filter(v=>v!==null&&v!==undefined&&Number.isFinite(Number(v))).map(Number));
-        const marketPutAvg=marketAvg([finalPut,statusPut,reversalPut].filter(v=>v!==null&&v!==undefined&&Number.isFinite(Number(v))).map(Number));
-        const marketTotal=Math.max(0,Number(marketCallAvg||0))+Math.max(0,Number(marketPutAvg||0));
-        const marketCallPct=marketTotal>0?Math.round(Math.max(0,Number(marketCallAvg||0))/marketTotal*100):50;
-        const marketPutPct=100-marketCallPct;
-        const marketStrength=Math.round(Math.max(Number(marketCallAvg||0),Number(marketPutAvg||0)));
-        const marketSummarySide=marketStrength<12?'AGUARDAR':marketCallPct>=55?'CALL':marketPutPct>=55?'PUT':'AGUARDAR';
+        const marketSummary=generalConsensus.rapid||{};
+        const marketCallPct=Number.isFinite(Number(marketSummary.callPct))?Number(marketSummary.callPct):50;
+        const marketPutPct=Number.isFinite(Number(marketSummary.putPct))?Number(marketSummary.putPct):50;
+        const marketStrength=Number.isFinite(Number(marketSummary.strength))?Number(marketSummary.strength):0;
+        const marketSummarySide=String(marketSummary.side||'AGUARDAR').toUpperCase();
+        const marketActiveCount=Math.max(0,Number(marketSummary.activeCount||0));
         const gateReason=analysisStale||!liveNow?'SINCRONIZANDO':shortWindow&&!shortReady?'COLETANDO MICROESTRUTURA':analysisTransient||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
         const gateDetail=analysisStale?'Feed temporariamente fora de sincronia; aguardando leitura atual.':shortWindow&&!shortReady?`Microestrutura curta em formação · ${Number(short.bars||0)}/5 barras mínimas.`:analysisTransient?'Atualizando a análise sem zerar a última leitura válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
         let plannerHorizon=el.dataset.plannerHorizon||String(Math.round(duration/1000)),detailsOpen=false,uiTheme=el.dataset.themePreference==='light'?'light':el.dataset.themePreference==='dark'?'dark':'dark';
@@ -1218,10 +1216,13 @@ export class LocalPlaywrightDriver{
         const panelBg=uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eee7da)':'linear-gradient(145deg,#111113,#070708)';
         const panelBorder=uiTheme==='light'?'rgba(104,72,24,.30)':'rgba(201,166,91,.26)';
         const callTone=uiTheme==='light'?'#086344':'#72e6b9',putTone=uiTheme==='light'?'#922537':'#ff8f9d',warnTone=uiTheme==='light'?'#7b5600':'#f2cf66';
-        let collapsedBlocks=[];
-        try{collapsedBlocks=JSON.parse(localStorage.getItem('sentinel-block-collapse-v118')||'[]');if(!Array.isArray(collapsedBlocks))collapsedBlocks=[]}catch{collapsedBlocks=[]}
-        const isBlockCollapsed=key=>collapsedBlocks.includes(key);
-        const blockBtn=key=>'<button data-sentinel-block-collapse="'+key+'" title="'+(isBlockCollapsed(key)?'Estender bloco':'Recolher bloco')+'" style="border:1px solid '+panelBorder+';border-radius:7px;width:24px;height:22px;background:'+(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)')+';color:'+subtle+';font:950 13px/1 inherit;cursor:pointer;display:grid;place-items:center;flex:0 0 auto">'+(isBlockCollapsed(key)?'+':'−')+'</button>';
+        const pausedReadings=d.pausedReadings&&typeof d.pausedReadings==='object'?d.pausedReadings:{};
+        const isPaused=key=>pausedReadings[key]===true;
+        const pauseBtn=key=>'<button data-sentinel-reading-pause="'+key+'" title="'+(isPaused(key)?'Ativar esta leitura':'Pausar esta leitura')+'" style="border:1px solid '+panelBorder+';border-radius:6px;height:20px;padding:0 5px;background:'+(isPaused(key)?'rgba(242,207,102,.13)':(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)'))+';color:'+(isPaused(key)?warnTone:subtle)+';font:950 6.2px/1 inherit;cursor:pointer;white-space:nowrap">'+(isPaused(key)?'ATIVAR':'PAUSAR')+'</button>';
+        let collapsedSummaries=[];
+        try{collapsedSummaries=JSON.parse(localStorage.getItem('sentinel-summary-collapse-v118')||'[]');if(!Array.isArray(collapsedSummaries))collapsedSummaries=[]}catch{collapsedSummaries=[]}
+        const isSummaryCollapsed=key=>collapsedSummaries.includes(key);
+        const summaryBtn=key=>'<button data-sentinel-summary-collapse="'+key+'" title="'+(isSummaryCollapsed(key)?'Estender resumo':'Recolher resumo')+'" style="border:1px solid '+panelBorder+';border-radius:7px;width:22px;height:20px;background:'+(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)')+';color:'+subtle+';font:950 12px/1 inherit;cursor:pointer;display:grid;place-items:center;flex:0 0 auto">'+(isSummaryCollapsed(key)?'+':'−')+'</button>';
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
@@ -1249,12 +1250,13 @@ export class LocalPlaywrightDriver{
           const key='strategy-'+slot;
           return '<div data-sentinel-card="'+key+'" style="padding:9px 10px;border-radius:11px;background:'+panelBg+';border:1px solid '+panelBorder+';min-width:0"><div style="display:flex;justify-content:space-between;align-items:center;gap:5px"><span style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</span>'+''+'</div><div style="margin-top:3px;font-size:10px;font-weight:950;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(card.label||'')+'">'+esc(card.label||'—')+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;gap:6px"><b style="font-size:14px;color:'+sTone+'">'+sSide+'</b><span style="font-size:8px;color:'+subtle+'">análise própria</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(card.callPct,0)+'%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(card.putPct,0)+'%</b></div></div><div style="margin-top:6px;font-size:7.5px;line-height:1.3;color:'+muted+'">'+(why||'Sem gatilho técnico forte neste ciclo.')+'</div></div>';
         }).join('');
-        const strategyFinalSide=String(strategyConfluence.side||'AGUARDAR').toUpperCase();
+        const strategySummary=generalConsensus.strategies||{};
+        const strategyFinalSide=String(strategySummary.side||strategyConfluence.side||'AGUARDAR').toUpperCase();
         const strategyFinalTone=strategyFinalSide==='CALL'?callTone:strategyFinalSide==='PUT'?putTone:warnTone;
         const strategyAgreement=String(strategyConfluence.agreement||'SEM ESTRATÉGIAS');
-        const strategyActiveCount=Math.max(0,Number(strategyConfluence.activeCount||0));
-        const strategyCallPct=Number.isFinite(Number(strategyConfluence.callPct))?Number(strategyConfluence.callPct):null;
-        const strategyPutPct=Number.isFinite(Number(strategyConfluence.putPct))?Number(strategyConfluence.putPct):null;
+        const strategyActiveCount=Math.max(0,Number(strategySummary.activeCount??strategyConfluence.activeCount??0));
+        const strategyCallPct=Number.isFinite(Number(strategySummary.callPct))?Number(strategySummary.callPct):50;
+        const strategyPutPct=Number.isFinite(Number(strategySummary.putPct))?Number(strategySummary.putPct):50;
         const executionPlan=planner[String(Math.round(duration/1000))]||planner['30']||null;
         const durationText=({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]||Math.round(duration/1000)+' s';
         const generalStrictSide=String(generalConsensus.side||'AGUARDAR').toUpperCase(),generalLeanSide=String(generalConsensus.leanSide||generalStrictSide||'AGUARDAR').toUpperCase(),generalState=String(generalConsensus.state||'FORMANDO').toUpperCase();
@@ -1263,8 +1265,9 @@ export class LocalPlaywrightDriver{
         const generalStrength=Number.isFinite(Number(generalConsensus.displayStrength))?Math.max(0,Math.min(100,Number(generalConsensus.displayStrength))):Number.isFinite(Number(generalConsensus.strength))?Math.max(0,Math.min(100,Number(generalConsensus.strength))):Math.max(Number(generalCall||0),Number(generalPut||0));
         const generalEdge=Number.isFinite(Number(generalConsensus.edge))?Math.abs(Number(generalConsensus.edge)):Math.abs(Number(generalCall||0)-Number(generalPut||0));
         const generalTone=generalLeanSide==='CALL'?callTone:generalLeanSide==='PUT'?putTone:warnTone;
-        const strategyConfidence=Math.max(0,Math.min(100,Math.max(Number(strategyCallPct||0),Number(strategyPutPct||0))));
+        const strategyConfidence=Math.max(0,Math.min(100,Number(strategySummary.strength||0)));
         const marketConfidence=Math.max(0,Math.min(100,Number(marketStrength||0)));
+        const totalActiveCount=Math.max(0,Number(generalConsensus.sources?.total||0));
         let operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(minConfidence)));
         try{const saved=Number(localStorage.getItem('sentinel-operational-display-threshold-v118'));if(Number.isFinite(saved))operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
         const combinedCall=Number.isFinite(Number(generalCall))?Number(generalCall):0,combinedPut=Number.isFinite(Number(generalPut))?Number(generalPut):0;
