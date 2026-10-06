@@ -1,0 +1,58 @@
+name: Sentinel V12 tray rebuild
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
+      - '.github/workflows/sentinel-v12-tray-rebuild.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: sentinel-v12-tray-rebuild-20261006
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate V12 manager and tray
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-ChildItem 'sentinel-trading-lab/agent' -Recurse -Filter '*.mjs' | ForEach-Object {
+            & node --check $_.FullName
+            if($LASTEXITCODE -ne 0){throw "Syntax failed: $($_.FullName)"}
+          }
+          $manager=Get-Content 'sentinel-trading-lab/agent/worker/agent-manager.mjs' -Raw
+          if($manager -notmatch "VERSION='12\.0\.0'"){throw 'manager not V12'}
+          $tray=Get-Content 'sentinel-trading-lab/agent/worker/tray-host.ps1' -Raw
+          if($tray -notmatch 'Sentinel Agent V12'){throw 'tray not V12'}
+          Write-Host 'V12 MANAGER/TRAY: PASS'
+      - name: Build V12 artifacts
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          Compress-Archive -Path 'sentinel-trading-lab/agent/*' -DestinationPath 'sentinel-trading-lab/public/downloads/agent_payload_v88.zip' -Force
+          go build -trimpath -ldflags="-s -w -buildid=" -o 'sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe' 'sentinel-trading-lab/agent-launcher.go'
+          if($LASTEXITCODE -ne 0){throw 'EXE build failed'}
+          Write-Host 'V12 ARTIFACTS: PASS'
+      - name: Commit artifacts
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          git diff --cached --quiet
+          if($LASTEXITCODE -eq 0){Write-Host 'Artifacts unchanged'; exit 0}
+          git commit -m "build(sentinel): rebuild V12 Agent with tray fix"
+          git pull --rebase origin sentinel-v12-tray-rebuild-20261006
+          git push origin HEAD:sentinel-v12-tray-rebuild-20261006
