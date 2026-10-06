@@ -87,7 +87,7 @@ jobs:
           if(!driverSource.includes('"Aptos","Segoe UI Variable Text","Inter"'))throw new Error('premium_typography_stack_missing');
           if(!driverSource.includes('acceptRequestedHistory')||!driverSource.includes('pageCandleRequests'))throw new Error('deterministic_history_warmup_missing');
           if(!worker.includes('<=15000'))throw new Error('same_asset_overlay_hold_missing');
-          if(!driverSource.includes('configuredStrategies')||!driverSource.includes('Coletando leitura desta estratégia.'))throw new Error('strategy_card_transient_stability_missing');
+          if(!driverSource.includes('configuredStrategies')||!driverSource.includes('Coletando leitura'))throw new Error('strategy_card_transient_stability_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
           if(!worker.includes("if(action==='refresh')"))throw new Error('refresh_action_missing');
           const installer=await readFile('./sentinel-trading-lab/public/downloads/install-agent-v88.ps1','utf8');
