@@ -3,6 +3,8 @@ name: Sentinel V13 staging artifact build
 on:
   push:
     branches: [sentinel-gold-sync-fix-20261006]
+  pull_request:
+    branches: [main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
