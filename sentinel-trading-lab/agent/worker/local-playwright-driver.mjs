@@ -607,7 +607,8 @@ export class LocalPlaywrightDriver{
       if(feed?.ready){
         try{
           const response=await feed.request(modern,6000);
-          st.lastCandleResponse={name:String(response?.name||''),requestId:String(response?.request_id||''),hasMsg:!!response?.msg,at:Date.now()};
+          const accepted=acceptRequestedHistory(st,response,targetId);
+          st.lastCandleResponse={name:String(response?.name||''),requestId:String(response?.request_id||''),hasMsg:!!response?.msg,acceptedCandles:accepted,at:Date.now()};
         }catch(e){
           st.lastCandleResponse={name:'timeout',error:String(e?.message||e),at:Date.now()};
         }
@@ -620,7 +621,8 @@ export class LocalPlaywrightDriver{
         if(feed?.ready){
           try{
             const response=await feed.request(legacy,6000);
-            st.lastCandleResponse={name:String(response?.name||''),requestId:String(response?.request_id||''),hasMsg:!!response?.msg,legacy:true,at:Date.now()};
+            const accepted=acceptRequestedHistory(st,response,targetId);
+            st.lastCandleResponse={name:String(response?.name||''),requestId:String(response?.request_id||''),hasMsg:!!response?.msg,acceptedCandles:accepted,legacy:true,at:Date.now()};
           }catch(e){
             st.lastCandleResponse={name:'legacy-timeout',error:String(e?.message||e),legacy:true,at:Date.now()};
             await this.wsSend(provider,legacy).catch(()=>{});
