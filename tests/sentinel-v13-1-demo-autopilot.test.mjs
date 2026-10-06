@@ -85,3 +85,27 @@ test('V13.1 web console uses broker mode as truth and exposes mobile DEMO pilot 
   assert.ok(!ui.includes("onClick={()=>mode('demo')}"));
   assert.ok(!ui.includes("onClick={()=>mode('real')}"));
 });
+
+
+test('V13.1 DEMO settlement treats an exact tie as draw, not as a consecutive loss',()=>{
+  const rt=new DemoTradingRuntime({seed:13,balance:10000});
+  const now=Date.now();
+  rt.settings.mode='demo';
+  rt.settings.demoAutopilot=true;
+  rt.setExternalMarket({provider:'iq_option',source:'IQ OPTION LIVE',balance:10000,quote:1.085,candles:Array.from({length:50},(_,i)=>({open:1,high:1.1,low:.9,close:1.085,from:i,to:i+1})),quoteHistory:[],brokerMode:'demo',feedValidated:true,executionReady:true,symbol:'EUR/USD',quoteTs:now});
+  rt.pending=[{orderId:'tie',side:'BUY',referencePrice:1.085,amount:10,asset:'EUR/USD',openedAt:new Date(now-60000).toISOString(),external:true,provider:'iq_option',settleAt:now}];
+  rt.state.consecutiveLosses=2;
+  rt._settleDue(now);
+  assert.equal(rt.pending.length,0);
+  assert.equal(rt.trades[0].won,null);
+  assert.equal(rt.trades[0].status,'draw');
+  assert.equal(rt.trades[0].pnl,0);
+  assert.equal(rt.state.consecutiveLosses,2,'draw must not increment the loss streak');
+});
+
+test('V13.1 runtime keeps only one external DEMO order open at a time',async()=>{
+  const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
+  assert.ok(runtime.includes("pendingExternalDemo=this.pending.some"));
+  assert.ok(runtime.includes("demoAutopilot:this.settings.demoAutopilot===true&&canUseExternalDemo&&!pendingExternalDemo"));
+  assert.ok(runtime.includes('Operação DEMO anterior ainda aberta — nenhuma entrada sobreposta será enviada.'));
+});
