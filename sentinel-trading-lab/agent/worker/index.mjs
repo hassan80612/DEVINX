@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='13.0.0';
+const VERSION='13.1.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -25,7 +25,7 @@ const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter(
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
 function chooseLive(){const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];for(const k of order){const b=brokers[k],m=driver.liveStatus?.(k);if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){return{k,m}}}return null}
-function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,expirationDurationMs:m.expirationDurationMs,expirationRaw:m.expirationRaw,expirationKind:m.expirationKind,expirationConfidence:m.expirationConfidence,expirationUpdatedAt:m.expirationUpdatedAt,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;return live}
+function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const screenSymbol=m.uiSymbol||m.symbol||runtime.settings.asset;runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,expirationDurationMs:m.expirationDurationMs,expirationRaw:m.expirationRaw,expirationKind:m.expirationKind,expirationConfidence:m.expirationConfidence,expirationUpdatedAt:m.expirationUpdatedAt,payout:Number.isFinite(Number(m.payout))?Number(m.payout):null,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
@@ -45,6 +45,7 @@ driver.setMarketUpdateHandler?.((provider)=>{
   },100);
 });
 async function ensureLocalCockpitBroker(provider){
+  assertLicensedAccess();
   const adapter=brokers[provider];if(!adapter)throw new Error('Corretora não suportada.');
   activeProvider=provider;
   let info=await driver.sessionInfo?.(provider).catch(()=>null);
@@ -64,6 +65,7 @@ async function ensureLocalCockpitBroker(provider){
 }
 driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   const action=String(payload.action||'');
+  if(!['pause','stop'].includes(action))assertLicensedAccess();
   if(action==='start'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     await ensureLocalCockpitBroker(provider);
@@ -102,16 +104,23 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
 });
 const ACCESS_LEASE_GRACE_MS=120000;
 function accessLeaseValid(){return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&remoteRelay.info.lastContactAt!=null&&(Date.now()-Number(remoteRelay.info.lastContactAt))<=ACCESS_LEASE_GRACE_MS}
+function assertLicensedAccess(){
+  if(!remoteRelay.info.paired)throw new Error('agent_not_paired');
+  if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
+  if(!accessLeaseValid())throw new Error('agent_access_unverified');
+  return true
+}
 async function enforceAccessLease(){
-  if(accessLeaseValid()||localCockpitLeaseValid())return true;
+  if(accessLeaseValid())return true;
   if(runtime.stateName==='running')await runtime.stop('system','agent_access_unverified');
-  // Falha de acesso pode parar o runtime, mas nunca fecha a corretora do usuário.
+  // V13.1: licença é da conta vinculada. Acesso local não contorna pagamento/expiração.
   return false;
 }
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
 async function bootstrapSavedBrokers(){
+  if(!accessLeaseValid())return syncRuntimeMarket();
   const preferred=vault.get('iq_option')?'iq_option':vault.get('exnova')?'exnova':'iq_option';
   const order=[preferred,...Object.keys(brokers).filter(x=>x!==preferred)];
   for(const name of order){
@@ -143,7 +152,8 @@ function overlayAnalysis(view,asset,now=Date.now()){
   return{analysis:current||{},transient:false}
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
-  await enforceAccessLease();
+  const licensed=await enforceAccessLease();
+  if(!licensed){if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}return}
   if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
   syncRuntimeMarket();
   await runtime.tick(Date.now());
@@ -217,10 +227,7 @@ function requiresAccess(path){
 }
 function ensureAccess(path,{local=false}={}){
   if(!requiresAccess(path))return;
-  if(local)return;
-  if(!remoteRelay.info.paired)throw new Error('agent_not_paired');
-  if(remoteRelay.info.accessActive!==true)throw new Error(remoteRelay.info.accessReason||'agent_access_inactive');
-  if(!accessLeaseValid())throw new Error('agent_access_unverified');
+  assertLicensedAccess();
 }
 async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
@@ -240,7 +247,7 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path===
 
 let autoBrokerBusy=false;
 async function autoConnectVisibleBrokers(){
-  if(autoBrokerBusy)return;autoBrokerBusy=true;
+  if(autoBrokerBusy||!accessLeaseValid())return;autoBrokerBusy=true;
   try{
     for(const [name,adapter] of Object.entries(brokers)){
       if(adapter.connected)continue;
@@ -305,7 +312,7 @@ async function remoteLoop(){
     if(last>0&&Date.now()-last>ACCESS_LEASE_GRACE_MS){
       remoteRelay.info.accessActive=false;
       remoteRelay.info.accessReason='license_check_unavailable';
-      if(!localCockpitLeaseValid()&&runtime.stateName==='running'){
+      if(runtime.stateName==='running'){
         await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
       }
     }
