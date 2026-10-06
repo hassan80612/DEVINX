@@ -142,14 +142,16 @@ async function bootstrapSavedBrokers(){
 setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),900).unref();
 setTimeout(()=>{if(!activeProvider&&accessLeaseValid())bootstrapSavedBrokers().catch(()=>{})},3500).unref();
 const overlayCache=new Map();
+let overlayAssetKey='';
 function overlayAnalysis(view,asset,now=Date.now()){
-  const key=String(asset||'—').trim().toUpperCase();
+  const key=String(asset||'—').trim().toUpperCase(),switched=!!overlayAssetKey&&overlayAssetKey!==key;
+  overlayAssetKey=key;
   const resultAsset=String(view.lastResult?.asset||view.lastResult?.analysis?.asset||'').trim().toUpperCase();
   const sameAsset=!!key&&!!resultAsset&&key===resultAsset;
   const current=sameAsset?(view.lastResult?.analysis||null):null;
   const complete=current&&current.metrics&&current.finalConfluence&&Number.isFinite(Number(current.confidence));
   if(complete){overlayCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false}}
-  const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200)return{analysis:cached.analysis,transient:true};
+  if(!switched){const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200)return{analysis:cached.analysis,transient:true}}
   return{analysis:current||{},transient:false}
 }
 let busy=false;async function loop(){if(busy)return;busy=true;try{
