@@ -161,3 +161,15 @@ test('IQ asset tracker recognizes named tabs such as Gold and keeps cross-frame 
   assert.ok(ui.includes("page.on('frameattached',installFrame)"));
   assert.ok(ui.includes("page.on('framenavigated',installFrame)"));
 });
+
+
+test('Broker active_id switch invalidates the old asset before symbol resolution', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  const worker = await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("st.pendingPageActiveId=Number(aid)"));
+  assert.ok(ui.includes("st.candles=[];st.quote=null;st.quoteHistory=[]"));
+  assert.ok(ui.includes("st.marketStatus='switching'"));
+  assert.ok(ui.includes("let next=symbol?assetStrings(symbol)[0]||null:null"));
+  assert.ok(worker.includes("unresolvedSwitch=String(m.marketStatus||'').toLowerCase()==='switching'"));
+  assert.ok(worker.includes("brokerSwitching?'SINCRONIZANDO'"));
+});
