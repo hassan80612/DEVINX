@@ -67,7 +67,7 @@ jobs:
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
           if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
-          if(!runtime.includes("gated.operationalSignal?.actionable!==true")||!runtime.includes("operationalSetup.releasedAt=now"))throw new Error('execution_not_gated_by_operational_timing');
+          if(!runtime.includes("gated.operationalSignal?.actionable!==true")||!runtime.includes("gated.side=operationalSide")||!runtime.includes("this.entryRelease={side:operationalSide"))throw new Error('execution_not_authoritative_operational_signal');
           if(!runtime.includes("strategyPanel=this._strategyPanel(snap,now)")||!runtime.includes("pausedReadings")||!runtime.includes("sourceRows"))throw new Error('pause_aware_totals_not_recomputed');
 
           if(driverSource.includes('operationalReady=operationalPrepare&&(entryReady||triggerMet||setupMatches)'))throw new Error('legacy_permissive_operational_gate_present');
@@ -110,6 +110,20 @@ jobs:
           }
           if(Number(future.entryPlanner.horizons['30'].strategyWeightPct)!==30||Number(future.entryPlanner.horizons['900'].strategyWeightPct)!==55)throw new Error('future_horizon_strategy_weights_invalid');
           if(Number(future.forecast30?.callStrength)!==Number(future.entryPlanner.horizons['30'].callProbability))throw new Error('forecast30_not_bound_to_future_engine');
+          for(const id of ['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout']){
+            const a=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:id,minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
+            if(!Number.isFinite(Number(a.metrics?.rawBuyScore))||!Number.isFinite(Number(a.metrics?.rawSellScore))||!a.entryPlanner?.horizons?.['60'])throw new Error('strategy_engine_invalid:'+id)
+          }
+          const runtimeAudit=new DemoTradingRuntime();
+          runtimeAudit.settings.strategy='smart_confluence';runtimeAudit.settings.strategy2='trend';runtimeAudit.settings.strategy3='mean_reversion';
+          const auditSnap={candles:forecastCandles,quoteHistory:forecastQuotes,quoteTs:forecastNow,price:Number(forecastQuotes.at(-1).price),activeId:76,selectionValidated:true};
+          const auditPanel=runtimeAudit._strategyPanel(auditSnap,forecastNow);
+          if(auditPanel.cards.filter(x=>x.active).length!==3)throw new Error('three_strategy_panel_not_active');
+          const auditConsensus=runtimeAudit._generalConsensus(future,auditPanel);
+          if(!Number.isFinite(Number(auditConsensus.callPct))||!Number.isFinite(Number(auditConsensus.putPct))||Math.round(Number(auditConsensus.callPct)+Number(auditConsensus.putPct))!==100)throw new Error('six_reading_consensus_invalid');
+          runtimeAudit.settings.pausedReadings.strategy_2=true;
+          const pausedPanel=runtimeAudit._strategyPanel(auditSnap,forecastNow);
+          if(Number(pausedPanel.confluence.activeCount)!==2)throw new Error('paused_strategy_still_in_strategy_total');
           const trendA=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'trend',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
           const trendB=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'trend_following',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
           if(Number(trendA.metrics?.rawBuyScore)!==Number(trendB.metrics?.rawBuyScore)||Number(trendA.metrics?.rawSellScore)!==Number(trendB.metrics?.rawSellScore))throw new Error('trend_alias_not_consistent');
