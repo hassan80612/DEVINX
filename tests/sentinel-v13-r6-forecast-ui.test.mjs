@@ -48,8 +48,9 @@ test('R6 overlay contains committed countdown, compact totals and average confid
   assert.ok(ui.includes('data-sentinel-op-threshold'));
   assert.ok(!ui.includes('MOSTRAR A PARTIR DE'));
   assert.ok(!ui.includes('MOSTRAR CALL / PUT<br>A PARTIR DE'));
-  assert.ok(ui.includes('CONF MODELO'));
-  assert.ok(ui.includes('CONF CAL'));
+  assert.ok(ui.includes("futureConfidenceSource==='CALIBRATED'"));
+  assert.ok(ui.includes("'MODELO '"));
+  assert.ok(ui.includes("'CAL '"));
   assert.ok(ui.includes('sentinelMetalSweep'));
   assert.ok(ui.includes('sentinel-metal-gold'));
   assert.ok(ui.includes("ev.key==='ArrowDown'"));
