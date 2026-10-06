@@ -404,11 +404,12 @@ export class DemoTradingRuntime{
       const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;const canUseExternalDemo=this.settings.mode==='demo'&&this.executionBroker&&this.externalMarket?.executionReady===true;const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:this.settings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
       let strategyPanel=null;
       if(result.analysis){
-        if(Array.isArray(result.analysis.strategyCards)&&result.analysis.strategyConfluence)strategyPanel={cards:result.analysis.strategyCards,confluence:result.analysis.strategyConfluence};
-        else{strategyPanel=this._strategyPanel(snap,now);result.analysis.strategyCards=strategyPanel.cards;result.analysis.strategyConfluence=strategyPanel.confluence}
-        if(!result.analysis.generalConsensus)result.analysis.generalConsensus=this._generalConsensus(result.analysis,strategyPanel);
+        strategyPanel=this._strategyPanel(snap,now);
+        result.analysis.strategyCards=strategyPanel.cards;
+        result.analysis.strategyConfluence=strategyPanel.confluence;
+        result.analysis.generalConsensus=this._generalConsensus(result.analysis,strategyPanel);
         this._mergeScenarioConfluence(result.analysis,strategyPanel);
-        if(!result.analysis.operationalSignal)result.analysis.operationalSignal=this._operationalSignalState(result.analysis,snap,now);
+        result.analysis.operationalSignal=this._operationalSignalState(result.analysis,snap,now);
       }
       if(['DEMO_ORDER','PREPARE_REAL'].includes(String(result.action||''))&&this.operationalSetup?.firedAt)this.operationalSetup.releasedAt=now;
       if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas os controles DEMO da corretora ainda não foram validados — nenhuma ordem foi simulada ou clicada.']}else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
