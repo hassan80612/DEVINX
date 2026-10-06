@@ -1233,7 +1233,7 @@ export class LocalPlaywrightDriver{
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
         const plannerConfirmed=plannerReadable&&plannerPlan?.directionReady===true;
-        const rawOutlook=plannerReadable?String(plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
+        const rawOutlook=plannerReadable?String(plannerPlan?.stableBias||plannerPlan?.executionBias||plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const futureConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.confidence||plannerPlan?.modelConfidence||0))):0;
         const futureCallPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.callProbability||50))):50;
         const futurePutPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.putProbability||50))):50;
@@ -1241,6 +1241,7 @@ export class LocalPlaywrightDriver{
         try{const saved=Number(localStorage.getItem('sentinel-future-display-threshold-v13'));if(Number.isFinite(saved))futureDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
         const outlook=!plannerReadable?'SEM LEITURA':!analysisStale&&futureCallPct>=futureDisplayThreshold&&futureCallPct>futurePutPct?'CALL':!analysisStale&&futurePutPct>=futureDisplayThreshold&&futurePutPct>futureCallPct?'PUT':'AGUARDAR';
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
+        const futureActionLabel=outlook==='CALL'?'PREPARE CALL · '+horizonLabel:outlook==='PUT'?'PREPARE PUT · '+horizonLabel:outlook==='AGUARDAR'?'AGUARDAR · '+horizonLabel:outlook;
         const futureProjectedPrice=plannerReadable&&Number.isFinite(Number(plannerPlan?.projectedPrice))?Number(plannerPlan.projectedPrice):null;
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureSamples=plannerReadable?Math.max(0,Number(plannerPlan?.validation?.samples||0)):0;
@@ -1290,10 +1291,25 @@ export class LocalPlaywrightDriver{
         const strategyConfidence=Math.max(0,Math.min(100,Number(strategySummary.strength||0)));
         const marketConfidence=Math.max(0,Math.min(100,Number(marketStrength||0)));
         const totalActiveCount=Math.max(0,Number(generalConsensus.sources?.total||0));
-        let operationalDisplayThreshold=55;
+        let marketDisplayThreshold=60,strategyDisplayThreshold=60,operationalDisplayThreshold=55,averageDisplayThreshold=60;
+        try{
+          const mv=Number(localStorage.getItem('sentinel-market-total-threshold-v13')),sv=Number(localStorage.getItem('sentinel-strategy-total-threshold-v13')),av=Number(localStorage.getItem('sentinel-average-total-threshold-v13'));
+          if(Number.isFinite(mv))marketDisplayThreshold=Math.max(50,Math.min(95,Math.round(mv)));
+          if(Number.isFinite(sv))strategyDisplayThreshold=Math.max(50,Math.min(95,Math.round(sv)));
+          if(Number.isFinite(av))averageDisplayThreshold=Math.max(50,Math.min(95,Math.round(av)))
+        }catch{}
+
         try{const saved=Number(localStorage.getItem('sentinel-total6-display-threshold-v13'));if(Number.isFinite(saved))operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
-        const combinedCall=Number.isFinite(Number(generalCall))?Number(generalCall):0,combinedPut=Number.isFinite(Number(generalPut))?Number(generalPut):0;
+        const marketDisplaySide=!analysisStale&&marketCallPct>=marketDisplayThreshold&&marketCallPct>marketPutPct?'CALL':!analysisStale&&marketPutPct>=marketDisplayThreshold&&marketPutPct>marketCallPct?'PUT':'AGUARDAR';
+        const strategyDisplaySide=!analysisStale&&strategyCallPct>=strategyDisplayThreshold&&strategyCallPct>strategyPutPct?'CALL':!analysisStale&&strategyPutPct>=strategyDisplayThreshold&&strategyPutPct>strategyCallPct?'PUT':'AGUARDAR';
+        const marketDisplayTone=marketDisplaySide==='CALL'?callTone:marketDisplaySide==='PUT'?putTone:neutralTone;
+        const strategyDisplayTone=strategyDisplaySide==='CALL'?callTone:strategyDisplaySide==='PUT'?putTone:neutralTone;
+        const combinedCall=Number.isFinite(Number(generalCall))?Number(generalCall):50,combinedPut=Number.isFinite(Number(generalPut))?Number(generalPut):50;
         const thresholdSide=!analysisStale&&combinedCall>=operationalDisplayThreshold&&combinedCall>combinedPut?'CALL':!analysisStale&&combinedPut>=operationalDisplayThreshold&&combinedPut>combinedCall?'PUT':'AGUARDAR';
+        const averageValues=[marketCallPct,strategyCallPct,combinedCall].filter(v=>Number.isFinite(Number(v)));
+        const averageCallPct=averageValues.length?Math.round(averageValues.reduce((a,v)=>a+Number(v),0)/averageValues.length):50,averagePutPct=100-averageCallPct;
+        const averageSide=!analysisStale&&averageCallPct>=averageDisplayThreshold&&averageCallPct>averagePutPct?'CALL':!analysisStale&&averagePutPct>=averageDisplayThreshold&&averagePutPct>averageCallPct?'PUT':'AGUARDAR';
+        const averageTone=averageSide==='CALL'?callTone:averageSide==='PUT'?putTone:neutralTone;
         const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
         const operationalEngineSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():'AGUARDAR';
         const operationalFutureSide=['CALL','PUT'].includes(String(operational.futureSide||'').toUpperCase())?String(operational.futureSide).toUpperCase():'NEUTRO';
