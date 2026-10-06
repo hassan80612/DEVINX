@@ -1202,6 +1202,13 @@ export class LocalPlaywrightDriver{
             if(theme){ev.preventDefault();ev.stopPropagation();const next=theme.getAttribute('data-sentinel-theme')==='light'?'light':'dark';el.dataset.themePreference=next;el.dataset.theme=next;try{localStorage.setItem('sentinel-overlay-theme-v1',next)}catch{}queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return}
             const ex=ev.target?.closest?.('[data-sentinel-expand]');
             if(ex){ev.preventDefault();ev.stopPropagation();const key=ex.getAttribute('data-sentinel-expand')||'';el.dataset.expandedCard=el.dataset.expandedCard===key?'':key;queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return}
+            const sc=ev.target?.closest?.('[data-sentinel-scroll]');
+            if(sc){
+              ev.preventDefault();ev.stopPropagation();
+              const nearBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-24;
+              el.scrollTo({top:nearBottom?0:el.scrollHeight,behavior:'smooth'});
+              return
+            }
             const a=ev.target?.closest?.('[data-sentinel-action]');
             if(a){ev.preventDefault();ev.stopPropagation();run({action:a.getAttribute('data-sentinel-action')});return}
             const t=ev.target?.closest?.('[data-sentinel-toggle]');
@@ -1227,6 +1234,7 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-theme="dark" title="Tema escuro" style="border:0;border-radius:7px;padding:6px 9px;background:${uiTheme==='dark'?'rgba(216,184,94,.14)':'transparent'};color:${uiTheme==='dark'?gold:'#746957'};font:900 8px/1 inherit;cursor:pointer">ESCURO</button>
               </div>
               <button data-sentinel-action="refresh" title="Forçar nova leitura da corretora" style="border:1px solid ${panelBorder};border-radius:8px;padding:6px 8px;background:${uiTheme==='light'?'rgba(255,255,255,.76)':'rgba(255,255,255,.035)'};color:${muted};font:850 7.5px/1 inherit;cursor:pointer;white-space:nowrap">↻ LEITURA</button>
+              <button data-sentinel-scroll title="Descer / voltar ao topo" style="border:1px solid ${panelBorder};border-radius:8px;width:29px;height:29px;background:${uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.045)'};color:${goldSoft};font:950 15px/1 inherit;cursor:pointer;display:grid;place-items:center">↓</button>
             </div>
           </div>
 
