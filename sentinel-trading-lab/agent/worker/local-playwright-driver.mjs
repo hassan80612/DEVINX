@@ -740,6 +740,62 @@ export class LocalPlaywrightDriver{
     }catch(e){return{ok:false,error:'ax_execution_failed',detail:String(e?.message||e)}}
     finally{try{await cdp?.detach()}catch{}}
   }
+  async _locatorDemoOrder(provider,{amount,side}={}){
+    const sess=await this.session(provider);if(!sess.page)return null;
+    const wanted=String(side).toUpperCase();
+    const isSentinel=async loc=>{try{return await loc.evaluate(el=>{let root=el?.getRootNode?.();for(let i=0;i<4&&root?.host;i++,root=root.host.getRootNode?.()){if(root.host?.id==='sentinel-trading-overlay-host')return true}return false})}catch{return false}};
+    const firstBrokerVisible=async loc=>{
+      try{
+        const count=Math.min(await loc.count(),120);
+        for(let i=0;i<count;i++){const x=loc.nth(i);if(!(await x.isVisible({timeout:100}).catch(()=>false)))continue;if(await isSentinel(x))continue;return x}
+      }catch{}
+      return null
+    };
+    const textOf=async loc=>{try{return String(await loc.innerText({timeout:120})||'').trim()}catch{return''}};
+    const parseNum=raw=>{const m=String(raw||'').replace(/\s/g,'').match(/\d+(?:[.,]\d+)?/);if(!m)return null;const v=Number(m[0].replace(',','.'));return Number.isFinite(v)?v:null};
+    for(const frame of sess.page.frames()){
+      try{
+        const target=await firstBrokerVisible(frame.getByText(wanted==='BUY'?/^\s*(ACIMA|HIGHER|BUY|COMPRAR|COMPRA)\s*$/i:/^\s*(ABAIXO|LOWER|SELL|VENDER|VENDA)\s*$/i));
+        if(!target)continue;
+        let input=null,plus=null,minus=null,valueBox=null,panelText='';
+        const labels=frame.getByText(/^\s*(Invest|Investment|Investimento|Amount|Valor|Stake|Aposta)\s*:?\s*$/i);
+        const lc=Math.min(await labels.count().catch(()=>0),30);
+        for(let i=0;i<lc&&!input&&!(plus&&minus);i++){
+          const label=labels.nth(i);if(!(await label.isVisible({timeout:80}).catch(()=>false))||await isSentinel(label))continue;
+          for(let up=1;up<=6&&!input&&!(plus&&minus);up++){
+            const box=label.locator('xpath='+'/..'.repeat(up));
+            const ins=box.locator('input,[role="spinbutton"],[contenteditable="true"]');
+            input=await firstBrokerVisible(ins);
+            const buttons=box.locator('button,[role="button"]');
+            const bc=Math.min(await buttons.count().catch(()=>0),30);
+            for(let j=0;j<bc&&!(plus&&minus);j++){
+              const bt=buttons.nth(j);if(!(await bt.isVisible({timeout:60}).catch(()=>false))||await isSentinel(bt))continue;
+              const d=((await textOf(bt))+' '+String(await bt.getAttribute('aria-label').catch(()=>null)||'')+' '+String(await bt.getAttribute('title').catch(()=>null)||'')).toLowerCase();
+              if(!plus&&(/increase|increment|plus|aumentar/.test(d)||/^\s*\+\s*$/.test(d)))plus=bt;
+              if(!minus&&(/decrease|decrement|minus|diminuir/.test(d)||/^\s*[−-]\s*$/.test(d)))minus=bt
+            }
+            panelText=await textOf(box);valueBox=box
+          }
+        }
+        if(input){
+          try{await input.click({timeout:500});await input.fill(String(amount),{timeout:600})}
+          catch{try{await input.click({timeout:500});await sess.page.keyboard.press('Control+A');await sess.page.keyboard.type(String(amount),{delay:12});await sess.page.keyboard.press('Enter')}catch{continue}}
+        }else if(plus&&minus&&valueBox){
+          let current=parseNum(panelText||await textOf(valueBox));if(current==null)continue;
+          let guard=0;
+          while(Math.abs(current-Number(amount))>.001&&guard++<60){
+            await (current<Number(amount)?plus:minus).click({timeout:500});
+            await sleep(35);
+            const next=parseNum(await textOf(valueBox));if(next==null||Math.abs(next-current)<.0001)break;current=next
+          }
+          if(Math.abs(current-Number(amount))>.001)continue
+        }else continue;
+        await target.click({timeout:800});
+        return{ok:true,button:(await textOf(target)).slice(0,180),amountControl:input?'locator-input':'locator-stepper',source:'playwright-locator'}
+      }catch{}
+    }
+    return null
+  }
   async scanExecutionUi(provider){
     const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;
     try{
@@ -1027,6 +1083,10 @@ export class LocalPlaywrightDriver{
         if(candidate?.ok){result={...candidate,frameUrl:frame.url(),frameName:frame.name()};break}
         if(score>bestScore){bestScore=score;result=candidate}
       }catch{}
+    }
+    if(!result?.ok){
+      const locatorResult=await this._locatorDemoOrder(provider,{amount,side}).catch(()=>null);
+      if(locatorResult?.ok)result=locatorResult;
     }
     if(!result?.ok){
       const axResult=await this._axDemoOrder(provider,{amount,side}).catch(()=>null);
