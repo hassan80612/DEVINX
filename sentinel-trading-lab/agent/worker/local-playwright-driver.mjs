@@ -660,6 +660,83 @@ export class LocalPlaywrightDriver{
     if(st.mode==='demo')await this.recoverMarket(provider);
     return candleFreshForState(st)&&st.candles.length>=50;
   }
+  async _axExecutionUi(provider){
+    const sess=await this.session(provider);if(!sess.page||!sess.context?.newCDPSession)return null;
+    let cdp=null;
+    try{
+      cdp=await sess.context.newCDPSession(sess.page);
+      await cdp.send('Accessibility.enable').catch(()=>{});
+      const tree=await cdp.send('Accessibility.getFullAXTree');
+      const nodes=Array.isArray(tree?.nodes)?tree.nodes:[],map=new Map(nodes.map(n=>[n.nodeId,n]));
+      const v=x=>String(x?.value??'').trim();
+      const role=n=>v(n?.role).toLowerCase();
+      const own=n=>[v(n?.name),v(n?.description),v(n?.value),role(n)].filter(Boolean).join(' ');
+      const context=n=>{
+        let out=own(n),p=n?.parentId;
+        for(let i=0;i<3&&p;i++){const x=map.get(p);if(!x)break;out+=' '+own(x);p=x.parentId}
+        return out.toLowerCase()
+      };
+      const usable=nodes.filter(n=>!n.ignored&&n.backendDOMNodeId);
+      const score=(n,kind)=>{
+        const d=context(n),r=role(n);let sc=0;
+        const rx=kind==='buy'?/\b(acima|higher|buy|comprar|compra|call|up)\b/i:/\b(abaixo|lower|sell|vender|venda|put|down)\b/i;
+        if(rx.test(d))sc+=12;
+        if(/button/.test(r))sc+=5;
+        if(/generic|group/.test(r))sc+=1;
+        return sc
+      };
+      const pick=kind=>usable.map(n=>({n,sc:score(n,kind)})).filter(x=>x.sc>=12).sort((a,b)=>b.sc-a.sc)[0]?.n||null;
+      const buy=pick('buy'),sell=pick('sell');
+      const amountRx=/investment|investimento|amount|valor|stake|aposta/i;
+      const amount=usable.map(n=>{
+        const d=context(n),r=role(n);let sc=0;
+        if(amountRx.test(d))sc+=12;
+        if(/spinbutton|textbox|combobox/.test(r))sc+=7;
+        if(/editable|input/.test(d))sc+=2;
+        return{n,sc,d,r}
+      }).filter(x=>x.sc>=14).sort((a,b)=>b.sc-a.sc)[0]||null;
+      const buttons=usable.filter(n=>/button/.test(role(n))).length;
+      return{
+        buy:!!buy,sell:!!sell,amount:!!amount,
+        buyText:buy?context(buy).slice(0,180):'',
+        sellText:sell?context(sell).slice(0,180):'',
+        amountText:amount?amount.d.slice(0,180):'',
+        buttonCount:buttons,amountCandidateCount:amount?1:0,
+        ax:{buyBackendId:buy?.backendDOMNodeId||null,sellBackendId:sell?.backendDOMNodeId||null,amountBackendId:amount?.n?.backendDOMNodeId||null}
+      }
+    }catch{return null}
+    finally{try{await cdp?.detach()}catch{}}
+  }
+  async _axClickBackend(cdp,page,backendNodeId){
+    if(!backendNodeId)return false;
+    try{
+      const model=await cdp.send('DOM.getBoxModel',{backendNodeId:Number(backendNodeId)});
+      const q=model?.model?.border||model?.model?.content;
+      if(!Array.isArray(q)||q.length<8)return false;
+      const xs=[q[0],q[2],q[4],q[6]].map(Number),ys=[q[1],q[3],q[5],q[7]].map(Number);
+      const x=(Math.min(...xs)+Math.max(...xs))/2,y=(Math.min(...ys)+Math.max(...ys))/2;
+      await page.mouse.click(x,y);return true
+    }catch{return false}
+  }
+  async _axDemoOrder(provider,{amount,side}={}){
+    const sess=await this.session(provider);if(!sess.page||!sess.context?.newCDPSession)return null;
+    const ax=await this._axExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)return null;
+    let cdp=null;
+    try{
+      cdp=await sess.context.newCDPSession(sess.page);
+      const amountOk=await this._axClickBackend(cdp,sess.page,ax.ax?.amountBackendId);
+      if(!amountOk)return{ok:false,error:'ax_amount_click_failed'};
+      await sess.page.keyboard.press('Control+A').catch(()=>{});
+      await sess.page.keyboard.type(String(amount),{delay:15}).catch(()=>{});
+      await sess.page.keyboard.press('Enter').catch(()=>{});
+      await sleep(120);
+      const targetId=String(side).toUpperCase()==='BUY'?ax.ax?.buyBackendId:ax.ax?.sellBackendId;
+      const buttonOk=await this._axClickBackend(cdp,sess.page,targetId);
+      if(!buttonOk)return{ok:false,error:'ax_trade_button_click_failed'};
+      return{ok:true,button:String(side).toUpperCase()==='BUY'?ax.buyText:ax.sellText,amountControl:ax.amountText,source:'accessibility-tree'}
+    }catch(e){return{ok:false,error:'ax_execution_failed',detail:String(e?.message||e)}}
+    finally{try{await cdp?.detach()}catch{}}
+  }
   async scanExecutionUi(provider){
     const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;
     try{
@@ -807,6 +884,19 @@ export class LocalPlaywrightDriver{
         }
       }
 
+      if(!ui.buy||!ui.sell||!ui.amount){
+        const ax=await this._axExecutionUi(provider).catch(()=>null);
+        if(ax){
+          ui={...ui,
+            buy:ui.buy||ax.buy,sell:ui.sell||ax.sell,amount:ui.amount||ax.amount,
+            buyText:ui.buyText||ax.buyText,sellText:ui.sellText||ax.sellText,amountText:ui.amountText||ax.amountText,
+            buttonCount:Math.max(Number(ui.buttonCount||0),Number(ax.buttonCount||0)),
+            amountCandidateCount:Math.max(Number(ui.amountCandidateCount||0),Number(ax.amountCandidateCount||0)),
+            ax:ax.ax||ui.ax||null
+          }
+        }
+      }
+
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
       if(Number.isFinite(Number(ui.expirationDurationMs))&&Number(ui.expirationDurationMs)>=10000){
         st.expirationDurationMs=Number(ui.expirationDurationMs);st.expirationRaw=String(ui.expirationRaw||'');st.expirationKind=ui.expirationKind||null;st.expirationConfidence=Number(ui.expirationConfidence||0);st.expirationUpdatedAt=Date.now();
@@ -889,6 +979,10 @@ export class LocalPlaywrightDriver{
         if(candidate?.ok){result={...candidate,frameUrl:frame.url(),frameName:frame.name()};break}
         if(score>bestScore){bestScore=score;result=candidate}
       }catch{}
+    }
+    if(!result?.ok){
+      const axResult=await this._axDemoOrder(provider,{amount,side}).catch(()=>null);
+      if(axResult?.ok)result=axResult;
     }
     if(!result?.ok)throw new Error(result?.error||'demo_order_click_failed');
     st.lastRequestAt=Date.now();
