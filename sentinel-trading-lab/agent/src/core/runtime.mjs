@@ -159,14 +159,30 @@ export class DemoTradingRuntime{
     ].map(x=>({...x,paused:paused[x.key]===true,valid:finite(x.call)&&finite(x.put)}));
     const active=sourceRows.filter(x=>!x.paused&&x.valid);
     const marketActive=active.filter(x=>x.group==='market'),strategyActive=active.filter(x=>x.group==='strategy');
-    const avg=(rows,field)=>rows.length?Math.round(rows.reduce((sum,x)=>sum+Number(x[field]||0),0)/rows.length):null;
     const summarize=rows=>{
-      const callScore=avg(rows,'call'),putScore=avg(rows,'put');
-      const edge=callScore==null||putScore==null?0:callScore-putScore,strength=Math.max(Number(callScore||0),Number(putScore||0));
-      const total=Math.max(0,Number(callScore||0))+Math.max(0,Number(putScore||0));
-      const callPct=total>0?Math.round(Math.max(0,Number(callScore||0))/total*100):50,putPct=100-callPct;
-      const side=strength>=12&&Math.abs(callPct-putPct)>=10?(callPct>putPct?'CALL':'PUT'):'AGUARDAR';
-      return{activeCount:rows.length,callScore,putScore,callPct,putPct,edge,strength,side}
+      const prepared=rows.map(x=>{
+        const call=Math.max(0,Number(x.call||0)),put=Math.max(0,Number(x.put||0)),rawTotal=call+put;
+        const informative=rawTotal>=5;
+        const evidence=informative?Math.max(.08,Math.min(1,rawTotal/70)):0;
+        const callRatio=rawTotal>0?call/rawTotal:.5,putRatio=1-callRatio;
+        const vote=callRatio>=.55?'CALL':putRatio>=.55?'PUT':'NEUTRO';
+        return{...x,call,put,rawTotal,informative,evidence,callRatio,putRatio,vote}
+      });
+      const contributing=prepared.filter(x=>x.informative&&x.evidence>0),weight=contributing.reduce((a,x)=>a+x.evidence,0);
+      const callPct=weight>0?Math.round(contributing.reduce((a,x)=>a+x.callRatio*x.evidence,0)/weight*100):50,putPct=100-callPct;
+      const leader=callPct>putPct?'CALL':putPct>callPct?'PUT':'AGUARDAR',edge=callPct-putPct;
+      const directional=contributing.filter(x=>x.vote!=='NEUTRO'),directionalWeight=directional.reduce((a,x)=>a+x.evidence,0);
+      const alignedWeight=directional.filter(x=>x.vote===leader).reduce((a,x)=>a+x.evidence,0);
+      const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5;
+      const evidenceMean=contributing.length?contributing.reduce((a,x)=>a+x.evidence,0)/contributing.length:0;
+      const neutralShare=contributing.length?contributing.filter(x=>x.vote==='NEUTRO').length/contributing.length:1;
+      const strength=Math.max(50,Math.min(95,Math.round(50+Math.abs(edge)*.28+Math.max(0,agreement-.5)*22+evidenceMean*10-neutralShare*6)));
+      const side=contributing.length>0&&strength>=58&&Math.abs(edge)>=10?leader:'AGUARDAR';
+      return{
+        activeCount:rows.length,contributingCount:contributing.length,
+        callScore:callPct,putScore:putPct,callPct,putPct,edge,strength,side,
+        agreement:Math.round(agreement*100),evidence:Math.round(evidenceMean*100)
+      }
     };
     const rapid=summarize(marketActive),strategies=summarize(strategyActive),all=summarize(active);
     const rawCallPct=all.callPct,rawPutPct=all.putPct,strength=all.strength,edge=all.edge;
@@ -401,7 +417,7 @@ export class DemoTradingRuntime{
     gated.strategyCards=strategyPanel.cards;
     gated.strategyConfluence=strategyPanel.confluence;
     gated.generalConsensus=this._generalConsensus(gated,strategyPanel);
-    this._mergeScenarioConfluence(gated,strategyPanel);
+    this._mergeScenarioConfluence(gated,strategyPanel,snap,now);
     gated.operationalSignal=this._operationalSignalState(gated,snap,now);
     if(!['BUY','SELL'].includes(rawSide)){gated.automationBlocked=true;gated.automationBlockReason=blockCode;return{allowed:false,analysis:gated,reasons:[blockDetail||'Aguardando confirmação da estratégia.']}}
     if(!stable||reversalBlocked){gated.automationBlocked=true;gated.automationBlockReason=blockCode;return{allowed:false,analysis:gated,reasons:[blockDetail||'Aguardando confirmação da entrada.']}}
