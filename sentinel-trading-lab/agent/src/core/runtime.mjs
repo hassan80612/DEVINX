@@ -65,7 +65,7 @@ export class DemoTradingRuntime{
     return this
   }
   _marketSnapshot(){
-    if(this.externalMarket){const ready=this.externalMarket.feedValidated!==false&&this.externalMarket.candles?.length>=50&&Number.isFinite(Number(this.externalMarket.quote));return{candles:ready?[...this.externalMarket.candles]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0)}}
+    if(this.externalMarket){const ready=this.externalMarket.assetConfirmed!==false&&this.externalMarket.feedValidated!==false&&this.externalMarket.candles?.length>=50&&Number.isFinite(Number(this.externalMarket.quote));return{candles:ready?[...this.externalMarket.candles]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0)}}
     if(this.settings.requireLiveBroker)return{candles:[],quoteTs:0,price:0,source:'OFFLINE',balance:null,provider:null,mode:this.settings.mode,waitingLive:true,feedValidated:false};
     return this.feed.snapshot()
   }
@@ -166,6 +166,7 @@ export class DemoTradingRuntime{
     const expiration={detected,match,requestedMs:durationMs,brokerMs:detected?remaining:null,targetAt,kind,raw,confidence:Number(snap?.brokerExpirationConfidence||0),toleranceMs:tolerance};
     const blockers=[];if(side==='AGUARDAR'||general.state!=='ALINHADO')blockers.push(general.divergent?'Fluxo e estratégias divergentes.':'Fluxo e estratégias ainda sem alinhamento.');if(strength<minimum)blockers.push(`Força ${Math.round(strength)}% abaixo do filtro ${minimum}%.`);if(!detected)blockers.push('Prazo da corretora não reconhecido.');else if(!match)blockers.push('Prazo da corretora diferente do configurado.');
     const base={callStrength:Number(general.callScore||0),putStrength:Number(general.putScore||0),blockers,side,state:'AGUARDAR',ready:false,actionable:false,price,strength,technicalConfidence:strength,minimum,edge,combo,durationMs,trigger:null,invalidation:null,triggerMet:false,armed:false,expiration,reason:'Aguardando alinhamento entre leitura rápida e estratégias.'};
+    if(analysis?.feedFresh===false)return{...base,state:'ATUALIZANDO PREÇO',reason:'Análise técnica disponível; aguardando cotação atual para liberar uma entrada.'};
     if(!Number.isFinite(price)||price<=0||!plan||snap?.feedValidated===false)return{...base,reason:'Sincronizando preço e cenário do ativo atual.'};
     if(side==='AGUARDAR'||general.state!=='ALINHADO'){
       this.operationalSetup=null;
@@ -303,7 +304,7 @@ export class DemoTradingRuntime{
     if(['BUY','SELL'].includes(rawSide)&&!stable){blockCode='confirming';blockLabel='CONFIRMANDO';blockDetail='Sinal completo detectado; confirmando mais um ciclo para evitar uma indicação de um único instante.'}
     if(reversalBlocked){blockCode='reversal_guard';blockLabel='REVERSÃO — AGUARDE';blockDetail='O lado oposto apareceu logo após uma entrada; o Sentinel exige nova confirmação antes de inverter.'}
     const historyStatus=confirmed.ready?'VALIDADO':(confirmed.samples>=confirmed.minSamples?'HISTÓRICO FRACO':'EM TESTE');
-    const entryReady=['BUY','SELL'].includes(rawSide)&&stable&&!reversalBlocked;
+    const entryReady=analysis.feedFresh!==false&&['BUY','SELL'].includes(rawSide)&&stable&&!reversalBlocked;
     let setupSide='WAIT',setupKind=null;
     if(shortHorizon&&!entryReady){
       if(short.reversalCallCandidate){setupSide='BUY';setupKind='reversal'}

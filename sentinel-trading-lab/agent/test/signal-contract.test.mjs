@@ -79,3 +79,14 @@ test('unvalidated broker DEMO controls do not create an internal simulated order
   rt._signalValidationGate=()=>({allowed:true,analysis:{side:'BUY',confidence:85,metrics:{last:102},operationalSignal:{ready:true,side:'CALL',strength:85,expiration:{brokerMs:60000}}}});
   await rt.tick(NOW);assert.equal(rt.broker.orders.length,0);assert.equal(rt.pending.length,0);assert.equal(rt.lastResult.action,'WAIT');
 });
+
+test('late quotes keep independently calculated strategy scores and block execution',async()=>{
+ const rt=new DemoTradingRuntime(),candles=rt.feed.snapshot().candles,now=Date.now();
+ const base={candles,quoteTs:now,now,durationMs:60000,freshnessMs:2500,strategy:'smart_confluence'};const fresh=analyzeMarket(base),late=analyzeMarket({...base,now:now+4800});
+ assert.equal(late.feedFresh,false);assert.equal(late.side,'WAIT');assert.equal(late.metrics.rawBuyScore,fresh.metrics.rawBuyScore);assert.equal(late.metrics.rawSellScore,fresh.metrics.rawSellScore);assert.ok(late.confidence>0);
+ const result=await engineCycle({feed:{snapshot:()=>({candles,price:candles.at(-1).close,quoteTs:now})},broker:{placeOrder:()=>{throw new Error('late data must not execute')}},settings:rt.settings,state:{},now:now+4800});assert.equal(result.action,'WAIT');assert.ok(result.analysis.metrics.rsi!==undefined);assert.equal(result.analysis.feedFresh,false);
+ const a=analysis({feedFresh:false});assert.equal(rt._operationalSignalState(a,snapshot(102),NOW).ready,false);assert.equal(rt._operationalSignalState(a,snapshot(102),NOW).state,'ATUALIZANDO PREÇO');
+});
+test('an unconfirmed visible chart cannot use another open tab market as current',()=>{
+ const rt=new DemoTradingRuntime();rt.setExternalMarket({provider:'iq_option',symbol:'OLD',assetConfirmed:false,quote:102,quoteTs:Date.now(),candles:rt.feed.snapshot().candles,feedValidated:true});assert.equal(rt._marketSnapshot().waitingLive,true);
+});

@@ -4,6 +4,7 @@ import {spawn} from 'node:child_process';
 import net from 'node:net';
 import {parseBrokerExpiry} from '../src/core/expiry-parser.mjs';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
+import {BrokerViewReader} from './broker-view-reader.mjs';
 
 const PROVIDERS={
   iq_option:{url:'https://iqoption.com/pt',tradeUrl:'https://iqoption.com/traderoom',domain:'iqoption.com',wsDomain:'iqoption.com',label:'IQ Option'},
@@ -186,6 +187,7 @@ function protocolScan(data,st,direction='in'){
   if(/page-out/.test(direction)&&activeRaw!=null){
     const aid=n(activeRaw),command=`${outer} ${inner}`.toLowerCase();
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
+    if(aid!=null&&/get-candles/.test(command)&&data.request_id!=null){st.candleRequestAssets.set(String(data.request_id),aid);if(st.candleRequestAssets.size>128)st.candleRequestAssets.delete(st.candleRequestAssets.keys().next().value)}
     if(aid!=null&&marketCommand){
       st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
       const selected=st.uiSymbol||st.symbol||null;
@@ -222,18 +224,19 @@ function protocolScan(data,st,direction='in'){
   if(outer==='candle-generated'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
     const matches=st.activeId!=null&&aid!=null&&Number(aid)===Number(st.activeId);
-    const size=n(data?.msg?.size);const candle=candleOf(data.msg);if(matches&&(size==null||Number(size)===Number(st.candleSize))&&candle){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
+    const size=n(data?.msg?.size);const candle=candleOf(data.msg);if(matches&&candle){if(aid!=null)st.activeId=aid;if(size==null||Number(size)===Number(st.candleSize))st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800);const sz=n(data?.msg?.size);if(sz!=null&&st.candles.length===0&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
   }
   if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){
-    const rows=Array.isArray(data?.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:[data?.msg||data];
+    const rows=Array.isArray(data?.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg?.quotes)?data.msg.quotes:[data?.msg||data];
     for(const row of rows.slice(0,500)){
       if(!row||typeof row!=='object')continue;
-      const aid=n(row.active_id??row.activeId??row.instrument_active_id??row.asset_id);
+      const aid=n(row.active_id??row.activeId??row.instrument_active_id??row.asset_id??data?.msg?.active_id??data?.msg?.activeId);
       if(st.activeId==null)continue;
       if(aid==null||Number(aid)!==Number(st.activeId))continue;
-      const bid=n(row.bid),ask=n(row.ask),q=n(row.price??row.value??row.close??row.current_price??row.spot_price)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
+      const bid=n(row.bid),ask=n(row.ask),q=n(row.price??row.value??row.close??row.current_price??row.spot_price??row.quote)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
       if(q==null)continue;
-      const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at),ts=rawTs==null?Date.now():(rawTs<1e12?rawTs*1000:rawTs);
+      const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at),ts=rawTs==null?Date.now():epochMs(rawTs);
+      if(ts==null||ts>Date.now()+2000||st.lastQuoteAt&&ts<st.lastQuoteAt-1000)continue;
       st.quote=Number(q);st.lastQuoteAt=ts;const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||ts-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts,price:st.quote}].slice(-1800)
     }
   }
@@ -271,7 +274,7 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
-  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null}
+  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.viewReaders=new Map();this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setMarketUpdateHandler(handler){this.marketUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
@@ -698,7 +701,7 @@ export class LocalPlaywrightDriver{
     }
     const age=latestCandleAgeMs(st);
     st.marketStatus='stale';st.marketReason=age==null?`Aguardando candles do ativo da tela ${screenSymbol}`:`Última candle de ${screenSymbol} há ${Math.round(age/60000)} min`;
-    if(st.mode==='demo')await this.recoverMarket(provider);
+    // Retry only the chart selected by the user; never clear it to probe other assets.
     return candleFreshForState(st)&&st.candles.length>=50;
   }
   async scanExecutionUi(provider){
@@ -765,6 +768,12 @@ export class LocalPlaywrightDriver{
       ui.expiryCandidates=results.flatMap(r=>r.ui.expiryCandidates||[]);
       ui.frameCount=frames.length;ui.totalFrameCount=s.page.frames?.().length||1;ui.frameOrigins=frames.map(f=>{try{return new URL(f.url()).origin}catch{return 'opaque'}});ui.canvasCount=results.reduce((n,r)=>n+(r.ui.canvasCount||0),0);ui.failedFrames=failedFrames;ui.rootCount=results.reduce((n,r)=>n+(r.ui.rootCount||0),0);
       ui.scanMs=results.reduce((n,r)=>n+(r.ui.scanMs||0),0);ui.expiryCandidateCount=ui.expiryCandidates.length;
+      if(!ui.expiryCandidates.length){
+        const view=await this.readBrokerView(provider).catch(()=>null);st.renderedView=view;
+        if(view?.symbol&&!view.ambiguous){this.applyActiveSelection(provider,{symbol:view.symbol,source:'view-active'});st.assetDetection={confirmed:true,ambiguous:false,source:view.source,scanMs:view.scanMs};}
+        if(view?.expiry&&view.symbol&&view.symbol===st.uiSymbol)ui.expiryCandidates.push({...view.expiry,hint:'expiration',raw:view.expiry.raw});
+        ui.viewSource=view?.source||'unreadable';ui.closedRoots=view?.closedRoots||0;ui.visibleTextCount=view?.textCount||0;ui.viewError=view?.error||null;ui.expiryCandidateCount=ui.expiryCandidates.length;
+      }
       const expiry=(ui.expiryCandidates||[]).map(c=>{const parsed=parseBrokerExpiry(c.raw,c.hint);return parsed?{...c,...parsed}:null}).filter(Boolean).sort((a,b)=>b.score-a.score)[0]||null;
       ui.expirationDurationMs=expiry?.ms??null;ui.expirationRaw=expiry?.raw||null;ui.expirationKind=expiry?.kind||null;ui.expirationConfidence=expiry?.score||0;delete ui.expiryCandidates;
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
@@ -854,8 +863,8 @@ export class LocalPlaywrightDriver{
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
-    if(String(source).startsWith('protocol-page')&&['click','selected-tab','dom-active'].includes(st.uiSymbolSource)&&current)return false;
-    if(changed&&!['click','selected-tab','dom-active'].includes(source)&&!String(source).startsWith('protocol-page')&&current){
+    if(String(source).startsWith('protocol-page')&&['click','selected-tab','dom-active','view-active'].includes(st.uiSymbolSource)&&current)return false;
+    if(changed&&!['click','selected-tab','dom-active','view-active'].includes(source)&&!String(source).startsWith('protocol-page')&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
       st.pendingUiHits=Number(st.pendingUiHits||0)+1;
       if(st.pendingUiHits<2)return false;
@@ -875,9 +884,14 @@ export class LocalPlaywrightDriver{
     setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
     return true
   }
+  async readBrokerView(provider){
+    const session=await this.session(provider);if(!session.page)return null;
+    let reader=this.viewReaders.get(provider);if(!reader){reader=new BrokerViewReader({dataDir:join(this.dataDir,'read-only-views')});this.viewReaders.set(provider,reader);session.page.once?.('close',()=>{reader.ocr.close();this.viewReaders.delete(provider)})}
+    return reader.read(session.page);
+  }
   async maintain(provider){
     const st=this.state(provider),now=Date.now();
-    if(st.lastMaintainAt&&now-st.lastMaintainAt<2200)return this.liveStatus(provider);
+    if(st.lastMaintainAt&&now-st.lastMaintainAt<800)return this.liveStatus(provider);
     st.lastMaintainAt=now;
     await this.domSnapshot(provider,{fast:true}).catch(()=>{});
     const direct=this.feeds.get(provider);const directStatus=direct?.status?.();
@@ -890,11 +904,11 @@ export class LocalPlaywrightDriver{
     }
     if(!st.lastRequestAt||now-st.lastRequestAt>20000||st.balance==null)await this.requestBaseData(provider).catch(()=>{});
     const actualAge=latestCandleAgeMs(st);const stale=actualAge==null||actualAge>Math.max(90000,Number(st.candleSize||60)*2000);
-    const quoteStale=!st.lastQuoteAt||now-st.lastQuoteAt>3500;
+    const quoteStale=!st.lastQuoteAt||now-st.lastQuoteAt>1000;
     if(st.candles.length<50||stale||!st.lastCandleRequest||quoteStale)await this.requestMarketData(provider,{force:st.candles.length<50||stale||quoteStale}).catch(()=>{});
     if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=`${st.symbol||'Ativo'} com candles atuais`}
     else if(st.marketStatus!=='recovering'&&st.marketStatus!=='closed'){st.marketStatus='stale';st.marketReason='Feed conectado, mas sem candle recente'}
-    if(!st.lastExecutionScanAt||now-st.lastExecutionScanAt>2200){
+    if(!st.lastExecutionScanAt||now-st.lastExecutionScanAt>900){
       st.lastExecutionScanAt=now;
       await this.scanExecutionUi(provider).catch(()=>{});
     }
@@ -904,10 +918,15 @@ export class LocalPlaywrightDriver{
     let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{let dom=await page.evaluate(()=>window.__sentinelReadBrokerDom?.()||{});
       if(!dom.activeSymbol){for(const frame of brokerFrames(page,this.config(provider).domain).filter(f=>f!==page.mainFrame?.())){try{await frame.evaluate(installBrokerAssetReader);const found=await frame.evaluate(()=>window.__sentinelReadBrokerDom?.()||{});if(found.activeSymbol){dom=found;break}}catch{}}}
       st.assetDetection={confirmed:!!dom.assetConfirmed,ambiguous:!!dom.assetAmbiguous,roots:dom.rootCount||0};accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
+    if(!activeSymbol){
+      const view=await this.readBrokerView(provider).catch(()=>null);st.renderedView=view;
+      if(view?.symbol&&!view.ambiguous){activeSymbol=view.symbol;st.assetDetection={confirmed:true,ambiguous:false,source:view.source,scanMs:view.scanMs};}
+      else st.assetDetection={confirmed:false,ambiguous:!!view?.ambiguous,source:view?.source||'unreadable',scanMs:view?.scanMs,error:view?.error||null};
+    }
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
     let nextUi=null,uiSource=null;
-    if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
+    if(domActive.length===1){nextUi=domActive[0];uiSource=st.assetDetection?.source?'view-active':'dom-active'}
     else if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
     else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
     if(nextUi)this.applyActiveSelection(provider,{symbol:nextUi,source:uiSource});
@@ -941,7 +960,7 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);
     const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh);
     const marketStatus=candleFresh?'open':(st.marketStatus||'stale');const marketReason=candleFresh?`${st.symbol||'Ativo'} atualizado`:(st.marketReason||'Sem candle recente');
-    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,uiSymbolSource:st.uiSymbolSource,assetDetection:st.assetDetection||null,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,uiSymbolSource:st.uiSymbolSource,assetDetection:st.assetDetection||null,renderedView:st.renderedView?{source:st.renderedView.source,scanMs:st.renderedView.scanMs,closedRoots:st.renderedView.closedRoots,textCount:st.renderedView.textCount,error:st.renderedView.error}:null,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -953,15 +972,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='11.9.2'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='11.9.3'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.9.2';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.9.3';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.9.2';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.9.3';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -1032,14 +1051,14 @@ export class LocalPlaywrightDriver{
         const contextSell=!analysisStale&&m.sellScore!=null?Math.max(0,Math.min(100,Number(m.sellScore))):null;
         const buy=shortReady?contextBuy:null,sell=shortReady?contextSell:null;
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
-        const liveAge=d.liveAgeMs==null?NaN:Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
+        const liveAge=d.liveAgeMs==null?NaN:Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<Number(d.maxFeedLatencyMs||2500);
         const liveLabel=analysisStale?'SINCRONIZANDO FEED':analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
         const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
         const botAssetVerified=d.assetConfirmed!==false;
         const botBlocked=!!(d.killSwitch||d.masterFrozen),botBusy=el.dataset.actionBusy==='1';
-        const botLabel=!agentOnline?'OFFLINE · sem conexão':botBlocked?'ONLINE · bloqueado':runtime==='error'?'ONLINE · erro':runtime==='paused'?'ONLINE · pausado':runtime!=='running'?'ONLINE · bot parado':!botAssetVerified?'ONLINE · verificando ativo':analysisFresh&&liveNow&&!analysisTransient?'ONLINE · analisando':'ONLINE · aguardando dados';
-        const botColor=!agentOnline||runtime==='error'?'#ff8f9c':runtime==='running'&&analysisFresh&&liveNow&&!botBlocked&&botAssetVerified?'#72e6b9':runtime==='paused'||botBlocked||runtime==='running'?'#ecd28d':'#aaa69f';
-        const botHint=!agentOnline?'O Agent deixou de responder. Abra o Sentinel Agent no PC.':botBlocked?'O controle de segurança bloqueou a análise.':runtime==='paused'?'Análise pausada. Clique em Retomar bot.':runtime==='stopped'?'Clique em Iniciar bot para começar.':runtime==='running'&&!botAssetVerified?'Bot ligado; o ativo selecionado no gráfico ainda não foi confirmado.':runtime==='running'&&analysisFresh&&liveNow?'Última análise '+(d.analysisAt?new Date(Number(d.analysisAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'agora')+' · sinal '+String(operational.state||'AGUARDAR'):runtime==='running'?'Bot iniciado; aguardando dados atuais do gráfico.':'Confira o diagnóstico do Agent.';
+        const botLabel=!agentOnline?'OFFLINE · sem conexão':botBlocked?'ONLINE · bloqueado':runtime==='error'?'ONLINE · erro':runtime==='paused'?'ONLINE · pausado':runtime!=='running'?'ONLINE · bot parado':!botAssetVerified?'ONLINE · lendo gráfico':analysisFresh&&liveNow&&!analysisTransient?'ONLINE · analisando':'ONLINE · aguardando dados';
+        const botColor=!agentOnline||runtime==='error'?'#ff8f9c':runtime==='running'&&analysisFresh&&!botBlocked&&botAssetVerified?'#72e6b9':runtime==='paused'||botBlocked||runtime==='running'?'#ecd28d':'#aaa69f';
+        const botHint=!agentOnline?'O Agent deixou de responder. Abra o Sentinel Agent no PC.':botBlocked?'O controle de segurança bloqueou a análise.':runtime==='paused'?'Análise pausada. Clique em Retomar bot.':runtime==='stopped'?'Clique em Iniciar bot para começar.':runtime==='running'&&!botAssetVerified?'Bot ligado; identificando o gráfico selecionado.':runtime==='running'&&analysisFresh?'Última análise '+(d.analysisAt?new Date(Number(d.analysisAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'agora')+' · sinal '+String(operational.state||'AGUARDAR'):runtime==='running'?'Bot iniciado; aguardando dados atuais do gráfico.':'Confira o diagnóstico do Agent.';
         const startLabel=botBusy?'Aplicando…':!agentOnline?'Sem conexão':runtime==='running'?'Bot iniciado':runtime==='paused'?'Retomar bot':'Iniciar bot';
         const currentBot=el.querySelector('[data-sentinel-role="bot-status"]');if(currentBot){currentBot.style.color=botColor;currentBot.textContent=botLabel}
         const currentDot=el.querySelector('[data-sentinel-role="connection-dot"]');if(currentDot)currentDot.style.background=botColor;
@@ -1119,7 +1138,7 @@ export class LocalPlaywrightDriver{
         const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
         const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&liveNow&&analysisFresh&&!analysisTransient;
         const operationalPrepare=operationalState==='PREPARAR'&&['CALL','PUT'].includes(operationalSide)&&liveNow&&analysisFresh;
-        const operationalDisplay=runtime!=='running'?runtimeLabel:!liveNow||!analysisFresh?'SINCRONIZANDO':operationalReady?operationalSide:operationalPrepare?'PREPARAR '+operationalSide:['AJUSTAR PRAZO','VERIFICAR PRAZO'].includes(operationalState)?operationalState:'AGUARDAR';
+        const operationalDisplay=runtime!=='running'?runtimeLabel:!botAssetVerified?'LENDO GRÁFICO':!analysisFresh?'AGUARDANDO DADOS':!liveNow?'ATUALIZANDO PREÇO':operationalReady?operationalSide:operationalPrepare?'PREPARAR '+operationalSide:['AJUSTAR PRAZO','VERIFICAR PRAZO'].includes(operationalState)?operationalState:'AGUARDAR';
         const operationalTime=operationalReady&&Number.isFinite(Number(operational.entryAt))?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
         const operationalTrigger=operational.trigger!=null&&Number.isFinite(Number(operational.trigger))?Number(operational.trigger):null;
         const operationalInvalidation=operational.invalidation!=null&&Number.isFinite(Number(operational.invalidation))?Number(operational.invalidation):null;
@@ -1171,12 +1190,12 @@ export class LocalPlaywrightDriver{
         
         const renderKey=JSON.stringify(d)+'|'+el.dataset.plannerHorizon+'|'+el.dataset.themePreference+'|'+el.dataset.analysisOpen+'|'+el.dataset.actionBusy+'|'+el.dataset.actionStatus;
         if(el.__sentinelRenderKey===renderKey)return;el.__sentinelRenderKey=renderKey;
-        el.innerHTML=`
+        const template=document.createElement('template');template.innerHTML=`
           <div data-sentinel-drag style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;padding:2px 2px 10px;border-bottom:1px solid ${panelBorder}">
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span data-sentinel-role="connection-dot" style="width:8px;height:8px;border-radius:999px;background:${botColor};box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.9.2')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.9.3')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1190,11 +1209,11 @@ export class LocalPlaywrightDriver{
           </div>
 
           <section data-sentinel-role="main-signal" style="margin-top:10px;padding:16px;border-radius:14px;background:${panelBg};border:2px solid ${operationalReady?operationalTone:panelBorder}">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:12px;color:${ink}">SINAL OPERACIONAL</b><span style="font-size:11px;color:${muted}">${durationText} · ${esc(d.asset||'—')}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:12px;color:${ink}">SINAL OPERACIONAL</b><span style="font-size:11px;color:${muted}">${durationText}</span></div>
             <div style="font-size:30px;font-weight:950;margin-top:7px;color:${operationalReady?operationalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
-            <p style="margin:6px 0;font-size:12px;line-height:1.45;color:${ink}">${runtime!=='running'?'Inicie o bot para acompanhar a análise.':!analysisFresh||!liveNow?'Aguardando dados atuais do mesmo ativo.':esc(operationalReason)}</p>
-            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;color:${muted};font-size:12px"><span>Confiança técnica <b style="color:${goldSoft}">${analysisFresh&&liveNow&&!analysisTransient?n(operationalTechnicalConfidence,0):'—'}%</b></span><span>Filtro <b style="color:${ink}">${n(minConfidence,0)}%</b></span></div>
-            <div data-sentinel-role="live-strength" style="display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:15px;font-weight:900"><span style="color:${callTone}">CALL ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh&&liveNow?n(generalCall,0):'—'}%</span><span style="color:${putTone}">PUT ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh&&liveNow?n(generalPut,0):'—'}%</span></div>
+            <p style="margin:6px 0;font-size:12px;line-height:1.45;color:${ink}">${runtime!=='running'?'Inicie o bot para acompanhar a análise.':!analysisFresh?'Aguardando dados do gráfico selecionado.':!liveNow?'Análise técnica disponível; aguardando cotação atual para liberar uma entrada.':esc(operationalReason)}</p>
+            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;color:${muted};font-size:12px"><span>Confiança técnica <b style="color:${goldSoft}">${analysisFresh?n(operationalTechnicalConfidence,0):'—'}%</b></span><span>Filtro <b style="color:${ink}">${n(minConfidence,0)}%</b></span></div>
+            <div data-sentinel-role="live-strength" style="display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:15px;font-weight:900"><span style="color:${callTone}">CALL ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh?n(generalCall,0):'—'}%</span><span style="color:${putTone}">PUT ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh?n(generalPut,0):'—'}%</span></div>
             <div data-sentinel-role="analysis-clock" style="margin-top:6px;font-size:10px;color:${muted}">Cotação ${liveNow?price(d.quote??operational.price??m.last):'—'} · análise ${d.analysisAt?esc(new Date(Number(d.analysisAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})):'—'}</div>
             <div style="margin-top:8px;font-size:11px;color:${muted}">Prazo da corretora: <b style="color:${expiryTone}">${expiryDurationLabel} · ${expiryLabel}</b>${operationalTrigger!=null&&operationalTrigger>0?' · gatilho '+price(operationalTrigger):''}</div>
             <div style="margin-top:5px;font-size:10px;color:${subtle}">Força técnica em %. Não é probabilidade de acerto.</div>
@@ -1294,6 +1313,20 @@ ${el.dataset.analysisOpen==='1'?`
           if(rr.bottom>window.innerHeight-8)el.style.top=Math.max(8,window.innerHeight-rr.height-8)+'px';
           if(rr.top<8)el.style.top='8px'
         })
+        const sync=(target,source)=>{
+          const attrs=new Set([...source.attributes].map(a=>a.name));for(const a of [...target.attributes])if(!attrs.has(a.name))target.removeAttribute(a.name);
+          for(const a of source.attributes)if(target.getAttribute(a.name)!==a.value)target.setAttribute(a.name,a.value);
+          let i=0;while(i<source.childNodes.length||i<target.childNodes.length){
+            const a=target.childNodes[i],b=source.childNodes[i];
+            if(!b){a.remove();continue}if(!a){target.appendChild(b.cloneNode(true));i++;continue}
+            const same=a.nodeType===b.nodeType&&(a.nodeType!==1||a.tagName===b.tagName&&a.getAttribute('data-sentinel-role')===b.getAttribute('data-sentinel-role')&&a.getAttribute('data-sentinel-action')===b.getAttribute('data-sentinel-action'));
+            if(!same)target.replaceChild(b.cloneNode(true),a);else if(a.nodeType===1)sync(a,b);else if(a.nodeValue!==b.nodeValue)a.nodeValue=b.nodeValue;
+            i++;
+          }
+        };
+        const scroll=el.scrollTop;const content=document.createElement('section');content.appendChild(template.content);content.id=el.id;
+        // Root styles and persistent datasets belong to the existing card, not the template.
+        for(const a of el.attributes)content.setAttribute(a.name,a.value);sync(el,content);el.scrollTop=scroll;
         };
         window.__sentinelRenderOverlay=render;
         render(d)

@@ -1,5 +1,5 @@
-# V11.9.2 validated source build
-name: Sentinel Windows Agent V11.9.2
+# V11.9.3 validated source build
+name: Sentinel Windows Agent V11.9.3
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           node --test sentinel-trading-lab/agent/test/signal-contract.test.mjs
 
-      - name: Build Agent V11.9.2 payload
+      - name: Build Agent V11.9.3 payload
         shell: bash
         run: |
           set -euo pipefail
@@ -103,6 +103,7 @@ jobs:
             echo 'Agent 11.9 generated files already current.'
             exit 0
           fi
-          git commit -m 'build(sentinel): refresh Windows Agent V11.9.2'
+          git commit -m 'build(sentinel): refresh Windows Agent V11.9.3'
           git push origin "HEAD:$branch"
+
 

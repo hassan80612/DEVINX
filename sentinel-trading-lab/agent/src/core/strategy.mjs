@@ -192,7 +192,7 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
 
 export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,freshnessMs=5000,quoteTs=Date.now(),now=Date.now(),preparedMetrics=null}){
  if(!Array.isArray(candles)||candles.length<35)return{side:SignalSide.WAIT,confidence:0,reasons:['dados insuficientes: mínimo 35 candles'],metrics:{sourceCandles:candles?.length||0}};
- if(now-quoteTs>freshnessMs)return{side:SignalSide.WAIT,confidence:0,reasons:['feed atrasado'],metrics:{sourceCandles:candles.length}};
+ const quoteAgeMs=Math.max(0,now-Number(quoteTs||0)),feedFresh=quoteAgeMs<=freshnessMs;
 
  const closes=candles.map(c=>Number(c.close)),prior=candles.slice(0,-1),candleLast=closes.at(-1),vol=atr(candles,14)||Math.abs(candleLast)*.001;
  const baseSeconds=preparedMetrics?.baseCandleSeconds||candleSeconds(candles),micro=preparedMetrics?.micro||liveMicro(quoteHistory,candleLast,vol,baseSeconds,now),last=Number(micro.last||candleLast);
@@ -412,7 +412,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  }
 
  return{
-   side,confidence,reasons:box.reasons.slice(0,14),
+   side:feedFresh?side:SignalSide.WAIT,confidence,feedFresh,quoteAgeMs,reasons:[...(!feedFresh?['Cotação atrasada; análise técnica preservada, entrada bloqueada.']:[]),...box.reasons].slice(0,14),
    forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,basis:'cenário técnico condicional; força técnica em %, não probabilidade',callStrength:projectedBuy,putStrength:projectedSell,trigger:Number(minConfidence||74),callGap,putGap,microPulse:micro.pulse,microReady:micro.ready},
    finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:horizon<=60000?'contexto técnico 60s/5m + microestrutura curta':'contexto técnico + microfluxo'},
    entryPlanner:{defaultHorizonSeconds:30,horizons:planner},
