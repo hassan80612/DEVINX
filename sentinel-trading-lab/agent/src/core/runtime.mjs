@@ -431,7 +431,17 @@ export class DemoTradingRuntime{
   async freeze(actor='master'){if(actor!=='master')throw new Error('master_required');this.masterFrozen=true;this.stateName='stopped';this.audit.write({actorId:actor,actorRole:'master',action:'bot.freeze'});return this.status()}
   async unfreeze(actor='master'){if(actor!=='master')throw new Error('master_required');this.masterFrozen=false;this.audit.write({actorId:actor,actorRole:'master',action:'bot.unfreeze'});return this.status()}
   setMode(mode,actor='user'){if(!['demo','real'].includes(mode))throw new Error('invalid_mode');this.settings.mode=mode;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'mode.change',metadata:{mode}});return this.status()}
-  patchSettings(patch={},actor='user'){const resetOperational=['asset','strategy','strategy2','strategy3','orderDurationMs','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));this.settings={...this.settings,...patch,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};if(resetOperational)this.operationalSetup=null;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()}
+  patchSettings(patch={},actor='user'){
+    const resetOperational=['asset','strategy','strategy2','strategy3','orderDurationMs','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+    const wasAutopilot=this.settings.demoAutopilot===true,armingAutopilot=patch.demoAutopilot===true&&!wasAutopilot;
+    this.settings={...this.settings,...patch,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
+    if(armingAutopilot){
+      this.state.sessionStartedAt=Date.now();this.state.sessionTradeStartCount=this.trades.length;this.state.consecutiveLosses=0;
+      this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_armed',metadata:{maxTradesPerSession:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)}})
+    }
+    if(wasAutopilot&&patch.demoAutopilot===false)this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_disarmed'});
+    if(resetOperational)this.operationalSetup=null;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()
+  }
   clearExecutionError(actor='master'){if(actor!=='master')throw new Error('master_required');this.state.executionError=false;if(this.stateName==='error')this.stateName='stopped';this.audit.write({actorId:actor,actorRole:'master',action:'execution_error.clear'});return this.status()}
   _riskState(now){
     const tz=this.settings.schedule.timezone||'UTC',today=dayKey(now,tz);
@@ -647,7 +657,7 @@ export class DemoTradingRuntime{
         this.audit.write({actorId:'engine',actorRole:'system',action:'order.demo_open',metadata:{orderId:result.order.id,asset:result.order.asset,side:result.order.side,amount:result.order.amount,confidence:result.order.confidence}});
         if(Number(result.latency?.executionMs||0)>Number(this.settings.risk.maxExecutionLatencyMs||1500)){this.state.executionError=true;this.incidents.unshift({ts:iso(now),severity:'error',code:'execution_latency',message:'latência de execução acima do limite'});this.stateName='error'}
       }
-      const fatal=(result.reasons||[]).find(x=>AUTO_STOP_REASONS.has(x));if(fatal){this.stateName='stopped';this.audit.write({actorId:'engine',actorRole:'system',action:'bot.auto_stop',metadata:{reason:fatal}})}
+      const fatal=(result.reasons||[]).find(x=>AUTO_STOP_REASONS.has(x));if(fatal){if(this.settings.mode==='demo')this.settings.demoAutopilot=false;this.stateName='stopped';this.audit.write({actorId:'engine',actorRole:'system',action:'bot.auto_stop',metadata:{reason:fatal}})}
       return this.status();
     }catch(error){this.state.executionError=true;this.stateName='error';this.incidents.unshift({ts:iso(now),severity:'error',code:'cycle_error',message:String(error?.message||error)});return this.status()}
   }
