@@ -77,6 +77,8 @@ function symbolForActiveId(st,activeId){
 }
 function epochMs(v){const x=Number(v);if(!Number.isFinite(x)||x<=0)return null;if(x>1e17)return Math.round(x/1e6);if(x>1e14)return Math.round(x/1e3);if(x<1e12)return Math.round(x*1e3);return Math.round(x)}
 function mergeCandles(a=[],b=[]){const m=new Map();for(const c of [...a,...b]){const x=candleOf(c);if(!x)continue;const k=String(x.from??x.to??`${x.open}:${x.close}:${m.size}`);m.set(k,x)}return [...m.values()].sort((x,y)=>Number(x.from||0)-Number(y.from||0)).slice(-600)}
+function candlesFromResponse(value,depth=0,out=[]){if(depth>8||value==null)return out;if(Array.isArray(value)){for(const x of value)candlesFromResponse(x,depth+1,out);return out}if(typeof value!=='object')return out;const c=candleOf(value);if(c)out.push(c);for(const [k,v] of Object.entries(value)){if(['open','high','low','close','from','to','at'].includes(k))continue;if(v&&typeof v==='object')candlesFromResponse(v,depth+1,out)}return out}
+function acceptRequestedHistory(st,response,targetId){if(!response||st.activeId==null||Number(st.activeId)!==Number(targetId))return 0;const rows=candlesFromResponse(response);if(!rows.length)return 0;st.candles=mergeCandles(st.candles,rows);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800)}return rows.length}
 function reqId(prefix='sentinel'){return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`}
 function findBrowser(){
   const env=process.env;const c=[];
