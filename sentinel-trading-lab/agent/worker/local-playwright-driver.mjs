@@ -1638,7 +1638,14 @@ export class LocalPlaywrightDriver{
         el.querySelectorAll('[data-sentinel-summary]').forEach(card=>{
           const key=card.getAttribute('data-sentinel-summary')||'';
           const collapsed=collapsedNow.has(key);
-          [...card.children].forEach((child,index)=>{if(index>0)child.style.display=collapsed?'none':''});
+          [...card.children].forEach((child,index)=>{
+            const isCollapseButton=child.matches?.('[data-sentinel-summary-collapse]');
+            if(index===0||isCollapseButton)child.style.display='';
+            else child.style.display=collapsed?'none':'';
+          });
+          card.style.minHeight=collapsed?'44px':(key==='average-total'?'72px':'118px');
+          card.style.height='auto';
+          card.style.paddingBottom=collapsed?'9px':'10px';
           card.dataset.collapsed=collapsed?'1':'0';
         });
 
