@@ -245,94 +245,115 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const add=(b,side,points,reason)=>addScore(b,side,points,reason);
  const patternScore=(b,limit=2,points=16)=>{for(const p of (m.patterns||[]).slice(0,limit)){if(p.side==='BUY')add(b,'BUY',points,p.label);if(p.side==='SELL')add(b,'SELL',points,p.label)}};
 
+ const recentDeltas=closes.slice(-9).map((v,i,a)=>i===0?0:Number(v)-Number(a[i-1])).slice(1);
+ const upPersistence=recentDeltas.length?recentDeltas.filter(x=>x>0).length/recentDeltas.length:.5,downPersistence=recentDeltas.length?recentDeltas.filter(x=>x<0).length/recentDeltas.length:.5;
+ const persistenceSignal=clamp(upPersistence-downPersistence,-1,1);
+ const regimeAffinity={
+   trend:{trend:1.22,price_action:1.0,trendline_breakout:1.05,support_resistance:.72,fibonacci_retest:.82,mean_reversion:.42,breakout:1.0},
+   range:{trend:.48,price_action:1.0,trendline_breakout:.62,support_resistance:1.24,fibonacci_retest:1.02,mean_reversion:1.28,breakout:.62},
+   breakout:{trend:.90,price_action:1.02,trendline_breakout:1.28,support_resistance:.72,fibonacci_retest:.68,mean_reversion:.30,breakout:1.35},
+   reversal:{trend:.55,price_action:1.20,trendline_breakout:.72,support_resistance:1.25,fibonacci_retest:.90,mean_reversion:1.18,breakout:.55},
+   chaotic:{trend:.55,price_action:.78,trendline_breakout:.70,support_resistance:.78,fibonacci_retest:.60,mean_reversion:.62,breakout:.72}
+ };
+ const regimeFactor=name=>Number(regimeAffinity[regimeLabel]?.[name]??1);
+ const applyRegime=(box,name)=>{
+   const factor=regimeFactor(name);
+   box.buy=clamp(Math.round(box.buy*factor),0,100);box.sell=clamp(Math.round(box.sell*factor),0,100);
+   box.regimeFactor=factor;box.regime=regimeLabel;return box
+ };
+
  const scoreTrend=()=>{
-   const b=mk();
-   if(trendUp)add(b,'BUY',24,'EMA 9 acima da EMA 21');if(trendDn)add(b,'SELL',24,'EMA 9 abaixo da EMA 21');
-   if(m.ema50!=null){if(last>m.ema50)add(b,'BUY',10,'preço acima da EMA 50');else add(b,'SELL',10,'preço abaixo da EMA 50')}
-   if(m.macd?.histogram>0)add(b,'BUY',16,'MACD confirma tendência');if(m.macd?.histogram<0)add(b,'SELL',16,'MACD confirma tendência');
-   if(m.momentum>0)add(b,'BUY',10,'momentum acompanha alta');if(m.momentum<0)add(b,'SELL',10,'momentum acompanha baixa');
-   if(m.structure.bias==='bullish')add(b,'BUY',20,'estrutura HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',20,'estrutura LH + LL');
-   if(higherUp)add(b,'BUY',20,'timeframe superior alta');if(higherDn)add(b,'SELL',20,'timeframe superior baixa');
-   return b
+   const b=mk();let buyTrend=0,sellTrend=0,buyMomentum=0,sellMomentum=0,buyStructure=0,sellStructure=0;
+   if(trendUp)buyTrend+=16;if(trendDn)sellTrend+=16;
+   if(m.ema50!=null){if(last>m.ema50)buyTrend+=8;else sellTrend+=8}
+   if(m.macd?.histogram>0)buyMomentum+=10;else if(m.macd?.histogram<0)sellMomentum+=10;
+   if(m.momentum>0)buyMomentum+=8;else if(m.momentum<0)sellMomentum+=8;
+   if(m.structure.bias==='bullish')buyStructure+=18;else if(m.structure.bias==='bearish')sellStructure+=18;
+   if(higherUp)buyStructure+=14;else if(higherDn)sellStructure+=14;
+   if(persistenceSignal>.25)buyStructure+=8;if(persistenceSignal<-.25)sellStructure+=8;
+   if(buyTrend)add(b,'BUY',Math.min(24,buyTrend),'tendência por médias');if(sellTrend)add(b,'SELL',Math.min(24,sellTrend),'tendência por médias');
+   if(buyMomentum)add(b,'BUY',Math.min(18,buyMomentum),'momentum confirma alta');if(sellMomentum)add(b,'SELL',Math.min(18,sellMomentum),'momentum confirma baixa');
+   if(buyStructure)add(b,'BUY',Math.min(30,buyStructure),'estrutura/persistência de alta');if(sellStructure)add(b,'SELL',Math.min(30,sellStructure),'estrutura/persistência de baixa');
+   if(regimeLabel==='trend'&&trendDirection>0)add(b,'BUY',12,'regime de tendência comprador');if(regimeLabel==='trend'&&trendDirection<0)add(b,'SELL',12,'regime de tendência vendedor');
+   return applyRegime(b,'trend')
  };
  const scorePriceAction=()=>{
-   const b=mk();
-   if(m.structure.bias==='bullish')add(b,'BUY',24,'estrutura de preço HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',24,'estrutura de preço LH + LL');
-   if(strongBull)add(b,'BUY',14,'candle de força compradora');if(strongBear)add(b,'SELL',14,'candle de força vendedora');
-   patternScore(b,2,18);
-   if(srNearSupport&&bullishReject)add(b,'BUY',26,'rejeição de suporte');if(srNearResistance&&bearishReject)add(b,'SELL',26,'rejeição de resistência');
-   if(failedSupport)add(b,'BUY',24,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',24,'falso rompimento da resistência');
-   if(m.retest?.side==='BUY')add(b,'BUY',18,'reteste confirmado para cima');if(m.retest?.side==='SELL')add(b,'SELL',18,'reteste confirmado para baixo');
-   return b
+   const b=mk(),zoneContext=srNearSupport||srNearResistance||failedSupport||failedResistance;
+   if(m.structure.bias==='bullish')add(b,'BUY',20,'estrutura de preço HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',20,'estrutura de preço LH + LL');
+   if(strongBull)add(b,'BUY',zoneContext?18:10,'candle de força compradora');if(strongBear)add(b,'SELL',zoneContext?18:10,'candle de força vendedora');
+   const pattPts=zoneContext?18:9;patternScore(b,2,pattPts);
+   if(srNearSupport&&bullishReject)add(b,'BUY',28,'rejeição contextual de suporte');if(srNearResistance&&bearishReject)add(b,'SELL',28,'rejeição contextual de resistência');
+   if(failedSupport)add(b,'BUY',26,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',26,'falso rompimento da resistência');
+   if(m.retest?.side==='BUY')add(b,'BUY',20,'reteste confirmado para cima');if(m.retest?.side==='SELL')add(b,'SELL',20,'reteste confirmado para baixo');
+   return applyRegime(b,'price_action')
  };
  const scoreTrendlineBreakout=()=>{
-   const b=mk();
-   if(lineBreakUp)add(b,'BUY',40,'rompimento da linha superior');if(lineBreakDown)add(b,'SELL',40,'rompimento da linha inferior');
-   if(m.retest?.side==='BUY')add(b,'BUY',30,'rompimento + reteste');if(m.retest?.side==='SELL')add(b,'SELL',30,'rompimento + reteste');
-   if(Number.isFinite(lineResistance)&&near(last,lineResistance,vol*.35)&&strongBull)add(b,'BUY',14,'pressão na linha de resistência');
-   if(Number.isFinite(lineSupport)&&near(last,lineSupport,vol*.35)&&strongBear)add(b,'SELL',14,'pressão na linha de suporte');
-   if(lineBreakUp&&m.momentum>0)add(b,'BUY',12,'momentum confirma rompimento');if(lineBreakDown&&m.momentum<0)add(b,'SELL',12,'momentum confirma rompimento');
-   if(lineBreakUp&&m.structure.bias!=='bearish')add(b,'BUY',10,'estrutura confirma rompimento');if(lineBreakDown&&m.structure.bias!=='bullish')add(b,'SELL',10,'estrutura confirma rompimento');
-   return b
+   const b=mk(),upQuality=Math.max(lineQualityUp,Number(m.lineQuality?.resistance?.quality||0)),downQuality=Math.max(lineQualityDown,Number(m.lineQuality?.support?.quality||0));
+   if(lineBreakUp&&upQuality>=45)add(b,'BUY',Math.round(26+upQuality*.18),'rompimento de linha validada');if(lineBreakDown&&downQuality>=45)add(b,'SELL',Math.round(26+downQuality*.18),'rompimento de linha validada');
+   if(m.retest?.side==='BUY'&&lineBreakUp)add(b,'BUY',24,'rompimento + reteste');if(m.retest?.side==='SELL'&&lineBreakDown)add(b,'SELL',24,'rompimento + reteste');
+   if(lineBreakUp&&volExpanding)add(b,'BUY',16,'volatilidade expande no rompimento');if(lineBreakDown&&volExpanding)add(b,'SELL',16,'volatilidade expande no rompimento');
+   if(lineBreakUp&&m.momentum>0&&upPersistence>=.625)add(b,'BUY',14,'rompimento sustentado');if(lineBreakDown&&m.momentum<0&&downPersistence>=.625)add(b,'SELL',14,'rompimento sustentado');
+   if((lineBreakUp&&upQuality<45)||(lineBreakDown&&downQuality<45))b.reasons.push('linha sem qualidade suficiente');
+   return applyRegime(b,'trendline_breakout')
  };
  const scoreSupportResistance=()=>{
-   const b=mk();
-   if(srNearSupport)add(b,'BUY',34,'preço em suporte');if(srNearResistance)add(b,'SELL',34,'preço em resistência');
-   if(srNearSupport&&bullishReject)add(b,'BUY',30,'rejeição compradora no suporte');if(srNearResistance&&bearishReject)add(b,'SELL',30,'rejeição vendedora na resistência');
-   if(failedSupport)add(b,'BUY',28,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',28,'falso rompimento da resistência');
-   if(srNearSupport&&m.rsi!=null&&m.rsi<=42)add(b,'BUY',14,'RSI favorece reação no suporte');
-   if(srNearResistance&&m.rsi!=null&&m.rsi>=58)add(b,'SELL',14,'RSI favorece reação na resistência');
-   if(srNearSupport&&(m.patterns||[]).some(p=>p.side==='BUY'))add(b,'BUY',16,'padrão comprador no suporte');
-   if(srNearResistance&&(m.patterns||[]).some(p=>p.side==='SELL'))add(b,'SELL',16,'padrão vendedor na resistência');
-   return b
+   const b=mk(),supportBase=Math.round(20+Math.min(18,supportStrength*.18)),resistanceBase=Math.round(20+Math.min(18,resistanceStrength*.18));
+   if(srNearSupport)add(b,'BUY',supportBase,'zona de suporte validada');if(srNearResistance)add(b,'SELL',resistanceBase,'zona de resistência validada');
+   if(srNearSupport&&bullishReject)add(b,'BUY',26,'rejeição compradora na zona');if(srNearResistance&&bearishReject)add(b,'SELL',26,'rejeição vendedora na zona');
+   if(failedSupport)add(b,'BUY',30,'falso rompimento da zona de suporte');if(failedResistance)add(b,'SELL',30,'falso rompimento da zona de resistência');
+   if(srNearSupport&&m.rsi!=null&&m.rsi<=42)add(b,'BUY',10,'RSI favorece reação');if(srNearResistance&&m.rsi!=null&&m.rsi>=58)add(b,'SELL',10,'RSI favorece reação');
+   return applyRegime(b,'support_resistance')
  };
  const scoreFibonacci=()=>{
-   const b=mk(),fib=m.fib?.nearest;
-   if(!fib||!Number.isFinite(Number(fib.distance))||Number(fib.distance)>vol*.90)return b;
-   if(m.fib.direction==='up'){
-     add(b,'BUY',42,'reteste em nível de Fibonacci');
-     if(trendUp)add(b,'BUY',20,'Fibonacci alinhado à tendência');
-     if(bullishReject||strongBull)add(b,'BUY',18,'reação compradora no nível');
-     if(m.momentum>0)add(b,'BUY',10,'momentum confirma reação')
-   }else if(m.fib.direction==='down'){
-     add(b,'SELL',42,'reteste em nível de Fibonacci');
-     if(trendDn)add(b,'SELL',20,'Fibonacci alinhado à tendência');
-     if(bearishReject||strongBear)add(b,'SELL',18,'reação vendedora no nível');
-     if(m.momentum<0)add(b,'SELL',10,'momentum confirma reação')
+   const b=mk(),model=m.swingFib?.confirmed?m.swingFib:m.fib,fib=model?.nearest,quality=Number(model?.quality||25);
+   if(!fib||!Number.isFinite(Number(fib.distance))||Number(fib.distance)>vol*.90||quality<45)return b;
+   const base=Math.round(24+quality*.18);
+   if(model.direction==='up'){
+     add(b,'BUY',base,'reteste em Fibonacci de swing confirmado');
+     if(trendUp&&higherUp)add(b,'BUY',18,'Fibonacci alinhado à tendência');
+     if(bullishReject||strongBull)add(b,'BUY',16,'reação compradora no nível');
+     if(m.momentum>0)add(b,'BUY',8,'momentum confirma reação')
+   }else if(model.direction==='down'){
+     add(b,'SELL',base,'reteste em Fibonacci de swing confirmado');
+     if(trendDn&&higherDn)add(b,'SELL',18,'Fibonacci alinhado à tendência');
+     if(bearishReject||strongBear)add(b,'SELL',16,'reação vendedora no nível');
+     if(m.momentum<0)add(b,'SELL',8,'momentum confirma reação')
    }
-   return b
+   return applyRegime(b,'fibonacci_retest')
  };
  const scoreMeanReversion=()=>{
-   const b=mk();
-   if(m.bb&&last<=m.bb.lower)add(b,'BUY',30,'preço na banda inferior');if(m.bb&&last>=m.bb.upper)add(b,'SELL',30,'preço na banda superior');
-   if(m.rsi!=null&&m.rsi<32)add(b,'BUY',26,'RSI sobrevendido');if(m.rsi!=null&&m.rsi>68)add(b,'SELL',26,'RSI sobrecomprado');
-   if(m.stoch!=null&&m.stoch<22)add(b,'BUY',18,'estocástico em sobrevenda');if(m.stoch!=null&&m.stoch>78)add(b,'SELL',18,'estocástico em sobrecompra');
-   if(m.slow!=null&&last<m.slow-vol*.55)add(b,'BUY',14,'preço afastado abaixo da média');if(m.slow!=null&&last>m.slow+vol*.55)add(b,'SELL',14,'preço afastado acima da média');
-   if(srNearSupport)add(b,'BUY',12,'suporte favorece retorno à média');if(srNearResistance)add(b,'SELL',12,'resistência favorece retorno à média');
-   return b
+   const b=mk(),trendPenalty=regimeLabel==='trend'||regimeLabel==='breakout';
+   if(m.bb&&last<=m.bb.lower)add(b,'BUY',trendPenalty?14:28,'preço na banda inferior');if(m.bb&&last>=m.bb.upper)add(b,'SELL',trendPenalty?14:28,'preço na banda superior');
+   if(m.rsi!=null&&m.rsi<32)add(b,'BUY',trendPenalty?12:24,'RSI sobrevendido');if(m.rsi!=null&&m.rsi>68)add(b,'SELL',trendPenalty?12:24,'RSI sobrecomprado');
+   if(m.stoch!=null&&m.stoch<22)add(b,'BUY',trendPenalty?8:16,'estocástico em sobrevenda');if(m.stoch!=null&&m.stoch>78)add(b,'SELL',trendPenalty?8:16,'estocástico em sobrecompra');
+   if(m.slow!=null&&last<m.slow-vol*.55)add(b,'BUY',12,'preço afastado abaixo da média');if(m.slow!=null&&last>m.slow+vol*.55)add(b,'SELL',12,'preço afastado acima da média');
+   if(srNearSupport&&bullishReject)add(b,'BUY',20,'zona confirma retorno à média');if(srNearResistance&&bearishReject)add(b,'SELL',20,'zona confirma retorno à média');
+   if(trendPenalty)b.reasons.push('peso reduzido: mercado direcional');
+   return applyRegime(b,'mean_reversion')
  };
  const scoreBreakout=()=>{
-   const b=mk();
-   if(srBreakUp)add(b,'BUY',38,'rompimento de resistência');if(srBreakDown)add(b,'SELL',38,'rompimento de suporte');
-   if(m.retest?.side==='BUY')add(b,'BUY',28,'reteste após rompimento');if(m.retest?.side==='SELL')add(b,'SELL',28,'reteste após rompimento');
+   const b=mk(),sustainUp=upPersistence>=.625&&m.momentum>0,sustainDown=downPersistence>=.625&&m.momentum<0;
+   if(srBreakUp)add(b,'BUY',volExpanding?36:22,'rompimento de resistência');if(srBreakDown)add(b,'SELL',volExpanding?36:22,'rompimento de suporte');
+   if(m.retest?.side==='BUY'&&srBreakUp)add(b,'BUY',24,'reteste após rompimento');if(m.retest?.side==='SELL'&&srBreakDown)add(b,'SELL',24,'reteste após rompimento');
    if(srBreakUp&&strongBull)add(b,'BUY',14,'candle confirma rompimento');if(srBreakDown&&strongBear)add(b,'SELL',14,'candle confirma rompimento');
-   if(srBreakUp&&m.momentum>0)add(b,'BUY',12,'momentum confirma rompimento');if(srBreakDown&&m.momentum<0)add(b,'SELL',12,'momentum confirma rompimento');
-   if(lineBreakUp)add(b,'BUY',10,'linha de tendência rompida');if(lineBreakDown)add(b,'SELL',10,'linha de tendência rompida');
-   return b
+   if(srBreakUp&&sustainUp)add(b,'BUY',18,'rompimento sustentado');if(srBreakDown&&sustainDown)add(b,'SELL',18,'rompimento sustentado');
+   if((srBreakUp||lineBreakUp)&&volExpanding)add(b,'BUY',10,'expansão de volatilidade');if((srBreakDown||lineBreakDown)&&volExpanding)add(b,'SELL',10,'expansão de volatilidade');
+   if((srBreakUp&&!volExpanding&&!sustainUp)||(srBreakDown&&!volExpanding&&!sustainDown))b.reasons.push('rompimento ainda sem expansão/sustentação');
+   return applyRegime(b,'breakout')
  };
  const scorers={trend:scoreTrend,price_action:scorePriceAction,trendline_breakout:scoreTrendlineBreakout,support_resistance:scoreSupportResistance,fibonacci_retest:scoreFibonacci,mean_reversion:scoreMeanReversion,breakout:scoreBreakout};
  const scoreSmart=()=>{
    const b=mk();
    for(const name of ['trend','price_action','trendline_breakout','support_resistance','fibonacci_retest','mean_reversion','breakout']){
-     const x=scorers[name](),total=x.buy+x.sell;if(total<10)continue;
-     const norm=Math.max(1,total),edge=(x.buy-x.sell)/norm,weight=Math.min(18,6+total*.12);
-     if(edge>0)add(b,'BUY',Math.round(weight*Math.abs(edge)),`${name}: viés comprador`);
-     if(edge<0)add(b,'SELL',Math.round(weight*Math.abs(edge)),`${name}: viés vendedor`)
+     const x=scorers[name](),total=x.buy+x.sell;if(total<8)continue;
+     const normTotal=Math.max(1,total),edge=(x.buy-x.sell)/normTotal,baseWeight=Math.min(18,5+total*.11),weight=baseWeight*regimeFactor(name);
+     if(edge>0)add(b,'BUY',Math.round(weight*Math.abs(edge)),`${name}: viés comprador · regime ${regimeLabel}`);
+     if(edge<0)add(b,'SELL',Math.round(weight*Math.abs(edge)),`${name}: viés vendedor · regime ${regimeLabel}`)
    }
    return b
  };
  const box=strategy==='smart_confluence'?scoreSmart():(scorers[strategy]?.()||scoreSmart());
-
+ box.regime=regimeLabel;box.regimeConfidence=regimeConfidence;
  const horizon=Math.max(30000,Number(durationMs||60000));
  const short=shortHorizonModel({
    quoteHistory,micro,last,vol,minConfidence,now,
