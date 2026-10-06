@@ -109,3 +109,21 @@ test('V13.1 runtime keeps only one external DEMO order open at a time',async()=>
   assert.ok(runtime.includes("demoAutopilot:this.settings.demoAutopilot===true&&canUseExternalDemo&&!pendingExternalDemo"));
   assert.ok(runtime.includes('Operação DEMO anterior ainda aberta — nenhuma entrada sobreposta será enviada.'));
 });
+
+
+test('V13.1 web console normalizes partial Agent state instead of crashing the client',async()=>{
+  const ui=await readFile(new URL('../sentinel-trading-lab/src/app/page.tsx',import.meta.url),'utf8');
+  assert.ok(ui.includes('function normalizeStatus'));
+  assert.ok(ui.includes("schedule:{timezone:'America/Sao_Paulo'"));
+  assert.ok(ui.includes('const data=normalizeStatus(localResult.value)'));
+  assert.ok(ui.includes("normalizeStatus(await cloudFetch('status'))"));
+  assert.ok(ui.includes("schedule=s.settings?.schedule||{}"));
+});
+
+test('V13.1 Agent manager records worker stderr before automatic restart',async()=>{
+  const manager=await readFile(new URL('../sentinel-trading-lab/agent/worker/agent-manager.mjs',import.meta.url),'utf8');
+  assert.ok(manager.includes("const WORKER_LOG=resolve(PID_DIR,'worker.log')"));
+  assert.ok(manager.includes("stdio:['ignore','pipe','pipe']"));
+  assert.ok(manager.includes("worker.stderr?.on('data'"));
+  assert.ok(manager.includes('lastExit'));
+});
