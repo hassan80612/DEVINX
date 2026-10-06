@@ -89,6 +89,12 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }else if(key==='minConfidence'){
       const n=Math.round(Number(value));if(!Number.isFinite(n)||n<55||n>95)throw new Error('invalid_min_confidence');
       runtime.patchSettings({risk:{minConfidence:n}},'overlay');
+    }else if(key==='readingPause'){
+      const allowed=['market_confluence','market_entry','market_reversal','strategy_1','strategy_2','strategy_3'];
+      const reading=String(payload.reading||'');if(!allowed.includes(reading))throw new Error('invalid_reading_pause');
+      const paused=value===true||String(value)==='true';
+      runtime.patchSettings({pausedReadings:{[reading]:paused}},'overlay');
+      runtime.requestImmediateEvaluation?.();
     }else throw new Error('invalid_overlay_setting');
     await saveState();return{ok:true,message:'Configuração aplicada'}
   }
@@ -166,6 +172,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       entryPlanner:a.entryPlanner||null,
       quality:a.quality||view.signalValidation||null,
       minConfidence:view.settings?.risk?.minConfidence||74,
+      pausedReadings:view.settings?.pausedReadings||{},
       reasons:a.reasons||view.lastResult?.reasons||[],
       metrics:m,
       plan:view.lastResult?.plan||{},
