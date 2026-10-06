@@ -54,7 +54,19 @@ function pairStrings(text=''){
   const b=compact.map(x=>{const otc=x.endsWith('-OTC'),z=x.replace(/-OTC$/,'');return `${z.slice(0,3)}/${z.slice(3,6)}${otc?' OTC':''}`});
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
-function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z]/g,'')}
+function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z0-9]/g,'')}
+function instrumentLabel(text=''){
+  const raw0=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
+  const pairs=pairStrings(raw0);if(pairs.length===1)return pairs[0];
+  if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(raw0))return null;
+  let raw=raw0.replace(/^front\./i,'').replace(/\b(?:BLITZ|BINARY|DIGITAL|TURBO|FOREX)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+  raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
+  if(!raw||raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw))return null;
+  if(/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return null;
+  if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return null;
+  if(/^\d[\d.,\s]*$/.test(raw))return null;
+  return raw
+}
 function symbolForActiveId(st,activeId){
   const aid=Number(activeId);if(!Number.isFinite(aid))return null;
   const keys=[...st.activeMap.entries()].filter(([,id])=>Number(id)===aid).map(([key])=>String(key));
