@@ -36,11 +36,13 @@ test('strategy display still avoids fake 100/0 from sparse evidence',()=>{
   assert.ok(p.putPct>25&&p.putPct<45,JSON.stringify(p));
 });
 
-test('R6 overlay contains committed countdown, compact totals and average confidence',async()=>{
+test('Future overlay treats the horizon as entry-now validity, with compact totals and average confidence',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
   assert.ok(ui.includes('sentinel-future-decision-v13|'));
-  assert.ok(ui.includes('DECISÃO TRAVADA'));
-  assert.ok(ui.includes('ENTRADA AGORA'));
+  assert.ok(ui.includes('JANELA ATIVA · PRAZO'));
+  assert.ok(ui.includes("futureDecision.side+' AGORA · '+decisionRemaining+'s'"));
+  assert.ok(ui.includes('não é uma espera para entrar'));
+  assert.ok(!ui.includes("futureDecision.side+' EM '+decisionRemaining+'s'"));
   assert.ok(ui.includes('MÉDIA DOS 3 TOTAIS'));
   assert.ok(ui.includes('CONF MÉDIA'));
   assert.ok(ui.includes('data-sentinel-total-threshold="market"'));
@@ -62,4 +64,6 @@ test('R6 overlay contains committed countdown, compact totals and average confid
   assert.ok(ui.includes('sameExpiredSide'));
   assert.ok(ui.includes('AGUARDAR · NOVO CENÁRIO'));
   assert.ok(ui.includes('JANELA ENCERRADA'));
+  assert.ok(ui.includes('CALL — confirmação'));
+  assert.ok(ui.includes('PUT — confirmação'));
 });
