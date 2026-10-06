@@ -14,6 +14,7 @@ const MANAGER_PID=resolve(PID_DIR,'manager.pid');
 const WORKER_PID=resolve(PID_DIR,'worker.pid');
 const EXIT_MARKER=resolve(PID_DIR,'agent.exit');
 const MANAGER_LOG=resolve(PID_DIR,'manager.log');
+const WORKER_LOG=resolve(PID_DIR,'worker.log');
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);
 const ALLOWED=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
@@ -37,14 +38,22 @@ async function healthWorker(){try{const r=await fetch(`http://${HOST}:${WORKER_P
 async function savePid(file,pid){await mkdir(dirname(file),{recursive:true});await writeFile(file,String(pid),'utf8').catch(()=>{})}
 async function removePid(file){await rm(file,{force:true}).catch(()=>{})}
 async function logLine(message){await mkdir(PID_DIR,{recursive:true}).catch(()=>{});await appendFile(MANAGER_LOG,`${new Date().toISOString()} ${message}\n`,'utf8').catch(()=>{})}
+async function logWorker(kind,chunk){
+  const raw=String(chunk||'').trim();if(!raw)return;
+  const msg=raw.length>5000?raw.slice(-5000):raw;
+  await mkdir(PID_DIR,{recursive:true}).catch(()=>{});
+  await appendFile(WORKER_LOG,`${new Date().toISOString()} [${kind}] ${msg}\n`,'utf8').catch(()=>{});
+}
 
 function spawnWorker(){
   if(exiting||!workerEnabled)return;
   if(worker&&!worker.killed)return;
   const env={...process.env,SENTINEL_WORKER_HOST:HOST,SENTINEL_WORKER_PORT:String(WORKER_PORT),SENTINEL_ALLOWED_ORIGINS:[...ALLOWED].join(',')};
-  worker=spawn(process.execPath,[WORKER],{cwd:ROOT,env,windowsHide:true,stdio:['ignore','ignore','ignore']});
+  worker=spawn(process.execPath,[WORKER],{cwd:ROOT,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
   lastStart=Date.now();
   savePid(WORKER_PID,worker.pid);
+  worker.stdout?.on('data',chunk=>logWorker('stdout',chunk));
+  worker.stderr?.on('data',chunk=>logWorker('stderr',chunk));
   worker.on('error',(e)=>{lastExit={code:null,signal:'spawn_error',error:String(e?.message||e),at:Date.now()};logLine(`worker_error ${String(e?.message||e)}`);worker=null;removePid(WORKER_PID);if(!exiting){clearTimeout(restartTimer);restartTimer=setTimeout(spawnWorker,1200)}});
   worker.on('exit',(code,signal)=>{
     lastExit={code,signal,at:Date.now()};logLine(`worker_exit code=${code} signal=${signal}`);worker=null;removePid(WORKER_PID);
@@ -72,7 +81,7 @@ const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);
     if(url.pathname==='/health'&&req.method==='GET'){
       const workerHealthy=await healthWorker();
-      return json(req,res,200,{ok:true,status:workerEnabled?'running':'paused',version:VERSION,workerEnabled,workerHealthy,workerPid:worker?.pid||null,managerPid:process.pid,lastStart,lastExit});
+      return json(req,res,200,{ok:true,status:workerEnabled?'running':'paused',version:VERSION,workerEnabled,workerHealthy,workerPid:worker?.pid||null,managerPid:process.pid,lastStart,lastExit,diagnostics:{managerLog:'worker/data/manager.log',workerLog:'worker/data/worker.log'}});
     }
     if(url.pathname==='/start'&&req.method==='POST'){
       const workerHealthy=await startWorker();
