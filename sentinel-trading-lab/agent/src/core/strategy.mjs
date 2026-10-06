@@ -21,16 +21,18 @@ function liveMicro(quoteHistory=[],last,vol,baseSeconds,now=Date.now()){
    for(const p of points){if(p.ts<=target)best=p;else break}
    return best?.price??points[0]?.price??current
  };
- const d5=current-atAgo(5000),d15=current-atAgo(15000),d30=current-atAgo(30000),d60=current-atAgo(60000);
+ const d2=current-atAgo(2000),d5=current-atAgo(5000),d15=current-atAgo(15000),d30=current-atAgo(30000),d60=current-atAgo(60000);
  const span=points.length>1?points.at(-1).ts-points[0].ts:0;
  const ready=points.length>=10&&span>=12000;
  const safeBase=Math.max(5,Number(baseSeconds||60));
  const expected=(secs)=>Math.max(Math.abs(current)*.000005,Math.abs(vol||0)*Math.sqrt(Math.max(1,secs)/safeBase));
- const expected5=expected(5),expected15=expected(15),expected30=expected(30);
- const p5=d5/expected5,p15=d15/expected15,p30=d30/expected30;
- const pulse=ready?clamp(Math.round(p5*4.8+p15*3.2+p30*1.8),-24,24):0;
+ const expected2=expected(2),expected5=expected(5),expected15=expected(15),expected30=expected(30);
+ const p2=d2/expected2,p5=d5/expected5,p15=d15/expected15,p30=d30/expected30;
+ const fastRate=d2/2,prior3Rate=(d5-d2)/3,leadScale=Math.max(expected5/5*.75,Math.abs(current)*.00000035);
+ const lead=ready?clamp((fastRate-prior3Rate)/leadScale,-1,1):0;
+ const pulse=ready?clamp(Math.round(p5*4.3+p15*3.0+p30*1.7+lead*2.4),-24,24):0;
  const trend=pulse>=4?'UP':pulse<=-4?'DOWN':'FLAT';
- return{ready,points:points.length,spanMs:span,last:current,delta5:d5,delta15:d15,delta30:d30,delta60:d60,p5,p15,p30,expected5,expected15,expected30,pulse,trend}
+ return{ready,points:points.length,spanMs:span,last:current,delta2:d2,delta5:d5,delta15:d15,delta30:d30,delta60:d60,p2,p5,p15,p30,expected2,expected5,expected15,expected30,lead,fastRate,prior3Rate,pulse,trend}
 }
 function quoteBars(quoteHistory=[],bucketMs=5000,now=Date.now()){
  const pts=(Array.isArray(quoteHistory)?quoteHistory:[])
@@ -428,7 +430,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const forecastReversalSignal=clamp(reversalSignal*(reversalConfirmed?1:.35),-1,1);
  const shortSlopeRaw=closes.length>=6?(last-Number(closes.at(-6)))/5:0,mediumSlopeRaw=closes.length>=21?(last-Number(closes.at(-21)))/20:shortSlopeRaw;
  const shortSlopeSignal=norm(shortSlopeRaw,safeVol*.18),mediumSlopeSignal=norm(mediumSlopeRaw,safeVol*.10);
- const accelerationSignal=clamp((shortSlopeSignal-mediumSlopeSignal)*.72,-1,1);
+ const candleAccelerationSignal=clamp((shortSlopeSignal-mediumSlopeSignal)*.72,-1,1);
+ const microLeadSignal=clamp(Number(micro.lead||0),-1,1);
+ const accelerationSignal=clamp(candleAccelerationSignal*.34+microLeadSignal*.66,-1,1);
  const persistenceForecastSignal=clamp(persistenceSignal*.78+mediumSlopeSignal*.22,-1,1);
 
  // Contexto histórico: somente candles FECHADOS, em três janelas independentes.
@@ -458,8 +462,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    :clamp(trendSignal*.25+momentumSignal*.20,-.35,.35);
 
  const weightsFor=seconds=>seconds<=30
-   ?{micro:.16,reversal:.12,momentum:.10,trend:.08,history:.18,location:.09,setup:.07,strategy:.07,persistence:.07,acceleration:.02,regime:.04}
-   :seconds<=60?{micro:.13,reversal:.10,momentum:.11,trend:.10,history:.20,location:.11,setup:.07,strategy:.07,persistence:.06,acceleration:.02,regime:.03}
+   ?{micro:.15,reversal:.12,momentum:.09,trend:.08,history:.16,location:.09,setup:.07,strategy:.07,persistence:.06,acceleration:.07,regime:.04}
+   :seconds<=60?{micro:.12,reversal:.10,momentum:.10,trend:.10,history:.18,location:.11,setup:.07,strategy:.07,persistence:.06,acceleration:.06,regime:.03}
    :seconds<=120?{micro:.09,reversal:.08,momentum:.12,trend:.13,history:.21,location:.13,setup:.06,strategy:.06,persistence:.06,acceleration:.02,regime:.04}
    :seconds<=300?{micro:.04,reversal:.05,momentum:.11,trend:.17,history:.22,location:.16,setup:.05,strategy:.05,persistence:.06,acceleration:.01,regime:.08}
    :seconds<=600?{micro:.025,reversal:.04,momentum:.10,trend:.19,history:.23,location:.17,setup:.04,strategy:.05,persistence:.06,acceleration:.005,regime:.09}
@@ -557,8 +561,10 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const modelConfidence=clamp(baseModelConfidence-correlationPenalty,45,94);
    const minForecastConfidence=seconds<=60?61:seconds<=300?59:58,enoughFlow=seconds>60||micro.ready;
    const minAgreement=seconds<=60?.54:seconds<=300?.51:.48,minSignal=seconds<=60?.15:seconds<=300?.13:.11;
+   const leadAligned=seconds<=60&&Math.abs(microLeadSignal)>=.42&&Math.sign(microLeadSignal)===Math.sign(signal)&&(historyDirection===0||Math.sign(signal)===historyDirection||reversalConfirmed);
+   const readyConfidence=leadAligned?minForecastConfidence-2:minForecastConfidence,readyAgreement=leadAligned?minAgreement-.04:minAgreement,readySignal=leadAligned?minSignal*.78:minSignal;
    const outlookReady=enoughHistory&&enoughFlow&&quality>=.66&&historyLegs.length>=2;
-   const directionReady=outlookReady&&modelConfidence>=minForecastConfidence&&Math.abs(signal)>=minSignal&&agreement>=minAgreement&&regimeLabel!=='chaotic';
+   const directionReady=outlookReady&&modelConfidence>=readyConfidence&&Math.abs(signal)>=readySignal&&agreement>=readyAgreement&&regimeLabel!=='chaotic';
    const bias=outlookReady&&Math.abs(signal)>=.025?(signal>0?'CALL':'PUT'):'NEUTRO';
    const projectedMove=expectedMove*signal*(.55+modelConfidence/240),projectedPrice=last+projectedMove;
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
@@ -581,7 +587,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
      regime:m.regime,evidenceFamilies,
-     reliability:{evidenceFamilyCount,familyAgreement:Math.round(familyAgreement*100),featureAgreement:Math.round(agreement*100),correlationPenalty,baseModelConfidence},
+     reliability:{evidenceFamilyCount,familyAgreement:Math.round(familyAgreement*100),featureAgreement:Math.round(agreement*100),correlationPenalty,baseModelConfidence,leadAligned,microLead:Math.round(microLeadSignal*100)},
      basis:'previsão futura V4.1 independente do consenso atual por horizonte + candles fechados multi-janela + regime + persistência + confiança corrigida por diversidade; entrada atual é separada',drivers:strongest,
      automaticExecution:false,modelVersion:'future-v4.1'
    }
