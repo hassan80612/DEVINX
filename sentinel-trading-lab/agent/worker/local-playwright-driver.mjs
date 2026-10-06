@@ -54,6 +54,15 @@ function pairStrings(text=''){
   const b=compact.map(x=>{const otc=x.endsWith('-OTC'),z=x.replace(/-OTC$/,'');return `${z.slice(0,3)}/${z.slice(3,6)}${otc?' OTC':''}`});
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
+function assetStrings(text=''){
+  const out=[...pairStrings(text)],raw=String(text||'').toUpperCase();
+  const named=[['GOLD','Gold'],['SILVER','Silver'],['BITCOIN','Bitcoin'],['ETHEREUM','Ethereum'],['CRUDE OIL','Crude Oil'],['NATURAL GAS','Natural Gas']];
+  for(const [needle,label] of named){
+    const rx=new RegExp('(^|[^A-Z])'+needle.replace(' ','\\s+')+'([^A-Z]|$)','i');
+    if(rx.test(raw))out.push(label+(raw.includes('OTC')?' OTC':''));
+  }
+  return uniq(out)
+}
 function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z]/g,'')}
 function symbolForActiveId(st,activeId){
   const aid=Number(activeId);if(!Number.isFinite(aid))return null;
@@ -202,7 +211,7 @@ function chooseCandidate(candidates=[],modeHint=null){
 }
 function recursiveScan(obj,out,hint=''){
   if(obj==null)return;
-  if(typeof obj==='string'){for(const p of pairStrings(obj))out.assets.add(p);return}
+  if(typeof obj==='string'){for(const p of assetStrings(obj))out.assets.add(p);return}
   if(typeof obj!=='object')return;
   if(Array.isArray(obj)){
     const candleLike=obj.map(candleOf).filter(Boolean);
@@ -212,13 +221,13 @@ function recursiveScan(obj,out,hint=''){
   const keys=Object.keys(obj),objectMode=inferObjectMode(obj,hint);
   if(objectMode){out.modeCandidates=out.modeCandidates||[];out.modeCandidates.push({mode:objectMode,score:/balance|account|profile/.test(hint)?12:6})}
   const localHint=(hint+' '+String(obj.name??obj.type??obj.event??obj.method??obj.action??obj.account_type??obj.accountMode??'')).toLowerCase();
-  const ownPairs=uniq(keys.flatMap(k=>typeof obj[k]==='string'?pairStrings(obj[k]):[]));
+  const ownPairs=uniq(keys.flatMap(k=>typeof obj[k]==='string'?assetStrings(obj[k]):[]));
   const possibleId=n(obj.active_id??obj.activeId??obj.instrument_active_id??obj.asset_id??((ownPairs.length||/active|instrument|asset|underlying/.test(localHint))?obj.id:null));
   if(possibleId!=null&&ownPairs.length){for(const p of ownPairs){out.activeMap.set(pairKey(p),possibleId);out.assets.add(p)}}
   for(const k of keys){const v=obj[k],kl=k.toLowerCase();
-    if(typeof v==='string'){for(const p of pairStrings(v))out.assets.add(p)}
+    if(typeof v==='string'){for(const p of assetStrings(v))out.assets.add(p)}
     if(/balance|equity/.test(kl)||(/amount|value/.test(kl)&&/balance|account|wallet|portfolio/.test(localHint))){const val=n(v);if(val!=null&&val>=0&&val<1e9){out.balanceCandidates.push({value:val,mode:objectMode,score:/balance/.test(kl)?8:/equity/.test(kl)?6:2,hint:localHint.slice(-180)})}}
-    if(['symbol','ticker','instrument','asset','active'].includes(kl)&&typeof v==='string'){const ps=pairStrings(v);for(const p of ps)out.assets.add(p);if(ps[0])out.symbol=ps[0]}
+    if(['symbol','ticker','instrument','asset','active'].includes(kl)&&typeof v==='string'){const ps=assetStrings(v);for(const p of ps)out.assets.add(p);if(ps[0])out.symbol=ps[0]}
     if(['price','quote','bid','ask','close','value'].includes(kl)&&/quote|instrument|candle|price|tick|active/.test(localHint)){const val=n(v);if(val!=null&&val>0&&val<1e8){out.quote=val;out.lastQuoteAt=Date.now()}}
   }
   const oneCandle=candleOf(obj);if(oneCandle){out.candles=mergeCandles(out.candles,[oneCandle]);out.lastCandleAt=Date.now()}
