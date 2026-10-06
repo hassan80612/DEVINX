@@ -474,7 +474,10 @@ export class LocalPlaywrightDriver{
           };
           let last='';
           const publish=(symbol,source)=>{
-            if(!symbol||symbol===last)return;
+            if(!symbol)return;
+            // An explicit tab click is authoritative even when our local "last" hint
+            // was seeded incorrectly by an earlier DOM guess.
+            if(symbol===last&&source!=='click')return;
             last=symbol;
             window.__sentinelClickedSymbol=symbol;window.__sentinelClickedSymbolAt=Date.now();
             try{window.__sentinelAssetChanged?.({symbol,source,at:Date.now()})}catch{}
@@ -482,11 +485,14 @@ export class LocalPlaywrightDriver{
           document.addEventListener('click',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
-              const nodes=[];let node=ev.target;
+              const nodes=[];let node=ev.target,direct='';
               for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
               if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
-              for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){publish(p[0],'click');break}}
-              queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')});
+              for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){direct=p[0];publish(direct,'click');break}}
+              // Do not immediately re-read the old selected tab after an explicit click:
+              // IQ updates its selected CSS state slightly later and that used to undo
+              // the new symbol in the same event turn.
+              if(!direct)setTimeout(()=>{const p=selectedPair();if(p)publish(p,'selected-tab-fallback')},90);
             }catch{}
           },true);
           // Do not continuously walk the IQ DOM. The broker websocket active_id is
@@ -1553,8 +1559,9 @@ export class LocalPlaywrightDriver{
         const displayCandidate=sameExpiredSide?'AGUARDAR':candidateOutlook;
         const outlook=futureDecision?.side||displayCandidate;
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
-        const futureActionLabel=futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):(futureDecision.side+' AGORA · '+decisionRemaining+'s')):(sameExpiredSide?'AGUARDAR · NOVO CENÁRIO':(displayCandidate==='CALL'||displayCandidate==='PUT'?('CONFIRMANDO '+displayCandidate):('AGUARDAR · '+horizonLabel)));
-        const futureDecisionStatus=futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':'JANELA ATIVA · PRAZO '+horizonLabel):(sameExpiredSide?'JANELA ENCERRADA':(displayCandidate==='CALL'||displayCandidate==='PUT'?'CONFIRMANDO':'SEM DECISÃO'));
+        const formingSide=displayCandidate==='CALL'||displayCandidate==='PUT'?displayCandidate:null;
+        const futureActionLabel=futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):(futureDecision.side+' AGORA · '+decisionRemaining+'s')):(sameExpiredSide?'AGUARDAR · NOVO CENÁRIO':(!plannerConfirmed&&formingSide?('AGUARDAR · '+formingSide+' EM FORMAÇÃO'):(formingSide?('LIBERANDO '+formingSide):('AGUARDAR · '+horizonLabel))));
+        const futureDecisionStatus=futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':'JANELA ATIVA · PRAZO '+horizonLabel):(sameExpiredSide?'JANELA ENCERRADA':(!plannerConfirmed&&formingSide?'AINDA NÃO CONFIRMADO':(formingSide?'PRONTO':'SEM DECISÃO')));
         const futureDecisionConfidence=futureDecision?Math.max(0,Math.min(100,Number(futureDecision.confidence||0))):futureConfidence;
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px">'+
@@ -1773,7 +1780,7 @@ export class LocalPlaywrightDriver{
               <span style="font-size:8px;color:${subtle};font-weight:800">viés interno: <b style="color:${rawOutlook==='CALL'?callTone:rawOutlook==='PUT'?putTone:neutralTone}">${esc(rawOutlook)}</b></span>
             </div>
             <div style="display:flex;align-items:baseline;gap:10px;margin:9px 0 6px;flex-wrap:wrap;min-height:32px;overflow:visible;white-space:normal"><b style="font-size:24px;line-height:1;color:${outlookTone};letter-spacing:.015em;text-shadow:0 0 16px color-mix(in srgb,${outlookTone} 28%,transparent)">${esc(futureActionLabel)}</b><span style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:9.3px;font-weight:950">${esc(futureDecisionStatus)}</span><span style="color:${goldSoft};font-size:9.3px;font-weight:950;text-shadow:${goldGlow}">${plannerReadable||futureDecision?'CONF '+(futureConfidenceSource==='CALIBRATED'?'CAL ':'MODELO ')+n(futureDecisionConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9.3px;font-weight:850">${liveLabel}</span></div>
-            <div style="color:${muted};font-size:10.2px;font-weight:780;line-height:1.42;margin-bottom:7px;min-height:30px;overflow:visible">${futureDecisionPaused?('Feed pausado há '+feedPauseSeconds+'s. A previsão '+futureDecision.side+' foi preservada e a validade está congelada até a leitura ser revalidada.'):analysisStale||!liveNow?'Feed fora da leitura atual: nenhuma nova decisão será criada até revalidar.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':futureDecision?('PREVISÃO '+futureDecision.side+' PARA ENTRADA AGORA. Os '+decisionRemaining+'s restantes são o horizonte/validade até o resultado esperado — não é uma espera para entrar. O motor continua analisando e pode invalidar com oposição forte.'):candidateOutlook==='AGUARDAR'?('Sem decisão: CALL '+n(futureCallPct,0)+'% · PUT '+n(futurePutPct,0)+'% · limite '+futureDisplayThreshold+'%.'):('Confirmando '+candidateOutlook+' antes de liberar uma previsão para agora.')}</div>
+            <div style="color:${muted};font-size:10.2px;font-weight:780;line-height:1.42;margin-bottom:7px;min-height:30px;overflow:visible">${futureDecisionPaused?('Feed pausado há '+feedPauseSeconds+'s. A previsão '+futureDecision.side+' foi preservada e a validade está congelada até a leitura ser revalidada.'):analysisStale||!liveNow?'Feed fora da leitura atual: nenhuma nova decisão será criada até revalidar.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':futureDecision?('PREVISÃO '+futureDecision.side+' PARA ENTRADA AGORA. Os '+decisionRemaining+'s restantes são o horizonte/validade até o resultado esperado — não é uma espera para entrar. O motor continua analisando e pode invalidar com oposição forte.'):candidateOutlook==='AGUARDAR'?('Sem decisão: CALL '+n(futureCallPct,0)+'% · PUT '+n(futurePutPct,0)+'% · limite '+futureDisplayThreshold+'%.'):(!plannerConfirmed&&formingSide?('Viés '+formingSide+' detectado, mas ainda sem confirmação suficiente para liberar entrada.'):('Cenário pronto para liberação.'))}</div>
             ${planHtml}
           </div>
 
