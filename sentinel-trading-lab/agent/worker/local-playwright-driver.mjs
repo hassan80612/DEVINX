@@ -740,6 +740,73 @@ export class LocalPlaywrightDriver{
         }catch{}
       }
       ui=ui||{buy:false,sell:false,amount:false,amountStepper:false,buttonCount:0,amountCandidateCount:0};
+
+      // IQ Option can render the trading controls inside open shadow roots. page.evaluate/querySelector
+      // does not pierce those roots, while Playwright locators do. Use this as a read-only fallback.
+      if(!ui.buy||!ui.sell||!ui.amount||!ui.expirationDurationMs){
+        const textOf=async loc=>{
+          try{
+            const txt=String(await loc.innerText({timeout:120})||'').trim();
+            const aria=String(await loc.getAttribute('aria-label')||'').trim();
+            const title=String(await loc.getAttribute('title')||'').trim();
+            return [txt,aria,title].filter(Boolean).join(' ')
+          }catch{return''}
+        };
+        const firstVisible=async loc=>{
+          try{
+            const count=Math.min(await loc.count(),120);
+            for(let i=0;i<count;i++){const x=loc.nth(i);if(await x.isVisible({timeout:80}).catch(()=>false))return x}
+          }catch{}
+          return null
+        };
+        const parseDurationText=raw=>{
+          const t=String(raw||'').toLowerCase().replace(/\s+/g,' ');
+          let m=t.match(/(\d+(?:[.,]\d+)?)\s*(?:min|mins|minuto|minutos)\b/);
+          if(m){const ms=Math.round(Number(m[1].replace(',','.'))*60000);if(ms>=10000&&ms<=3600000)return ms}
+          m=t.match(/(\d+(?:[.,]\d+)?)\s*(?:s|seg|segs|segundo|segundos)\b/);
+          if(m){const ms=Math.round(Number(m[1].replace(',','.'))*1000);if(ms>=10000&&ms<=3600000)return ms}
+          m=t.match(/\b(\d{1,2}):(\d{2})\b/);
+          if(m){const ms=(Number(m[1])*60+Number(m[2]))*1000;if(ms>=10000&&ms<=3600000)return ms}
+          return null
+        };
+        for(const frame of s.page.frames()){
+          try{
+            if(!ui.buy){
+              const x=await firstVisible(frame.getByText(/^\s*(ACIMA|HIGHER|BUY|COMPRAR|COMPRA)\s*$/i));
+              if(x){ui.buy=true;ui.buyText=(await textOf(x)).slice(0,180);ui.buttonCount=Math.max(1,Number(ui.buttonCount||0))}
+            }
+            if(!ui.sell){
+              const x=await firstVisible(frame.getByText(/^\s*(ABAIXO|LOWER|SELL|VENDER|VENDA)\s*$/i));
+              if(x){ui.sell=true;ui.sellText=(await textOf(x)).slice(0,180);ui.buttonCount=Math.max(2,Number(ui.buttonCount||0))}
+            }
+            if(!ui.amount){
+              const inputs=frame.locator('input,[role="spinbutton"],[contenteditable="true"],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[data-testid*="investment" i],[class*="investment" i]');
+              const count=Math.min(await inputs.count().catch(()=>0),80);
+              for(let i=0;i<count;i++){
+                const x=inputs.nth(i);if(!(await x.isVisible({timeout:80}).catch(()=>false)))continue;
+                const d=(await textOf(x))+' '+String(await x.getAttribute('placeholder').catch(()=>null)||'')+' '+String(await x.getAttribute('name').catch(()=>null)||'');
+                if(/amount|investment|investimento|valor|stake|invest/i.test(d)){ui.amount=true;ui.amountText=d.slice(0,180);ui.amountCandidateCount=Math.max(1,Number(ui.amountCandidateCount||0));break}
+              }
+            }
+            if(!ui.expirationDurationMs){
+              const labels=frame.getByText(/expiraç|expiracao|expiration|expiry|vencimento/i);
+              const count=Math.min(await labels.count().catch(()=>0),30);
+              for(let i=0;i<count;i++){
+                const x=labels.nth(i);if(!(await x.isVisible({timeout:80}).catch(()=>false)))continue;
+                let raw=await textOf(x);
+                for(let up=0;up<3&&!parseDurationText(raw);up++){
+                  const p=x.locator('xpath=..'+('/..'.repeat(up)));
+                  raw+=' '+await textOf(p)
+                }
+                const ms=parseDurationText(raw);
+                if(ms){ui.expirationDurationMs=ms;ui.expirationRaw=raw.slice(0,180);ui.expirationKind='duration';ui.expirationConfidence=Math.max(80,Number(ui.expirationConfidence||0));break}
+              }
+            }
+            if((ui.buy&&ui.sell&&ui.expirationDurationMs)&&ui.amount)break
+          }catch{}
+        }
+      }
+
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
       if(Number.isFinite(Number(ui.expirationDurationMs))&&Number(ui.expirationDurationMs)>=10000){
         st.expirationDurationMs=Number(ui.expirationDurationMs);st.expirationRaw=String(ui.expirationRaw||'');st.expirationKind=ui.expirationKind||null;st.expirationConfidence=Number(ui.expirationConfidence||0);st.expirationUpdatedAt=Date.now();
