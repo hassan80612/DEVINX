@@ -2,18 +2,16 @@ name: Sentinel Hybrid Smoke V13
 
 on:
   push:
-    branches: [sentinel-v12-clean-restore-20261006, sentinel-v13-forecast-engine-20261006, main]
+    branches: [sentinel-v12-clean-restore-20261006, main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
       - '.github/workflows/sentinel-windows-smoke.yml'
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   smoke:
@@ -22,9 +20,6 @@ jobs:
       SENTINEL_SUPABASE_URL: http://127.0.0.1:9
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: sentinel-v13-forecast-engine-20261006
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22.x'
@@ -177,20 +172,3 @@ jobs:
         shell: powershell
         run: |
           try{Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 2|Out-Null}catch{}
-
-
-      - name: Commit V13 Windows artifacts
-        if: success()
-        shell: powershell
-        run: |
-          $ErrorActionPreference='Stop'
-          $target='sentinel-v13-forecast-engine-20261006'
-          if($env:GITHUB_EVENT_NAME -ne 'pull_request' -and $env:GITHUB_REF_NAME -ne $target){Write-Host 'No artifact commit outside V13 staging'; exit 0}
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
-          git diff --cached --quiet
-          if($LASTEXITCODE -eq 0){Write-Host 'Artifacts unchanged'; exit 0}
-          git commit -m "build(sentinel): publish Windows Agent V13"
-          git pull --rebase origin sentinel-v13-forecast-engine-20261006
-          git push origin HEAD:sentinel-v13-forecast-engine-20261006
