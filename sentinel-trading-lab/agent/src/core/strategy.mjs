@@ -411,13 +411,12 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  };
  const strategyEnsembleFor=(seconds,ctx={})=>{
    const rows=strategyBoxes.map(entry=>strategySignalFor(entry,seconds,ctx));
-   const informative=rows.filter(x=>x.magnitude>=.08&&Math.abs(x.signal)>=.04),used=informative.length?informative:rows;
-   const weight=used.reduce((a,x)=>a+x.weight,0)||1;
-   const signal=clamp(used.reduce((a,x)=>a+x.signal*x.weight,0)/weight,-1,1);
-   const directional=used.filter(x=>x.side!=='NEUTRO'),directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
+   const informative=rows.filter(x=>x.magnitude>=.08&&Math.abs(x.signal)>=.04),weight=informative.reduce((a,x)=>a+x.weight,0)||1;
+   const signal=informative.length?clamp(informative.reduce((a,x)=>a+x.signal*x.weight,0)/weight,-1,1):0;
+   const directional=informative.filter(x=>x.side!=='NEUTRO'),directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
    const alignedWeight=directional.filter(x=>signal===0||Math.sign(x.signal)===Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
    const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5;
-   return{signal,agreement,rows,activeCount:used.length}
+   return{signal,agreement,rows,activeCount:informative.length}
  };
  const patternBuy=(m.patterns||[]).filter(p=>p?.side==='BUY').length,patternSell=(m.patterns||[]).filter(p=>p?.side==='SELL').length;
  const setupSignal=clamp((m.retest?.side==='BUY'?0.65:m.retest?.side==='SELL'?-0.65:0)+clamp((patternBuy-patternSell)*.22,-.44,.44)+(srBreakUp||lineBreakUp?0.25:0)-(srBreakDown||lineBreakDown?0.25:0),-1,1);
