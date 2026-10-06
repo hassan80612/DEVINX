@@ -1239,9 +1239,7 @@ export class LocalPlaywrightDriver{
         const futurePutPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.displayPutProbability??plannerPlan?.putProbability??50))):50;
         let futureDisplayThreshold=70;
         try{const saved=Number(localStorage.getItem('sentinel-future-display-threshold-v13'));if(Number.isFinite(saved))futureDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
-        const outlook=!plannerReadable?'SEM LEITURA':!analysisStale&&futureCallPct>=futureDisplayThreshold&&futureCallPct>futurePutPct?'CALL':!analysisStale&&futurePutPct>=futureDisplayThreshold&&futurePutPct>futureCallPct?'PUT':'AGUARDAR';
-        const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
-        const futureActionLabel=outlook==='CALL'?'PREPARE-SE PARA CALL EM '+horizonLabel:outlook==='PUT'?'PREPARE-SE PARA PUT EM '+horizonLabel:outlook==='AGUARDAR'?'AGUARDAR · '+horizonLabel:outlook;
+        const candidateOutlook=!plannerReadable?'SEM LEITURA':!analysisStale&&futureCallPct>=futureDisplayThreshold&&futureCallPct>futurePutPct?'CALL':!analysisStale&&futurePutPct>=futureDisplayThreshold&&futurePutPct>futureCallPct?'PUT':'AGUARDAR';
         const futureProjectedPrice=plannerReadable&&Number.isFinite(Number(plannerPlan?.projectedPrice))?Number(plannerPlan.projectedPrice):null;
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureSamples=plannerReadable?Math.max(0,Number(plannerPlan?.validation?.samples||0)):0;
@@ -1250,6 +1248,47 @@ export class LocalPlaywrightDriver{
         const futureHistoryWeight=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.validation?.historyWeight||0))):0;
         const futureBrier=plannerReadable&&Number.isFinite(Number(plannerPlan?.validation?.brierScore))?Number(plannerPlan.validation.brierScore):null;
         const futureDrivers=plannerReadable&&Array.isArray(plannerPlan?.drivers)?plannerPlan.drivers.slice(0,4):[];
+
+        // Decisão futura comprometida: depois de confirmada, não fica trocando CALL/PUT
+        // a cada atualização. Só troca antes do zero quando há invalidação oposta forte e repetida.
+        const decisionAsset=String(d.asset||'—').trim().toUpperCase(),decisionSeconds=Math.max(30,Number(plannerHorizon)||30);
+        const decisionKey='sentinel-future-decision-v13|'+decisionAsset+'|'+String(plannerHorizon),decisionNow=Date.now();
+        let futureDecision=null;
+        try{futureDecision=JSON.parse(localStorage.getItem(decisionKey)||'null')}catch{futureDecision=null}
+        if(futureDecision&&(!plannerReadable||String(futureDecision.asset||'')!==decisionAsset||Number(futureDecision.seconds)!==decisionSeconds)){
+          try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
+        }
+        if(futureDecision&&decisionNow<Number(futureDecision.targetAt||0)){
+          const ownPct=futureDecision.side==='CALL'?futureCallPct:futurePutPct,oppositePct=futureDecision.side==='CALL'?futurePutPct:futureCallPct;
+          const oppositeSide=futureDecision.side==='CALL'?'PUT':'CALL';
+          const strongInvalidation=plannerConfirmed&&candidateOutlook===oppositeSide&&oppositePct>=Math.max(72,futureDisplayThreshold+8)&&futureConfidence>=68&&futureAgreement>=62&&(oppositePct-ownPct)>=16;
+          futureDecision.invalidations=strongInvalidation?Number(futureDecision.invalidations||0)+1:0;
+          futureDecision.lastCheckedAt=decisionNow;
+          if(futureDecision.invalidations>=2){
+            try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
+          }else{
+            try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
+          }
+        }
+        if(futureDecision&&decisionNow>Number(futureDecision.targetAt||0)+6000){
+          try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
+        }
+        const candidatePct=candidateOutlook==='CALL'?futureCallPct:candidateOutlook==='PUT'?futurePutPct:0;
+        const decisionEligible=plannerReadable&&plannerConfirmed&&['CALL','PUT'].includes(candidateOutlook)&&candidatePct>=futureDisplayThreshold&&futureConfidence>=60&&futureAgreement>=55;
+        if(!futureDecision&&decisionEligible){
+          futureDecision={
+            asset:decisionAsset,seconds:decisionSeconds,side:candidateOutlook,lockedAt:decisionNow,targetAt:decisionNow+decisionSeconds*1000,
+            confidence:futureConfidence,callPct:futureCallPct,putPct:futurePutPct,agreement:futureAgreement,invalidations:0
+          };
+          try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
+        }
+        const decisionRemaining=futureDecision?Math.max(0,Math.ceil((Number(futureDecision.targetAt||decisionNow)-decisionNow)/1000)):null;
+        const decisionPhase=!futureDecision?'WAIT':decisionRemaining>0?'COUNTDOWN':'NOW';
+        const outlook=futureDecision?.side||candidateOutlook;
+        const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
+        const futureActionLabel=futureDecision?(decisionPhase==='COUNTDOWN'?(futureDecision.side+' EM '+decisionRemaining+'s'):(futureDecision.side+' AGORA')):(candidateOutlook==='CALL'||candidateOutlook==='PUT'?('CONFIRMANDO '+candidateOutlook):('AGUARDAR · '+horizonLabel));
+        const futureDecisionStatus=futureDecision?(decisionPhase==='COUNTDOWN'?'DECISÃO TRAVADA':'ENTRADA AGORA'):(candidateOutlook==='CALL'||candidateOutlook==='PUT'?'CONFIRMANDO':'SEM DECISÃO');
+        const futureDecisionConfidence=futureDecision?Math.max(0,Math.min(100,Number(futureDecision.confidence||0))):futureConfidence;
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px">'+
             '<div style="padding:6px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:7px;color:'+subtle+';font-weight:900">CONFIANÇA FUTURA</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+'%</b></div>'+
