@@ -2,7 +2,7 @@ name: Sentinel Hybrid Smoke V12
 
 on:
   push:
-    branches: [sentinel-v12-clean-restore-20261006, main]
+    branches: [sentinel-v12-clean-restore-20261006, sentinel-v12-forecast-clean-20261006, main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -143,6 +143,55 @@ jobs:
           '@
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-hybrid-smoke.mjs'
+
+      - name: Validate Gold isolation and future prediction
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $script=@'
+          import {LocalPlaywrightDriver,instrumentLabel} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+          import {DemoTradingRuntime} from './sentinel-trading-lab/agent/src/core/runtime.mjs';
+          import {analyzeMarket} from './sentinel-trading-lab/agent/src/core/strategy.mjs';
+          const assert=(ok,msg)=>{if(!ok)throw new Error(msg)};
+          assert(instrumentLabel('Gold Blitz')==='Gold','Gold label failed');
+          const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/gold-smoke'});
+          const st=d.state('iq_option');
+          st.uiSymbol='EUR/USD';st.symbol='EUR/USD';st.activeId=1;st.activeMap.set('EURUSD',1);st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1.117;st.quoteHistory=[{ts:Date.now(),price:1.117}];
+          d.applyActiveSelection('iq_option',{symbol:'Gold',source:'click'});
+          assert(st.symbol==='Gold'&&st.candles.length===0&&st.quote===null&&st.quoteHistory.length===0,'cross-asset state not cleared');
+          st.uiSymbolSource='dom-active';st.lastUiSignalAt=Date.now();
+          d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',body:{active_id:1912,size:60}}}),'page-out');
+          assert(Number(st.activeMap.get('GOLD'))===1912&&Number(st.activeId)===1912,'Gold active id binding failed');
+
+          const rt=new DemoTradingRuntime({balance:10000});
+          rt.settings.asset='EUR/USD';
+          rt.lastResult={asset:'EUR/USD',analysis:{entryPlanner:{horizons:{'60':{asset:'EUR/USD',callTrigger:1.1162,putTrigger:1.1173}}}}};
+          rt.setExternalMarket({provider:'iq_option',symbol:'Gold',uiSymbol:'Gold',quote:4132.858,candles:[],quoteHistory:[],feedValidated:false});
+          assert(rt.settings.asset==='GOLD'&&!rt.lastResult?.analysis?.entryPlanner,'stale EUR/USD planner survived Gold switch');
+
+          rt.settings.asset='GOLD';
+          const foreign=rt._operationalSignalState({generalConsensus:{side:'CALL',state:'ALINHADO',strength:70,edge:20},quality:{},entryPlanner:{horizons:{'60':{asset:'EUR/USD',bias:'CALL',rawBias:'CALL',confidence:80,outlookReady:true,callTrigger:1.1162,putTrigger:1.1173}}}},{price:4132.858},Date.now());
+          assert(foreign.trigger==null,'foreign trigger leaked');
+
+          const fake={generalConsensus:{side:'PUT'},entryPlanner:{horizons:{'60':{bias:'CALL',confidence:62,modelConfidence:62,outlookReady:true,callProbability:64,putProbability:36}}}};
+          rt._mergeScenarioConfluence(fake,{cards:[]},{price:4132.858},Date.now());
+          assert(fake.entryPlanner.horizons['60'].asset==='GOLD','forecast asset stamp failed');
+          assert(fake.entryPlanner.horizons['60'].executionBias==='CALL','future bias erased by current PUT');
+
+          const now=Date.now(),base=Math.floor(now/1000)-120*60;
+          const candles=Array.from({length:120},(_,i)=>{const o=4100+i*.25,c=o+.16;return{from:base+i*60,to:base+(i+1)*60,open:o,high:c+.08,low:o-.07,close:c,volume:100+i}});
+          const last=candles.at(-1).close;
+          const quoteHistory=Array.from({length:40},(_,i)=>({ts:now-39000+i*1000,price:last-.8+i*.022}));
+          const a=analyzeMarket({candles,quoteHistory,strategy:'trend',minConfidence:70,durationMs:60000,quoteTs:now,now});
+          const p=a?.entryPlanner?.horizons?.['60'];
+          assert(p?.outlookReady===true,'future model not ready');
+          assert(p.callProbability>p.putProbability,'future model not directional');
+          assert(p.bias==='CALL','future bias not exposed');
+          assert(typeof p.directionReady==='boolean','direction readiness missing');
+          console.log('GOLD ISOLATION + FUTURE PREDICTION: PASS');
+          '@
+          Set-Content 'sentinel-gold-forecast-smoke.mjs' $script -Encoding UTF8
+          node 'sentinel-gold-forecast-smoke.mjs'
 
       - name: Build and install EXE
         shell: powershell
