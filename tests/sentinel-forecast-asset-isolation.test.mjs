@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import { DemoTradingRuntime } from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import { analyzeMarket } from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
@@ -126,4 +127,19 @@ test('Future engine exposes a directional horizon separately from entry readines
   assert.equal(plan.bias, 'CALL');
   assert.equal(typeof plan.directionReady, 'boolean');
   assert.match(plan.basis, /independente do consenso atual/);
+});
+
+
+test('Overlay cache is never reused on the instant the visible asset changes', async () => {
+  const worker = await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs', import.meta.url), 'utf8');
+  assert.ok(worker.includes("let overlayAssetKey=''"));
+  assert.ok(worker.includes("switched=!!overlayAssetKey&&overlayAssetKey!==key"));
+  assert.ok(worker.includes("if(!switched){const cached=overlayCache.get(key)"));
+});
+
+test('Future overlay requires planner asset identity and a fresh post-switch analysis', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("plannerAsset===visibleAsset"));
+  assert.ok(ui.includes("plannerGeneratedAt>assetChangedAt"));
+  assert.ok(ui.includes("plannerReadable=!assetJustChanged"));
 });
