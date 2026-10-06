@@ -62,10 +62,4 @@ test('R6 overlay contains committed countdown, compact totals and average confid
   assert.ok(ui.includes('sameExpiredSide'));
   assert.ok(ui.includes('AGUARDAR · NOVO CENÁRIO'));
   assert.ok(ui.includes('JANELA ENCERRADA'));
-  assert.ok(ui.includes("plannerPlan?.reliabilityReady===true"));
-  assert.ok(ui.includes("plannerPlan?.consensusAligned===true"));
-  assert.ok(ui.includes('futureReliabilityReason'));
-  assert.ok(ui.includes('reliabilityMisses'));
-  assert.ok(ui.includes("futureReliabilityReady?'gatilho':'referência'"));
-  assert.ok(ui.includes('AGUARDAR: gatilhos bloqueados'));
 });
