@@ -387,22 +387,31 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const momentumSignalValue=m.momentum!=null?norm(Number(m.momentum),.18):0;
  const stochasticSignal=m.stoch!=null?norm(Number(m.stoch)-50,38):0;
  const momentumSignal=clamp(rsiSignal*.28+macdSignal*.30+momentumSignalValue*.27+stochasticSignal*.15,-1,1);
- const strategySignalFor=(entry,seconds)=>{
+ const strategySignalFor=(entry,seconds,ctx={})=>{
    const buy=Math.max(0,Number(entry?.box?.buy||0)),sell=Math.max(0,Number(entry?.box?.sell||0)),total=buy+sell;
-   const ratioSignal=total>0?(buy-sell)/total:0;
-   const magnitude=clamp(total/70,0,1);
-   const signal=clamp(ratioSignal*(.55+.45*magnitude),-1,1);
-   const rawCred=strategyCredibility?.[entry.id]?.[String(seconds)]??strategyCredibility?.[entry.id]?.default??1;
-   const multiplier=clamp(Number(rawCred?.multiplier??rawCred??1),.75,1.25);
-   const samples=Math.max(0,Number(rawCred?.samples||0));
+   const ratioSignal=total>0?(buy-sell)/total:0,magnitude=clamp(total/70,0,1);
+   const base=clamp(ratioSignal*(.55+.45*magnitude),-1,1);
+   const id=String(entry?.id||'smart_confluence')==='trend_following'?'trend':String(entry?.id||'smart_confluence');
+   const longness=clamp((Number(seconds)-30)/870,0,1),shortness=1-longness;
+   const microNow=Number(ctx.microSignal||0),locationNow=Number(ctx.locationSignal||0);
+   let modeled=base;
+   if(id==='trend')modeled=base*.52+trendSignal*(.24+.10*longness)+momentumSignal*.14+microNow*(.10*shortness);
+   else if(id==='mean_reversion')modeled=base*.50+reversalSignal*(.22+.08*shortness)+locationNow*.20+momentumSignal*(-.08*longness);
+   else if(id==='support_resistance')modeled=base*.54+locationNow*(.20+.06*longness)+reversalSignal*.13+setupSignal*.08+trendSignal*.05;
+   else if(id==='breakout'||id==='trendline_breakout')modeled=base*.54+setupSignal*(.18+.05*shortness)+trendSignal*(.12+.05*longness)+momentumSignal*.11+microNow*(.05*shortness);
+   else if(id==='price_action')modeled=base*.58+setupSignal*.15+reversalSignal*.11+trendSignal*.09+microNow*(.07*shortness);
+   else if(id==='fibonacci_retest')modeled=base*.56+locationNow*.15+trendSignal*(.13+.05*longness)+setupSignal*.10+momentumSignal*.06;
+   else modeled=base*.55+trendSignal*(.10+.05*longness)+momentumSignal*.10+locationNow*.10+reversalSignal*.07+setupSignal*.05+microNow*(.03*shortness);
+   const signal=clamp(modeled,-1,1);
+   const rawCred=strategyCredibility?.[id]?.[String(seconds)]??strategyCredibility?.[id]?.default??1;
+   const multiplier=clamp(Number(rawCred?.multiplier??rawCred??1),.75,1.25),samples=Math.max(0,Number(rawCred?.samples||0));
    const weight=Math.max(.08,magnitude)*multiplier;
    const callProbability=clamp(Math.round(50+signal*45),5,95),putProbability=100-callProbability;
-   return{strategy:entry.id,signal,magnitude,multiplier,samples,weight,callProbability,putProbability,side:Math.abs(signal)>=.12?(signal>0?'CALL':'PUT'):'NEUTRO'}
+   return{strategy:id,signal,magnitude,multiplier,samples,weight,callProbability,putProbability,side:Math.abs(signal)>=.12?(signal>0?'CALL':'PUT'):'NEUTRO'}
  };
- const strategyEnsembleFor=seconds=>{
-   const rows=strategyBoxes.map(entry=>strategySignalFor(entry,seconds));
-   const informative=rows.filter(x=>x.magnitude>=.08&&Math.abs(x.signal)>=.04);
-   const used=informative.length?informative:rows;
+ const strategyEnsembleFor=(seconds,ctx={})=>{
+   const rows=strategyBoxes.map(entry=>strategySignalFor(entry,seconds,ctx));
+   const informative=rows.filter(x=>x.magnitude>=.08&&Math.abs(x.signal)>=.04),used=informative.length?informative:rows;
    const weight=used.reduce((a,x)=>a+x.weight,0)||1;
    const signal=clamp(used.reduce((a,x)=>a+x.signal*x.weight,0)/weight,-1,1);
    const directional=used.filter(x=>x.side!=='NEUTRO'),directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
@@ -437,7 +446,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      const bbPos=clamp(((last-Number(m.bb.mid||((Number(m.bb.upper)+Number(m.bb.lower))/2)))/(Number(m.bb.upper)-Number(m.bb.lower)))*2,-1,1);
      locationSignal=clamp(locationSignal-bbPos*.12,-1,1)
    }
-   const strategyEnsemble=strategyEnsembleFor(seconds),w=weightsFor(seconds);
+   const strategyEnsemble=strategyEnsembleFor(seconds,{microSignal,locationSignal}),w=weightsFor(seconds);
    const features=[
      {name:'3 estratégias',value:strategyEnsemble.signal,weight:w.strategies,available:strategyEnsemble.activeCount>0},
      {name:'microfluxo',value:microSignal,weight:w.micro,available:micro.ready},
