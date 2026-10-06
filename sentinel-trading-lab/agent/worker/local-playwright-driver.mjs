@@ -591,7 +591,7 @@ export class LocalPlaywrightDriver{
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
-    if(st.pageActiveId!=null){
+    if(st.pageActiveId!=null&&st.lastPageActiveAt!==before.lastPageActiveAt){
       const resolvedPageSymbol=symbolForActiveId(st,st.pageActiveId);
       if(resolvedPageSymbol)this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page-late'});
     }
