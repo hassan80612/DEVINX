@@ -49,6 +49,7 @@ jobs:
           const worker=await readFile('./sentinel-trading-lab/agent/worker/index.mjs','utf8');
           const runtime=await readFile('./sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
           const strategy=await readFile('./sentinel-trading-lab/agent/src/core/strategy.mjs','utf8');
+          const engine=await readFile('./sentinel-trading-lab/agent/src/core/engine.mjs','utf8');
 
           for(const k of ['reversalCallScore','reversalPutScore','entryPlanner','finalConfluence','callReversalRisk','putReversalRisk'])if(!strategy.includes(k))throw new Error('analysis_feature_missing:'+k);
           for(const k of ['scoreTrend','scorePriceAction','scoreTrendlineBreakout','scoreSupportResistance','scoreFibonacci','scoreMeanReversion','scoreBreakout'])if(!strategy.includes(k))throw new Error('independent_strategy_missing:'+k);
