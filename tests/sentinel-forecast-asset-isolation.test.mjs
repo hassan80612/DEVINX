@@ -173,3 +173,29 @@ test('Broker active_id switch invalidates the old asset before symbol resolution
   assert.ok(worker.includes("unresolvedSwitch=String(m.marketStatus||'').toLowerCase()==='switching'"));
   assert.ok(worker.includes("brokerSwitching?'SINCRONIZANDO'"));
 });
+
+
+test('Market frames are accepted only when tied to the current active_id', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes('function requestedActiveId'));
+  assert.ok(ui.includes('st.marketRequests.set'));
+  assert.ok(ui.includes('aid!=null&&Number(aid)===Number(st.activeId)'));
+  assert.ok(ui.includes('st.candleActiveId=Number(aid)'));
+  assert.ok(ui.includes('candleAssetMatch'));
+  assert.ok(ui.includes('rejectedMarketFrames'));
+});
+
+test('Asset changes wipe candle and micro-quote history before the new feed is analyzed', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null"));
+  assert.ok(ui.includes("st.candleIntegrity={ok:false,reason:'asset_switch'}"));
+  assert.ok(ui.includes('function candleSeriesIntegrity'));
+  assert.ok(ui.includes("Histórico rejeitado por mistura/inconsistência de ativo"));
+});
+
+test('Probe of alternate market restores the original quote history and identity', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes('quoteHistory:[...(st.quoteHistory||[])]'));
+  assert.ok(ui.includes('st.quoteHistory=saved.quoteHistory'));
+  assert.ok(ui.includes('st.candleActiveId=saved.candleActiveId'));
+});
