@@ -222,8 +222,13 @@ export class DemoTradingRuntime{
       plan.displayCallProbability=stable.callPct;plan.displayPutProbability=stable.putPct;plan.displayBias=stable.side;
       plan.executionBias=rawBias;plan.stability={alpha:stable.alpha,candidate:stable.candidate,cycles:stable.cycles};
       plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
-      const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
-      if(historyWeak)plan.directionReady=false;
+      // Não continue liberando CALL/PUT quando o próprio histórico exato do horizonte
+      // já está mostrando desempenho ruim. 20 amostras bastam para um bloqueio conservador;
+      // a calibração completa continua usando o mínimo configurado (30+).
+      const historyWeak=validation.samples>=20&&validation.smoothedWinRate<50;
+      const fast30Validation=Number(secondsKey)===30?this._validationStats(this._validationKey('forecast30',asset,30000,this.settings.strategy)):null;
+      const fast30HistoryWeak=!!fast30Validation&&fast30Validation.samples>=20&&fast30Validation.smoothedWinRate<50;
+      if(historyWeak||fast30HistoryWeak)plan.directionReady=false;
 
       // Mede separadamente somente previsões fortes, equivalentes ao que pode virar decisão travada.
       const displayLead=stable.side==='CALL'?stable.callPct:stable.side==='PUT'?stable.putPct:0;
@@ -260,7 +265,8 @@ export class DemoTradingRuntime{
         decisionSamples:decisionValidation.samples,decisionWins:decisionValidation.wins,decisionLosses:decisionValidation.losses,decisionDraws:decisionValidation.draws,
         decisionWinRate:decisionValidation.winRate,decisionSmoothedWinRate:decisionValidation.smoothedWinRate,decisionBrierScore:decisionValidation.brierScore,
         decisionHistoryWeak,economicBreakEven:economicBreakEven==null?null:Math.round(economicBreakEven*10)/10,
-        confidenceSource:historyWeight>0?'calibrated':'model'
+        confidenceSource:historyWeight>0?'calibrated':'model',
+        fast30Samples:fast30Validation?.samples??null,fast30WinRate:fast30Validation?.winRate??null,fast30SmoothedWinRate:fast30Validation?.smoothedWinRate??null,fast30HistoryWeak
       };
       plan.modelVersion='future-v4.1';
       plan.basis='previsão futura V4.1 calibrada por horizonte/regime/faixa de confiança · diversidade de evidências · exibição estabilizada'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
