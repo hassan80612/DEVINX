@@ -8,6 +8,8 @@ on:
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
       - '.github/workflows/sentinel-windows-smoke.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -21,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: sentinel-v13-forecast-engine-20261006
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -181,7 +184,8 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'
-          if($env:GITHUB_REF_NAME -ne 'sentinel-v13-forecast-engine-20261006'){Write-Host 'No artifact commit outside V13 staging branch'; exit 0}
+          $target='sentinel-v13-forecast-engine-20261006'
+          if($env:GITHUB_EVENT_NAME -ne 'pull_request' -and $env:GITHUB_REF_NAME -ne $target){Write-Host 'No artifact commit outside V13 staging'; exit 0}
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
