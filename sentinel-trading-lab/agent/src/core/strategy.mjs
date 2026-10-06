@@ -424,6 +424,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const setupSignal=clamp((m.retest?.side==='BUY'?0.65:m.retest?.side==='SELL'?-0.65:0)+clamp((patternBuy-patternSell)*.22,-.44,.44)+(srBreakUp||lineBreakUp?0.25:0)-(srBreakDown||lineBreakDown?0.25:0),-1,1);
  const reversalSignalBase=clamp((Number(short.reversalCallScore||0)-Number(short.reversalPutScore||0))/75,-1,1);
  const reversalSignal=clamp(reversalSignalBase+(short.turnUp?0.28:0)-(short.turnDown?0.28:0)+(short.failedBreakDown||failedSupport?0.24:0)-(short.failedBreakUp||failedResistance?0.24:0)+((short.putOverextended&&(short.turnUp||short.reversalCallCandidate))?0.16:0)-((short.callOverextended&&(short.turnDown||short.reversalPutCandidate))?0.16:0),-1,1);
+ const reversalConfirmed=!!(short.reversalCallCandidate||short.reversalPutCandidate||short.turnUp||short.turnDown||short.failedBreakDown||short.failedBreakUp||failedSupport||failedResistance);
+ const forecastReversalSignal=clamp(reversalSignal*(reversalConfirmed?1:.35),-1,1);
  const shortSlopeRaw=closes.length>=6?(last-Number(closes.at(-6)))/5:0,mediumSlopeRaw=closes.length>=21?(last-Number(closes.at(-21)))/20:shortSlopeRaw;
  const shortSlopeSignal=norm(shortSlopeRaw,safeVol*.18),mediumSlopeSignal=norm(mediumSlopeRaw,safeVol*.10);
  const accelerationSignal=clamp((shortSlopeSignal-mediumSlopeSignal)*.72,-1,1);
@@ -431,7 +433,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const breakoutDirection=(srBreakUp||lineBreakUp)?1:(srBreakDown||lineBreakDown)?-1:0;
  const regimeSignal=regimeLabel==='trend'?clamp(trendDirection*trendAgreementPct,-1,1)
    :regimeLabel==='breakout'?breakoutDirection
-   :regimeLabel==='reversal'?reversalSignal
+   :regimeLabel==='reversal'?forecastReversalSignal
    :regimeLabel==='range'?clamp(reversalSignal*.65-trendSignal*.15,-1,1)
    :clamp(trendSignal*.25+momentumSignal*.20,-.35,.35);
 
@@ -472,7 +474,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const w=weightsFor(seconds),declaredWeight=Object.values(w).reduce((a,b)=>a+Number(b||0),0)||1;
    const features=[
      {name:'microfluxo',key:'micro',value:microSignal,weight:w.micro,available:w.micro>0&&micro.ready},
-     {name:'reversão/exaustão',key:'reversal',value:reversalSignal,weight:w.reversal,available:short.ready===true},
+     {name:'reversão/exaustão',key:'reversal',value:forecastReversalSignal,weight:w.reversal,available:short.ready===true},
      {name:'momentum',key:'momentum',value:momentumSignal,weight:w.momentum,available:m.rsi!=null||m.macd!=null||m.momentum!=null},
      {name:'estrutura/tendência',key:'trend',value:trendSignal,weight:w.trend,available:true},
      {name:'espaço S/R',key:'location',value:locationSignal,weight:w.location,available:true},
@@ -491,6 +493,10 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    if(short.putOverextended&&signal<0)signal+=Math.min(.30,Math.abs(signal)*.48+.07);
    if(short.turnDown&&signal>0)signal-=seconds<=60?.18:.10;
    if(short.turnUp&&signal<0)signal+=seconds<=60?.18:.10;
+   // Quando o microfluxo vira contra a tendência, 30s/1m precisam reagir antes da vela terminar.
+   // Isso reduz CALL no topo/PUT no fundo sem inverter horizontes longos por um único tick.
+   if(seconds<=60&&trendSignal>.20&&microSignal<-.25)signal-=Math.min(.28,.05+Math.abs(microSignal)*.16+Math.max(0,-accelerationSignal)*.10);
+   if(seconds<=60&&trendSignal<-.20&&microSignal>.25)signal+=Math.min(.28,.05+Math.abs(microSignal)*.16+Math.max(0,accelerationSignal)*.10);
    if(signal>0&&accelerationSignal<-.35)signal-=Math.min(.16,Math.abs(accelerationSignal)*.18);
    if(signal<0&&accelerationSignal>.35)signal+=Math.min(.16,Math.abs(accelerationSignal)*.18);
    if(regimeLabel==='chaotic')signal*=.72;
