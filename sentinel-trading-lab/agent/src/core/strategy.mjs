@@ -529,10 +529,32 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const alignedWeight=directional.filter(x=>signal===0||Math.sign(x.value)===Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
    const opposedWeight=directional.filter(x=>signal!==0&&Math.sign(x.value)!==Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
    const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5,conflict=directionalWeight>0?opposedWeight/directionalWeight:0;
+   // V13.1: confiança não pode tratar indicadores correlacionados como evidências totalmente independentes.
+   // As famílias abaixo preservam o sinal/direção do V4 e só tornam a confiança mais conservadora quando
+   // várias leituras estão repetindo essencialmente o mesmo movimento.
+   const familyDefs={
+     flow:['micro','acceleration'],
+     momentum:['momentum','persistence'],
+     structure:['trend','history','regime'],
+     context:['location','setup','reversal'],
+     strategy:['strategy']
+   };
+   const familyRows=Object.entries(familyDefs).map(([family,keys])=>{
+     const rows=available.filter(x=>keys.includes(x.key)&&x.weight>0);
+     const weight=rows.reduce((a,x)=>a+x.weight,0);
+     const value=weight>0?rows.reduce((a,x)=>a+x.value*x.weight,0)/weight:0;
+     return{family,value,weight}
+   }).filter(x=>x.weight>0&&Math.abs(x.value)>=.08);
+   const familyWeight=familyRows.reduce((a,x)=>a+x.weight,0);
+   const familyAlignedWeight=familyRows.filter(x=>signal===0||Math.sign(x.value)===Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
+   const familyAgreement=familyWeight>0?familyAlignedWeight/familyWeight:.5;
+   const evidenceFamilyCount=familyRows.length;
+   const correlationPenalty=Math.round(clamp(Math.max(0,agreement-familyAgreement)*10+Math.max(0,3-evidenceFamilyCount)*1.5,0,6));
    const quality=clamp(weightTotal/declaredWeight,0,1);
    const rawCallProbability=clamp(Math.round(50+Math.tanh(signal*1.28)*43),5,95),rawPutProbability=100-rawCallProbability;
    const regimeBonus=Math.max(0,(regimeConfidence-50)*.08);
-   const modelConfidence=clamp(Math.round(48+Math.abs(signal)*30+Math.max(0,agreement-.5)*22+Math.max(0,quality-.68)*12+regimeBonus-conflict*10),45,94);
+   const baseModelConfidence=Math.round(48+Math.abs(signal)*30+Math.max(0,agreement-.5)*22+Math.max(0,quality-.68)*12+regimeBonus-conflict*10);
+   const modelConfidence=clamp(baseModelConfidence-correlationPenalty,45,94);
    const minForecastConfidence=seconds<=60?61:seconds<=300?59:58,enoughFlow=seconds>60||micro.ready;
    const minAgreement=seconds<=60?.54:seconds<=300?.51:.48,minSignal=seconds<=60?.15:seconds<=300?.13:.11;
    const outlookReady=enoughHistory&&enoughFlow&&quality>=.66&&historyLegs.length>=2;
@@ -559,8 +581,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
      regime:m.regime,evidenceFamilies,
-     basis:'previsão futura V4 independente do consenso atual por horizonte + candles fechados multi-janela + regime + persistência; entrada atual é separada',drivers:strongest,
-     automaticExecution:false,modelVersion:'future-v4'
+     reliability:{evidenceFamilyCount,familyAgreement:Math.round(familyAgreement*100),featureAgreement:Math.round(agreement*100),correlationPenalty,baseModelConfidence},
+     basis:'previsão futura V4.1 independente do consenso atual por horizonte + candles fechados multi-janela + regime + persistência + confiança corrigida por diversidade; entrada atual é separada',drivers:strongest,
+     automaticExecution:false,modelVersion:'future-v4.1'
    }
  };
  const planner=Object.fromEntries(plannerHorizons.map(seconds=>[String(seconds),forecastFor(seconds)]));
@@ -579,9 +602,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 
  return{
    side,confidence,reasons:box.reasons.slice(0,14),
-   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:Number(forecast30Plan?.callProbability||50),putStrength:Number(forecast30Plan?.putProbability||50),trigger:60,callGap,putGap,microPulse:micro.pulse,microReady:micro.ready,projectedPrice:forecast30Plan?.projectedPrice??null,agreement:forecast30Plan?.agreement??0,modelVersion:'future-v4'},
+   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:Number(forecast30Plan?.callProbability||50),putStrength:Number(forecast30Plan?.putProbability||50),trigger:60,callGap,putGap,microPulse:micro.pulse,microReady:micro.ready,projectedPrice:forecast30Plan?.projectedPrice??null,agreement:forecast30Plan?.agreement??0,modelVersion:'future-v4.1'},
    finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:'estado técnico atual; previsão futura separada'},
-   entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v4',horizons:planner},
-   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,futureModelVersion:'future-v4',selectedForecast}
+   entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v4.1',horizons:planner},
+   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,futureModelVersion:'future-v4.1',selectedForecast}
  }
 }
