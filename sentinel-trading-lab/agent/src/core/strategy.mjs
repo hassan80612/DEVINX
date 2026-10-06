@@ -438,7 +438,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const enoughFlow=seconds>60||micro.ready;
    const outlookReady=enoughHistory&&enoughFlow&&quality>=.72;
    const hasDirection=outlookReady&&modelConfidence>=minForecastConfidence&&Math.abs(signal)>=.16&&agreement>=.52;
-   const bias=hasDirection?(signal>0?'CALL':'PUT'):'NEUTRO';
+   const directionalBias=outlookReady&&Math.abs(signal)>=.02?(signal>0?'CALL':'PUT'):'NEUTRO';
+   const bias=directionalBias;
    const projectedMove=expectedMove*signal*(.58+modelConfidence/250);
    const projectedPrice=last+projectedMove;
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
@@ -457,8 +458,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    return{
      horizonSeconds:seconds,currentPrice:last,expectedMove,expectedLow:last-expectedMove,expectedHigh:last+expectedMove,
      projectedMove,projectedPrice,signal,callProbability,putProbability,confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
-     bias,outlookReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
-     basis:'previsão futura multi-fator',drivers:strongest,automaticExecution:false,modelVersion:'future-v2'
+     bias,outlookReady,directionReady:hasDirection,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
+     basis:'previsão futura multi-fator independente do consenso atual',drivers:strongest,automaticExecution:false,modelVersion:'future-v2'
    }
  };
  const planner=Object.fromEntries(plannerHorizons.map(seconds=>[String(seconds),forecastFor(seconds)]));

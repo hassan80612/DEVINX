@@ -54,7 +54,20 @@ function pairStrings(text=''){
   const b=compact.map(x=>{const otc=x.endsWith('-OTC'),z=x.replace(/-OTC$/,'');return `${z.slice(0,3)}/${z.slice(3,6)}${otc?' OTC':''}`});
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
-function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z]/g,'')}
+function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z0-9]/g,'')}
+export function instrumentLabel(text=''){
+  const raw0=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
+  const pairs=pairStrings(raw0);if(pairs.length===1)return pairs[0];
+  if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(raw0))return null;
+  let raw=raw0.replace(/^front\./i,'').replace(/\b(?:BLITZ|BINARY|DIGITAL|TURBO|FOREX)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+  raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
+  if(!raw||raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw))return null;
+  if(/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return null;
+  if(/^(?:COM|GTM|WWW|HTTP|HTTPS|API|APP|ORG|NET|CDN|IMG|JS|CSS|ING)$/i.test(raw))return null;
+  if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return null;
+  if(/^\d[\d.,\s]*$/.test(raw))return null;
+  return raw
+}
 function symbolForActiveId(st,activeId){
   const aid=Number(activeId);if(!Number.isFinite(aid))return null;
   const keys=[...st.activeMap.entries()].filter(([,id])=>Number(id)===aid).map(([key])=>String(key));
@@ -141,9 +154,17 @@ function protocolScan(data,st,direction='in'){
     const aid=n(activeRaw),command=`${outer} ${inner}`.toLowerCase();
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
     if(aid!=null&&marketCommand){
-      st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
-      const selected=st.uiSymbol||st.symbol||null;
-      if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected)}
+      const now=Date.now(),selected=st.uiSymbol||st.symbol||null,key=selected?pairKey(selected):null;
+      const mapped=key?st.activeMap.get(key):null;
+      const reliableVisualSource=['click','selected-tab','dom-active','dom-single'].includes(String(st.uiSymbolSource||''));
+      const visualFresh=!!selected&&reliableVisualSource&&now-Number(st.lastUiSignalAt||0)<8000;
+      const historyRequest=/get-candles|(^|\s)candles(\s|$)/.test(command);
+      if(selected&&mapped!=null&&Number(mapped)===Number(aid)){
+        st.pageActiveId=Number(aid);st.lastPageActiveAt=now
+      }else if(selected&&mapped==null&&visualFresh&&historyRequest){
+        st.activeMap.set(key,Number(aid));st.assets.add(selected);st.activeId=Number(aid);st.pageActiveId=Number(aid);st.lastPageActiveAt=now;
+        st.marketStatus='syncing';st.marketReason='Gráfico visível identificado · carregando histórico'
+      }
       const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
     }
   }
@@ -384,17 +405,29 @@ export class LocalPlaywrightDriver{
           const pairsFrom=(text)=>{
             const raw=String(text||'').toUpperCase();
             const codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);
+            const bad=new Set(['COM','GTM','WWW','HTTP','HTTPS','API','APP','ORG','NET','CDN','IMG','JS','CSS','ING']);
             const out=[];
-            for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
-            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
             return [...new Set(out)];
           };
-          const selectedPair=()=>{
+          const instrumentFrom=(text)=>{
+            const src=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
+            const ps=pairsFrom(src);if(ps.length===1)return ps[0];
+            if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(src))return'';
+            let raw=src.replace(/^front\./i,'').replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+            raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
+            if(raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return'';
+            if(/^(?:COM|GTM|WWW|HTTP|HTTPS|API|APP|ORG|NET|CDN|IMG|JS|CSS|ING)$/i.test(raw))return'';
+            if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return'';
+            return raw
+          };
+          const selectedInstrument=()=>{
             const selectors='[aria-selected],[aria-checked],[aria-current],[data-state],[role="tab"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i]';
             const visible=el=>{try{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8}catch{return false}};
             const stateScore=el=>{let score=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')score+=120;if(node.getAttribute?.('aria-checked')==='true')score+=110;if(cur&&cur!=='false')score+=100;if(/active|selected|current|checked/.test(state))score+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))score+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')score+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)score+=5;return score};
             const ranked=[];
-            for(const el of [...document.querySelectorAll(selectors)].filter(visible)){const p=pairsFrom(el.textContent||'');if(p.length===1)ranked.push({p:p[0],score:stateScore(el)})}
+            for(const el of [...document.querySelectorAll(selectors)].filter(visible)){const p=instrumentFrom(el.textContent||'');if(p)ranked.push({p,score:stateScore(el)})}
             ranked.sort((a,b)=>b.score-a.score);
             return ranked[0]?.score>0?ranked[0].p:''
           };
@@ -407,17 +440,17 @@ export class LocalPlaywrightDriver{
           };
           document.addEventListener('click',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              if(ev.target?.closest?.('#sentinel-trading-overlay,#sentinel-trading-overlay-host'))return;
               const nodes=[];let node=ev.target;
               for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
               if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
-              for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){publish(p[0],'click');break}}
-              queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')});
+              for(const x of nodes){const p=instrumentFrom(x?.textContent||'');if(p){publish(p,'click');break}}
+              queueMicrotask(()=>{const p=selectedInstrument();if(p)publish(p,'selected-tab')});
             }catch{}
           },true);
-          const mo=new MutationObserver(()=>{try{const p=selectedPair();if(p)publish(p,'selected-tab')}catch{}});
+          const mo=new MutationObserver(()=>{try{const p=selectedInstrument();if(p)publish(p,'selected-tab')}catch{}});
           mo.observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['aria-selected','aria-checked','aria-current','data-state','class']});
-          const initial=selectedPair();if(initial)publish(initial,'selected-tab');
+          const initial=selectedInstrument();if(initial)publish(initial,'selected-tab');
         }
         if(!document.getElementById('__sentinel-amount-listener-marker')){
           const amountMarker=document.createElement('span');amountMarker.id='__sentinel-amount-listener-marker';amountMarker.style.display='none';(document.documentElement||document.body)?.appendChild(amountMarker);
@@ -649,7 +682,19 @@ export class LocalPlaywrightDriver{
       st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.subscribedSymbol=null;st.subscribedActiveId=null;st.autoSelected=false;st.suggestedSymbol=null;
     }
     let targetId=st.activeMap.get(pairKey(screenSymbol));
+    const visualFresh=['click','selected-tab','dom-active','dom-single'].includes(String(st.uiSymbolSource||''))&&Date.now()-Number(st.lastUiSignalAt||0)<8000;
+    const pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<8000;
+    if(targetId==null&&visualFresh&&pageFresh){
+      targetId=Number(st.pageActiveId);
+      st.activeMap.set(pairKey(screenSymbol),targetId);
+      st.assets.add(screenSymbol)
+    }
     if(targetId==null){await this.requestBaseData(provider).catch(()=>{});await sleep(120);targetId=st.activeMap.get(pairKey(screenSymbol))}
+    if(targetId==null&&visualFresh&&st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<8000){
+      targetId=Number(st.pageActiveId);
+      st.activeMap.set(pairKey(screenSymbol),targetId);
+      st.assets.add(screenSymbol)
+    }
     if(targetId==null){st.activeId=null;st.marketStatus='syncing';st.marketReason=`Identificando o ativo da tela ${screenSymbol}`;return false}
     st.activeId=Number(targetId);
     await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(targetId),force});
@@ -991,7 +1036,7 @@ export class LocalPlaywrightDriver{
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
     const st=this.state(provider),aid=Number(activeId);
-    let next=symbol?pairStrings(symbol)[0]||null:null;
+    let next=symbol?instrumentLabel(symbol)||null:null;
     if(!next&&Number.isFinite(aid)){
       const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===aid)?.[0]||null;
       if(key)next=[...st.assets].find(x=>pairKey(x)===key)||(key.endsWith('OTC')?`${key.slice(0,3)}/${key.slice(3,6)} OTC`:`${key.slice(0,3)}/${key.slice(3,6)}`);
@@ -1043,19 +1088,51 @@ export class LocalPlaywrightDriver{
     return this.liveStatus(provider)
   }
   async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;await this.installBridge(page,provider).catch(()=>{});const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
-    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const raw=String(t||'').toUpperCase();let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);return m?`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`:''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
+    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;
+    try{
+      const dom=await page.evaluate(()=>{
+        const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>0&&r.height>0};
+        const pairsFrom=(text)=>{
+          const raw=String(text||'').toUpperCase(),codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']),bad=new Set(['COM','GTM','WWW','HTTP','HTTPS','API','APP','ORG','NET','CDN','IMG','JS','CSS','ING']),out=[];
+          for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+          for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+          return [...new Set(out)]
+        };
+        const instrument=(text)=>{
+          const src=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim(),ps=pairsFrom(src);if(ps.length===1)return ps[0];
+          if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(src))return'';
+          let raw=src.replace(/^front\./i,'').replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+          raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
+          if(raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return'';
+          if(/^(?:COM|GTM|WWW|HTTP|HTTPS|API|APP|ORG|NET|CDN|IMG|JS|CSS|ING)$/i.test(raw))return'';
+          if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return'';
+          return raw
+        };
+        const selectors='[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]';
+        const els=[...document.querySelectorAll(selectors)].filter(visible);
+        const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);
+        const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};
+        const assets=els.map(el=>({label:instrument(el.textContent||''),raw:String(el.textContent||'').trim(),score:score(el)})).filter(x=>x.label);
+        const ranked=assets.slice().sort((x,y)=>y.score-x.score),active=ranked[0]&&ranked[0].score>0?ranked[0].label:'';
+        return{accountText:acct.join(' | '),instrumentText:assets.map(x=>x.raw).slice(0,30).join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}
+      });
+      accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)
+    }catch{}
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
-    const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
+    const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;
+    const clickedInstrument=clickedFresh&&clickedSymbol?instrumentLabel(clickedSymbol):null;
+    const domActiveInstrument=activeSymbol?instrumentLabel(activeSymbol):null;
+    const instrumentCandidates=uniq(String(instrumentText||'').split('|').map(x=>instrumentLabel(x)).filter(Boolean));
     let nextUi=null,uiSource=null;
-    if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
-    else if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
-    else if(instrumentPairs.length===1){nextUi=instrumentPairs[0];uiSource='dom-single'}
-    else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
+    if(clickedInstrument){nextUi=clickedInstrument;uiSource='click'}
+    else if(domActiveInstrument){nextUi=domActiveInstrument;uiSource='dom-active'}
+    else if(instrumentCandidates.length===1){nextUi=instrumentCandidates[0];uiSource='dom-single'}
+    else if(st.uiSymbol&&instrumentCandidates.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
     if(nextUi){
       const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
         st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
-        st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
+        st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
       }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
     }else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
@@ -1227,11 +1304,13 @@ export class LocalPlaywrightDriver{
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
-        const plannerPlan=planner[plannerHorizon]||planner['30']||null;
+        const plannerCandidate=planner[plannerHorizon]||planner['30']||null;
+        const overlayAsset=String(d.asset||'').trim().toUpperCase(),planAsset=String(plannerCandidate?.asset||'').trim().toUpperCase();
+        const plannerPlan=plannerCandidate&&overlayAsset&&planAsset===overlayAsset?plannerCandidate:null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
-        const plannerConfirmed=plannerReadable&&plannerPlan?.outlookReady===true;
+        const plannerConfirmed=plannerReadable&&plannerPlan?.directionReady===true;
         const outlook=plannerReadable?String(plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:warnTone;
         const futureConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.confidence||plannerPlan?.modelConfidence||0))):0;
@@ -1456,7 +1535,7 @@ export class LocalPlaywrightDriver{
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
             </div>
             <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${outlook!=='NEUTRO'&&plannerConfirmed?callTone:warnTone};font-size:8px;font-weight:900">${plannerReadable?(outlook!=='NEUTRO'&&plannerConfirmed?'PREVISÃO ATIVA':'EM FORMAÇÃO'):'SEM DADOS'}</span><span style="color:${goldSoft};font-size:8px;font-weight:900">${plannerReadable?'CONF '+n(futureConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9px;font-weight:650">para ${horizonLabel} · ${liveLabel}</span></div>
-            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?'Cenário em formação; os níveis já estão sendo calculados.':outlook==='NEUTRO'?'A previsão futura ainda não tem vantagem direcional suficiente neste prazo.':`Previsão futura ${outlook} para o fim deste prazo; a entrada ainda exige alinhamento e gatilho.`}</div>
+            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?'Previsão direcional em formação; CALL/PUT já mostram o viés futuro, mas a entrada ainda não está confirmada.':outlook==='NEUTRO'?'A previsão futura ainda não tem vantagem direcional suficiente neste prazo.':`Previsão futura ${outlook} para o fim deste prazo; a entrada ainda exige alinhamento e gatilho.`}</div>
             ${planHtml}
           </div>
 
