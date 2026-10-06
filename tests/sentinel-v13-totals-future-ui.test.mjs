@@ -11,10 +11,11 @@ test('V13 total cards expose independent visual thresholds and a non-execution a
   assert.match(driver,/data-sentinel-op-threshold/);
   assert.match(driver,/data-sentinel-average-threshold/);
   assert.match(driver,/MÉDIA DOS 3 TOTAIS/);
-  assert.match(driver,/resumo visual, não entra no bot/);
+  assert.match(driver,/CONF MÉDIA/);
   assert.match(driver,/PRÓXIMO PASSO/);
-  assert.match(driver,/PREPARE-SE PARA CALL EM/);
-  assert.match(driver,/PREPARE-SE PARA PUT EM/);
+  assert.match(driver,/sentinel-future-decision-v13/);
+  assert.match(driver,/DECISÃO TRAVADA/);
+  assert.match(driver,/ENTRADA AGORA/);
 });
 
 test('ineffective scenario refresh is removed without touching normal broker refresh', async()=>{
