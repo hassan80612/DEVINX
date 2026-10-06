@@ -151,3 +151,13 @@ test('IQ asset bridge is installed in already-open child frames', async () => {
   assert.ok(ui.includes('if(frame===page.mainFrame())continue'));
   assert.ok(ui.includes('await frame.evaluate(install).catch(()=>{})'));
 });
+
+
+test('IQ asset tracker recognizes named tabs such as Gold and keeps cross-frame polling', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("['GOLD','Gold']"));
+  assert.ok(ui.includes('function assetStrings'));
+  assert.ok(ui.includes('__sentinelAssetPoll'));
+  assert.ok(ui.includes("page.on('frameattached',installFrame)"));
+  assert.ok(ui.includes("page.on('framenavigated',installFrame)"));
+});
