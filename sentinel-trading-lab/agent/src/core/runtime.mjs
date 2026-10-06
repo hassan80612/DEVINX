@@ -239,7 +239,7 @@ export class DemoTradingRuntime{
     const currentSide=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
     const futureSide=plan&&['CALL','PUT'].includes(String(plan.rawBias||plan.bias||'').toUpperCase())?String(plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
     const futureConfidence=Math.max(0,Number(plan?.confidence||plan?.modelConfidence||0));
-    const futureReady=!!plan&&plan.outlookReady===true&&futureSide!=='NEUTRO'&&futureConfidence>=58;
+    const futureReady=!!plan&&plan.outlookReady===true&&plan.directionReady===true&&futureSide!=='NEUTRO'&&futureConfidence>=58;
     const side=futureReady&&currentSide===futureSide?futureSide:'AGUARDAR';
     const price=Number(snap?.price??analysis?.metrics?.last),strength=Math.max(0,Number(general.strength||0)),edge=Math.abs(Number(general.edge||0));
     const validation=this._validationStats(this._validationKey('operational',asset,durationMs,combo));
