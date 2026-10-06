@@ -1274,7 +1274,7 @@ export class LocalPlaywrightDriver{
         }).join('');
         const strategySummary=generalConsensus.strategies||{};
         const strategyFinalSide=String(strategySummary.side||strategyConfluence.side||'AGUARDAR').toUpperCase();
-        const strategyFinalTone=strategyFinalSide==='CALL'?callTone:strategyFinalSide==='PUT'?putTone:warnTone;
+        const strategyFinalTone=strategyFinalSide==='CALL'?callTone:strategyFinalSide==='PUT'?putTone:neutralTone;
         const strategyAgreement=String(strategyConfluence.agreement||'SEM ESTRATÉGIAS');
         const strategyActiveCount=Math.max(0,Number(strategySummary.activeCount??strategyConfluence.activeCount??0));
         const strategyCallPct=Number.isFinite(Number(strategySummary.callPct))?Number(strategySummary.callPct):50;
@@ -1290,8 +1290,8 @@ export class LocalPlaywrightDriver{
         const strategyConfidence=Math.max(0,Math.min(100,Number(strategySummary.strength||0)));
         const marketConfidence=Math.max(0,Math.min(100,Number(marketStrength||0)));
         const totalActiveCount=Math.max(0,Number(generalConsensus.sources?.total||0));
-        let operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(minConfidence)));
-        try{const saved=Number(localStorage.getItem('sentinel-operational-display-threshold-v118'));if(Number.isFinite(saved))operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
+        let operationalDisplayThreshold=55;
+        try{const saved=Number(localStorage.getItem('sentinel-total6-display-threshold-v13'));if(Number.isFinite(saved))operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
         const combinedCall=Number.isFinite(Number(generalCall))?Number(generalCall):0,combinedPut=Number.isFinite(Number(generalPut))?Number(generalPut):0;
         const thresholdSide=!analysisStale&&combinedCall>=operationalDisplayThreshold&&combinedCall>combinedPut?'CALL':!analysisStale&&combinedPut>=operationalDisplayThreshold&&combinedPut>combinedCall?'PUT':'AGUARDAR';
         const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
@@ -1335,7 +1335,7 @@ export class LocalPlaywrightDriver{
             if(ot){
               const value=Math.max(50,Math.min(95,Math.round(Number(ot.value)||70)));
               ot.value=String(value);
-              try{localStorage.setItem('sentinel-operational-display-threshold-v118',String(value))}catch{}
+              try{localStorage.setItem('sentinel-total6-display-threshold-v13',String(value))}catch{}
               el.dataset.selectLock='0';
               queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return
             }
@@ -1455,7 +1455,7 @@ export class LocalPlaywrightDriver{
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:stretch">
             <div data-sentinel-summary="market-total" style="position:relative;padding:8px 34px 8px 8px;min-height:142px;height:100%;box-sizing:border-box;overflow:hidden;border-radius:11px;background:${panelBg};border:1px solid ${marketSummarySide!=='AGUARDAR'?(marketSummarySide==='CALL'?callTone:putTone):panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><div><div style="font-size:8px;font-weight:950;color:${ink}">TOTAL MERCADO</div><div style="font-size:6px;color:${subtle}">${marketActiveCount}/3 ativas</div></div><div style="display:flex;align-items:center;gap:3px"><span style="font-size:7px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(marketConfidence,0)}%</span>${summaryBtn('market-total')}</div></div>
-              <div style="margin-top:6px;font-size:17px;font-weight:950;color:${marketSummarySide==='CALL'?callTone:marketSummarySide==='PUT'?putTone:warnTone}">${marketSummarySide}</div>
+              <div style="margin-top:6px;font-size:17px;font-weight:950;color:${marketSummarySide==='CALL'?callTone:marketSummarySide==='PUT'?putTone:neutralTone}">${marketSummarySide}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(marketCallPct,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(marketPutPct,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:6.5px;color:${subtle}">Só considera as leituras de mercado ativas.</div>
             </div>
@@ -1467,7 +1467,7 @@ export class LocalPlaywrightDriver{
               <div style="margin-top:5px;font-size:6.5px;color:${subtle}">${esc(strategyAgreement)}</div>
             </div>
 
-            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="position:relative;padding:8px 34px 8px 8px;min-height:142px;height:100%;box-sizing:border-box;overflow:hidden;border-radius:11px;background:${panelBg};border:1px solid ${operationalDirectional?operationalTone:panelBorder};min-width:0">
+            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="position:relative;padding:8px 34px 8px 8px;min-height:142px;height:100%;box-sizing:border-box;overflow:hidden;border-radius:11px;background:${panelBg};border:1px solid ${totalSixDirectional?totalSixTone:panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px;padding-right:2px"><div><div style="font-size:8.4px;font-weight:950;color:${ink};letter-spacing:.025em">TOTAL DOS 6 · CONSENSO</div><div style="font-size:6.5px;color:${subtle}">${totalActiveCount}/6 ativas · entrada automática mantém filtros próprios</div></div><span style="font-size:7.2px;font-weight:900;color:${goldSoft};margin-right:2px">CONF ${n(generalStrength,0)}%</span>${summaryBtn('operational-total')}</div>
               <div style="margin-top:7px;font-size:18px;font-weight:950;letter-spacing:.02em;color:${totalSixTone}">${operationalDisplay}</div>
               <div style="margin-top:3px;font-size:7px;color:${muted};line-height:1.2">${totalSixDirectional?('Consenso dos 6 · '+totalSixSide+' '+n(totalSixSide==='CALL'?combinedCall:combinedPut,0)+'%'+(operationalReady?' · ENTRADA LIBERADA':operationalEngineSide!=='AGUARDAR'?' · motor '+operationalEngineSide+' aguardando gatilho':' · entrada ainda aguardando')):('Aguardando atingir '+operationalDisplayThreshold+'% · CALL '+n(combinedCall,0)+'% · PUT '+n(combinedPut,0)+'%')}</div>
