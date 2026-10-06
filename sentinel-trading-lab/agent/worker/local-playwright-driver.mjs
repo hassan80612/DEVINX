@@ -1167,7 +1167,7 @@ export class LocalPlaywrightDriver{
         const entryGateReady=q.entryReady===true;
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
         const signal=entryGateReady?(side==='BUY'?'CALL':side==='SELL'?'PUT':'AGUARDAR'):'AGUARDAR';
-        const gold='#c9a65b',goldSoft='#ecd28d';
+        const gold='#d7b65d',goldSoft='#f3dc98',goldDeep='#8d6a23';
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence'),strategy2=String(d.strategy2||'none'),strategy3=String(d.strategy3||'none');
         const strategyCards=Array.isArray(d.strategyCards)?d.strategyCards:[],strategyConfluence=d.strategyConfluence||{},generalConsensus=d.generalConsensus||{},operational=d.operationalSignal||{};
@@ -1212,31 +1212,35 @@ export class LocalPlaywrightDriver{
           if(!el.dataset.themePreference)uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
         el.dataset.theme=uiTheme;
-        const ink=uiTheme==='light'?'#0f0d0a':'#f7f3e8',muted=uiTheme==='light'?'#39342d':'#c8c0b2',subtle=uiTheme==='light'?'#5b5246':'#9b9385';
-        const fieldBg=uiTheme==='light'?'#ffffff':'#0f0f11',fieldInk=uiTheme==='light'?'#0f0d0a':'#f7f3e8',fieldBorder=uiTheme==='light'?'rgba(104,72,24,.48)':'rgba(201,166,91,.34)';
-        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#ffffff,#eee7da)':'linear-gradient(145deg,#111113,#070708)';
-        const panelBorder=uiTheme==='light'?'rgba(104,72,24,.30)':'rgba(201,166,91,.26)';
-        const callTone=uiTheme==='light'?'#086344':'#72e6b9',putTone=uiTheme==='light'?'#922537':'#ff8f9d',warnTone=uiTheme==='light'?'#7b5600':'#f2cf66';
+        const ink=uiTheme==='light'?'#111318':'#f6f7fb',muted=uiTheme==='light'?'#3b4048':'#cbd2dc',subtle=uiTheme==='light'?'#616977':'#939dab';
+        const neutralTone=uiTheme==='light'?'#1d2530':'#f7f8fb';
+        const fieldBg=uiTheme==='light'?'#ffffff':'#080d14',fieldInk=uiTheme==='light'?'#111318':'#f8f9fb',fieldBorder=uiTheme==='light'?'rgba(128,94,39,.38)':'rgba(215,182,93,.34)';
+        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f1ece2)':'linear-gradient(145deg,#0d141f 0%,#080c13 58%,#05070b 100%)';
+        const panelBorder=uiTheme==='light'?'rgba(128,94,39,.25)':'rgba(215,182,93,.24)';
+        const callTone=uiTheme==='light'?'#087052':'#7ce9c1',putTone=uiTheme==='light'?'#972d43':'#ff99a8',warnTone=uiTheme==='light'?'#7a5a12':'#e6c879';
         const pausedReadings=d.pausedReadings&&typeof d.pausedReadings==='object'?d.pausedReadings:{};
         const isPaused=key=>pausedReadings[key]===true;
         const pauseBtn=key=>'<button data-sentinel-reading-pause="'+key+'" title="'+(isPaused(key)?'Ativar esta leitura':'Pausar esta leitura')+'" style="border:1px solid '+panelBorder+';border-radius:6px;height:20px;padding:0 5px;background:'+(isPaused(key)?'rgba(242,207,102,.13)':(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)'))+';color:'+(isPaused(key)?warnTone:subtle)+';font:950 6.2px/1 inherit;cursor:pointer;white-space:nowrap">'+(isPaused(key)?'ATIVAR':'PAUSAR')+'</button>';
         let collapsedSummaries=[];
         try{collapsedSummaries=JSON.parse(localStorage.getItem('sentinel-summary-collapse-v118')||'[]');if(!Array.isArray(collapsedSummaries))collapsedSummaries=[]}catch{collapsedSummaries=[]}
         const isSummaryCollapsed=key=>collapsedSummaries.includes(key);
-        const summaryBtn=key=>'<button data-sentinel-summary-collapse="'+key+'" title="'+(isSummaryCollapsed(key)?'Estender resumo':'Recolher resumo')+'" style="border:1px solid '+panelBorder+';border-radius:7px;width:22px;height:20px;background:'+(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)')+';color:'+subtle+';font:950 12px/1 inherit;cursor:pointer;display:grid;place-items:center;flex:0 0 auto">'+(isSummaryCollapsed(key)?'+':'−')+'</button>';
+        const summaryBtn=key=>'<button data-sentinel-summary-collapse="'+key+'" title="'+(isSummaryCollapsed(key)?'Estender resumo':'Recolher resumo')+'" style="position:absolute;top:7px;right:7px;border:1px solid '+panelBorder+';border-radius:7px;width:23px;height:21px;background:'+(uiTheme==='light'?'linear-gradient(180deg,#fff,#f5efe3)':'linear-gradient(180deg,rgba(215,182,93,.13),rgba(215,182,93,.035))')+';color:'+goldSoft+';font:950 12px/1 inherit;cursor:pointer;display:grid;place-items:center;z-index:2">'+(isSummaryCollapsed(key)?'+':'−')+'</button>';
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
-        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
+        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.36)',boxShadow:'0 28px 72px rgba(65,51,28,.20), inset 0 1px #fff'}:{background:'linear-gradient(160deg,#05070c 0%,#0a111b 54%,#06080d 100%)',color:'#f6f7fb',border:'1px solid rgba(215,182,93,.42)',boxShadow:'0 30px 88px rgba(0,0,0,.82),0 0 0 1px rgba(215,182,93,.035) inset,inset 0 1px rgba(255,255,255,.045)'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min',3600:'1 h'})[plannerHorizon]||'30 s';
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
         const plannerConfirmed=plannerReadable&&plannerPlan?.directionReady===true;
-        const outlook=plannerReadable?String(plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
-        const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:warnTone;
+        const rawOutlook=plannerReadable?String(plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const futureConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.confidence||plannerPlan?.modelConfidence||0))):0;
         const futureCallPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.callProbability||50))):50;
         const futurePutPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.putProbability||50))):50;
+        let futureDisplayThreshold=70;
+        try{const saved=Number(localStorage.getItem('sentinel-future-display-threshold-v13'));if(Number.isFinite(saved))futureDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
+        const outlook=!plannerReadable?'SEM LEITURA':!analysisStale&&futureCallPct>=futureDisplayThreshold&&futureCallPct>futurePutPct?'CALL':!analysisStale&&futurePutPct>=futureDisplayThreshold&&futurePutPct>futureCallPct?'PUT':'AGUARDAR';
+        const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
         const futureProjectedPrice=plannerReadable&&Number.isFinite(Number(plannerPlan?.projectedPrice))?Number(plannerPlan.projectedPrice):null;
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureSamples=plannerReadable?Math.max(0,Number(plannerPlan?.validation?.samples||0)):0;
@@ -1282,7 +1286,7 @@ export class LocalPlaywrightDriver{
         const generalPut=Number.isFinite(Number(generalConsensus.displayPutPct))?Number(generalConsensus.displayPutPct):Number.isFinite(Number(generalConsensus.putScore))?Number(generalConsensus.putScore):null;
         const generalStrength=Number.isFinite(Number(generalConsensus.displayStrength))?Math.max(0,Math.min(100,Number(generalConsensus.displayStrength))):Number.isFinite(Number(generalConsensus.strength))?Math.max(0,Math.min(100,Number(generalConsensus.strength))):Math.max(Number(generalCall||0),Number(generalPut||0));
         const generalEdge=Number.isFinite(Number(generalConsensus.edge))?Math.abs(Number(generalConsensus.edge)):Math.abs(Number(generalCall||0)-Number(generalPut||0));
-        const generalTone=generalLeanSide==='CALL'?callTone:generalLeanSide==='PUT'?putTone:warnTone;
+        const generalTone=generalLeanSide==='CALL'?callTone:generalLeanSide==='PUT'?putTone:neutralTone;
         const strategyConfidence=Math.max(0,Math.min(100,Number(strategySummary.strength||0)));
         const marketConfidence=Math.max(0,Math.min(100,Number(marketStrength||0)));
         const totalActiveCount=Math.max(0,Number(generalConsensus.sources?.total||0));
@@ -1294,13 +1298,15 @@ export class LocalPlaywrightDriver{
         const operationalEngineSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():'AGUARDAR';
         const operationalFutureSide=['CALL','PUT'].includes(String(operational.futureSide||'').toUpperCase())?String(operational.futureSide).toUpperCase():'NEUTRO';
         const operationalFutureConfidence=Math.max(0,Math.min(100,Number(operational.futureConfidence||0)));
-        const operationalVisualSide=thresholdSide!=='AGUARDAR'&&operationalEngineSide===thresholdSide?thresholdSide:'AGUARDAR';
-        const operationalSide=operationalVisualSide;
-        const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
+        const totalSixSide=thresholdSide;
+        const totalSixDirectional=['CALL','PUT'].includes(totalSixSide)&&!analysisStale;
+        const totalSixTone=totalSixSide==='CALL'?callTone:totalSixSide==='PUT'?putTone:neutralTone;
+        const operationalSide=operationalEngineSide;
+        const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:neutralTone;
         const operationalDirectional=['CALL','PUT'].includes(operationalSide)&&!analysisStale;
-        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&operationalEngineSide===operationalSide&&operationalDirectional&&liveNow&&analysisFresh;
-        const operationalDisplay=operationalSide;
-        const operationalStatus=operationalReady?'ENTRADA AGORA':operationalDirectional?'PREVISÃO + 6 ALINHADOS':operationalEngineSide!=='AGUARDAR'?'AGUARDANDO LIMITE':'AGUARDAR';
+        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&operationalDirectional&&liveNow&&analysisFresh;
+        const operationalDisplay=totalSixSide;
+        const operationalStatus=operationalReady?'ENTRADA AGORA':totalSixDirectional?'VIÉS DOS 6':'AGUARDAR';
         const hasNum=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
         const operationalTime=operationalReady&&hasNum(operational.entryAt)?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
         const operationalTrigger=hasNum(operational.trigger)?Number(operational.trigger):null;
@@ -1322,14 +1328,22 @@ export class LocalPlaywrightDriver{
             try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
             catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
           };
-          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold]'))el.dataset.selectLock='1'},true);
-          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
+          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold]'))el.dataset.selectLock='1'},true);
+          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
             const ot=ev.target?.closest?.('[data-sentinel-op-threshold]');
             if(ot){
               const value=Math.max(50,Math.min(95,Math.round(Number(ot.value)||70)));
               ot.value=String(value);
               try{localStorage.setItem('sentinel-operational-display-threshold-v118',String(value))}catch{}
+              el.dataset.selectLock='0';
+              queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return
+            }
+            const ft=ev.target?.closest?.('[data-sentinel-future-threshold]');
+            if(ft){
+              const value=Math.max(50,Math.min(95,Math.round(Number(ft.value)||70)));
+              ft.value=String(value);
+              try{localStorage.setItem('sentinel-future-display-threshold-v13',String(value))}catch{}
               el.dataset.selectLock='0';
               queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return
             }
