@@ -49,6 +49,14 @@ function installBrokerAssetReader(){
   };
 }
 
+function brokerFrames(page,domain){
+  const main=page.mainFrame?.()||page,all=page.frames?.()||[main];
+  const origin=(()=>{try{return new URL(page.url()).origin}catch{return ''}})();
+  const trusted=frame=>{if(frame===main)return true;try{const u=frame.url();if(u==='about:blank'||u==='about:srcdoc')return !!frame.parentFrame?.()&&trusted(frame.parentFrame());const parsed=new URL(u);return parsed.origin===origin||parsed.hostname===domain||parsed.hostname.endsWith('.'+domain)}catch{return false}};
+  const candidates=all.filter(f=>f!==main&&trusted(f));candidates.sort((a,b)=>Number(/^about:/.test(a.url()))-Number(/^about:/.test(b.url())));
+  return [main,...candidates].slice(0,24);
+}
+
 const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
 function focusProcess(pid){
   if(process.platform!=='win32'||!pid)return;
@@ -747,18 +755,15 @@ export class LocalPlaywrightDriver{
           buyText:buy?desc(buy).slice(0,180):'',
           sellText:sell?desc(sell).slice(0,180):'',
           amountText:amount?desc(amount).slice(0,180):((plus&&minus)?'stepper +/-':''),
-          buttonCount:all.length,amountCandidateCount:amountEls.length,rootCount:roots.length,scanMs:Math.round(performance.now()-started)
+          buttonCount:all.length,amountCandidateCount:amountEls.length,canvasCount:document.querySelectorAll('canvas').length,rootCount:roots.length,scanMs:Math.round(performance.now()-started)
         };
       };
-      const main=s.page.mainFrame?.()||s.page;
-      const origin=(()=>{try{return new URL(s.page.url()).origin}catch{return ''}})();
-      const trusted=frame=>{try{const u=frame.url();if(u==='about:blank'||u==='about:srcdoc')return !frame.parentFrame?.()||trusted(frame.parentFrame());return new URL(u).origin===origin}catch{return false}};
-      const frames=[main,...(s.page.frames?.()||[]).filter(f=>f!==main&&trusted(f))].slice(0,8);
+      const main=s.page.mainFrame?.()||s.page,frames=brokerFrames(s.page,this.config(provider).domain);
       const results=[];let failedFrames=0;
       for(const frame of frames){try{results.push({main:frame===main,ui:await frame.evaluate(scan)})}catch{failedFrames++}}
       const ui=results.find(r=>r.main)?.ui||{buy:false,sell:false,amount:false,buttonCount:0,amountCandidateCount:0};
       ui.expiryCandidates=results.flatMap(r=>r.ui.expiryCandidates||[]);
-      ui.frameCount=frames.length;ui.failedFrames=failedFrames;ui.rootCount=results.reduce((n,r)=>n+(r.ui.rootCount||0),0);
+      ui.frameCount=frames.length;ui.totalFrameCount=s.page.frames?.().length||1;ui.frameOrigins=frames.map(f=>{try{return new URL(f.url()).origin}catch{return 'opaque'}});ui.canvasCount=results.reduce((n,r)=>n+(r.ui.canvasCount||0),0);ui.failedFrames=failedFrames;ui.rootCount=results.reduce((n,r)=>n+(r.ui.rootCount||0),0);
       ui.scanMs=results.reduce((n,r)=>n+(r.ui.scanMs||0),0);ui.expiryCandidateCount=ui.expiryCandidates.length;
       const expiry=(ui.expiryCandidates||[]).map(c=>{const parsed=parseBrokerExpiry(c.raw,c.hint);return parsed?{...c,...parsed}:null}).filter(Boolean).sort((a,b)=>b.score-a.score)[0]||null;
       ui.expirationDurationMs=expiry?.ms??null;ui.expirationRaw=expiry?.raw||null;ui.expirationKind=expiry?.kind||null;ui.expirationConfidence=expiry?.score||0;delete ui.expiryCandidates;
@@ -897,7 +902,7 @@ export class LocalPlaywrightDriver{
   }
   async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;await this.installBridge(page,provider).catch(()=>{});const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
     let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{let dom=await page.evaluate(()=>window.__sentinelReadBrokerDom?.()||{});
-      if(!dom.activeSymbol){const origin=(()=>{try{return new URL(page.url()).origin}catch{return ''}})();for(const frame of (page.frames?.()||[]).filter(f=>f!==page.mainFrame?.()).slice(0,7)){try{const u=frame.url();if(u!=='about:blank'&&u!=='about:srcdoc'&&new URL(u).origin!==origin)continue;await frame.evaluate(installBrokerAssetReader);const found=await frame.evaluate(()=>window.__sentinelReadBrokerDom?.()||{});if(found.activeSymbol){dom=found;break}}catch{}}}
+      if(!dom.activeSymbol){for(const frame of brokerFrames(page,this.config(provider).domain).filter(f=>f!==page.mainFrame?.())){try{await frame.evaluate(installBrokerAssetReader);const found=await frame.evaluate(()=>window.__sentinelReadBrokerDom?.()||{});if(found.activeSymbol){dom=found;break}}catch{}}}
       st.assetDetection={confirmed:!!dom.assetConfirmed,ambiguous:!!dom.assetAmbiguous,roots:dom.rootCount||0};accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
@@ -948,15 +953,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='11.9.1'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='11.9.2'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.9.1';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.9.2';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.9.1';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.9.2';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -1009,7 +1014,10 @@ export class LocalPlaywrightDriver{
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         const n=(v,dg=0)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{},short=m.shortModel||{};
-        const analysisTransient=d.analysisTransient===true,analysisStale=d.analysisStale===true;
+        const agentAge=d.agentHeartbeatAt==null?0:Date.now()-Number(d.agentHeartbeatAt);
+        const agentOnline=d.agentOnline!==false&&Number.isFinite(agentAge)&&agentAge<5000;
+        clearTimeout(window.__sentinelAgentWatchdog);if(agentOnline&&d.agentHeartbeatAt!=null)window.__sentinelAgentWatchdog=setTimeout(()=>window.__sentinelRenderOverlay?.({...window.__sentinelLastOverlayData,agentOnline:false}),Math.max(30,5050-agentAge));
+        const analysisTransient=d.analysisTransient===true,analysisStale=d.analysisStale===true||!agentOnline;
         const side=String(d.side||'WAIT').toUpperCase(),raw=String(q.rawSide||side||'WAIT').toUpperCase();
         const entryGateReady=q.entryReady===true;
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
@@ -1027,6 +1035,16 @@ export class LocalPlaywrightDriver{
         const liveAge=d.liveAgeMs==null?NaN:Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
         const liveLabel=analysisStale?'SINCRONIZANDO FEED':analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
         const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
+        const botAssetVerified=d.assetConfirmed!==false;
+        const botBlocked=!!(d.killSwitch||d.masterFrozen),botBusy=el.dataset.actionBusy==='1';
+        const botLabel=!agentOnline?'OFFLINE · sem conexão':botBlocked?'ONLINE · bloqueado':runtime==='error'?'ONLINE · erro':runtime==='paused'?'ONLINE · pausado':runtime!=='running'?'ONLINE · bot parado':!botAssetVerified?'ONLINE · verificando ativo':analysisFresh&&liveNow&&!analysisTransient?'ONLINE · analisando':'ONLINE · aguardando dados';
+        const botColor=!agentOnline||runtime==='error'?'#ff8f9c':runtime==='running'&&analysisFresh&&liveNow&&!botBlocked&&botAssetVerified?'#72e6b9':runtime==='paused'||botBlocked||runtime==='running'?'#ecd28d':'#aaa69f';
+        const botHint=!agentOnline?'O Agent deixou de responder. Abra o Sentinel Agent no PC.':botBlocked?'O controle de segurança bloqueou a análise.':runtime==='paused'?'Análise pausada. Clique em Retomar bot.':runtime==='stopped'?'Clique em Iniciar bot para começar.':runtime==='running'&&!botAssetVerified?'Bot ligado; o ativo selecionado no gráfico ainda não foi confirmado.':runtime==='running'&&analysisFresh&&liveNow?'Última análise '+(d.analysisAt?new Date(Number(d.analysisAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'agora')+' · sinal '+String(operational.state||'AGUARDAR'):runtime==='running'?'Bot iniciado; aguardando dados atuais do gráfico.':'Confira o diagnóstico do Agent.';
+        const startLabel=botBusy?'Aplicando…':!agentOnline?'Sem conexão':runtime==='running'?'Bot iniciado':runtime==='paused'?'Retomar bot':'Iniciar bot';
+        const currentBot=el.querySelector('[data-sentinel-role="bot-status"]');if(currentBot){currentBot.style.color=botColor;currentBot.textContent=botLabel}
+        const currentDot=el.querySelector('[data-sentinel-role="connection-dot"]');if(currentDot)currentDot.style.background=botColor;
+        const currentHint=el.querySelector('[data-sentinel-role="bot-hint"]');if(currentHint)currentHint.textContent=botHint;
+        for(const action of ['start','pause','stop']){const btn=el.querySelector('[data-sentinel-action="'+action+'"]');if(btn){btn.disabled=botBusy||!agentOnline||(action==='start'?(runtime==='running'||botBlocked):action==='pause'?runtime!=='running':runtime==='stopped');if(action==='start')btn.textContent=startLabel}}
         const planner=d.entryPlanner?.horizons||{};
         const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
@@ -1116,9 +1134,17 @@ export class LocalPlaywrightDriver{
         if(!el.dataset.controlReady){
           el.dataset.controlReady='1';
           const run=async payload=>{
-            const msg=el.querySelector('[data-sentinel-control-msg]');if(msg)msg.textContent='Aplicando…';
-            try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
-            catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
+            if(el.dataset.actionBusy==='1')return;
+            el.dataset.actionBusy='1';el.dataset.actionStatus=payload.action==='start'?'Iniciando bot…':payload.action==='pause'?'Pausando bot…':payload.action==='stop'?'Parando bot…':'Aplicando…';
+            const rerender=()=>{el.__sentinelRenderKey=null;window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData)};rerender();
+            try{
+              if(typeof window.__sentinelOverlayAction!=='function')throw new Error('Agent sem conexão. Abra o Sentinel Agent no PC.');
+              const res=await window.__sentinelOverlayAction(payload);
+              if(!res||res.ok!==true)throw new Error(res?.message||'O Agent não confirmou o comando.');
+              if(['running','paused','stopped','error'].includes(res.state))window.__sentinelLastOverlayData={...window.__sentinelLastOverlayData,state:res.state};
+              el.dataset.actionStatus=String(res.message||'Comando confirmado pelo Agent.');
+            }catch(e){el.dataset.actionStatus='Erro: '+String(e?.message||e)}
+            finally{el.dataset.actionBusy='0';rerender()}
           };
           el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon]'))el.dataset.selectLock='1'},true);
           el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
@@ -1143,14 +1169,14 @@ export class LocalPlaywrightDriver{
         const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select')))return;
 
         
-        const renderKey=JSON.stringify(d)+'|'+el.dataset.plannerHorizon+'|'+el.dataset.themePreference+'|'+el.dataset.analysisOpen;
+        const renderKey=JSON.stringify(d)+'|'+el.dataset.plannerHorizon+'|'+el.dataset.themePreference+'|'+el.dataset.analysisOpen+'|'+el.dataset.actionBusy+'|'+el.dataset.actionStatus;
         if(el.__sentinelRenderKey===renderKey)return;el.__sentinelRenderKey=renderKey;
         el.innerHTML=`
           <div data-sentinel-drag style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;padding:2px 2px 10px;border-bottom:1px solid ${panelBorder}">
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
-              <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
+              <span data-sentinel-role="connection-dot" style="width:8px;height:8px;border-radius:999px;background:${botColor};box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.9.1')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.9.2')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1167,14 +1193,18 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:12px;color:${ink}">SINAL OPERACIONAL</b><span style="font-size:11px;color:${muted}">${durationText} · ${esc(d.asset||'—')}</span></div>
             <div style="font-size:30px;font-weight:950;margin-top:7px;color:${operationalReady?operationalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
             <p style="margin:6px 0;font-size:12px;line-height:1.45;color:${ink}">${runtime!=='running'?'Inicie o bot para acompanhar a análise.':!analysisFresh||!liveNow?'Aguardando dados atuais do mesmo ativo.':esc(operationalReason)}</p>
-            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;color:${muted};font-size:12px"><span>Confiança técnica <b style="color:${goldSoft}">${analysisFresh?n(operationalTechnicalConfidence,0):'—'}%</b></span><span>Filtro <b style="color:${ink}">${n(minConfidence,0)}%</b></span></div>
+            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;color:${muted};font-size:12px"><span>Confiança técnica <b style="color:${goldSoft}">${analysisFresh&&liveNow&&!analysisTransient?n(operationalTechnicalConfidence,0):'—'}%</b></span><span>Filtro <b style="color:${ink}">${n(minConfidence,0)}%</b></span></div>
             <div data-sentinel-role="live-strength" style="display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:15px;font-weight:900"><span style="color:${callTone}">CALL ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh&&liveNow?n(generalCall,0):'—'}%</span><span style="color:${putTone}">PUT ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh&&liveNow?n(generalPut,0):'—'}%</span></div>
             <div data-sentinel-role="analysis-clock" style="margin-top:6px;font-size:10px;color:${muted}">Cotação ${liveNow?price(d.quote??operational.price??m.last):'—'} · análise ${d.analysisAt?esc(new Date(Number(d.analysisAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})):'—'}</div>
             <div style="margin-top:8px;font-size:11px;color:${muted}">Prazo da corretora: <b style="color:${expiryTone}">${expiryDurationLabel} · ${expiryLabel}</b>${operationalTrigger!=null&&operationalTrigger>0?' · gatilho '+price(operationalTrigger):''}</div>
             <div style="margin-top:5px;font-size:10px;color:${subtle}">Força técnica em %. Não é probabilidade de acerto.</div>
           </section>
-          <div style="display:flex;gap:7px;margin-top:9px"><button data-sentinel-action="start" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${callTone};font-weight:850">Iniciar</button><button data-sentinel-action="pause" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${gold};font-weight:850">Pausar</button><button data-sentinel-action="stop" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${putTone};font-weight:850">Parar</button></div>
-          <div data-sentinel-control-msg style="font-size:11px;color:${muted};margin-top:4px"></div>
+          <div style="margin-top:10px;padding:10px;border:1px solid ${panelBorder};border-radius:10px;background:${panelBg}">
+            <div data-sentinel-role="bot-status" aria-live="polite" style="font-size:12px;font-weight:900;color:${botColor}">${botLabel}</div>
+            <div data-sentinel-role="bot-hint" style="font-size:10px;color:${muted};margin-top:4px">${esc(botHint)}</div>
+            <div style="display:flex;gap:7px;margin-top:8px"><button data-sentinel-action="start" ${botBusy||!agentOnline||runtime==='running'||botBlocked?'disabled':''} style="flex:1;min-height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${runtime==='running'?'rgba(114,230,185,.10)':panelBg};color:${callTone};font-weight:850;opacity:${botBusy||!agentOnline||botBlocked?'.55':'1'}">${startLabel}</button><button data-sentinel-action="pause" ${botBusy||!agentOnline||runtime!=='running'?'disabled':''} style="flex:1;min-height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${gold};font-weight:850">Pausar</button><button data-sentinel-action="stop" ${botBusy||!agentOnline||runtime==='stopped'?'disabled':''} style="flex:1;min-height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${putTone};font-weight:850">Parar</button></div>
+            <div data-sentinel-control-msg aria-live="polite" style="font-size:11px;color:${muted};margin-top:5px">${esc(el.dataset.actionStatus||'')}</div>
+          </div>
           <button data-sentinel-toggle="analysis" style="width:100%;padding:11px;margin-top:8px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${ink};font-size:12px;font-weight:850">Detalhes das análises <span data-sentinel-arrow>${el.dataset.analysisOpen==='1'?'⌃':'⌄'}</span></button>
           <div data-sentinel-section="analysis" style="display:${el.dataset.analysisOpen==='1'?'block':'none'}">
 ${el.dataset.analysisOpen==='1'?`
