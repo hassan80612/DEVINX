@@ -153,9 +153,17 @@ function protocolScan(data,st,direction='in'){
     const aid=n(activeRaw),command=`${outer} ${inner}`.toLowerCase();
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
     if(aid!=null&&marketCommand){
-      st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
-      const selected=st.uiSymbol||st.symbol||null;
-      if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected)}
+      const now=Date.now(),selected=st.uiSymbol||st.symbol||null,key=selected?pairKey(selected):null;
+      const mapped=key?st.activeMap.get(key):null;
+      const reliableVisualSource=['click','selected-tab','dom-active','dom-single'].includes(String(st.uiSymbolSource||''));
+      const visualFresh=!!selected&&reliableVisualSource&&now-Number(st.lastUiSignalAt||0)<8000;
+      const historyRequest=/get-candles|(^|\s)candles(\s|$)/.test(command);
+      if(selected&&mapped!=null&&Number(mapped)===Number(aid)){
+        st.pageActiveId=Number(aid);st.lastPageActiveAt=now
+      }else if(selected&&mapped==null&&visualFresh&&historyRequest){
+        st.activeMap.set(key,Number(aid));st.assets.add(selected);st.activeId=Number(aid);st.pageActiveId=Number(aid);st.lastPageActiveAt=now;
+        st.marketStatus='syncing';st.marketReason='Gráfico visível identificado · carregando histórico'
+      }
       const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
     }
   }
