@@ -199,7 +199,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const higher=aggregateCandles(candles,5),higherCloses=higher.map(c=>Number(c.close));
  const m={
    fast:ema(closes,9),slow:ema(closes,21),ema50:ema(closes,50),ema200:ema(closes,200),rsi:rsi(closes,14),atr:vol,bb:bollinger(closes,20,2),momentum:momentum(closes,10),
-   sr:supportResistance(prior,50),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),trendlines:trendLines(candles),fib:fibonacci(candles,80),patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
+   sr:supportResistance(prior,50),srZones:supportResistanceZones(prior,90),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),
+   trendlines:trendLines(candles),lineQuality:trendLineQuality(prior),fib:fibonacci(candles,80),swingFib:swingFibonacci(prior,120),volatility:volatilityState(candles),
+   patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
    higherTF:{fast:ema(higherCloses,9),slow:ema(higherCloses,21),structure:marketStructure(higher),candles:higher.length},sourceCandles:candles.length,baseCandleSeconds:baseSeconds,micro
  };
  const trendUp=m.fast!=null&&m.slow!=null&&m.fast>m.slow,trendDn=m.fast!=null&&m.slow!=null&&m.fast<m.slow;
@@ -212,15 +214,33 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const bullishBody=candleBody>0,bearishBody=candleBody<0;
  const bullishReject=bullishBody&&lowerWick>Math.max(bodyAbs*.65,candleRange*.18);
  const bearishReject=bearishBody&&upperWick>Math.max(bodyAbs*.65,candleRange*.18);
- const srNearSupport=near(last,m.sr?.support,vol*.48),srNearResistance=near(last,m.sr?.resistance,vol*.48);
- const failedSupport=Number.isFinite(Number(m.sr?.support))&&Number(lastCandle.low)<Number(m.sr.support)-vol*.05&&Number(lastCandle.close)>=Number(m.sr.support);
- const failedResistance=Number.isFinite(Number(m.sr?.resistance))&&Number(lastCandle.high)>Number(m.sr.resistance)+vol*.05&&Number(lastCandle.close)<=Number(m.sr.resistance);
- const lineResistance=Number(m.trendlines?.resistance?.value),lineSupport=Number(m.trendlines?.support?.value);
+ const zoneSupport=Number(m.srZones?.support?.price??m.sr?.support),zoneResistance=Number(m.srZones?.resistance?.price??m.sr?.resistance);
+ const zoneTolerance=Math.max(Number(m.srZones?.tolerance||0),vol*.34),supportStrength=Number(m.srZones?.support?.strength||25),resistanceStrength=Number(m.srZones?.resistance?.strength||25);
+ const srNearSupport=Number.isFinite(zoneSupport)&&near(last,zoneSupport,zoneTolerance),srNearResistance=Number.isFinite(zoneResistance)&&near(last,zoneResistance,zoneTolerance);
+ const failedSupport=Number.isFinite(zoneSupport)&&Number(lastCandle.low)<zoneSupport-vol*.05&&Number(lastCandle.close)>=zoneSupport;
+ const failedResistance=Number.isFinite(zoneResistance)&&Number(lastCandle.high)>zoneResistance+vol*.05&&Number(lastCandle.close)<=zoneResistance;
+ const qualityResistance=m.lineQuality?.resistance?.quality>=45?m.lineQuality.resistance:null,qualitySupport=m.lineQuality?.support?.quality>=45?m.lineQuality.support:null;
+ const lineResistance=Number(qualityResistance?.value??m.trendlines?.resistance?.value),lineSupport=Number(qualitySupport?.value??m.trendlines?.support?.value);
+ const lineQualityUp=Number(qualityResistance?.quality||0),lineQualityDown=Number(qualitySupport?.quality||0);
  const lineBreakUp=Number.isFinite(lineResistance)&&last>lineResistance+vol*.08;
  const lineBreakDown=Number.isFinite(lineSupport)&&last<lineSupport-vol*.08;
- const srBreakUp=Number.isFinite(Number(m.sr?.resistance))&&last>Number(m.sr.resistance)+vol*.08;
- const srBreakDown=Number.isFinite(Number(m.sr?.support))&&last<Number(m.sr.support)-vol*.08;
+ const srBreakUp=Number.isFinite(zoneResistance)&&last>zoneResistance+vol*.08;
+ const srBreakDown=Number.isFinite(zoneSupport)&&last<zoneSupport-vol*.08;
  const strongBull=bullishBody&&bodyRatio>=.56,strongBear=bearishBody&&bodyRatio>=.56;
+ const volRatio=Number(m.volatility?.ratio||1),volExpanding=m.volatility?.expanding===true;
+ const emaSeparation=m.fast!=null&&m.slow!=null?Math.abs(Number(m.fast)-Number(m.slow))/Math.max(vol,1e-12):0;
+ const trendAgreement=[trendUp?1:trendDn?-1:0,m.structure.bias==='bullish'?1:m.structure.bias==='bearish'?-1:0,higherUp?1:higherDn?-1:0].filter(x=>x!==0);
+ const trendDirection=trendAgreement.length?Math.sign(trendAgreement.reduce((a,b)=>a+b,0)):0;
+ const trendAgreementPct=trendAgreement.length?Math.abs(trendAgreement.reduce((a,b)=>a+b,0))/trendAgreement.length:0;
+ const trendRegimeScore=clamp(Math.round(emaSeparation*34+trendAgreementPct*48+(volRatio>=.9&&volRatio<=1.7?8:0)),0,100);
+ const rangeRegimeScore=clamp(Math.round((1-Math.min(1,emaSeparation))*42+(m.structure.bias==='range'?34:0)+(m.volatility?.contracting?18:6)),0,100);
+ const breakoutRegimeScore=clamp(Math.round(((srBreakUp||srBreakDown||lineBreakUp||lineBreakDown)?46:0)+(volExpanding?30:0)+(bodyRatio>=.62?18:0)),0,100);
+ const reversalRegimeScore=clamp(Math.round((srNearSupport||srNearResistance?24:0)+(failedSupport||failedResistance?30:0)+(m.rsi!=null&&(m.rsi<=32||m.rsi>=68)?18:0)+(upperWick>bodyAbs*.9||lowerWick>bodyAbs*.9?16:0)),0,100);
+ const chaoticRegimeScore=clamp(Math.round((volRatio>=1.8?45:0)+(trendAgreementPct<.35?30:0)+(bodyRatio<.18&&volRatio>1.25?15:0)),0,100);
+ const regimeScores={trend:trendRegimeScore,range:rangeRegimeScore,breakout:breakoutRegimeScore,reversal:reversalRegimeScore,chaotic:chaoticRegimeScore};
+ const regimeLabel=Object.entries(regimeScores).sort((a,b)=>b[1]-a[1])[0]?.[0]||'range';
+ const regimeConfidence=Number(regimeScores[regimeLabel]||0);
+ m.regime={label:regimeLabel,confidence:regimeConfidence,scores:regimeScores,trendDirection,trendAgreementPct:Math.round(trendAgreementPct*100),volatilityRatio:volRatio};
  const mk=()=>({buy:0,sell:0,reasons:[]});
  const add=(b,side,points,reason)=>addScore(b,side,points,reason);
  const patternScore=(b,limit=2,points=16)=>{for(const p of (m.patterns||[]).slice(0,limit)){if(p.side==='BUY')add(b,'BUY',points,p.label);if(p.side==='SELL')add(b,'SELL',points,p.label)}};
