@@ -59,7 +59,7 @@ jobs:
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
-          if(!runtime.includes('_generalConsensus')||!runtime.includes('horizon_forecast_v2')||!runtime.includes('previsão futura multi-fator'))throw new Error('future_forecast_runtime_missing');
+          if(!runtime.includes('_generalConsensus')||!runtime.includes('horizon_forecast_v2')||!runtime.includes('consensusAligned')||!runtime.includes('modelConfidence'))throw new Error('future_forecast_runtime_missing');
           if(!strategy.includes("modelVersion:'future-v2'")||!strategy.includes('callProbability')||!strategy.includes('projectedPrice'))throw new Error('future_forecast_strategy_missing');
           if(!runtime.includes('Atualizando análise para o novo ativo.')||!worker.includes('resultAsset'))throw new Error('asset_switch_scenario_invalidation_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
