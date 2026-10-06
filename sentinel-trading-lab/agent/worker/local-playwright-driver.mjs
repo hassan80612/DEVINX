@@ -669,7 +669,19 @@ export class LocalPlaywrightDriver{
       st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.subscribedSymbol=null;st.subscribedActiveId=null;st.autoSelected=false;st.suggestedSymbol=null;
     }
     let targetId=st.activeMap.get(pairKey(screenSymbol));
+    const visualFresh=['click','selected-tab','dom-active','dom-single'].includes(String(st.uiSymbolSource||''))&&Date.now()-Number(st.lastUiSignalAt||0)<8000;
+    const pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<8000;
+    if(targetId==null&&visualFresh&&pageFresh){
+      targetId=Number(st.pageActiveId);
+      st.activeMap.set(pairKey(screenSymbol),targetId);
+      st.assets.add(screenSymbol)
+    }
     if(targetId==null){await this.requestBaseData(provider).catch(()=>{});await sleep(120);targetId=st.activeMap.get(pairKey(screenSymbol))}
+    if(targetId==null&&visualFresh&&st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<8000){
+      targetId=Number(st.pageActiveId);
+      st.activeMap.set(pairKey(screenSymbol),targetId);
+      st.assets.add(screenSymbol)
+    }
     if(targetId==null){st.activeId=null;st.marketStatus='syncing';st.marketReason=`Identificando o ativo da tela ${screenSymbol}`;return false}
     st.activeId=Number(targetId);
     await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(targetId),force});
