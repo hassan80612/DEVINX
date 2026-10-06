@@ -494,6 +494,13 @@ export class LocalPlaywrightDriver{
     };
     await page.addInitScript(install).catch(()=>{});
     await page.evaluate(install).catch(()=>{});
+    // IQ Option can keep already-open asset tabs inside child frames. Installing the
+    // listener only in the top document makes "+ adicionar ativo" work while a click
+    // on an existing tab can be missed. Install the same bridge in every current frame.
+    for(const frame of page.frames()){
+      if(frame===page.mainFrame())continue;
+      await frame.evaluate(install).catch(()=>{});
+    }
   }
   ingest(provider,payload,direction='in'){
     const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt};st.lastFrameAt=Date.now();let data=payload;
