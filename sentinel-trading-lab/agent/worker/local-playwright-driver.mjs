@@ -404,17 +404,28 @@ export class LocalPlaywrightDriver{
           const pairsFrom=(text)=>{
             const raw=String(text||'').toUpperCase();
             const codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);
+            const bad=new Set(['COM','GTM','WWW','HTTP','HTTPS','API','APP','ORG','NET','CDN','IMG','JS','CSS','ING']);
             const out=[];
-            for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
-            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(!bad.has(m[1])&&!bad.has(m[2])&&(codes.has(m[1])||codes.has(m[2])))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
             return [...new Set(out)];
           };
-          const selectedPair=()=>{
+          const instrumentFrom=(text)=>{
+            const src=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
+            const ps=pairsFrom(src);if(ps.length===1)return ps[0];
+            if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(src))return'';
+            let raw=src.replace(/^front\./i,'').replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+            raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
+            if(raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return'';
+            if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return'';
+            return raw
+          };
+          const selectedInstrument=()=>{
             const selectors='[aria-selected],[aria-checked],[aria-current],[data-state],[role="tab"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i]';
             const visible=el=>{try{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8}catch{return false}};
             const stateScore=el=>{let score=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')score+=120;if(node.getAttribute?.('aria-checked')==='true')score+=110;if(cur&&cur!=='false')score+=100;if(/active|selected|current|checked/.test(state))score+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))score+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')score+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)score+=5;return score};
             const ranked=[];
-            for(const el of [...document.querySelectorAll(selectors)].filter(visible)){const p=pairsFrom(el.textContent||'');if(p.length===1)ranked.push({p:p[0],score:stateScore(el)})}
+            for(const el of [...document.querySelectorAll(selectors)].filter(visible)){const p=instrumentFrom(el.textContent||'');if(p)ranked.push({p,score:stateScore(el)})}
             ranked.sort((a,b)=>b.score-a.score);
             return ranked[0]?.score>0?ranked[0].p:''
           };
@@ -427,17 +438,17 @@ export class LocalPlaywrightDriver{
           };
           document.addEventListener('click',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              if(ev.target?.closest?.('#sentinel-trading-overlay,#sentinel-trading-overlay-host'))return;
               const nodes=[];let node=ev.target;
               for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
               if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
-              for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){publish(p[0],'click');break}}
-              queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')});
+              for(const x of nodes){const p=instrumentFrom(x?.textContent||'');if(p){publish(p,'click');break}}
+              queueMicrotask(()=>{const p=selectedInstrument();if(p)publish(p,'selected-tab')});
             }catch{}
           },true);
-          const mo=new MutationObserver(()=>{try{const p=selectedPair();if(p)publish(p,'selected-tab')}catch{}});
+          const mo=new MutationObserver(()=>{try{const p=selectedInstrument();if(p)publish(p,'selected-tab')}catch{}});
           mo.observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['aria-selected','aria-checked','aria-current','data-state','class']});
-          const initial=selectedPair();if(initial)publish(initial,'selected-tab');
+          const initial=selectedInstrument();if(initial)publish(initial,'selected-tab');
         }
         if(!document.getElementById('__sentinel-amount-listener-marker')){
           const amountMarker=document.createElement('span');amountMarker.id='__sentinel-amount-listener-marker';amountMarker.style.display='none';(document.documentElement||document.body)?.appendChild(amountMarker);
