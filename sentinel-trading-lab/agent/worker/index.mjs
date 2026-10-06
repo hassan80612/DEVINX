@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='11.9.0';
+const VERSION='11.9.1';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -146,7 +146,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const currentAsset=view.liveBroker?.uiSymbol||view.liveBroker?.symbol||view.settings?.asset||'—';
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-    const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));
+    const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0));
     if(!overlayTask&&Date.now()-lastOverlayAt>=700){
       lastOverlayAt=Date.now();
     overlayTask=driver.updateOverlay?.(activeProvider,{
@@ -173,6 +173,8 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       metrics:m,
       plan:view.lastResult?.plan||{},
       nextEval:next,
+      analysisAt:view.lastEvalMs||null,
+      quote:view.liveBroker?.quote??null,
       realtime:true,
       analysisTransient:held.transient,
       analysisStale:view.liveBroker?.feedValidated===false,

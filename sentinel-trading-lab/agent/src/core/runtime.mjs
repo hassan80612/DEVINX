@@ -164,13 +164,14 @@ export class DemoTradingRuntime{
     const match=detected&&(Math.abs(remaining-durationMs)<=tolerance||(kind==='clock'&&sameClock));
     if(match&&kind==='clock')this.expirySelection={asset,durationMs,raw,targetAt};
     const expiration={detected,match,requestedMs:durationMs,brokerMs:detected?remaining:null,targetAt,kind,raw,confidence:Number(snap?.brokerExpirationConfidence||0),toleranceMs:tolerance};
-    const base={side,state:'AGUARDAR',ready:false,actionable:false,price,strength,technicalConfidence:strength,minimum,edge,combo,durationMs,trigger:null,invalidation:null,triggerMet:false,armed:false,expiration,reason:'Aguardando alinhamento entre leitura rápida e estratégias.'};
+    const blockers=[];if(side==='AGUARDAR'||general.state!=='ALINHADO')blockers.push(general.divergent?'Fluxo e estratégias divergentes.':'Fluxo e estratégias ainda sem alinhamento.');if(strength<minimum)blockers.push(`Força ${Math.round(strength)}% abaixo do filtro ${minimum}%.`);if(!detected)blockers.push('Prazo da corretora não reconhecido.');else if(!match)blockers.push('Prazo da corretora diferente do configurado.');
+    const base={callStrength:Number(general.callScore||0),putStrength:Number(general.putScore||0),blockers,side,state:'AGUARDAR',ready:false,actionable:false,price,strength,technicalConfidence:strength,minimum,edge,combo,durationMs,trigger:null,invalidation:null,triggerMet:false,armed:false,expiration,reason:'Aguardando alinhamento entre leitura rápida e estratégias.'};
     if(!Number.isFinite(price)||price<=0||!plan||snap?.feedValidated===false)return{...base,reason:'Sincronizando preço e cenário do ativo atual.'};
     if(side==='AGUARDAR'||general.state!=='ALINHADO'){
       this.operationalSetup=null;
-      return{...base,reason:general.divergent?'Leitura rápida e estratégias divergentes.':'Aguardando direção técnica e confirmação do fluxo.'};
+      return{...base,reason:blockers.join(' ')};
     }
-    if(strength<minimum)return{...base,reason:`Força técnica ${Math.round(strength)}/100 · filtro ${minimum}/100.`};
+    if(strength<minimum)return{...base,reason:blockers.join(' ')};
     if(!detected){this.operationalSetup=null;return{...base,state:'VERIFICAR PRAZO',reason:'Expiração não identificada. Confira o prazo selecionado na corretora.'}}
     if(!match){this.operationalSetup=null;return{...base,state:'AJUSTAR PRAZO',reason:`Corretora: ${Math.round(remaining/1000)}s restantes · Sentinel: ${Math.round(durationMs/1000)}s. Ajuste a expiração.`}}
     if(!plan.outlookReady)return{...base,reason:'Coletando dados suficientes para o prazo selecionado.'};
@@ -280,12 +281,12 @@ export class DemoTradingRuntime{
     let blockCode=null,blockLabel=null,blockDetail=null;
     if(!['BUY','SELL'].includes(rawSide)){
       if(shortHorizon&&!short.ready){blockCode='microflow';blockLabel='COLETANDO FLUXO';blockDetail='Aguardando microestrutura suficiente para avaliar o ponto de entrada.'}
-      else if(leaderScore<threshold){blockCode='filter';blockLabel='ABAIXO DO FILTRO';blockDetail=`Força ${Math.round(leaderScore)} pts · filtro ${Math.round(threshold)} pts.`}
+      else if(leaderScore<threshold){blockCode='filter';blockLabel='ABAIXO DO FILTRO';blockDetail=`Força ${Math.round(leaderScore)}% · filtro ${Math.round(threshold)}%.`}
       else if(shortHorizon&&short.reversalCallCandidate){blockCode='reversal_setup';blockLabel='REVERSÃO EM FORMAÇÃO — CALL';blockDetail='O movimento de baixa está perdendo força em região relevante; aguardando o gatilho curto de subida.'}
       else if(shortHorizon&&short.reversalPutCandidate){blockCode='reversal_setup';blockLabel='REVERSÃO EM FORMAÇÃO — PUT';blockDetail='O movimento de alta está perdendo força em região relevante; aguardando o gatilho curto de queda.'}
       else if(shortHorizon&&((leader==='BUY'&&short.callOverextended)||(leader==='SELL'&&short.putOverextended))){blockCode='extended';blockLabel='MOVIMENTO ESTENDIDO';blockDetail=`Viés ${leader==='BUY'?'CALL':'PUT'} existe, mas o preço já correu; aguardando um novo ponto de entrada em vez de perseguir o movimento.`}
       else if(shortHorizon&&((leader==='BUY'&&short.callReversalRisk)||(leader==='SELL'&&short.putReversalRisk))){blockCode='reversal';blockLabel='RISCO DE REVERSÃO';blockDetail='A força atingiu o filtro, mas a microestrutura indica risco de reversão.'}
-      else if(shortHorizon&&technicalEdge<15){blockCode='edge';blockLabel='VANTAGEM INSUFICIENTE';blockDetail=`Diferença CALL/PUT de ${Math.round(technicalEdge)} pts; a direção ainda não está separada o suficiente.`}
+      else if(shortHorizon&&technicalEdge<15){blockCode='edge';blockLabel='VANTAGEM INSUFICIENTE';blockDetail=`Diferença CALL/PUT de ${Math.round(technicalEdge)}%; a direção ainda não está separada o suficiente.`}
       else if(shortHorizon&&((leader==='BUY'&&short.callSetup)||(leader==='SELL'&&short.putSetup))){blockCode='preparing';blockLabel=`PREPARANDO ${leader==='BUY'?'CALL':'PUT'}`;blockDetail='Início de aceleração/setup detectado; aguardando o gatilho completo sem esperar o movimento ficar esticado.'}
       else if(shortHorizon&&((leader==='BUY'&&!short.flowReadyCall)||(leader==='SELL'&&!short.flowReadyPut))){blockCode='flow';blockLabel='AGUARDANDO FLUXO';blockDetail='Filtro atingido; falta confirmação curta do fluxo.'}
       else if(shortHorizon&&((leader==='BUY'&&!short.structureReadyCall)||(leader==='SELL'&&!short.structureReadyPut))){blockCode='structure';blockLabel='AGUARDANDO ESTRUTURA';blockDetail='Filtro atingido; falta confirmação da estrutura curta.'}

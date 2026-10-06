@@ -404,7 +404,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    return[String(seconds),{horizonSeconds:seconds,currentPrice:last,expectedMove,expectedLow:last-expectedMove,expectedHigh:last+expectedMove,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,bias,outlookReady,observedMove:recent,windowSeconds:barsBack*baseSeconds,basis:reversalMode?'reação em suporte/resistência':'rompimento + confirmação',automaticExecution:false}]
  }));
 
- if(side===SignalSide.WAIT)box.reasons.push(`entrada aguardando: CALL ${buyEffective} pts · PUT ${sellEffective} pts · filtro ${Number(minConfidence||74)} pts`);
+ if(side===SignalSide.WAIT)box.reasons.push(`entrada aguardando: CALL ${buyEffective}% · PUT ${sellEffective}% · filtro ${Number(minConfidence||74)}%`);
  if(horizon<=60000&&short.ready){
    if(short.callReversalRisk)box.reasons.push('CALL bloqueado por risco de reversão');
    if(short.putReversalRisk)box.reasons.push('PUT bloqueado por risco de reversão');
@@ -413,7 +413,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 
  return{
    side,confidence,reasons:box.reasons.slice(0,14),
-   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,basis:'cenário técnico condicional; pontos, não probabilidade',callStrength:projectedBuy,putStrength:projectedSell,trigger:Number(minConfidence||74),callGap,putGap,microPulse:micro.pulse,microReady:micro.ready},
+   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,basis:'cenário técnico condicional; força técnica em %, não probabilidade',callStrength:projectedBuy,putStrength:projectedSell,trigger:Number(minConfidence||74),callGap,putGap,microPulse:micro.pulse,microReady:micro.ready},
    finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:horizon<=60000?'contexto técnico 60s/5m + microestrutura curta':'contexto técnico + microfluxo'},
    entryPlanner:{defaultHorizonSeconds:30,horizons:planner},
    metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy}

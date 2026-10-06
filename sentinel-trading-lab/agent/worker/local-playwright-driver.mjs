@@ -11,6 +11,44 @@ const PROVIDERS={
 };
 const OTC_PREFERRED=['EUR/USD OTC','GBP/USD OTC','EUR/GBP OTC','USD/CHF OTC','EUR/JPY OTC','AUD/USD OTC','USD/CAD OTC','GBP/JPY OTC','XAU/USD OTC','ETH/USD OTC'];
 
+
+function installBrokerAssetReader(){
+  if(window.__sentinelReadBrokerDom)return;
+  const pairs=text=>{
+    const out=[],codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);
+    for(const m of String(text||'').toUpperCase().matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?|\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g)){
+      const a=m[1]||m[3],b=m[2]||m[4];if(codes.has(a)&&codes.has(b))out.push(`${a}/${b}${/OTC/.test(m[0])?' OTC':''}`);
+    }return [...new Set(out)];
+  };
+  const excluded=el=>{let n=el;while(n){if(n.id==='sentinel-trading-overlay-host'||n.id==='sentinel-trading-overlay')return true;n=n.parentElement||n.getRootNode?.().host}return false};
+  window.__sentinelReadBrokerDom=()=>{
+    const roots=[document];let visited=0;const start=performance.now();
+    for(let i=0;i<roots.length&&roots.length<24;i++){
+      const walk=document.createTreeWalker(roots[i],NodeFilter.SHOW_ELEMENT);let el;
+      while((el=walk.nextNode())&&visited++<6000&&performance.now()-start<30)if(el.shadowRoot&&!excluded(el))roots.push(el.shadowRoot);
+      if(visited>=6000||performance.now()-start>=30)break;
+    }
+    const sel='[aria-selected],[aria-checked],[aria-current],[data-state],[role="tab"],[class*="tab" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[data-test*="balance" i],[data-test*="account" i]';
+    const els=roots.flatMap(root=>[...root.querySelectorAll(sel)]).filter(el=>{if(excluded(el))return false;const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8});
+    const ranked=[];
+    for(const el of els){const text=String(el.textContent||'').trim();if(text.length>160)continue;const ps=pairs(text);if(ps.length!==1)continue;
+      let score=0,node=el;for(let i=0;i<4&&node;i++,node=node.parentElement||node.getRootNode?.().host){
+        const cls=String(node.className||''),state=String(node.getAttribute?.('data-state')||'');
+        if(node.getAttribute?.('aria-selected')==='true'||node.getAttribute?.('aria-checked')==='true')score=Math.max(score,120);
+        const current=node.getAttribute?.('aria-current');if(current&&current!=='false')score=Math.max(score,110);
+        if(/^(active|selected|current|checked)$/.test(state)||/(^|[ _-])(active|selected|current)([ _-]|$)/i.test(cls))score=Math.max(score,90);
+      }
+      if(score>=90)ranked.push({p:ps[0],score});
+    }
+    ranked.sort((a,b)=>b.score-a.score);const top=ranked[0];
+    const ambiguous=top&&ranked.some(x=>x.score===top.score&&x.p!==top.p);
+    return{activeSymbol:top&&!ambiguous?top.p:'',assetConfirmed:!!top&&!ambiguous,assetAmbiguous:!!ambiguous,rootCount:roots.length,
+      accountText:els.map(el=>String(el.textContent||'').trim()).filter(t=>t.length<240&&/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,20).join(' | '),
+      instrumentText:els.map(el=>String(el.textContent||'').trim()).filter(t=>t.length<160&&pairs(t).length===1).slice(0,30).join(' | '),
+      clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)};
+  };
+}
+
 const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
 function focusProcess(pid){
   if(process.platform!=='win32'||!pid)return;
@@ -144,7 +182,7 @@ function protocolScan(data,st,direction='in'){
       st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
       const selected=st.uiSymbol||st.symbol||null;
       if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected)}
-      const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
+      const sz=n(sizeRaw);if(sz!=null&&Number(st.activeId)===Number(aid)&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
     }
   }
 
@@ -168,15 +206,15 @@ function protocolScan(data,st,direction='in'){
     const m=(data.msg&&typeof data.msg==='object')?data.msg:data;const id=n(m.balance_id??m.balanceId??m.id);const typ=Number(m.type??m.balance_type??m.balanceType);const matchesKnown=st.balanceId!=null&&id!=null&&id===st.balanceId;const matchesMode=st.mode&&((st.mode==='real'&&typ===1)||(st.mode==='demo'&&typ===4));if(matchesKnown||matchesMode){if(typ===1)st.mode='real';if(typ===4)st.mode='demo';if(st.balanceId==null&&id!=null)st.balanceId=id;const val=n(m.amount??m.balance??m.current_balance??m.value);if(val!=null){st.balance=val;st.balanceSource='protocol:balance-changed'}}
   }
   if(outer==='candles'){
-    const aid=n(data?.msg?.active_id??data?.msg?.activeId);
-    const matches=st.activeId!=null&&(aid==null||Number(aid)===Number(st.activeId));
+    const aid=n(data?.msg?.active_id??data?.msg?.activeId)??st.candleRequestAssets?.get(String(data.request_id||''))??null;
+    const matches=st.activeId!=null&&aid!=null&&Number(aid)===Number(st.activeId);
     const arr=Array.isArray(data?.msg?.candles)?data.msg.candles:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];
     if(matches&&arr.length){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800)}}
   }
   if(outer==='candle-generated'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
-    const matches=st.activeId!=null&&(aid==null||Number(aid)===Number(st.activeId));
-    const candle=candleOf(data.msg);if(matches&&candle){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
+    const matches=st.activeId!=null&&aid!=null&&Number(aid)===Number(st.activeId);
+    const size=n(data?.msg?.size);const candle=candleOf(data.msg);if(matches&&(size==null||Number(size)===Number(st.candleSize))&&candle){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,[candle]);st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
   }
   if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){
     const rows=Array.isArray(data?.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:[data?.msg||data];
@@ -184,8 +222,7 @@ function protocolScan(data,st,direction='in'){
       if(!row||typeof row!=='object')continue;
       const aid=n(row.active_id??row.activeId??row.instrument_active_id??row.asset_id);
       if(st.activeId==null)continue;
-      if(aid!=null&&Number(aid)!==Number(st.activeId))continue;
-      if(aid==null&&rows.length>1)continue;
+      if(aid==null||Number(aid)!==Number(st.activeId))continue;
       const bid=n(row.bid),ask=n(row.ask),q=n(row.price??row.value??row.close??row.current_price??row.spot_price)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
       if(q==null)continue;
       const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at),ts=rawTs==null?Date.now():(rawTs<1e12?rawTs*1000:rawTs);
@@ -230,7 +267,7 @@ export class LocalPlaywrightDriver{
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setMarketUpdateHandler(handler){this.marketUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
-  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null});return this.live.get(provider)}
+  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),candleRequestAssets:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null});return this.live.get(provider)}
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
   async browserPath(){for(const p of findBrowser())if(await exists(p))return p;throw new Error('chrome_or_edge_not_found')}
   async session(provider){if(!this.sessions.has(provider))this.sessions.set(provider,{provider,normal:null,cdp:null,browser:null,context:null,page:null,background:false,debugPort:null,profileDir:resolve(this.dataDir,provider)});return this.sessions.get(provider)}
@@ -355,6 +392,7 @@ export class LocalPlaywrightDriver{
     return this.launchBackground(provider);
   }
   async installBridge(page,provider=null){
+    if(!page.__sentinelAssetReaderInstalled){page.__sentinelAssetReaderInstalled=true;await page.addInitScript(installBrokerAssetReader).catch(()=>{});await page.evaluate(installBrokerAssetReader).catch(()=>{})}
     if(provider&&this.overlayActionHandler&&!page.__sentinelOverlayControlExposed){
       page.__sentinelOverlayControlExposed=true;
       try{await page.exposeFunction('__sentinelOverlayAction',async payload=>this.overlayActionHandler(provider,payload||{}))}catch{}
@@ -389,34 +427,26 @@ export class LocalPlaywrightDriver{
             for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
             return [...new Set(out)];
           };
-          const selectedPair=()=>{
-            const selectors='[aria-selected],[aria-checked],[aria-current],[data-state],[role="tab"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i]';
-            const visible=el=>{try{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8}catch{return false}};
-            const stateScore=el=>{let score=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')score+=120;if(node.getAttribute?.('aria-checked')==='true')score+=110;if(cur&&cur!=='false')score+=100;if(/active|selected|current|checked/.test(state))score+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))score+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')score+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)score+=5;return score};
-            const ranked=[];
-            for(const el of [...document.querySelectorAll(selectors)].filter(visible)){const p=pairsFrom(el.textContent||'');if(p.length===1)ranked.push({p:p[0],score:stateScore(el)})}
-            ranked.sort((a,b)=>b.score-a.score);
-            return ranked[0]?.score>0?ranked[0].p:''
-          };
+          const selectedPair=()=>window.__sentinelReadBrokerDom?.().activeSymbol||'';
           let last='';
           const publish=(symbol,source)=>{
             if(!symbol||symbol===last)return;
             last=symbol;
-            window.__sentinelClickedSymbol=symbol;window.__sentinelClickedSymbolAt=Date.now();
+            if(source==='click'){window.__sentinelClickedSymbol=symbol;window.__sentinelClickedSymbolAt=Date.now()}
             try{window.__sentinelAssetChanged?.({symbol,source,at:Date.now()})}catch{}
           };
           document.addEventListener('click',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
-              const nodes=[];let node=ev.target;
-              for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
-              if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
+              const path=ev.composedPath?.()||[ev.target];if(path.some(x=>x.id==='sentinel-trading-overlay'||x.id==='sentinel-trading-overlay-host'))return;
+              const nodes=path.filter(x=>x?.matches?.('[role="tab"],[role="option"],[class*="tab" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i]'));
               for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){publish(p[0],'click');break}}
               queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')});
             }catch{}
           },true);
-          const mo=new MutationObserver(()=>{try{const p=selectedPair();if(p)publish(p,'selected-tab')}catch{}});
-          mo.observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['aria-selected','aria-checked','aria-current','data-state','class']});
+          let timer=null;const mo=new MutationObserver(records=>{if(timer||records.every(r=>r.target?.id==='sentinel-trading-overlay-host'))return;timer=setTimeout(()=>{timer=null;try{const p=selectedPair();if(p)publish(p,'selected-tab')}catch{}},120)});
+          const observe=root=>mo.observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['aria-selected','aria-checked','aria-current','data-state','class']});
+          observe(document.documentElement);
+          for(const el of [...document.querySelectorAll('*')].slice(0,6000))if(el.shadowRoot&&el.id!=='sentinel-trading-overlay-host')observe(el.shadowRoot);
           const initial=selectedPair();if(initial)publish(initial,'selected-tab');
         }
         if(!document.getElementById('__sentinel-amount-listener-marker')){
@@ -529,9 +559,8 @@ export class LocalPlaywrightDriver{
         }
       }
     }
-    // The broker page's own outbound market subscription is the source of truth for
-    // the chart selected by the user. Sentinel's direct requests are "direct-out"
-    // and therefore can never retarget the selected asset.
+    // Protocol requests are a fallback until the selected broker tab is confirmed.
+    // Other open tabs may request candles too; they must not replace the visible chart.
     if(/page-out/.test(direction)&&st.pageActiveId!=null){
       this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page'});
     }
@@ -571,8 +600,10 @@ export class LocalPlaywrightDriver{
       const feed=await this.directFeed(provider).catch(()=>null);
       const now=feed?.serverTimeSeconds?.()||Math.floor(Date.now()/1000);
       const rid=reqId('candles');
-      const modern={name:'sendMessage',msg:{name:'get-candles',version:'2.0',body:{active_id:Number(targetId),size,to:now,count:200}},request_id:rid};
-      st.lastCandleRequest={transport:'modern',symbol:targetSymbol,activeId:Number(targetId),size,to:now,at:Date.now()};
+      const count=st.candles.length>=50&&!changed?2:200;
+      st.candleRequestAssets.set(rid,Number(targetId));if(st.candleRequestAssets.size>64)st.candleRequestAssets.delete(st.candleRequestAssets.keys().next().value);
+      const modern={name:'sendMessage',msg:{name:'get-candles',version:'2.0',body:{active_id:Number(targetId),size,to:now,count}},request_id:rid};
+      st.lastCandleRequest={transport:'modern',symbol:targetSymbol,activeId:Number(targetId),requestId:rid,size,count,to:now,at:Date.now()};
       if(feed?.ready){
         try{
           const response=await feed.request(modern,6000);
@@ -583,7 +614,7 @@ export class LocalPlaywrightDriver{
       }else await this.wsSend(provider,modern).catch(()=>{});
       await sleep(120);
       if(st.candles.length<50){
-        const legacyRid=reqId('legacy-candles');
+        const legacyRid=reqId('legacy-candles');st.candleRequestAssets.set(legacyRid,Number(targetId));
         const legacy={name:'candles',msg:{active_id:Number(targetId),duration:size,chunk_size:25,from:now-(size*220),till:now},request_id:legacyRid};
         st.lastCandleRequest={transport:'legacy-fallback',symbol:targetSymbol,activeId:Number(targetId),size,to:now,at:Date.now()};
         if(feed?.ready){
@@ -596,7 +627,7 @@ export class LocalPlaywrightDriver{
           }
         }else await this.wsSend(provider,legacy).catch(()=>{});
       }
-      await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size}}},request_id:`${rid}-sub`}).catch(()=>{});
+      if(changed||!st.subscribedActiveId)await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size}}},request_id:`${rid}-sub`}).catch(()=>{});
       st.subscribedSymbol=targetSymbol;st.subscribedActiveId=Number(targetId);st.lastRequestAt=Date.now();if(st.protocol==='passive')st.protocol='active-websocket';
     }
     return st.candles.length>=50;
@@ -664,8 +695,9 @@ export class LocalPlaywrightDriver{
   async scanExecutionUi(provider){
     const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;
     try{
-      const ui=await s.page.evaluate(()=>{
-        const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
+      const scan=()=>{
+        const excluded=el=>{let node=el;while(node){if(node.id==='sentinel-trading-overlay-host'||node.id==='sentinel-trading-overlay')return true;node=node.parentElement||node.getRootNode?.().host}return false};
+        const visible=(el)=>{if(excluded(el))return false;const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
         const desc=(el)=>[el.textContent,el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.getAttribute?.('name'),el.getAttribute?.('id'),el.className].filter(Boolean).join(' ').toLowerCase();
         const all=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid]')].filter(visible);
         const score=(el,kind)=>{
@@ -684,9 +716,19 @@ export class LocalPlaywrightDriver{
         const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
         const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|[+]/.test(desc(el)))||null;
         const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|[−-]/.test(desc(el)))||null;
-        const expiryEls=[...document.querySelectorAll('input,button,[role=button],[role=spinbutton],[data-test],[data-testid],[class*="expir" i],[class*="duration" i],[class*="time" i]')].filter(visible);
+        const roots=[document],started=performance.now();let visited=0;
+        // Bounded read-only search; never scan the Sentinel's own controls.
+        for(let r=0;r<roots.length&&roots.length<24;r++){
+          const walk=document.createTreeWalker(roots[r],NodeFilter.SHOW_ELEMENT);
+          let node;while((node=walk.nextNode())&&visited++<6000&&performance.now()-started<35){
+            if(excluded(node)){walk.currentNode=node;continue}
+            if(node.shadowRoot)roots.push(node.shadowRoot);
+          }
+          if(visited>=6000||performance.now()-started>=35)break;
+        }
+        const expiryEls=roots.flatMap(root=>[...root.querySelectorAll('input,select,button,[role=button],[role=spinbutton],[data-test],[data-testid],[data-qa],[class*="expir" i],[class*="duration" i],[class*="time" i],label,[class*="expir" i] span,[class*="duration" i] span,[class*="time" i] span,[class*="expir" i] div,[class*="duration" i] div')]).filter(visible);
         const expiryHint=el=>{let out=desc(el),node=el.parentElement;for(let i=0;i<2&&node&&!['BODY','HTML'].includes(node.tagName);i++,node=node.parentElement){const text=String(node.textContent||'');if(text.length>200||node.childElementCount>6)break;out+=' '+desc(node)}return out.slice(0,900)};
-        const rawValue=el=>String(el?.value??el?.getAttribute?.('aria-valuenow')??el?.getAttribute?.('data-value')??el?.textContent??'').trim();
+        const rawValue=el=>String((el?.tagName==='SELECT'?el.selectedOptions?.[0]?.textContent:el?.value)??el?.getAttribute?.('aria-valuenow')??el?.getAttribute?.('data-value')??el?.textContent??'').trim();
         const expiryCandidates=expiryEls.map(el=>{
           const own=desc(el),hint=expiryHint(el),raw=rawValue(el);
           if(/amount|investment|investimento|stake|chart|candle|timeframe/.test(own)&&!/expir|duration|duraç|duracao|prazo/.test(own))return null;
@@ -704,9 +746,19 @@ export class LocalPlaywrightDriver{
           buyText:buy?desc(buy).slice(0,180):'',
           sellText:sell?desc(sell).slice(0,180):'',
           amountText:amount?desc(amount).slice(0,180):((plus&&minus)?'stepper +/-':''),
-          buttonCount:all.length,amountCandidateCount:amountEls.length
+          buttonCount:all.length,amountCandidateCount:amountEls.length,rootCount:roots.length,scanMs:Math.round(performance.now()-started)
         };
-      });
+      };
+      const main=s.page.mainFrame?.()||s.page;
+      const origin=(()=>{try{return new URL(s.page.url()).origin}catch{return ''}})();
+      const trusted=frame=>{try{const u=frame.url();if(u==='about:blank'||u==='about:srcdoc')return !frame.parentFrame?.()||trusted(frame.parentFrame());return new URL(u).origin===origin}catch{return false}};
+      const frames=[main,...(s.page.frames?.()||[]).filter(f=>f!==main&&trusted(f))].slice(0,8);
+      const results=[];let failedFrames=0;
+      for(const frame of frames){try{results.push({main:frame===main,ui:await frame.evaluate(scan)})}catch{failedFrames++}}
+      const ui=results.find(r=>r.main)?.ui||{buy:false,sell:false,amount:false,buttonCount:0,amountCandidateCount:0};
+      ui.expiryCandidates=results.flatMap(r=>r.ui.expiryCandidates||[]);
+      ui.frameCount=frames.length;ui.failedFrames=failedFrames;ui.rootCount=results.reduce((n,r)=>n+(r.ui.rootCount||0),0);
+      ui.scanMs=results.reduce((n,r)=>n+(r.ui.scanMs||0),0);ui.expiryCandidateCount=ui.expiryCandidates.length;
       const expiry=(ui.expiryCandidates||[]).map(c=>{const parsed=parseBrokerExpiry(c.raw,c.hint);return parsed?{...c,...parsed}:null}).filter(Boolean).sort((a,b)=>b.score-a.score)[0]||null;
       ui.expirationDurationMs=expiry?.ms??null;ui.expirationRaw=expiry?.raw||null;ui.expirationKind=expiry?.kind||null;ui.expirationConfidence=expiry?.score||0;delete ui.expiryCandidates;
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
@@ -719,6 +771,7 @@ export class LocalPlaywrightDriver{
       st.executionReady=!!(ui.buy&&ui.sell&&ui.amount&&st.mode==='demo'&&assetMatch);
       return st.executionReady
     }catch(e){
+      st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;st.expirationUpdatedAt=Date.now();
       st.executionUi={buy:false,sell:false,amount:false,assetMatch:false,error:String(e?.message||e)};
       st.executionReady=false;return false
     }
@@ -787,7 +840,7 @@ export class LocalPlaywrightDriver{
     return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
-    const st=this.state(provider),aid=Number(activeId);
+    const st=this.state(provider),aid=activeId==null?NaN:Number(activeId);
     let next=symbol?pairStrings(symbol)[0]||null:null;
     if(!next&&Number.isFinite(aid)){
       const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===aid)?.[0]||null;
@@ -795,7 +848,8 @@ export class LocalPlaywrightDriver{
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
-    if(changed&&source!=='click'&&!String(source).startsWith('protocol-page')&&current){
+    if(String(source).startsWith('protocol-page')&&['click','selected-tab','dom-active'].includes(st.uiSymbolSource)&&current)return false;
+    if(changed&&!['click','selected-tab','dom-active'].includes(source)&&!String(source).startsWith('protocol-page')&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
       st.pendingUiHits=Number(st.pendingUiHits||0)+1;
       if(st.pendingUiHits<2)return false;
@@ -830,7 +884,8 @@ export class LocalPlaywrightDriver{
     }
     if(!st.lastRequestAt||now-st.lastRequestAt>20000||st.balance==null)await this.requestBaseData(provider).catch(()=>{});
     const actualAge=latestCandleAgeMs(st);const stale=actualAge==null||actualAge>Math.max(90000,Number(st.candleSize||60)*2000);
-    if(st.candles.length<50||stale||!st.lastCandleRequest)await this.requestMarketData(provider,{force:st.candles.length<50||stale}).catch(()=>{});
+    const quoteStale=!st.lastQuoteAt||now-st.lastQuoteAt>3500;
+    if(st.candles.length<50||stale||!st.lastCandleRequest||quoteStale)await this.requestMarketData(provider,{force:st.candles.length<50||stale||quoteStale}).catch(()=>{});
     if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=`${st.symbol||'Ativo'} com candles atuais`}
     else if(st.marketStatus!=='recovering'&&st.marketStatus!=='closed'){st.marketStatus='stale';st.marketReason='Feed conectado, mas sem candle recente'}
     if(!st.lastExecutionScanAt||now-st.lastExecutionScanAt>2200){
@@ -840,22 +895,16 @@ export class LocalPlaywrightDriver{
     return this.liveStatus(provider)
   }
   async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;await this.installBridge(page,provider).catch(()=>{});const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
-    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const raw=String(t||'').toUpperCase();let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);return m?`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`:''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
+    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{let dom=await page.evaluate(()=>window.__sentinelReadBrokerDom?.()||{});
+      if(!dom.activeSymbol){const origin=(()=>{try{return new URL(page.url()).origin}catch{return ''}})();for(const frame of (page.frames?.()||[]).filter(f=>f!==page.mainFrame?.()).slice(0,7)){try{const u=frame.url();if(u!=='about:blank'&&u!=='about:srcdoc'&&new URL(u).origin!==origin)continue;await frame.evaluate(installBrokerAssetReader);const found=await frame.evaluate(()=>window.__sentinelReadBrokerDom?.()||{});if(found.activeSymbol){dom=found;break}}catch{}}}
+      st.assetDetection={confirmed:!!dom.assetConfirmed,ambiguous:!!dom.assetAmbiguous,roots:dom.rootCount||0};accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
     let nextUi=null,uiSource=null;
-    if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
-    else if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
-    else if(instrumentPairs.length===1){nextUi=instrumentPairs[0];uiSource='dom-single'}
+    if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
+    else if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
     else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
-    if(nextUi){
-      const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
-      if(changed){
-        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
-        st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;st.expirationUpdatedAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
-        st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
-      }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
-    }else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
+    if(nextUi)this.applyActiveSelection(provider,{symbol:nextUi,source:uiSource});
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     if(st.quote==null&&st.symbol){try{const q=await page.evaluate((symbol)=>{const all=[...document.querySelectorAll('body *')];const sym=all.find(el=>el.textContent?.trim()===symbol);if(!sym)return null;let node=sym;for(let d=0;d<5&&node;d++,node=node.parentElement){const txt=node.textContent||'';const nums=txt.match(/\b\d{1,5}[.,]\d{2,6}\b/g)||[];for(const x of nums){const v=Number(x.replace(',','.'));if(Number.isFinite(v)&&v>0)return v}}return null},st.symbol);if(q){st.quote=q;st.lastQuoteAt=Date.now()}}catch{}}
     return{provider,open:true,url,title,text,st};
@@ -886,7 +935,7 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);
     const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh);
     const marketStatus=candleFresh?'open':(st.marketStatus||'stale');const marketReason=candleFresh?`${st.symbol||'Ativo'} atualizado`:(st.marketReason||'Sem candle recente');
-    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,uiSymbolSource:st.uiSymbolSource,assetDetection:st.assetDetection||null,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -898,15 +947,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='11.9'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='11.9.1'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.9';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.9.1';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.9';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.9.1';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -974,7 +1023,7 @@ export class LocalPlaywrightDriver{
         const contextSell=!analysisStale&&m.sellScore!=null?Math.max(0,Math.min(100,Number(m.sellScore))):null;
         const buy=shortReady?contextBuy:null,sell=shortReady?contextSell:null;
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
-        const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
+        const liveAge=d.liveAgeMs==null?NaN:Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
         const liveLabel=analysisStale?'SINCRONIZANDO FEED':analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
         const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
         const planner=d.entryPlanner?.horizons||{};
@@ -1031,7 +1080,7 @@ export class LocalPlaywrightDriver{
           if(!card.active)return '<div style="padding:9px 10px;border-radius:11px;background:'+panelBg+';border:1px dashed '+panelBorder+';min-width:0"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:8px;font-size:10px;font-weight:850;color:'+muted+'">Não selecionada</div><div style="margin-top:5px;font-size:8px;color:'+subtle+'">Não participa da confluência.</div></div>';
           const sSide=String(card.side||'NEUTRO').toUpperCase(),sTone=sSide==='CALL'?callTone:sSide==='PUT'?putTone:warnTone;
           const why=(card.reasons||[]).slice(0,2).map(x=>esc(x)).join(' · ');
-          return '<div style="padding:9px 10px;border-radius:11px;background:'+panelBg+';border:1px solid '+panelBorder+';min-width:0"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:3px;font-size:10px;font-weight:950;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(card.label||'')+'">'+esc(card.label||'—')+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;gap:6px"><b style="font-size:14px;color:'+sTone+'">'+sSide+'</b><span style="font-size:8px;color:'+subtle+'">pontuação técnica</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(card.callPct,0)+' pts</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(card.putPct,0)+' pts</b></div></div><div style="margin-top:6px;font-size:7.5px;line-height:1.3;color:'+muted+'">'+(why||'Sem gatilho técnico forte neste ciclo.')+'</div></div>';
+          return '<div style="padding:9px 10px;border-radius:11px;background:'+panelBg+';border:1px solid '+panelBorder+';min-width:0"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:3px;font-size:10px;font-weight:950;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(card.label||'')+'">'+esc(card.label||'—')+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;gap:6px"><b style="font-size:14px;color:'+sTone+'">'+sSide+'</b><span style="font-size:8px;color:'+subtle+'">força técnica</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(card.callPct,0)+'%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(card.putPct,0)+'%</b></div></div><div style="margin-top:6px;font-size:7.5px;line-height:1.3;color:'+muted+'">'+(why||'Sem gatilho técnico forte neste ciclo.')+'</div></div>';
         }).join('');
         const strategyFinalSide=String(strategyConfluence.side||'AGUARDAR').toUpperCase();
         const strategyFinalTone=strategyFinalSide==='CALL'?callTone:strategyFinalSide==='PUT'?putTone:warnTone;
@@ -1100,7 +1149,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.9.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.9.1')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1117,9 +1166,11 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><b style="font-size:12px;color:${ink}">SINAL OPERACIONAL</b><span style="font-size:11px;color:${muted}">${durationText} · ${esc(d.asset||'—')}</span></div>
             <div style="font-size:30px;font-weight:950;margin-top:7px;color:${operationalReady?operationalTone:operationalPrepare?gold:warnTone}">${operationalDisplay}</div>
             <p style="margin:6px 0;font-size:12px;line-height:1.45;color:${ink}">${runtime!=='running'?'Inicie o bot para acompanhar a análise.':!analysisFresh||!liveNow?'Aguardando dados atuais do mesmo ativo.':esc(operationalReason)}</p>
-            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;color:${muted};font-size:12px"><span>Confiança técnica <b style="color:${goldSoft}">${analysisFresh?n(operationalTechnicalConfidence,0):'—'}/100</b></span><span>Filtro <b style="color:${ink}">${n(minConfidence,0)}/100</b></span></div>
+            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:10px;color:${muted};font-size:12px"><span>Confiança técnica <b style="color:${goldSoft}">${analysisFresh?n(operationalTechnicalConfidence,0):'—'}%</b></span><span>Filtro <b style="color:${ink}">${n(minConfidence,0)}%</b></span></div>
+            <div data-sentinel-role="live-strength" style="display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:15px;font-weight:900"><span style="color:${callTone}">CALL ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh&&liveNow?n(generalCall,0):'—'}%</span><span style="color:${putTone}">PUT ${runtime==='running'&&!d.killSwitch&&!d.masterFrozen&&analysisFresh&&liveNow?n(generalPut,0):'—'}%</span></div>
+            <div data-sentinel-role="analysis-clock" style="margin-top:6px;font-size:10px;color:${muted}">Cotação ${liveNow?price(d.quote??operational.price??m.last):'—'} · análise ${d.analysisAt?esc(new Date(Number(d.analysisAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})):'—'}</div>
             <div style="margin-top:8px;font-size:11px;color:${muted}">Prazo da corretora: <b style="color:${expiryTone}">${expiryDurationLabel} · ${expiryLabel}</b>${operationalTrigger!=null&&operationalTrigger>0?' · gatilho '+price(operationalTrigger):''}</div>
-            <div style="margin-top:5px;font-size:10px;color:${subtle}">Pontos de força técnica. O sinal depende do preço e do prazo confirmados.</div>
+            <div style="margin-top:5px;font-size:10px;color:${subtle}">Força técnica em %. Não é probabilidade de acerto.</div>
           </section>
           <div style="display:flex;gap:7px;margin-top:9px"><button data-sentinel-action="start" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${callTone};font-weight:850">Iniciar</button><button data-sentinel-action="pause" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${gold};font-weight:850">Pausar</button><button data-sentinel-action="stop" style="flex:1;min-height:36px;border:1px solid ${panelBorder};border-radius:9px;background:${panelBg};color:${putTone};font-weight:850">Parar</button></div>
           <div data-sentinel-control-msg style="font-size:11px;color:${muted};margin-top:4px"></div>
@@ -1134,18 +1185,18 @@ ${el.dataset.analysisOpen==='1'?`
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px">
             <div data-sentinel-role="confluence" style="padding:9px 9px;border-radius:12px;background:${panelBg};border:1px solid ${panelBorder};min-width:0">
               <div style="font-size:8px;font-weight:950;letter-spacing:.055em;color:${ink}">CONFLUÊNCIA TÉCNICA</div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:5px;margin-top:6px"><b style="font-size:14px;color:${finalTone}">${finalSide}</b><span style="font-size:7px;color:${subtle}">força <b style="font-size:10px;color:${gold}">${n(finalStrength,0)} pts</b></span></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(finalCall,0)} pts</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(finalPut,0)} pts</b></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:5px;margin-top:6px"><b style="font-size:14px;color:${finalTone}">${finalSide}</b><span style="font-size:7px;color:${subtle}">força <b style="font-size:10px;color:${gold}">${n(finalStrength,0)}%</b></span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(finalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(finalPut,0)}%</b></div></div>
             </div>
             <div data-sentinel-role="entry-status" style="padding:9px 9px;border-radius:12px;background:${panelBg};border:1px solid ${entryReady?tone:panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;gap:5px"><span style="font-size:8px;font-weight:950;color:${ink}">PRONTIDÃO DE ENTRADA</span><span style="font-size:7px;font-weight:900;color:${entryReady?callTone:warnTone}">${esc(gateReason)}</span></div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(statusCall,0)} pts</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(statusPut,0)} pts</b></div></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(statusCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(statusPut,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:8px;font-weight:950;color:${entryReady?tone:warnTone};text-align:center">${entryReady?signal:'AGUARDAR'}</div>
             </div>
             <div data-sentinel-role="reversal" style="padding:9px 9px;border-radius:12px;background:${panelBg};border:1px solid ${panelBorder};min-width:0">
               <div style="font-size:8px;font-weight:950;letter-spacing:.055em;color:${ink}">VIRADA / REVERSÃO</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(reversalCall,0)} pts</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(reversalPut,0)} pts</b></div></div>
-              <div style="margin-top:5px;text-align:center;font-size:8px;font-weight:950;color:${reversalSide==='CALL'?callTone:reversalSide==='PUT'?putTone:warnTone}">${reversalStrength==null?'AGUARDAR':reversalSide+' '+n(reversalStrength,0)+' pts'}</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:14px;color:${callTone}">${n(reversalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:14px;color:${putTone}">${n(reversalPut,0)}%</b></div></div>
+              <div style="margin-top:5px;text-align:center;font-size:8px;font-weight:950;color:${reversalSide==='CALL'?callTone:reversalSide==='PUT'?putTone:warnTone}">${reversalStrength==null?'AGUARDAR':reversalSide+' '+n(reversalStrength,0)+'%'}</div>
             </div>
           </div>
 
@@ -1158,12 +1209,12 @@ ${el.dataset.analysisOpen==='1'?`
               <div style="padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${panelBorder}">
                 <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONFLUÊNCIA DAS ESTRATÉGIAS</span><span style="font-size:7px;color:${subtle}">${esc(strategyAgreement)}</span></div>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${strategyFinalTone}">${strategyFinalSide}</b><span style="font-size:8px;color:${muted}">${strategyActiveCount}/3 ativas</span></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(strategyCallPct,0)} pts</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(strategyPutPct,0)} pts</b></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(strategyCallPct,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(strategyPutPct,0)}%</b></div></div>
               </div>
               <div style="padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${generalState==='ALINHADO'?generalTone:panelBorder}">
                 <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONSENSO GERAL</span><span style="font-size:7px;color:${subtle}">40% rápida · 60% estratégias</span></div>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${generalTone}">${generalSide}</b><span style="font-size:8px;font-weight:850;color:${generalState==='DIVERGÊNCIA'?putTone:generalState==='ALINHADO'?callTone:warnTone}">${generalState}</span></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(generalCall,0)} pts</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(generalPut,0)} pts</b></div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(generalCall,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(generalPut,0)}%</b></div></div>
               </div>
             </div>
 
@@ -1189,14 +1240,14 @@ ${el.dataset.analysisOpen==='1'?`
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px">
               <label><span style="display:block;font-size:8px;font-weight:800;color:${muted};margin:0 0 3px 2px">Tempo / expiração</span><select data-sentinel-setting="duration" style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:750"><option value="30000" ${duration===30000?'selected':''}>30 s</option><option value="60000" ${duration===60000?'selected':''}>1 min</option><option value="120000" ${duration===120000?'selected':''}>2 min</option><option value="300000" ${duration===300000?'selected':''}>5 min</option><option value="600000" ${duration===600000?'selected':''}>10 min</option><option value="900000" ${duration===900000?'selected':''}>15 min</option></select></label>
-              <label><span style="display:block;font-size:8px;font-weight:800;color:${muted};margin:0 0 3px 2px">Filtro · pontos</span><select data-sentinel-setting="minConfidence" title="Score mínimo de confluência. Não é probabilidade de acerto." style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:750">${![55,60,65,70,75,80,85,90,95].includes(minConfidence)?`<option value="${minConfidence}" selected>${minConfidence} pts</option>`:''}<option value="55" ${minConfidence===55?'selected':''}>55 pts</option><option value="60" ${minConfidence===60?'selected':''}>60 pts</option><option value="65" ${minConfidence===65?'selected':''}>65 pts</option><option value="70" ${minConfidence===70?'selected':''}>70 pts</option><option value="75" ${minConfidence===75?'selected':''}>75 pts</option><option value="80" ${minConfidence===80?'selected':''}>80 pts</option><option value="85" ${minConfidence===85?'selected':''}>85 pts</option><option value="90" ${minConfidence===90?'selected':''}>90 pts</option><option value="95" ${minConfidence===95?'selected':''}>95 pts</option></select></label>
+              <label><span style="display:block;font-size:8px;font-weight:800;color:${muted};margin:0 0 3px 2px">Filtro · %</span><select data-sentinel-setting="minConfidence" title="Score mínimo de confluência. Não é probabilidade de acerto." style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:750">${![55,60,65,70,75,80,85,90,95].includes(minConfidence)?`<option value="${minConfidence}" selected>${minConfidence}%</option>`:''}<option value="55" ${minConfidence===55?'selected':''}>55%</option><option value="60" ${minConfidence===60?'selected':''}>60%</option><option value="65" ${minConfidence===65?'selected':''}>65%</option><option value="70" ${minConfidence===70?'selected':''}>70%</option><option value="75" ${minConfidence===75?'selected':''}>75%</option><option value="80" ${minConfidence===80?'selected':''}>80%</option><option value="85" ${minConfidence===85?'selected':''}>85%</option><option value="90" ${minConfidence===90?'selected':''}>90%</option><option value="95" ${minConfidence===95?'selected':''}>95%</option></select></label>
             </div>
             <div style="margin-top:6px;font-size:7.5px;color:${subtle}">Os 3 cards superiores de força da vela foram mantidos. As estratégias abaixo são calculadas separadamente.</div>
           </div>
 
           <div style="margin-top:7px">
             <button data-sentinel-toggle="details" style="width:100%;border:0;background:transparent;color:${muted};padding:6px 2px;display:flex;justify-content:space-between;cursor:pointer;font-size:8.5px;font-weight:800"><span>Detalhes técnicos</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span></button>
-            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>CALL score <b>${n(buy,0)} pts</b></div><div>PUT score <b>${n(sell,0)} pts</b></div><div>Diferença <b>${n(q.technicalEdge,0)} pts</b></div><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:${muted}">${reasons}</div></div>
+            <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>CALL score <b>${n(buy,0)}%</b></div><div>PUT score <b>${n(sell,0)}%</b></div><div>Diferença <b>${n(q.technicalEdge,0)}%</b></div><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:${muted}">${reasons}</div></div>
           </div>
 
           <div style="height:12px;position:relative"><span style="position:absolute;right:-7px;bottom:-9px;color:${subtle};font-size:18px;pointer-events:none">◢</span></div>
