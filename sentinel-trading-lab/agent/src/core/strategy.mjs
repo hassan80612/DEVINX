@@ -423,7 +423,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const patternBuy=(m.patterns||[]).filter(p=>p?.side==='BUY').length,patternSell=(m.patterns||[]).filter(p=>p?.side==='SELL').length;
  const setupSignal=clamp((m.retest?.side==='BUY'?0.65:m.retest?.side==='SELL'?-0.65:0)+clamp((patternBuy-patternSell)*.22,-.44,.44)+(srBreakUp||lineBreakUp?0.25:0)-(srBreakDown||lineBreakDown?0.25:0),-1,1);
  const reversalSignalBase=clamp((Number(short.reversalCallScore||0)-Number(short.reversalPutScore||0))/75,-1,1);
- const reversalSignal=clamp(reversalSignalBase+(short.turnUp?0.28:0)-(short.turnDown?0.28:0)+(short.failedBreakDown||failedSupport?0.24:0)-(short.failedBreakUp||failedResistance?0.24:0)+(short.putOverextended?0.16:0)-(short.callOverextended?0.16:0),-1,1);
+ const reversalSignal=clamp(reversalSignalBase+(short.turnUp?0.28:0)-(short.turnDown?0.28:0)+(short.failedBreakDown||failedSupport?0.24:0)-(short.failedBreakUp||failedResistance?0.24:0)+((short.putOverextended&&(short.turnUp||short.reversalCallCandidate))?0.16:0)-((short.callOverextended&&(short.turnDown||short.reversalPutCandidate))?0.16:0),-1,1);
  const shortSlopeRaw=closes.length>=6?(last-Number(closes.at(-6)))/5:0,mediumSlopeRaw=closes.length>=21?(last-Number(closes.at(-21)))/20:shortSlopeRaw;
  const shortSlopeSignal=norm(shortSlopeRaw,safeVol*.18),mediumSlopeSignal=norm(mediumSlopeRaw,safeVol*.10);
  const accelerationSignal=clamp((shortSlopeSignal-mediumSlopeSignal)*.72,-1,1);
@@ -530,7 +530,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
      regime:m.regime,evidenceFamilies,
-     basis:'previsão futura V3 por horizonte + regime + persistência; entrada atual é separada',drivers:strongest,
+     basis:'previsão futura V3 independente do consenso atual por horizonte + regime + persistência; entrada atual é separada',drivers:strongest,
      automaticExecution:false,modelVersion:'future-v3'
    }
  };
