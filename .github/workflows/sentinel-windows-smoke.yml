@@ -61,7 +61,7 @@ jobs:
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
           if(!runtime.includes('_generalConsensus')||!runtime.includes('horizon_forecast_v2')||!runtime.includes('consensusAligned')||!runtime.includes('modelConfidence'))throw new Error('future_forecast_runtime_missing');
           if(!strategy.includes("modelVersion:'future-v2'")||!strategy.includes('callProbability')||!strategy.includes('projectedPrice'))throw new Error('future_forecast_strategy_missing');
-          if(!runtime.includes('Atualizando análise para o novo ativo.')||!worker.includes('resultAsset'))throw new Error('asset_switch_scenario_invalidation_missing');
+          if(!runtime.includes('incomingAsset&&incomingAsset!==currentAsset')||!runtime.includes('this.lastResult={asset:incomingAsset')||!worker.includes('resultAsset'))throw new Error('asset_switch_scenario_invalidation_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
           if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
