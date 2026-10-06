@@ -43,7 +43,7 @@ export class DemoTradingRuntime{
     this.broker=new DemoBrokerAdapter({balance,payout});
     this.audit=new AuditLog();
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
-    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;
+    this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.forecastDisplay=new Map();
     this.settings={
       mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,orderDurationMs:60_000,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
@@ -63,6 +63,7 @@ export class DemoTradingRuntime{
       this.settings.asset=incomingAsset;
       this.operationalSetup=null;
       this.generalConsensusDisplay=null;
+      this.forecastDisplay.clear();
       this.entryStability={side:'WAIT',since:0,count:0};
       this.entryRelease={side:'WAIT',at:0};
       this.entrySetup={side:'WAIT',kind:null,since:0};
@@ -90,12 +91,16 @@ export class DemoTradingRuntime{
       try{
         const a=analyzeMarket({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now});
         const rawCall=Math.max(0,Number(a?.metrics?.rawBuyScore||0)),rawPut=Math.max(0,Number(a?.metrics?.rawSellScore||0)),rawTotal=rawCall+rawPut;
-        const callPct=rawTotal>0?Math.max(0,Math.min(100,Math.round(rawCall/rawTotal*100))):50,putPct=100-callPct,edge=callPct-putPct;
+        const signalCallPct=rawTotal>0?Math.max(0,Math.min(100,Math.round(rawCall/rawTotal*100))):50,signalPutPct=100-signalCallPct,edge=signalCallPct-signalPutPct;
         const evidence=Math.max(0,Math.min(1,rawTotal/70));
+        // UI confidence is softened toward 50/50 when evidence is weak. This prevents a
+        // single one-sided condition (e.g. Fibonacci or Mean Reversion) from looking like 100%.
+        const displayBlend=Math.max(.12,Math.min(.88,.12+evidence*.76));
+        const callPct=Math.round(50+(signalCallPct-50)*displayBlend),putPct=100-callPct;
         const side=evidence<.12||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
         const reasons=(Array.isArray(a?.reasons)?a.reasons:[]).filter(x=>!/entrada aguardando|bloqueado por risco|fluxo \d+s|EMA micro|microestrutura/i.test(String(x))).slice(0,3);
         const regime=String(a?.metrics?.regime?.label||'unknown'),regimeConfidence=Number(a?.metrics?.regime?.confidence||0);
-        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,rawTotal,evidence,reasons,regime,regimeConfidence};
+        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,signalCallPct,signalPutPct,rawCall,rawPut,rawTotal,evidence,reasons,regime,regimeConfidence};
       }catch{
         return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:['Leitura indisponível neste ciclo']};
       }
@@ -113,10 +118,10 @@ export class DemoTradingRuntime{
       }
       seenStrategies.add(card.strategy)
     }
-    const active=cards.filter(x=>x.active&&!x.paused&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
+    const active=cards.filter(x=>x.active&&!x.paused&&Number.isFinite(Number(x.signalCallPct??x.callPct))&&Number.isFinite(Number(x.signalPutPct??x.putPct)));
     const activeCount=active.length;
     const weighted=active.filter(x=>Number(x.evidence||0)>0),weight=weighted.reduce((a,x)=>a+Number(x.evidence||0),0);
-    const callPct=weight>0?Math.round(weighted.reduce((a,x)=>a+Number(x.callPct)*Number(x.evidence||0),0)/weight):(activeCount?50:null);
+    const callPct=weight>0?Math.round(weighted.reduce((a,x)=>a+Number(x.signalCallPct??x.callPct)*Number(x.evidence||0),0)/weight):(activeCount?50:null);
     const putPct=callPct==null?null:100-callPct;
     const callVotes=weighted.filter(x=>x.side==='CALL').length,putVotes=weighted.filter(x=>x.side==='PUT').length;
     let side='AGUARDAR',agreement='SEM ESTRATÉGIAS';
@@ -176,6 +181,17 @@ export class DemoTradingRuntime{
       if(rawBias==='CALL'){plan.callProbability=Math.max(5,Math.min(95,calibratedLead));plan.putProbability=100-plan.callProbability}
       else if(rawBias==='PUT'){plan.putProbability=Math.max(5,Math.min(95,calibratedLead));plan.callProbability=100-plan.putProbability}
       plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
+      // Keep the underlying forecast untouched; smooth only the values presented in the UI.
+      // Short horizons remain responsive, long horizons require more persistence.
+      const displayKey=[asset,String(secondsKey)].join('|');
+      const previous=this.forecastDisplay.get(displayKey),freshPrevious=previous&&now-Number(previous.at||0)<15000;
+      const alpha=durationMs<=30000?.58:durationMs<=60000?.48:durationMs<=120000?.40:durationMs<=300000?.32:durationMs<=600000?.25:durationMs<=900000?.21:.16;
+      const rawDisplayCall=Math.max(5,Math.min(95,Number(plan.callProbability??50)));
+      const displayCallProbability=Math.round(freshPrevious?Number(previous.call)*(1-alpha)+rawDisplayCall*alpha:rawDisplayCall);
+      const displayPutProbability=100-displayCallProbability;
+      this.forecastDisplay.set(displayKey,{call:displayCallProbability,put:displayPutProbability,at:now});
+      plan.displayCallProbability=displayCallProbability;
+      plan.displayPutProbability=displayPutProbability;
       const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
       if(historyWeak)plan.directionReady=false;
       plan.validation={
@@ -196,7 +212,7 @@ export class DemoTradingRuntime{
       {key:'market_confluence',group:'market',label:'Confluência Técnica',call:final.callStrength,put:final.putStrength},
       {key:'market_entry',group:'market',label:'Prontidão de Entrada',call:q.technicalBuy??m.buyScore,put:q.technicalSell??m.sellScore},
       {key:'market_reversal',group:'market',label:'Virada / Reversão',call:short.reversalCallScore,put:short.reversalPutScore},
-      ...((strategyPanel?.cards||[]).filter(x=>x?.active).map(x=>({key:'strategy_'+Number(x.slot),group:'strategy',label:x.label||('Estratégia '+x.slot),call:x.callPct,put:x.putPct,evidence:Number(x.evidence)})))
+      ...((strategyPanel?.cards||[]).filter(x=>x?.active).map(x=>({key:'strategy_'+Number(x.slot),group:'strategy',label:x.label||('Estratégia '+x.slot),call:x.signalCallPct??x.callPct,put:x.signalPutPct??x.putPct,evidence:Number(x.evidence)})))
     ].map(x=>({...x,paused:paused[x.key]===true,valid:finite(x.call)&&finite(x.put)}));
     const active=sourceRows.filter(x=>!x.paused&&x.valid);
     const marketActive=active.filter(x=>x.group==='market'),strategyActive=active.filter(x=>x.group==='strategy');
