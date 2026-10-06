@@ -677,7 +677,8 @@ export class LocalPlaywrightDriver{
         for(let i=0;i<3&&p;i++){const x=map.get(p);if(!x)break;out+=' '+own(x);p=x.parentId}
         return out.toLowerCase()
       };
-      const usable=nodes.filter(n=>!n.ignored&&n.backendDOMNodeId);
+      const sentinelAx=/sentinel\s*v13|painel premium|cen[aá]rio futuro por prazo|m[eé]dia dos 3 totais|piloto autom[aá]tico/i;
+      const usable=nodes.filter(n=>!n.ignored&&n.backendDOMNodeId&&!sentinelAx.test(context(n)));
       const score=(n,kind)=>{
         const d=context(n),r=role(n);let sc=0;
         const rx=kind==='buy'?/\b(acima|higher|buy|comprar|compra|call|up)\b/i:/\b(abaixo|lower|sell|vender|venda|put|down)\b/i;
@@ -687,8 +688,9 @@ export class LocalPlaywrightDriver{
         return sc
       };
       const pick=kind=>usable.map(n=>({n,sc:score(n,kind)})).filter(x=>x.sc>=12).sort((a,b)=>b.sc-a.sc)[0]?.n||null;
-      const buy=pick('buy'),sell=pick('sell');
-      const amountRx=/investment|investimento|amount|valor|stake|aposta/i;
+      let buy=pick('buy'),sell=pick('sell');
+      if(buy?.backendDOMNodeId&&sell?.backendDOMNodeId&&Number(buy.backendDOMNodeId)===Number(sell.backendDOMNodeId)){buy=null;sell=null}
+      const amountRx=/\binvest\b|investment|investimento|amount|valor|stake|aposta/i;
       const amount=usable.map(n=>{
         const d=context(n),r=role(n);let sc=0;
         if(amountRx.test(d))sc+=12;
@@ -747,9 +749,10 @@ export class LocalPlaywrightDriver{
           const candidate=await frame.evaluate(()=>{
         const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
         const desc=(el)=>[el.textContent,el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.getAttribute?.('name'),el.getAttribute?.('id'),el.className].filter(Boolean).join(' ').toLowerCase();
-        const base=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i],[class*="trade" i]')];
-        const labelled=[...document.querySelectorAll('div,span,a')].filter(visible).filter(el=>/^(acima|abaixo|higher|lower|buy|sell|comprar|vender|up|down|\+|−)$/i.test(String(el.textContent||'').trim())).map(el=>el.closest?.('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i]')||el);
-        const all=[...new Set([...base,...labelled])].filter(visible);
+        const sentinelNode=el=>!!el?.closest?.('#sentinel-trading-overlay-host')||/sentinel\s*v13|painel premium|cen[aá]rio futuro por prazo/i.test(desc(el));
+        const base=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i],[class*="trade" i]')].filter(el=>!sentinelNode(el));
+        const labelled=[...document.querySelectorAll('div,span,a')].filter(visible).filter(el=>!sentinelNode(el)).filter(el=>/^(acima|abaixo|higher|lower|buy|sell|comprar|vender|up|down|\+|−)$/i.test(String(el.textContent||'').trim())).map(el=>el.closest?.('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i]')||el);
+        const all=[...new Set([...base,...labelled])].filter(visible).filter(el=>!sentinelNode(el));
         const score=(el,kind)=>{
           const d=desc(el);let n=0;
           const up=/(deal[-_ ]?button[-_ ]?up|button[-_ ]?up|call|higher|comprar|compra|buy|acima|up)/i;
@@ -761,11 +764,29 @@ export class LocalPlaywrightDriver{
         };
         const ranked=(kind)=>all.map(el=>({el,s:score(el,kind)})).filter(x=>x.s>=10).sort((a,b)=>b.s-a.s)[0]?.el||null;
         const buy=ranked('buy'),sell=ranked('sell');
-        const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
-        const amount=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
-        const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
-        const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|[+]/.test(desc(el)))||null;
-        const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|[−-]/.test(desc(el)))||null;
+        const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[data-testid*="investment" i],[class*="investment" i],[class*="invest" i]')].filter(visible).filter(el=>!sentinelNode(el));
+        let amount=amountEls.find(el=>/\binvest\b|amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
+        let stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|\binvest\b|valor/i.test(desc(el)));
+        let plus=stepButtons.find(el=>/increase|increment|plus|aumentar|(?:^|\s)\+(?:\s|$)/.test(desc(el)))||null;
+        let minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|(?:^|\s)[−-](?:\s|$)/.test(desc(el)))||null;
+        // IQ Option 2026 labels the stake panel "Invest". Its +/- controls may have no amount class.
+        if(!amount||!(plus&&minus)){
+          const labels=[...document.querySelectorAll('label,div,span,p')].filter(visible).filter(el=>!sentinelNode(el)).filter(el=>/^\s*(invest|investment|investimento|amount|valor|stake|aposta)\s*:?\s*$/i.test(String(el.textContent||'')));
+          outer:for(const label of labels){
+            let box=label;
+            for(let up=0;up<5&&box;up++,box=box.parentElement){
+              if(!amount){
+                const inputs=[...box.querySelectorAll('input,[role=spinbutton],[contenteditable=true]')].filter(visible);
+                amount=inputs[0]||null
+              }
+              const buttons=[...box.querySelectorAll('button,[role=button],[data-test],[data-testid]')].filter(visible).filter(el=>!sentinelNode(el));
+              const p=buttons.find(el=>/increase|increment|plus|aumentar|^\s*\+\s*$/.test(desc(el)))||null;
+              const m=buttons.find(el=>/decrease|decrement|minus|diminuir|^\s*[−-]\s*$/.test(desc(el)))||null;
+              if(p&&m){plus=plus||p;minus=minus||m}
+              if(amount||(plus&&minus))break outer
+            }
+          }
+        }
         const expiryEls=[...document.querySelectorAll('input,button,[role=button],[role=spinbutton],[data-test],[data-testid],[class*="expir" i],[class*="duration" i],[class*="time" i]')].filter(visible);
         const expiryHint=el=>{let out='',node=el;for(let i=0;i<3&&node;i++,node=node.parentElement)out+=' '+desc(node);return out.slice(0,900)};
         const rawValue=el=>String(el?.value??el?.getAttribute?.('aria-valuenow')??el?.getAttribute?.('data-value')??el?.textContent??'').trim();
@@ -863,7 +884,19 @@ export class LocalPlaywrightDriver{
               for(let i=0;i<count;i++){
                 const x=inputs.nth(i);if(!(await x.isVisible({timeout:80}).catch(()=>false)))continue;
                 const d=(await textOf(x))+' '+String(await x.getAttribute('placeholder').catch(()=>null)||'')+' '+String(await x.getAttribute('name').catch(()=>null)||'');
-                if(/amount|investment|investimento|valor|stake|invest/i.test(d)){ui.amount=true;ui.amountText=d.slice(0,180);ui.amountCandidateCount=Math.max(1,Number(ui.amountCandidateCount||0));break}
+                if(/\binvest\b|amount|investment|investimento|valor|stake/i.test(d)){ui.amount=true;ui.amountText=d.slice(0,180);ui.amountCandidateCount=Math.max(1,Number(ui.amountCandidateCount||0));break}
+              }
+              if(!ui.amount){
+                const labels=frame.getByText(/^\s*(Invest|Investment|Investimento|Amount|Valor|Stake|Aposta)\s*:?\s*$/i);
+                const lc=Math.min(await labels.count().catch(()=>0),20);
+                for(let i=0;i<lc&&!ui.amount;i++){
+                  const label=labels.nth(i);if(!(await label.isVisible({timeout:80}).catch(()=>false)))continue;
+                  for(let up=1;up<=5&&!ui.amount;up++){
+                    const box=label.locator('xpath='+'/..'.repeat(up));
+                    const input=await firstVisible(box.locator('input,[role="spinbutton"],[contenteditable="true"]'));
+                    if(input){ui.amount=true;ui.amountText=((await textOf(label))+' '+(await textOf(input))).slice(0,180);ui.amountCandidateCount=Math.max(1,Number(ui.amountCandidateCount||0))}
+                  }
+                }
               }
             }
             if(!ui.expirationDurationMs){
@@ -927,17 +960,31 @@ export class LocalPlaywrightDriver{
         const candidate=await frame.evaluate(({amount,side})=>{
       const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
       const desc=(el)=>[el.textContent,el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.getAttribute?.('name'),el.getAttribute?.('id'),el.className].filter(Boolean).join(' ').toLowerCase();
-      const base=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i],[class*="trade" i]')];
-      const labelled=[...document.querySelectorAll('div,span,a')].filter(visible).filter(el=>/^(acima|abaixo|higher|lower|buy|sell|comprar|vender|up|down|\+|−)$/i.test(String(el.textContent||'').trim())).map(el=>el.closest?.('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i]')||el);
-      const all=[...new Set([...base,...labelled])].filter(visible);
+      const sentinelNode=el=>!!el?.closest?.('#sentinel-trading-overlay-host')||/sentinel\s*v13|painel premium|cen[aá]rio futuro por prazo/i.test(desc(el));
+      const base=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i],[class*="trade" i]')].filter(el=>!sentinelNode(el));
+      const labelled=[...document.querySelectorAll('div,span,a')].filter(visible).filter(el=>!sentinelNode(el)).filter(el=>/^(acima|abaixo|higher|lower|buy|sell|comprar|vender|up|down|\+|−)$/i.test(String(el.textContent||'').trim())).map(el=>el.closest?.('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i]')||el);
+      const all=[...new Set([...base,...labelled])].filter(visible).filter(el=>!sentinelNode(el));
       const rx=side==='BUY'?/(deal[-_ ]?button[-_ ]?up|button[-_ ]?up|call|higher|comprar|compra|buy|acima|up)/i:/(deal[-_ ]?button[-_ ]?down|button[-_ ]?down|put|lower|vender|venda|sell|abaixo|down)/i;
       const target=all.map(el=>({el,d:desc(el)})).filter(x=>rx.test(x.d)).sort((a,b)=>((b.el.tagName==='BUTTON'?3:0)+(b.el.getAttribute?.('role')==='button'?2:0))-((a.el.tagName==='BUTTON'?3:0)+(a.el.getAttribute?.('role')==='button'?2:0)))[0]?.el||null;
-      const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
-      let input=amountEls.find(el=>/amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
+      const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[data-testid*="investment" i],[class*="investment" i],[class*="invest" i]')].filter(visible).filter(el=>!sentinelNode(el));
+      let input=amountEls.find(el=>/\binvest\b|amount|investment|investimento|valor|stake|deal[-_ ]?amount|money/i.test(desc(el)))||amountEls.find(el=>el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')||null;
       if(input&&input.tagName!=='INPUT'&&input.querySelector)input=input.querySelector('input,[role=spinbutton],[contenteditable=true]')||input;
-      const stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|valor/i.test(desc(el)));
-      const plus=stepButtons.find(el=>/increase|increment|plus|aumentar|[+]/.test(desc(el)))||null;
-      const minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|[−-]/.test(desc(el)))||null;
+      let stepButtons=all.filter(el=>/increase|decrease|increment|decrement|plus|minus|aumentar|diminuir|amount|investment|investimento|\binvest\b|valor/i.test(desc(el)));
+      let plus=stepButtons.find(el=>/increase|increment|plus|aumentar|(?:^|\s)\+(?:\s|$)/.test(desc(el)))||null;
+      let minus=stepButtons.find(el=>/decrease|decrement|minus|diminuir|(?:^|\s)[−-](?:\s|$)/.test(desc(el)))||null;
+      if(!input||!(plus&&minus)){
+        const labels=[...document.querySelectorAll('label,div,span,p')].filter(visible).filter(el=>!sentinelNode(el)).filter(el=>/^\s*(invest|investment|investimento|amount|valor|stake|aposta)\s*:?\s*$/i.test(String(el.textContent||'')));
+        outer:for(const label of labels){
+          let box=label;
+          for(let up=0;up<5&&box;up++,box=box.parentElement){
+            if(!input)input=[...box.querySelectorAll('input,[role=spinbutton],[contenteditable=true]')].filter(visible)[0]||null;
+            const buttons=[...box.querySelectorAll('button,[role=button],[data-test],[data-testid]')].filter(visible).filter(el=>!sentinelNode(el));
+            const p=buttons.find(el=>/increase|increment|plus|aumentar|^\s*\+\s*$/.test(desc(el)))||null,m=buttons.find(el=>/decrease|decrement|minus|diminuir|^\s*[−-]\s*$/.test(desc(el)))||null;
+            if(p&&m){plus=plus||p;minus=minus||m}
+            if(input||(plus&&minus))break outer
+          }
+        }
+      }
       if(!target||(!input&&!(plus&&minus)))return{ok:false,error:'trade_controls_missing',target:!!target,amount:!!input,stepper:!!(plus&&minus)};
       let amountControl='';
       if(input){
