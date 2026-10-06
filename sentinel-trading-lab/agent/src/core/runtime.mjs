@@ -172,7 +172,7 @@ export class DemoTradingRuntime{
       const rawBias=['CALL','PUT'].includes(String(plan.bias||'').toUpperCase())?String(plan.bias).toUpperCase():'NEUTRO';
       const durationMs=Math.max(10000,Number(secondsKey||plan.horizonSeconds||30)*1000);
       const regime=String(plan?.regime?.label||analysis?.metrics?.regime?.label||'unknown');
-      const modelKey='future-v4:'+combo+':'+regime;
+      const modelKey='future-v4.1:'+combo+':'+regime,legacyModelKey='future-v4:'+combo+':'+regime;
       plan.rawBias=rawBias;
       plan.asset=asset;
       plan.generatedAt=now;
@@ -187,7 +187,7 @@ export class DemoTradingRuntime{
           :50;
       if(plan.outlookReady===true&&rawBias!=='NEUTRO'&&Number.isFinite(Number(snap?.price))&&Number(snap.price)>0){
         this._queueSignalCandidate({
-          kind:'horizon_forecast_v4',
+          kind:'horizon_forecast_v41',
           side:rawBias==='CALL'?'BUY':'SELL',
           confidence:plan.modelConfidence,
           probability:rawLeadProbability,
@@ -198,9 +198,22 @@ export class DemoTradingRuntime{
           now
         })
       }
-      const validation=this._validationStats(this._validationKey('horizon_forecast_v4',asset,durationMs,modelKey));
-      const historyWeight=validation.samples<20?0:Math.min(.72,Math.max(0,(validation.samples-20)/180*.72));
-      const empirical=Number(validation.smoothedWinRate||50);
+      // V13.1: calibração principal por ativo/prazo/regime + calibração adicional pela faixa
+      // de probabilidade. O V4 antigo entra somente como prior fraco enquanto o V4.1 ainda
+      // não acumulou amostras suficientes, evitando apagar o aprendizado anterior.
+      const validationKey=this._validationKey('horizon_forecast_v41',asset,durationMs,modelKey);
+      const validation=this._validationStats(validationKey);
+      const bucket=this._probabilityBucket(rawLeadProbability);
+      const bucketValidation=this._validationStats(validationKey,{bucket});
+      const legacyValidation=this._validationStats(this._validationKey('horizon_forecast_v4',asset,durationMs,legacyModelKey));
+      const baseWeight=validation.samples<20?0:Math.min(.50,Math.max(0,(validation.samples-20)/180*.50));
+      const bucketWeight=bucketValidation.samples<12?0:Math.min(.22,Math.max(0,(bucketValidation.samples-12)/88*.22));
+      const legacyWeight=validation.samples>=20||legacyValidation.samples<20?0:Math.min(.18,Math.max(0,(legacyValidation.samples-20)/180*.18));
+      const historyWeight=Math.min(.72,baseWeight+bucketWeight+legacyWeight);
+      const empiricalWeight=baseWeight+bucketWeight+legacyWeight;
+      const empirical=empiricalWeight>0
+        ?(Number(validation.smoothedWinRate||50)*baseWeight+Number(bucketValidation.smoothedWinRate||50)*bucketWeight+Number(legacyValidation.smoothedWinRate||50)*legacyWeight)/empiricalWeight
+        :50;
       const calibratedLead=historyWeight>0?Math.round(rawLeadProbability*(1-historyWeight)+empirical*historyWeight):Math.round(rawLeadProbability);
       const calibratedConfidence=historyWeight>0?Math.round(plan.modelConfidence*(1-historyWeight)+empirical*historyWeight):Math.round(plan.modelConfidence);
       if(rawBias==='CALL'){plan.callProbability=Math.max(5,Math.min(95,calibratedLead));plan.putProbability=100-plan.callProbability}
@@ -211,14 +224,46 @@ export class DemoTradingRuntime{
       plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
       const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
       if(historyWeak)plan.directionReady=false;
+
+      // Mede separadamente somente previsões fortes, equivalentes ao que pode virar decisão travada.
+      const displayLead=stable.side==='CALL'?stable.callPct:stable.side==='PUT'?stable.putPct:0;
+      const decisionEligible=plan.directionReady===true&&['CALL','PUT'].includes(stable.side)&&stable.side===rawBias&&displayLead>=70&&plan.confidence>=60&&Number(plan.agreement||0)>=55;
+      const decisionModelKey='decision-v13.1:'+combo+':'+regime;
+      if(decisionEligible&&Number.isFinite(Number(snap?.price))&&Number(snap.price)>0){
+        this._queueSignalCandidate({
+          kind:'horizon_decision_v13_1',
+          side:stable.side==='CALL'?'BUY':'SELL',
+          confidence:plan.confidence,
+          probability:displayLead,
+          regime,
+          referencePrice:Number(snap.price),
+          asset,durationMs,
+          strategy:decisionModelKey,
+          now
+        })
+      }
+      const decisionValidation=this._validationStats(this._validationKey('horizon_decision_v13_1',asset,durationMs,decisionModelKey));
+      const payout=Number(snap?.payout);
+      const economicBreakEven=Number.isFinite(payout)&&payout>0?100/(1+payout):null;
+      const economicFloor=economicBreakEven==null?52:Math.max(52,economicBreakEven+2);
+      const decisionHistoryWeak=decisionValidation.samples>=decisionValidation.minSamples&&decisionValidation.smoothedWinRate<economicFloor;
+      if(decisionHistoryWeak)plan.directionReady=false;
+
       plan.validation={
-        samples:validation.samples,wins:validation.wins,losses:validation.losses,
+        samples:validation.samples,wins:validation.wins,losses:validation.losses,draws:validation.draws,
         winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,
         avgPredicted:validation.avgPredicted,brierScore:validation.brierScore,
         calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),
-        calibrated:historyWeight>0,historyWeak,regime
+        calibrated:historyWeight>0,historyWeak,regime,
+        bucket,bucketSamples:bucketValidation.samples,bucketWinRate:bucketValidation.winRate,bucketSmoothedWinRate:bucketValidation.smoothedWinRate,
+        legacyPriorWeight:Math.round(legacyWeight*100),
+        decisionSamples:decisionValidation.samples,decisionWins:decisionValidation.wins,decisionLosses:decisionValidation.losses,decisionDraws:decisionValidation.draws,
+        decisionWinRate:decisionValidation.winRate,decisionSmoothedWinRate:decisionValidation.smoothedWinRate,decisionBrierScore:decisionValidation.brierScore,
+        decisionHistoryWeak,economicBreakEven:economicBreakEven==null?null:Math.round(economicBreakEven*10)/10,
+        confidenceSource:historyWeight>0?'calibrated':'model'
       };
-      plan.basis='previsão futura V4 calibrada por horizonte/regime/histórico · exibição estabilizada'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
+      plan.modelVersion='future-v4.1';
+      plan.basis='previsão futura V4.1 calibrada por horizonte/regime/faixa de confiança · diversidade de evidências · exibição estabilizada'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
       plan.consensusSources=['previsão bruta '+rawBias+' '+Math.round(rawLeadProbability)+'% · exibição '+String(plan.displayBias||'NEUTRO')+' '+Math.round(plan.displayBias==='CALL'?plan.displayCallProbability:plan.displayBias==='PUT'?plan.displayPutProbability:50)+'%','leitura atual '+generalSide]
     }
   }
@@ -398,8 +443,15 @@ export class DemoTradingRuntime{
       maxDrawdownPct:this.settings.risk.maxDrawdownPct,cooldownUntil:this.state.cooldownUntil,executionError:this.state.executionError,humanConfirmed:false};
   }
   _validationKey(kind,asset,durationMs,strategy){return ['micro-v4',kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence')].join('|')}
-  _validationStats(key){
-    const rows=this.signalValidation.outcomes.filter(x=>x.key===key&&x.settlementQuality!=='approx').slice(-300);
+  _probabilityBucket(probability){
+    const p=Math.max(0,Math.min(100,Number(probability)||0));
+    if(p>=90)return'90-100';if(p>=80)return'80-89';if(p>=70)return'70-79';if(p>=60)return'60-69';return'0-59'
+  }
+  _validationStats(key,{bucket=null}={}){
+    const exact=this.signalValidation.outcomes.filter(x=>x.key===key&&x.settlementQuality!=='approx');
+    const scoped=bucket==null?exact:exact.filter(x=>(x.probabilityBucket||this._probabilityBucket(x.probability))===bucket);
+    const draws=scoped.filter(x=>x.draw===true||x.won==null).length;
+    const rows=scoped.filter(x=>x.won===true||x.won===false).slice(-300);
     const samples=rows.length,wins=rows.filter(x=>x.won===true).length,losses=rows.filter(x=>x.won===false).length,winRate=samples?Math.round(wins/samples*1000)/10:0;
     const minSamples=Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30));
     const minWinRate=Math.max(55,Number(this.settings.risk.signalValidationMinWinRate||60));
@@ -408,7 +460,7 @@ export class DemoTradingRuntime{
     const avgPredicted=probabilityRows.length?Math.round(probabilityRows.reduce((a,x)=>a+Number(x.probability),0)/probabilityRows.length*10)/10:null;
     const brierScore=probabilityRows.length?Math.round(probabilityRows.reduce((a,x)=>{const p=Math.max(0,Math.min(1,Number(x.probability)/100)),y=x.won===true?1:0;return a+(p-y)**2},0)/probabilityRows.length*10000)/10000:null;
     const calibrationError=avgPredicted==null?null:Math.round(Math.abs(avgPredicted-winRate)*10)/10;
-    return{key,samples,wins,losses,winRate,smoothedWinRate,avgPredicted,brierScore,calibrationError,minSamples,minWinRate,ready:samples>=minSamples&&smoothedWinRate>=minWinRate}
+    return{key,bucket,samples,wins,losses,draws,winRate,smoothedWinRate,avgPredicted,brierScore,calibrationError,minSamples,minWinRate,ready:samples>=minSamples&&smoothedWinRate>=minWinRate}
   }
   _priceAtExpiry(snap,dueAt,now=Date.now()){
     const rows=(Array.isArray(snap?.quoteHistory)?snap.quoteHistory:[]).map(x=>({ts:Number(x?.ts),price:Number(x?.price)})).filter(x=>Number.isFinite(x.ts)&&Number.isFinite(x.price)&&x.price>0).sort((a,b)=>a.ts-b.ts);
@@ -428,8 +480,10 @@ export class DemoTradingRuntime{
       if(String(p.asset||'').toUpperCase()!==asset){if(now-dueAt<15000)keep.push(p);continue}
       const atExpiry=this._priceAtExpiry(snap,dueAt,now);
       if(!atExpiry){if(now-dueAt<15000)keep.push(p);continue}
-      const won=p.side==='BUY'?atExpiry.price>Number(p.referencePrice):atExpiry.price<Number(p.referencePrice);
-      this.signalValidation.outcomes.push({...p,settledAt:atExpiry.ts,settledPrice:atExpiry.price,settlementQuality:atExpiry.quality,settlementOffsetMs:atExpiry.offsetMs,won});
+      const referencePrice=Number(p.referencePrice),delta=Number(atExpiry.price)-referencePrice,epsilon=Math.max(1e-12,Math.abs(referencePrice)*1e-10);
+      const draw=Math.abs(delta)<=epsilon;
+      const won=draw?null:(p.side==='BUY'?delta>0:delta<0);
+      this.signalValidation.outcomes.push({...p,settledAt:atExpiry.ts,settledPrice:atExpiry.price,settlementQuality:atExpiry.quality,settlementOffsetMs:atExpiry.offsetMs,won,draw});
     }
     this.signalValidation.pending=keep.slice(-200);
     this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-1000);
@@ -445,7 +499,8 @@ export class DemoTradingRuntime{
     this.signalValidation.pending.push({
       key,kind,asset:String(asset||'—'),durationMs:requestedDuration,settleDurationMs:actualDuration,
       strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),
-      probability:Number.isFinite(Number(probability))?Math.max(0,Math.min(100,Number(probability))):null,regime:regime||null,
+      probability:Number.isFinite(Number(probability))?Math.max(0,Math.min(100,Number(probability))):null,
+      probabilityBucket:Number.isFinite(Number(probability))?this._probabilityBucket(probability):null,regime:regime||null,
       referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+actualDuration,expirationSource:expirationSource||null
     });
     this.signalValidation.pending=this.signalValidation.pending.slice(-240);
