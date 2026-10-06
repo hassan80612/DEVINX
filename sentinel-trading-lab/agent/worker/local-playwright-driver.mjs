@@ -1027,6 +1027,9 @@ export class LocalPlaywrightDriver{
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
+    const pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<5000;
+    const mappedBefore=st.activeMap.get(key);
+    if(source!=='click'&&!String(source).startsWith('protocol-page')&&pageFresh&&mappedBefore!=null&&Number(mappedBefore)!==Number(st.pageActiveId))return false;
     if(Number.isFinite(aid)){st.activeMap.set(key,aid);st.assets.add(next)}
     if(changed&&source!=='click'&&!String(source).startsWith('protocol-page')&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
@@ -1084,6 +1087,10 @@ export class LocalPlaywrightDriver{
     else if(domActive.length===1){nextUi=domActive[0];uiSource='dom-active'}
     else if(instrumentPairs.length===1){nextUi=instrumentPairs[0];uiSource='dom-single'}
     else if(st.uiSymbol&&instrumentPairs.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
+    if(nextUi&&uiSource!=='click'){
+      const mapped=st.activeMap.get(pairKey(nextUi)),pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<5000;
+      if(pageFresh&&mapped!=null&&Number(mapped)!==Number(st.pageActiveId)){nextUi=null;uiSource=null}
+    }
     if(nextUi){
       const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
