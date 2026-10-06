@@ -1385,9 +1385,7 @@ export class LocalPlaywrightDriver{
         const futurePutPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.displayPutProbability??plannerPlan?.putProbability??50))):50;
         let futureDisplayThreshold=70;
         try{const saved=Number(localStorage.getItem('sentinel-future-display-threshold-v13'));if(Number.isFinite(saved))futureDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
-        const futureReliabilityReady=plannerReadable&&plannerPlan?.reliabilityReady===true&&plannerConfirmed&&futureConfidence>=60&&Number(plannerPlan?.agreement||0)>=55&&plannerPlan?.consensusAligned===true;
-        const futureReliabilityReason=plannerReadable?String(plannerPlan?.reliabilityBlockReason||'').trim():'';
-        const candidateOutlook=!plannerReadable?'SEM LEITURA':!futureReliabilityReady?'AGUARDAR':!analysisStale&&futureCallPct>=futureDisplayThreshold&&futureCallPct>futurePutPct?'CALL':!analysisStale&&futurePutPct>=futureDisplayThreshold&&futurePutPct>futureCallPct?'PUT':'AGUARDAR';
+        const candidateOutlook=!plannerReadable?'SEM LEITURA':!analysisStale&&futureCallPct>=futureDisplayThreshold&&futureCallPct>futurePutPct?'CALL':!analysisStale&&futurePutPct>=futureDisplayThreshold&&futurePutPct>futureCallPct?'PUT':'AGUARDAR';
         const futureProjectedPrice=plannerReadable&&Number.isFinite(Number(plannerPlan?.projectedPrice))?Number(plannerPlan.projectedPrice):null;
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureSamples=plannerReadable?Math.max(0,Number(plannerPlan?.validation?.samples||0)):0;
@@ -1435,11 +1433,9 @@ export class LocalPlaywrightDriver{
           const ownPct=futureDecision.side==='CALL'?futureCallPct:futurePutPct,oppositePct=futureDecision.side==='CALL'?futurePutPct:futureCallPct;
           const oppositeSide=futureDecision.side==='CALL'?'PUT':'CALL';
           const strongInvalidation=plannerConfirmed&&candidateOutlook===oppositeSide&&oppositePct>=Math.max(72,futureDisplayThreshold+8)&&futureConfidence>=68&&futureAgreement>=62&&(oppositePct-ownPct)>=16;
-          const reliabilityLost=!futureReliabilityReady;
           futureDecision.invalidations=strongInvalidation?Number(futureDecision.invalidations||0)+1:0;
-          futureDecision.reliabilityMisses=reliabilityLost?Number(futureDecision.reliabilityMisses||0)+1:0;
           futureDecision.lastCheckedAt=decisionNow;
-          if(futureDecision.invalidations>=2||futureDecision.reliabilityMisses>=2){
+          if(futureDecision.invalidations>=2){
             try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
           }else{
             try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
@@ -1460,7 +1456,7 @@ export class LocalPlaywrightDriver{
         if(!futureDecision&&decisionEligible){
           futureDecision={
             asset:decisionAsset,seconds:decisionSeconds,side:candidateOutlook,lockedAt:decisionNow,targetAt:decisionNow+decisionSeconds*1000,
-            confidence:futureConfidence,callPct:futureCallPct,putPct:futurePutPct,agreement:futureAgreement,invalidations:0,reliabilityMisses:0,feedPausedAt:0
+            confidence:futureConfidence,callPct:futureCallPct,putPct:futurePutPct,agreement:futureAgreement,invalidations:0,feedPausedAt:0
           };
           try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
         }
@@ -1484,12 +1480,12 @@ export class LocalPlaywrightDriver{
           '</div>'+
           '<div style="font-size:9.1px;color:'+muted+';margin-bottom:4px;line-height:1.32;white-space:normal;overflow-wrap:anywhere">Agora <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b>'+(futureProjectedPrice!=null?' · projeção <b style="color:'+outlookTone+'">'+price(futureProjectedPrice)+'</b>':'')+' · acordo '+n(futureAgreement,0)+'% · regime '+esc(futureRegime)+(futureRegimeConfidence?' '+n(futureRegimeConfidence,0)+'%':'')+(futureSamples?' · hist '+futureSamples:'')+(futureBucketSamples?' · faixa '+futureBucketSamples+(futureBucketWinRate!=null?' / '+n(futureBucketWinRate,0)+'%':''):'')+(futureDecisionSamples?' · decisões '+futureDecisionSamples+(futureDecisionWinRate!=null?' / '+n(futureDecisionWinRate,0)+'%':''):'')+(futureBrier!=null?' · Brier '+n(futureBrier,3):'')+(futureDiversity?' · '+futureDiversity+' famílias':'')+(futureCorrelationPenalty?' · corr −'+futureCorrelationPenalty:'')+'</div>'+
           '<div style="font-size:8.5px;color:'+subtle+';margin-bottom:6px;line-height:1.35;white-space:normal;overflow-wrap:anywhere">Motores: '+esc(futureDrivers.length?futureDrivers.join(' · '):'aguardando evidências do prazo')+'</div>'+
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;opacity:'+(futureReliabilityReady?'1':'.42')+'">'+
-            '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:'+callTone+';font-weight:800">CALL — '+(futureReliabilityReady?'gatilho':'referência')+'</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">'+(futureReliabilityReady?'invalida &lt; ':'bloqueado até confirmação · ')+price(plannerPlan.callInvalidation)+'</div></div>'+
-            '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8px;color:'+putTone+';font-weight:800">PUT — '+(futureReliabilityReady?'gatilho':'referência')+'</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">'+(futureReliabilityReady?'invalida &gt; ':'bloqueado até confirmação · ')+price(plannerPlan.putInvalidation)+'</div></div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+
+            '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:'+callTone+';font-weight:800">CALL — gatilho</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
+            '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8px;color:'+putTone+';font-weight:800">PUT — gatilho</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &gt; '+price(plannerPlan.putInvalidation)+'</div></div>'+
           '</div>'+
           '<div style="margin-top:6px;font-size:8.4px;line-height:1.38;color:'+muted+';min-height:22px"><b style="color:'+ink+'">CALL:</b> '+esc(plannerPlan.callRule||'—')+' · <b style="color:'+ink+'">PUT:</b> '+esc(plannerPlan.putRule||'—')+'</div>'+
-          '<div style="margin-top:5px;font-size:8.4px;line-height:1.38;color:'+muted+';min-height:22px">'+(futureReliabilityReady?'Cenário confirmado: '+esc(plannerPlan.basis||'confluência técnica')+'.':'AGUARDAR: gatilhos bloqueados'+(futureReliabilityReason?' · '+esc(futureReliabilityReason):' até direção, confiança, acordo e consenso ficarem confirmados')+'. '+esc(plannerPlan.basis||'leitura técnica em formação')+'.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
+          '<div style="margin-top:5px;font-size:8.4px;line-height:1.38;color:'+muted+';min-height:22px">'+(plannerConfirmed?'Cenário confirmado: '+esc(plannerPlan.basis||'confluência técnica')+'.':'Cenário em formação: '+esc(plannerPlan.basis||'leitura técnica disponível')+'.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
         ):'<div style="font-size:9px;color:'+muted+'">Sem níveis acionáveis até a leitura deste prazo ficar atual.</div>';
         const strategyCardsHtml=[1,2,3].map(slot=>{
           const card=strategyCards.find(x=>Number(x?.slot)===slot)||{slot,active:false,label:'Estratégia não selecionada'};
