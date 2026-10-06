@@ -143,3 +143,11 @@ test('Future overlay requires planner asset identity and a fresh post-switch ana
   assert.ok(ui.includes("plannerGeneratedAt>assetChangedAt"));
   assert.ok(ui.includes("plannerReadable=!assetJustChanged"));
 });
+
+
+test('IQ asset bridge is installed in already-open child frames', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes('for(const frame of page.frames())'));
+  assert.ok(ui.includes('if(frame===page.mainFrame())continue'));
+  assert.ok(ui.includes('await frame.evaluate(install).catch(()=>{})'));
+});
