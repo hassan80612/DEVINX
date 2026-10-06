@@ -463,16 +463,20 @@ export class DemoTradingRuntime{
     gated.generalConsensus=this._generalConsensus(gated,strategyPanel);
     this._mergeScenarioConfluence(gated,strategyPanel,snap,now);
     gated.operationalSignal=this._operationalSignalState(gated,snap,now);
-    if(!['BUY','SELL'].includes(rawSide)){gated.automationBlocked=true;gated.automationBlockReason=blockCode;return{allowed:false,analysis:gated,reasons:[blockDetail||'Aguardando confirmação da estratégia.']}}
-    if(!stable||reversalBlocked){gated.automationBlocked=true;gated.automationBlockReason=blockCode;return{allowed:false,analysis:gated,reasons:[blockDetail||'Aguardando confirmação da entrada.']}}
     const operationalSide=String(gated.operationalSignal?.side||'').toUpperCase()==='CALL'?'BUY':String(gated.operationalSignal?.side||'').toUpperCase()==='PUT'?'SELL':'WAIT';
-    if(gated.operationalSignal?.actionable!==true||operationalSide!==rawSide){
+    if(gated.operationalSignal?.actionable!==true||!['BUY','SELL'].includes(operationalSide)){
       gated.automationBlocked=true;
       gated.automationBlockReason='operational_timing';
-      return{allowed:false,analysis:gated,reasons:[String(gated.operationalSignal?.reason||'Aguardando consenso, gatilho fixo e timing do prazo.')]}
+      return{allowed:false,analysis:gated,reasons:[String(gated.operationalSignal?.reason||blockDetail||'Aguardando Future, consenso dos 6, gatilho e timing.')]}
     }
-    this.entryRelease={side:rawSide,at:now};
-    if(!confirmed.ready)gated.reasons=[...(gated.reasons||[]),`Histórico ${confirmed.samples}/${confirmed.minSamples} · ${confirmed.winRate}%: em validação, sem bloquear a leitura técnica.`].slice(0,14);
+    // A execução segue a decisão final (Future + 6 leituras + gatilho), não um veto oculto da estratégia 1.
+    gated.side=operationalSide;
+    gated.confidence=Math.max(Number(gated.confidence||0),Number(gated.operationalSignal?.strength||0));
+    gated.automationBlocked=false;
+    gated.automationBlockReason=null;
+    this.entryRelease={side:operationalSide,at:now};
+    const opValidation=gated.operationalSignal?.validation;
+    if(opValidation&&!opValidation.ready)gated.reasons=[...(gated.reasons||[]),`Sinal operacional: histórico ${opValidation.samples}/${opValidation.minSamples} · ${opValidation.winRate}% em calibração.`].slice(0,14);
     return{allowed:true,analysis:gated}
   }
   _bootstrapSignalValidation(){
