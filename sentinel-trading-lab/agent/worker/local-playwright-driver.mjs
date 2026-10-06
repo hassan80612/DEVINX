@@ -63,6 +63,7 @@ export export function instrumentLabel(text=''){
   raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
   if(!raw||raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw))return null;
   if(/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return null;
+  if(/^(?:COM|GTM|WWW|HTTP|HTTPS|API|APP|ORG|NET|CDN|IMG|JS|CSS|ING)$/i.test(raw))return null;
   if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return null;
   if(/^\d[\d.,\s]*$/.test(raw))return null;
   return raw
@@ -417,6 +418,7 @@ export class LocalPlaywrightDriver{
             let raw=src.replace(/^front\./i,'').replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
             raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
             if(raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return'';
+            if(/^(?:COM|GTM|WWW|HTTP|HTTPS|API|APP|ORG|NET|CDN|IMG|JS|CSS|ING)$/i.test(raw))return'';
             if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return'';
             return raw
           };
@@ -1102,6 +1104,7 @@ export class LocalPlaywrightDriver{
           let raw=src.replace(/^front\./i,'').replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
           raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
           if(raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO|CONFIGURAÇÃO|CONFIGURACAO)$/i.test(raw))return'';
+          if(/^(?:COM|GTM|WWW|HTTP|HTTPS|API|APP|ORG|NET|CDN|IMG|JS|CSS|ING)$/i.test(raw))return'';
           if(/^(?:new-web-(?:loading|crash)-screen|redirect-pwa|color-themes|show-saas-logo)$/i.test(raw))return'';
           return raw
         };
