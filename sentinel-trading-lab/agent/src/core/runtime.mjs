@@ -208,6 +208,7 @@ export class DemoTradingRuntime{
       const stable=this._stabilizeForecast({asset,seconds:Number(secondsKey||plan.horizonSeconds||30),callPct:plan.callProbability,putPct:plan.putProbability,bias:rawBias,now});
       plan.unsmoothedCallProbability=plan.callProbability;plan.unsmoothedPutProbability=plan.putProbability;
       plan.callProbability=stable.callPct;plan.putProbability=stable.putPct;plan.stableBias=stable.side;plan.executionBias=stable.side;
+      plan.consensusAligned=generalSide!=='AGUARDAR'&&stable.side!=='NEUTRO'&&generalSide===stable.side;plan.entryAligned=plan.consensusAligned;
       plan.stability={alpha:stable.alpha,candidate:stable.candidate,cycles:stable.cycles};
       plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
       const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
