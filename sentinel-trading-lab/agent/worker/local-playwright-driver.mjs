@@ -663,10 +663,15 @@ export class LocalPlaywrightDriver{
   async scanExecutionUi(provider){
     const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;
     try{
-      const ui=await s.page.evaluate(()=>{
+      let ui=null,uiScore=-1;
+      for(const frame of s.page.frames()){
+        try{
+          const candidate=await frame.evaluate(()=>{
         const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
         const desc=(el)=>[el.textContent,el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.getAttribute?.('name'),el.getAttribute?.('id'),el.className].filter(Boolean).join(' ').toLowerCase();
-        const all=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid]')].filter(visible);
+        const base=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i],[class*="trade" i]')];
+        const labelled=[...document.querySelectorAll('div,span,a')].filter(visible).filter(el=>/^(acima|abaixo|higher|lower|buy|sell|comprar|vender|up|down|\+|−)$/i.test(String(el.textContent||'').trim())).map(el=>el.closest?.('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i]')||el);
+        const all=[...new Set([...base,...labelled])].filter(visible);
         const score=(el,kind)=>{
           const d=desc(el);let n=0;
           const up=/(deal[-_ ]?button[-_ ]?up|button[-_ ]?up|call|higher|comprar|compra|buy|acima|up)/i;
@@ -729,7 +734,12 @@ export class LocalPlaywrightDriver{
           amountText:amount?desc(amount).slice(0,180):((plus&&minus)?'stepper +/-':''),
           buttonCount:all.length,amountCandidateCount:amountEls.length
         };
-      });
+          });
+          const score=(candidate.buy?5:0)+(candidate.sell?5:0)+(candidate.amount?4:0)+(candidate.expirationDurationMs?2:0)+Math.min(3,Number(candidate.buttonCount||0)/10);
+          if(score>uiScore){ui={...candidate,frameUrl:frame.url(),frameName:frame.name()};uiScore=score}
+        }catch{}
+      }
+      ui=ui||{buy:false,sell:false,amount:false,amountStepper:false,buttonCount:0,amountCandidateCount:0};
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
       if(Number.isFinite(Number(ui.expirationDurationMs))&&Number(ui.expirationDurationMs)>=10000){
         st.expirationDurationMs=Number(ui.expirationDurationMs);st.expirationRaw=String(ui.expirationRaw||'');st.expirationKind=ui.expirationKind||null;st.expirationConfidence=Number(ui.expirationConfidence||0);st.expirationUpdatedAt=Date.now();
@@ -753,10 +763,15 @@ export class LocalPlaywrightDriver{
     if(!Number.isFinite(amount)||amount<=0)throw new Error('demo_order_invalid_amount');
     if(!['BUY','SELL'].includes(side))throw new Error('demo_order_invalid_side');
     const s=await this.session(provider);
-    const result=await s.page.evaluate(({amount,side})=>{
+    let result=null,bestScore=-1;
+    for(const frame of s.page.frames()){
+      try{
+        const candidate=await frame.evaluate(({amount,side})=>{
       const visible=(el)=>{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0&&r.width>8&&r.height>8};
       const desc=(el)=>[el.textContent,el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.getAttribute?.('name'),el.getAttribute?.('id'),el.className].filter(Boolean).join(' ').toLowerCase();
-      const all=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid]')].filter(visible);
+      const base=[...document.querySelectorAll('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i],[class*="trade" i]')];
+      const labelled=[...document.querySelectorAll('div,span,a')].filter(visible).filter(el=>/^(acima|abaixo|higher|lower|buy|sell|comprar|vender|up|down|\+|−)$/i.test(String(el.textContent||'').trim())).map(el=>el.closest?.('button,[role=button],[data-test],[data-testid],[class*="button" i],[class*="deal" i]')||el);
+      const all=[...new Set([...base,...labelled])].filter(visible);
       const rx=side==='BUY'?/(deal[-_ ]?button[-_ ]?up|button[-_ ]?up|call|higher|comprar|compra|buy|acima|up)/i:/(deal[-_ ]?button[-_ ]?down|button[-_ ]?down|put|lower|vender|venda|sell|abaixo|down)/i;
       const target=all.map(el=>({el,d:desc(el)})).filter(x=>rx.test(x.d)).sort((a,b)=>((b.el.tagName==='BUTTON'?3:0)+(b.el.getAttribute?.('role')==='button'?2:0))-((a.el.tagName==='BUTTON'?3:0)+(a.el.getAttribute?.('role')==='button'?2:0)))[0]?.el||null;
       const amountEls=[...document.querySelectorAll('input,[role=spinbutton],[contenteditable=true],[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i]')].filter(visible);
@@ -783,7 +798,7 @@ export class LocalPlaywrightDriver{
         }catch(e){return{ok:false,error:'amount_set_failed',detail:String(e?.message||e)}}
       }else{
         const parseAmount=()=>{
-          const candidates=[...document.querySelectorAll('[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[class*="investment" i],[role=spinbutton]')].filter(visible);
+          const candidates=[...document.querySelectorAll('[data-test*="amount" i],[data-testid*="amount" i],[class*="amount" i],[data-test*="investment" i],[data-testid*="investment" i],[class*="investment" i],[class*="invest" i],[role=spinbutton],div,span')].filter(visible).filter(el=>/amount|investment|investimento|valor|stake|invest|\$|r\$|usd/i.test(desc(el)));
           for(const el of candidates){const m=String(el.textContent||el.getAttribute?.('aria-valuenow')||'').replace(/\s/g,'').match(/\d+(?:[.,]\d+)?/);if(m){const v=Number(m[0].replace(',','.'));if(Number.isFinite(v)&&v>=0)return v}}
           return null;
         };
@@ -802,7 +817,12 @@ export class LocalPlaywrightDriver{
       }
       target.click();
       return{ok:true,button:desc(target).slice(0,180),amountControl}
-    },{amount,side});
+        },{amount,side});
+        const score=(candidate?.target?5:0)+(candidate?.amount||candidate?.stepper?4:0)+(candidate?.ok?10:0);
+        if(candidate?.ok){result={...candidate,frameUrl:frame.url(),frameName:frame.name()};break}
+        if(score>bestScore){bestScore=score;result=candidate}
+      }catch{}
+    }
     if(!result?.ok)throw new Error(result?.error||'demo_order_click_failed');
     st.lastRequestAt=Date.now();
     return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
