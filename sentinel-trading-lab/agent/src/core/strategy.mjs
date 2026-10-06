@@ -430,6 +430,26 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const shortSlopeSignal=norm(shortSlopeRaw,safeVol*.18),mediumSlopeSignal=norm(mediumSlopeRaw,safeVol*.10);
  const accelerationSignal=clamp((shortSlopeSignal-mediumSlopeSignal)*.72,-1,1);
  const persistenceForecastSignal=clamp(persistenceSignal*.78+mediumSlopeSignal*.22,-1,1);
+
+ // Contexto histórico: somente candles FECHADOS, em três janelas independentes.
+ // Serve para evitar que a força da vela atual domine a previsão curta.
+ const closedCloses=prior.map(c=>Number(c.close)).filter(Number.isFinite);
+ const historyLeg=(bars,scale)=>{
+   if(closedCloses.length<bars+1)return null;
+   const end=closedCloses.at(-1),start=closedCloses.at(-(bars+1)),move=end-start;
+   const seq=closedCloses.slice(-(bars+1)),deltas=seq.slice(1).map((v,i)=>Number(v)-Number(seq[i]));
+   const directional=deltas.length?deltas.reduce((a,x)=>a+(x>0?1:x<0?-1:0),0)/deltas.length:0;
+   const slope=norm(move/Math.max(1,bars),safeVol*scale);
+   return{bars,signal:clamp(slope*.68+directional*.32,-1,1),slope,directional,move}
+ };
+ const historyLegs=[historyLeg(8,.20),historyLeg(20,.13),historyLeg(50,.08)].filter(Boolean);
+ const h8=Number(historyLegs.find(x=>x.bars===8)?.signal||0),h20=Number(historyLegs.find(x=>x.bars===20)?.signal||0),h50=Number(historyLegs.find(x=>x.bars===50)?.signal||0);
+ const historySignal=clamp(h8*.30+h20*.40+h50*.30,-1,1);
+ const historySigns=historyLegs.filter(x=>Math.abs(x.signal)>=.08).map(x=>Math.sign(x.signal));
+ const historyDirection=historySigns.length?Math.sign(historySigns.reduce((a,b)=>a+b,0)):0;
+ const historyAgreement=historySigns.length?Math.abs(historySigns.reduce((a,b)=>a+b,0))/historySigns.length:0;
+ m.historyContext={signal:historySignal,direction:historyDirection,agreement:Math.round(historyAgreement*100),legs:historyLegs};
+
  const breakoutDirection=(srBreakUp||lineBreakUp)?1:(srBreakDown||lineBreakDown)?-1:0;
  const regimeSignal=regimeLabel==='trend'?clamp(trendDirection*trendAgreementPct,-1,1)
    :regimeLabel==='breakout'?breakoutDirection
@@ -438,13 +458,13 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    :clamp(trendSignal*.25+momentumSignal*.20,-.35,.35);
 
  const weightsFor=seconds=>seconds<=30
-   ?{micro:.25,reversal:.18,momentum:.12,trend:.07,location:.08,setup:.07,strategy:.08,persistence:.08,acceleration:.04,regime:.03}
-   :seconds<=60?{micro:.20,reversal:.14,momentum:.14,trend:.11,location:.11,setup:.07,strategy:.08,persistence:.08,acceleration:.04,regime:.03}
-   :seconds<=120?{micro:.13,reversal:.10,momentum:.15,trend:.17,location:.14,setup:.07,strategy:.08,persistence:.08,acceleration:.03,regime:.05}
-   :seconds<=300?{micro:.06,reversal:.07,momentum:.15,trend:.23,location:.18,setup:.07,strategy:.07,persistence:.08,acceleration:.02,regime:.07}
-   :seconds<=600?{micro:.035,reversal:.05,momentum:.14,trend:.26,location:.20,setup:.06,strategy:.07,persistence:.09,acceleration:.015,regime:.075}
-   :seconds<=900?{micro:.02,reversal:.04,momentum:.13,trend:.28,location:.21,setup:.05,strategy:.07,persistence:.10,acceleration:.01,regime:.09}
-   :{micro:0,reversal:.025,momentum:.10,trend:.31,location:.22,setup:.035,strategy:.06,persistence:.12,acceleration:0,regime:.13};
+   ?{micro:.16,reversal:.12,momentum:.10,trend:.08,history:.18,location:.09,setup:.07,strategy:.07,persistence:.07,acceleration:.02,regime:.04}
+   :seconds<=60?{micro:.13,reversal:.10,momentum:.11,trend:.10,history:.20,location:.11,setup:.07,strategy:.07,persistence:.06,acceleration:.02,regime:.03}
+   :seconds<=120?{micro:.09,reversal:.08,momentum:.12,trend:.13,history:.21,location:.13,setup:.06,strategy:.06,persistence:.06,acceleration:.02,regime:.04}
+   :seconds<=300?{micro:.04,reversal:.05,momentum:.11,trend:.17,history:.22,location:.16,setup:.05,strategy:.05,persistence:.06,acceleration:.01,regime:.08}
+   :seconds<=600?{micro:.025,reversal:.04,momentum:.10,trend:.19,history:.23,location:.17,setup:.04,strategy:.05,persistence:.06,acceleration:.005,regime:.09}
+   :seconds<=900?{micro:.015,reversal:.03,momentum:.09,trend:.21,history:.24,location:.18,setup:.035,strategy:.045,persistence:.065,acceleration:0,regime:.09}
+   :{micro:0,reversal:.02,momentum:.08,trend:.24,history:.25,location:.18,setup:.03,strategy:.04,persistence:.07,acceleration:0,regime:.09};
 
  const featureRegimeMultiplier=(name)=>{
    if(regimeLabel==='trend'&&['trend','persistence','regime'].includes(name))return 1.18;
@@ -477,6 +497,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      {name:'reversão/exaustão',key:'reversal',value:forecastReversalSignal,weight:w.reversal,available:short.ready===true},
      {name:'momentum',key:'momentum',value:momentumSignal,weight:w.momentum,available:m.rsi!=null||m.macd!=null||m.momentum!=null},
      {name:'estrutura/tendência',key:'trend',value:trendSignal,weight:w.trend,available:true},
+     {name:'histórico fechado',key:'history',value:historySignal,weight:w.history,available:historyLegs.length>=2},
      {name:'espaço S/R',key:'location',value:locationSignal,weight:w.location,available:true},
      {name:'setup',key:'setup',value:setupSignal,weight:w.setup,available:true},
      {name:'estratégia atual',key:'strategy',value:rawStrategySignal,weight:w.strategy,available:true},
@@ -499,6 +520,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    if(seconds<=60&&trendSignal<-.20&&microSignal>.25)signal+=Math.min(.28,.05+Math.abs(microSignal)*.16+Math.max(0,accelerationSignal)*.10);
    if(signal>0&&accelerationSignal<-.35)signal-=Math.min(.16,Math.abs(accelerationSignal)*.18);
    if(signal<0&&accelerationSignal>.35)signal+=Math.min(.16,Math.abs(accelerationSignal)*.18);
+   const historyConflict=historyDirection!==0&&Math.sign(signal)!==0&&Math.sign(signal)!==historyDirection&&Math.abs(historySignal)>=.32;
+   if(historyConflict&&!reversalConfirmed)signal*=seconds<=60?.62:seconds<=300?.74:.84;
    if(regimeLabel==='chaotic')signal*=.72;
    signal=clamp(signal,-1,1);
 
@@ -512,7 +535,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const modelConfidence=clamp(Math.round(48+Math.abs(signal)*30+Math.max(0,agreement-.5)*22+Math.max(0,quality-.68)*12+regimeBonus-conflict*10),45,94);
    const minForecastConfidence=seconds<=60?61:seconds<=300?59:58,enoughFlow=seconds>60||micro.ready;
    const minAgreement=seconds<=60?.54:seconds<=300?.51:.48,minSignal=seconds<=60?.15:seconds<=300?.13:.11;
-   const outlookReady=enoughHistory&&enoughFlow&&quality>=.66;
+   const outlookReady=enoughHistory&&enoughFlow&&quality>=.66&&historyLegs.length>=2;
    const directionReady=outlookReady&&modelConfidence>=minForecastConfidence&&Math.abs(signal)>=minSignal&&agreement>=minAgreement&&regimeLabel!=='chaotic';
    const bias=outlookReady&&Math.abs(signal)>=.025?(signal>0?'CALL':'PUT'):'NEUTRO';
    const projectedMove=expectedMove*signal*(.55+modelConfidence/240),projectedPrice=last+projectedMove;
@@ -536,8 +559,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
      regime:m.regime,evidenceFamilies,
-     basis:'previsão futura V3 independente do consenso atual por horizonte + regime + persistência; entrada atual é separada',drivers:strongest,
-     automaticExecution:false,modelVersion:'future-v3'
+     basis:'previsão futura V4 independente do consenso atual por horizonte + candles fechados multi-janela + regime + persistência; entrada atual é separada',drivers:strongest,
+     automaticExecution:false,modelVersion:'future-v4'
    }
  };
  const planner=Object.fromEntries(plannerHorizons.map(seconds=>[String(seconds),forecastFor(seconds)]));
@@ -556,9 +579,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 
  return{
    side,confidence,reasons:box.reasons.slice(0,14),
-   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:Number(forecast30Plan?.callProbability||50),putStrength:Number(forecast30Plan?.putProbability||50),trigger:60,callGap,putGap,microPulse:micro.pulse,microReady:micro.ready,projectedPrice:forecast30Plan?.projectedPrice??null,agreement:forecast30Plan?.agreement??0,modelVersion:'future-v3'},
+   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:Number(forecast30Plan?.callProbability||50),putStrength:Number(forecast30Plan?.putProbability||50),trigger:60,callGap,putGap,microPulse:micro.pulse,microReady:micro.ready,projectedPrice:forecast30Plan?.projectedPrice??null,agreement:forecast30Plan?.agreement??0,modelVersion:'future-v4'},
    finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:'estado técnico atual; previsão futura separada'},
-   entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v3',horizons:planner},
-   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,futureModelVersion:'future-v3',selectedForecast}
+   entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v4',horizons:planner},
+   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,futureModelVersion:'future-v4',selectedForecast}
  }
 }

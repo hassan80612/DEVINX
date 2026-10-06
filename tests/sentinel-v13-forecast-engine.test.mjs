@@ -24,11 +24,11 @@ function quoteFlow(last,{direction=1,now=Date.now()}={}){
 test('V13 future engine exposes 30s through 1h horizons',()=>{
   const now=Date.now(),candles=trendCandles({now}),last=candles.at(-1).close,quotes=quoteFlow(last,{direction:1,now});
   const a=analyzeMarket({candles,quoteHistory:quotes,strategy:'trend',minConfidence:70,durationMs:300000,freshnessMs:5000,quoteTs:now,now});
-  assert.equal(a.entryPlanner.modelVersion,'future-v3');
+  assert.equal(a.entryPlanner.modelVersion,'future-v4');
   for(const h of ['30','60','120','300','600','900','3600'])assert.ok(a.entryPlanner.horizons[h],`missing horizon ${h}`);
   for(const h of ['300','900','3600']){
     const p=a.entryPlanner.horizons[h];
-    assert.equal(p.modelVersion,'future-v3');
+    assert.equal(p.modelVersion,'future-v4');
     assert.ok(p.callProbability>50,`expected CALL bias on trend horizon ${h}: ${JSON.stringify(p)}`);
     assert.equal(p.bias,'CALL');
     assert.ok(p.regime?.label);
@@ -63,7 +63,7 @@ test('advanced market structure helpers return quality instead of a single blind
 test('V13 forecast calibration uses non-overlapping samples and real outcome quality',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   rt.settings.asset='GOLD';
-  const key=rt._validationKey('horizon_forecast_v3','GOLD',60000,'future-v3:smart_confluence:trend');
+  const key=rt._validationKey('horizon_forecast_v4','GOLD',60000,'future-v4:smart_confluence:trend');
   rt.signalValidation.outcomes=Array.from({length:120},(_,i)=>({
     key,settlementQuality:'exact',won:i<78,probability:78
   }));
@@ -89,9 +89,9 @@ test('V13 forecast calibration uses non-overlapping samples and real outcome qua
 
   rt.signalValidation.pending=[];rt.signalValidation.lastQueued={};
   const t=Date.now();
-  rt._queueSignalCandidate({kind:'horizon_forecast_v3',side:'BUY',confidence:70,probability:70,regime:'trend',referencePrice:4200,asset:'GOLD',durationMs:60000,strategy:'future-v3:smart_confluence:trend',now:t});
-  rt._queueSignalCandidate({kind:'horizon_forecast_v3',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:'future-v3:smart_confluence:trend',now:t+30000});
+  rt._queueSignalCandidate({kind:'horizon_forecast_v4',side:'BUY',confidence:70,probability:70,regime:'trend',referencePrice:4200,asset:'GOLD',durationMs:60000,strategy:'future-v4:smart_confluence:trend',now:t});
+  rt._queueSignalCandidate({kind:'horizon_forecast_v4',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:'future-v4:smart_confluence:trend',now:t+30000});
   assert.equal(rt.signalValidation.pending.length,1,'overlapping horizon samples must not inflate accuracy');
-  rt._queueSignalCandidate({kind:'horizon_forecast_v3',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:'future-v3:smart_confluence:trend',now:t+60000});
+  rt._queueSignalCandidate({kind:'horizon_forecast_v4',side:'BUY',confidence:72,probability:72,regime:'trend',referencePrice:4201,asset:'GOLD',durationMs:60000,strategy:'future-v4:smart_confluence:trend',now:t+60000});
   assert.equal(rt.signalValidation.pending.length,2);
 });

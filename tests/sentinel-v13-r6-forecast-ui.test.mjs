@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+import { analyzeMarket } from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
+import { DemoTradingRuntime } from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
+
+function closedTrend({count=180,start=4200,step=.16,now=Date.now()}={}){
+  const base=Math.floor(now/1000)-count*60;
+  return Array.from({length:count},(_,i)=>{
+    const center=start+i*step+Math.sin(i/8)*.12;
+    return {from:base+i*60,to:base+(i+1)*60,open:center-.04,high:center+.16,low:center-.13,close:center+.07,volume:100+(i%13)}
+  })
+}
+
+test('V4 future model carries multi-window closed-candle history into every horizon',()=>{
+  const now=Date.now(),candles=closedTrend({now}),last=candles.at(-1).close;
+  const quoteHistory=Array.from({length:70},(_,i)=>({ts:now-(69-i)*1000,price:last+(i-69)*.01}));
+  const a=analyzeMarket({candles,quoteHistory,strategy:'trend',minConfidence:70,durationMs:60000,freshnessMs:5000,quoteTs:now,now});
+  assert.equal(a.entryPlanner.modelVersion,'future-v4');
+  assert.ok(a.metrics.historyContext);
+  assert.ok(Array.isArray(a.metrics.historyContext.legs));
+  assert.ok(a.metrics.historyContext.legs.length>=2);
+  for(const h of ['30','60','120','300','600','900','3600']){
+    const p=a.entryPlanner.horizons[h];
+    assert.ok(p, h);
+    assert.equal(p.modelVersion,'future-v4');
+    assert.ok(p.evidenceFamilies?.history,'history evidence missing '+h);
+  }
+});
+
+test('strategy display still avoids fake 100/0 from sparse evidence',()=>{
+  const rt=new DemoTradingRuntime({seed:13,balance:10000});
+  const p=rt._strategyPercentages(28,0);
+  assert.ok(p.callPct>55&&p.callPct<75,JSON.stringify(p));
+  assert.ok(p.putPct>25&&p.putPct<45,JSON.stringify(p));
+});
+
+test('R6 overlay contains committed countdown, compact totals and average confidence',async()=>{
+  const ui=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+  assert.ok(ui.includes('sentinel-future-decision-v13|'));
+  assert.ok(ui.includes('DECISÃO TRAVADA'));
+  assert.ok(ui.includes('ENTRADA AGORA'));
+  assert.ok(ui.includes('MÉDIA DOS 3 TOTAIS'));
+  assert.ok(ui.includes('CONF MÉDIA'));
+  assert.ok(ui.includes('data-sentinel-total-threshold="market"'));
+  assert.ok(ui.includes('data-sentinel-total-threshold="strategy"'));
+  assert.ok(ui.includes('data-sentinel-op-threshold'));
+  assert.ok(!ui.includes('MOSTRAR A PARTIR DE'));
+  assert.ok(!ui.includes('MOSTRAR CALL / PUT<br>A PARTIR DE'));
+});
