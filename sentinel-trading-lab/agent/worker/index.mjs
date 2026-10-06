@@ -133,7 +133,10 @@ async function bootstrapSavedBrokers(){
 setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),900).unref();
 const overlayCache=new Map();
 function overlayAnalysis(view,asset,now=Date.now()){
-  const key=String(asset||'—'),current=view.lastResult?.analysis||null;
+  const key=String(asset||'—').trim().toUpperCase();
+  const resultAsset=String(view.lastResult?.asset||view.lastResult?.analysis?.asset||'').trim().toUpperCase();
+  const sameAsset=!!key&&!!resultAsset&&key===resultAsset;
+  const current=sameAsset?(view.lastResult?.analysis||null):null;
   const complete=current&&current.metrics&&current.finalConfluence&&Number.isFinite(Number(current.confidence));
   if(complete){overlayCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false}}
   const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=850)return{analysis:cached.analysis,transient:true};
