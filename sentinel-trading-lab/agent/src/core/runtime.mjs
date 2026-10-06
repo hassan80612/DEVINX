@@ -94,11 +94,25 @@ export class DemoTradingRuntime{
         const evidence=Math.max(0,Math.min(1,rawTotal/70));
         const side=evidence<.12||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
         const reasons=(Array.isArray(a?.reasons)?a.reasons:[]).filter(x=>!/entrada aguardando|bloqueado por risco|fluxo \d+s|EMA micro|microestrutura/i.test(String(x))).slice(0,3);
-        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,rawTotal,evidence,reasons};
+        const regime=String(a?.metrics?.regime?.label||'unknown'),regimeConfidence=Number(a?.metrics?.regime?.confidence||0);
+        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,rawTotal,evidence,reasons,regime,regimeConfidence};
       }catch{
         return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:['Leitura indisponível neste ciclo']};
       }
     });
+    const activeConfigured=cards.filter(x=>x.active&&!x.paused);
+    const seenStrategies=new Set();
+    for(const card of activeConfigured){
+      if(card.strategy==='smart_confluence'&&activeConfigured.length>1){
+        card.evidence=Math.max(.05,Number(card.evidence||0)*.45);
+        card.reasons=[...(card.reasons||[]),'peso reduzido para evitar duplicar os especialistas'].slice(0,3)
+      }
+      if(seenStrategies.has(card.strategy)){
+        card.evidence=Math.max(.04,Number(card.evidence||0)*.30);
+        card.reasons=[...(card.reasons||[]),'peso reduzido: estratégia repetida'].slice(0,3)
+      }
+      seenStrategies.add(card.strategy)
+    }
     const active=cards.filter(x=>x.active&&!x.paused&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
     const activeCount=active.length;
     const weighted=active.filter(x=>Number(x.evidence||0)>0),weight=weighted.reduce((a,x)=>a+Number(x.evidence||0),0);
