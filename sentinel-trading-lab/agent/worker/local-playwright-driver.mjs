@@ -55,7 +55,7 @@ function pairStrings(text=''){
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
 function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z0-9]/g,'')}
-function instrumentLabel(text=''){
+export function instrumentLabel(text=''){
   const raw0=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
   const pairs=pairStrings(raw0);if(pairs.length===1)return pairs[0];
   if(/^\s*[A-Z]{3}\s*[\/-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?\s*$/i.test(raw0))return null;
@@ -1301,7 +1301,9 @@ export class LocalPlaywrightDriver{
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
-        const plannerPlan=planner[plannerHorizon]||planner['30']||null;
+        const plannerCandidate=planner[plannerHorizon]||planner['30']||null;
+        const overlayAsset=String(d.asset||'').trim().toUpperCase(),planAsset=String(plannerCandidate?.asset||'').trim().toUpperCase();
+        const plannerPlan=plannerCandidate&&overlayAsset&&planAsset===overlayAsset?plannerCandidate:null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
