@@ -123,3 +123,30 @@ test('V13.1 exact tie is recorded as draw and excluded from forecast win-rate sa
   assert.equal(stats.samples,0);
   assert.equal(stats.draws,1);
 });
+
+
+test('short future stops issuing directional readiness when exact 30s history is below chance',()=>{
+  const rt=new DemoTradingRuntime({seed:13,balance:10000});
+  rt.settings.asset='EUR/USD OTC';
+  rt.settings.strategy='smart_confluence';
+  const now=Date.now();
+  const fastKey=rt._validationKey('forecast30','EUR/USD OTC',30000,'smart_confluence');
+  rt.signalValidation.outcomes=Array.from({length:24},(_,i)=>({
+    key:fastKey,settlementQuality:'exact',won:i<11,probability:70,probabilityBucket:'70-79'
+  }));
+  const analysis={
+    generalConsensus:{side:'CALL'},
+    metrics:{regime:{label:'trend'}},
+    entryPlanner:{horizons:{'30':{
+      bias:'CALL',rawCallProbability:74,rawPutProbability:26,callProbability:74,putProbability:26,
+      modelConfidence:75,confidence:75,outlookReady:true,directionReady:true,agreement:70,
+      regime:{label:'trend',confidence:80},reliability:{evidenceFamilyCount:4,correlationPenalty:1}
+    }}}
+  };
+  rt._mergeScenarioConfluence(analysis,{cards:[]},{price:1.10,payout:.82},now);
+  const p=analysis.entryPlanner.horizons['30'];
+  assert.equal(p.validation.fast30Samples,24);
+  assert.equal(p.validation.fast30WinRate,45.8);
+  assert.equal(p.validation.fast30HistoryWeak,true);
+  assert.equal(p.directionReady,false);
+});
