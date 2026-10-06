@@ -65,7 +65,7 @@ jobs:
           if(!runtime.includes("strategyPanel=this._strategyPanel(snap,now)")||!runtime.includes("pausedReadings")||!runtime.includes("sourceRows"))throw new Error('pause_aware_totals_not_recomputed');
 
           if(driverSource.includes('operationalReady=operationalPrepare&&(entryReady||triggerMet||setupMatches)'))throw new Error('legacy_permissive_operational_gate_present');
-          if(!driverSource.includes('operationalSignal')||!driverSource.includes('gatilho fixo'))throw new Error('operational_ui_not_bound_to_runtime');
+          if(!driverSource.includes('operationalSignal')||!driverSource.includes('operationalTrigger')||!driverSource.includes('operationalDisplayThreshold'))throw new Error('operational_ui_not_bound_to_runtime');
           if(!driverSource.includes('expirationDurationMs')||!driverSource.includes('parseExpiry')||!driverSource.includes('expiryLabel'))throw new Error('broker_expiry_detection_missing');
           if(!uiAscii.includes('CONFIANCA')||!uiAscii.includes('MOSTRAR CALL / PUT A PARTIR DE'))throw new Error('summary_confidence_threshold_ui_missing');
           if(!driverSource.includes('data-sentinel-reading-pause')||!driverSource.includes('TOTAL MERCADO')||!driverSource.includes('TOTAL ESTRATEGIAS')||!driverSource.includes('TOTAL DOS 6'))throw new Error('pause_aware_three_totals_ui_missing');
