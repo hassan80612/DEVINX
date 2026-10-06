@@ -258,3 +258,20 @@ test('High-frequency market frames bypass the expensive generic recursive scan',
   assert.ok(ui.includes('if(!highFrequencyMarketFrame)try{recursiveScan(data,out)}catch{}'));
   assert.ok(!ui.includes('Sugestão disponível:'));
 });
+
+
+test('Explicit IQ tab click cannot be undone by the stale selected-tab DOM state', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("if(symbol===last&&source!=='click')return"));
+  assert.ok(ui.includes("direct=p[0];publish(direct,'click')"));
+  assert.ok(ui.includes("if(!direct)setTimeout(()=>{const p=selectedPair();if(p)publish(p,'selected-tab-fallback')},90)"));
+  assert.ok(!ui.includes("queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')})"));
+});
+
+test('Future UI does not stay in an endless CONFIRMANDO state when direction is not ready', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("AGUARDAR · '+formingSide+' EM FORMAÇÃO"));
+  assert.ok(ui.includes('AINDA NÃO CONFIRMADO'));
+  assert.ok(ui.includes('ainda sem confirmação suficiente para liberar entrada'));
+  assert.ok(!ui.includes("('CONFIRMANDO '+displayCandidate)"));
+});
