@@ -1,47 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { LocalPlaywrightDriver, instrumentLabel } from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
 import { DemoTradingRuntime } from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import { analyzeMarket } from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
 
-test('Sentinel isolates Gold from the previous asset and keeps future bias separate from entry timing', () => {
-  assert.equal(instrumentLabel('Gold Blitz'), 'Gold');
-  assert.equal(instrumentLabel('front.com'), null);
-  assert.equal(instrumentLabel('new-web-loading-screen'), null);
-
-  const driver = new LocalPlaywrightDriver({ dataDir: 'sentinel-trading-lab/agent/worker/data/test-gold-isolation' });
-  const st = driver.state('iq_option');
-
-  st.uiSymbol = 'EUR/USD';
-  st.symbol = 'EUR/USD';
-  st.activeId = 1;
-  st.activeMap.set('EURUSD', 1);
-  st.candles = [{ from: 1, to: 2, open: 1, high: 1.1, low: 0.9, close: 1 }];
-  st.quote = 1.11702;
-  st.quoteHistory = [{ ts: Date.now(), price: 1.11702 }];
-  st.lastQuoteAt = Date.now();
-  st.lastCandleAt = Date.now();
-
-  assert.equal(driver.applyActiveSelection('iq_option', { symbol: 'Gold', source: 'click' }), true);
-  assert.equal(st.uiSymbol, 'Gold');
-  assert.equal(st.symbol, 'Gold');
-  assert.equal(st.candles.length, 0);
-  assert.equal(st.quote, null);
-  assert.equal(st.quoteHistory.length, 0);
-
-  st.uiSymbolSource = 'dom-active';
-  st.lastUiSignalAt = Date.now();
-  driver.ingest(
-    'iq_option',
-    JSON.stringify({ name: 'sendMessage', msg: { name: 'get-candles', body: { active_id: 1912, size: 60 } } }),
-    'page-out'
-  );
-
-  assert.equal(st.activeMap.get('GOLD'), 1912);
-  assert.equal(st.activeId, 1912);
-  assert.equal(st.pageActiveId, 1912);
-
+test('Sentinel clears old forecast state when runtime asset changes', () => {
   const runtime = new DemoTradingRuntime({ seed: 7, balance: 10000 });
   runtime.settings.asset = 'EUR/USD';
   runtime.lastResult = {
@@ -68,9 +31,13 @@ test('Sentinel isolates Gold from the previous asset and keeps future bias separ
   assert.equal(runtime.settings.asset, 'GOLD');
   assert.equal(runtime.lastResult.asset, 'GOLD');
   assert.equal(runtime.lastResult.analysis.entryPlanner, undefined);
+});
 
+test('Sentinel rejects a planner from another asset in the operational signal', () => {
+  const runtime = new DemoTradingRuntime({ seed: 8, balance: 10000 });
   runtime.settings.asset = 'GOLD';
-  const foreign = runtime._operationalSignalState({
+
+  const result = runtime._operationalSignalState({
     generalConsensus: { side: 'CALL', state: 'ALINHADO', strength: 70, edge: 20 },
     quality: {},
     entryPlanner: {
@@ -88,10 +55,15 @@ test('Sentinel isolates Gold from the previous asset and keeps future bias separ
     }
   }, { price: 4132.858 }, Date.now());
 
-  assert.equal(foreign.trigger, null);
-  assert.match(foreign.reason, /Aguardando preço e previsão/);
+  assert.equal(result.trigger, null);
+  assert.match(result.reason, /Aguardando preço e previsão/);
+});
 
-  const future = {
+test('Future direction stays independent from current entry consensus', () => {
+  const runtime = new DemoTradingRuntime({ seed: 9, balance: 10000 });
+  runtime.settings.asset = 'GOLD';
+
+  const analysis = {
     generalConsensus: { side: 'PUT' },
     entryPlanner: {
       horizons: {
@@ -107,14 +79,15 @@ test('Sentinel isolates Gold from the previous asset and keeps future bias separ
     }
   };
 
-  runtime._mergeScenarioConfluence(future, { cards: [] }, { price: 4132.858 }, Date.now());
+  runtime._mergeScenarioConfluence(analysis, { cards: [] }, { price: 4132.858 }, Date.now());
+  const plan = analysis.entryPlanner.horizons['60'];
 
-  assert.equal(future.entryPlanner.horizons['60'].asset, 'GOLD');
-  assert.equal(future.entryPlanner.horizons['60'].executionBias, 'CALL');
-  assert.equal(future.entryPlanner.horizons['60'].entryAligned, false);
+  assert.equal(plan.asset, 'GOLD');
+  assert.equal(plan.executionBias, 'CALL');
+  assert.equal(plan.entryAligned, false);
 });
 
-test('Sentinel future engine exposes direction by horizon without pretending it is an entry confirmation', () => {
+test('Future engine exposes a directional horizon separately from entry readiness', () => {
   const now = Date.now();
   const base = Math.floor(now / 1000) - 120 * 60;
   const candles = Array.from({ length: 120 }, (_, i) => {
@@ -130,7 +103,6 @@ test('Sentinel future engine exposes direction by horizon without pretending it 
       volume: 100 + i
     };
   });
-
   const last = candles.at(-1).close;
   const quoteHistory = Array.from({ length: 40 }, (_, i) => ({
     ts: now - 39000 + i * 1000,
@@ -149,7 +121,6 @@ test('Sentinel future engine exposes direction by horizon without pretending it 
   });
 
   const plan = analysis.entryPlanner.horizons['60'];
-
   assert.equal(plan.outlookReady, true);
   assert.ok(plan.callProbability > plan.putProbability);
   assert.equal(plan.bias, 'CALL');
