@@ -643,41 +643,19 @@ export class LocalPlaywrightDriver{
   async recoverMarket(provider){
     const st=this.state(provider),now=Date.now();
     if(st.mode!=='demo')return false;
-    if(st.lastRecoveryAt&&now-st.lastRecoveryAt<15000)return false;
+    if(st.lastRecoveryAt&&now-st.lastRecoveryAt<8000)return false;
     st.lastRecoveryAt=now;st.suggestedSymbol=null;
     const screenSymbol=st.uiSymbol||st.symbol;
-    if(screenSymbol){
-      const screenId=st.activeMap.get(pairKey(screenSymbol));
-      if(screenId!=null){
-        st.symbol=screenSymbol;st.activeId=Number(screenId);st.autoSelected=false;
-        await this._requestCandles(provider,{symbol:screenSymbol,activeId:screenId,force:true}).catch(()=>{});
-        await sleep(220);
-        if(candleFreshForState(st)&&st.candles.length>=50){
-          st.marketStatus='open';st.marketReason=`Ativo da tela ${screenSymbol} com feed atual`;return true;
-        }
-      }
-    }
-    const available=[...st.assets].filter(x=>/\bOTC\b/i.test(String(x)));
-    const candidates=uniq([...OTC_PREFERRED,...available]).filter(x=>pairKey(x)!==pairKey(screenSymbol||'')&&st.activeMap.get(pairKey(x))!=null).slice(0,12);
-    for(const candidate of candidates){
-      const id=st.activeMap.get(pairKey(candidate));if(id==null)continue;
-      const saved={symbol:st.symbol,activeId:st.activeId,candles:[...st.candles],quote:st.quote,subscribedSymbol:st.subscribedSymbol,subscribedActiveId:st.subscribedActiveId};
-      st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;
-      await this._requestCandles(provider,{symbol:candidate,activeId:id,force:true}).catch(()=>{});
-      await sleep(220);
-      const viable=candleFreshForState(st)&&st.candles.length>=50;
-      st.symbol=saved.symbol;st.activeId=saved.activeId;st.candles=saved.candles;st.quote=saved.quote;st.subscribedSymbol=saved.subscribedSymbol;st.subscribedActiveId=saved.subscribedActiveId;
-      if(viable){
-        st.suggestedSymbol=candidate;
-        st.marketStatus='needs-switch';
-        st.marketReason=`Ativo da tela ${screenSymbol||'—'} sem feed suficiente. Sugestão disponível: ${candidate}. Troque o ativo na corretora para o Sentinel analisar e operar o mesmo ativo.`;
-        st.autoSelected=false;
-        return false;
-      }
-    }
-    st.marketStatus='closed';
-    st.marketReason=`Ativo da tela ${screenSymbol||'—'} sem candles atuais e nenhum ativo alternativo disponível agora.`;
-    st.autoSelected=false;
+    if(!screenSymbol){st.marketStatus='syncing';st.marketReason='Aguardando o gráfico visível';return false}
+    let screenId=st.activeMap.get(pairKey(screenSymbol));
+    const pageFresh=st.pageActiveId!=null&&now-Number(st.lastPageActiveAt||0)<12000;
+    if(screenId==null&&pageFresh){screenId=Number(st.pageActiveId);st.activeMap.set(pairKey(screenSymbol),screenId);st.assets.add(screenSymbol)}
+    if(screenId==null){st.marketStatus='syncing';st.marketReason='Identificando o gráfico visível';return false}
+    st.symbol=screenSymbol;st.activeId=Number(screenId);st.autoSelected=false;
+    await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(screenId),force:true}).catch(()=>{});
+    await sleep(180);
+    if(candleFreshForState(st)&&st.candles.length>=50){st.marketStatus='open';st.marketReason='Histórico do gráfico visível pronto';return true}
+    st.marketStatus='syncing';st.marketReason=`Coletando histórico · ${st.candles.length}/50 candles`;
     return false;
   }
   async requestMarketData(provider,{force=false}={}){
