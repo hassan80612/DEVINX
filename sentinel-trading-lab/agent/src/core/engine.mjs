@@ -2,13 +2,13 @@ import {analyzeMarket} from './strategy.mjs';
 import {evaluateRisk,evaluateExecutionGate,positionSize} from './risk.mjs';
 import {scheduleGate} from './scheduler.mjs';
 
-export async function engineCycle({feed,broker,settings,state,balanceOverride=null,signalGate=null,now=Date.now()}){
+export async function engineCycle({feed,broker,settings,state,balanceOverride=null,signalGate=null,analysisContext=null,now=Date.now()}){
   const cycleStarted=Date.now();
   const gate=scheduleGate(settings.schedule,new Date(now));
   if(!gate.allowed)return{action:'WAIT',reasons:[gate.reason],latency:{decisionMs:Date.now()-cycleStarted}};
   const snap=feed.snapshot();
   let analysis=analyzeMarket({
-    candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:settings.strategy,minConfidence:settings.risk.minConfidence,
+    candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:settings.strategy,strategies:analysisContext?.strategies||null,strategyCredibility:analysisContext?.strategyCredibility||{},minConfidence:settings.risk.minConfidence,
     durationMs:settings.orderDurationMs,freshnessMs:settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now
   });
   if(signalGate){
