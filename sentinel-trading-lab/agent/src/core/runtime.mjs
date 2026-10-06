@@ -179,7 +179,6 @@ export class DemoTradingRuntime{
       plan.generalBias=generalSide;
       plan.consensusAligned=generalSide!=='AGUARDAR'&&rawBias!=='NEUTRO'&&generalSide===rawBias;
       plan.entryAligned=plan.consensusAligned;
-      plan.executionBias=rawBias;
       plan.modelConfidence=Math.max(0,Number(plan.modelConfidence??plan.confidence??0));
       const rawLeadProbability=rawBias==='CALL'
         ?Math.max(0,Math.min(100,Number(plan.rawCallProbability??plan.callProbability??50)))
@@ -206,9 +205,13 @@ export class DemoTradingRuntime{
       const calibratedConfidence=historyWeight>0?Math.round(plan.modelConfidence*(1-historyWeight)+empirical*historyWeight):Math.round(plan.modelConfidence);
       if(rawBias==='CALL'){plan.callProbability=Math.max(5,Math.min(95,calibratedLead));plan.putProbability=100-plan.callProbability}
       else if(rawBias==='PUT'){plan.putProbability=Math.max(5,Math.min(95,calibratedLead));plan.callProbability=100-plan.putProbability}
+      const stable=this._stabilizeForecast({asset,seconds:Number(secondsKey||plan.horizonSeconds||30),callPct:plan.callProbability,putPct:plan.putProbability,bias:rawBias,now});
+      plan.unsmoothedCallProbability=plan.callProbability;plan.unsmoothedPutProbability=plan.putProbability;
+      plan.callProbability=stable.callPct;plan.putProbability=stable.putPct;plan.stableBias=stable.side;plan.executionBias=stable.side;
+      plan.stability={alpha:stable.alpha,candidate:stable.candidate,cycles:stable.cycles};
       plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
       const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
-      if(historyWeak)plan.directionReady=false;
+      if(historyWeak||stable.side==='NEUTRO')plan.directionReady=false;
       plan.validation={
         samples:validation.samples,wins:validation.wins,losses:validation.losses,
         winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,
@@ -216,8 +219,8 @@ export class DemoTradingRuntime{
         calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),
         calibrated:historyWeight>0,historyWeak,regime
       };
-      plan.basis='previsão futura V3 calibrada por horizonte/regime'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
-      plan.consensusSources=['previsão '+rawBias+' '+Math.round(rawLeadProbability)+'% → calibrada '+Math.round(rawBias==='CALL'?plan.callProbability:rawBias==='PUT'?plan.putProbability:50)+'%','leitura atual '+generalSide]
+      plan.basis='previsão futura V3 calibrada e estabilizada por horizonte/regime'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
+      plan.consensusSources=['previsão bruta '+rawBias+' '+Math.round(rawLeadProbability)+'% · estável '+String(plan.stableBias||'NEUTRO')+' '+Math.round(plan.stableBias==='CALL'?plan.callProbability:plan.stableBias==='PUT'?plan.putProbability:50)+'%','leitura atual '+generalSide]
     }
   }
   _generalConsensus(analysis,strategyPanel){
@@ -303,7 +306,7 @@ export class DemoTradingRuntime{
     const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
     const plan=rawPlan&&String(rawPlan.asset||asset).toUpperCase()===asset?rawPlan:null;
     const currentSide=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
-    const futureSide=plan&&['CALL','PUT'].includes(String(plan.rawBias||plan.bias||'').toUpperCase())?String(plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
+    const futureSide=plan&&['CALL','PUT'].includes(String(plan.executionBias||plan.stableBias||plan.rawBias||plan.bias||'').toUpperCase())?String(plan.executionBias||plan.stableBias||plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
     const futureConfidence=Math.max(0,Number(plan?.confidence||plan?.modelConfidence||0));
     const futureReady=!!plan&&plan.outlookReady===true&&plan.directionReady===true&&futureSide!=='NEUTRO'&&futureConfidence>=58;
     const side=futureReady&&currentSide===futureSide?futureSide:'AGUARDAR';
