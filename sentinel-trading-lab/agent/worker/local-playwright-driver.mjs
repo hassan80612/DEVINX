@@ -1228,17 +1228,18 @@ export class LocalPlaywrightDriver{
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
-        const plannerUsable=!analysisStale&&liveNow&&plannerPlan?.outlookReady&&(analysisFresh||analysisTransient);
-        const outlook=plannerUsable?plannerPlan.bias:'SEM LEITURA';
+        const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
+        const plannerConfirmed=plannerReadable&&plannerPlan?.outlookReady===true;
+        const outlook=plannerReadable?String(plannerPlan?.bias||plannerPlan?.rawBias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:warnTone;
-        const planHtml=plannerUsable?(
+        const planHtml=plannerReadable?(
           '<div style="font-size:8.5px;color:'+muted+';margin-bottom:5px">Preço de referência <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b> · expiração configurada '+esc(({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[Math.round(duration/1000)]||'—')+'</div>'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:'+callTone+';font-weight:800">CALL — gatilho</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8px;color:'+putTone+';font-weight:800">PUT — gatilho</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &gt; '+price(plannerPlan.putInvalidation)+'</div></div>'+
           '</div>'+
           '<div style="margin-top:6px;font-size:8px;line-height:1.35;color:'+muted+'"><b style="color:'+ink+'">CALL:</b> '+esc(plannerPlan.callRule||'—')+' · <b style="color:'+ink+'">PUT:</b> '+esc(plannerPlan.putRule||'—')+'</div>'+
-          '<div style="margin-top:5px;font-size:8px;line-height:1.3;color:'+muted+'">'+(plannerPlan.outlookReady?'Cenário condicional: '+esc(plannerPlan.basis||'confluência técnica')+'.':'Histórico ou microfluxo insuficiente neste prazo.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
+          '<div style="margin-top:5px;font-size:8px;line-height:1.3;color:'+muted+'">'+(plannerConfirmed?'Cenário confirmado: '+esc(plannerPlan.basis||'confluência técnica')+'.':'Cenário em formação: '+esc(plannerPlan.basis||'leitura técnica disponível')+'.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
         ):'<div style="font-size:9px;color:'+muted+'">Sem níveis acionáveis até a leitura deste prazo ficar atual.</div>';
         const strategyCardsHtml=[1,2,3].map(slot=>{
           const card=strategyCards.find(x=>Number(x?.slot)===slot)||{slot,active:false,label:'Estratégia não selecionada'};
@@ -1423,8 +1424,8 @@ export class LocalPlaywrightDriver{
               <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;letter-spacing:.045em;color:${ink}">CENÁRIO POR PRAZO</span></div>
               <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
             </div>
-            <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${muted};font-size:9px;font-weight:650">até ${horizonLabel} · ${liveLabel}</span></div>
-            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerPlan?.outlookReady?'Aguardando histórico suficiente para este prazo.':outlook==='NEUTRO'?'Sem direção consistente neste prazo. Aguarde confirmação.':`Viés ${outlook} condicionado ao gatilho abaixo; não indica entrada imediata.`}</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${plannerConfirmed?callTone:warnTone};font-size:8px;font-weight:900">${plannerReadable?(plannerConfirmed?'CONFIRMADO':'EM FORMAÇÃO'):'SEM DADOS'}</span><span style="color:${muted};font-size:9px;font-weight:650">até ${horizonLabel} · ${liveLabel}</span></div>
+            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?'Cenário em formação; os níveis já estão sendo calculados.':outlook==='NEUTRO'?'Sem direção consistente neste prazo. Aguarde confirmação.':`Viés ${outlook} condicionado ao gatilho abaixo; não indica entrada imediata.`}</div>
             ${planHtml}
           </div>
 
