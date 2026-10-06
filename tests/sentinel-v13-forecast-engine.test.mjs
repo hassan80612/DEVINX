@@ -123,3 +123,35 @@ test('V13.1 exact tie is recorded as draw and excluded from forecast win-rate sa
   assert.equal(stats.samples,0);
   assert.equal(stats.draws,1);
 });
+
+
+test('V13.1 weak early history blocks a future trigger before 30 formal samples',()=>{
+  const rt=new DemoTradingRuntime({seed:13,balance:10000});
+  rt.settings.asset='EUR/GBP';
+  const combo=rt._strategyComboKey(),regime='range',durationMs=30000;
+  const modelKey='future-v4.1:'+combo+':'+regime;
+  const key=rt._validationKey('horizon_forecast_v41','EUR/GBP',durationMs,modelKey);
+  rt.signalValidation.outcomes=[
+    {key,settlementQuality:'exact',won:true,probability:72,probabilityBucket:'70-79'},
+    {key,settlementQuality:'exact',won:true,probability:73,probabilityBucket:'70-79'},
+    {key,settlementQuality:'exact',won:false,probability:74,probabilityBucket:'70-79'},
+    {key,settlementQuality:'exact',won:false,probability:75,probabilityBucket:'70-79'},
+    {key,settlementQuality:'exact',won:false,probability:76,probabilityBucket:'70-79'},
+    {key,settlementQuality:'exact',won:false,probability:77,probabilityBucket:'70-79'}
+  ];
+  const analysis={
+    generalConsensus:{side:'PUT'},
+    metrics:{regime:{label:regime}},
+    entryPlanner:{horizons:{'30':{
+      bias:'PUT',rawCallProbability:25,rawPutProbability:75,callProbability:25,putProbability:75,
+      modelConfidence:78,confidence:78,outlookReady:true,directionReady:true,agreement:72,
+      regime:{label:regime,confidence:80},reliability:{evidenceFamilyCount:4,correlationPenalty:0}
+    }}}
+  };
+  rt._mergeScenarioConfluence(analysis,{cards:[]},{price:.84812},Date.now());
+  const p=analysis.entryPlanner.horizons['30'];
+  assert.equal(p.validation.provisionalHistoryWeak,true);
+  assert.equal(p.directionReady,false);
+  assert.equal(p.reliabilityReady,false);
+  assert.equal(p.reliabilityBlockReason,'histórico inicial fraco');
+});
