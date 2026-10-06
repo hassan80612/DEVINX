@@ -559,7 +559,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
      regime:m.regime,evidenceFamilies,
-     basis:'previsão futura V4 por horizonte + candles fechados multi-janela + regime + persistência; entrada atual é separada',drivers:strongest,
+     basis:'previsão futura V4 independente do consenso atual por horizonte + candles fechados multi-janela + regime + persistência; entrada atual é separada',drivers:strongest,
      automaticExecution:false,modelVersion:'future-v4'
    }
  };
