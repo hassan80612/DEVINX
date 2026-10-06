@@ -396,6 +396,8 @@ export class LocalPlaywrightDriver{
             const out=[];
             for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
             for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            const named=[['GOLD','Gold'],['SILVER','Silver'],['BITCOIN','Bitcoin'],['ETHEREUM','Ethereum'],['CRUDE OIL','Crude Oil'],['NATURAL GAS','Natural Gas']];
+            for(const [needle,label] of named)if(new RegExp('(^|[^A-Z])'+needle.replace(' ','\\\\s+')+'([^A-Z]|$)','i').test(raw))out.push(label+(raw.includes('OTC')?' OTC':''));
             return [...new Set(out)];
           };
           const selectedPair=()=>{
