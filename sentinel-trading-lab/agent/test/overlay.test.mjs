@@ -46,3 +46,5 @@ test('an inactive first tab never becomes the selected asset by position',async(
 test('a selected tab in an open shadow component is recognized',async()=>{
  await page.setContent('<html><body><broker-tabs></broker-tabs></body></html>');await page.evaluate(()=>document.querySelector('broker-tabs').attachShadow({mode:'open'}).innerHTML='<button role="tab" aria-selected="true">EUR/USD OTC</button><button role="tab" aria-selected="false">XAU/USD</button>');await driver.domSnapshot('iq_option',{fast:true});assert.equal(driver.state('iq_option').uiSymbol,'EUR/USD OTC');
 });
+
+test('the selected Gold tab is recognized even when the broker uses its commodity name',async()=>{await page.setContent('<html><body><button role="tab" aria-selected="false">EUR/USD OTC</button><button role="tab" aria-selected="true">Gold Blitz</button></body></html>');await driver.domSnapshot('iq_option',{fast:true});assert.equal(driver.state('iq_option').uiSymbol,'XAU/USD');});

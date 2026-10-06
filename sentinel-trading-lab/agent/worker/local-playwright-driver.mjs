@@ -18,7 +18,7 @@ function installBrokerAssetReader(){
     const out=[],codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);
     for(const m of String(text||'').toUpperCase().matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?|\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g)){
       const a=m[1]||m[3],b=m[2]||m[4];if(codes.has(a)&&codes.has(b))out.push(`${a}/${b}${/OTC/.test(m[0])?' OTC':''}`);
-    }return [...new Set(out)];
+    }if(!out.length&&/^(gold|ouro|silver|prata)(?:\s|$)/i.test(String(text||'').trim())){const gold=/^(gold|ouro)/i.test(String(text||'').trim());out.push(`${gold?'XAU':'XAG'}/USD${/\bOTC\b/i.test(String(text))?' OTC':''}`)}return [...new Set(out)];
   };
   const excluded=el=>{let n=el;while(n){if(n.id==='sentinel-trading-overlay-host'||n.id==='sentinel-trading-overlay')return true;n=n.parentElement||n.getRootNode?.().host}return false};
   window.__sentinelReadBrokerDom=()=>{
@@ -425,6 +425,7 @@ export class LocalPlaywrightDriver{
             const out=[];
             for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
             for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            if(!out.length&&/^(gold|ouro|silver|prata)(?:\s|$)/i.test(raw.trim()))out.push(`${/^(gold|ouro)/i.test(raw.trim())?'XAU':'XAG'}/USD${/\bOTC\b/.test(raw)?' OTC':''}`);
             return [...new Set(out)];
           };
           const selectedPair=()=>window.__sentinelReadBrokerDom?.().activeSymbol||'';
