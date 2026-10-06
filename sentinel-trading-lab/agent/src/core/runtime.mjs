@@ -83,11 +83,11 @@ export class DemoTradingRuntime{
   _startBlockReason(){if(this.killSwitch)return'Kill switch ativo.';if(this.masterFrozen)return'Bot congelado pelo Master.';if(this.settings.requireLiveBroker&&!this.externalMarket?.provider)return'Conecte uma corretora antes de iniciar.';return null}
   _strategyPercentages(rawCall=0,rawPut=0){
     const call=Math.max(0,Number(rawCall||0)),put=Math.max(0,Number(rawPut||0)),total=call+put;
-    if(total<=0)return{callPct:50,putPct:50,edge:0,evidenceStrength:0};
-    const directional=(call-put)/Math.max(total,1);
-    const evidenceStrength=Math.max(0,Math.min(.90,total/120));
-    const callPct=Math.max(5,Math.min(95,Math.round(50+directional*50*evidenceStrength)));
-    return{callPct,putPct:100-callPct,edge:callPct-(100-callPct),evidenceStrength}
+    if(total<=0)return{signalCallPct:50,signalPutPct:50,callPct:50,putPct:50,edge:0,displayBlend:0,evidenceStrength:0};
+    const signalCallPct=Math.max(0,Math.min(100,call/Math.max(total,1)*100)),signalPutPct=100-signalCallPct;
+    const displayBlend=Math.max(0,Math.min(.90,total/120));
+    const callPct=Math.max(5,Math.min(95,Math.round(50+(signalCallPct-50)*displayBlend)));
+    return{signalCallPct,signalPutPct,callPct,putPct:100-callPct,edge:callPct-(100-callPct),displayBlend,evidenceStrength:displayBlend}
   }
   _stabilizeForecast({asset,seconds,callPct,putPct,bias,now=Date.now()}={}){
     const key=String(asset||'—').toUpperCase()+'|'+String(seconds||30),prev=this.forecastStability?.[key]||null;
@@ -121,12 +121,12 @@ export class DemoTradingRuntime{
       try{
         const a=analyzeMarket({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now});
         const rawCall=Math.max(0,Number(a?.metrics?.rawBuyScore||0)),rawPut=Math.max(0,Number(a?.metrics?.rawSellScore||0)),rawTotal=rawCall+rawPut;
-        const normalized=this._strategyPercentages(rawCall,rawPut),callPct=normalized.callPct,putPct=normalized.putPct,edge=normalized.edge;
+        const normalized=this._strategyPercentages(rawCall,rawPut),signalCallPct=normalized.signalCallPct,signalPutPct=normalized.signalPutPct,displayBlend=normalized.displayBlend,callPct=normalized.callPct,putPct=normalized.putPct,edge=normalized.edge;
         const evidence=Math.max(0,Math.min(1,rawTotal/70));
         const side=evidence<.12||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
         const reasons=(Array.isArray(a?.reasons)?a.reasons:[]).filter(x=>!/entrada aguardando|bloqueado por risco|fluxo \d+s|EMA micro|microestrutura/i.test(String(x))).slice(0,3);
         const regime=String(a?.metrics?.regime?.label||'unknown'),regimeConfidence=Number(a?.metrics?.regime?.confidence||0);
-        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,rawTotal,evidence,reasons,regime,regimeConfidence};
+        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,signalCallPct,signalPutPct,displayBlend,rawCall,rawPut,rawTotal,evidence,reasons,regime,regimeConfidence};
       }catch{
         return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:['Leitura indisponível neste ciclo']};
       }
@@ -147,7 +147,7 @@ export class DemoTradingRuntime{
     const active=cards.filter(x=>x.active&&!x.paused&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
     const activeCount=active.length;
     const weighted=active.filter(x=>Number(x.evidence||0)>0),weight=weighted.reduce((a,x)=>a+Number(x.evidence||0),0);
-    const callPct=weight>0?Math.round(weighted.reduce((a,x)=>a+Number(x.callPct)*Number(x.evidence||0),0)/weight):(activeCount?50:null);
+    const callPct=weight>0?Math.round(weighted.reduce((a,x)=>a+Number(x.signalCallPct??x.callPct)*Number(x.evidence||0),0)/weight):(activeCount?50:null);
     const putPct=callPct==null?null:100-callPct;
     const callVotes=weighted.filter(x=>x.side==='CALL').length,putVotes=weighted.filter(x=>x.side==='PUT').length;
     let side='AGUARDAR',agreement='SEM ESTRATÉGIAS';
@@ -206,13 +206,11 @@ export class DemoTradingRuntime{
       if(rawBias==='CALL'){plan.callProbability=Math.max(5,Math.min(95,calibratedLead));plan.putProbability=100-plan.callProbability}
       else if(rawBias==='PUT'){plan.putProbability=Math.max(5,Math.min(95,calibratedLead));plan.callProbability=100-plan.putProbability}
       const stable=this._stabilizeForecast({asset,seconds:Number(secondsKey||plan.horizonSeconds||30),callPct:plan.callProbability,putPct:plan.putProbability,bias:rawBias,now});
-      plan.unsmoothedCallProbability=plan.callProbability;plan.unsmoothedPutProbability=plan.putProbability;
-      plan.callProbability=stable.callPct;plan.putProbability=stable.putPct;plan.stableBias=stable.side;plan.executionBias=stable.side;
-      plan.consensusAligned=generalSide!=='AGUARDAR'&&stable.side!=='NEUTRO'&&generalSide===stable.side;plan.entryAligned=plan.consensusAligned;
-      plan.stability={alpha:stable.alpha,candidate:stable.candidate,cycles:stable.cycles};
+      plan.displayCallProbability=stable.callPct;plan.displayPutProbability=stable.putPct;plan.displayBias=stable.side;
+      plan.executionBias=rawBias;plan.stability={alpha:stable.alpha,candidate:stable.candidate,cycles:stable.cycles};
       plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
       const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
-      if(historyWeak||stable.side==='NEUTRO')plan.directionReady=false;
+      if(historyWeak)plan.directionReady=false;
       plan.validation={
         samples:validation.samples,wins:validation.wins,losses:validation.losses,
         winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,
@@ -220,8 +218,8 @@ export class DemoTradingRuntime{
         calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),
         calibrated:historyWeight>0,historyWeak,regime
       };
-      plan.basis='previsão futura V3 calibrada e estabilizada por horizonte/regime'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
-      plan.consensusSources=['previsão bruta '+rawBias+' '+Math.round(rawLeadProbability)+'% · estável '+String(plan.stableBias||'NEUTRO')+' '+Math.round(plan.stableBias==='CALL'?plan.callProbability:plan.stableBias==='PUT'?plan.putProbability:50)+'%','leitura atual '+generalSide]
+      plan.basis='previsão futura V3 calibrada por horizonte/regime · exibição estabilizada'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
+      plan.consensusSources=['previsão bruta '+rawBias+' '+Math.round(rawLeadProbability)+'% · exibição '+String(plan.displayBias||'NEUTRO')+' '+Math.round(plan.displayBias==='CALL'?plan.displayCallProbability:plan.displayBias==='PUT'?plan.displayPutProbability:50)+'%','leitura atual '+generalSide]
     }
   }
   _generalConsensus(analysis,strategyPanel){
@@ -231,7 +229,7 @@ export class DemoTradingRuntime{
       {key:'market_confluence',group:'market',label:'Confluência Técnica',call:final.callStrength,put:final.putStrength},
       {key:'market_entry',group:'market',label:'Prontidão de Entrada',call:q.technicalBuy??m.buyScore,put:q.technicalSell??m.sellScore},
       {key:'market_reversal',group:'market',label:'Virada / Reversão',call:short.reversalCallScore,put:short.reversalPutScore},
-      ...((strategyPanel?.cards||[]).filter(x=>x?.active).map(x=>({key:'strategy_'+Number(x.slot),group:'strategy',label:x.label||('Estratégia '+x.slot),call:x.callPct,put:x.putPct,evidence:Number(x.evidence)})))
+      ...((strategyPanel?.cards||[]).filter(x=>x?.active).map(x=>({key:'strategy_'+Number(x.slot),group:'strategy',label:x.label||('Estratégia '+x.slot),call:x.signalCallPct??x.callPct,put:x.signalPutPct??x.putPct,evidence:Number(x.evidence)})))
     ].map(x=>({...x,paused:paused[x.key]===true,valid:finite(x.call)&&finite(x.put)}));
     const active=sourceRows.filter(x=>!x.paused&&x.valid);
     const marketActive=active.filter(x=>x.group==='market'),strategyActive=active.filter(x=>x.group==='strategy');
@@ -307,7 +305,7 @@ export class DemoTradingRuntime{
     const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
     const plan=rawPlan&&String(rawPlan.asset||asset).toUpperCase()===asset?rawPlan:null;
     const currentSide=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
-    const futureSide=plan&&['CALL','PUT'].includes(String(plan.executionBias||plan.stableBias||plan.rawBias||plan.bias||'').toUpperCase())?String(plan.executionBias||plan.stableBias||plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
+    const futureSide=plan&&['CALL','PUT'].includes(String(plan.rawBias||plan.bias||'').toUpperCase())?String(plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
     const futureConfidence=Math.max(0,Number(plan?.confidence||plan?.modelConfidence||0));
     const futureReady=!!plan&&plan.outlookReady===true&&plan.directionReady===true&&futureSide!=='NEUTRO'&&futureConfidence>=58;
     const side=futureReady&&currentSide===futureSide?futureSide:'AGUARDAR';
