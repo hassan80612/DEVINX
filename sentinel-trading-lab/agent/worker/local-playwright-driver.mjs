@@ -1009,9 +1009,6 @@ export class LocalPlaywrightDriver{
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
-    const pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<5000;
-    const mappedBefore=st.activeMap.get(key);
-    if(source!=='click'&&!String(source).startsWith('protocol-page')&&pageFresh&&mappedBefore!=null&&Number(mappedBefore)!==Number(st.pageActiveId))return false;
     if(Number.isFinite(aid)){st.activeMap.set(key,aid);st.assets.add(next)}
     if(changed&&source!=='click'&&!String(source).startsWith('protocol-page')&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
@@ -1073,16 +1070,11 @@ export class LocalPlaywrightDriver{
     else if(domActiveInstrument){nextUi=domActiveInstrument;uiSource='dom-active'}
     else if(instrumentCandidates.length===1){nextUi=instrumentCandidates[0];uiSource='dom-single'}
     else if(st.uiSymbol&&instrumentCandidates.some(x=>pairKey(x)===pairKey(st.uiSymbol))){nextUi=st.uiSymbol;uiSource=st.uiSymbolSource||'preserved'}
-    if(nextUi&&uiSource!=='click'){
-      const mapped=st.activeMap.get(pairKey(nextUi)),pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<5000;
-      if(pageFresh&&mapped!=null&&Number(mapped)!==Number(st.pageActiveId)){nextUi=null;uiSource=null}
-    }
     if(nextUi){
       const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
-        const mapped=st.activeMap.get(pairKey(nextUi)),pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<5000;
-        const boundId=mapped!=null?Number(mapped):(pageFresh?Number(st.pageActiveId):null);
-        if(mapped==null&&boundId!=null){st.activeMap.set(pairKey(nextUi),boundId);st.assets.add(nextUi)}
+        const mapped=st.activeMap.get(pairKey(nextUi));
+        const boundId=mapped!=null?Number(mapped):null;
         st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=boundId;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
         st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
@@ -1116,12 +1108,10 @@ export class LocalPlaywrightDriver{
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);
-    const pageActiveFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<12000;
-    const idAligned=!pageActiveFresh||Number(st.activeId)===Number(st.pageActiveId);
     const uiAligned=!st.uiSymbol||!st.symbol||pairKey(st.uiSymbol)===pairKey(st.symbol);
     const mappedId=st.symbol?st.activeMap.get(pairKey(st.symbol)):null;
-    const mappingAligned=mappedId==null||Number(mappedId)===Number(st.activeId);
-    const selectionValidated=!!(st.symbol&&st.activeId!=null&&idAligned&&uiAligned&&mappingAligned);
+    const mappingAligned=mappedId!=null&&Number(mappedId)===Number(st.activeId);
+    const selectionValidated=!!(st.symbol&&st.activeId!=null&&uiAligned&&mappingAligned);
     const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&selectionValidated&&st.quote!=null&&st.candles.length>=50&&candleFresh);
     const marketStatus=feedValidated?'open':(st.marketStatus||'stale');const marketReason=feedValidated?`${st.symbol||'Ativo'} atualizado`:(selectionValidated?(st.marketReason||'Aguardando candle atual'):'Ativo visível e feed ainda não estão sincronizados');
     return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,pageActiveId:st.pageActiveId,selectionValidated,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
