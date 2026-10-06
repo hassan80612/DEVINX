@@ -190,8 +190,16 @@ export class DemoTradingRuntime{
         agreement:Math.round(agreement*100),evidence:Math.round(evidenceMean*100)
       }
     };
-    const rapid=summarize(marketActive),strategies=summarize(strategyActive),all=summarize(active);
-    const rawCallPct=all.callPct,rawPutPct=all.putPct,strength=all.strength,edge=all.edge;
+    const rapid=summarize(marketActive),strategies=summarize(strategyActive);
+    const groups=[rapid,strategies].filter(x=>x.contributingCount>0);
+    const groupWeight=x=>Math.max(.25,Math.min(1,Number(x.evidence||0)/100));
+    const totalGroupWeight=groups.reduce((a,x)=>a+groupWeight(x),0)||1;
+    const rawCallPct=groups.length?Math.round(groups.reduce((a,x)=>a+Number(x.callPct||50)*groupWeight(x),0)/totalGroupWeight):50;
+    const rawPutPct=100-rawCallPct,edge=rawCallPct-rawPutPct;
+    const groupAgreement=groups.length<2?1:(Math.sign(Number(rapid.edge||0))===Math.sign(Number(strategies.edge||0))?1:0);
+    const groupEvidence=groups.length?groups.reduce((a,x)=>a+Number(x.evidence||0),0)/groups.length:0;
+    const strength=Math.max(50,Math.min(95,Math.round(50+Math.abs(edge)*.30+Math.max(0,groupAgreement-.5)*18+groupEvidence*.10)));
+    const all={activeCount:active.length,contributingCount:groups.reduce((a,x)=>a+Number(x.contributingCount||0),0),callScore:rawCallPct,putScore:rawPutPct,callPct:rawCallPct,putPct:rawPutPct,edge,strength,side:Math.abs(edge)>=10?(edge>0?'CALL':'PUT'):'AGUARDAR',agreement:Math.round(groupAgreement*100),evidence:Math.round(groupEvidence)};
     const pauseKey=active.map(x=>x.key).sort().join(',');
     const displayKey=[String(this.settings.asset||'—').toUpperCase(),this._strategyComboKey(),pauseKey].join('|');
     const now=Date.now(),prev=this.generalConsensusDisplay;
@@ -210,7 +218,7 @@ export class DemoTradingRuntime{
     return{
       side,leanSide,state,aligned:side!=='AGUARDAR'&&!divergent,divergent,
       callScore:all.callScore,putScore:all.putScore,strength,edge,displayCallPct,displayPutPct,displayStrength,
-      weights:{mode:'equal-active-readings'},
+      weights:{mode:'family-balanced-market-vs-strategies'},
       sources:{rapid:rapid.activeCount,strategies:strategies.activeCount,total:active.length,configured:sourceRows.length,paused:sourceRows.filter(x=>x.paused).map(x=>x.key)},
       sourceRows,
       rapid:{...rapid},
