@@ -616,12 +616,8 @@ export class LocalPlaywrightDriver{
         }
       }
     }
-    // The broker page's own outbound market subscription is the source of truth for
-    // the chart selected by the user. Sentinel's direct requests are "direct-out"
-    // and therefore can never retarget the selected asset.
-    if(/page-out/.test(direction)&&pageSelectionCommand&&st.pageActiveId!=null){
-      this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page'});
-    }
+    // protocolScan already applies only real page get-candles selection changes.
+    // Background candle/quote subscriptions are deliberately ignored for retargeting.
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
