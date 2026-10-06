@@ -1163,7 +1163,7 @@ export class LocalPlaywrightDriver{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
             minHeight:'360px',maxHeight:'calc(100vh - 18px)',resize:'both',
-            overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',overscrollBehavior:'contain',scrollbarGutter:'stable',
+            overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',overscrollBehavior:'contain',overflowAnchor:'none',scrollbarGutter:'stable',
             background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',
             border:'1px solid rgba(111,174,192,.24)',borderRadius:'18px',
             boxShadow:'0 24px 72px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.035)',
