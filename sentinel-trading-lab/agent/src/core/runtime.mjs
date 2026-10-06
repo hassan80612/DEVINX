@@ -172,7 +172,7 @@ export class DemoTradingRuntime{
       const rawBias=['CALL','PUT'].includes(String(plan.bias||'').toUpperCase())?String(plan.bias).toUpperCase():'NEUTRO';
       const durationMs=Math.max(10000,Number(secondsKey||plan.horizonSeconds||30)*1000);
       const regime=String(plan?.regime?.label||analysis?.metrics?.regime?.label||'unknown');
-      const modelKey='future-v3:'+combo+':'+regime;
+      const modelKey='future-v4:'+combo+':'+regime;
       plan.rawBias=rawBias;
       plan.asset=asset;
       plan.generatedAt=now;
@@ -187,7 +187,7 @@ export class DemoTradingRuntime{
           :50;
       if(plan.outlookReady===true&&rawBias!=='NEUTRO'&&Number.isFinite(Number(snap?.price))&&Number(snap.price)>0){
         this._queueSignalCandidate({
-          kind:'horizon_forecast_v3',
+          kind:'horizon_forecast_v4',
           side:rawBias==='CALL'?'BUY':'SELL',
           confidence:plan.modelConfidence,
           probability:rawLeadProbability,
@@ -198,7 +198,7 @@ export class DemoTradingRuntime{
           now
         })
       }
-      const validation=this._validationStats(this._validationKey('horizon_forecast_v3',asset,durationMs,modelKey));
+      const validation=this._validationStats(this._validationKey('horizon_forecast_v4',asset,durationMs,modelKey));
       const historyWeight=validation.samples<20?0:Math.min(.72,Math.max(0,(validation.samples-20)/180*.72));
       const empirical=Number(validation.smoothedWinRate||50);
       const calibratedLead=historyWeight>0?Math.round(rawLeadProbability*(1-historyWeight)+empirical*historyWeight):Math.round(rawLeadProbability);
@@ -218,7 +218,7 @@ export class DemoTradingRuntime{
         calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),
         calibrated:historyWeight>0,historyWeak,regime
       };
-      plan.basis='previsão futura V3 calibrada por horizonte/regime · exibição estabilizada'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
+      plan.basis='previsão futura V4 calibrada por horizonte/regime/histórico · exibição estabilizada'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
       plan.consensusSources=['previsão bruta '+rawBias+' '+Math.round(rawLeadProbability)+'% · exibição '+String(plan.displayBias||'NEUTRO')+' '+Math.round(plan.displayBias==='CALL'?plan.displayCallProbability:plan.displayBias==='PUT'?plan.displayPutProbability:50)+'%','leitura atual '+generalSide]
     }
   }
