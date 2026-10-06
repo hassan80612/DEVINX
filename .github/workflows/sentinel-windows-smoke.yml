@@ -56,7 +56,7 @@ jobs:
           for(const k of ['SINAL OPERACIONAL','data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('CONSENSO GERAL')||!driverSource.includes('generalConsensus'))throw new Error('six_card_consensus_ui_missing');
+          if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('LEITURA GERAL DO MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
           if(!runtime.includes('_generalConsensus')||!runtime.includes('prazo + consenso geral dos 6 cards'))throw new Error('six_card_consensus_runtime_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
@@ -67,7 +67,7 @@ jobs:
           if(driverSource.includes('operationalReady=operationalPrepare&&(entryReady||triggerMet||setupMatches)'))throw new Error('legacy_permissive_operational_gate_present');
           if(!driverSource.includes('operationalSignal')||!driverSource.includes('gatilho fixo'))throw new Error('operational_ui_not_bound_to_runtime');
           if(!driverSource.includes('expirationDurationMs')||!driverSource.includes('parseExpiry')||!driverSource.includes('expiryLabel'))throw new Error('broker_expiry_detection_missing');
-          if(!uiAscii.includes('CONFIANCA TECNICA')||!uiAscii.includes('ACERTO HISTORICO'))throw new Error('technical_confidence_history_ui_missing');
+          if(!uiAscii.includes('CONFIANCA')||!uiAscii.includes('MOSTRAR CALL / PUT A PARTIR DE'))throw new Error('summary_confidence_threshold_ui_missing');
           if(!runtime.includes('_priceAtExpiry')||!runtime.includes("settlementQuality!=='approx'")||!runtime.includes('expirationMatch')||!runtime.includes('brokerExpirationDurationMs'))throw new Error('exact_expiry_validation_missing');
           if(!runtime.includes('Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30))'))throw new Error('statistical_sample_floor_missing');
           if(!worker.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
