@@ -85,6 +85,9 @@ jobs:
           if(driverSource.includes('color:${operationalDirectional}?operationalTone:warnTone}'))throw new Error('operational_signal_color_expression_broken');
           if(!driverSource.includes('color:${operationalDirectional?operationalTone:warnTone}'))throw new Error('operational_signal_semantic_color_missing');
           if(!driverSource.includes('"Aptos","Segoe UI Variable Text","Inter"'))throw new Error('premium_typography_stack_missing');
+          if(!driverSource.includes('acceptRequestedHistory')||!driverSource.includes('pageCandleRequests'))throw new Error('deterministic_history_warmup_missing');
+          if(!worker.includes('<=15000'))throw new Error('same_asset_overlay_hold_missing');
+          if(!driverSource.includes('configuredStrategies')||!driverSource.includes('Coletando leitura desta estratégia.'))throw new Error('strategy_card_transient_stability_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
           if(!worker.includes("if(action==='refresh')"))throw new Error('refresh_action_missing');
           const installer=await readFile('./sentinel-trading-lab/public/downloads/install-agent-v88.ps1','utf8');
@@ -147,21 +150,24 @@ jobs:
           st.assets.add('USD/CAD OTC');st.assets.add('USD/HKD OTC');
           st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
 
-          st.uiSymbol=null;st.symbol=null;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];
-          d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
-          if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_bootstrap_failed');
-
           st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
-          d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
-          if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_switch_failed');
+          d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}},request_id:'background-sub'}),'page-out');
+          if(st.uiSymbol!=='USD/CAD OTC'||st.symbol!=='USD/CAD OTC'||Number(st.activeId)!==2112)throw new Error('background_subscription_retargeted_visible_chart');
 
-          st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
           d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',source:'click'});
           if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0)throw new Error('asset_switch_not_atomic');
 
-          st.activeMap.set('GOLD',76);st.uiSymbol='USD/HKD OTC';st.symbol='USD/HKD OTC';st.activeId=1382;st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
-          d.applyActiveSelection('iq_option',{symbol:'Gold',activeId:76,source:'click'});
-          if(st.uiSymbol!=='Gold'||st.symbol!=='Gold'||Number(st.activeId)!==76||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0)throw new Error('generic_gold_switch_not_atomic');
+          st.activeMap.delete('GOLD');st.uiSymbol='USD/HKD OTC';st.symbol='USD/HKD OTC';st.activeId=1382;st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
+          d.applyActiveSelection('iq_option',{symbol:'Gold',source:'click'});
+          if(st.uiSymbol!=='Gold'||st.symbol!=='Gold'||st.activeId!==null)throw new Error('generic_click_did_not_wait_for_binding');
+          d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',version:'2.0',body:{active_id:76,size:60,to:1700005000,count:200}},request_id:'gold-visible-history'}),'page-out');
+          if(Number(st.activeId)!==76||Number(st.activeMap.get('GOLD'))!==76)throw new Error('clicked_visible_chart_not_bound_to_history_request');
+
+          st.candles=[];st.quote=null;st.quoteHistory=[];
+          const history=Array.from({length:60},(_,i)=>({id:i+1,from:1700000000+i*60,to:1700000060+i*60,open:4120+i/100,max:4121+i/100,min:4119+i/100,close:4120.2+i/100,volume:10}));
+          d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'gold-visible-history',msg:{candles:history}}),'page-in');
+          if(st.candles.length!==60||Number(st.quote)!==Number(history.at(-1).close))throw new Error('visible_page_history_not_accepted');
+          console.log('V11.8 VISIBLE CHART + PAGE HISTORY: PASS');
 
           d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',activeId:1382,source:'click'});
           st.candleSize=60;
@@ -174,10 +180,9 @@ jobs:
           d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1382,size:60,from:100,to:160,open:7.8,high:7.9,low:7.7,close:7.85}}),'page-in');
           if(st.candles.length!==1||Number(st.quote)!==7.85||st.quoteHistory.length<1)throw new Error('selected_asset_market_missing');
 
-          st.candles=[];st.quote=null;st.quoteHistory=[];
-          const history=Array.from({length:60},(_,i)=>({id:i+1,from:1700000000+i*60,to:1700000060+i*60,open:7.8+i/10000,max:7.9+i/10000,min:7.7+i/10000,close:7.81+i/10000,volume:10}));
-          d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'history-smoke',msg:{candles:history}}),'direct-in');
-          if(st.candles.length!==60||Number(st.quote)!==Number(history.at(-1).close))throw new Error('historical_candles_response_not_parsed');
+          st.candles=[];st.quote=null;st.quoteHistory=[];st.lastCandleRequest={requestId:'history-smoke'};
+          d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'history-smoke',msg:{candles:history.map((x,i)=>({...x,open:7.8+i/10000,max:7.9+i/10000,min:7.7+i/10000,close:7.81+i/10000}))}}),'direct-in');
+          if(st.candles.length!==60)throw new Error('direct_history_request_not_parsed');
           console.log('V11.8 HISTORY BACKFILL PARSER: PASS');
 
           let requested=[];
