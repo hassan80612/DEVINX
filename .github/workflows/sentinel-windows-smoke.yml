@@ -2,7 +2,7 @@ name: Sentinel Hybrid Smoke V11.8
 
 on:
   push:
-    branches: [sentinel-v106-modern, main]
+    branches: [sentinel-v106-modern, main, sentinel-visible-asset-fix-20261006]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -41,7 +41,7 @@ jobs:
           $ErrorActionPreference='Stop'
           $script=@'
           import {readFile} from 'node:fs/promises';
-          import {LocalPlaywrightDriver} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+          import {LocalPlaywrightDriver,instrumentLabel} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
           import {analyzeMarket} from './sentinel-trading-lab/agent/src/core/strategy.mjs';
           import {DemoTradingRuntime} from './sentinel-trading-lab/agent/src/core/runtime.mjs';
 
@@ -81,6 +81,10 @@ jobs:
           for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO FUTURO','FUTURE V3','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
           if(!driverSource.includes('clickedInstrument')||!driverSource.includes('domActiveInstrument')||!driverSource.includes("instrumentLabel(clickedSymbol)"))throw new Error('generic_visible_instrument_bridge_missing');
+          for(const bogus of ['COM/GTM','TRY/ING','WWW/API','new-web-loading-screen','redirect-pwa'])if(instrumentLabel(bogus)!==null)throw new Error('false_visible_instrument_accepted:'+bogus);
+          for(const [input,expected] of [['Gold','Gold'],['front.Gold','Gold'],['USD/BRL OTC','USD/BRL OTC'],['XAU/USD OTC','XAU/USD OTC']])if(instrumentLabel(input)!==expected)throw new Error('valid_visible_instrument_rejected:'+input);
+          if(!driverSource.includes("const bad=new Set(['COM','GTM','WWW','HTTP','HTTPS','API','APP','ORG','NET','CDN','IMG','JS','CSS','ING'])"))throw new Error('browser_pair_bad_token_guard_missing');
+          if(!driverSource.includes("if(/^\\s*[A-Z]{3}\\s*[\\/-]\\s*[A-Z]{3}"))throw new Error('browser_invalid_pair_fallback_guard_missing');
           if(driverSource.includes('Ativo da tela · <b'))throw new Error('future_card_must_not_show_asset_name');
           if(driverSource.includes('color:${operationalDirectional}?operationalTone:warnTone}'))throw new Error('operational_signal_color_expression_broken');
           if(!driverSource.includes('color:${operationalDirectional?operationalTone:warnTone}'))throw new Error('operational_signal_semantic_color_missing');
