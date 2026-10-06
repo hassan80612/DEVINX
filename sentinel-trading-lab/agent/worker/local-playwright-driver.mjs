@@ -225,7 +225,7 @@ function recursiveScan(obj,out,hint=''){
 }
 
 export class LocalPlaywrightDriver{
-  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null}
+  constructor({dataDir='worker/data/browser-profiles-v85'}={}){this.dataDir=resolve(dataDir);this.sessions=new Map();this.last=new Map();this.live=new Map();this.feeds=new Map();this.opening=new Map();this.lastManualOpenAt=new Map();this.available=true;this.chromium=null;this.overlayActionHandler=null;this.marketUpdateHandler=null;this.overlayDisplay=new Map()}
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setMarketUpdateHandler(handler){this.marketUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
@@ -1030,7 +1030,7 @@ export class LocalPlaywrightDriver{
         const panelBorder=uiTheme==='light'?'rgba(104,72,24,.30)':'rgba(201,166,91,.26)';
         const callTone=uiTheme==='light'?'#086344':'#72e6b9',putTone=uiTheme==='light'?'#922537':'#ff8f9d',warnTone=uiTheme==='light'?'#7b5600':'#f2cf66';
         const expandedCard=el.dataset.expandedCard||'';
-        const expandBtn=key=>'<button data-sentinel-expand="'+key+'" title="'+(expandedCard===key?'Reduzir card':'Ampliar card')+'" style="border:1px solid '+panelBorder+';border-radius:7px;padding:4px 6px;background:'+(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)')+';color:'+subtle+';font:900 6.8px/1 inherit;cursor:pointer;white-space:nowrap">'+(expandedCard===key?'REDUZIR':'AMPLIAR')+'</button>';
+        const expandBtn=key=>'<button data-sentinel-expand="'+key+'" title="'+(expandedCard===key?'Reduzir card':'Ampliar card')+'" style="border:1px solid '+panelBorder+';border-radius:7px;padding:4px 6px;min-width:'+(expandedCard===key?'52px':'24px')+';background:'+(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)')+';color:'+subtle+';font:900 7px/1 inherit;cursor:pointer;white-space:nowrap">'+(expandedCard===key?'REDUZIR':'↗')+'</button>';
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
@@ -1065,19 +1065,20 @@ export class LocalPlaywrightDriver{
         const strategyPutPct=Number.isFinite(Number(strategyConfluence.putPct))?Number(strategyConfluence.putPct):null;
         const executionPlan=planner[String(Math.round(duration/1000))]||planner['30']||null;
         const durationText=({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]||Math.round(duration/1000)+' s';
-        const generalSide=String(generalConsensus.side||'AGUARDAR').toUpperCase(),generalState=String(generalConsensus.state||'FORMANDO').toUpperCase();
-        const generalCall=Number.isFinite(Number(generalConsensus.callScore))?Number(generalConsensus.callScore):null,generalPut=Number.isFinite(Number(generalConsensus.putScore))?Number(generalConsensus.putScore):null;
-        const generalStrength=Number.isFinite(Number(generalConsensus.strength))?Number(generalConsensus.strength):Math.max(Number(generalCall||0),Number(generalPut||0));
+        const generalStrictSide=String(generalConsensus.side||'AGUARDAR').toUpperCase(),generalLeanSide=String(generalConsensus.leanSide||generalStrictSide||'AGUARDAR').toUpperCase(),generalState=String(generalConsensus.state||'FORMANDO').toUpperCase();
+        const generalCall=Number.isFinite(Number(generalConsensus.displayCallPct))?Number(generalConsensus.displayCallPct):Number.isFinite(Number(generalConsensus.callScore))?Number(generalConsensus.callScore):null;
+        const generalPut=Number.isFinite(Number(generalConsensus.displayPutPct))?Number(generalConsensus.displayPutPct):Number.isFinite(Number(generalConsensus.putScore))?Number(generalConsensus.putScore):null;
+        const generalStrength=Number.isFinite(Number(generalConsensus.displayStrength))?Number(generalConsensus.displayStrength):Number.isFinite(Number(generalConsensus.strength))?Number(generalConsensus.strength):Math.max(Number(generalCall||0),Number(generalPut||0));
         const generalEdge=Number.isFinite(Number(generalConsensus.edge))?Math.abs(Number(generalConsensus.edge)):Math.abs(Number(generalCall||0)-Number(generalPut||0));
-        const generalTone=generalSide==='CALL'?callTone:generalSide==='PUT'?putTone:warnTone;
+        const generalTone=generalLeanSide==='CALL'?callTone:generalLeanSide==='PUT'?putTone:warnTone;
         const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
-        const operationalSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():generalSide;
+        const operationalSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():generalLeanSide;
         const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
         const operationalDirectional=['CALL','PUT'].includes(operationalSide)&&!analysisStale;
         const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&liveNow&&analysisFresh;
         const operationalPrepare=operationalDirectional&&liveNow&&analysisFresh;
         const operationalDisplay=operationalDirectional?operationalSide:'AGUARDAR';
-        const operationalStatus=operationalReady?'ENTRADA AGORA':operationalDirectional?operationalState:'AGUARDAR';
+        const operationalStatus=operationalReady?'ENTRADA AGORA':operationalDirectional?(operationalState==='AGUARDAR'?'TENDÊNCIA':operationalState):'AGUARDAR';
         const operationalTime=operationalReady&&Number.isFinite(Number(operational.entryAt))?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
         const operationalTrigger=Number.isFinite(Number(operational.trigger))?Number(operational.trigger):null;
         const operationalInvalidation=Number.isFinite(Number(operational.invalidation))?Number(operational.invalidation):null;
@@ -1175,10 +1176,11 @@ export class LocalPlaywrightDriver{
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${strategyFinalTone}">${strategyFinalSide}</b><span style="font-size:8px;color:${muted}">${strategyActiveCount}/3 ativas</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(strategyCallPct,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(strategyPutPct,0)}%</b></div></div>
               </div>
-              <div data-sentinel-card="general-consensus" style="padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${generalState==='ALINHADO'?generalTone:panelBorder}">
-                <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONSENSO GERAL</span><div style="display:flex;align-items:center;gap:5px"><span style="font-size:7px;color:${subtle}">40% rápida · 60% estratégias</span>${expandBtn('general-consensus')}</div></div>
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${generalTone}">${generalSide}</b><span style="font-size:8px;font-weight:850;color:${generalState==='DIVERGÊNCIA'?putTone:generalState==='ALINHADO'?callTone:warnTone}">${generalState}</span></div>
+              <div data-sentinel-card="general-consensus" style="padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${generalLeanSide!=='AGUARDAR'?generalTone:panelBorder}">
+                <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONSENSO GERAL · 6 LEITURAS</span><div style="display:flex;align-items:center;gap:5px"><span style="font-size:7px;color:${subtle}">40% rápida · 60% estratégias</span>${expandBtn('general-consensus')}</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${generalTone}">${generalLeanSide}</b><span style="font-size:8px;font-weight:850;color:${generalState==='DIVERGÊNCIA'?putTone:generalState==='ALINHADO'?callTone:warnTone}">${generalState}</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(generalCall,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(generalPut,0)}%</b></div></div>
+                <div style="display:flex;justify-content:space-between;gap:8px;margin-top:5px;font-size:7px;color:${subtle}"><span>força ${n(generalStrength,0)}/100</span><span>${Number(generalConsensus?.sources?.strategies||0)+3}/6 fontes</span></div>
               </div>
             </div>
             <div data-sentinel-card="operational-signal" style="margin-top:7px;padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${operationalDirectional?operationalTone:panelBorder}">
