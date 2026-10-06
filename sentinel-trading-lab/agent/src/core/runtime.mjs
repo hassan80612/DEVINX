@@ -94,7 +94,7 @@ export class DemoTradingRuntime{
       const strongest=Math.max(Number(callPct||0),Number(putPct||0)),edge=Number(callPct||0)-Number(putPct||0);
       if(callVotes>putVotes&&strongest>=35&&edge>=10)side='CALL';
       else if(putVotes>callVotes&&strongest>=35&&edge<=-10)side='PUT';
-      agreement=callVotes===putVotes?'DIVERGÊNCIA':(callVotes>putVotes?`${callVotes}/${activeCount} CONCORDAM EM CALL`:`${putVotes}/${activeCount} CONCORDAM EM PUT`);
+      agreement=callVotes===0&&putVotes===0?'SEM DIREÇÃO':callVotes===putVotes?`DIVERGÊNCIA · ${callVotes} CALL / ${putVotes} PUT`:(callVotes>putVotes?`${callVotes}/${activeCount} CONCORDAM EM CALL`:`${putVotes}/${activeCount} CONCORDAM EM PUT`);
     }
     return{cards,confluence:{activeCount,callPct,putPct,callVotes,putVotes,side,agreement}};
   }
@@ -116,7 +116,7 @@ export class DemoTradingRuntime{
   }
   _generalConsensus(analysis,strategyPanel){
     const final=analysis?.finalConfluence||{},q=analysis?.quality||{},m=analysis?.metrics||{},short=m.shortModel||{};
-    const avg=rows=>rows.length?Math.round(rows.reduce((s,v)=>s+v,0)/rows.length):null;
+    const avg=rows=>rows.length?Math.round(rows.reduce((sum,v)=>sum+v,0)/rows.length):null;
     const finite=v=>Number.isFinite(Number(v));
     const rapidCallRows=[final.callStrength,q.technicalBuy??m.buyScore,short.reversalCallScore].filter(finite).map(Number);
     const rapidPutRows=[final.putStrength,q.technicalSell??m.sellScore,short.reversalPutScore].filter(finite).map(Number);
@@ -129,11 +129,23 @@ export class DemoTradingRuntime{
     const callScore=hasRapid&&hasStrategy?Math.round(rapidCall*.40+strategyCall*.60):hasStrategy?Math.round(strategyCall):hasRapid?Math.round(rapidCall):null;
     const putScore=hasRapid&&hasStrategy?Math.round(rapidPut*.40+strategyPut*.60):hasStrategy?Math.round(strategyPut):hasRapid?Math.round(rapidPut):null;
     const edge=callScore==null||putScore==null?0:callScore-putScore,strength=Math.max(Number(callScore||0),Number(putScore||0));
+    const total=Math.max(0,Number(callScore||0))+Math.max(0,Number(putScore||0));
+    const rawCallPct=total>0?Math.round(Math.max(0,Number(callScore||0))/total*100):50;
+    const rawPutPct=100-rawCallPct;
+    const displayKey=[String(this.settings.asset||'—').toUpperCase(),this._strategyComboKey()].join('|');
+    const now=Date.now(),prev=this.generalConsensusDisplay;
+    const same=prev&&prev.key===displayKey&&now-Number(prev.at||0)<6000;
+    const alpha=.32;
+    const displayCallPct=Math.round(same?Number(prev.callPct)*(1-alpha)+rawCallPct*alpha:rawCallPct);
+    const displayPutPct=100-displayCallPct;
+    const displayStrength=Math.round(same?Number(prev.strength||0)*(1-alpha)+strength*alpha:strength);
+    this.generalConsensusDisplay={key:displayKey,callPct:displayCallPct,putPct:displayPutPct,strength:displayStrength,at:now};
+    const leanSide=displayStrength<12?'AGUARDAR':displayCallPct>=55?'CALL':displayPutPct>=55?'PUT':'AGUARDAR';
     const aligned=hasRapid&&hasStrategy&&['CALL','PUT'].includes(rapidSide)&&rapidSide===strategySide;
     const divergent=hasRapid&&hasStrategy&&['CALL','PUT'].includes(rapidSide)&&['CALL','PUT'].includes(strategySide)&&rapidSide!==strategySide;
     const side=aligned&&strength>=45&&Math.abs(edge)>=10?(edge>0?'CALL':'PUT'):'AGUARDAR';
     const state=aligned?'ALINHADO':divergent?'DIVERGÊNCIA':'FORMANDO';
-    return{side,state,aligned,divergent,callScore,putScore,strength,edge,weights:{rapid:40,strategies:60},rapid:{side:rapidSide,callScore:rapidCall,putScore:rapidPut,strength:rapidStrength,edge:rapidEdge},strategies:{side:strategySide,callScore:strategyCall,putScore:strategyPut,activeCount:Number(sc.activeCount||0)}};
+    return{side,leanSide,state,aligned,divergent,callScore,putScore,strength,edge,displayCallPct,displayPutPct,displayStrength,weights:{rapid:40,strategies:60},sources:{rapid:3,strategies:Number(sc.activeCount||0),total:3+Number(sc.activeCount||0)},rapid:{side:rapidSide,callScore:rapidCall,putScore:rapidPut,strength:rapidStrength,edge:rapidEdge},strategies:{side:strategySide,callScore:strategyCall,putScore:strategyPut,activeCount:Number(sc.activeCount||0)}};
   }
   _strategyComboKey(){
     const ids=[this.settings.strategy,this.settings.strategy2,this.settings.strategy3].map(x=>String(x||'none')).filter(x=>x!=='none');
