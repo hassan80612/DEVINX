@@ -190,7 +190,7 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  }
 }
 
-export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',strategies=null,strategyCredibility={},minConfidence=74,durationMs=60000,freshnessMs=5000,quoteTs=Date.now(),now=Date.now()}){
+export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,freshnessMs=5000,quoteTs=Date.now(),now=Date.now()}){
  if(!Array.isArray(candles)||candles.length<35)return{side:SignalSide.WAIT,confidence:0,reasons:['dados insuficientes: mínimo 35 candles'],metrics:{sourceCandles:candles?.length||0}};
  if(now-quoteTs>freshnessMs)return{side:SignalSide.WAIT,confidence:0,reasons:['feed atrasado'],metrics:{sourceCandles:candles.length}};
 
@@ -301,7 +301,6 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    return b
  };
  const scorers={trend:scoreTrend,price_action:scorePriceAction,trendline_breakout:scoreTrendlineBreakout,support_resistance:scoreSupportResistance,fibonacci_retest:scoreFibonacci,mean_reversion:scoreMeanReversion,breakout:scoreBreakout};
- const strategyAlias={trend_following:'trend',trend:'trend',price_action:'price_action',trendline_breakout:'trendline_breakout',support_resistance:'support_resistance',fibonacci_retest:'fibonacci_retest',mean_reversion:'mean_reversion',breakout:'breakout',smart_confluence:'smart_confluence'};
  const scoreSmart=()=>{
    const b=mk();
    for(const name of ['trend','price_action','trendline_breakout','support_resistance','fibonacci_retest','mean_reversion','breakout']){
@@ -312,14 +311,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    }
    return b
  };
- const scoreStrategy=(id)=>{
-   const raw=String(id||'smart_confluence'),key=strategyAlias[raw]||raw;
-   return key==='smart_confluence'?scoreSmart():(scorers[key]?.()||scoreSmart())
- };
- const strategySource=Array.isArray(strategies)?strategies:[strategy];
- const selectedStrategies=[...new Set(strategySource.map(x=>typeof x==='string'?x:x?.id).filter(Boolean).map(x=>String(x)==='trend_following'?'trend':String(x)))].slice(0,3);
- const strategyBoxes=selectedStrategies.map(id=>({id,box:scoreStrategy(id)}));
- const box=scoreStrategy(strategy);
+ const box=strategy==='smart_confluence'?scoreSmart():(scorers[strategy]?.()||scoreSmart());
 
  const horizon=Math.max(30000,Number(durationMs||60000));
  const short=shortHorizonModel({
@@ -360,12 +352,20 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  }
 
  const edge=buyEffective-sellEffective,confidence=Math.max(buyEffective,sellEffective);
+ const previewThreshold=Math.max(55,Number(minConfidence||74)-10);
+ const projectedBuy=horizon<=60000?buyEffective:clamp(Math.round(buyEffective*.72+Math.max(0,micro.pulse)*1.1),0,100);
+ const projectedSell=horizon<=60000?sellEffective:clamp(Math.round(sellEffective*.72+Math.max(0,-micro.pulse)*1.1),0,100);
+ let forecastSide=SignalSide.WAIT;
+ if(micro.ready&&Math.max(projectedBuy,projectedSell)>=previewThreshold&&Math.abs(projectedBuy-projectedSell)>=12){
+   if(projectedBuy>projectedSell&&!short.callReversalRisk)forecastSide=SignalSide.BUY;
+   if(projectedSell>projectedBuy&&!short.putReversalRisk)forecastSide=SignalSide.SELL
+ }
+ const forecastConfidence=Math.max(projectedBuy,projectedSell);
+ const callGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedBuy)),putGap=Math.max(0,Math.round(Number(minConfidence||74)-projectedSell));
 
- // Os seis cards continuam descrevendo o estado atual. A previsão futura é calculada
- // separadamente por horizonte e nunca mais é uma cópia de buyEffective/sellEffective.
  const contextBuy=clamp(Math.round(rawBuy),0,100),contextSell=clamp(Math.round(rawSell),0,100);
- const finalCall=clamp(Math.round(contextBuy*.62+buyEffective*.38),0,100);
- const finalPut=clamp(Math.round(contextSell*.62+sellEffective*.38),0,100);
+ const finalCall=horizon<=60000?clamp(Math.round(contextBuy*.62+buyEffective*.38),0,100):clamp(Math.round(buyEffective*.62+projectedBuy*.38),0,100);
+ const finalPut=horizon<=60000?clamp(Math.round(contextSell*.62+sellEffective*.38),0,100):clamp(Math.round(sellEffective*.62+projectedSell*.38),0,100);
  const finalEdge=finalCall-finalPut,finalStrength=Math.max(finalCall,finalPut);
  const finalSide=finalStrength>=Number(minConfidence||74)&&Math.abs(finalEdge)>=12&&micro.ready?(finalEdge>0?'CALL':'PUT'):'AGUARDAR';
 
@@ -375,114 +375,21 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const lowerLevels=[m.sr?.support,m.trendlines?.support?.value,m.bb?.lower,short.sr?.support].map(Number).filter(v=>Number.isFinite(v)&&v<last).sort((a,b)=>b-a);
  const nearestUpper=upperLevels[0]??null,nearestLower=lowerLevels[0]??null;
  const reversalMode=strategy==='mean_reversion'||strategy==='support_resistance';
- const norm=(v,scale=1)=>Number.isFinite(Number(v))?clamp(Number(v)/Math.max(1e-12,Math.abs(scale)),-1,1):0;
- const meanSignal=xs=>{const rows=xs.filter(Number.isFinite);return rows.length?clamp(rows.reduce((a,b)=>a+b,0)/rows.length,-1,1):0};
- const emaSignal=trendUp?1:trendDn?-1:0;
- const structureSignal=m.structure?.bias==='bullish'?1:m.structure?.bias==='bearish'?-1:0;
- const higherSignal=higherUp?1:higherDn?-1:0;
- const ema50Signal=m.ema50!=null?(last>Number(m.ema50)?1:last<Number(m.ema50)?-1:0):0;
- const trendSignal=clamp(emaSignal*.30+structureSignal*.30+higherSignal*.25+ema50Signal*.15,-1,1);
- const rsiSignal=m.rsi!=null?norm(Number(m.rsi)-50,20):0;
- const macdSignal=m.macd?.histogram!=null?norm(Number(m.macd.histogram),safeVol*.12):0;
- const momentumSignalValue=m.momentum!=null?norm(Number(m.momentum),.18):0;
- const stochasticSignal=m.stoch!=null?norm(Number(m.stoch)-50,38):0;
- const momentumSignal=clamp(rsiSignal*.28+macdSignal*.30+momentumSignalValue*.27+stochasticSignal*.15,-1,1);
- const strategySignalFor=(entry,seconds,ctx={})=>{
-   const buy=Math.max(0,Number(entry?.box?.buy||0)),sell=Math.max(0,Number(entry?.box?.sell||0)),total=buy+sell;
-   const ratioSignal=total>0?(buy-sell)/total:0,magnitude=clamp(total/70,0,1);
-   const base=clamp(ratioSignal*(.55+.45*magnitude),-1,1);
-   const id=String(entry?.id||'smart_confluence')==='trend_following'?'trend':String(entry?.id||'smart_confluence');
-   const longness=clamp((Number(seconds)-30)/870,0,1),shortness=1-longness;
-   const microNow=Number(ctx.microSignal||0),locationNow=Number(ctx.locationSignal||0);
-   let modeled=base;
-   if(id==='trend')modeled=base*.52+trendSignal*(.24+.10*longness)+momentumSignal*.14+microNow*(.10*shortness);
-   else if(id==='mean_reversion')modeled=base*.50+reversalSignal*(.22+.08*shortness)+locationNow*.20+momentumSignal*(-.08*longness);
-   else if(id==='support_resistance')modeled=base*.54+locationNow*(.20+.06*longness)+reversalSignal*.13+setupSignal*.08+trendSignal*.05;
-   else if(id==='breakout'||id==='trendline_breakout')modeled=base*.54+setupSignal*(.18+.05*shortness)+trendSignal*(.12+.05*longness)+momentumSignal*.11+microNow*(.05*shortness);
-   else if(id==='price_action')modeled=base*.58+setupSignal*.15+reversalSignal*.11+trendSignal*.09+microNow*(.07*shortness);
-   else if(id==='fibonacci_retest')modeled=base*.56+locationNow*.15+trendSignal*(.13+.05*longness)+setupSignal*.10+momentumSignal*.06;
-   else modeled=base*.55+trendSignal*(.10+.05*longness)+momentumSignal*.10+locationNow*.10+reversalSignal*.07+setupSignal*.05+microNow*(.03*shortness);
-   const signal=clamp(modeled,-1,1);
-   const rawCred=strategyCredibility?.[id]?.[String(seconds)]??strategyCredibility?.[id]?.default??1;
-   const multiplier=clamp(Number(rawCred?.multiplier??rawCred??1),.75,1.25),samples=Math.max(0,Number(rawCred?.samples||0));
-   const weight=Math.max(.08,magnitude)*multiplier;
-   const callProbability=clamp(Math.round(50+signal*45),5,95),putProbability=100-callProbability;
-   return{strategy:id,signal,magnitude,multiplier,samples,weight,callProbability,putProbability,side:Math.abs(signal)>=.12?(signal>0?'CALL':'PUT'):'NEUTRO'}
- };
- const strategyEnsembleFor=(seconds,ctx={})=>{
-   const rows=strategyBoxes.map(entry=>strategySignalFor(entry,seconds,ctx));
-   const informative=rows.filter(x=>x.magnitude>=.08&&Math.abs(x.signal)>=.04),weight=informative.reduce((a,x)=>a+x.weight,0)||1;
-   const signal=informative.length?clamp(informative.reduce((a,x)=>a+x.signal*x.weight,0)/weight,-1,1):0;
-   const directional=informative.filter(x=>x.side!=='NEUTRO'),directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
-   const alignedWeight=directional.filter(x=>signal===0||Math.sign(x.signal)===Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
-   const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5;
-   return{signal,agreement,rows,activeCount:informative.length}
- };
- const patternBuy=(m.patterns||[]).filter(p=>p?.side==='BUY').length,patternSell=(m.patterns||[]).filter(p=>p?.side==='SELL').length;
- const setupSignal=clamp((m.retest?.side==='BUY'?0.65:m.retest?.side==='SELL'?-0.65:0)+clamp((patternBuy-patternSell)*.22,-.44,.44)+(srBreakUp||lineBreakUp?0.25:0)-(srBreakDown||lineBreakDown?0.25:0),-1,1);
- const reversalSignalBase=clamp((Number(short.reversalCallScore||0)-Number(short.reversalPutScore||0))/75,-1,1);
- const reversalSignal=clamp(reversalSignalBase+(short.turnUp?0.28:0)-(short.turnDown?0.28:0)+(short.failedBreakDown||failedSupport?0.24:0)-(short.failedBreakUp||failedResistance?0.24:0)+(short.putOverextended?0.16:0)-(short.callOverextended?0.16:0),-1,1);
-
- const weightsFor=seconds=>seconds<=30
-   ?{micro:.20,reversal:.15,momentum:.12,trend:.08,location:.08,setup:.07,strategies:.30}
-   :seconds<=60?{micro:.16,reversal:.12,momentum:.12,trend:.10,location:.09,setup:.06,strategies:.35}
-   :seconds<=120?{micro:.10,reversal:.08,momentum:.12,trend:.13,location:.11,setup:.06,strategies:.40}
-   :seconds<=300?{micro:.06,reversal:.05,momentum:.10,trend:.14,location:.14,setup:.06,strategies:.45}
-   :seconds<=600?{micro:.04,reversal:.04,momentum:.09,trend:.15,location:.13,setup:.05,strategies:.50}
-   :{micro:.03,reversal:.03,momentum:.08,trend:.16,location:.11,setup:.04,strategies:.55};
-
- const forecastFor=seconds=>{
+ const planner=Object.fromEntries(plannerHorizons.map(seconds=>{
    const scale=Math.sqrt(Math.max(.5,seconds/60)),expectedMove=Math.max(safeVol*.35,safeVol*scale),triggerBuffer=Math.max(safeVol*.08,expectedMove*.24);
-   const barsBack=Math.max(2,Math.ceil(seconds/Math.max(5,baseSeconds)));
-   const enoughHistory=closes.length>=Math.max(12,Math.min(30,barsBack+8));
-   const microSignal=micro.ready?clamp(norm(micro.p5,1.35)*.35+norm(micro.p15,1.65)*.30+norm(micro.p30,2.10)*.20+norm(micro.pulse,18)*.15,-1,1):0;
-   const upRoom=nearestUpper!=null?clamp((nearestUpper-last)/Math.max(expectedMove,1e-12),0,3):1.5;
-   const downRoom=nearestLower!=null?clamp((last-nearestLower)/Math.max(expectedMove,1e-12),0,3):1.5;
-   let locationSignal=clamp((upRoom-downRoom)/2.2,-1,1);
-   if(upRoom<.45)locationSignal-=.28;
-   if(downRoom<.45)locationSignal+=.28;
-   if(m.bb?.upper!=null&&m.bb?.lower!=null&&Number(m.bb.upper)>Number(m.bb.lower)){
-     const bbPos=clamp(((last-Number(m.bb.mid||((Number(m.bb.upper)+Number(m.bb.lower))/2)))/(Number(m.bb.upper)-Number(m.bb.lower)))*2,-1,1);
-     locationSignal=clamp(locationSignal-bbPos*.12,-1,1)
-   }
-   const strategyEnsemble=strategyEnsembleFor(seconds,{microSignal,locationSignal}),w=weightsFor(seconds);
-   const features=[
-     {name:'3 estratégias',value:strategyEnsemble.signal,weight:w.strategies,available:strategyEnsemble.activeCount>0},
-     {name:'microfluxo',value:microSignal,weight:w.micro,available:micro.ready},
-     {name:'reversão/exaustão',value:reversalSignal,weight:w.reversal,available:short.ready===true},
-     {name:'momentum',value:momentumSignal,weight:w.momentum,available:m.rsi!=null||m.macd!=null||m.momentum!=null},
-     {name:'estrutura/tendência',value:trendSignal,weight:w.trend,available:true},
-     {name:'espaço S/R',value:locationSignal,weight:w.location,available:true},
-     {name:'setup',value:setupSignal,weight:w.setup,available:true}
-   ];
-   const available=features.filter(x=>x.available),weightTotal=available.reduce((a,x)=>a+x.weight,0)||1;
-   let signal=available.reduce((a,x)=>a+x.value*x.weight,0)/weightTotal;
-   if(short.callOverextended&&signal>0)signal-=Math.min(.22,Math.abs(signal)*.32+.04);
-   if(short.putOverextended&&signal<0)signal+=Math.min(.22,Math.abs(signal)*.32+.04);
-   if(short.turnDown&&signal>0)signal-=.10;
-   if(short.turnUp&&signal<0)signal+=.10;
-   signal=clamp(signal,-1,1);
-   const directional=available.filter(x=>Math.abs(x.value)>=.08);
-   const directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
-   const alignedWeight=directional.filter(x=>signal===0||Math.sign(x.value)===Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
-   const opposedWeight=directional.filter(x=>signal!==0&&Math.sign(x.value)!==Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
-   const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5;
-   const conflict=directionalWeight>0?opposedWeight/directionalWeight:0;
-   const quality=clamp(weightTotal,0,1);
-   const strategyAgreement=strategyEnsemble.agreement;
-   const strategyConflictPenalty=Math.max(0,.60-strategyAgreement)*12;
-   const callProbability=clamp(Math.round(50+signal*44),5,95),putProbability=100-callProbability;
-   const modelConfidence=clamp(Math.round(50+Math.abs(signal)*30+Math.max(0,agreement-.5)*18+Math.max(0,strategyAgreement-.5)*14+Math.max(0,quality-.70)*8-conflict*7-strategyConflictPenalty),50,94);
-   const minForecastConfidence=seconds<=60?60:58;
-   const enoughFlow=seconds>60||micro.ready;
-   const outlookReady=enoughHistory&&enoughFlow&&strategyEnsemble.activeCount>=1&&quality>=.72;
-   const hasDirection=outlookReady&&modelConfidence>=minForecastConfidence&&Math.abs(signal)>=.16&&agreement>=.52&&strategyAgreement>=.48;
-   const bias=hasDirection?(signal>0?'CALL':'PUT'):'NEUTRO';
-   const projectedMove=expectedMove*signal*(.58+modelConfidence/250);
-   const projectedPrice=last+projectedMove;
+   const barsBack=Math.max(2,Math.ceil(seconds/baseSeconds));
+   const enoughHistory=closes.length>=barsBack*2+1;
+   const recent=seconds<=60?micro[seconds===30?'delta30':'delta60']:enoughHistory?last-closes.at(-1-barsBack):0;
+   const previous=enoughHistory?closes.at(-1-barsBack)-closes.at(-1-barsBack*2):0;
+   const enoughFlow=seconds>60||micro.ready&&(seconds===30?micro.spanMs>=30000:micro.spanMs>=60000);
+   const material=Math.max(safeVol*.12*scale,Math.abs(last)*.000005);
+   const up=recent>material,down=recent< -material;
+   const aligned=seconds<=60?(up&&micro.pulse>=4||down&&micro.pulse<=-4):(up&&previous>0||down&&previous<0);
+   const contextUp=seconds<=60?!short.callReversalRisk:trendUp||higherUp;
+   const contextDown=seconds<=60?!short.putReversalRisk:trendDn||higherDn;
+   const outlookReady=enoughHistory&&enoughFlow&&(seconds>60||short.ready);
+   const bias=outlookReady&&aligned&&up&&contextUp?'CALL':outlookReady&&aligned&&down&&contextDown?'PUT':'NEUTRO';
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
-   const reversalVotes=strategyEnsemble.rows.filter(x=>['mean_reversion','support_resistance'].includes(x.strategy)&&x.side!=='NEUTRO');
-   const reversalMode=reversalVotes.length>0&&reversalVotes.some(x=>x.side===bias);
    if(reversalMode){
      const lower=nearestLower??(last-expectedMove),upper=nearestUpper??(last+expectedMove);
      callTrigger=lower+triggerBuffer*.10;putTrigger=upper-triggerBuffer*.10;callInvalidation=lower-triggerBuffer*.40;putInvalidation=upper+triggerBuffer*.40;
@@ -494,23 +401,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      callInvalidation=Math.max(last-triggerBuffer*.50,nearestLower??(last-triggerBuffer*.50));putInvalidation=Math.min(last+triggerBuffer*.50,nearestUpper??(last+triggerBuffer*.50));
      callRule='CALL somente após romper e sustentar acima do gatilho';putRule='PUT somente após romper e sustentar abaixo do gatilho'
    }
-   const strongest=features.filter(x=>x.available).sort((a,b)=>Math.abs(b.value*b.weight)-Math.abs(a.value*a.weight)).slice(0,3).map(x=>`${x.name} ${x.value>0?'CALL':x.value<0?'PUT':'neutro'}`);
-   return{
-     horizonSeconds:seconds,currentPrice:last,expectedMove,expectedLow:last-expectedMove,expectedHigh:last+expectedMove,
-     projectedMove,projectedPrice,signal,callProbability,putProbability,confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
-     bias,outlookReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
-     strategyWeightPct:Math.round(w.strategies*100),strategyAgreement:Math.round(strategyAgreement*100),
-     strategyForecasts:strategyEnsemble.rows.map(x=>({strategy:x.strategy,side:x.side,callProbability:x.callProbability,putProbability:x.putProbability,signal:x.signal,evidence:Math.round(x.magnitude*100),credibility:x.multiplier,samples:x.samples})),
-     basis:'previsão futura multi-estratégia + estrutura + microfluxo',drivers:strongest,automaticExecution:false,modelVersion:'future-v3'
-   }
- };
- const planner=Object.fromEntries(plannerHorizons.map(seconds=>[String(seconds),forecastFor(seconds)]));
- const selectedSeconds=String(Math.max(30,Math.round(horizon/1000))),selectedForecast=planner[selectedSeconds]||planner['60']||planner['30'];
- const forecast30Plan=planner['30'];
- const projectedBuy=Number(selectedForecast?.callProbability||50),projectedSell=Number(selectedForecast?.putProbability||50);
- const forecastSide=forecast30Plan?.bias==='CALL'?SignalSide.BUY:forecast30Plan?.bias==='PUT'?SignalSide.SELL:SignalSide.WAIT;
- const forecastConfidence=Number(forecast30Plan?.confidence||0);
- const callGap=Math.max(0,Math.round(60-Number(forecast30Plan?.confidence||0))),putGap=callGap;
+   return[String(seconds),{horizonSeconds:seconds,currentPrice:last,expectedMove,expectedLow:last-expectedMove,expectedHigh:last+expectedMove,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,bias,outlookReady,observedMove:recent,windowSeconds:barsBack*baseSeconds,basis:reversalMode?'reação em suporte/resistência':'rompimento + confirmação',automaticExecution:false}]
+ }));
+
  if(side===SignalSide.WAIT)box.reasons.push(`entrada aguardando: CALL ${buyEffective} pts · PUT ${sellEffective} pts · filtro ${Number(minConfidence||74)} pts`);
  if(horizon<=60000&&short.ready){
    if(short.callReversalRisk)box.reasons.push('CALL bloqueado por risco de reversão');
@@ -520,9 +413,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 
  return{
    side,confidence,reasons:box.reasons.slice(0,14),
-   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:Number(forecast30Plan?.callProbability||50),putStrength:Number(forecast30Plan?.putProbability||50),trigger:60,callGap,putGap,microPulse:micro.pulse,microReady:micro.ready,projectedPrice:forecast30Plan?.projectedPrice??null,agreement:forecast30Plan?.agreement??0,modelVersion:'future-v3'},
-   finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:'estado técnico atual; previsão futura separada'},
-   entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v3',strategies:selectedStrategies,horizons:planner},
-   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,selectedStrategies,futureModelVersion:'future-v3',selectedForecast}
+   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:projectedBuy,putStrength:projectedSell,trigger:Number(minConfidence||74),callGap,putGap,microPulse:micro.pulse,microReady:micro.ready},
+   finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:horizon<=60000?'contexto técnico 60s/5m + microestrutura curta':'contexto técnico + microfluxo'},
+   entryPlanner:{defaultHorizonSeconds:30,horizons:planner},
+   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy}
  }
 }

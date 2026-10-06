@@ -1,8 +1,8 @@
-name: Sentinel Hybrid Smoke V13
+name: Sentinel Hybrid Smoke V12
 
 on:
   push:
-    branches: [sentinel-v106-modern, main]
+    branches: [sentinel-v12-clean-restore-20261006, main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -41,15 +41,12 @@ jobs:
           $ErrorActionPreference='Stop'
           $script=@'
           import {readFile} from 'node:fs/promises';
-          import {LocalPlaywrightDriver,instrumentLabel} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
-          import {analyzeMarket} from './sentinel-trading-lab/agent/src/core/strategy.mjs';
-          import {DemoTradingRuntime} from './sentinel-trading-lab/agent/src/core/runtime.mjs';
+          import {LocalPlaywrightDriver} from './sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
 
           const driverSource=await readFile('./sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
           const worker=await readFile('./sentinel-trading-lab/agent/worker/index.mjs','utf8');
           const runtime=await readFile('./sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
           const strategy=await readFile('./sentinel-trading-lab/agent/src/core/strategy.mjs','utf8');
-          const engine=await readFile('./sentinel-trading-lab/agent/src/core/engine.mjs','utf8');
 
           for(const k of ['reversalCallScore','reversalPutScore','entryPlanner','finalConfluence','callReversalRisk','putReversalRisk'])if(!strategy.includes(k))throw new Error('analysis_feature_missing:'+k);
           for(const k of ['scoreTrend','scorePriceAction','scoreTrendlineBreakout','scoreSupportResistance','scoreFibonacci','scoreMeanReversion','scoreBreakout'])if(!strategy.includes(k))throw new Error('independent_strategy_missing:'+k);
@@ -60,14 +57,11 @@ jobs:
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
-          if(!runtime.includes('_generalConsensus')||!runtime.includes('horizon_forecast_v3')||!runtime.includes('strategy_forecast_v3')||!runtime.includes('_strategyCredibilityMap')||!runtime.includes('consensusAligned'))throw new Error('future_v3_runtime_missing');
-          if(!strategy.includes("modelVersion:'future-v3'")||!strategy.includes('strategyForecasts')||!strategy.includes('strategyWeightPct')||!strategy.includes('callProbability')||!strategy.includes('projectedPrice'))throw new Error('future_v3_strategy_missing');
-          if(!engine.includes('analysisContext?.strategies')||!engine.includes('strategyCredibility'))throw new Error('future_v3_engine_context_missing');
-          if(!runtime.includes('incomingAsset&&incomingAsset!==currentAsset')||!runtime.includes('this.lastResult={asset:incomingAsset')||!worker.includes('resultAsset'))throw new Error('asset_switch_scenario_invalidation_missing');
+          if(!runtime.includes('_generalConsensus')||!runtime.includes('prazo + consenso geral dos 6 cards'))throw new Error('six_card_consensus_runtime_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
           if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
-          if(!runtime.includes("gated.operationalSignal?.actionable!==true")||!runtime.includes("gated.side=operationalSide")||!runtime.includes("this.entryRelease={side:operationalSide"))throw new Error('execution_not_authoritative_operational_signal');
+          if(!runtime.includes("gated.operationalSignal?.actionable!==true")||!runtime.includes("operationalSetup.releasedAt=now"))throw new Error('execution_not_gated_by_operational_timing');
           if(!runtime.includes("strategyPanel=this._strategyPanel(snap,now)")||!runtime.includes("pausedReadings")||!runtime.includes("sourceRows"))throw new Error('pause_aware_totals_not_recomputed');
 
           if(driverSource.includes('operationalReady=operationalPrepare&&(entryReady||triggerMet||setupMatches)'))throw new Error('legacy_permissive_operational_gate_present');
@@ -78,20 +72,8 @@ jobs:
           if(!runtime.includes('_priceAtExpiry')||!runtime.includes("settlementQuality!=='approx'")||!runtime.includes('expirationMatch')||!runtime.includes('brokerExpirationDurationMs'))throw new Error('exact_expiry_validation_missing');
           if(!runtime.includes('Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30))'))throw new Error('statistical_sample_floor_missing');
           if(!worker.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
-          for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO FUTURO','FUTURE V3','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
+          for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
-          if(!driverSource.includes('clickedInstrument')||!driverSource.includes('domActiveInstrument')||!driverSource.includes("instrumentLabel(clickedSymbol)"))throw new Error('generic_visible_instrument_bridge_missing');
-          for(const bogus of ['COM/GTM','TRY/ING','WWW/API','new-web-loading-screen','redirect-pwa'])if(instrumentLabel(bogus)!==null)throw new Error('false_visible_instrument_accepted:'+bogus);
-          for(const [input,expected] of [['Gold','Gold'],['front.Gold','Gold'],['USD/BRL OTC','USD/BRL OTC'],['XAU/USD OTC','XAU/USD OTC']])if(instrumentLabel(input)!==expected)throw new Error('valid_visible_instrument_rejected:'+input);
-          if(!driverSource.includes("const bad=new Set(['COM','GTM','WWW','HTTP','HTTPS','API','APP','ORG','NET','CDN','IMG','JS','CSS','ING'])"))throw new Error('browser_pair_bad_token_guard_missing');
-          if(!driverSource.includes("if(/^\\s*[A-Z]{3}\\s*[\\/-]\\s*[A-Z]{3}"))throw new Error('browser_invalid_pair_fallback_guard_missing');
-          if(driverSource.includes('Ativo da tela · <b'))throw new Error('future_card_must_not_show_asset_name');
-          if(driverSource.includes('color:${operationalDirectional}?operationalTone:warnTone}'))throw new Error('operational_signal_color_expression_broken');
-          if(!driverSource.includes('color:${operationalDirectional?operationalTone:warnTone}'))throw new Error('operational_signal_semantic_color_missing');
-          if(!driverSource.includes('"Aptos","Segoe UI Variable Text","Inter"'))throw new Error('premium_typography_stack_missing');
-          if(!driverSource.includes('acceptRequestedHistory')||!driverSource.includes('pageCandleRequests'))throw new Error('deterministic_history_warmup_missing');
-          if(!worker.includes('<=15000'))throw new Error('same_asset_overlay_hold_missing');
-          if(!driverSource.includes('configuredStrategies')||!driverSource.includes('Coletando leitura'))throw new Error('strategy_card_transient_stability_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
           if(!worker.includes("if(action==='refresh')"))throw new Error('refresh_action_missing');
           const installer=await readFile('./sentinel-trading-lab/public/downloads/install-agent-v88.ps1','utf8');
@@ -102,50 +84,8 @@ jobs:
           if(installer.includes("$_ .Name -eq 'chrome.exe'".replace('$_ ','$_'))||installer.includes("$_ .Name -eq 'msedge.exe'".replace('$_ ','$_')))throw new Error('installer_still_kills_broker_browser');
           if(!worker.includes("runtime.setMode(payload.mode"))throw new Error('mode_route_missing');
           if(worker.includes("async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain"))throw new Error('status_poll_still_runs_heavy_maintain');
-          if(!worker.includes("const VERSION='13.0.0'"))throw new Error('agent_version_not_13');
-          console.log('V13 STARTUP + LOCAL MODE: PASS');
-
-          const forecastNow=Date.now();
-          const forecastCandles=Array.from({length:120},(_,i)=>{
-            const base=1.2000+i*.000035+Math.sin(i/7)*.00008;
-            return{from:Math.floor((forecastNow-(120-i)*60000)/1000),to:Math.floor((forecastNow-(119-i)*60000)/1000),open:base-.00002,high:base+.00008,low:base-.00007,close:base,volume:10+i%7}
-          });
-          const forecastQuotes=Array.from({length:160},(_,i)=>({ts:forecastNow-(159-i)*1000,price:1.2040+i*.0000015+Math.sin(i/9)*.00001}));
-          const future=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'smart_confluence',strategies:['smart_confluence','trend','mean_reversion'],strategyCredibility:{trend:{'60':{multiplier:1.12,samples:24}}},minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
-          if(future?.entryPlanner?.modelVersion!=='future-v3')throw new Error('future_v3_model_missing');
-          if((future.entryPlanner?.strategies||[]).join(',')!=='smart_confluence,trend,mean_reversion')throw new Error('future_v3_strategy_set_missing');
-          for(const h of ['30','60','120','300','600','900']){
-            const p=future?.entryPlanner?.horizons?.[h];
-            if(!p||p.modelVersion!=='future-v3'||!Number.isFinite(Number(p.confidence))||!Number.isFinite(Number(p.projectedPrice)))throw new Error('future_horizon_invalid:'+h);
-            if(Math.round(Number(p.callProbability||0)+Number(p.putProbability||0))!==100)throw new Error('future_probability_invalid:'+h);
-            if(!Array.isArray(p.strategyForecasts)||p.strategyForecasts.length!==3)throw new Error('future_strategy_forecasts_missing:'+h)
-          }
-          if(Number(future.entryPlanner.horizons['30'].strategyWeightPct)!==30||Number(future.entryPlanner.horizons['900'].strategyWeightPct)!==55)throw new Error('future_horizon_strategy_weights_invalid');
-          if(Number(future.forecast30?.callStrength)!==Number(future.entryPlanner.horizons['30'].callProbability))throw new Error('forecast30_not_bound_to_future_engine');
-          for(const id of ['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout']){
-            const a=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:id,minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
-            if(!Number.isFinite(Number(a.metrics?.rawBuyScore))||!Number.isFinite(Number(a.metrics?.rawSellScore))||!a.entryPlanner?.horizons?.['60'])throw new Error('strategy_engine_invalid:'+id)
-          }
-          const runtimeAudit=new DemoTradingRuntime();
-          runtimeAudit.settings.strategy='smart_confluence';runtimeAudit.settings.strategy2='trend';runtimeAudit.settings.strategy3='mean_reversion';
-          const auditSnap={candles:forecastCandles,quoteHistory:forecastQuotes,quoteTs:forecastNow,price:Number(forecastQuotes.at(-1).price),activeId:76,selectionValidated:true};
-          const auditPanel=runtimeAudit._strategyPanel(auditSnap,forecastNow);
-          if(auditPanel.cards.filter(x=>x.active).length!==3)throw new Error('three_strategy_panel_not_active');
-          const auditConsensus=runtimeAudit._generalConsensus(future,auditPanel);
-          if(!Number.isFinite(Number(auditConsensus.callPct))||!Number.isFinite(Number(auditConsensus.putPct))||Math.round(Number(auditConsensus.callPct)+Number(auditConsensus.putPct))!==100)throw new Error('six_reading_consensus_invalid');
-          runtimeAudit.settings.pausedReadings.strategy_2=true;
-          const pausedPanel=runtimeAudit._strategyPanel(auditSnap,forecastNow);
-          if(Number(pausedPanel.confluence.activeCount)!==2)throw new Error('paused_strategy_still_in_strategy_total');
-          const trendA=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'trend',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
-          const trendB=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'trend_following',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
-          if(Number(trendA.metrics?.rawBuyScore)!==Number(trendB.metrics?.rawBuyScore)||Number(trendA.metrics?.rawSellScore)!==Number(trendB.metrics?.rawSellScore))throw new Error('trend_alias_not_consistent');
-          const pausedFuture=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'smart_confluence',strategies:[],minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
-          if((pausedFuture.entryPlanner?.horizons?.['30']?.strategyForecasts||[]).length!==0||pausedFuture.entryPlanner?.horizons?.['30']?.outlookReady===true)throw new Error('paused_strategies_still_drive_future');
-          const assetRuntime=new DemoTradingRuntime();
-          assetRuntime.lastResult={asset:'EUR/USD',action:'WAIT',analysis:{side:'WAIT',confidence:0}};
-          assetRuntime.setExternalMarket({symbol:'GBP/CAD',provider:'iq_option',feedValidated:false,candles:[],quoteHistory:[],quote:0});
-          if(assetRuntime.settings.asset!=='GBP/CAD'||assetRuntime.lastResult?.asset!=='GBP/CAD'||!String(assetRuntime.lastResult?.reasons?.[0]||'').includes('novo ativo'))throw new Error('runtime_asset_scenario_not_invalidated');
-          console.log('V13 FUTURE V3 + MULTI-STRATEGY + ASSET INVALIDATION: PASS');
+          if(!worker.includes("const VERSION='12.0.0'"))throw new Error('agent_version_not_12');
+          console.log('V12 STARTUP + LOCAL MODE: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -154,26 +94,18 @@ jobs:
           st.assets.add('USD/CAD OTC');st.assets.add('USD/HKD OTC');
           st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
 
-          st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
-          d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}},request_id:'background-sub'}),'page-out');
-          if(st.uiSymbol!=='USD/CAD OTC'||st.symbol!=='USD/CAD OTC'||Number(st.activeId)!==2112)throw new Error('background_subscription_retargeted_visible_chart');
+          st.uiSymbol=null;st.symbol=null;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];
+          d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
+          if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_bootstrap_failed');
 
+          st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
+          d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
+          if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_switch_failed');
+
+          st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
           d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',source:'click'});
           if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0)throw new Error('asset_switch_not_atomic');
 
-          st.activeMap.delete('GOLD');st.uiSymbol='USD/HKD OTC';st.symbol='USD/HKD OTC';st.activeId=1382;st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
-          d.applyActiveSelection('iq_option',{symbol:'Gold',source:'click'});
-          if(st.uiSymbol!=='Gold'||st.symbol!=='Gold'||st.activeId!==null)throw new Error('generic_click_did_not_wait_for_binding');
-          d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'get-candles',version:'2.0',body:{active_id:76,size:60,to:1700005000,count:200}},request_id:'gold-visible-history'}),'page-out');
-          if(Number(st.activeId)!==76||Number(st.activeMap.get('GOLD'))!==76)throw new Error('clicked_visible_chart_not_bound_to_history_request');
-
-          st.candles=[];st.quote=null;st.quoteHistory=[];
-          const history=Array.from({length:60},(_,i)=>({id:i+1,from:1700000000+i*60,to:1700000060+i*60,open:4120+i/100,max:4121+i/100,min:4119+i/100,close:4120.2+i/100,volume:10}));
-          d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'gold-visible-history',msg:{candles:history}}),'page-in');
-          if(st.candles.length!==60||Number(st.quote)!==Number(history.at(-1).close))throw new Error('visible_page_history_not_accepted');
-          console.log('V11.8 VISIBLE CHART + PAGE HISTORY: PASS');
-
-          d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',activeId:1382,source:'click'});
           st.candleSize=60;
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'binary-options.open-option',body:{active_id:9999,duration:120,size:120}}}),'page-out');
           if(Number(st.activeId)!==1382||Number(st.candleSize)!==60)throw new Error('order_retargeted_analysis_asset');
@@ -184,10 +116,11 @@ jobs:
           d.ingest('iq_option',JSON.stringify({name:'candle-generated',msg:{active_id:1382,size:60,from:100,to:160,open:7.8,high:7.9,low:7.7,close:7.85}}),'page-in');
           if(st.candles.length!==1||Number(st.quote)!==7.85||st.quoteHistory.length<1)throw new Error('selected_asset_market_missing');
 
-          st.candles=[];st.quote=null;st.quoteHistory=[];st.lastCandleRequest={requestId:'history-smoke'};
-          d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'history-smoke',msg:{candles:history.map((x,i)=>({...x,open:7.8+i/10000,max:7.9+i/10000,min:7.7+i/10000,close:7.81+i/10000}))}}),'direct-in');
-          if(st.candles.length!==60)throw new Error('direct_history_request_not_parsed');
-          console.log('V13 HISTORY BACKFILL PARSER: PASS');
+          st.candles=[];st.quote=null;st.quoteHistory=[];
+          const history=Array.from({length:60},(_,i)=>({id:i+1,from:1700000000+i*60,to:1700000060+i*60,open:7.8+i/10000,max:7.9+i/10000,min:7.7+i/10000,close:7.81+i/10000,volume:10}));
+          d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'history-smoke',msg:{candles:history}}),'direct-in');
+          if(st.candles.length!==60||Number(st.quote)!==Number(history.at(-1).close))throw new Error('historical_candles_response_not_parsed');
+          console.log('V12 HISTORY BACKFILL PARSER: PASS');
 
           let requested=[];
           d._requestCandles=async(_provider,args)=>{requested.push(args);return false};
@@ -205,18 +138,8 @@ jobs:
           delayed.ingest('iq_option',JSON.stringify({name:'instrument-map',msg:{symbol:'USD/HKD OTC',active_id:1382}}),'page-in');
           await new Promise(r=>setTimeout(r,30));
           if(late.symbol!=='USD/HKD OTC'||late.uiSymbol!=='USD/HKD OTC'||backfills<1)throw new Error('late_active_map_did_not_bind_and_backfill:'+JSON.stringify({symbol:late.symbol,ui:late.uiSymbol,backfills}));
-          console.log('V13 LATE ACTIVE MAP + BACKFILL: PASS');
-          const generic=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/generic-visible-smoke'});
-          const gs=generic.state('iq_option');
-          gs.uiSymbol='Gold';gs.symbol='Gold';gs.uiSymbolSource='dom-active';gs.lastUiSignalAt=Date.now();gs.pageActiveId=1912;gs.lastPageActiveAt=Date.now();gs.mode='demo';
-          let requestedGeneric=null;
-          generic.requestBaseData=async()=>true;
-          generic._requestCandles=async(_provider,args)=>{requestedGeneric=args;return false};
-          generic.recoverMarket=async()=>false;
-          await generic.requestMarketData('iq_option',{force:true});
-          if(Number(gs.activeId)!==1912||Number(gs.activeMap.get('GOLD'))!==1912||Number(requestedGeneric?.activeId)!==1912)throw new Error('generic_visible_chart_page_active_not_bound');
-          console.log('V13 GENERIC VISIBLE CHART BINDING: PASS');
-          console.log('HYBRID V13 CORE: PASS');
+          console.log('V12 LATE ACTIVE MAP + BACKFILL: PASS');
+          console.log('HYBRID V12 CORE: PASS');
           '@
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-hybrid-smoke.mjs'
@@ -237,12 +160,12 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.0.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '12.0.0'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
           if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
-          Write-Host 'HYBRID V13 INSTALL: PASS'
+          Write-Host 'HYBRID V12 INSTALL: PASS'
 
       - name: Cleanup
         if: always()
