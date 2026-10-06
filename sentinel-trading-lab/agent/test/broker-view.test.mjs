@@ -27,7 +27,7 @@ test('Windows native OCR reads a canvas chart and follows a switch without HTML 
  const st=driver.state('iq_option');st.activeMap.set('XAUUSD',1912);st.activeMap.set('GBPCADOTC',2114);st.assets.add('XAU/USD');st.assets.add('GBP/CAD OTC');
  await draw('Gold','1 min');await driver.domSnapshot('iq_option',{fast:true});assert.equal(st.uiSymbol,'XAU/USD',JSON.stringify(st.renderedView));await driver.scanExecutionUi('iq_option');assert.equal(st.expirationDurationMs,60000);assert.equal(st.executionReady,false);
  st.quote=4137;st.candles=[{open:4137,high:4138,low:4136,close:4137}];st.quoteHistory=[{ts:Date.now(),price:4137}];
- await draw('GBP/CAD (OTC)','30 sec');driver.viewReaders.get('iq_option').at=0;await driver.domSnapshot('iq_option',{fast:true});assert.equal(st.uiSymbol,'GBP/CAD OTC',JSON.stringify(st.renderedView));assert.equal(st.quote,null);assert.equal(st.candles.length,0);await driver.scanExecutionUi('iq_option');assert.equal(st.expirationDurationMs,30000);assert.equal(st.executionReady,false);
+ await draw('GBP/CAD (OTC)','30 sec');driver.viewReaders.get('iq_option').at=0;await driver.domSnapshot('iq_option',{fast:true});assert.equal(st.uiSymbol,'GBP/CAD OTC',JSON.stringify(st.renderedView));assert.equal(st.quote,null);assert.equal(st.candles.length,0);await driver.scanExecutionUi('iq_option');assert.equal(st.expirationDurationMs,30000,JSON.stringify(st.renderedView));assert.equal(st.executionReady,false);
  driver.ingest('iq_option',{name:'sendMessage',request_id:'background-gold',msg:{name:'get-candles',body:{active_id:1912,size:60}}},'page-out');assert.equal(st.uiSymbol,'GBP/CAD OTC');
  await driver.viewReaders.get('iq_option').cdp?.detach();driver.viewReaders.get('iq_option').ocr.close();
 });

@@ -90,3 +90,5 @@ test('late quotes keep independently calculated strategy scores and block execut
 test('an unconfirmed visible chart cannot use another open tab market as current',()=>{
  const rt=new DemoTradingRuntime();rt.setExternalMarket({provider:'iq_option',symbol:'OLD',assetConfirmed:false,quote:102,quoteTs:Date.now(),candles:rt.feed.snapshot().candles,feedValidated:true});assert.equal(rt._marketSnapshot().waitingLive,true);
 });
+
+test('English broker duration labels use their displayed units',()=>{assert.equal(parseBrokerExpiry('30 sec','expiration').ms,30000);assert.equal(parseBrokerExpiry('30 seconds','expiration').ms,30000);assert.equal(parseBrokerExpiry('1 minute','expiration').ms,60000)});

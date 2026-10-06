@@ -6,7 +6,7 @@ export function parseBrokerExpiry(raw, hint='', nowMs=Date.now()) {
   const duration=/duration|duraç|duracao|prazo|tempo de opera|trade time/.test(label);
   const expiry=/expiration|expiry|expiraç|expiracao|vencimento/.test(label);
   let total=0,units=false;
-  for(const [rx,mult] of [[/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hora|horas)\b/,3600000],[/(\d+(?:[.,]\d+)?)\s*(?:m|min|mins|minuto|minutos)\b/,60000],[/(\d+(?:[.,]\d+)?)\s*(?:s|seg|segs|segundo|segundos)\b/,1000]]){
+  for(const [rx,mult] of [[/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hour|hours|hora|horas)\b/,3600000],[/(\d+(?:[.,]\d+)?)\s*(?:m|min|mins|minute|minutes|minuto|minutos)\b/,60000],[/(\d+(?:[.,]\d+)?)\s*(?:s|sec|secs|second|seconds|seg|segs|segundo|segundos)\b/,1000]]){
     const m=text.match(rx);if(m){total+=Number(m[1].replace(',','.'))*mult;units=true}
   }
   const valid=ms=>Number.isFinite(ms)&&ms>=10000&&ms<=3600000;
