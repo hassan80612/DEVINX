@@ -32,6 +32,7 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
     createdAt:new Date(now).toISOString(),expiresAt:new Date(now+Math.max(15_000,Number(settings.orderProposalTtlMs||60_000))).toISOString()
   };
   if(settings.mode==='real')return{action:'PREPARE_REAL',analysis,amount,proposal,reasons:['aguardando confirmação humana'],latency:{feedMs:feedLatencyMs,decisionMs}};
+  if(settings.demoAutopilot!==true)return{action:'DEMO_READY',analysis,amount,proposal,reasons:['piloto DEMO desarmado'],latency:{feedMs:feedLatencyMs,decisionMs}};
   const started=Date.now();
   const order=await broker.placeOrder(proposal);
   return{action:'DEMO_ORDER',analysis,amount,order,proposal,latency:{feedMs:feedLatencyMs,decisionMs,executionMs:Date.now()-started}};
