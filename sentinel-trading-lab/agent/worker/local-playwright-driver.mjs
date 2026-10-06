@@ -54,7 +54,17 @@ function pairStrings(text=''){
   const b=compact.map(x=>{const otc=x.endsWith('-OTC'),z=x.replace(/-OTC$/,'');return `${z.slice(0,3)}/${z.slice(3,6)}${otc?' OTC':''}`});
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
-function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z]/g,'')}
+function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z0-9]/g,'')}
+function instrumentLabel(text=''){
+  const raw0=String(text||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim();
+  const pairs=pairStrings(raw0);if(pairs.length===1)return pairs[0];
+  let raw=raw0.replace(/\b(?:BLITZ|BINARY|DIGITAL|TURBO|FOREX)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();
+  raw=raw.replace(/^[-–—•·\s]+|[-–—•·\s]+$/g,'');
+  if(!raw||raw.length<2||raw.length>48||!/[A-Za-zÀ-ÿ]/.test(raw))return null;
+  if(/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR|EXPIRAÇÃO|EXPIRACAO|LUCRO|INVEST|INVESTIMENTO)$/i.test(raw))return null;
+  if(/^\d[\d.,\s]*$/.test(raw))return null;
+  return raw
+}
 function symbolForActiveId(st,activeId){
   const aid=Number(activeId);if(!Number.isFinite(aid))return null;
   const keys=[...st.activeMap.entries()].filter(([,id])=>Number(id)===aid).map(([key])=>String(key));
@@ -141,9 +151,14 @@ function protocolScan(data,st,direction='in'){
     const aid=n(activeRaw),command=`${outer} ${inner}`.toLowerCase();
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
     if(aid!=null&&marketCommand){
+      const previousPageActiveId=st.pageActiveId;
       st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
       const selected=st.uiSymbol||st.symbol||null;
       if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected)}
+      if(previousPageActiveId!=null&&Number(previousPageActiveId)!==Number(aid)&&Number(st.activeId)!==Number(aid)){
+        st.activeId=Number(aid);st.symbol=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;
+        st.subscribedSymbol=null;st.subscribedActiveId=null;st.marketStatus='switching';st.marketReason='Ativo da tela mudou · sincronizando feed';
+      }
       const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)
     }
   }
@@ -169,7 +184,10 @@ function protocolScan(data,st,direction='in'){
   }
   if(outer==='candles'){
     const aid=n(data?.msg?.active_id??data?.msg?.activeId);
-    const matches=st.activeId!=null&&(aid==null||Number(aid)===Number(st.activeId));
+    const responseId=String(data?.request_id||data?.requestId||'');
+    const requestId=String(st.lastCandleRequest?.requestId||'');
+    const requestAligned=!responseId||!requestId||responseId===requestId;
+    const matches=st.activeId!=null&&requestAligned&&(aid==null||Number(aid)===Number(st.activeId));
     const arr=Array.isArray(data?.msg?.candles)?data.msg.candles:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg)?data.msg:[];
     if(matches&&arr.length){if(aid!=null)st.activeId=aid;st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800)}}
   }
@@ -213,8 +231,12 @@ function recursiveScan(obj,out,hint=''){
   if(objectMode){out.modeCandidates=out.modeCandidates||[];out.modeCandidates.push({mode:objectMode,score:/balance|account|profile/.test(hint)?12:6})}
   const localHint=(hint+' '+String(obj.name??obj.type??obj.event??obj.method??obj.action??obj.account_type??obj.accountMode??'')).toLowerCase();
   const ownPairs=uniq(keys.flatMap(k=>typeof obj[k]==='string'?pairStrings(obj[k]):[]));
-  const possibleId=n(obj.active_id??obj.activeId??obj.instrument_active_id??obj.asset_id??((ownPairs.length||/active|instrument|asset|underlying/.test(localHint))?obj.id:null));
-  if(possibleId!=null&&ownPairs.length){for(const p of ownPairs){out.activeMap.set(pairKey(p),possibleId);out.assets.add(p)}}
+  const labelFields=['name','symbol','ticker','instrument','asset','title','description','display_name','displayName'];
+  const ownLabels=uniq(labelFields.map(k=>typeof obj[k]==='string'?instrumentLabel(obj[k]):null).filter(Boolean));
+  const possibleId=n(obj.active_id??obj.activeId??obj.instrument_active_id??obj.asset_id??((ownPairs.length||ownLabels.length||/active|instrument|asset|underlying/.test(localHint))?obj.id:null));
+  if(possibleId!=null){
+    for(const p of uniq([...ownPairs,...ownLabels])){out.activeMap.set(pairKey(p),possibleId);out.assets.add(p)}
+  }
   for(const k of keys){const v=obj[k],kl=k.toLowerCase();
     if(typeof v==='string'){for(const p of pairStrings(v))out.assets.add(p)}
     if(/balance|equity/.test(kl)||(/amount|value/.test(kl)&&/balance|account|wallet|portfolio/.test(localHint))){const val=n(v);if(val!=null&&val>=0&&val<1e9){out.balanceCandidates.push({value:val,mode:objectMode,score:/balance/.test(kl)?8:/equity/.test(kl)?6:2,hint:localHint.slice(-180)})}}
@@ -572,7 +594,7 @@ export class LocalPlaywrightDriver{
       const now=feed?.serverTimeSeconds?.()||Math.floor(Date.now()/1000);
       const rid=reqId('candles');
       const modern={name:'sendMessage',msg:{name:'get-candles',version:'2.0',body:{active_id:Number(targetId),size,to:now,count:200}},request_id:rid};
-      st.lastCandleRequest={transport:'modern',symbol:targetSymbol,activeId:Number(targetId),size,to:now,at:Date.now()};
+      st.lastCandleRequest={transport:'modern',requestId:rid,symbol:targetSymbol,activeId:Number(targetId),size,to:now,at:Date.now()};
       if(feed?.ready){
         try{
           const response=await feed.request(modern,6000);
@@ -585,7 +607,7 @@ export class LocalPlaywrightDriver{
       if(st.candles.length<50){
         const legacyRid=reqId('legacy-candles');
         const legacy={name:'candles',msg:{active_id:Number(targetId),duration:size,chunk_size:25,from:now-(size*220),till:now},request_id:legacyRid};
-        st.lastCandleRequest={transport:'legacy-fallback',symbol:targetSymbol,activeId:Number(targetId),size,to:now,at:Date.now()};
+        st.lastCandleRequest={transport:'legacy-fallback',requestId:legacyRid,symbol:targetSymbol,activeId:Number(targetId),size,to:now,at:Date.now()};
         if(feed?.ready){
           try{
             const response=await feed.request(legacy,6000);
@@ -991,13 +1013,14 @@ export class LocalPlaywrightDriver{
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
     const st=this.state(provider),aid=Number(activeId);
-    let next=symbol?pairStrings(symbol)[0]||null:null;
+    let next=symbol?(pairStrings(symbol)[0]||instrumentLabel(symbol)||null):null;
     if(!next&&Number.isFinite(aid)){
       const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===aid)?.[0]||null;
       if(key)next=[...st.assets].find(x=>pairKey(x)===key)||(key.endsWith('OTC')?`${key.slice(0,3)}/${key.slice(3,6)} OTC`:`${key.slice(0,3)}/${key.slice(3,6)}`);
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
+    if(Number.isFinite(aid)){st.activeMap.set(key,aid);st.assets.add(next)}
     if(changed&&source!=='click'&&!String(source).startsWith('protocol-page')&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
       st.pendingUiHits=Number(st.pendingUiHits||0)+1;
@@ -1005,8 +1028,11 @@ export class LocalPlaywrightDriver{
     }
     st.pendingUiKey=null;st.pendingUiHits=0;
     if(!changed){
+      const mapped=st.activeMap.get(key),nextId=mapped!=null?Number(mapped):(Number.isFinite(aid)?aid:st.activeId);
+      const idChanged=nextId!=null&&st.activeId!=null&&Number(nextId)!==Number(st.activeId);
       st.uiSymbol=next;st.symbol=next;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;
-      const mapped=st.activeMap.get(key);if(mapped!=null)st.activeId=Number(mapped);
+      if(nextId!=null)st.activeId=Number(nextId);
+      if(idChanged){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null}
       return true;
     }
     st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??(Number.isFinite(aid)?aid:null);
@@ -1043,7 +1069,7 @@ export class LocalPlaywrightDriver{
     return this.liveStatus(provider)
   }
   async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;await this.installBridge(page,provider).catch(()=>{});const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
-    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const raw=String(t||'').toUpperCase();let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);return m?`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`:''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
+    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const src=String(t||'').replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim(),raw=src.toUpperCase();let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;const clean=src.replace(/\b(?:Blitz|Binary|Digital|Turbo|Forex)\b/ig,' ').replace(/\b\d{1,3}%\b/g,' ').replace(/[×✕✖]/g,' ').replace(/\s+/g,' ').trim();if(clean.length<2||clean.length>48||!/[A-Za-zÀ-ÿ]/.test(clean)||/^(?:CALL|PUT|BUY|SELL|ACIMA|ABAIXO|DEMO|REAL|PRACTICE|BALANCE|SALDO|DEPOSITAR)$/i.test(clean))return'';return clean};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
     st.lastDomAt=Date.now();if(!fast){for(const a of pairStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?pairStrings(clickedSymbol):[];const domActive=activeSymbol?pairStrings(activeSymbol):[];const instrumentPairs=pairStrings(instrumentText);
     let nextUi=null,uiSource=null;
@@ -1054,8 +1080,11 @@ export class LocalPlaywrightDriver{
     if(nextUi){
       const changed=pairKey(nextUi)!==pairKey(st.uiSymbol||'');
       if(changed){
-        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
-        st.candles=[];st.quote=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
+        const mapped=st.activeMap.get(pairKey(nextUi)),pageFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<5000;
+        const boundId=mapped!=null?Number(mapped):(pageFresh?Number(st.pageActiveId):null);
+        if(mapped==null&&boundId!=null){st.activeMap.set(pairKey(nextUi),boundId);st.assets.add(nextUi)}
+        st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=boundId;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
+        st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
       }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
     }else if(!st.uiSymbol&&!fast){const p=pairStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
@@ -1087,9 +1116,15 @@ export class LocalPlaywrightDriver{
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);
-    const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh);
-    const marketStatus=candleFresh?'open':(st.marketStatus||'stale');const marketReason=candleFresh?`${st.symbol||'Ativo'} atualizado`:(st.marketReason||'Sem candle recente');
-    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    const pageActiveFresh=st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<12000;
+    const idAligned=!pageActiveFresh||Number(st.activeId)===Number(st.pageActiveId);
+    const uiAligned=!st.uiSymbol||!st.symbol||pairKey(st.uiSymbol)===pairKey(st.symbol);
+    const mappedId=st.symbol?st.activeMap.get(pairKey(st.symbol)):null;
+    const mappingAligned=mappedId==null||Number(mappedId)===Number(st.activeId);
+    const selectionValidated=!!(st.symbol&&st.activeId!=null&&idAligned&&uiAligned&&mappingAligned);
+    const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&selectionValidated&&st.quote!=null&&st.candles.length>=50&&candleFresh);
+    const marketStatus=feedValidated?'open':(st.marketStatus||'stale');const marketReason=feedValidated?`${st.symbol||'Ativo'} atualizado`:(selectionValidated?(st.marketReason||'Aguardando candle atual'):'Ativo visível e feed ainda não estão sincronizados');
+    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,pageActiveId:st.pageActiveId,selectionValidated,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1223,7 +1258,7 @@ export class LocalPlaywrightDriver{
         let collapsedSummaries=[];
         try{collapsedSummaries=JSON.parse(localStorage.getItem('sentinel-summary-collapse-v118')||'[]');if(!Array.isArray(collapsedSummaries))collapsedSummaries=[]}catch{collapsedSummaries=[]}
         const isSummaryCollapsed=key=>collapsedSummaries.includes(key);
-        const summaryBtn=key=>'<button data-sentinel-summary-collapse="'+key+'" title="'+(isSummaryCollapsed(key)?'Estender resumo':'Recolher resumo')+'" style="border:1px solid '+panelBorder+';border-radius:7px;width:22px;height:20px;background:'+(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)')+';color:'+subtle+';font:950 12px/1 inherit;cursor:pointer;display:grid;place-items:center;flex:0 0 auto">'+(isSummaryCollapsed(key)?'+':'−')+'</button>';
+        const summaryBtn=key=>'<button data-sentinel-summary-collapse="'+key+'" title="'+(isSummaryCollapsed(key)?'Estender resumo':'Recolher resumo')+'" style="position:absolute;top:7px;right:7px;border:1px solid '+panelBorder+';border-radius:7px;width:22px;height:20px;background:'+(uiTheme==='light'?'rgba(255,255,255,.88)':'rgba(12,12,14,.92)')+';color:'+subtle+';font:950 12px/1 inherit;cursor:pointer;display:grid;place-items:center;z-index:2">'+(isSummaryCollapsed(key)?'+':'−')+'</button>';
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
@@ -1427,21 +1462,21 @@ export class LocalPlaywrightDriver{
 
           <div style="font-size:9px;font-weight:950;letter-spacing:.045em;color:${ink};margin-top:10px;margin-bottom:6px">TOTAIS</div>
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:start">
-            <div data-sentinel-summary="market-total" style="padding:8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${marketSummarySide!=='AGUARDAR'?(marketSummarySide==='CALL'?callTone:putTone):panelBorder};min-width:0">
+            <div data-sentinel-summary="market-total" style="position:relative;padding:8px 32px 8px 8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${marketSummarySide!=='AGUARDAR'?(marketSummarySide==='CALL'?callTone:putTone):panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><div><div style="font-size:8px;font-weight:950;color:${ink}">TOTAL MERCADO</div><div style="font-size:6px;color:${subtle}">${marketActiveCount}/3 ativas</div></div><div style="display:flex;align-items:center;gap:3px"><span style="font-size:7px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(marketConfidence,0)}%</span>${summaryBtn('market-total')}</div></div>
               <div style="margin-top:6px;font-size:17px;font-weight:950;color:${marketSummarySide==='CALL'?callTone:marketSummarySide==='PUT'?putTone:warnTone}">${marketSummarySide}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(marketCallPct,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(marketPutPct,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:6.5px;color:${subtle}">Só considera as leituras de mercado ativas.</div>
             </div>
 
-            <div data-sentinel-summary="strategy-total" style="padding:8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${strategyFinalSide!=='AGUARDAR'?strategyFinalTone:panelBorder};min-width:0">
+            <div data-sentinel-summary="strategy-total" style="position:relative;padding:8px 32px 8px 8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${strategyFinalSide!=='AGUARDAR'?strategyFinalTone:panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><div><div style="font-size:8px;font-weight:950;color:${ink}">TOTAL ESTRATÉGIAS</div><div style="font-size:6px;color:${subtle}">${strategyActiveCount}/3 ativas</div></div><div style="display:flex;align-items:center;gap:3px"><span style="font-size:7px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(strategyConfidence,0)}%</span>${summaryBtn('strategy-total')}</div></div>
               <div style="margin-top:6px;font-size:17px;font-weight:950;color:${strategyFinalTone}">${strategyFinalSide}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(strategyCallPct,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(strategyPutPct,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:6.5px;color:${subtle}">${esc(strategyAgreement)}</div>
             </div>
 
-            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="padding:8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${operationalDirectional?operationalTone:panelBorder};min-width:0">
+            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="position:relative;padding:8px 32px 8px 8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${operationalDirectional?operationalTone:panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><div><div style="font-size:8px;font-weight:950;color:${ink}">TOTAL DOS 6 · SINAL OPERACIONAL</div><div style="font-size:6px;color:${subtle}">${totalActiveCount}/6 ativas</div></div><div style="display:flex;align-items:center;gap:3px"><span style="font-size:7px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(generalStrength,0)}%</span>${summaryBtn('operational-total')}</div></div>
               <div style="margin-top:6px;font-size:17px;font-weight:950;color:${operationalDirectional}?operationalTone:warnTone}">${operationalDisplay}</div>
               <div style="margin-top:3px;font-size:6.5px;color:${muted}">${operationalDirectional?(operationalSide+' · 6 cards '+n(operationalSide==='CALL'?combinedCall:combinedPut,0)+'% · futuro '+n(operationalFutureConfidence,0)+'%'):operationalEngineSide!=='AGUARDAR'?('Previsão '+operationalFutureSide+' '+n(operationalFutureConfidence,0)+'% alinhada · aguardando 6 cards ≥ '+operationalDisplayThreshold+'%'):esc(operationalReason)}</div>
@@ -1499,6 +1534,8 @@ export class LocalPlaywrightDriver{
         `;
 
         el.style.overflowY='auto';
+        const immediateMaxScroll=Math.max(0,el.scrollHeight-el.clientHeight);
+        el.scrollTop=Math.max(0,Math.min(immediateMaxScroll,stableScrollTop));
         const collapsedNow=new Set(collapsedSummaries);
         el.querySelectorAll('[data-sentinel-summary]').forEach(card=>{
           const key=card.getAttribute('data-sentinel-summary')||'';
