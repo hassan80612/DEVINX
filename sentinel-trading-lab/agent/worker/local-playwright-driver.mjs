@@ -417,6 +417,7 @@ export class LocalPlaywrightDriver{
           },true);
           const mo=new MutationObserver(()=>{try{const p=selectedPair();if(p)publish(p,'selected-tab')}catch{}});
           mo.observe(document.documentElement,{subtree:true,attributes:true,attributeFilter:['aria-selected','aria-checked','aria-current','data-state','class']});
+          if(!window.__sentinelAssetPoll)window.__sentinelAssetPoll=setInterval(()=>{try{const p=selectedPair();if(p)publish(p,'selected-poll')}catch{}},500);
           const initial=selectedPair();if(initial)publish(initial,'selected-tab');
         }
         if(!document.getElementById('__sentinel-amount-listener-marker')){
@@ -500,6 +501,12 @@ export class LocalPlaywrightDriver{
     for(const frame of page.frames()){
       if(frame===page.mainFrame())continue;
       await frame.evaluate(install).catch(()=>{});
+    }
+    if(!page.__sentinelFrameBridgeHooks){
+      page.__sentinelFrameBridgeHooks=true;
+      const installFrame=frame=>{if(frame===page.mainFrame())return;frame.evaluate(install).catch(()=>{})};
+      page.on('frameattached',installFrame);
+      page.on('framenavigated',installFrame);
     }
   }
   ingest(provider,payload,direction='in'){
