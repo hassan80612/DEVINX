@@ -101,16 +101,17 @@ export class DemoTradingRuntime{
     });
     const active=cards.filter(x=>x.active&&!x.paused&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
     const activeCount=active.length;
-    const callPct=activeCount?Math.round(active.reduce((s,x)=>s+Number(x.callPct),0)/activeCount):null;
-    const putPct=activeCount?Math.round(active.reduce((s,x)=>s+Number(x.putPct),0)/activeCount):null;
-    const callVotes=active.filter(x=>x.side==='CALL').length,putVotes=active.filter(x=>x.side==='PUT').length;
+    const weighted=active.filter(x=>Number(x.evidence||0)>0),weight=weighted.reduce((a,x)=>a+Number(x.evidence||0),0);
+    const callPct=weight>0?Math.round(weighted.reduce((a,x)=>a+Number(x.callPct)*Number(x.evidence||0),0)/weight):(activeCount?50:null);
+    const putPct=callPct==null?null:100-callPct;
+    const callVotes=weighted.filter(x=>x.side==='CALL').length,putVotes=weighted.filter(x=>x.side==='PUT').length;
     let side='AGUARDAR',agreement='SEM ESTRATÉGIAS';
     if(activeCount===1){side=active[0].side;agreement='SEM CONFLUÊNCIA · 1 ESTRATÉGIA ATIVA'}
     else if(activeCount>1){
       const strongest=Math.max(Number(callPct||0),Number(putPct||0)),edge=Number(callPct||0)-Number(putPct||0);
       if(callVotes>putVotes&&strongest>=35&&edge>=10)side='CALL';
       else if(putVotes>callVotes&&strongest>=35&&edge<=-10)side='PUT';
-      agreement=callVotes===0&&putVotes===0?'SEM DIREÇÃO':callVotes===putVotes?`DIVERGÊNCIA · ${callVotes} CALL / ${putVotes} PUT`:(callVotes>putVotes?`${callVotes}/${activeCount} CONCORDAM EM CALL`:`${putVotes}/${activeCount} CONCORDAM EM PUT`);
+      agreement=callVotes===0&&putVotes===0?'SEM DIREÇÃO':callVotes===putVotes?`DIVERGÊNCIA · ${callVotes} CALL / ${putVotes} PUT`:(callVotes>putVotes?`${callVotes}/${Math.max(1,weighted.length)} CONCORDAM EM CALL`:`${putVotes}/${Math.max(1,weighted.length)} CONCORDAM EM PUT`);
     }
     return{cards,confluence:{activeCount,callPct,putPct,callVotes,putVotes,side,agreement}};
   }
