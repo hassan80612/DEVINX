@@ -138,7 +138,7 @@ jobs:
           delayed.ingest('iq_option',JSON.stringify({name:'instrument-map',msg:{symbol:'USD/HKD OTC',active_id:1382}}),'page-in');
           await new Promise(r=>setTimeout(r,30));
           if(late.symbol!=='USD/HKD OTC'||late.uiSymbol!=='USD/HKD OTC'||backfills<1)throw new Error('late_active_map_did_not_bind_and_backfill:'+JSON.stringify({symbol:late.symbol,ui:late.uiSymbol,backfills}));
-          console.log('V12 LATE ACTIVE MAP + BACKFILL: PASS');
+          console.log('V13 LATE ACTIVE MAP + BACKFILL: PASS');
           console.log('HYBRID V13 CORE: PASS');
           '@
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
