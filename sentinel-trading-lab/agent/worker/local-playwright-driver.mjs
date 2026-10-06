@@ -1,4 +1,4 @@
-// V12 deployment checkpoint: pause-aware compact panel + stable live geometry
+// V13 deployment checkpoint: preserved reading driver + V3 forecast UI
 import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -1101,15 +1101,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='12.0'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.0'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='12.0';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.0';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='12.0';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.0';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -1228,10 +1228,10 @@ export class LocalPlaywrightDriver{
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.42)',boxShadow:'0 28px 72px rgba(65,51,28,.22), inset 0 1px #fff'}:{background:'linear-gradient(155deg,#050506,#121214)',color:'#f7f3e8',border:'1px solid rgba(201,166,91,.40)',boxShadow:'0 30px 88px rgba(0,0,0,.78), inset 0 1px rgba(255,255,255,.045)'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
-        const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
+        const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min',3600:'1 h'})[plannerHorizon]||'30 s';
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
         const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
-        const plannerConfirmed=plannerReadable&&plannerPlan?.outlookReady===true;
+        const plannerConfirmed=plannerReadable&&plannerPlan?.directionReady===true;
         const outlook=plannerReadable?String(plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:warnTone;
         const futureConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.confidence||plannerPlan?.modelConfidence||0))):0;
@@ -1240,14 +1240,18 @@ export class LocalPlaywrightDriver{
         const futureProjectedPrice=plannerReadable&&Number.isFinite(Number(plannerPlan?.projectedPrice))?Number(plannerPlan.projectedPrice):null;
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureSamples=plannerReadable?Math.max(0,Number(plannerPlan?.validation?.samples||0)):0;
-        const futureDrivers=plannerReadable&&Array.isArray(plannerPlan?.drivers)?plannerPlan.drivers.slice(0,3):[];
+        const futureRegime=plannerReadable?String(plannerPlan?.regime?.label||'—').toUpperCase():'—';
+        const futureRegimeConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.regime?.confidence||0))):0;
+        const futureHistoryWeight=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.validation?.historyWeight||0))):0;
+        const futureBrier=plannerReadable&&Number.isFinite(Number(plannerPlan?.validation?.brierScore))?Number(plannerPlan.validation.brierScore):null;
+        const futureDrivers=plannerReadable&&Array.isArray(plannerPlan?.drivers)?plannerPlan.drivers.slice(0,4):[];
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px">'+
             '<div style="padding:6px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:7px;color:'+subtle+';font-weight:900">CONFIANÇA FUTURA</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+'%</b></div>'+
             '<div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);border:1px solid rgba(105,225,181,.11);text-align:center"><span style="display:block;font-size:7px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(futureCallPct,0)+'%</b></div>'+
             '<div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,156,.11);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(futurePutPct,0)+'%</b></div>'+
           '</div>'+
-          '<div style="font-size:8.5px;color:'+muted+';margin-bottom:5px">Agora <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b>'+(futureProjectedPrice!=null?' · projeção <b style="color:'+outlookTone+'">'+price(futureProjectedPrice)+'</b>':'')+' · acordo '+n(futureAgreement,0)+'%'+(futureSamples?' · '+futureSamples+' previsões já liquidadas':'')+'</div>'+
+          '<div style="font-size:8.5px;color:'+muted+';margin-bottom:5px">Agora <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b>'+(futureProjectedPrice!=null?' · projeção <b style="color:'+outlookTone+'">'+price(futureProjectedPrice)+'</b>':'')+' · acordo '+n(futureAgreement,0)+'% · regime '+esc(futureRegime)+(futureRegimeConfidence?' '+n(futureRegimeConfidence,0)+'%':'')+(futureSamples?' · histórico '+futureSamples:'')+(futureHistoryWeight?' · calibração '+n(futureHistoryWeight,0)+'%':'')+(futureBrier!=null?' · Brier '+n(futureBrier,3):'')+'</div>'+
           (futureDrivers.length?'<div style="font-size:7.5px;color:'+subtle+';margin-bottom:6px">Motores: '+esc(futureDrivers.join(' · '))+'</div>':'')+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:'+callTone+';font-weight:800">CALL — gatilho</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
@@ -1380,7 +1384,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'12.0.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'13.0.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
@@ -1453,10 +1457,10 @@ export class LocalPlaywrightDriver{
           <div data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
               <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;letter-spacing:.045em;color:${ink}">CENÁRIO FUTURO POR PRAZO</span></div>
-              <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
+              <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option><option value="3600" ${plannerHorizon==='3600'?'selected':''}>1 h</option></select>
             </div>
-            <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${outlook!=='NEUTRO'&&plannerConfirmed?callTone:warnTone};font-size:8px;font-weight:900">${plannerReadable?(outlook!=='NEUTRO'&&plannerConfirmed?'PREVISÃO ATIVA':'EM FORMAÇÃO'):'SEM DADOS'}</span><span style="color:${goldSoft};font-size:8px;font-weight:900">${plannerReadable?'CONF '+n(futureConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9px;font-weight:650">para ${horizonLabel} · ${liveLabel}</span></div>
-            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?'Cenário em formação; os níveis já estão sendo calculados.':outlook==='NEUTRO'?'A previsão futura ainda não tem vantagem direcional suficiente neste prazo.':`Previsão futura ${outlook} para o fim deste prazo; a entrada ainda exige alinhamento e gatilho.`}</div>
+            <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${outlook!=='NEUTRO'&&plannerConfirmed?callTone:warnTone};font-size:8px;font-weight:900">${plannerReadable?(outlook!=='NEUTRO'&&plannerConfirmed?'PREVISÃO ATIVA':outlook!=='NEUTRO'?'VIÉS FUTURO':'EM FORMAÇÃO'):'SEM DADOS'}</span><span style="color:${goldSoft};font-size:8px;font-weight:900">${plannerReadable?'CONF '+n(futureConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9px;font-weight:650">para ${horizonLabel} · ${liveLabel}</span></div>
+            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?(outlook!=='NEUTRO'?'Viés futuro detectado; ainda aguardando confirmação estatística para entrada.':'Cenário em formação; os níveis já estão sendo calculados.'):outlook==='NEUTRO'?'A previsão futura ainda não tem vantagem direcional suficiente neste prazo.':`Previsão futura ${outlook} para o fim deste prazo; a entrada ainda exige alinhamento e gatilho.`}</div>
             ${planHtml}
           </div>
 
