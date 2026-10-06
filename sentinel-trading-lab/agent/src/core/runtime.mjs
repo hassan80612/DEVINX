@@ -223,10 +223,7 @@ export class DemoTradingRuntime{
       plan.executionBias=rawBias;plan.stability={alpha:stable.alpha,candidate:stable.candidate,cycles:stable.cycles};
       plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
       const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
-      // V13.1: antes de 30 amostras, um desempenho muito fraco já pode bloquear a direção.
-      // Isso não recalibra nem inverte o modelo; apenas impede transformar uma leitura ruim em gatilho.
-      const provisionalHistoryWeak=(validation.samples>=6&&validation.winRate<45)||(bucketValidation.samples>=6&&bucketValidation.winRate<45);
-      if(historyWeak||provisionalHistoryWeak)plan.directionReady=false;
+      if(historyWeak)plan.directionReady=false;
 
       // Mede separadamente somente previsões fortes, equivalentes ao que pode virar decisão travada.
       const displayLead=stable.side==='CALL'?stable.callPct:stable.side==='PUT'?stable.putPct:0;
@@ -257,7 +254,7 @@ export class DemoTradingRuntime{
         winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,
         avgPredicted:validation.avgPredicted,brierScore:validation.brierScore,
         calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),
-        calibrated:historyWeight>0,historyWeak,provisionalHistoryWeak,regime,
+        calibrated:historyWeight>0,historyWeak,regime,
         bucket,bucketSamples:bucketValidation.samples,bucketWinRate:bucketValidation.winRate,bucketSmoothedWinRate:bucketValidation.smoothedWinRate,
         legacyPriorWeight:Math.round(legacyWeight*100),
         decisionSamples:decisionValidation.samples,decisionWins:decisionValidation.wins,decisionLosses:decisionValidation.losses,decisionDraws:decisionValidation.draws,
@@ -265,8 +262,6 @@ export class DemoTradingRuntime{
         decisionHistoryWeak,economicBreakEven:economicBreakEven==null?null:Math.round(economicBreakEven*10)/10,
         confidenceSource:historyWeight>0?'calibrated':'model'
       };
-      plan.reliabilityReady=plan.directionReady===true&&plan.confidence>=60&&Number(plan.agreement||0)>=55&&plan.consensusAligned===true&&!historyWeak&&!provisionalHistoryWeak&&!decisionHistoryWeak;
-      plan.reliabilityBlockReason=plan.reliabilityReady?'':historyWeak?'histórico formal abaixo do mínimo':provisionalHistoryWeak?'histórico inicial fraco':decisionHistoryWeak?'decisões travadas abaixo do piso':plan.consensusAligned!==true?'previsão e leitura atual divergentes':plan.directionReady!==true?'direção ainda não confirmada':plan.confidence<60?'confiança insuficiente':Number(plan.agreement||0)<55?'acordo insuficiente':'aguardando validação';
       plan.modelVersion='future-v4.1';
       plan.basis='previsão futura V4.1 calibrada por horizonte/regime/faixa de confiança · diversidade de evidências · exibição estabilizada'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
       plan.consensusSources=['previsão bruta '+rawBias+' '+Math.round(rawLeadProbability)+'% · exibição '+String(plan.displayBias||'NEUTRO')+' '+Math.round(plan.displayBias==='CALL'?plan.displayCallProbability:plan.displayBias==='PUT'?plan.displayPutProbability:50)+'%','leitura atual '+generalSide]
