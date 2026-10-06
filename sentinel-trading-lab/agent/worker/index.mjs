@@ -140,6 +140,7 @@ async function bootstrapSavedBrokers(){
   syncRuntimeMarket()
 }
 setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),900).unref();
+setTimeout(()=>{if(!activeProvider&&accessLeaseValid())bootstrapSavedBrokers().catch(()=>{})},3500).unref();
 const overlayCache=new Map();
 function overlayAnalysis(view,asset,now=Date.now()){
   const key=String(asset||'—').trim().toUpperCase();
