@@ -244,7 +244,7 @@ export class DemoTradingRuntime{
     const state=divergent?'DIVERGÊNCIA':side!=='AGUARDAR'?'ALINHADO':'FORMANDO';
     return{
       side,leanSide,state,aligned:side!=='AGUARDAR'&&!divergent,divergent,
-      callScore:all.callScore,putScore:all.putScore,strength,edge,displayCallPct,displayPutPct,displayStrength,
+      callScore:all.callScore,putScore:all.putScore,callPct:all.callPct,putPct:all.putPct,strength,edge,displayCallPct,displayPutPct,displayStrength,
       weights:{mode:'equal-active-readings'},
       sources:{rapid:rapid.activeCount,strategies:strategies.activeCount,total:active.length,configured:sourceRows.length,paused:sourceRows.filter(x=>x.paused).map(x=>x.key)},
       sourceRows,
