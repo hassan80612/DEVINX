@@ -100,11 +100,13 @@ jobs:
           st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
 
           st.uiSymbol=null;st.symbol=null;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];
-          d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
+          d.ingest('iq_option',JSON.stringify({name:'sendMessage',request_id:'bootstrap-chart',msg:{name:'get-candles',body:{active_id:1382,size:60}}}),'page-out');
           if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_bootstrap_failed');
 
           st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
           d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:1382,size:60}}}}),'page-out');
+          if(st.uiSymbol!=='USD/CAD OTC'||st.symbol!=='USD/CAD OTC'||Number(st.activeId)!==2112)throw new Error('background_subscription_retargeted_asset');
+          d.ingest('iq_option',JSON.stringify({name:'sendMessage',request_id:'switch-chart',msg:{name:'get-candles',body:{active_id:1382,size:60}}}),'page-out');
           if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_switch_failed');
 
           st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
