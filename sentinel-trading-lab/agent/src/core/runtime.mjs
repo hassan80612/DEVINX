@@ -94,11 +94,25 @@ export class DemoTradingRuntime{
         const evidence=Math.max(0,Math.min(1,rawTotal/70));
         const side=evidence<.12||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
         const reasons=(Array.isArray(a?.reasons)?a.reasons:[]).filter(x=>!/entrada aguardando|bloqueado por risco|fluxo \d+s|EMA micro|microestrutura/i.test(String(x))).slice(0,3);
-        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,rawTotal,evidence,reasons};
+        const regime=String(a?.metrics?.regime?.label||'unknown'),regimeConfidence=Number(a?.metrics?.regime?.confidence||0);
+        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,rawTotal,evidence,reasons,regime,regimeConfidence};
       }catch{
         return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:['Leitura indisponível neste ciclo']};
       }
     });
+    const activeConfigured=cards.filter(x=>x.active&&!x.paused);
+    const seenStrategies=new Set();
+    for(const card of activeConfigured){
+      if(card.strategy==='smart_confluence'&&activeConfigured.length>1){
+        card.evidence=Math.max(.05,Number(card.evidence||0)*.45);
+        card.reasons=[...(card.reasons||[]),'peso reduzido para evitar duplicar os especialistas'].slice(0,3)
+      }
+      if(seenStrategies.has(card.strategy)){
+        card.evidence=Math.max(.04,Number(card.evidence||0)*.30);
+        card.reasons=[...(card.reasons||[]),'peso reduzido: estratégia repetida'].slice(0,3)
+      }
+      seenStrategies.add(card.strategy)
+    }
     const active=cards.filter(x=>x.active&&!x.paused&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
     const activeCount=active.length;
     const weighted=active.filter(x=>Number(x.evidence||0)>0),weight=weighted.reduce((a,x)=>a+Number(x.evidence||0),0);
@@ -126,6 +140,8 @@ export class DemoTradingRuntime{
       if(!plan||typeof plan!=='object')continue;
       const rawBias=['CALL','PUT'].includes(String(plan.bias||'').toUpperCase())?String(plan.bias).toUpperCase():'NEUTRO';
       const durationMs=Math.max(10000,Number(secondsKey||plan.horizonSeconds||30)*1000);
+      const regime=String(plan?.regime?.label||analysis?.metrics?.regime?.label||'unknown');
+      const modelKey='future-v3:'+combo+':'+regime;
       plan.rawBias=rawBias;
       plan.asset=asset;
       plan.generatedAt=now;
@@ -134,24 +150,43 @@ export class DemoTradingRuntime{
       plan.entryAligned=plan.consensusAligned;
       plan.executionBias=rawBias;
       plan.modelConfidence=Math.max(0,Number(plan.modelConfidence??plan.confidence??0));
+      const rawLeadProbability=rawBias==='CALL'
+        ?Math.max(0,Math.min(100,Number(plan.rawCallProbability??plan.callProbability??50)))
+        :rawBias==='PUT'
+          ?Math.max(0,Math.min(100,Number(plan.rawPutProbability??plan.putProbability??50)))
+          :50;
       if(plan.outlookReady===true&&rawBias!=='NEUTRO'&&Number.isFinite(Number(snap?.price))&&Number(snap.price)>0){
         this._queueSignalCandidate({
-          kind:'horizon_forecast_v2',
+          kind:'horizon_forecast_v3',
           side:rawBias==='CALL'?'BUY':'SELL',
           confidence:plan.modelConfidence,
+          probability:rawLeadProbability,
+          regime,
           referencePrice:Number(snap.price),
           asset,durationMs,
-          strategy:'future-v2:'+combo,
+          strategy:modelKey,
           now
         })
       }
-      const validation=this._validationStats(this._validationKey('horizon_forecast_v2',asset,durationMs,'future-v2:'+combo));
-      const historyWeight=validation.samples>=10?Math.min(.25,validation.samples/120):0;
-      const calibrated=historyWeight>0?Math.round(plan.modelConfidence*(1-historyWeight)+validation.smoothedWinRate*historyWeight):Math.round(plan.modelConfidence);
-      plan.confidence=Math.max(0,Math.min(100,calibrated));
-      plan.validation={samples:validation.samples,wins:validation.wins,losses:validation.losses,winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,calibrated:historyWeight>0};
-      plan.basis='previsão futura multi-fator independente'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
-      plan.consensusSources=['previsão futura '+rawBias+' '+Math.round(plan.confidence)+'%','leitura atual '+generalSide]
+      const validation=this._validationStats(this._validationKey('horizon_forecast_v3',asset,durationMs,modelKey));
+      const historyWeight=validation.samples<20?0:Math.min(.72,Math.max(0,(validation.samples-20)/180*.72));
+      const empirical=Number(validation.smoothedWinRate||50);
+      const calibratedLead=historyWeight>0?Math.round(rawLeadProbability*(1-historyWeight)+empirical*historyWeight):Math.round(rawLeadProbability);
+      const calibratedConfidence=historyWeight>0?Math.round(plan.modelConfidence*(1-historyWeight)+empirical*historyWeight):Math.round(plan.modelConfidence);
+      if(rawBias==='CALL'){plan.callProbability=Math.max(5,Math.min(95,calibratedLead));plan.putProbability=100-plan.callProbability}
+      else if(rawBias==='PUT'){plan.putProbability=Math.max(5,Math.min(95,calibratedLead));plan.callProbability=100-plan.putProbability}
+      plan.confidence=Math.max(0,Math.min(100,calibratedConfidence));
+      const historyWeak=validation.samples>=validation.minSamples&&validation.smoothedWinRate<52;
+      if(historyWeak)plan.directionReady=false;
+      plan.validation={
+        samples:validation.samples,wins:validation.wins,losses:validation.losses,
+        winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,
+        avgPredicted:validation.avgPredicted,brierScore:validation.brierScore,
+        calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),
+        calibrated:historyWeight>0,historyWeak,regime
+      };
+      plan.basis='previsão futura V3 calibrada por horizonte/regime'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
+      plan.consensusSources=['previsão '+rawBias+' '+Math.round(rawLeadProbability)+'% → calibrada '+Math.round(rawBias==='CALL'?plan.callProbability:rawBias==='PUT'?plan.putProbability:50)+'%','leitura atual '+generalSide]
     }
   }
   _generalConsensus(analysis,strategyPanel){
@@ -331,12 +366,16 @@ export class DemoTradingRuntime{
   }
   _validationKey(kind,asset,durationMs,strategy){return ['micro-v4',kind,String(asset||'—').toUpperCase(),Number(durationMs||0),String(strategy||'smart_confluence')].join('|')}
   _validationStats(key){
-    const rows=this.signalValidation.outcomes.filter(x=>x.key===key&&x.settlementQuality!=='approx').slice(-100);
+    const rows=this.signalValidation.outcomes.filter(x=>x.key===key&&x.settlementQuality!=='approx').slice(-300);
     const samples=rows.length,wins=rows.filter(x=>x.won===true).length,losses=rows.filter(x=>x.won===false).length,winRate=samples?Math.round(wins/samples*1000)/10:0;
     const minSamples=Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30));
     const minWinRate=Math.max(55,Number(this.settings.risk.signalValidationMinWinRate||60));
     const smoothedWinRate=Math.round(((wins+10)/(samples+20))*1000)/10;
-    return{key,samples,wins,losses,winRate,smoothedWinRate,minSamples,minWinRate,ready:samples>=minSamples&&smoothedWinRate>=minWinRate}
+    const probabilityRows=rows.filter(x=>Number.isFinite(Number(x.probability)));
+    const avgPredicted=probabilityRows.length?Math.round(probabilityRows.reduce((a,x)=>a+Number(x.probability),0)/probabilityRows.length*10)/10:null;
+    const brierScore=probabilityRows.length?Math.round(probabilityRows.reduce((a,x)=>{const p=Math.max(0,Math.min(1,Number(x.probability)/100)),y=x.won===true?1:0;return a+(p-y)**2},0)/probabilityRows.length*10000)/10000:null;
+    const calibrationError=avgPredicted==null?null:Math.round(Math.abs(avgPredicted-winRate)*10)/10;
+    return{key,samples,wins,losses,winRate,smoothedWinRate,avgPredicted,brierScore,calibrationError,minSamples,minWinRate,ready:samples>=minSamples&&smoothedWinRate>=minWinRate}
   }
   _priceAtExpiry(snap,dueAt,now=Date.now()){
     const rows=(Array.isArray(snap?.quoteHistory)?snap.quoteHistory:[]).map(x=>({ts:Number(x?.ts),price:Number(x?.price)})).filter(x=>Number.isFinite(x.ts)&&Number.isFinite(x.price)&&x.price>0).sort((a,b)=>a.ts-b.ts);
@@ -362,15 +401,21 @@ export class DemoTradingRuntime{
     this.signalValidation.pending=keep.slice(-200);
     this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-1000);
   }
-  _queueSignalCandidate({kind,side,confidence,referencePrice,asset,durationMs,strategy,now,settleDurationMs=null,expirationSource=null}){
+  _queueSignalCandidate({kind,side,confidence,probability=null,regime=null,referencePrice,asset,durationMs,strategy,now,settleDurationMs=null,expirationSource=null}){
     if(!['BUY','SELL'].includes(String(side||'').toUpperCase()))return;
     const requestedDuration=Math.max(10000,Number(durationMs||30000)),actualDuration=Number.isFinite(Number(settleDurationMs))?Math.max(10000,Number(settleDurationMs)):requestedDuration;
-    const key=this._validationKey(kind,asset,requestedDuration,strategy),spacing=Math.max(5000,Math.min(30000,Math.round(requestedDuration/2)));
-    const last=Number(this.signalValidation.lastQueued[key]||0);
+    const isHorizon=String(kind||'').startsWith('horizon_forecast_');
+    const spacing=isHorizon?requestedDuration:Math.max(5000,Math.min(30000,Math.round(requestedDuration/2)));
+    const key=this._validationKey(kind,asset,requestedDuration,strategy),last=Number(this.signalValidation.lastQueued[key]||0);
     if(now-last<spacing)return;
     this.signalValidation.lastQueued[key]=now;
-    this.signalValidation.pending.push({key,kind,asset:String(asset||'—'),durationMs:requestedDuration,settleDurationMs:actualDuration,strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+actualDuration,expirationSource:expirationSource||null});
-    this.signalValidation.pending=this.signalValidation.pending.slice(-200);
+    this.signalValidation.pending.push({
+      key,kind,asset:String(asset||'—'),durationMs:requestedDuration,settleDurationMs:actualDuration,
+      strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),
+      probability:Number.isFinite(Number(probability))?Math.max(0,Math.min(100,Number(probability))):null,regime:regime||null,
+      referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+actualDuration,expirationSource:expirationSource||null
+    });
+    this.signalValidation.pending=this.signalValidation.pending.slice(-240);
   }
   _signalValidationGate({analysis,snap,settings,now}){
     this._settleSignalValidation(now,snap);

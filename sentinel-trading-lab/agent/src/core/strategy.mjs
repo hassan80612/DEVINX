@@ -1,4 +1,4 @@
-import {ema,rsi,atr,bollinger,momentum,supportResistance,macd,stochastic,marketStructure,trendLines,fibonacci,candlePatterns,breakoutRetest,aggregateCandles} from './indicators.mjs';
+import {ema,rsi,atr,bollinger,momentum,supportResistance,macd,stochastic,marketStructure,trendLines,fibonacci,candlePatterns,breakoutRetest,aggregateCandles,supportResistanceZones,trendLineQuality,swingFibonacci,volatilityState} from './indicators.mjs';
 import {SignalSide} from './types.mjs';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -199,7 +199,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const higher=aggregateCandles(candles,5),higherCloses=higher.map(c=>Number(c.close));
  const m={
    fast:ema(closes,9),slow:ema(closes,21),ema50:ema(closes,50),ema200:ema(closes,200),rsi:rsi(closes,14),atr:vol,bb:bollinger(closes,20,2),momentum:momentum(closes,10),
-   sr:supportResistance(prior,50),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),trendlines:trendLines(candles),fib:fibonacci(candles,80),patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
+   sr:supportResistance(prior,50),srZones:supportResistanceZones(prior,90),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),
+   trendlines:trendLines(candles),lineQuality:trendLineQuality(prior),fib:fibonacci(candles,80),swingFib:swingFibonacci(prior,120),volatility:volatilityState(candles),
+   patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
    higherTF:{fast:ema(higherCloses,9),slow:ema(higherCloses,21),structure:marketStructure(higher),candles:higher.length},sourceCandles:candles.length,baseCandleSeconds:baseSeconds,micro
  };
  const trendUp=m.fast!=null&&m.slow!=null&&m.fast>m.slow,trendDn=m.fast!=null&&m.slow!=null&&m.fast<m.slow;
@@ -212,107 +214,146 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const bullishBody=candleBody>0,bearishBody=candleBody<0;
  const bullishReject=bullishBody&&lowerWick>Math.max(bodyAbs*.65,candleRange*.18);
  const bearishReject=bearishBody&&upperWick>Math.max(bodyAbs*.65,candleRange*.18);
- const srNearSupport=near(last,m.sr?.support,vol*.48),srNearResistance=near(last,m.sr?.resistance,vol*.48);
- const failedSupport=Number.isFinite(Number(m.sr?.support))&&Number(lastCandle.low)<Number(m.sr.support)-vol*.05&&Number(lastCandle.close)>=Number(m.sr.support);
- const failedResistance=Number.isFinite(Number(m.sr?.resistance))&&Number(lastCandle.high)>Number(m.sr.resistance)+vol*.05&&Number(lastCandle.close)<=Number(m.sr.resistance);
- const lineResistance=Number(m.trendlines?.resistance?.value),lineSupport=Number(m.trendlines?.support?.value);
+ const zoneSupport=Number(m.srZones?.support?.price??m.sr?.support),zoneResistance=Number(m.srZones?.resistance?.price??m.sr?.resistance);
+ const zoneTolerance=Math.max(Number(m.srZones?.tolerance||0),vol*.34),supportStrength=Number(m.srZones?.support?.strength||25),resistanceStrength=Number(m.srZones?.resistance?.strength||25);
+ const srNearSupport=Number.isFinite(zoneSupport)&&near(last,zoneSupport,zoneTolerance),srNearResistance=Number.isFinite(zoneResistance)&&near(last,zoneResistance,zoneTolerance);
+ const failedSupport=Number.isFinite(zoneSupport)&&Number(lastCandle.low)<zoneSupport-vol*.05&&Number(lastCandle.close)>=zoneSupport;
+ const failedResistance=Number.isFinite(zoneResistance)&&Number(lastCandle.high)>zoneResistance+vol*.05&&Number(lastCandle.close)<=zoneResistance;
+ const qualityResistance=m.lineQuality?.resistance?.quality>=45?m.lineQuality.resistance:null,qualitySupport=m.lineQuality?.support?.quality>=45?m.lineQuality.support:null;
+ const lineResistance=Number(qualityResistance?.value??m.trendlines?.resistance?.value),lineSupport=Number(qualitySupport?.value??m.trendlines?.support?.value);
+ const lineQualityUp=Number(qualityResistance?.quality||0),lineQualityDown=Number(qualitySupport?.quality||0);
  const lineBreakUp=Number.isFinite(lineResistance)&&last>lineResistance+vol*.08;
  const lineBreakDown=Number.isFinite(lineSupport)&&last<lineSupport-vol*.08;
- const srBreakUp=Number.isFinite(Number(m.sr?.resistance))&&last>Number(m.sr.resistance)+vol*.08;
- const srBreakDown=Number.isFinite(Number(m.sr?.support))&&last<Number(m.sr.support)-vol*.08;
+ const srBreakUp=Number.isFinite(zoneResistance)&&last>zoneResistance+vol*.08;
+ const srBreakDown=Number.isFinite(zoneSupport)&&last<zoneSupport-vol*.08;
  const strongBull=bullishBody&&bodyRatio>=.56,strongBear=bearishBody&&bodyRatio>=.56;
+ const volRatio=Number(m.volatility?.ratio||1),volExpanding=m.volatility?.expanding===true;
+ const emaSeparation=m.fast!=null&&m.slow!=null?Math.abs(Number(m.fast)-Number(m.slow))/Math.max(vol,1e-12):0;
+ const trendAgreement=[trendUp?1:trendDn?-1:0,m.structure.bias==='bullish'?1:m.structure.bias==='bearish'?-1:0,higherUp?1:higherDn?-1:0].filter(x=>x!==0);
+ const trendDirection=trendAgreement.length?Math.sign(trendAgreement.reduce((a,b)=>a+b,0)):0;
+ const trendAgreementPct=trendAgreement.length?Math.abs(trendAgreement.reduce((a,b)=>a+b,0))/trendAgreement.length:0;
+ const trendRegimeScore=clamp(Math.round(emaSeparation*34+trendAgreementPct*48+(volRatio>=.9&&volRatio<=1.7?8:0)),0,100);
+ const rangeRegimeScore=clamp(Math.round((1-Math.min(1,emaSeparation))*42+(m.structure.bias==='range'?34:0)+(m.volatility?.contracting?18:6)),0,100);
+ const breakoutRegimeScore=clamp(Math.round(((srBreakUp||srBreakDown||lineBreakUp||lineBreakDown)?46:0)+(volExpanding?30:0)+(bodyRatio>=.62?18:0)),0,100);
+ const reversalRegimeScore=clamp(Math.round((srNearSupport||srNearResistance?24:0)+(failedSupport||failedResistance?30:0)+(m.rsi!=null&&(m.rsi<=32||m.rsi>=68)?18:0)+(upperWick>bodyAbs*.9||lowerWick>bodyAbs*.9?16:0)),0,100);
+ const chaoticRegimeScore=clamp(Math.round((volRatio>=1.8?45:0)+(trendAgreementPct<.35?30:0)+(bodyRatio<.18&&volRatio>1.25?15:0)),0,100);
+ const regimeScores={trend:trendRegimeScore,range:rangeRegimeScore,breakout:breakoutRegimeScore,reversal:reversalRegimeScore,chaotic:chaoticRegimeScore};
+ const regimeLabel=Object.entries(regimeScores).sort((a,b)=>b[1]-a[1])[0]?.[0]||'range';
+ const regimeConfidence=Number(regimeScores[regimeLabel]||0);
+ m.regime={label:regimeLabel,confidence:regimeConfidence,scores:regimeScores,trendDirection,trendAgreementPct:Math.round(trendAgreementPct*100),volatilityRatio:volRatio};
  const mk=()=>({buy:0,sell:0,reasons:[]});
  const add=(b,side,points,reason)=>addScore(b,side,points,reason);
  const patternScore=(b,limit=2,points=16)=>{for(const p of (m.patterns||[]).slice(0,limit)){if(p.side==='BUY')add(b,'BUY',points,p.label);if(p.side==='SELL')add(b,'SELL',points,p.label)}};
 
+ const recentDeltas=closes.slice(-9).map((v,i,a)=>i===0?0:Number(v)-Number(a[i-1])).slice(1);
+ const upPersistence=recentDeltas.length?recentDeltas.filter(x=>x>0).length/recentDeltas.length:.5,downPersistence=recentDeltas.length?recentDeltas.filter(x=>x<0).length/recentDeltas.length:.5;
+ const persistenceSignal=clamp(upPersistence-downPersistence,-1,1);
+ const regimeAffinity={
+   trend:{trend:1.22,price_action:1.0,trendline_breakout:1.05,support_resistance:.72,fibonacci_retest:.82,mean_reversion:.42,breakout:1.0},
+   range:{trend:.48,price_action:1.0,trendline_breakout:.62,support_resistance:1.24,fibonacci_retest:1.02,mean_reversion:1.28,breakout:.62},
+   breakout:{trend:.90,price_action:1.02,trendline_breakout:1.28,support_resistance:.72,fibonacci_retest:.68,mean_reversion:.30,breakout:1.35},
+   reversal:{trend:.55,price_action:1.20,trendline_breakout:.72,support_resistance:1.25,fibonacci_retest:.90,mean_reversion:1.18,breakout:.55},
+   chaotic:{trend:.55,price_action:.78,trendline_breakout:.70,support_resistance:.78,fibonacci_retest:.60,mean_reversion:.62,breakout:.72}
+ };
+ const regimeFactor=name=>Number(regimeAffinity[regimeLabel]?.[name]??1);
+ const applyRegime=(box,name)=>{
+   const factor=regimeFactor(name);
+   box.buy=clamp(Math.round(box.buy*factor),0,100);box.sell=clamp(Math.round(box.sell*factor),0,100);
+   box.regimeFactor=factor;box.regime=regimeLabel;return box
+ };
+
  const scoreTrend=()=>{
-   const b=mk();
-   if(trendUp)add(b,'BUY',24,'EMA 9 acima da EMA 21');if(trendDn)add(b,'SELL',24,'EMA 9 abaixo da EMA 21');
-   if(m.ema50!=null){if(last>m.ema50)add(b,'BUY',10,'preço acima da EMA 50');else add(b,'SELL',10,'preço abaixo da EMA 50')}
-   if(m.macd?.histogram>0)add(b,'BUY',16,'MACD confirma tendência');if(m.macd?.histogram<0)add(b,'SELL',16,'MACD confirma tendência');
-   if(m.momentum>0)add(b,'BUY',10,'momentum acompanha alta');if(m.momentum<0)add(b,'SELL',10,'momentum acompanha baixa');
-   if(m.structure.bias==='bullish')add(b,'BUY',20,'estrutura HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',20,'estrutura LH + LL');
-   if(higherUp)add(b,'BUY',20,'timeframe superior alta');if(higherDn)add(b,'SELL',20,'timeframe superior baixa');
-   return b
+   const b=mk();let buyTrend=0,sellTrend=0,buyMomentum=0,sellMomentum=0,buyStructure=0,sellStructure=0;
+   if(trendUp)buyTrend+=16;if(trendDn)sellTrend+=16;
+   if(m.ema50!=null){if(last>m.ema50)buyTrend+=8;else sellTrend+=8}
+   if(m.macd?.histogram>0)buyMomentum+=10;else if(m.macd?.histogram<0)sellMomentum+=10;
+   if(m.momentum>0)buyMomentum+=8;else if(m.momentum<0)sellMomentum+=8;
+   if(m.structure.bias==='bullish')buyStructure+=18;else if(m.structure.bias==='bearish')sellStructure+=18;
+   if(higherUp)buyStructure+=14;else if(higherDn)sellStructure+=14;
+   if(persistenceSignal>.25)buyStructure+=8;if(persistenceSignal<-.25)sellStructure+=8;
+   if(buyTrend)add(b,'BUY',Math.min(24,buyTrend),'tendência por médias');if(sellTrend)add(b,'SELL',Math.min(24,sellTrend),'tendência por médias');
+   if(buyMomentum)add(b,'BUY',Math.min(18,buyMomentum),'momentum confirma alta');if(sellMomentum)add(b,'SELL',Math.min(18,sellMomentum),'momentum confirma baixa');
+   if(buyStructure)add(b,'BUY',Math.min(30,buyStructure),'estrutura/persistência de alta');if(sellStructure)add(b,'SELL',Math.min(30,sellStructure),'estrutura/persistência de baixa');
+   if(regimeLabel==='trend'&&trendDirection>0)add(b,'BUY',12,'regime de tendência comprador');if(regimeLabel==='trend'&&trendDirection<0)add(b,'SELL',12,'regime de tendência vendedor');
+   return applyRegime(b,'trend')
  };
  const scorePriceAction=()=>{
-   const b=mk();
-   if(m.structure.bias==='bullish')add(b,'BUY',24,'estrutura de preço HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',24,'estrutura de preço LH + LL');
-   if(strongBull)add(b,'BUY',14,'candle de força compradora');if(strongBear)add(b,'SELL',14,'candle de força vendedora');
-   patternScore(b,2,18);
-   if(srNearSupport&&bullishReject)add(b,'BUY',26,'rejeição de suporte');if(srNearResistance&&bearishReject)add(b,'SELL',26,'rejeição de resistência');
-   if(failedSupport)add(b,'BUY',24,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',24,'falso rompimento da resistência');
-   if(m.retest?.side==='BUY')add(b,'BUY',18,'reteste confirmado para cima');if(m.retest?.side==='SELL')add(b,'SELL',18,'reteste confirmado para baixo');
-   return b
+   const b=mk(),zoneContext=srNearSupport||srNearResistance||failedSupport||failedResistance;
+   if(m.structure.bias==='bullish')add(b,'BUY',20,'estrutura de preço HH + HL');if(m.structure.bias==='bearish')add(b,'SELL',20,'estrutura de preço LH + LL');
+   if(strongBull)add(b,'BUY',zoneContext?18:10,'candle de força compradora');if(strongBear)add(b,'SELL',zoneContext?18:10,'candle de força vendedora');
+   const pattPts=zoneContext?18:9;patternScore(b,2,pattPts);
+   if(srNearSupport&&bullishReject)add(b,'BUY',28,'rejeição contextual de suporte');if(srNearResistance&&bearishReject)add(b,'SELL',28,'rejeição contextual de resistência');
+   if(failedSupport)add(b,'BUY',26,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',26,'falso rompimento da resistência');
+   if(m.retest?.side==='BUY')add(b,'BUY',20,'reteste confirmado para cima');if(m.retest?.side==='SELL')add(b,'SELL',20,'reteste confirmado para baixo');
+   return applyRegime(b,'price_action')
  };
  const scoreTrendlineBreakout=()=>{
-   const b=mk();
-   if(lineBreakUp)add(b,'BUY',40,'rompimento da linha superior');if(lineBreakDown)add(b,'SELL',40,'rompimento da linha inferior');
-   if(m.retest?.side==='BUY')add(b,'BUY',30,'rompimento + reteste');if(m.retest?.side==='SELL')add(b,'SELL',30,'rompimento + reteste');
-   if(Number.isFinite(lineResistance)&&near(last,lineResistance,vol*.35)&&strongBull)add(b,'BUY',14,'pressão na linha de resistência');
-   if(Number.isFinite(lineSupport)&&near(last,lineSupport,vol*.35)&&strongBear)add(b,'SELL',14,'pressão na linha de suporte');
-   if(lineBreakUp&&m.momentum>0)add(b,'BUY',12,'momentum confirma rompimento');if(lineBreakDown&&m.momentum<0)add(b,'SELL',12,'momentum confirma rompimento');
-   if(lineBreakUp&&m.structure.bias!=='bearish')add(b,'BUY',10,'estrutura confirma rompimento');if(lineBreakDown&&m.structure.bias!=='bullish')add(b,'SELL',10,'estrutura confirma rompimento');
-   return b
+   const b=mk(),upQuality=Math.max(lineQualityUp,Number(m.lineQuality?.resistance?.quality||0)),downQuality=Math.max(lineQualityDown,Number(m.lineQuality?.support?.quality||0));
+   if(lineBreakUp&&upQuality>=45)add(b,'BUY',Math.round(26+upQuality*.18),'rompimento de linha validada');if(lineBreakDown&&downQuality>=45)add(b,'SELL',Math.round(26+downQuality*.18),'rompimento de linha validada');
+   if(m.retest?.side==='BUY'&&lineBreakUp)add(b,'BUY',24,'rompimento + reteste');if(m.retest?.side==='SELL'&&lineBreakDown)add(b,'SELL',24,'rompimento + reteste');
+   if(lineBreakUp&&volExpanding)add(b,'BUY',16,'volatilidade expande no rompimento');if(lineBreakDown&&volExpanding)add(b,'SELL',16,'volatilidade expande no rompimento');
+   if(lineBreakUp&&m.momentum>0&&upPersistence>=.625)add(b,'BUY',14,'rompimento sustentado');if(lineBreakDown&&m.momentum<0&&downPersistence>=.625)add(b,'SELL',14,'rompimento sustentado');
+   if((lineBreakUp&&upQuality<45)||(lineBreakDown&&downQuality<45))b.reasons.push('linha sem qualidade suficiente');
+   return applyRegime(b,'trendline_breakout')
  };
  const scoreSupportResistance=()=>{
-   const b=mk();
-   if(srNearSupport)add(b,'BUY',34,'preço em suporte');if(srNearResistance)add(b,'SELL',34,'preço em resistência');
-   if(srNearSupport&&bullishReject)add(b,'BUY',30,'rejeição compradora no suporte');if(srNearResistance&&bearishReject)add(b,'SELL',30,'rejeição vendedora na resistência');
-   if(failedSupport)add(b,'BUY',28,'falso rompimento do suporte');if(failedResistance)add(b,'SELL',28,'falso rompimento da resistência');
-   if(srNearSupport&&m.rsi!=null&&m.rsi<=42)add(b,'BUY',14,'RSI favorece reação no suporte');
-   if(srNearResistance&&m.rsi!=null&&m.rsi>=58)add(b,'SELL',14,'RSI favorece reação na resistência');
-   if(srNearSupport&&(m.patterns||[]).some(p=>p.side==='BUY'))add(b,'BUY',16,'padrão comprador no suporte');
-   if(srNearResistance&&(m.patterns||[]).some(p=>p.side==='SELL'))add(b,'SELL',16,'padrão vendedor na resistência');
-   return b
+   const b=mk(),supportBase=Math.round(20+Math.min(18,supportStrength*.18)),resistanceBase=Math.round(20+Math.min(18,resistanceStrength*.18));
+   if(srNearSupport)add(b,'BUY',supportBase,'zona de suporte validada');if(srNearResistance)add(b,'SELL',resistanceBase,'zona de resistência validada');
+   if(srNearSupport&&bullishReject)add(b,'BUY',26,'rejeição compradora na zona');if(srNearResistance&&bearishReject)add(b,'SELL',26,'rejeição vendedora na zona');
+   if(failedSupport)add(b,'BUY',30,'falso rompimento da zona de suporte');if(failedResistance)add(b,'SELL',30,'falso rompimento da zona de resistência');
+   if(srNearSupport&&m.rsi!=null&&m.rsi<=42)add(b,'BUY',10,'RSI favorece reação');if(srNearResistance&&m.rsi!=null&&m.rsi>=58)add(b,'SELL',10,'RSI favorece reação');
+   return applyRegime(b,'support_resistance')
  };
  const scoreFibonacci=()=>{
-   const b=mk(),fib=m.fib?.nearest;
-   if(!fib||!Number.isFinite(Number(fib.distance))||Number(fib.distance)>vol*.90)return b;
-   if(m.fib.direction==='up'){
-     add(b,'BUY',42,'reteste em nível de Fibonacci');
-     if(trendUp)add(b,'BUY',20,'Fibonacci alinhado à tendência');
-     if(bullishReject||strongBull)add(b,'BUY',18,'reação compradora no nível');
-     if(m.momentum>0)add(b,'BUY',10,'momentum confirma reação')
-   }else if(m.fib.direction==='down'){
-     add(b,'SELL',42,'reteste em nível de Fibonacci');
-     if(trendDn)add(b,'SELL',20,'Fibonacci alinhado à tendência');
-     if(bearishReject||strongBear)add(b,'SELL',18,'reação vendedora no nível');
-     if(m.momentum<0)add(b,'SELL',10,'momentum confirma reação')
+   const b=mk(),model=m.swingFib?.confirmed?m.swingFib:m.fib,fib=model?.nearest,quality=Number(model?.quality||25);
+   if(!fib||!Number.isFinite(Number(fib.distance))||Number(fib.distance)>vol*.90||quality<45)return b;
+   const base=Math.round(24+quality*.18);
+   if(model.direction==='up'){
+     add(b,'BUY',base,'reteste em Fibonacci de swing confirmado');
+     if(trendUp&&higherUp)add(b,'BUY',18,'Fibonacci alinhado à tendência');
+     if(bullishReject||strongBull)add(b,'BUY',16,'reação compradora no nível');
+     if(m.momentum>0)add(b,'BUY',8,'momentum confirma reação')
+   }else if(model.direction==='down'){
+     add(b,'SELL',base,'reteste em Fibonacci de swing confirmado');
+     if(trendDn&&higherDn)add(b,'SELL',18,'Fibonacci alinhado à tendência');
+     if(bearishReject||strongBear)add(b,'SELL',16,'reação vendedora no nível');
+     if(m.momentum<0)add(b,'SELL',8,'momentum confirma reação')
    }
-   return b
+   return applyRegime(b,'fibonacci_retest')
  };
  const scoreMeanReversion=()=>{
-   const b=mk();
-   if(m.bb&&last<=m.bb.lower)add(b,'BUY',30,'preço na banda inferior');if(m.bb&&last>=m.bb.upper)add(b,'SELL',30,'preço na banda superior');
-   if(m.rsi!=null&&m.rsi<32)add(b,'BUY',26,'RSI sobrevendido');if(m.rsi!=null&&m.rsi>68)add(b,'SELL',26,'RSI sobrecomprado');
-   if(m.stoch!=null&&m.stoch<22)add(b,'BUY',18,'estocástico em sobrevenda');if(m.stoch!=null&&m.stoch>78)add(b,'SELL',18,'estocástico em sobrecompra');
-   if(m.slow!=null&&last<m.slow-vol*.55)add(b,'BUY',14,'preço afastado abaixo da média');if(m.slow!=null&&last>m.slow+vol*.55)add(b,'SELL',14,'preço afastado acima da média');
-   if(srNearSupport)add(b,'BUY',12,'suporte favorece retorno à média');if(srNearResistance)add(b,'SELL',12,'resistência favorece retorno à média');
-   return b
+   const b=mk(),trendPenalty=regimeLabel==='trend'||regimeLabel==='breakout';
+   if(m.bb&&last<=m.bb.lower)add(b,'BUY',trendPenalty?14:28,'preço na banda inferior');if(m.bb&&last>=m.bb.upper)add(b,'SELL',trendPenalty?14:28,'preço na banda superior');
+   if(m.rsi!=null&&m.rsi<32)add(b,'BUY',trendPenalty?12:24,'RSI sobrevendido');if(m.rsi!=null&&m.rsi>68)add(b,'SELL',trendPenalty?12:24,'RSI sobrecomprado');
+   if(m.stoch!=null&&m.stoch<22)add(b,'BUY',trendPenalty?8:16,'estocástico em sobrevenda');if(m.stoch!=null&&m.stoch>78)add(b,'SELL',trendPenalty?8:16,'estocástico em sobrecompra');
+   if(m.slow!=null&&last<m.slow-vol*.55)add(b,'BUY',12,'preço afastado abaixo da média');if(m.slow!=null&&last>m.slow+vol*.55)add(b,'SELL',12,'preço afastado acima da média');
+   if(srNearSupport&&bullishReject)add(b,'BUY',20,'zona confirma retorno à média');if(srNearResistance&&bearishReject)add(b,'SELL',20,'zona confirma retorno à média');
+   if(trendPenalty)b.reasons.push('peso reduzido: mercado direcional');
+   return applyRegime(b,'mean_reversion')
  };
  const scoreBreakout=()=>{
-   const b=mk();
-   if(srBreakUp)add(b,'BUY',38,'rompimento de resistência');if(srBreakDown)add(b,'SELL',38,'rompimento de suporte');
-   if(m.retest?.side==='BUY')add(b,'BUY',28,'reteste após rompimento');if(m.retest?.side==='SELL')add(b,'SELL',28,'reteste após rompimento');
+   const b=mk(),sustainUp=upPersistence>=.625&&m.momentum>0,sustainDown=downPersistence>=.625&&m.momentum<0;
+   if(srBreakUp)add(b,'BUY',volExpanding?36:22,'rompimento de resistência');if(srBreakDown)add(b,'SELL',volExpanding?36:22,'rompimento de suporte');
+   if(m.retest?.side==='BUY'&&srBreakUp)add(b,'BUY',24,'reteste após rompimento');if(m.retest?.side==='SELL'&&srBreakDown)add(b,'SELL',24,'reteste após rompimento');
    if(srBreakUp&&strongBull)add(b,'BUY',14,'candle confirma rompimento');if(srBreakDown&&strongBear)add(b,'SELL',14,'candle confirma rompimento');
-   if(srBreakUp&&m.momentum>0)add(b,'BUY',12,'momentum confirma rompimento');if(srBreakDown&&m.momentum<0)add(b,'SELL',12,'momentum confirma rompimento');
-   if(lineBreakUp)add(b,'BUY',10,'linha de tendência rompida');if(lineBreakDown)add(b,'SELL',10,'linha de tendência rompida');
-   return b
+   if(srBreakUp&&sustainUp)add(b,'BUY',18,'rompimento sustentado');if(srBreakDown&&sustainDown)add(b,'SELL',18,'rompimento sustentado');
+   if((srBreakUp||lineBreakUp)&&volExpanding)add(b,'BUY',10,'expansão de volatilidade');if((srBreakDown||lineBreakDown)&&volExpanding)add(b,'SELL',10,'expansão de volatilidade');
+   if((srBreakUp&&!volExpanding&&!sustainUp)||(srBreakDown&&!volExpanding&&!sustainDown))b.reasons.push('rompimento ainda sem expansão/sustentação');
+   return applyRegime(b,'breakout')
  };
  const scorers={trend:scoreTrend,price_action:scorePriceAction,trendline_breakout:scoreTrendlineBreakout,support_resistance:scoreSupportResistance,fibonacci_retest:scoreFibonacci,mean_reversion:scoreMeanReversion,breakout:scoreBreakout};
  const scoreSmart=()=>{
    const b=mk();
    for(const name of ['trend','price_action','trendline_breakout','support_resistance','fibonacci_retest','mean_reversion','breakout']){
-     const x=scorers[name](),total=x.buy+x.sell;if(total<10)continue;
-     const norm=Math.max(1,total),edge=(x.buy-x.sell)/norm,weight=Math.min(18,6+total*.12);
-     if(edge>0)add(b,'BUY',Math.round(weight*Math.abs(edge)),`${name}: viés comprador`);
-     if(edge<0)add(b,'SELL',Math.round(weight*Math.abs(edge)),`${name}: viés vendedor`)
+     const x=scorers[name](),total=x.buy+x.sell;if(total<8)continue;
+     const normTotal=Math.max(1,total),edge=(x.buy-x.sell)/normTotal,baseWeight=Math.min(18,5+total*.11),weight=baseWeight*regimeFactor(name);
+     if(edge>0)add(b,'BUY',Math.round(weight*Math.abs(edge)),`${name}: viés comprador · regime ${regimeLabel}`);
+     if(edge<0)add(b,'SELL',Math.round(weight*Math.abs(edge)),`${name}: viés vendedor · regime ${regimeLabel}`)
    }
    return b
  };
  const box=strategy==='smart_confluence'?scoreSmart():(scorers[strategy]?.()||scoreSmart());
-
+ box.regime=regimeLabel;box.regimeConfidence=regimeConfidence;
  const horizon=Math.max(30000,Number(durationMs||60000));
  const short=shortHorizonModel({
    quoteHistory,micro,last,vol,minConfidence,now,
@@ -362,86 +403,119 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const finalSide=finalStrength>=Number(minConfidence||74)&&Math.abs(finalEdge)>=12&&micro.ready?(finalEdge>0?'CALL':'PUT'):'AGUARDAR';
 
  const safeVol=Math.max(Math.abs(vol||0),Math.abs(last)*.00001);
- const plannerHorizons=[30,60,120,300,600,900];
- const upperLevels=[m.sr?.resistance,m.trendlines?.resistance?.value,m.bb?.upper,short.sr?.resistance].map(Number).filter(v=>Number.isFinite(v)&&v>last).sort((a,b)=>a-b);
- const lowerLevels=[m.sr?.support,m.trendlines?.support?.value,m.bb?.lower,short.sr?.support].map(Number).filter(v=>Number.isFinite(v)&&v<last).sort((a,b)=>b-a);
+ const plannerHorizons=[30,60,120,300,600,900,3600];
+ const upperLevels=[zoneResistance,qualityResistance?.value,m.bb?.upper,short.sr?.resistance].map(Number).filter(v=>Number.isFinite(v)&&v>last).sort((a,b)=>a-b);
+ const lowerLevels=[zoneSupport,qualitySupport?.value,m.bb?.lower,short.sr?.support].map(Number).filter(v=>Number.isFinite(v)&&v<last).sort((a,b)=>b-a);
  const nearestUpper=upperLevels[0]??null,nearestLower=lowerLevels[0]??null;
- const reversalMode=strategy==='mean_reversion'||strategy==='support_resistance';
+ const reversalMode=strategy==='mean_reversion'||strategy==='support_resistance'||regimeLabel==='reversal';
  const norm=(v,scale=1)=>Number.isFinite(Number(v))?clamp(Number(v)/Math.max(1e-12,Math.abs(scale)),-1,1):0;
- const meanSignal=xs=>{const rows=xs.filter(Number.isFinite);return rows.length?clamp(rows.reduce((a,b)=>a+b,0)/rows.length,-1,1):0};
  const emaSignal=trendUp?1:trendDn?-1:0;
  const structureSignal=m.structure?.bias==='bullish'?1:m.structure?.bias==='bearish'?-1:0;
  const higherSignal=higherUp?1:higherDn?-1:0;
  const ema50Signal=m.ema50!=null?(last>Number(m.ema50)?1:last<Number(m.ema50)?-1:0):0;
- const trendSignal=clamp(emaSignal*.30+structureSignal*.30+higherSignal*.25+ema50Signal*.15,-1,1);
+ const trendSignal=clamp(emaSignal*.24+structureSignal*.30+higherSignal*.30+ema50Signal*.16,-1,1);
  const rsiSignal=m.rsi!=null?norm(Number(m.rsi)-50,20):0;
  const macdSignal=m.macd?.histogram!=null?norm(Number(m.macd.histogram),safeVol*.12):0;
  const momentumSignalValue=m.momentum!=null?norm(Number(m.momentum),.18):0;
  const stochasticSignal=m.stoch!=null?norm(Number(m.stoch)-50,38):0;
- const momentumSignal=clamp(rsiSignal*.28+macdSignal*.30+momentumSignalValue*.27+stochasticSignal*.15,-1,1);
+ const momentumSignal=clamp(rsiSignal*.24+macdSignal*.34+momentumSignalValue*.28+stochasticSignal*.14,-1,1);
  const rawStrategySignal=norm(Number(rawBuy||0)-Number(rawSell||0),55);
  const patternBuy=(m.patterns||[]).filter(p=>p?.side==='BUY').length,patternSell=(m.patterns||[]).filter(p=>p?.side==='SELL').length;
  const setupSignal=clamp((m.retest?.side==='BUY'?0.65:m.retest?.side==='SELL'?-0.65:0)+clamp((patternBuy-patternSell)*.22,-.44,.44)+(srBreakUp||lineBreakUp?0.25:0)-(srBreakDown||lineBreakDown?0.25:0),-1,1);
  const reversalSignalBase=clamp((Number(short.reversalCallScore||0)-Number(short.reversalPutScore||0))/75,-1,1);
- const reversalSignal=clamp(reversalSignalBase+(short.turnUp?0.28:0)-(short.turnDown?0.28:0)+(short.failedBreakDown||failedSupport?0.24:0)-(short.failedBreakUp||failedResistance?0.24:0)+(short.putOverextended?0.16:0)-(short.callOverextended?0.16:0),-1,1);
+ const reversalSignal=clamp(reversalSignalBase+(short.turnUp?0.28:0)-(short.turnDown?0.28:0)+(short.failedBreakDown||failedSupport?0.24:0)-(short.failedBreakUp||failedResistance?0.24:0)+((short.putOverextended&&(short.turnUp||short.reversalCallCandidate))?0.16:0)-((short.callOverextended&&(short.turnDown||short.reversalPutCandidate))?0.16:0),-1,1);
+ const reversalConfirmed=!!(short.reversalCallCandidate||short.reversalPutCandidate||short.turnUp||short.turnDown||short.failedBreakDown||short.failedBreakUp||failedSupport||failedResistance);
+ const forecastReversalSignal=clamp(reversalSignal*(reversalConfirmed?1:.35),-1,1);
+ const shortSlopeRaw=closes.length>=6?(last-Number(closes.at(-6)))/5:0,mediumSlopeRaw=closes.length>=21?(last-Number(closes.at(-21)))/20:shortSlopeRaw;
+ const shortSlopeSignal=norm(shortSlopeRaw,safeVol*.18),mediumSlopeSignal=norm(mediumSlopeRaw,safeVol*.10);
+ const accelerationSignal=clamp((shortSlopeSignal-mediumSlopeSignal)*.72,-1,1);
+ const persistenceForecastSignal=clamp(persistenceSignal*.78+mediumSlopeSignal*.22,-1,1);
+ const breakoutDirection=(srBreakUp||lineBreakUp)?1:(srBreakDown||lineBreakDown)?-1:0;
+ const regimeSignal=regimeLabel==='trend'?clamp(trendDirection*trendAgreementPct,-1,1)
+   :regimeLabel==='breakout'?breakoutDirection
+   :regimeLabel==='reversal'?forecastReversalSignal
+   :regimeLabel==='range'?clamp(reversalSignal*.65-trendSignal*.15,-1,1)
+   :clamp(trendSignal*.25+momentumSignal*.20,-.35,.35);
 
  const weightsFor=seconds=>seconds<=30
-   ?{micro:.29,reversal:.20,momentum:.15,trend:.09,location:.10,setup:.07,strategy:.10}
-   :seconds<=60?{micro:.23,reversal:.16,momentum:.17,trend:.14,location:.13,setup:.07,strategy:.10}
-   :seconds<=120?{micro:.16,reversal:.12,momentum:.18,trend:.20,location:.16,setup:.08,strategy:.10}
-   :seconds<=300?{micro:.08,reversal:.08,momentum:.18,trend:.27,location:.20,setup:.09,strategy:.10}
-   :seconds<=600?{micro:.05,reversal:.06,momentum:.17,trend:.30,location:.23,setup:.09,strategy:.10}
-   :{micro:.03,reversal:.05,momentum:.16,trend:.32,location:.25,setup:.09,strategy:.10};
+   ?{micro:.25,reversal:.18,momentum:.12,trend:.07,location:.08,setup:.07,strategy:.08,persistence:.08,acceleration:.04,regime:.03}
+   :seconds<=60?{micro:.20,reversal:.14,momentum:.14,trend:.11,location:.11,setup:.07,strategy:.08,persistence:.08,acceleration:.04,regime:.03}
+   :seconds<=120?{micro:.13,reversal:.10,momentum:.15,trend:.17,location:.14,setup:.07,strategy:.08,persistence:.08,acceleration:.03,regime:.05}
+   :seconds<=300?{micro:.06,reversal:.07,momentum:.15,trend:.23,location:.18,setup:.07,strategy:.07,persistence:.08,acceleration:.02,regime:.07}
+   :seconds<=600?{micro:.035,reversal:.05,momentum:.14,trend:.26,location:.20,setup:.06,strategy:.07,persistence:.09,acceleration:.015,regime:.075}
+   :seconds<=900?{micro:.02,reversal:.04,momentum:.13,trend:.28,location:.21,setup:.05,strategy:.07,persistence:.10,acceleration:.01,regime:.09}
+   :{micro:0,reversal:.025,momentum:.10,trend:.31,location:.22,setup:.035,strategy:.06,persistence:.12,acceleration:0,regime:.13};
+
+ const featureRegimeMultiplier=(name)=>{
+   if(regimeLabel==='trend'&&['trend','persistence','regime'].includes(name))return 1.18;
+   if(regimeLabel==='range'&&['location','reversal'].includes(name))return 1.18;
+   if(regimeLabel==='breakout'&&['momentum','setup','persistence','regime'].includes(name))return 1.16;
+   if(regimeLabel==='reversal'&&['reversal','location','setup'].includes(name))return 1.20;
+   if(regimeLabel==='chaotic'&&['micro','acceleration'].includes(name))return .72;
+   return 1
+ };
 
  const forecastFor=seconds=>{
    const scale=Math.sqrt(Math.max(.5,seconds/60)),expectedMove=Math.max(safeVol*.35,safeVol*scale),triggerBuffer=Math.max(safeVol*.08,expectedMove*.24);
    const barsBack=Math.max(2,Math.ceil(seconds/Math.max(5,baseSeconds)));
-   const enoughHistory=closes.length>=Math.max(12,Math.min(30,barsBack+8));
-   const microSignal=micro.ready?clamp(norm(micro.p5,1.35)*.35+norm(micro.p15,1.65)*.30+norm(micro.p30,2.10)*.20+norm(micro.pulse,18)*.15,-1,1):0;
+   const minHistory=seconds>=3600?90:seconds>=900?55:seconds>=600?45:seconds>=300?35:Math.max(18,Math.min(30,barsBack+10));
+   const enoughHistory=closes.length>=minHistory;
+   const microSignal=micro.ready?clamp(norm(micro.p5,1.35)*.31+norm(micro.p15,1.65)*.30+norm(micro.p30,2.10)*.23+norm(micro.pulse,18)*.16,-1,1):0;
    const upRoom=nearestUpper!=null?clamp((nearestUpper-last)/Math.max(expectedMove,1e-12),0,3):1.5;
    const downRoom=nearestLower!=null?clamp((last-nearestLower)/Math.max(expectedMove,1e-12),0,3):1.5;
    let locationSignal=clamp((upRoom-downRoom)/2.2,-1,1);
    if(upRoom<.45)locationSignal-=.28;
    if(downRoom<.45)locationSignal+=.28;
    if(m.bb?.upper!=null&&m.bb?.lower!=null&&Number(m.bb.upper)>Number(m.bb.lower)){
-     const bbPos=clamp(((last-Number(m.bb.mid||((Number(m.bb.upper)+Number(m.bb.lower))/2)))/(Number(m.bb.upper)-Number(m.bb.lower)))*2,-1,1);
+     const bbMid=Number(m.bb.mid||((Number(m.bb.upper)+Number(m.bb.lower))/2));
+     const bbPos=clamp(((last-bbMid)/(Number(m.bb.upper)-Number(m.bb.lower)))*2,-1,1);
      locationSignal=clamp(locationSignal-bbPos*.12,-1,1)
    }
-   const w=weightsFor(seconds);
+   const w=weightsFor(seconds),declaredWeight=Object.values(w).reduce((a,b)=>a+Number(b||0),0)||1;
    const features=[
-     {name:'microfluxo',value:microSignal,weight:w.micro,available:micro.ready},
-     {name:'reversão/exaustão',value:reversalSignal,weight:w.reversal,available:short.ready===true},
-     {name:'momentum',value:momentumSignal,weight:w.momentum,available:m.rsi!=null||m.macd!=null||m.momentum!=null},
-     {name:'estrutura/tendência',value:trendSignal,weight:w.trend,available:true},
-     {name:'espaço S/R',value:locationSignal,weight:w.location,available:true},
-     {name:'setup',value:setupSignal,weight:w.setup,available:true},
-     {name:'estratégia atual',value:rawStrategySignal,weight:w.strategy,available:true}
-   ];
-   const available=features.filter(x=>x.available),weightTotal=available.reduce((a,x)=>a+x.weight,0)||1;
+     {name:'microfluxo',key:'micro',value:microSignal,weight:w.micro,available:w.micro>0&&micro.ready},
+     {name:'reversão/exaustão',key:'reversal',value:forecastReversalSignal,weight:w.reversal,available:short.ready===true},
+     {name:'momentum',key:'momentum',value:momentumSignal,weight:w.momentum,available:m.rsi!=null||m.macd!=null||m.momentum!=null},
+     {name:'estrutura/tendência',key:'trend',value:trendSignal,weight:w.trend,available:true},
+     {name:'espaço S/R',key:'location',value:locationSignal,weight:w.location,available:true},
+     {name:'setup',key:'setup',value:setupSignal,weight:w.setup,available:true},
+     {name:'estratégia atual',key:'strategy',value:rawStrategySignal,weight:w.strategy,available:true},
+     {name:'persistência',key:'persistence',value:persistenceForecastSignal,weight:w.persistence,available:recentDeltas.length>=5},
+     {name:'aceleração',key:'acceleration',value:accelerationSignal,weight:w.acceleration,available:w.acceleration>0&&closes.length>=21},
+     {name:'regime '+regimeLabel,key:'regime',value:regimeSignal,weight:w.regime,available:regimeConfidence>=35}
+   ].map(x=>({...x,weight:x.weight*featureRegimeMultiplier(x.key)}));
+   const available=features.filter(x=>x.available&&x.weight>0),weightTotal=available.reduce((a,x)=>a+x.weight,0)||1;
    let signal=available.reduce((a,x)=>a+x.value*x.weight,0)/weightTotal;
-   // Não perseguir movimento já esticado. Isto reduz o problema "entrou depois que já correu".
-   if(short.callOverextended&&signal>0)signal-=Math.min(.28,Math.abs(signal)*.45+.06);
-   if(short.putOverextended&&signal<0)signal+=Math.min(.28,Math.abs(signal)*.45+.06);
-   if(short.turnDown&&signal>0)signal-=.12;
-   if(short.turnUp&&signal<0)signal+=.12;
+
+   // Anti-atraso: se o movimento atual já esticou e começa a perder aceleração,
+   // a previsão deixa de perseguir a vela atual e antecipa a possibilidade de virada.
+   if(short.callOverextended&&signal>0)signal-=Math.min(.30,Math.abs(signal)*.48+.07);
+   if(short.putOverextended&&signal<0)signal+=Math.min(.30,Math.abs(signal)*.48+.07);
+   if(short.turnDown&&signal>0)signal-=seconds<=60?.18:.10;
+   if(short.turnUp&&signal<0)signal+=seconds<=60?.18:.10;
+   // Quando o microfluxo vira contra a tendência, 30s/1m precisam reagir antes da vela terminar.
+   // Isso reduz CALL no topo/PUT no fundo sem inverter horizontes longos por um único tick.
+   if(seconds<=60&&trendSignal>.20&&microSignal<-.25)signal-=Math.min(.28,.05+Math.abs(microSignal)*.16+Math.max(0,-accelerationSignal)*.10);
+   if(seconds<=60&&trendSignal<-.20&&microSignal>.25)signal+=Math.min(.28,.05+Math.abs(microSignal)*.16+Math.max(0,accelerationSignal)*.10);
+   if(signal>0&&accelerationSignal<-.35)signal-=Math.min(.16,Math.abs(accelerationSignal)*.18);
+   if(signal<0&&accelerationSignal>.35)signal+=Math.min(.16,Math.abs(accelerationSignal)*.18);
+   if(regimeLabel==='chaotic')signal*=.72;
    signal=clamp(signal,-1,1);
-   const directional=available.filter(x=>Math.abs(x.value)>=.08);
-   const directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
+
+   const directional=available.filter(x=>Math.abs(x.value)>=.08),directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
    const alignedWeight=directional.filter(x=>signal===0||Math.sign(x.value)===Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
    const opposedWeight=directional.filter(x=>signal!==0&&Math.sign(x.value)!==Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
-   const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5;
-   const conflict=directionalWeight>0?opposedWeight/directionalWeight:0;
-   const quality=clamp(weightTotal,0,1);
-   const callProbability=clamp(Math.round(50+signal*44),5,95),putProbability=100-callProbability;
-   const modelConfidence=clamp(Math.round(50+Math.abs(signal)*32+Math.max(0,agreement-.5)*20+Math.max(0,quality-.70)*10-conflict*8),50,94);
-   const minForecastConfidence=seconds<=60?60:58;
-   const enoughFlow=seconds>60||micro.ready;
-   const outlookReady=enoughHistory&&enoughFlow&&quality>=.72;
-   const hasDirection=outlookReady&&modelConfidence>=minForecastConfidence&&Math.abs(signal)>=.16&&agreement>=.52;
-   const directionalBias=outlookReady&&Math.abs(signal)>=.02?(signal>0?'CALL':'PUT'):'NEUTRO';
-   const bias=directionalBias;
-   const projectedMove=expectedMove*signal*(.58+modelConfidence/250);
-   const projectedPrice=last+projectedMove;
+   const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5,conflict=directionalWeight>0?opposedWeight/directionalWeight:0;
+   const quality=clamp(weightTotal/declaredWeight,0,1);
+   const rawCallProbability=clamp(Math.round(50+Math.tanh(signal*1.28)*43),5,95),rawPutProbability=100-rawCallProbability;
+   const regimeBonus=Math.max(0,(regimeConfidence-50)*.08);
+   const modelConfidence=clamp(Math.round(48+Math.abs(signal)*30+Math.max(0,agreement-.5)*22+Math.max(0,quality-.68)*12+regimeBonus-conflict*10),45,94);
+   const minForecastConfidence=seconds<=60?61:seconds<=300?59:58,enoughFlow=seconds>60||micro.ready;
+   const minAgreement=seconds<=60?.54:seconds<=300?.51:.48,minSignal=seconds<=60?.15:seconds<=300?.13:.11;
+   const outlookReady=enoughHistory&&enoughFlow&&quality>=.66;
+   const directionReady=outlookReady&&modelConfidence>=minForecastConfidence&&Math.abs(signal)>=minSignal&&agreement>=minAgreement&&regimeLabel!=='chaotic';
+   const bias=outlookReady&&Math.abs(signal)>=.025?(signal>0?'CALL':'PUT'):'NEUTRO';
+   const projectedMove=expectedMove*signal*(.55+modelConfidence/240),projectedPrice=last+projectedMove;
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
    if(reversalMode){
      const lower=nearestLower??(last-expectedMove),upper=nearestUpper??(last+expectedMove);
@@ -454,12 +528,16 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      callInvalidation=Math.max(last-triggerBuffer*.50,nearestLower??(last-triggerBuffer*.50));putInvalidation=Math.min(last+triggerBuffer*.50,nearestUpper??(last+triggerBuffer*.50));
      callRule='CALL somente após romper e sustentar acima do gatilho';putRule='PUT somente após romper e sustentar abaixo do gatilho'
    }
-   const strongest=features.filter(x=>x.available).sort((a,b)=>Math.abs(b.value*b.weight)-Math.abs(a.value*a.weight)).slice(0,3).map(x=>`${x.name} ${x.value>0?'CALL':x.value<0?'PUT':'neutro'}`);
+   const strongest=features.filter(x=>x.available).sort((a,b)=>Math.abs(b.value*b.weight)-Math.abs(a.value*a.weight)).slice(0,4).map(x=>`${x.name} ${x.value>0?'CALL':x.value<0?'PUT':'neutro'}`);
+   const evidenceFamilies=Object.fromEntries(features.filter(x=>x.available).map(x=>[x.key,{signal:x.value,weight:x.weight}]));
    return{
      horizonSeconds:seconds,currentPrice:last,expectedMove,expectedLow:last-expectedMove,expectedHigh:last+expectedMove,
-     projectedMove,projectedPrice,signal,callProbability,putProbability,confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
-     bias,outlookReady,directionReady:hasDirection,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
-     basis:'previsão futura multi-fator independente do consenso atual',drivers:strongest,automaticExecution:false,modelVersion:'future-v2'
+     projectedMove,projectedPrice,signal,rawCallProbability,rawPutProbability,callProbability:rawCallProbability,putProbability:rawPutProbability,
+     confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
+     bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
+     regime:m.regime,evidenceFamilies,
+     basis:'previsão futura V3 independente do consenso atual por horizonte + regime + persistência; entrada atual é separada',drivers:strongest,
+     automaticExecution:false,modelVersion:'future-v3'
    }
  };
  const planner=Object.fromEntries(plannerHorizons.map(seconds=>[String(seconds),forecastFor(seconds)]));
@@ -478,9 +556,9 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 
  return{
    side,confidence,reasons:box.reasons.slice(0,14),
-   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:Number(forecast30Plan?.callProbability||50),putStrength:Number(forecast30Plan?.putProbability||50),trigger:60,callGap,putGap,microPulse:micro.pulse,microReady:micro.ready,projectedPrice:forecast30Plan?.projectedPrice??null,agreement:forecast30Plan?.agreement??0,modelVersion:'future-v2'},
+   forecast30:{side:forecastSide,confidence:forecastConfidence,horizonSeconds:30,callStrength:Number(forecast30Plan?.callProbability||50),putStrength:Number(forecast30Plan?.putProbability||50),trigger:60,callGap,putGap,microPulse:micro.pulse,microReady:micro.ready,projectedPrice:forecast30Plan?.projectedPrice??null,agreement:forecast30Plan?.agreement??0,modelVersion:'future-v3'},
    finalConfluence:{side:finalSide,strength:finalStrength,callStrength:finalCall,putStrength:finalPut,minConfidence:Number(minConfidence||74),aligned:Math.abs(finalEdge)>=12,disagreement:(buyEffective-sellEffective)*(projectedBuy-projectedSell)<0,basis:'estado técnico atual; previsão futura separada'},
-   entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v2',horizons:planner},
-   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,futureModelVersion:'future-v2',selectedForecast}
+   entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v3',horizons:planner},
+   metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,futureModelVersion:'future-v3',selectedForecast}
  }
 }
