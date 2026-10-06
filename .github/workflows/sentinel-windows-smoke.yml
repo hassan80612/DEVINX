@@ -2,7 +2,7 @@ name: Sentinel Hybrid Smoke V11.8
 
 on:
   push:
-    branches: [sentinel-v106-modern, main, sentinel-visible-asset-fix-20261006]
+    branches: [sentinel-v106-modern, main]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
