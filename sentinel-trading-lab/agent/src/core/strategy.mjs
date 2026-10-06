@@ -316,8 +316,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const raw=String(id||'smart_confluence'),key=strategyAlias[raw]||raw;
    return key==='smart_confluence'?scoreSmart():(scorers[key]?.()||scoreSmart())
  };
- const selectedStrategies=[...new Set((Array.isArray(strategies)&&strategies.length?strategies:[strategy]).map(x=>typeof x==='string'?x:x?.id).filter(Boolean).map(String))].slice(0,3);
- if(!selectedStrategies.length)selectedStrategies.push(String(strategy||'smart_confluence'));
+ const strategySource=Array.isArray(strategies)?strategies:[strategy];
+ const selectedStrategies=[...new Set(strategySource.map(x=>typeof x==='string'?x:x?.id).filter(Boolean).map(x=>String(x)==='trend_following'?'trend':String(x)))].slice(0,3);
  const strategyBoxes=selectedStrategies.map(id=>({id,box:scoreStrategy(id)}));
  const box=scoreStrategy(strategy);
 
