@@ -195,11 +195,12 @@ test('Asset changes wipe candle and micro-quote history before the new feed is a
   assert.ok(ui.includes("Histórico rejeitado por mistura/inconsistência de ativo"));
 });
 
-test('Probe of alternate market restores the original quote history and identity', async () => {
+test('Recovery never probes or restores a hidden alternate asset', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
-  assert.ok(ui.includes('quoteHistory:[...(st.quoteHistory||[])]'));
-  assert.ok(ui.includes('st.quoteHistory=saved.quoteHistory'));
-  assert.ok(ui.includes('st.candleActiveId=saved.candleActiveId'));
+  assert.ok(!ui.includes('quoteHistory:[...(st.quoteHistory||[])]'));
+  assert.ok(!ui.includes('st.quoteHistory=saved.quoteHistory'));
+  assert.ok(!ui.includes('Sugestão disponível:'));
+  assert.ok(ui.includes('nenhum outro ativo será consultado em segundo plano'));
 });
 
 
