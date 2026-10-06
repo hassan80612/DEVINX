@@ -1049,7 +1049,7 @@ export class LocalPlaywrightDriver{
           let drag=null;
           const stop=()=>{if(!drag)return;drag=null;try{const r=el.getBoundingClientRect();localStorage.setItem('sentinel-overlay-pos-v1',JSON.stringify({x:r.left,y:r.top}))}catch{}};
           el.addEventListener('pointerdown',ev=>{
-            if(ev.target?.closest?.('button,select'))return;
+            if(ev.target?.closest?.('button,select,input'))return;
             const h=ev.target?.closest?.('[data-sentinel-drag]');if(!h)return;
             const r=el.getBoundingClientRect();drag={dx:ev.clientX-r.left,dy:ev.clientY-r.top};
             el.style.left=r.left+'px';el.style.top=r.top+'px';el.style.right='auto';
@@ -1165,17 +1165,23 @@ export class LocalPlaywrightDriver{
         const generalStrictSide=String(generalConsensus.side||'AGUARDAR').toUpperCase(),generalLeanSide=String(generalConsensus.leanSide||generalStrictSide||'AGUARDAR').toUpperCase(),generalState=String(generalConsensus.state||'FORMANDO').toUpperCase();
         const generalCall=Number.isFinite(Number(generalConsensus.displayCallPct))?Number(generalConsensus.displayCallPct):Number.isFinite(Number(generalConsensus.callScore))?Number(generalConsensus.callScore):null;
         const generalPut=Number.isFinite(Number(generalConsensus.displayPutPct))?Number(generalConsensus.displayPutPct):Number.isFinite(Number(generalConsensus.putScore))?Number(generalConsensus.putScore):null;
-        const generalStrength=Number.isFinite(Number(generalConsensus.displayStrength))?Number(generalConsensus.displayStrength):Number.isFinite(Number(generalConsensus.strength))?Number(generalConsensus.strength):Math.max(Number(generalCall||0),Number(generalPut||0));
+        const generalStrength=Number.isFinite(Number(generalConsensus.displayStrength))?Math.max(0,Math.min(100,Number(generalConsensus.displayStrength))):Number.isFinite(Number(generalConsensus.strength))?Math.max(0,Math.min(100,Number(generalConsensus.strength))):Math.max(Number(generalCall||0),Number(generalPut||0));
         const generalEdge=Number.isFinite(Number(generalConsensus.edge))?Math.abs(Number(generalConsensus.edge)):Math.abs(Number(generalCall||0)-Number(generalPut||0));
         const generalTone=generalLeanSide==='CALL'?callTone:generalLeanSide==='PUT'?putTone:warnTone;
+        const strategyConfidence=Math.max(0,Math.min(100,Math.max(Number(strategyCallPct||0),Number(strategyPutPct||0))));
+        const marketConfidence=Math.max(0,Math.min(100,Number(marketStrength||0)));
+        let operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(minConfidence)));
+        try{const saved=Number(localStorage.getItem('sentinel-operational-display-threshold-v118'));if(Number.isFinite(saved))operationalDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
+        const combinedCall=Number.isFinite(Number(generalCall))?Number(generalCall):0,combinedPut=Number.isFinite(Number(generalPut))?Number(generalPut):0;
+        const operationalVisualSide=!analysisStale&&combinedCall>=operationalDisplayThreshold&&combinedCall>combinedPut?'CALL':!analysisStale&&combinedPut>=operationalDisplayThreshold&&combinedPut>combinedCall?'PUT':'AGUARDAR';
         const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
-        const operationalSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():'AGUARDAR';
+        const operationalEngineSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():'AGUARDAR';
+        const operationalSide=operationalVisualSide;
         const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
         const operationalDirectional=['CALL','PUT'].includes(operationalSide)&&!analysisStale;
-        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&operationalDirectional&&liveNow&&analysisFresh;
-        const operationalPrepare=operationalDirectional&&['PREPARAR','VERIFICAR PRAZO','AJUSTAR PRAZO'].includes(operationalState)&&liveNow&&analysisFresh;
-        const operationalDisplay=operationalReady||operationalPrepare?operationalSide:'AGUARDAR';
-        const operationalStatus=operationalReady?'ENTRADA AGORA':operationalPrepare?operationalState:'AGUARDAR';
+        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&operationalEngineSide===operationalSide&&operationalDirectional&&liveNow&&analysisFresh;
+        const operationalDisplay=operationalSide;
+        const operationalStatus=operationalReady?'ENTRADA AGORA':operationalDirectional?'LIMITE ATINGIDO':'AGUARDAR';
         const hasNum=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
         const operationalTime=operationalReady&&hasNum(operational.entryAt)?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
         const operationalTrigger=hasNum(operational.trigger)?Number(operational.trigger):null;
@@ -1197,9 +1203,17 @@ export class LocalPlaywrightDriver{
             try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
             catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
           };
-          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon]'))el.dataset.selectLock='1'},true);
-          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
+          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold]'))el.dataset.selectLock='1'},true);
+          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
+            const ot=ev.target?.closest?.('[data-sentinel-op-threshold]');
+            if(ot){
+              const value=Math.max(50,Math.min(95,Math.round(Number(ot.value)||70)));
+              ot.value=String(value);
+              try{localStorage.setItem('sentinel-operational-display-threshold-v118',String(value))}catch{}
+              el.dataset.selectLock='0';
+              queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return
+            }
             const ph=ev.target?.closest?.('[data-sentinel-plan-horizon]');
             if(ph){el.dataset.plannerHorizon=ph.value;setTimeout(()=>{el.dataset.selectLock='0';ph.blur?.()},120);return}
             const x=ev.target?.closest?.('[data-sentinel-setting]');if(!x)return;
@@ -1233,7 +1247,7 @@ export class LocalPlaywrightDriver{
           });
         }
 
-        const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select')))return;
+        const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select,input[data-sentinel-op-threshold]')))return;
 
         
         el.innerHTML=`
@@ -1279,10 +1293,10 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div data-sentinel-card="market-summary" style="margin-top:7px;padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${marketSummarySide!=='AGUARDAR'?(marketSummarySide==='CALL'?callTone:putTone):panelBorder}">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div style="font-size:8px;font-weight:950;color:${ink}">LEITURA GERAL DO MERCADO · 3 CARDS</div><div style="font-size:6.8px;color:${subtle};margin-top:2px">confluência técnica + prontidão + virada/reversão</div></div>${expandBtn('market-summary')}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div style="font-size:8px;font-weight:950;color:${ink}">LEITURA GERAL DO MERCADO · 3 CARDS</div><div style="font-size:6.8px;color:${subtle};margin-top:2px">confluência técnica + prontidão + virada/reversão</div></div><div style="display:flex;align-items:center;gap:5px"><span style="font-size:7px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(marketConfidence,0)}%</span>${expandBtn('market-summary')}</div></div>
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:17px;color:${marketSummarySide==='CALL'?callTone:marketSummarySide==='PUT'?putTone:warnTone}">${marketSummarySide}</b><span style="font-size:8px;color:${muted}">3/3 leituras</span></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(marketCallPct,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(marketPutPct,0)}%</b></div></div>
-            <div style="margin-top:5px;font-size:7px;color:${subtle}">força média ${n(marketStrength,0)}/100 · resumo somente dos 3 cards acima</div>
+            <div style="margin-top:5px;font-size:7px;color:${subtle}">resumo somente dos 3 cards acima</div>
           </div>
 
           </div>
@@ -1292,22 +1306,22 @@ export class LocalPlaywrightDriver{
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">${strategyCardsHtml}</div>
             <div style="display:grid;grid-template-columns:1fr;gap:7px;margin-top:7px">
               <div data-sentinel-card="strategy-confluence" style="padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${panelBorder}">
-                <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONFLUÊNCIA DAS ESTRATÉGIAS</span><div style="display:flex;align-items:center;gap:5px"><span style="font-size:7px;color:${subtle}">${esc(strategyAgreement)}</span>${expandBtn('strategy-confluence')}</div></div>
+                <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-size:8px;font-weight:950;color:${ink}">CONFLUÊNCIA DAS ESTRATÉGIAS</span><div style="display:flex;align-items:center;gap:5px"><span style="font-size:7px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(strategyConfidence,0)}%</span>${expandBtn('strategy-confluence')}</div></div><div style="margin-top:3px;font-size:7px;color:${subtle}">${esc(strategyAgreement)}</div>
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><b style="font-size:16px;color:${strategyFinalTone}">${strategyFinalSide}</b><span style="font-size:8px;color:${muted}">${strategyActiveCount}/3 ativas</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="font-size:15px;color:${callTone}">${n(strategyCallPct,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="font-size:15px;color:${putTone}">${n(strategyPutPct,0)}%</b></div></div>
               </div>
             </div>
             <div data-sentinel-card="operational-signal" style="margin-top:7px;padding:9px 10px;border-radius:11px;background:${panelBg};border:1px solid ${operationalDirectional?operationalTone:panelBorder}">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div style="font-size:8px;font-weight:950;color:${ink}">SINAL OPERACIONAL</div><div style="font-size:6.8px;color:${subtle};margin-top:2px">3 mercado + 3 estratégias + timing/prazo</div></div><div style="display:flex;align-items:center;gap:5px"><span style="font-size:7px;font-weight:900;color:${operationalDirectional?operationalTone:subtle}">${esc(operationalStatus)}</span>${expandBtn('operational-signal')}</div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><div style="font-size:8px;font-weight:950;color:${ink}">SINAL OPERACIONAL</div><div style="font-size:6.8px;color:${subtle};margin-top:2px">3 mercado + 3 estratégias + timing/prazo</div></div><div style="display:flex;align-items:center;gap:5px"><span style="font-size:7px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(generalStrength,0)}%</span>${expandBtn('operational-signal')}</div></div>
               <div style="margin-top:5px;font-size:20px;font-weight:950;color:${operationalDirectional?operationalTone:warnTone}">${operationalDisplay}</div>
-              <div style="margin-top:4px;font-size:8px;color:${muted}">${operationalReady?'ENTRADA AGORA · '+operationalTime:esc(operationalReason)}</div>
+              <div style="margin-top:4px;font-size:8px;color:${muted}">${operationalDirectional?(operationalSide+' '+n(operationalSide==='CALL'?combinedCall:combinedPut,0)+'% atingiu o limite de '+operationalDisplayThreshold+'%'):'Aguardando CALL ou PUT atingir '+operationalDisplayThreshold+'%'}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px"><div style="padding:6px;border-radius:8px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:6.7px;color:${callTone};font-weight:900">CALL · BASE COMBINADA 6</span><b style="font-size:15px;color:${callTone}">${n(generalCall,0)}%</b></div><div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:6.7px;color:${putTone};font-weight:900">PUT · BASE COMBINADA 6</span><b style="font-size:15px;color:${putTone}">${n(generalPut,0)}%</b></div></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px">
-                <div style="padding:6px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid ${panelBorder}"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">CONFIANÇA TÉCNICA</span><b style="display:block;margin-top:2px;font-size:13px;color:${goldSoft}">${n(operationalTechnicalConfidence,0)}/100</b></div>
-                <div style="padding:6px;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid ${panelBorder}"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">ACERTO HISTÓRICO</span><b style="display:block;margin-top:2px;font-size:13px;color:${operationalSamples>=30?(operationalSmoothedWinRate>=60?callTone:putTone):muted}">${operationalSamples? n(operationalWinRate,1)+'%':'—'}</b><span style="display:block;font-size:6.8px;color:${subtle};margin-top:1px">${operationalSamples} sinais válidos</span></div>
+                <div style="padding:6px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid ${panelBorder}"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">CONFIANÇA</span><b style="display:block;margin-top:2px;font-size:13px;color:${goldSoft}">${n(generalStrength,0)}%</b><span style="display:block;font-size:6.8px;color:${subtle};margin-top:1px">base combinada dos 6 cards</span></div>
+                <label style="padding:6px;border-radius:8px;background:rgba(255,255,255,.025);border:1px solid ${panelBorder};display:block"><span style="display:block;font-size:7px;color:${subtle};font-weight:850">MOSTRAR CALL / PUT A PARTIR DE</span><div style="display:flex;align-items:center;gap:5px;margin-top:3px"><input data-sentinel-op-threshold type="number" min="50" max="95" step="1" value="${operationalDisplayThreshold}" style="width:64px;height:26px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};font:900 12px/1 inherit;padding:0 7px;outline:none"><b style="font-size:12px;color:${goldSoft}">%</b></div></label>
               </div>
               <div style="margin-top:5px;padding-top:5px;border-top:1px solid ${panelBorder};font-size:8px;color:${muted}">Sentinel: <b style="color:${ink}">${durationText}</b> · Corretora: <b style="color:${expiryTone}">${expiryDurationLabel} · ${expiryLabel}</b>${operationalTrigger!=null?' · gatilho fixo '+price(operationalTrigger):''}${operationalInvalidation!=null?' · invalida '+price(operationalInvalidation):''}</div>
-              <div style="margin-top:3px;font-size:7.5px;color:${subtle}">${operationalSamples>=30?'Histórico desta combinação usa apenas vencimentos com preço medido próximo do instante exato.':operationalSamples>0?'Histórico em formação: '+operationalSamples+'/30 sinais mínimos.':'Histórico desta combinação começando agora; confiança técnica não é probabilidade de acerto.'}</div>
+              <div style="margin-top:3px;font-size:7.5px;color:${subtle}">Este limite controla apenas o CALL/PUT mostrado neste card. A execução continua exigindo as travas do motor, timing e prazo.</div>
             </div>
           </div>
           <div data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
