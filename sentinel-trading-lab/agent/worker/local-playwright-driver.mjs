@@ -1,4 +1,4 @@
-// V11.8 deployment checkpoint: pause-aware compact panel + stable live geometry
+// V13 deployment checkpoint: visible-chart authoritative sync + Future V3
 import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
@@ -157,12 +157,14 @@ function protocolScan(data,st,direction='in'){
     if(aid!=null&&marketCommand){
       const now=Date.now(),selected=st.uiSymbol||st.symbol||null,key=selected?pairKey(selected):null;
       const mapped=key?st.activeMap.get(key):null;
-      const recentClick=!!selected&&st.uiSymbolSource==='click'&&now-Number(st.lastUiSignalAt||0)<2500;
+      const reliableVisualSource=['click','selected-tab','dom-active','dom-single'].includes(String(st.uiSymbolSource||''));
+      const visualFresh=!!selected&&reliableVisualSource&&now-Number(st.lastUiSignalAt||0)<8000;
       const historyRequest=/get-candles|(^|\s)candles(\s|$)/.test(command);
       if(selected&&mapped!=null&&Number(mapped)===Number(aid)){
         st.pageActiveId=Number(aid);st.lastPageActiveAt=now
-      }else if(selected&&mapped==null&&recentClick&&historyRequest){
-        st.activeMap.set(key,Number(aid));st.assets.add(selected);st.activeId=Number(aid);st.pageActiveId=Number(aid);st.lastPageActiveAt=now
+      }else if(selected&&mapped==null&&visualFresh&&historyRequest){
+        st.activeMap.set(key,Number(aid));st.assets.add(selected);st.activeId=Number(aid);st.pageActiveId=Number(aid);st.lastPageActiveAt=now;
+        st.marketStatus='syncing';st.marketReason='Gráfico visível identificado · carregando histórico'
       }
       const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz);
       const pageRequestId=String(data?.request_id||data?.requestId||'');
@@ -665,7 +667,19 @@ export class LocalPlaywrightDriver{
       st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.subscribedSymbol=null;st.subscribedActiveId=null;st.autoSelected=false;st.suggestedSymbol=null;
     }
     let targetId=st.activeMap.get(pairKey(screenSymbol));
+    const now=Date.now();
+    const pageFresh=st.pageActiveId!=null&&now-Number(st.lastPageActiveAt||0)<12000;
+    if(targetId==null&&pageFresh){
+      targetId=Number(st.pageActiveId);
+      st.activeMap.set(pairKey(screenSymbol),targetId);
+      st.assets.add(screenSymbol)
+    }
     if(targetId==null){await this.requestBaseData(provider).catch(()=>{});await sleep(120);targetId=st.activeMap.get(pairKey(screenSymbol))}
+    if(targetId==null&&st.pageActiveId!=null&&Date.now()-Number(st.lastPageActiveAt||0)<12000){
+      targetId=Number(st.pageActiveId);
+      st.activeMap.set(pairKey(screenSymbol),targetId);
+      st.assets.add(screenSymbol)
+    }
     if(targetId==null){st.activeId=null;st.marketStatus='syncing';st.marketReason=`Identificando o ativo da tela ${screenSymbol}`;return false}
     st.activeId=Number(targetId);
     await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(targetId),force});
@@ -1133,15 +1147,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='11.8'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='11.8';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='11.8';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'470px',height:'min(650px, calc(100vh - 24px))',minWidth:'390px',maxWidth:'min(660px, calc(100vw - 18px))',
@@ -1426,7 +1440,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="width:8px;height:8px;border-radius:999px;background:#72e6b9;box-shadow:0 0 13px rgba(114,230,185,.58);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'11.8.0')}</span></div>
+                <div style="font-size:13px;font-weight:950;letter-spacing:.10em;color:${ink}">SENTINEL <span style="color:${subtle};font-weight:750">V${esc(d.agentVersion||'13.0.0')}</span></div>
                 <div style="font-size:9px;font-weight:700;color:${muted};margin-top:2px">${esc(String(d.brokerMode||d.mode||'demo').toUpperCase())} · painel de análise</div>
               </div>
             </div>
