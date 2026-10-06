@@ -46,6 +46,7 @@ export class DemoTradingRuntime{
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;
     this.settings={
       mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,orderDurationMs:60_000,orderProposalTtlMs:60_000,
+      pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:1_000,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:30,signalValidationMinWinRate:60,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
     };
@@ -70,20 +71,22 @@ export class DemoTradingRuntime{
   _strategyPanel(snap,now=Date.now()){
     const labels={smart_confluence:'Smart Confluence',price_action:'Price Action',trendline_breakout:'Trendline Breakout',support_resistance:'Suporte / Resistência',fibonacci_retest:'Fibonacci Retest',trend:'Trend Following',mean_reversion:'Mean Reversion',breakout:'Breakout'};
     const ids=[String(this.settings.strategy||'smart_confluence'),String(this.settings.strategy2||'none'),String(this.settings.strategy3||'none')];
+    const paused=this.settings.pausedReadings||{};
     const cards=ids.map((strategy,index)=>{
-      if(strategy==='none'||!labels[strategy])return{slot:index+1,strategy:'none',label:'Estratégia não selecionada',active:false,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:[]};
+      const pauseKey='strategy_'+(index+1),isPaused=paused[pauseKey]===true;
+      if(strategy==='none'||!labels[strategy])return{slot:index+1,strategy:'none',label:'Estratégia não selecionada',active:false,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:[]};
       try{
         const a=analyzeMarket({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now});
         const rawCall=Math.max(0,Number(a?.metrics?.rawBuyScore||0)),rawPut=Math.max(0,Number(a?.metrics?.rawSellScore||0));
         const callPct=Math.max(0,Math.min(100,Math.round(rawCall))),putPct=Math.max(0,Math.min(100,Math.round(rawPut))),edge=callPct-putPct,strongest=Math.max(callPct,putPct);
         const side=strongest<35||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
         const reasons=(Array.isArray(a?.reasons)?a.reasons:[]).filter(x=>!/entrada aguardando|bloqueado por risco|fluxo \d+s|EMA micro|microestrutura/i.test(String(x))).slice(0,3);
-        return{slot:index+1,strategy,label:labels[strategy],active:true,side,callPct,putPct,rawCall,rawPut,reasons};
+        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,reasons};
       }catch{
-        return{slot:index+1,strategy,label:labels[strategy],active:true,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:['Leitura indisponível neste ciclo']};
+        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:['Leitura indisponível neste ciclo']};
       }
     });
-    const active=cards.filter(x=>x.active&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
+    const active=cards.filter(x=>x.active&&!x.paused&&Number.isFinite(Number(x.callPct))&&Number.isFinite(Number(x.putPct)));
     const activeCount=active.length;
     const callPct=activeCount?Math.round(active.reduce((s,x)=>s+Number(x.callPct),0)/activeCount):null;
     const putPct=activeCount?Math.round(active.reduce((s,x)=>s+Number(x.putPct),0)/activeCount):null;
@@ -115,24 +118,29 @@ export class DemoTradingRuntime{
     }
   }
   _generalConsensus(analysis,strategyPanel){
-    const final=analysis?.finalConfluence||{},q=analysis?.quality||{},m=analysis?.metrics||{},short=m.shortModel||{};
-    const avg=rows=>rows.length?Math.round(rows.reduce((sum,v)=>sum+v,0)/rows.length):null;
-    const finite=v=>Number.isFinite(Number(v));
-    const rapidCallRows=[final.callStrength,q.technicalBuy??m.buyScore,short.reversalCallScore].filter(finite).map(Number);
-    const rapidPutRows=[final.putStrength,q.technicalSell??m.sellScore,short.reversalPutScore].filter(finite).map(Number);
-    const rapidCall=avg(rapidCallRows),rapidPut=avg(rapidPutRows);
-    const rapidEdge=rapidCall==null||rapidPut==null?0:rapidCall-rapidPut,rapidStrength=Math.max(Number(rapidCall||0),Number(rapidPut||0));
-    const rapidSide=rapidStrength>=35&&Math.abs(rapidEdge)>=8?(rapidEdge>0?'CALL':'PUT'):'AGUARDAR';
-    const sc=strategyPanel?.confluence||{},strategyCall=finite(sc.callPct)?Number(sc.callPct):null,strategyPut=finite(sc.putPct)?Number(sc.putPct):null;
-    const strategySide=['CALL','PUT'].includes(String(sc.side||'').toUpperCase())?String(sc.side).toUpperCase():'AGUARDAR';
-    const hasRapid=rapidCall!=null&&rapidPut!=null,hasStrategy=strategyCall!=null&&strategyPut!=null&&Number(sc.activeCount||0)>=2;
-    const callScore=hasRapid&&hasStrategy?Math.round(rapidCall*.40+strategyCall*.60):hasStrategy?Math.round(strategyCall):hasRapid?Math.round(rapidCall):null;
-    const putScore=hasRapid&&hasStrategy?Math.round(rapidPut*.40+strategyPut*.60):hasStrategy?Math.round(strategyPut):hasRapid?Math.round(rapidPut):null;
-    const edge=callScore==null||putScore==null?0:callScore-putScore,strength=Math.max(Number(callScore||0),Number(putScore||0));
-    const total=Math.max(0,Number(callScore||0))+Math.max(0,Number(putScore||0));
-    const rawCallPct=total>0?Math.round(Math.max(0,Number(callScore||0))/total*100):50;
-    const rawPutPct=100-rawCallPct;
-    const displayKey=[String(this.settings.asset||'—').toUpperCase(),this._strategyComboKey()].join('|');
+    const final=analysis?.finalConfluence||{},q=analysis?.quality||{},m=analysis?.metrics||{},short=m.shortModel||{},paused=this.settings.pausedReadings||{};
+    const finite=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
+    const sourceRows=[
+      {key:'market_confluence',group:'market',label:'Confluência Técnica',call:final.callStrength,put:final.putStrength},
+      {key:'market_entry',group:'market',label:'Prontidão de Entrada',call:q.technicalBuy??m.buyScore,put:q.technicalSell??m.sellScore},
+      {key:'market_reversal',group:'market',label:'Virada / Reversão',call:short.reversalCallScore,put:short.reversalPutScore},
+      ...((strategyPanel?.cards||[]).filter(x=>x?.active).map(x=>({key:'strategy_'+Number(x.slot),group:'strategy',label:x.label||('Estratégia '+x.slot),call:x.callPct,put:x.putPct})))
+    ].map(x=>({...x,paused:paused[x.key]===true,valid:finite(x.call)&&finite(x.put)}));
+    const active=sourceRows.filter(x=>!x.paused&&x.valid);
+    const marketActive=active.filter(x=>x.group==='market'),strategyActive=active.filter(x=>x.group==='strategy');
+    const avg=(rows,field)=>rows.length?Math.round(rows.reduce((sum,x)=>sum+Number(x[field]||0),0)/rows.length):null;
+    const summarize=rows=>{
+      const callScore=avg(rows,'call'),putScore=avg(rows,'put');
+      const edge=callScore==null||putScore==null?0:callScore-putScore,strength=Math.max(Number(callScore||0),Number(putScore||0));
+      const total=Math.max(0,Number(callScore||0))+Math.max(0,Number(putScore||0));
+      const callPct=total>0?Math.round(Math.max(0,Number(callScore||0))/total*100):50,putPct=100-callPct;
+      const side=strength>=12&&Math.abs(callPct-putPct)>=10?(callPct>putPct?'CALL':'PUT'):'AGUARDAR';
+      return{activeCount:rows.length,callScore,putScore,callPct,putPct,edge,strength,side}
+    };
+    const rapid=summarize(marketActive),strategies=summarize(strategyActive),all=summarize(active);
+    const rawCallPct=all.callPct,rawPutPct=all.putPct,strength=all.strength,edge=all.edge;
+    const pauseKey=active.map(x=>x.key).sort().join(',');
+    const displayKey=[String(this.settings.asset||'—').toUpperCase(),this._strategyComboKey(),pauseKey].join('|');
     const now=Date.now(),prev=this.generalConsensusDisplay;
     const same=prev&&prev.key===displayKey&&now-Number(prev.at||0)<6000;
     const alpha=.32;
@@ -140,12 +148,21 @@ export class DemoTradingRuntime{
     const displayPutPct=100-displayCallPct;
     const displayStrength=Math.round(same?Number(prev.strength||0)*(1-alpha)+strength*alpha:strength);
     this.generalConsensusDisplay={key:displayKey,callPct:displayCallPct,putPct:displayPutPct,strength:displayStrength,at:now};
-    const leanSide=displayStrength<12?'AGUARDAR':displayCallPct>=55?'CALL':displayPutPct>=55?'PUT':'AGUARDAR';
-    const aligned=hasRapid&&hasStrategy&&['CALL','PUT'].includes(rapidSide)&&rapidSide===strategySide;
-    const divergent=hasRapid&&hasStrategy&&['CALL','PUT'].includes(rapidSide)&&['CALL','PUT'].includes(strategySide)&&rapidSide!==strategySide;
-    const side=aligned&&strength>=45&&Math.abs(edge)>=10?(edge>0?'CALL':'PUT'):'AGUARDAR';
-    const state=aligned?'ALINHADO':divergent?'DIVERGÊNCIA':'FORMANDO';
-    return{side,leanSide,state,aligned,divergent,callScore,putScore,strength,edge,displayCallPct,displayPutPct,displayStrength,weights:{rapid:40,strategies:60},sources:{rapid:3,strategies:Number(sc.activeCount||0),total:3+Number(sc.activeCount||0)},rapid:{side:rapidSide,callScore:rapidCall,putScore:rapidPut,strength:rapidStrength,edge:rapidEdge},strategies:{side:strategySide,callScore:strategyCall,putScore:strategyPut,activeCount:Number(sc.activeCount||0)}};
+    const leanSide=active.length?displayCallPct>=55?'CALL':displayPutPct>=55?'PUT':'AGUARDAR':'AGUARDAR';
+    const groupsComparable=rapid.activeCount>0&&strategies.activeCount>0;
+    const aligned=groupsComparable&&['CALL','PUT'].includes(rapid.side)&&rapid.side===strategies.side;
+    const divergent=groupsComparable&&['CALL','PUT'].includes(rapid.side)&&['CALL','PUT'].includes(strategies.side)&&rapid.side!==strategies.side;
+    const side=active.length>=2&&strength>=45&&Math.abs(edge)>=10?(edge>0?'CALL':'PUT'):'AGUARDAR';
+    const state=divergent?'DIVERGÊNCIA':side!=='AGUARDAR'?'ALINHADO':'FORMANDO';
+    return{
+      side,leanSide,state,aligned:side!=='AGUARDAR'&&!divergent,divergent,
+      callScore:all.callScore,putScore:all.putScore,strength,edge,displayCallPct,displayPutPct,displayStrength,
+      weights:{mode:'equal-active-readings'},
+      sources:{rapid:rapid.activeCount,strategies:strategies.activeCount,total:active.length,configured:sourceRows.length,paused:sourceRows.filter(x=>x.paused).map(x=>x.key)},
+      sourceRows,
+      rapid:{...rapid},
+      strategies:{...strategies}
+    };
   }
   _strategyComboKey(){
     const ids=[this.settings.strategy,this.settings.strategy2,this.settings.strategy3].map(x=>String(x||'none')).filter(x=>x!=='none');
@@ -226,7 +243,7 @@ export class DemoTradingRuntime{
   async freeze(actor='master'){if(actor!=='master')throw new Error('master_required');this.masterFrozen=true;this.stateName='stopped';this.audit.write({actorId:actor,actorRole:'master',action:'bot.freeze'});return this.status()}
   async unfreeze(actor='master'){if(actor!=='master')throw new Error('master_required');this.masterFrozen=false;this.audit.write({actorId:actor,actorRole:'master',action:'bot.unfreeze'});return this.status()}
   setMode(mode,actor='user'){if(!['demo','real'].includes(mode))throw new Error('invalid_mode');this.settings.mode=mode;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'mode.change',metadata:{mode}});return this.status()}
-  patchSettings(patch={},actor='user'){const resetOperational=['asset','strategy','strategy2','strategy3','orderDurationMs'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));this.settings={...this.settings,...patch,schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};if(resetOperational)this.operationalSetup=null;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()}
+  patchSettings(patch={},actor='user'){const resetOperational=['asset','strategy','strategy2','strategy3','orderDurationMs','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));this.settings={...this.settings,...patch,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};if(resetOperational)this.operationalSetup=null;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()}
   clearExecutionError(actor='master'){if(actor!=='master')throw new Error('master_required');this.state.executionError=false;if(this.stateName==='error')this.stateName='stopped';this.audit.write({actorId:actor,actorRole:'master',action:'execution_error.clear'});return this.status()}
   _riskState(now){
     const tz=this.settings.schedule.timezone||'UTC',today=dayKey(now,tz);
@@ -407,7 +424,7 @@ export class DemoTradingRuntime{
     }catch(error){this.state.executionError=true;this.stateName='error';this.incidents.unshift({ts:iso(now),severity:'error',code:'cycle_error',message:String(error?.message||error)});return this.status()}
   }
   snapshotPersistent(){return{version:2,settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,500),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
-  restore(data={}){if(data.settings){this.settings={...this.settings,...data.settings,schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=1000}if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses:[];if(data.signalValidation&&typeof data.signalValidation==='object')this.signalValidation={pending:Array.isArray(data.signalValidation.pending)?data.signalValidation.pending:[],outcomes:Array.isArray(data.signalValidation.outcomes)?data.signalValidation.outcomes:[],lastQueued:data.signalValidation.lastQueued&&typeof data.signalValidation.lastQueued==='object'?data.signalValidation.lastQueued:{}};this._bootstrapSignalValidation();this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
+  restore(data={}){if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=1000}if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses:[];if(data.signalValidation&&typeof data.signalValidation==='object')this.signalValidation={pending:Array.isArray(data.signalValidation.pending)?data.signalValidation.pending:[],outcomes:Array.isArray(data.signalValidation.outcomes)?data.signalValidation.outcomes:[],lastQueued:data.signalValidation.lastQueued&&typeof data.signalValidation.lastQueued==='object'?data.signalValidation.lastQueued:{}};this._bootstrapSignalValidation();this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
   async status(){
     const balance=this.externalMarket?.balance!=null?Number(this.externalMarket.balance):await this.broker.getBalance(),wins=this.trades.filter(x=>x.won).length,losses=this.trades.filter(x=>x.won===false).length,snap=this._marketSnapshot();
     return{state:this.stateName,mode:this.settings.mode,killSwitch:this.killSwitch,masterFrozen:this.masterFrozen,balance,pnl:this.trades.reduce((s,t)=>s+Number(t.pnl||0),0),trades:this.trades.length,wins,losses,winRate:this.trades.length?wins/this.trades.length*100:0,
