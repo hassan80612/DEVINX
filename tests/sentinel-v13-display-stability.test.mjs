@@ -30,12 +30,12 @@ test('future stability damps one-cycle direction flips and keeps horizons indepe
 test('premium overlay has thresholds on every total and no fake scenario refresh button',async()=>{
   const driver=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
   const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
-  for(const key of ['data-sentinel-total-threshold="market"','data-sentinel-total-threshold="strategy"','data-sentinel-op-threshold','data-sentinel-total-threshold="average"']){
+  for(const key of ['data-sentinel-market-threshold','data-sentinel-strategy-threshold','data-sentinel-op-threshold','data-sentinel-average-threshold']){
     assert.ok(driver.includes(key),key);
   }
   assert.ok(driver.includes('MÉDIA DOS 3 TOTAIS'));
-  assert.ok(driver.includes('PREPARE CALL · '));
-  assert.ok(driver.includes('PREPARE PUT · '));
+  assert.ok(driver.includes('PREPARE-SE PARA CALL EM '));
+  assert.ok(driver.includes('PREPARE-SE PARA PUT EM '));
   assert.ok(!driver.includes('data-sentinel-action="refreshScenario"'));
   assert.ok(!worker.includes("if(action==='refreshScenario')"));
 });
