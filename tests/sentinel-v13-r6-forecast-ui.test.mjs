@@ -55,4 +55,11 @@ test('R6 overlay contains committed countdown, compact totals and average confid
   assert.ok(ui.includes('sentinel-metal-gold'));
   assert.ok(ui.includes("ev.key==='ArrowDown'"));
   assert.ok(ui.includes("ev.key==='PageDown'"));
+  assert.ok(ui.includes('plannerMatchesAsset'));
+  assert.ok(ui.includes('plannerFreshAfterAssetSwitch'));
+  assert.ok(ui.includes("startsWith('sentinel-future-decision-v13|')"));
+  assert.ok(ui.includes("startsWith('sentinel-future-expired-v13|')"));
+  assert.ok(ui.includes('sameExpiredSide'));
+  assert.ok(ui.includes('AGUARDAR · NOVO CENÁRIO'));
+  assert.ok(ui.includes('JANELA ENCERRADA'));
 });
