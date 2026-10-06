@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 import { DemoTradingRuntime } from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import { analyzeMarket } from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
+import { LocalPlaywrightDriver } from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
 
 test('Sentinel clears old forecast state when runtime asset changes', () => {
   const runtime = new DemoTradingRuntime({ seed: 7, balance: 10000 });
@@ -153,11 +154,12 @@ test('IQ asset bridge is installed in already-open child frames', async () => {
 });
 
 
-test('IQ asset tracker recognizes named tabs such as Gold and keeps cross-frame polling', async () => {
+test('IQ asset tracker recognizes named tabs without continuous DOM polling', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes("['GOLD','Gold']"));
   assert.ok(ui.includes('function assetStrings'));
-  assert.ok(ui.includes('__sentinelAssetPoll'));
+  assert.ok(!ui.includes('__sentinelAssetPoll'));
+  assert.ok(!ui.includes('new MutationObserver'));
   assert.ok(ui.includes("page.on('frameattached',installFrame)"));
   assert.ok(ui.includes("page.on('framenavigated',installFrame)"));
 });
@@ -198,4 +200,22 @@ test('Probe of alternate market restores the original quote history and identity
   assert.ok(ui.includes('quoteHistory:[...(st.quoteHistory||[])]'));
   assert.ok(ui.includes('st.quoteHistory=saved.quoteHistory'));
   assert.ok(ui.includes('st.candleActiveId=saved.candleActiveId'));
+});
+
+
+test('Background IQ subscriptions never retarget the selected asset', () => {
+  const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/test-active-selection'});
+  const st=d.state('iq_option');
+  st.uiSymbol='EUR/USD OTC';st.symbol='EUR/USD OTC';st.activeId=76;
+  st.activeMap.set('EURUSDOTC',76);st.activeMap.set('GBPCADOTC',86);
+  st.assets.add('EUR/USD OTC');st.assets.add('GBP/CAD OTC');
+
+  d.ingest('iq_option',JSON.stringify({name:'subscribeMessage',msg:{name:'candle-generated',params:{routingFilters:{active_id:86,size:60}}}}),'page-out');
+  assert.equal(st.symbol,'EUR/USD OTC');
+  assert.equal(Number(st.activeId),76);
+
+  d.ingest('iq_option',JSON.stringify({name:'sendMessage',request_id:'chart-switch',msg:{name:'get-candles',body:{active_id:86,size:60}}}),'page-out');
+  assert.equal(st.symbol,'GBP/CAD OTC');
+  assert.equal(st.uiSymbol,'GBP/CAD OTC');
+  assert.equal(Number(st.activeId),86);
 });
