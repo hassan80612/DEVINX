@@ -586,8 +586,10 @@ export class LocalPlaywrightDriver{
     const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt};st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
     try{protocolScan(data,st,direction)}catch{}
+    const frameKind=(String(data?.name||'')+' '+String(data?.msg?.name||data?.msg?.event||'')).toLowerCase();
+    const highFrequencyMarketFrame=/candle-generated|quote-generated|instrument-quotes|ticker/.test(frameKind)||String(data?.name||'').toLowerCase()==='candles';
     const out={balanceCandidates:[],modeCandidates:[],assets:new Set(st.assets),activeMap:new Map(st.activeMap),quote:null,symbol:null,candles:[],lastQuoteAt:null,lastCandleAt:null};
-    try{recursiveScan(data,out)}catch{}
+    if(!highFrequencyMarketFrame)try{recursiveScan(data,out)}catch{}
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
@@ -637,14 +639,12 @@ export class LocalPlaywrightDriver{
   async wsSend(provider,payload){const feed=await this.directFeed(provider).catch(()=>null);if(feed?.ready&&feed.send(payload))return{ok:true,transport:'direct-websocket'};const s=await this.session(provider);if(!s.page)return{ok:false,error:'page_missing'};const cfg=this.config(provider);try{const r=await s.page.evaluate(({payload,domain})=>window.__sentinelSend?window.__sentinelSend(payload,domain):{ok:false,error:'bridge_missing'},{payload,domain:cfg.domain});return{...r,transport:r?.ok?'page-websocket':undefined}}catch(e){return{ok:false,error:String(e?.message||e)}}}
   async requestBaseData(provider){const st=this.state(provider),rid=reqId(provider);const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
-    {name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`},
-    {name:'subscribeMessage',msg:{name:'internal-billing.balance-changed',version:'1.0',params:{routingFilters:{}}},request_id:`${rid}-bal-sub`},
-    {name:'subscribeMessage',msg:{name:'internal-billing.auth-balance-changed',version:'1.0',params:{routingFilters:{}}},request_id:`${rid}-authbal-sub`}
+    {name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}
   ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();if(ok)st.protocol='active-websocket';return ok}
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
     const targetId=activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
-    const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId);
+    const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId),needsSubscribe=changed||st.subscribedActiveId==null;
     if(changed&&st.subscribedActiveId!=null){
       await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(st.subscribedActiveId),size}}},request_id:reqId('unsub')}).catch(()=>{});
     }
@@ -679,50 +679,33 @@ export class LocalPlaywrightDriver{
           }
         }else await this.wsSend(provider,legacy).catch(()=>{});
       }
-      await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size}}},request_id:`${rid}-sub`}).catch(()=>{});
-      st.subscribedSymbol=targetSymbol;st.subscribedActiveId=Number(targetId);st.lastRequestAt=Date.now();if(st.protocol==='passive')st.protocol='active-websocket';
+      if(needsSubscribe){
+        await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size}}},request_id:`${rid}-sub`}).catch(()=>{});
+        st.subscribedSymbol=targetSymbol;st.subscribedActiveId=Number(targetId);
+      }
+      st.lastRequestAt=Date.now();if(st.protocol==='passive')st.protocol='active-websocket';
     }
     return st.candles.length>=50;
   }
   async recoverMarket(provider){
     const st=this.state(provider),now=Date.now();
-    if(st.mode!=='demo')return false;
-    if(st.lastRecoveryAt&&now-st.lastRecoveryAt<15000)return false;
-    st.lastRecoveryAt=now;st.suggestedSymbol=null;
+    if(st.lastRecoveryAt&&now-st.lastRecoveryAt<12000)return false;
+    st.lastRecoveryAt=now;st.suggestedSymbol=null;st.autoSelected=false;
     const screenSymbol=st.uiSymbol||st.symbol;
-    if(screenSymbol){
-      const screenId=st.activeMap.get(pairKey(screenSymbol));
-      if(screenId!=null){
-        st.symbol=screenSymbol;st.activeId=Number(screenId);st.autoSelected=false;
-        await this._requestCandles(provider,{symbol:screenSymbol,activeId:screenId,force:true}).catch(()=>{});
-        await sleep(220);
-        if(candleFreshForState(st)&&st.candles.length>=50){
-          st.marketStatus='open';st.marketReason=`Ativo da tela ${screenSymbol} com feed atual`;return true;
-        }
-      }
+    if(!screenSymbol){
+      st.marketStatus='stale';st.marketReason='Aguardando identificação do ativo visível na corretora';return false
     }
-    const available=[...st.assets].filter(x=>/\bOTC\b/i.test(String(x)));
-    const candidates=uniq([...OTC_PREFERRED,...available]).filter(x=>pairKey(x)!==pairKey(screenSymbol||'')&&st.activeMap.get(pairKey(x))!=null).slice(0,12);
-    for(const candidate of candidates){
-      const id=st.activeMap.get(pairKey(candidate));if(id==null)continue;
-      const saved={symbol:st.symbol,activeId:st.activeId,candles:[...st.candles],quote:st.quote,quoteHistory:[...(st.quoteHistory||[])],lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,candleActiveId:st.candleActiveId,candleIntegrity:st.candleIntegrity,subscribedSymbol:st.subscribedSymbol,subscribedActiveId:st.subscribedActiveId};
-      st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.candleIntegrity={ok:false,reason:'probe'};st.subscribedSymbol=null;st.subscribedActiveId=null;
-      await this._requestCandles(provider,{symbol:candidate,activeId:id,force:true}).catch(()=>{});
-      await sleep(220);
-      const viable=candleFreshForState(st)&&st.candles.length>=50;
-      st.symbol=saved.symbol;st.activeId=saved.activeId;st.candles=saved.candles;st.quote=saved.quote;st.quoteHistory=saved.quoteHistory;st.lastQuoteAt=saved.lastQuoteAt;st.lastCandleAt=saved.lastCandleAt;st.candleActiveId=saved.candleActiveId;st.candleIntegrity=saved.candleIntegrity;st.subscribedSymbol=saved.subscribedSymbol;st.subscribedActiveId=saved.subscribedActiveId;
-      if(viable){
-        st.suggestedSymbol=candidate;
-        st.marketStatus='needs-switch';
-        st.marketReason=`Ativo da tela ${screenSymbol||'—'} sem feed suficiente. Sugestão disponível: ${candidate}. Troque o ativo na corretora para o Sentinel analisar e operar o mesmo ativo.`;
-        st.autoSelected=false;
-        return false;
-      }
+    const screenId=st.activeMap.get(pairKey(screenSymbol));
+    if(screenId==null){
+      st.marketStatus='syncing';st.marketReason=`Identificando o ativo da tela ${screenSymbol}`;return false
     }
-    st.marketStatus='closed';
-    st.marketReason=`Ativo da tela ${screenSymbol||'—'} sem candles atuais e nenhum ativo alternativo disponível agora.`;
-    st.autoSelected=false;
-    return false;
+    st.symbol=screenSymbol;st.activeId=Number(screenId);
+    await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(screenId),force:true}).catch(()=>{});
+    await sleep(180);
+    const ok=candleFreshForState(st)&&st.candles.length>=50&&Number(st.candleActiveId)===Number(screenId);
+    st.marketStatus=ok?'open':'stale';
+    st.marketReason=ok?`Ativo da tela ${screenSymbol} com feed atual`:`Aguardando histórico atual de ${screenSymbol}; nenhum outro ativo será consultado em segundo plano`;
+    return ok
   }
   async requestMarketData(provider,{force=false}={}){
     const st=this.state(provider);
