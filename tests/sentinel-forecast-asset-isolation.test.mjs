@@ -219,3 +219,41 @@ test('Background IQ subscriptions never retarget the selected asset', () => {
   assert.equal(st.uiSymbol,'GBP/CAD OTC');
   assert.equal(Number(st.activeId),86);
 });
+
+
+test('Forced history refresh does not stack duplicate live candle subscriptions', async () => {
+  const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/test-subscription-dedupe'});
+  const st=d.state('iq_option');
+  st.uiSymbol='EUR/USD OTC';st.symbol='EUR/USD OTC';st.activeId=76;st.subscribedSymbol='EUR/USD OTC';st.subscribedActiveId=76;
+  st.activeMap.set('EURUSDOTC',76);st.assets.add('EUR/USD OTC');
+  st.candles=Array.from({length:50},(_,i)=>({from:1700000000+i*60,to:1700000060+i*60,open:1,high:1.01,low:.99,close:1,volume:1}));
+  st.candleActiveId=76;
+  const sent=[];
+  d.directFeed=async()=>({ready:true,serverTimeSeconds:()=>1700010000,request:async()=>({name:'candles',request_id:'x',msg:{}})});
+  d.wsSend=async(_provider,payload)=>{sent.push(payload);return{ok:true,transport:'test'}};
+  await d._requestCandles('iq_option',{symbol:'EUR/USD OTC',activeId:76,force:true});
+  assert.equal(sent.filter(x=>x?.name==='subscribeMessage'&&x?.msg?.name==='candle-generated').length,0);
+  assert.equal(sent.filter(x=>x?.name==='unsubscribeMessage'&&x?.msg?.name==='candle-generated').length,0);
+});
+
+test('Market recovery retries only the broker-visible asset and never probes alternatives', async () => {
+  const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/test-no-probe'});
+  const st=d.state('iq_option');
+  st.uiSymbol='EUR/USD OTC';st.symbol='EUR/USD OTC';st.activeId=76;st.mode='demo';
+  st.activeMap.set('EURUSDOTC',76);st.activeMap.set('GBPCADOTC',86);
+  st.assets.add('EUR/USD OTC');st.assets.add('GBP/CAD OTC');
+  const calls=[];
+  d._requestCandles=async(_provider,args)=>{calls.push(args);return false};
+  await d.recoverMarket('iq_option');
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].symbol,'EUR/USD OTC');
+  assert.equal(Number(calls[0].activeId),76);
+  assert.equal(st.suggestedSymbol,null);
+});
+
+test('High-frequency market frames bypass the expensive generic recursive scan', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes('const highFrequencyMarketFrame='));
+  assert.ok(ui.includes('if(!highFrequencyMarketFrame)try{recursiveScan(data,out)}catch{}'));
+  assert.ok(!ui.includes('Sugestão disponível:'));
+});
