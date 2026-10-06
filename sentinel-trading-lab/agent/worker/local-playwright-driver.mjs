@@ -1159,13 +1159,13 @@ export class LocalPlaywrightDriver{
         const generalEdge=Number.isFinite(Number(generalConsensus.edge))?Math.abs(Number(generalConsensus.edge)):Math.abs(Number(generalCall||0)-Number(generalPut||0));
         const generalTone=generalLeanSide==='CALL'?callTone:generalLeanSide==='PUT'?putTone:warnTone;
         const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
-        const operationalSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():generalLeanSide;
+        const operationalSide=['CALL','PUT'].includes(String(operational.side||'').toUpperCase())?String(operational.side).toUpperCase():'AGUARDAR';
         const operationalTone=operationalSide==='CALL'?callTone:operationalSide==='PUT'?putTone:warnTone;
         const operationalDirectional=['CALL','PUT'].includes(operationalSide)&&!analysisStale;
-        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&liveNow&&analysisFresh;
-        const operationalPrepare=operationalDirectional&&liveNow&&analysisFresh;
-        const operationalDisplay=operationalDirectional?operationalSide:'AGUARDAR';
-        const operationalStatus=operationalReady?'ENTRADA AGORA':operationalDirectional?(operationalState==='AGUARDAR'?'TENDÊNCIA':operationalState):'AGUARDAR';
+        const operationalReady=operational.ready===true&&operationalState==='ENTRADA'&&operationalDirectional&&liveNow&&analysisFresh;
+        const operationalPrepare=operationalDirectional&&['PREPARAR','VERIFICAR PRAZO','AJUSTAR PRAZO'].includes(operationalState)&&liveNow&&analysisFresh;
+        const operationalDisplay=operationalReady||operationalPrepare?operationalSide:'AGUARDAR';
+        const operationalStatus=operationalReady?'ENTRADA AGORA':operationalPrepare?operationalState:'AGUARDAR';
         const hasNum=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
         const operationalTime=operationalReady&&hasNum(operational.entryAt)?new Date(Number(operational.entryAt)).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):null;
         const operationalTrigger=hasNum(operational.trigger)?Number(operational.trigger):null;
