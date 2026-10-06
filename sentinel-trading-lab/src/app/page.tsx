@@ -121,7 +121,7 @@ function Dashboard({s,act,busy}:{s:Status,act:any,busy:boolean}){const r=s.lastR
 
 function BotControl({s,act,busy}:{s:Status,act:any,busy:boolean}){
   const ap=s.autopilot||{},live=s.liveBroker||{},brokerMode=String(live.mode||s.mode||'unknown').toUpperCase();
-  const eligible=ap.eligible===true&&brokerMode==='DEMO';
+  const demoDetected=brokerMode==='DEMO',controlsReady=ap.eligible===true&&demoDetected;
   const risk=s.settings?.risk||{};
   const[stake,setStake]=useState(String(risk.fixedStake??10));
   const[maxOps,setMaxOps]=useState(String(risk.maxTradesPerSession??10));
@@ -129,17 +129,17 @@ function BotControl({s,act,busy}:{s:Status,act:any,busy:boolean}){
   useEffect(()=>{setStake(String(risk.fixedStake??10));setMaxOps(String(risk.maxTradesPerSession??10));setMaxLosses(String(risk.maxConsecutiveLosses??3))},[risk.fixedStake,risk.maxTradesPerSession,risk.maxConsecutiveLosses]);
   const safetyPatch=()=>({demoAutopilot:true,risk:{fixedStake:Math.max(.01,Number(stake)||10),maxTradesPerSession:Math.max(1,Math.min(50,Math.round(Number(maxOps)||10))),maxConsecutiveLosses:Math.max(1,Math.min(10,Math.round(Number(maxLosses)||3)))}});
   const arm=async()=>{
-    if(!eligible){window.alert(brokerMode==='REAL'?'Troque a própria corretora para a conta DEMO antes de armar o piloto. O Sentinel nunca converte a conta REAL em automática.':'A conta DEMO e os controles de CALL/PUT ainda precisam estar validados pelo Agent.');return}
+    if(!demoDetected){window.alert(brokerMode==='REAL'?'Troque a própria corretora para a conta DEMO antes de armar o piloto. O Sentinel nunca converte a conta REAL em automática.':'Aguarde o Agent identificar a conta DEMO da corretora.');return}
     if(ap.enabled&&s.state==='paused'){await act('control/start');return}
     await act('settings',safetyPatch());
     if(s.state!=='running')await act('control/start');
   };
   const analyze=async()=>{await act('settings',{demoAutopilot:false});if(s.state!=='running')await act('control/start')};
   const disarm=async()=>{await act('settings',{demoAutopilot:false});if(s.state!=='stopped')await act('control/stop')};
-  const stateTone=ap.enabled&&eligible?'good':brokerMode==='REAL'?'bad':'neutral';
+  const stateTone=ap.enabled&&demoDetected?'good':brokerMode==='REAL'?'bad':'neutral';
   return <div className="grid">
     <section className="card span8 autopilotHero premiumSweep">
-      <div className="split"><div><div className="eyebrow">PILOTO AUTOMÁTICO · SOMENTE DEMO</div><h3>{ap.enabled&&eligible?'Piloto armado':'Piloto desarmado'}</h3><p className="muted">{brokerMode==='DEMO'?'A conta DEMO da corretora está selecionada. O Sentinel só entra quando previsão, consenso, gatilho, prazo e risco estiverem aprovados.':'A conta ativa da corretora é REAL. O Sentinel continua analisando, mas o piloto DEMO fica bloqueado.'}</p></div><Pill tone={stateTone}>{brokerMode==='DEMO'?(eligible?'DEMO VALIDADA':'DEMO AGUARDANDO'):'REAL · MANUAL'}</Pill></div>
+      <div className="split"><div><div className="eyebrow">PILOTO AUTOMÁTICO · SOMENTE DEMO</div><h3>{ap.enabled&&demoDetected?(controlsReady?'Piloto armado':'Piloto armado · aguardando controles'):'Piloto desarmado'}</h3><p className="muted">{brokerMode==='DEMO'?'A conta DEMO da corretora está selecionada. Você pode armar o piloto agora; ele só clica quando CALL/PUT, valor, ativo e expiração estiverem validados pelo Agent.':'A conta ativa da corretora é REAL. O Sentinel continua analisando, mas o piloto DEMO fica bloqueado.'}</p></div><Pill tone={stateTone}>{brokerMode==='DEMO'?(controlsReady?'DEMO PRONTA':'DEMO DETECTADA'):'REAL · MANUAL'}</Pill></div>
       <div className="pilotStatusGrid">
         <div><small>Conta da corretora</small><b>{brokerMode}</b></div>
         <div><small>Piloto</small><b>{ap.enabled?'ARMADO':'DESARMADO'}</b></div>
@@ -152,7 +152,7 @@ function BotControl({s,act,busy}:{s:Status,act:any,busy:boolean}){
         <label><span>Parar após perdas seguidas</span><input type="number" min="1" max="10" value={maxLosses} onChange={e=>setMaxLosses(e.target.value)}/></label>
       </div>
       <div className="actions pilotActions">
-        <button className="primary" disabled={busy||!eligible||(ap.enabled&&s.state!=='paused')} onClick={arm}>{ap.enabled&&s.state==='paused'?'▶ RETOMAR PILOTO':ap.enabled?'● PILOTO ATIVO':'▶ ARMAR PILOTO DEMO'}</button>
+        <button className="primary" disabled={busy||!demoDetected||(ap.enabled&&s.state!=='paused')} onClick={arm}>{ap.enabled&&s.state==='paused'?'▶ RETOMAR PILOTO':ap.enabled?'● PILOTO ATIVO':'▶ ARMAR PILOTO DEMO'}</button>
         <button className="secondary" disabled={busy||s.state==='running'&&!ap.enabled} onClick={analyze}>⌁ SOMENTE ANALISAR</button>
         <button className="secondary" disabled={busy||(!ap.enabled&&s.state==='stopped')} onClick={disarm}>■ DESARMAR E PARAR</button>
       </div>
@@ -162,7 +162,7 @@ function BotControl({s,act,busy}:{s:Status,act:any,busy:boolean}){
       <div className="eyebrow">TRAVAS DA SESSÃO</div><h3>Fail closed</h3>
       <div className="stack">
         <Row k="Conta REAL" v="Nunca automática"/>
-        <Row k="Conta DEMO" v={eligible?'Pronta':'Não validada'}/>
+        <Row k="Conta DEMO" v={demoDetected?(controlsReady?'Pronta':'Detectada · validando controles'):'Não detectada'}/>
         <Row k="Limite da sessão" v={String(ap.maxSessionTrades??risk.maxTradesPerSession??10)+' operações'}/>
         <Row k="Perdas seguidas" v={String(ap.maxConsecutiveLosses??risk.maxConsecutiveLosses??3)}/>
         <Row k="Kill Switch" v={s.killSwitch?'ATIVO':'Livre'}/>
@@ -172,7 +172,7 @@ function BotControl({s,act,busy}:{s:Status,act:any,busy:boolean}){
     <section className="card span12 mobileRemoteCard">
       <div className="split"><div><div className="eyebrow">CONTROLE PELO CELULAR</div><h3>Seu PC fica em casa; este painel controla a sessão</h3><p className="muted">Com o Agent online no computador, você pode abrir esta conta pelo celular para armar, pausar, parar e acompanhar o piloto DEMO. O navegador da corretora continua no PC.</p></div><Pill tone={s.runtimeKind==='remote-agent'?'good':'neutral'}>{s.runtimeKind==='remote-agent'?'PC REMOTO':'PC LOCAL'}</Pill></div>
       <div className="mobileQuick">
-        <button className="primary" disabled={busy||!eligible||(ap.enabled&&s.state!=='paused')} onClick={arm}>{ap.enabled&&s.state==='paused'?'Retomar':ap.enabled?'Piloto ativo':'Armar DEMO'}</button>
+        <button className="primary" disabled={busy||!demoDetected||(ap.enabled&&s.state!=='paused')} onClick={arm}>{ap.enabled&&s.state==='paused'?'Retomar':ap.enabled?'Piloto ativo':'Armar DEMO'}</button>
         <button className="secondary" disabled={busy||s.state!=='running'} onClick={()=>act('control/pause')}>Pausar</button>
         <button className="secondary" disabled={busy||s.state==='stopped'} onClick={disarm}>Parar</button>
         <button className="kill" disabled={busy} onClick={()=>window.confirm('Ativar KILL SWITCH e bloquear a sessão?')&&act('control/kill')}>Kill Switch</button>
