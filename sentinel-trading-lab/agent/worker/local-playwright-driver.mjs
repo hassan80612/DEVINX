@@ -1539,7 +1539,7 @@ export class LocalPlaywrightDriver{
 
           <div style="font-size:11.5px;font-weight:950;letter-spacing:.065em;color:${goldSoft};text-shadow:${goldGlow};margin-top:10px;margin-bottom:7px">TOTAIS</div>
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:stretch">
-            <div data-sentinel-summary="market-total" style="position:relative;padding:10px 34px 10px 10px;min-height:118px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${marketDisplaySide!=='AGUARDAR'?marketDisplayTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
+            <div data-sentinel-summary="market-total" style="position:relative;padding:10px 34px 10px 10px;min-height:${isSummaryCollapsed('market-total')?'44px':'118px'};height:${isSummaryCollapsed('market-total')?'44px':'auto'};box-sizing:border-box;overflow:${isSummaryCollapsed('market-total')?'hidden':'visible'};border-radius:13px;background:${panelBg};border:1px solid ${marketDisplaySide!=='AGUARDAR'?marketDisplayTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
               <div style="font-size:10.2px;font-weight:950;color:${ink};white-space:nowrap">TOTAL MERCADO</div>
               <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">${marketActiveCount}/3 · CONF ${n(marketConfidence,0)}%</div>
               ${summaryBtn('market-total')}
@@ -1548,7 +1548,7 @@ export class LocalPlaywrightDriver{
               <div style="position:absolute;right:8px;bottom:7px;display:flex;align-items:center;gap:2px" title="Limite visual para mostrar CALL ou PUT"><input data-sentinel-total-threshold="market" data-sentinel-market-threshold type="number" min="50" max="95" step="1" value="${marketDisplayThreshold}" style="width:44px;height:23px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};font:950 11px/1 inherit;padding:0 4px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></div>
             </div>
 
-            <div data-sentinel-summary="strategy-total" style="position:relative;padding:10px 34px 10px 10px;min-height:118px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${strategyDisplaySide!=='AGUARDAR'?strategyDisplayTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
+            <div data-sentinel-summary="strategy-total" style="position:relative;padding:10px 34px 10px 10px;min-height:${isSummaryCollapsed('strategy-total')?'44px':'118px'};height:${isSummaryCollapsed('strategy-total')?'44px':'auto'};box-sizing:border-box;overflow:${isSummaryCollapsed('strategy-total')?'hidden':'visible'};border-radius:13px;background:${panelBg};border:1px solid ${strategyDisplaySide!=='AGUARDAR'?strategyDisplayTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
               <div style="font-size:10.2px;font-weight:950;color:${ink};white-space:nowrap">TOTAL ESTRATÉGIAS</div>
               <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">${strategyActiveCount}/3 · CONF ${n(strategyConfidence,0)}%</div>
               ${summaryBtn('strategy-total')}
@@ -1557,7 +1557,7 @@ export class LocalPlaywrightDriver{
               <div style="position:absolute;right:8px;bottom:7px;display:flex;align-items:center;gap:2px" title="Limite visual para mostrar CALL ou PUT"><input data-sentinel-total-threshold="strategy" data-sentinel-strategy-threshold type="number" min="50" max="95" step="1" value="${strategyDisplayThreshold}" style="width:44px;height:23px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};font:950 11px/1 inherit;padding:0 4px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></div>
             </div>
 
-            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="position:relative;padding:10px 34px 10px 10px;min-height:118px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${totalSixDirectional?totalSixTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
+            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="position:relative;padding:10px 34px 10px 10px;min-height:${isSummaryCollapsed('operational-total')?'44px':'118px'};height:${isSummaryCollapsed('operational-total')?'44px':'auto'};box-sizing:border-box;overflow:${isSummaryCollapsed('operational-total')?'hidden':'visible'};border-radius:13px;background:${panelBg};border:1px solid ${totalSixDirectional?totalSixTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
               <div style="font-size:10.2px;font-weight:950;color:${ink};white-space:nowrap">TOTAL DOS 6</div>
               <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">${totalActiveCount}/6 · CONF ${n(generalStrength,0)}%</div>
               ${summaryBtn('operational-total')}
@@ -1637,15 +1637,14 @@ export class LocalPlaywrightDriver{
         const collapsedNow=new Set(collapsedSummaries);
         el.querySelectorAll('[data-sentinel-summary]').forEach(card=>{
           const key=card.getAttribute('data-sentinel-summary')||'';
+          const collapseButton=card.querySelector(':scope > [data-sentinel-summary-collapse]');
+          if(!collapseButton)return;
           const collapsed=collapsedNow.has(key);
           [...card.children].forEach((child,index)=>{
-            const isCollapseButton=child.matches?.('[data-sentinel-summary-collapse]');
+            const isCollapseButton=child===collapseButton;
             if(index===0||isCollapseButton)child.style.display='';
             else child.style.display=collapsed?'none':'';
           });
-          card.style.minHeight=collapsed?'44px':(key==='average-total'?'72px':'118px');
-          card.style.height='auto';
-          card.style.paddingBottom=collapsed?'9px':'10px';
           card.dataset.collapsed=collapsed?'1':'0';
         });
 
