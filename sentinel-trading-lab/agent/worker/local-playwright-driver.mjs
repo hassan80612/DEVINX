@@ -1245,10 +1245,10 @@ export class LocalPlaywrightDriver{
         const strategyCardsHtml=[1,2,3].map(slot=>{
           const card=strategyCards.find(x=>Number(x?.slot)===slot)||{slot,active:false,label:'Estratégia não selecionada'};
           const pauseKey='strategy_'+slot,paused=isPaused(pauseKey);
-          if(!card.active)return '<div data-sentinel-card="strategy-'+slot+'" style="padding:8px;border-radius:11px;background:'+panelBg+';border:1px dashed '+panelBorder+';min-width:0;min-height:118px"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:10px;font-size:9px;font-weight:850;color:'+muted+'">Não selecionada</div><div style="margin-top:5px;font-size:7px;color:'+subtle+'">Não participa dos totais.</div></div>';
+          if(!card.active)return '<div data-sentinel-card="strategy-'+slot+'" style="padding:8px;border-radius:11px;background:'+panelBg+';border:1px dashed '+panelBorder+';min-width:0;height:118px;overflow:hidden"><div style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.06em">ESTRATÉGIA '+slot+'</div><div style="margin-top:10px;font-size:9px;font-weight:850;color:'+muted+'">Não selecionada</div><div style="margin-top:5px;font-size:7px;color:'+subtle+'">Não participa dos totais.</div></div>';
           const sSide=String(card.side||'NEUTRO').toUpperCase(),sTone=sSide==='CALL'?callTone:sSide==='PUT'?putTone:warnTone;
           const why=(card.reasons||[]).slice(0,1).map(x=>esc(x)).join(' · ');
-          return '<div data-sentinel-card="strategy-'+slot+'" style="padding:8px;border-radius:11px;background:'+panelBg+';border:1px '+(paused?'dashed':'solid')+' '+panelBorder+';min-width:0;min-height:118px;opacity:'+(paused?'.48':'1')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.05em">ESTRATÉGIA '+slot+'</span>'+pauseBtn(pauseKey)+'</div><div style="margin-top:3px;font-size:9px;font-weight:950;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(card.label||'')+'">'+esc(card.label||'—')+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;gap:4px"><b style="font-size:13px;color:'+sTone+'">'+(paused?'PAUSADA':sSide)+'</b></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:6.5px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:13px;color:'+callTone+'">'+n(card.callPct,0)+'%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:6.5px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:13px;color:'+putTone+'">'+n(card.putPct,0)+'%</b></div></div><div style="margin-top:5px;font-size:6.8px;line-height:1.2;color:'+muted+'">'+(paused?'Fora dos totais enquanto pausada.':(why||'Sem gatilho forte neste ciclo.'))+'</div></div>';
+          return '<div data-sentinel-card="strategy-'+slot+'" style="padding:8px;border-radius:11px;background:'+panelBg+';border:1px '+(paused?'dashed':'solid')+' '+panelBorder+';min-width:0;height:118px;overflow:hidden;opacity:'+(paused?'.48':'1')+'"><div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:7px;font-weight:900;color:'+subtle+';letter-spacing:.05em">ESTRATÉGIA '+slot+'</span>'+pauseBtn(pauseKey)+'</div><div style="margin-top:3px;font-size:9px;font-weight:950;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(card.label||'')+'">'+esc(card.label||'—')+'</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:7px;gap:4px"><b style="font-size:13px;color:'+sTone+'">'+(paused?'PAUSADA':sSide)+'</b></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="display:block;font-size:6.5px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:13px;color:'+callTone+'">'+n(card.callPct,0)+'%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="display:block;font-size:6.5px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:13px;color:'+putTone+'">'+n(card.putPct,0)+'%</b></div></div><div style="margin-top:5px;font-size:6.8px;line-height:1.2;color:'+muted+'">'+(paused?'Fora dos totais enquanto pausada.':(why||'Sem gatilho forte neste ciclo.'))+'</div></div>';
         }).join('');
         const strategySummary=generalConsensus.strategies||{};
         const strategyFinalSide=String(strategySummary.side||strategyConfluence.side||'AGUARDAR').toUpperCase();
@@ -1355,6 +1355,9 @@ export class LocalPlaywrightDriver{
         const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select,input[data-sentinel-op-threshold]')))return;
 
         
+        const stableScrollTop=el.scrollTop;
+        const stableRect=el.getBoundingClientRect();
+        const stableLeft=el.style.left,stableTop=el.style.top,stableRight=el.style.right;
         el.innerHTML=`
           <div data-sentinel-drag style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:grab;padding:2px 2px 10px;border-bottom:1px solid ${panelBorder}">
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -1379,19 +1382,19 @@ export class LocalPlaywrightDriver{
             <span style="font-size:7px;font-weight:900;color:${muted}">${marketActiveCount}/3 ativas</span>
           </div>
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:start">
-            <div data-sentinel-role="confluence" data-sentinel-card="quick-confluence" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_confluence')?'dashed':'solid'} ${panelBorder};min-width:0;min-height:118px;opacity:${isPaused('market_confluence')?'.48':'1'}">
+            <div data-sentinel-role="confluence" data-sentinel-card="quick-confluence" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_confluence')?'dashed':'solid'} ${panelBorder};min-width:0;height:118px;overflow:hidden;opacity:${isPaused('market_confluence')?'.48':'1'}">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:7px;font-weight:950;color:${ink}">CONFLUÊNCIA TÉCNICA</span>${pauseBtn('market_confluence')}</div>
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-top:7px"><b style="font-size:13px;color:${finalTone}">${isPaused('market_confluence')?'PAUSADA':finalSide}</b><span style="font-size:6.5px;color:${subtle}">força ${n(finalStrength,0)}%</span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6.5px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(finalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6.5px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(finalPut,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:6.8px;color:${subtle}">${isPaused('market_confluence')?'Fora dos totais enquanto pausada.':'Contexto técnico combinado.'}</div>
             </div>
-            <div data-sentinel-role="entry-status" data-sentinel-card="entry-status" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_entry')?'dashed':'solid'} ${entryReady?tone:panelBorder};min-width:0;min-height:118px;opacity:${isPaused('market_entry')?'.48':'1'}">
+            <div data-sentinel-role="entry-status" data-sentinel-card="entry-status" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_entry')?'dashed':'solid'} ${entryReady?tone:panelBorder};min-width:0;height:118px;overflow:hidden;opacity:${isPaused('market_entry')?'.48':'1'}">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:7px;font-weight:950;color:${ink}">PRONTIDÃO DE ENTRADA</span>${pauseBtn('market_entry')}</div>
               <div style="margin-top:5px;font-size:7px;font-weight:900;color:${entryReady?callTone:warnTone};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isPaused('market_entry')?'PAUSADA':esc(gateReason)}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6.5px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(statusCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6.5px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(statusPut,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:6.8px;color:${subtle}">${isPaused('market_entry')?'Fora dos totais enquanto pausada.':(entryReady?signal:'Aguardando confirmação.')}</div>
             </div>
-            <div data-sentinel-role="reversal" data-sentinel-card="reversal" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_reversal')?'dashed':'solid'} ${panelBorder};min-width:0;min-height:118px;opacity:${isPaused('market_reversal')?'.48':'1'}">
+            <div data-sentinel-role="reversal" data-sentinel-card="reversal" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_reversal')?'dashed':'solid'} ${panelBorder};min-width:0;height:118px;overflow:hidden;opacity:${isPaused('market_reversal')?'.48':'1'}">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:7px;font-weight:950;color:${ink}">VIRADA / REVERSÃO</span>${pauseBtn('market_reversal')}</div>
               <div style="margin-top:6px;font-size:13px;font-weight:950;color:${reversalSide==='CALL'?callTone:reversalSide==='PUT'?putTone:warnTone}">${isPaused('market_reversal')?'PAUSADA':(reversalStrength==null?'AGUARDAR':reversalSide)}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6.5px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(reversalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6.5px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(reversalPut,0)}%</b></div></div>
@@ -1407,21 +1410,21 @@ export class LocalPlaywrightDriver{
 
           <div style="font-size:8px;font-weight:950;letter-spacing:.055em;color:${ink};margin-top:10px;margin-bottom:6px">TOTAIS</div>
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:start">
-            <div data-sentinel-summary="market-total" style="padding:8px;border-radius:11px;background:${panelBg};border:1px solid ${marketSummarySide!=='AGUARDAR'?(marketSummarySide==='CALL'?callTone:putTone):panelBorder};min-width:0">
+            <div data-sentinel-summary="market-total" style="padding:8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${marketSummarySide!=='AGUARDAR'?(marketSummarySide==='CALL'?callTone:putTone):panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><div><div style="font-size:7px;font-weight:950;color:${ink}">TOTAL MERCADO</div><div style="font-size:6px;color:${subtle}">${marketActiveCount}/3 ativas</div></div><div style="display:flex;align-items:center;gap:3px"><span style="font-size:6px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(marketConfidence,0)}%</span>${summaryBtn('market-total')}</div></div>
               <div style="margin-top:6px;font-size:15px;font-weight:950;color:${marketSummarySide==='CALL'?callTone:marketSummarySide==='PUT'?putTone:warnTone}">${marketSummarySide}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(marketCallPct,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(marketPutPct,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:6.5px;color:${subtle}">Só considera as leituras de mercado ativas.</div>
             </div>
 
-            <div data-sentinel-summary="strategy-total" style="padding:8px;border-radius:11px;background:${panelBg};border:1px solid ${strategyFinalSide!=='AGUARDAR'?strategyFinalTone:panelBorder};min-width:0">
+            <div data-sentinel-summary="strategy-total" style="padding:8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${strategyFinalSide!=='AGUARDAR'?strategyFinalTone:panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><div><div style="font-size:7px;font-weight:950;color:${ink}">TOTAL ESTRATÉGIAS</div><div style="font-size:6px;color:${subtle}">${strategyActiveCount}/3 ativas</div></div><div style="display:flex;align-items:center;gap:3px"><span style="font-size:6px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(strategyConfidence,0)}%</span>${summaryBtn('strategy-total')}</div></div>
               <div style="margin-top:6px;font-size:15px;font-weight:950;color:${strategyFinalTone}">${strategyFinalSide}</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:6px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:13px;color:${callTone}">${n(strategyCallPct,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:6px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:13px;color:${putTone}">${n(strategyPutPct,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:6.5px;color:${subtle}">${esc(strategyAgreement)}</div>
             </div>
 
-            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="padding:8px;border-radius:11px;background:${panelBg};border:1px solid ${operationalDirectional?operationalTone:panelBorder};min-width:0">
+            <div data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="padding:8px;min-height:116px;border-radius:11px;background:${panelBg};border:1px solid ${operationalDirectional?operationalTone:panelBorder};min-width:0">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><div><div style="font-size:7px;font-weight:950;color:${ink}">TOTAL DOS 6 · SINAL OPERACIONAL</div><div style="font-size:6px;color:${subtle}">${totalActiveCount}/6 ativas</div></div><div style="display:flex;align-items:center;gap:3px"><span style="font-size:6px;font-weight:900;color:${goldSoft}">CONFIANÇA ${n(generalStrength,0)}%</span>${summaryBtn('operational-total')}</div></div>
               <div style="margin-top:6px;font-size:16px;font-weight:950;color:${operationalDirectional?operationalTone:warnTone}">${operationalDisplay}</div>
               <div style="margin-top:3px;font-size:6.5px;color:${muted}">${operationalDirectional?(operationalSide+' '+n(operationalSide==='CALL'?combinedCall:combinedPut,0)+'% ≥ '+operationalDisplayThreshold+'%'):'Aguardando '+operationalDisplayThreshold+'%'}</div>
@@ -1488,13 +1491,22 @@ export class LocalPlaywrightDriver{
         });
 
         requestAnimationFrame(()=>{
-          const r=el.getBoundingClientRect();
-          if(r.width>window.innerWidth-16)el.style.width=Math.max(390,window.innerWidth-16)+'px';
-          if(r.height>window.innerHeight-16)el.style.height=Math.max(360,window.innerHeight-16)+'px';
-          const rr=el.getBoundingClientRect();
-          if(rr.right>window.innerWidth-8){el.style.left=Math.max(8,window.innerWidth-rr.width-8)+'px';el.style.right='auto'}
-          if(rr.bottom>window.innerHeight-8)el.style.top=Math.max(8,window.innerHeight-rr.height-8)+'px';
-          if(rr.top<8)el.style.top='8px'
+          // Live analysis must never move the panel or reset the user's scroll.
+          if(stableLeft)el.style.left=stableLeft;
+          if(stableTop)el.style.top=stableTop;
+          el.style.right=stableRight||el.style.right;
+          const maxScroll=Math.max(0,el.scrollHeight-el.clientHeight);
+          el.scrollTop=Math.max(0,Math.min(maxScroll,stableScrollTop));
+          if(el.dataset.geometryClamped!=='1'){
+            el.dataset.geometryClamped='1';
+            const r=el.getBoundingClientRect();
+            if(r.width>window.innerWidth-16)el.style.width=Math.max(390,window.innerWidth-16)+'px';
+            if(r.height>window.innerHeight-16)el.style.height=Math.max(360,window.innerHeight-16)+'px';
+            const rr=el.getBoundingClientRect();
+            if(rr.right>window.innerWidth-8){el.style.left=Math.max(8,window.innerWidth-rr.width-8)+'px';el.style.right='auto'}
+            if(rr.bottom>window.innerHeight-8)el.style.top=Math.max(8,window.innerHeight-rr.height-8)+'px';
+            if(rr.top<8)el.style.top='8px'
+          }
         })
         };
         window.__sentinelRenderOverlay=render;
