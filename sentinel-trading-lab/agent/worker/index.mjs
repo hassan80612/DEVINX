@@ -72,6 +72,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     return{ok:true,message:'Bot iniciado pelo card'}
   }
   if(action==='refresh'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];await driver.maintain?.(provider).catch(()=>{});await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});adapter?.refreshFromLive?.();syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Leitura atualizada'}}
+  if(action==='refreshScenario'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];adapter?.refreshFromLive?.();syncRuntimeMarket();const asset=String(runtime.settings?.asset||'—').trim().toUpperCase();try{overlayCache.delete(asset)}catch{};runtime.generalConsensusDisplay=null;runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Cenário recalculado com a leitura atual'}}
   if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
   if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado'}}
   if(action==='setting'){
