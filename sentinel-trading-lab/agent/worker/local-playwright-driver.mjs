@@ -1271,8 +1271,13 @@ export class LocalPlaywrightDriver{
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min'})[plannerHorizon]||'30 s';
+        const assetKey=v=>String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+        const plannerAssetMatches=!!plannerPlan&&!!d.asset&&assetKey(plannerPlan.asset||d.asset)===assetKey(d.asset);
+        const plannerActiveId=Number(plannerPlan?.activeId),screenActiveId=Number(d.activeId);
+        const plannerIdMatches=!Number.isFinite(plannerActiveId)||!Number.isFinite(screenActiveId)||plannerActiveId===screenActiveId;
+        const plannerBoundToScreen=d.selectionValidated!==false&&plannerAssetMatches&&plannerIdMatches;
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
-        const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
+        const plannerReadable=liveNow&&!!plannerPlan&&plannerBoundToScreen&&(!analysisStale||analysisTransient);
         const plannerConfirmed=plannerReadable&&plannerPlan?.outlookReady===true;
         const outlook=plannerReadable?String(plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:warnTone;
@@ -1297,7 +1302,7 @@ export class LocalPlaywrightDriver{
           '</div>'+
           '<div style="margin-top:6px;font-size:8px;line-height:1.35;color:'+muted+'"><b style="color:'+ink+'">CALL:</b> '+esc(plannerPlan.callRule||'—')+' · <b style="color:'+ink+'">PUT:</b> '+esc(plannerPlan.putRule||'—')+'</div>'+
           '<div style="margin-top:5px;font-size:8px;line-height:1.3;color:'+muted+'">'+(plannerConfirmed?'Cenário confirmado: '+esc(plannerPlan.basis||'confluência técnica')+'.':'Cenário em formação: '+esc(plannerPlan.basis||'leitura técnica disponível')+'.')+' Os níveis não são previsão garantida nem ordem de entrada.</div>'
-        ):'<div style="font-size:9px;color:'+muted+'">Sem níveis acionáveis até a leitura deste prazo ficar atual.</div>';
+        ):'<div style="min-height:154px;display:grid;place-items:center;text-align:center;padding:16px;border-radius:12px;border:1px dashed '+panelBorder+';background:'+(uiTheme==='light'?'rgba(255,255,255,.54)':'rgba(255,255,255,.018)')+'"><div><b style="display:block;font-size:12px;color:'+warnTone+'">SINCRONIZANDO O ATIVO DA TELA</b><span style="display:block;margin-top:6px;font-size:9px;line-height:1.35;color:'+muted+'">'+esc(d.marketReason||'Aguardando ativo, preço e candles do mesmo gráfico.')+'</span></div></div>';
         const strategyCardsHtml=[1,2,3].map(slot=>{
           const card=strategyCards.find(x=>Number(x?.slot)===slot)||{slot,active:false,label:'Estratégia não selecionada'};
           const pauseKey='strategy_'+slot,paused=isPaused(pauseKey);
@@ -1492,13 +1497,27 @@ export class LocalPlaywrightDriver{
               <div style="margin-top:5px;font-size:6.4px;line-height:1.25;color:${subtle}">Sentinel ${durationText} · corretora ${expiryDurationLabel} ${expiryLabel}${operationalTrigger!=null?' · gatilho '+price(operationalTrigger):''}</div>
             </div>
           </div>
-          <div data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="margin-top:7px;padding:7px 9px;border:1px solid rgba(210,174,82,.14);border-left:3px solid ${outlookTone};background:${panelBg};border-radius:10px;box-sizing:border-box">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-              <div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;letter-spacing:.045em;color:${ink}">CENÁRIO FUTURO POR PRAZO</span></div>
-              <select data-sentinel-plan-horizon title="Prazo do cenário (a expiração da operação é configurada abaixo)" style="height:26px;min-width:82px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9px;font-weight:850;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
+          <div data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="margin-top:9px;min-height:258px;padding:11px 12px;border:1px solid ${plannerReadable?(outlook==='CALL'?callTone:outlook==='PUT'?putTone:'rgba(210,174,82,.34)'):'rgba(210,174,82,.22)'};background:${uiTheme==='light'?'linear-gradient(150deg,#fffdfa,#eee6d7)':'linear-gradient(150deg,rgba(20,18,15,.995),rgba(8,9,11,.995))'};border-radius:14px;box-sizing:border-box;box-shadow:0 14px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.035)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+              <div style="min-width:0">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  <span style="font-size:11px;font-weight:950;letter-spacing:.035em;color:${ink}">CENÁRIO FUTURO</span>
+                  <span style="padding:2px 6px;border-radius:999px;border:1px solid ${panelBorder};font-size:6.8px;font-weight:900;color:${goldSoft}">FUTURE V2</span>
+                </div>
+                <div style="margin-top:3px;font-size:8px;font-weight:750;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ativo da tela · <b style="color:${ink}">${esc(d.asset||'—')}</b>${Number.isFinite(Number(d.activeId))?' · ID '+esc(d.activeId):''}</div>
+              </div>
+              <select data-sentinel-plan-horizon title="Prazo da previsão futura" style="height:28px;min-width:84px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:9px;padding:0 8px;font-size:9px;font-weight:900;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option></select>
             </div>
-            <div style="display:flex;align-items:baseline;gap:8px;margin:5px 0 4px;flex-wrap:wrap"><b style="font-size:17px;line-height:1;color:${outlookTone}">${esc(outlook)}</b><span style="color:${outlook!=='NEUTRO'&&plannerConfirmed?callTone:warnTone};font-size:8px;font-weight:900">${plannerReadable?(outlook!=='NEUTRO'&&plannerConfirmed?'PREVISÃO ATIVA':'EM FORMAÇÃO'):'SEM DADOS'}</span><span style="color:${goldSoft};font-size:8px;font-weight:900">${plannerReadable?'CONF '+n(futureConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9px;font-weight:650">para ${horizonLabel} · ${liveLabel}</span></div>
-            <div style="color:${muted};font-size:9px;font-weight:600;line-height:1.35;margin-bottom:6px">${analysisStale||!liveNow?'Sincronizando leitura ao vivo.':analysisTransient?'Atualizando cenário com a última leitura válida.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':!plannerConfirmed?'Cenário em formação; os níveis já estão sendo calculados.':outlook==='NEUTRO'?'A previsão futura ainda não tem vantagem direcional suficiente neste prazo.':`Previsão futura ${outlook} para o fim deste prazo; a entrada ainda exige alinhamento e gatilho.`}</div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0 8px;padding:8px 9px;border-radius:10px;background:${uiTheme==='light'?'rgba(255,255,255,.70)':'rgba(255,255,255,.025)'};border:1px solid ${panelBorder}">
+              <div style="display:flex;align-items:baseline;gap:8px;min-width:0">
+                <b style="font-size:21px;line-height:1;color:${outlookTone};letter-spacing:-.02em">${esc(outlook)}</b>
+                <span style="font-size:7.5px;font-weight:950;color:${plannerReadable?(plannerConfirmed&&outlook!=='NEUTRO'?callTone:warnTone):muted}">${plannerReadable?(plannerConfirmed&&outlook!=='NEUTRO'?'PREVISÃO ATIVA':'EM FORMAÇÃO'):'AGUARDANDO SINCRONIA'}</span>
+              </div>
+              <div style="text-align:right"><span style="display:block;font-size:6.8px;color:${subtle};font-weight:850">HORIZONTE</span><b style="font-size:11px;color:${goldSoft}">${horizonLabel}</b></div>
+            </div>
+
+            <div style="font-size:8.3px;color:${muted};line-height:1.35;margin-bottom:8px">${!plannerBoundToScreen?'O cenário antigo foi bloqueado porque não pertence ao ativo visível.':analysisTransient?'Atualizando sem apagar a última previsão válida deste mesmo ativo.':!plannerReadable?'Aguardando preço e candles confirmados do ativo que está na tela.':!plannerConfirmed?'Os motores estão formando a previsão deste horizonte.':outlook==='NEUTRO'?'Ainda não existe vantagem futura suficiente para CALL ou PUT.':`Projeção ${outlook} para o fim de ${horizonLabel}; entrada só é liberada com alinhamento e gatilho.`}</div>
             ${planHtml}
           </div>
 
