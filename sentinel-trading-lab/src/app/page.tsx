@@ -51,6 +51,28 @@ const localFetch=(path:string,method='GET',body?:any,timeout=2200)=>rawLocal(LOC
 const managerFetch=(path:string,method='GET',body?:any,timeout=2200)=>rawLocal(LOCAL_MANAGER,path,method,body,timeout);
 async function cloudFetch(path:string,method='GET',body?:any){const r=await fetch(`/api/runtime/${path.replace(/^\//,'')}`,{method,headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const j=await r.json();if(!j.ok)throw new Error(j.error);return j.data}
 
+function normalizeStatus(data:any){
+  const d=data&&typeof data==='object'?data:{};
+  const settings=d.settings&&typeof d.settings==='object'?d.settings:{};
+  const schedule=settings.schedule&&typeof settings.schedule==='object'?settings.schedule:{};
+  const risk=settings.risk&&typeof settings.risk==='object'?settings.risk:{};
+  return{
+    ...d,
+    state:d.state||'stopped',
+    settings:{
+      ...settings,
+      asset:settings.asset||d.liveBroker?.symbol||d.liveBroker?.uiSymbol||'—',
+      orderDurationMs:Number(settings.orderDurationMs||60000),
+      schedule:{timezone:'America/Sao_Paulo',dailyStart:'00:00',dailyEnd:'23:59',intervalMs:1000,...schedule},
+      risk:{fixedStake:10,maxStake:50,stakePct:1,maxDailyLoss:50,dailyProfitTarget:0,maxDrawdownPct:10,maxTradesPerSession:10,maxTradesPerDay:30,maxTradesPerHour:10,maxConsecutiveLosses:3,minConfidence:70,maxFeedLatencyMs:5000,maxDecisionLatencyMs:2500,...risk}
+    },
+    recentTrades:Array.isArray(d.recentTrades)?d.recentTrades:[],
+    recentAnalyses:Array.isArray(d.recentAnalyses)?d.recentAnalyses:[],
+    incidents:Array.isArray(d.incidents)?d.incidents:[],
+    audit:Array.isArray(d.audit)?d.audit:[]
+  }
+}
+
 export default function Page(){
   const[tab,setTab]=useState('Dashboard');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const refreshBusy=useRef(false);
   const isMaster=account?.profile?.role==='master';const agentAccess=isMaster||account?.profile?.access_active===true;const visibleTabs=tabDefs.filter(x=>x.key!=='Master Console'||isMaster);
@@ -61,7 +83,7 @@ export default function Page(){
       const [mhResult,localResult]=await Promise.allSettled([managerFetch('health','GET',undefined,1200),localFetch('status','GET',undefined,1500)]);
       const mh=mhResult.status==='fulfilled'?mhResult.value:null;
       if(localResult.status==='fulfilled'){
-        const data=localResult.value;setS(data);setSource('local');setErr('');
+        const data=normalizeStatus(localResult.value);setS(data);setSource('local');setErr('');
         setAgent((v:any)=>({...v,process:true,worker:true,remote:false,version:data.agentVersion||v.version,lastSeen:Date.now(),pairingCode:data.remoteRelay?.pairingCode||null,paired:data.remoteRelay?.paired}));
         if(data.remoteRelay?.paired===false&&data.remoteRelay?.pairingCode)setPairCode((v:string)=>v||String(data.remoteRelay.pairingCode).toUpperCase());
         return
@@ -71,7 +93,7 @@ export default function Page(){
         setSource('local');setErr(`Agent aberto, mas o worker não respondeu (${String(localResult.status==='rejected'?localResult.reason?.message||localResult.reason:'timeout')}).`);return
       }
       try{
-        const data=await cloudFetch('status');setS(data);setSource('remote');const online=!!data?.remote?.online;
+        const data=normalizeStatus(await cloudFetch('status'));setS(data);setSource('remote');const online=!!data?.remote?.online;
         setAgent((v:any)=>({...v,remote:online,process:online,worker:online,paired:true,version:data.agentVersion||v.version}));
         setErr(online?'':'PC vinculado, mas Agent offline.')
       }catch(e:any){
@@ -96,7 +118,7 @@ export default function Page(){
       const method=path==='settings'?'PATCH':'POST';
       const commandTimeout=path.startsWith('brokers/')&&path.endsWith('/login')?30000:2200;
       const data=source==='local'&&agent.worker?await localFetch(path,method,body,commandTimeout):await cloudFetch(path,method,body);
-      setS(data);setErr('');
+      setS(normalizeStatus(data));setErr('');
       if(path==='mode')setNotice(body.mode==='demo'?'Modo DEMO ativo.':'Modo REAL ativo para análise; execução continua manual.');
       else if(path==='settings'&&body?.strategy)setNotice('Estratégia aplicada ao motor: '+String(body.strategy).replaceAll('_',' ')+'.');
       else if(path.startsWith('brokers/')&&path.endsWith('/login'))setNotice('Comando enviado ao Agent. A janela controlada da corretora deve abrir no PC.');
@@ -128,14 +150,14 @@ function Panel({name,s,act,busy,agent,agentCommand,account,pairCode,setPairCode,
   if(name==='Dashboard')return <Dashboard s={s} act={act} busy={busy}/>;if(name==='Bot Control')return <BotControl s={s} act={act} busy={busy}/>;if(name==='Market Analysis')return <Market s={s}/>;if(name==='Strategies')return <Strategies s={s} act={act} busy={busy}/>;if(name==='Risk & Limits')return <Risk s={s} act={act}/>;if(name==='Scheduler')return <Scheduler s={s} act={act}/>;if(name==='Broker Connection')return <Broker s={s} act={act} busy={busy} account={account}/>;if(name==='Trades / History')return <Trades s={s}/>;if(name==='Logs / Diagnostics')return <Logs s={s}/>;if(name==='Master Console')return <Master s={s} act={act} busy={busy}/>;return <Settings s={s} agent={agent} agentCommand={agentCommand} busy={busy} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>}
 
 
-function Dashboard({s,act,busy}:{s:Status,act:any,busy:boolean}){const r=s.lastResult||{},a=r.analysis||{},lat=r.latency||{},ap=s.autopilot||{},brokerMode=String(s.liveBroker?.mode||s.mode||'unknown').toUpperCase();return <div className="grid">
+function Dashboard({s,act,busy}:{s:Status,act:any,busy:boolean}){const r=s.lastResult||{},a=r.analysis||{},lat=r.latency||{},ap=s.autopilot||{},schedule=s.settings?.schedule||{},brokerMode=String(s.liveBroker?.mode||s.mode||'unknown').toUpperCase();return <div className="grid">
   <section className="card hero"><div className="herohead"><div><div className="eyebrow">BOT STATUS</div><div className="bigline"><span className={`dot ${s.state}`}/>{String(s.state).toUpperCase()}</div><p>{brokerMode==='DEMO'?(ap.enabled?'Piloto DEMO armado: o Agent opera somente o saldo DEMO da corretora quando o cenário e as travas aprovam.':'Conta DEMO detectada. O Sentinel analisa normalmente; o piloto só clica quando você armar em Piloto DEMO.'):'Conta REAL detectada: análise automática ativa, mas nenhuma ordem REAL é enviada automaticamente.'}</p></div><div className="price"><small>{s.feed?.label}</small><b>{Number(s.feed?.price||0).toFixed(5)}</b><span>{s.settings?.asset}</span></div></div>
     <div className="metrics"><Metric label={s.balanceSource==='broker'?"Saldo conta ativa":"Saldo simulado"} value={money(s.balance)}/><Metric label="P&L Sentinel" value={money(s.pnl)} sub={`${s.wins}W / ${s.losses}L`}/><Metric label="Win rate interno" value={pct(s.winRate)}/><Metric label="Drawdown interno" value={pct(s.drawdownPct)}/></div>
     <div className="actions"><button className="primary" disabled={busy||s.state==='running'||s.killSwitch||s.masterFrozen||!!s.startBlockedReason} onClick={()=>act('control/start')}>Iniciar análise</button><button className="secondary" disabled={busy||s.state!=='running'} onClick={()=>act('control/pause')}>Pausar</button><button className="secondary" disabled={busy||s.state==='stopped'} onClick={()=>act('control/stop')}>Parar</button></div>{s.startBlockedReason&&<p className="formerror">{s.startBlockedReason}</p>}
   </section>
   <section className="card side"><div className="eyebrow">ÚLTIMO CICLO</div><div className={`signal ${String(r.action||'WAIT').toLowerCase()}`}><span>{r.action||'WAIT'}</span><b>{a.confidence??0}%</b></div><div className="reasonlist">{(r.reasons||a.reasons||['Aguardando ciclo']).slice(0,4).map((x:string,i:number)=><div key={i}>• {x}</div>)}</div><div className="latrow"><span>Feed <b>{lat.feedMs??0}ms</b></span><span>Decisão <b>{lat.decisionMs??0}ms</b></span><span>Execução <b>{lat.executionMs??0}ms</b></span></div></section>
   <section className="card span4"><h3>Risco em tempo real</h3><div className="stack"><Row k="Piloto DEMO" v={ap.enabled?'ARMADO':'DESARMADO'}/><Row k="Operações da sessão" v={String(ap.sessionTrades??0)+' / '+String(ap.maxSessionTrades??s.settings?.risk?.maxTradesPerSession??10)}/><Row k="Perdas seguidas" v={String(s.consecutiveLosses)+' / '+String(ap.maxConsecutiveLosses??s.settings?.risk?.maxConsecutiveLosses??3)}/><Row k="Pendentes" v={String(s.pending)}/></div></section>
-  <section className="card span4"><h3>Agenda</h3><div className="stack"><Row k="Timezone" v={s.settings.schedule.timezone}/><Row k="Janela" v={`${s.settings.schedule.dailyStart} – ${s.settings.schedule.dailyEnd}`}/><Row k="Intervalo" v={`${Math.round(s.settings.schedule.intervalMs/1000)}s`}/><Row k="Expiração" v={Number(s.settings.orderDurationMs||60000)<60000?`${Math.round(Number(s.settings.orderDurationMs||60000)/1000)}s`:`${Math.round(Number(s.settings.orderDurationMs||60000)/60000)} min`}/><Row k="Próxima análise" v={s.nextEvalMs?tm(s.nextEvalMs):'—'}/></div></section>
+  <section className="card span4"><h3>Agenda</h3><div className="stack"><Row k="Timezone" v={schedule.timezone||'—'}/><Row k="Janela" v={`${schedule.dailyStart||'—'} – ${schedule.dailyEnd||'—'}`}/><Row k="Intervalo" v={`${Math.round(Number(schedule.intervalMs||1000)/1000)}s`}/><Row k="Expiração" v={Number(s.settings.orderDurationMs||60000)<60000?`${Math.round(Number(s.settings.orderDurationMs||60000)/1000)}s`:`${Math.round(Number(s.settings.orderDurationMs||60000)/60000)} min`}/><Row k="Próxima análise" v={s.nextEvalMs?tm(s.nextEvalMs):'—'}/></div></section>
   <section className="card span4"><h3>Saúde do sistema</h3><div className="stack"><Row k="Heartbeat" v={tm(s.lastHeartbeat)}/><Row k="Fonte" v={s.runtimeKind==='persistent-worker'?(s.liveBroker?.provider?'Corretora local':'Worker local'):'Simulador Vercel'}/><Row k="Feed" v={s.feed?.label||'—'}/><Row k="Kill switch" v={s.killSwitch?'ATIVO':'Livre'}/></div></section>
   <section className="card span8"><h3>Operações recentes</h3><TradeTable rows={s.recentTrades}/></section>
   <section className="card span4"><h3>Últimas análises</h3><div className="timeline">{(s.recentAnalyses||[]).slice(0,6).map((x:any,i:number)=><div className="event" key={i}><time>{tm(x.ts)}</time><div><b>{x.side} · {x.confidence}%</b><span>{x.reasons?.[0]||'sem motivo'}</span></div></div>)}{!s.recentAnalyses?.length&&<Empty text="Nenhuma análise ainda"/>}</div></section>
