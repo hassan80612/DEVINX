@@ -1255,8 +1255,22 @@ export class LocalPlaywrightDriver{
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min',3600:'1 h'})[plannerHorizon]||'30 s';
+        const visibleAsset=String(d.asset||'—').trim().toUpperCase(),plannerAsset=String(plannerPlan?.asset||'').trim().toUpperCase();
+        const previousVisibleAsset=String(el.dataset.futureAsset||'').trim().toUpperCase();
+        const assetJustChanged=!!previousVisibleAsset&&previousVisibleAsset!==visibleAsset;
+        if(assetJustChanged){
+          const changedAt=Date.now();el.dataset.futureAssetChangedAt=String(changedAt);
+          try{
+            for(let i=localStorage.length-1;i>=0;i--){const k=localStorage.key(i)||'';if(k.startsWith('sentinel-future-decision-v13|')||k.startsWith('sentinel-future-expired-v13|'))localStorage.removeItem(k)}
+          }catch{}
+        }
+        el.dataset.futureAsset=visibleAsset;
+        const assetChangedAt=Math.max(0,Number(el.dataset.futureAssetChangedAt||0));
+        const plannerGeneratedAt=Math.max(0,Number(plannerPlan?.generatedAt||0));
+        const plannerMatchesAsset=!!plannerPlan&&!!visibleAsset&&visibleAsset!=='—'&&plannerAsset===visibleAsset;
+        const plannerFreshAfterAssetSwitch=!assetChangedAt||plannerGeneratedAt>assetChangedAt;
         const entryReady=!analysisTransient&&!analysisStale&&liveNow&&analysisFresh&&entryGateReady&&['BUY','SELL'].includes(side);
-        const plannerReadable=!analysisStale&&liveNow&&!!plannerPlan&&(analysisFresh||analysisTransient);
+        const plannerReadable=!assetJustChanged&&!analysisStale&&liveNow&&!!plannerPlan&&plannerMatchesAsset&&plannerFreshAfterAssetSwitch&&(analysisFresh||analysisTransient);
         const plannerConfirmed=plannerReadable&&plannerPlan?.directionReady===true;
         const rawOutlook=plannerReadable?String(plannerPlan?.displayBias||plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const futureConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.confidence||plannerPlan?.modelConfidence||0))):0;
@@ -1284,10 +1298,11 @@ export class LocalPlaywrightDriver{
         // Decisão futura comprometida: oscilações normais não trocam CALL/PUT.
         // Em falha curta do feed, preserva a decisão e CONGELA a contagem até a leitura voltar.
         // Só invalida uma direção ativa com oposição forte e repetida; queda longa de feed expira por segurança.
-        const decisionAsset=String(d.asset||'—').trim().toUpperCase(),decisionSeconds=Math.max(30,Number(plannerHorizon)||30);
-        const decisionKey='sentinel-future-decision-v13|'+decisionAsset+'|'+String(plannerHorizon),decisionNow=Date.now(),maxFeedPauseMs=12000;
-        let futureDecision=null;
+        const decisionAsset=visibleAsset,decisionSeconds=Math.max(30,Number(plannerHorizon)||30);
+        const decisionKey='sentinel-future-decision-v13|'+decisionAsset+'|'+String(plannerHorizon),expiredKey='sentinel-future-expired-v13|'+decisionAsset+'|'+String(plannerHorizon),decisionNow=Date.now(),maxFeedPauseMs=12000;
+        let futureDecision=null,expiredDecision=null;
         try{futureDecision=JSON.parse(localStorage.getItem(decisionKey)||'null')}catch{futureDecision=null}
+        try{expiredDecision=JSON.parse(localStorage.getItem(expiredKey)||'null')}catch{expiredDecision=null}
         if(futureDecision&&(String(futureDecision.asset||'')!==decisionAsset||Number(futureDecision.seconds)!==decisionSeconds)){
           try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
         }
@@ -1320,10 +1335,17 @@ export class LocalPlaywrightDriver{
           }
         }
         if(futureDecision&&plannerReadable&&decisionNow>Number(futureDecision.targetAt||0)+6000){
-          try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
+          expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0)};
+          try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
         }
+        // Depois que a janela "AGORA" termina, a mesma direção não pode relockar imediatamente.
+        // A trava só é liberada quando o cenário deixa aquela direção (AGUARDAR/oposto) ou o ativo muda.
+        if(expiredDecision&&(!plannerReadable||candidateOutlook!==String(expiredDecision.side||''))){
+          try{localStorage.removeItem(expiredKey)}catch{};expiredDecision=null
+        }
+        const sameExpiredSide=!!expiredDecision&&plannerReadable&&candidateOutlook===String(expiredDecision.side||'');
         const candidatePct=candidateOutlook==='CALL'?futureCallPct:candidateOutlook==='PUT'?futurePutPct:0;
-        const decisionEligible=plannerReadable&&plannerConfirmed&&['CALL','PUT'].includes(candidateOutlook)&&candidatePct>=futureDisplayThreshold&&futureConfidence>=60&&futureAgreement>=55;
+        const decisionEligible=!sameExpiredSide&&plannerReadable&&plannerConfirmed&&['CALL','PUT'].includes(candidateOutlook)&&candidatePct>=futureDisplayThreshold&&futureConfidence>=60&&futureAgreement>=55;
         if(!futureDecision&&decisionEligible){
           futureDecision={
             asset:decisionAsset,seconds:decisionSeconds,side:candidateOutlook,lockedAt:decisionNow,targetAt:decisionNow+decisionSeconds*1000,
@@ -1337,10 +1359,11 @@ export class LocalPlaywrightDriver{
         const decisionRemaining=futureDecision?Math.max(0,Math.ceil((Number(futureDecision.targetAt||countdownNow)-countdownNow)/1000)):null;
         const feedPauseSeconds=futureDecisionPaused?Math.max(0,Math.ceil((decisionNow-decisionPausedAt)/1000)):0;
         const decisionPhase=!futureDecision?'WAIT':futureDecisionPaused?'PAUSED':decisionRemaining>0?'COUNTDOWN':'NOW';
-        const outlook=futureDecision?.side||candidateOutlook;
+        const displayCandidate=sameExpiredSide?'AGUARDAR':candidateOutlook;
+        const outlook=futureDecision?.side||displayCandidate;
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
-        const futureActionLabel=futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):decisionPhase==='COUNTDOWN'?(futureDecision.side+' EM '+decisionRemaining+'s'):(futureDecision.side+' AGORA')):(candidateOutlook==='CALL'||candidateOutlook==='PUT'?('CONFIRMANDO '+candidateOutlook):('AGUARDAR · '+horizonLabel));
-        const futureDecisionStatus=futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':decisionPhase==='COUNTDOWN'?'DECISÃO TRAVADA':'ENTRADA AGORA'):(candidateOutlook==='CALL'||candidateOutlook==='PUT'?'CONFIRMANDO':'SEM DECISÃO');
+        const futureActionLabel=futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):decisionPhase==='COUNTDOWN'?(futureDecision.side+' EM '+decisionRemaining+'s'):(futureDecision.side+' AGORA')):(sameExpiredSide?'AGUARDAR · NOVO CENÁRIO':(displayCandidate==='CALL'||displayCandidate==='PUT'?('CONFIRMANDO '+displayCandidate):('AGUARDAR · '+horizonLabel)));
+        const futureDecisionStatus=futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':decisionPhase==='COUNTDOWN'?'DECISÃO TRAVADA':'ENTRADA AGORA'):(sameExpiredSide?'JANELA ENCERRADA':(displayCandidate==='CALL'||displayCandidate==='PUT'?'CONFIRMANDO':'SEM DECISÃO'));
         const futureDecisionConfidence=futureDecision?Math.max(0,Math.min(100,Number(futureDecision.confidence||0))):futureConfidence;
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px">'+
