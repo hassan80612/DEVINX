@@ -1295,6 +1295,11 @@ export class LocalPlaywrightDriver{
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureSamples=plannerReadable?Math.max(0,Number(plannerPlan?.validation?.samples||0)):0;
         const futureDrivers=plannerReadable&&Array.isArray(plannerPlan?.drivers)?plannerPlan.drivers.slice(0,3):[];
+        const futureStrategyRows=plannerReadable&&Array.isArray(plannerPlan?.strategyForecasts)?plannerPlan.strategyForecasts.slice(0,3):[];
+        const futureStrategyWeight=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.strategyWeightPct||0))):0;
+        const futureStrategyAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.strategyAgreement||0))):0;
+        const futureStrategyLabel=id=>({smart_confluence:'Smart',price_action:'Price Action',trendline_breakout:'Trendline',support_resistance:'S/R',fibonacci_retest:'Fibonacci',trend:'Trend',trend_following:'Trend',mean_reversion:'Mean Rev.',breakout:'Breakout'}[String(id||'')]||String(id||'—').replaceAll('_',' '));
+        const futureStrategiesHtml=futureStrategyRows.length?'<div style="margin:6px 0;padding:7px;border:1px solid '+panelBorder+';border-radius:9px;background:'+(uiTheme==='light'?'rgba(255,255,255,.52)':'rgba(255,255,255,.018)')+'"><div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:5px"><span style="font-size:7px;font-weight:950;color:'+ink+'">ESTRATÉGIAS NO FUTURO</span><span style="font-size:6.8px;font-weight:900;color:'+goldSoft+'">peso '+n(futureStrategyWeight,0)+'% · acordo '+n(futureStrategyAgreement,0)+'%</span></div><div style="display:grid;grid-template-columns:repeat('+Math.max(1,futureStrategyRows.length)+',minmax(0,1fr));gap:5px">'+futureStrategyRows.map(x=>{const ss=String(x.side||'NEUTRO').toUpperCase(),st=ss==='CALL'?callTone:ss==='PUT'?putTone:warnTone;return '<div style="min-width:0;padding:5px;border-radius:7px;border:1px solid '+panelBorder+'"><span style="display:block;font-size:6.5px;color:'+subtle+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(futureStrategyLabel(x.strategy))+'</span><b style="display:block;margin-top:2px;font-size:10px;color:'+st+'">'+ss+'</b><span style="display:block;margin-top:1px;font-size:6.3px;color:'+muted+'">'+n(x.callProbability,0)+'C · '+n(x.putProbability,0)+'P</span></div>'}).join('')+'</div></div>':'';
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:6px">'+
             '<div style="padding:6px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:7px;color:'+subtle+';font-weight:900">CONFIANÇA FUTURA</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+'%</b></div>'+
@@ -1302,7 +1307,8 @@ export class LocalPlaywrightDriver{
             '<div style="padding:6px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,156,.11);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(futurePutPct,0)+'%</b></div>'+
           '</div>'+
           '<div style="font-size:8.5px;color:'+muted+';margin-bottom:5px">Agora <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b>'+(futureProjectedPrice!=null?' · projeção <b style="color:'+outlookTone+'">'+price(futureProjectedPrice)+'</b>':'')+' · acordo '+n(futureAgreement,0)+'%'+(futureSamples?' · '+futureSamples+' previsões já liquidadas':'')+'</div>'+
-          (futureDrivers.length?'<div style="font-size:7.5px;color:'+subtle+';margin-bottom:6px">Motores: '+esc(futureDrivers.join(' · '))+'</div>':'')+
+          futureStrategiesHtml+
+          (futureDrivers.length?'<div style="font-size:7.5px;color:'+subtle+';margin-bottom:6px">Motores dominantes: '+esc(futureDrivers.join(' · '))+'</div>':'')+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8px;color:'+callTone+';font-weight:800">CALL — gatilho</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8px;color:'+putTone+';font-weight:800">PUT — gatilho</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.5px;color:'+muted+';margin-top:2px">invalida &gt; '+price(plannerPlan.putInvalidation)+'</div></div>'+
@@ -1509,7 +1515,7 @@ export class LocalPlaywrightDriver{
               <div style="min-width:0">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                   <span style="font-size:11px;font-weight:950;letter-spacing:.035em;color:${ink}">CENÁRIO FUTURO</span>
-                  <span style="padding:2px 6px;border-radius:999px;border:1px solid ${panelBorder};font-size:6.8px;font-weight:900;color:${goldSoft}">FUTURE V2</span>
+                  <span style="padding:2px 6px;border-radius:999px;border:1px solid ${panelBorder};font-size:6.8px;font-weight:900;color:${goldSoft}">FUTURE V3</span>
                 </div>
                 <div style="margin-top:3px;font-size:8px;font-weight:750;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ativo da tela · <b style="color:${ink}">${esc(d.asset||'—')}</b>${Number.isFinite(Number(d.activeId))?' · ID '+esc(d.activeId):''}</div>
               </div>
