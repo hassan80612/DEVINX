@@ -609,13 +609,23 @@ export class DemoTradingRuntime{
   }
   _settleDue(now){
     const price=this._marketSnapshot().price;
-    for(const p of [...this.pending]){if(p.settleAt>now)continue;const won=p.side==='BUY'?price>p.referencePrice:price<p.referencePrice;let trade;
-      if(p.external){const pnl=won?Number(p.amount||0)*0.82:-Number(p.amount||0);trade={id:p.orderId,orderId:p.orderId,asset:p.asset||this.settings.asset,side:p.side,amount:Number(p.amount||0),referencePrice:p.referencePrice,openedAt:p.openedAt||iso(now-this.settings.orderDurationMs),status:'closed',won,pnl,provider:p.provider||this.externalMarket?.provider,external:true,settledPrice:price,closedAt:iso(now)}}
-      else{const settled=this.broker.settle(p.orderId,won);trade={...settled,settledPrice:price,closedAt:iso(now)}}
+    for(const p of [...this.pending]){
+      if(p.settleAt>now)continue;
+      const reference=Number(p.referencePrice),delta=Number(price)-reference,epsilon=Math.max(1e-12,Math.abs(reference)*1e-10),draw=Math.abs(delta)<=epsilon;
+      const won=draw?null:(p.side==='BUY'?delta>0:delta<0);let trade;
+      if(p.external){
+        const livePayout=Number(this.externalMarket?.payout),payout=Number.isFinite(livePayout)&&livePayout>0?livePayout:.82;
+        const pnl=won===true?Number(p.amount||0)*payout:won===false?-Number(p.amount||0):0;
+        trade={id:p.orderId,orderId:p.orderId,asset:p.asset||this.settings.asset,side:p.side,amount:Number(p.amount||0),referencePrice:p.referencePrice,openedAt:p.openedAt||iso(now-this.settings.orderDurationMs),status:draw?'draw':'closed',won,pnl,provider:p.provider||this.externalMarket?.provider,external:true,settledPrice:price,closedAt:iso(now)}
+      }else{
+        const settled=this.broker.settle(p.orderId,won===true);trade={...settled,settledPrice:price,closedAt:iso(now)}
+      }
       this.trades.unshift(trade);this.pending=this.pending.filter(x=>x.orderId!==p.orderId);
-      if(won){this.state.consecutiveLosses=0;this.state.cooldownUntil=now+this.settings.risk.cooldownSeconds*1000}else{this.state.consecutiveLosses++;this.state.cooldownUntil=now+this.settings.risk.lossCooldownSeconds*1000}
+      if(won===true){this.state.consecutiveLosses=0;this.state.cooldownUntil=now+this.settings.risk.cooldownSeconds*1000}
+      else if(won===false){this.state.consecutiveLosses++;this.state.cooldownUntil=now+this.settings.risk.lossCooldownSeconds*1000}
       const balance=Number(this.externalMarket?.balance??this.broker.balance);this.state.peakBalance=Math.max(this.state.peakBalance,balance);this.state.drawdownPct=this.state.peakBalance?Math.max(0,(this.state.peakBalance-balance)/this.state.peakBalance*100):0;
-      this.audit.write({actorId:'engine',actorRole:'system',action:'trade.settle',metadata:{orderId:p.orderId,won,pnl:trade.pnl,external:!!p.external}})}
+      this.audit.write({actorId:'engine',actorRole:'system',action:'trade.settle',metadata:{orderId:p.orderId,won,draw,pnl:trade.pnl,external:!!p.external}})
+    }
   }
   async tick(now=Date.now()){
     this.lastHeartbeat=now;this._settleDue(now);if(this.stateName!=='running')return this.status();
@@ -630,8 +640,9 @@ export class DemoTradingRuntime{
       const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;
       const brokerMode=String(this.externalMarket?.brokerMode||this.externalMarket?.mode||'').toLowerCase();
       const canUseExternalDemo=this.settings.mode==='demo'&&brokerMode==='demo'&&this.executionBroker&&this.externalMarket?.executionReady===true;
+      const pendingExternalDemo=this.pending.some(p=>p.external===true&&Number(p.settleAt||0)>now);
       const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;
-      const cycleSettings={...this.settings,demoAutopilot:this.settings.demoAutopilot===true&&canUseExternalDemo};
+      const cycleSettings={...this.settings,demoAutopilot:this.settings.demoAutopilot===true&&canUseExternalDemo&&!pendingExternalDemo};
       this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:cycleSettings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
       let strategyPanel=null;
       if(result.analysis){
@@ -645,8 +656,8 @@ export class DemoTradingRuntime{
       }
       if(['DEMO_ORDER','PREPARE_REAL'].includes(String(result.action||''))&&this.operationalSetup?.firedAt)this.operationalSetup.releasedAt=now;
       if(this.settings.mode==='demo'&&result.action==='DEMO_READY'){
-        result.executionMode=liveAttached?(brokerMode==='demo'?'broker_demo_disarmed':'broker_real_detected'):'broker_demo_wait';
-        result.reasons=[...(result.reasons||[]),brokerMode==='demo'?'Piloto DEMO desarmado — análise continua sem clicar na corretora.':'Piloto DEMO só arma quando a conta DEMO da própria corretora estiver ativa e validada.'];
+        result.executionMode=pendingExternalDemo?'broker_demo_wait_settlement':liveAttached?(brokerMode==='demo'?'broker_demo_disarmed':'broker_real_detected'):'broker_demo_wait';
+        result.reasons=[...(result.reasons||[]),pendingExternalDemo?'Operação DEMO anterior ainda aberta — nenhuma entrada sobreposta será enviada.':brokerMode==='demo'?'Piloto DEMO desarmado — análise continua sem clicar na corretora.':'Piloto DEMO só arma quando a conta DEMO da própria corretora estiver ativa e validada.'];
       }else if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){
         result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas a conta DEMO/controles da corretora não estão validados — nenhuma ordem foi clicada.']
       }else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
