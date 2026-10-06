@@ -153,18 +153,19 @@ function protocolScan(data,st,direction='in'){
     const aid=n(activeRaw),command=`${outer} ${inner}`.toLowerCase();
     const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote/.test(command);
     if(aid!=null&&marketCommand){
-      const previousPageActiveId=st.pageActiveId;
-      st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
-      const selected=st.uiSymbol||st.symbol||null;
-      if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected)}
-      if(previousPageActiveId!=null&&Number(previousPageActiveId)!==Number(aid)&&Number(st.activeId)!==Number(aid)){
-        st.activeId=Number(aid);st.symbol=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;
-        st.subscribedSymbol=null;st.subscribedActiveId=null;st.marketStatus='switching';st.marketReason='Ativo da tela mudou · sincronizando feed';
+      const now=Date.now(),selected=st.uiSymbol||st.symbol||null,key=selected?pairKey(selected):null;
+      const mapped=key?st.activeMap.get(key):null;
+      const recentClick=!!selected&&st.uiSymbolSource==='click'&&now-Number(st.lastUiSignalAt||0)<2500;
+      const historyRequest=/get-candles|(^|\s)candles(\s|$)/.test(command);
+      if(selected&&mapped!=null&&Number(mapped)===Number(aid)){
+        st.pageActiveId=Number(aid);st.lastPageActiveAt=now
+      }else if(selected&&mapped==null&&recentClick&&historyRequest){
+        st.activeMap.set(key,Number(aid));st.assets.add(selected);st.activeId=Number(aid);st.pageActiveId=Number(aid);st.lastPageActiveAt=now
       }
       const sz=n(sizeRaw);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz);
       const pageRequestId=String(data?.request_id||data?.requestId||'');
-      if(pageRequestId&&/get-candles|candles/.test(command)){
-        st.pageCandleRequests=[...(st.pageCandleRequests||[]).filter(x=>Date.now()-Number(x.at||0)<20000),{id:pageRequestId,activeId:Number(aid),at:Date.now()}].slice(-24)
+      if(pageRequestId&&historyRequest){
+        st.pageCandleRequests=[...(st.pageCandleRequests||[]).filter(x=>now-Number(x.at||0)<20000),{id:pageRequestId,activeId:Number(aid),at:now}].slice(-24)
       }
     }
   }
@@ -541,10 +542,6 @@ export class LocalPlaywrightDriver{
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
-    if(st.pageActiveId!=null){
-      const resolvedPageSymbol=symbolForActiveId(st,st.pageActiveId);
-      if(resolvedPageSymbol)this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page-late'});
-    }
     if(st.symbol){
       const mappedId=st.activeMap.get(pairKey(st.symbol));
       if(mappedId!=null){
@@ -569,9 +566,6 @@ export class LocalPlaywrightDriver{
     // The broker page's own outbound market subscription is the source of truth for
     // the chart selected by the user. Sentinel's direct requests are "direct-out"
     // and therefore can never retarget the selected asset.
-    if(/page-out/.test(direction)&&st.pageActiveId!=null){
-      this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page'});
-    }
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
