@@ -1101,18 +1101,18 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.0'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.1'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.0';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.1';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.0';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.1';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
-            width:'520px',height:'min(650px, calc(100vh - 24px))',minWidth:'430px',maxWidth:'min(700px, calc(100vw - 18px))',
+            width:'560px',height:'min(650px, calc(100vh - 24px))',minWidth:'500px',maxWidth:'min(760px, calc(100vw - 18px))',
             minHeight:'360px',maxHeight:'calc(100vh - 18px)',resize:'both',
             overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',overscrollBehavior:'contain',scrollbarGutter:'stable',
             background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',
@@ -1126,19 +1126,19 @@ export class LocalPlaywrightDriver{
           try{
             const saved=JSON.parse(localStorage.getItem('sentinel-overlay-pos-v1')||'null');
             if(saved&&Number.isFinite(saved.x)&&Number.isFinite(saved.y)){
-              el.style.left=Math.max(8,Math.min(window.innerWidth-430,saved.x))+'px';
+              el.style.left=Math.max(8,Math.min(window.innerWidth-500,saved.x))+'px';
               el.style.top=Math.max(8,Math.min(window.innerHeight-100,saved.y))+'px';
               el.style.right='auto'
             }
-            const savedSize=JSON.parse(localStorage.getItem('sentinel-overlay-size-v104')||'null');
+            const savedSize=JSON.parse(localStorage.getItem('sentinel-overlay-size-v13r6')||'null');
             if(savedSize&&Number.isFinite(savedSize.w)&&Number.isFinite(savedSize.h)){
-              el.style.width=Math.max(390,Math.min(window.innerWidth-18,savedSize.w))+'px';
+              el.style.width=Math.max(500,Math.min(window.innerWidth-18,savedSize.w))+'px';
               el.style.height=Math.max(360,Math.min(window.innerHeight-18,savedSize.h))+'px'
             }
           }catch{}
           document.documentElement.appendChild(host);
           try{
-            const ro=new ResizeObserver(()=>{try{const rr=el.getBoundingClientRect();localStorage.setItem('sentinel-overlay-size-v104',JSON.stringify({w:Math.round(rr.width),h:Math.round(rr.height)}))}catch{}});
+            const ro=new ResizeObserver(()=>{try{const rr=el.getBoundingClientRect();localStorage.setItem('sentinel-overlay-size-v13r6',JSON.stringify({w:Math.round(rr.width),h:Math.round(rr.height)}))}catch{}});
             ro.observe(el);el.__sentinelResizeObserver=ro
           }catch{}
           let drag=null;
@@ -1167,7 +1167,7 @@ export class LocalPlaywrightDriver{
         const entryGateReady=q.entryReady===true;
         const rawLabel=raw==='BUY'?'CALL':raw==='SELL'?'PUT':'AGUARDAR';
         const signal=entryGateReady?(side==='BUY'?'CALL':side==='SELL'?'PUT':'AGUARDAR'):'AGUARDAR';
-        const gold='#d7b65d',goldSoft='#f3dc98',goldDeep='#8d6a23';
+        const gold='#d9b85f',goldSoft='#f5dda0',goldDeep='#8f6a24';
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const duration=Number(d.durationMs||60000),strategy=String(d.strategy||'smart_confluence'),strategy2=String(d.strategy2||'none'),strategy3=String(d.strategy3||'none');
         const strategyCards=Array.isArray(d.strategyCards)?d.strategyCards:[],strategyConfluence=d.strategyConfluence||{},generalConsensus=d.generalConsensus||{},operational=d.operationalSignal||{};
@@ -1212,21 +1212,21 @@ export class LocalPlaywrightDriver{
           if(!el.dataset.themePreference)uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
         }catch{}
         el.dataset.theme=uiTheme;
-        const ink=uiTheme==='light'?'#111318':'#f6f7fb',muted=uiTheme==='light'?'#3b4048':'#cbd2dc',subtle=uiTheme==='light'?'#616977':'#939dab';
+        const ink=uiTheme==='light'?'#111318':'#ffffff',muted=uiTheme==='light'?'#3b4048':'#e3e9e8',subtle=uiTheme==='light'?'#616977':'#bcc8c7';
         const neutralTone=uiTheme==='light'?'#1d2530':'#f7f8fb';
         const fieldBg=uiTheme==='light'?'#ffffff':'#080d14',fieldInk=uiTheme==='light'?'#111318':'#f8f9fb',fieldBorder=uiTheme==='light'?'rgba(128,94,39,.38)':'rgba(215,182,93,.34)';
-        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f1ece2)':'linear-gradient(145deg,#0b2527 0%,#081b1d 58%,#061315 100%)';
+        const panelBg=uiTheme==='light'?'linear-gradient(145deg,#ffffff,#f1ece2)':'linear-gradient(145deg,#123d3f 0%,#0d3033 55%,#092427 100%)';
         const panelBorder=uiTheme==='light'?'rgba(128,94,39,.25)':'rgba(215,182,93,.24)';
         const callTone=uiTheme==='light'?'#087052':'#7ce9c1',putTone=uiTheme==='light'?'#972d43':'#ff99a8',warnTone=uiTheme==='light'?'#7a5a12':'#e6c879';
         const pausedReadings=d.pausedReadings&&typeof d.pausedReadings==='object'?d.pausedReadings:{};
         const isPaused=key=>pausedReadings[key]===true;
-        const pauseBtn=key=>'<button data-sentinel-reading-pause="'+key+'" title="'+(isPaused(key)?'Ativar esta leitura':'Pausar esta leitura')+'" style="border:1px solid '+panelBorder+';border-radius:6px;height:20px;padding:0 5px;background:'+(isPaused(key)?'rgba(242,207,102,.13)':(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)'))+';color:'+(isPaused(key)?warnTone:subtle)+';font:950 6.2px/1 inherit;cursor:pointer;white-space:nowrap">'+(isPaused(key)?'ATIVAR':'PAUSAR')+'</button>';
+        const pauseBtn=key=>'<button data-sentinel-reading-pause="'+key+'" title="'+(isPaused(key)?'Ativar esta leitura':'Pausar esta leitura')+'" style="border:1px solid '+panelBorder+';border-radius:6px;height:20px;padding:0 5px;background:'+(isPaused(key)?'rgba(242,207,102,.13)':(uiTheme==='light'?'rgba(255,255,255,.82)':'rgba(255,255,255,.035)'))+';color:'+(isPaused(key)?warnTone:subtle)+';font:950 7.5px/1 inherit;cursor:pointer;white-space:nowrap">'+(isPaused(key)?'ATIVAR':'PAUSAR')+'</button>';
         let collapsedSummaries=[];
         try{collapsedSummaries=JSON.parse(localStorage.getItem('sentinel-summary-collapse-v118')||'[]');if(!Array.isArray(collapsedSummaries))collapsedSummaries=[]}catch{collapsedSummaries=[]}
         const isSummaryCollapsed=key=>collapsedSummaries.includes(key);
         const summaryBtn=key=>'<button data-sentinel-summary-collapse="'+key+'" title="'+(isSummaryCollapsed(key)?'Estender resumo':'Recolher resumo')+'" style="position:absolute;top:7px;right:7px;border:1px solid '+panelBorder+';border-radius:7px;width:23px;height:21px;background:'+(uiTheme==='light'?'linear-gradient(180deg,#fff,#f5efe3)':'linear-gradient(180deg,rgba(215,182,93,.13),rgba(215,182,93,.035))')+';color:'+goldSoft+';font:950 12px/1 inherit;cursor:pointer;display:grid;place-items:center;z-index:2">'+(isSummaryCollapsed(key)?'+':'−')+'</button>';
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
-        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.36)',boxShadow:'0 28px 72px rgba(65,51,28,.20), inset 0 1px #fff'}:{background:'linear-gradient(160deg,#071d20 0%,#0a2426 52%,#061517 100%)',color:'#f7faf9',border:'1px solid rgba(215,182,93,.42)',boxShadow:'0 30px 88px rgba(0,0,0,.76),0 0 0 1px rgba(215,182,93,.04) inset,inset 0 1px rgba(255,255,255,.05)'}, {fontVariantNumeric:'tabular-nums',overflowAnchor:'none'});
+        Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.36)',boxShadow:'0 28px 72px rgba(65,51,28,.20), inset 0 1px #fff'}:{background:'linear-gradient(160deg,#0b2f31 0%,#0d383a 50%,#082527 100%)',color:'#ffffff',border:'1px solid rgba(217,184,95,.48)',boxShadow:'0 28px 80px rgba(0,0,0,.72),0 0 0 1px rgba(217,184,95,.05) inset,inset 0 1px rgba(255,255,255,.065)'}, {fontVariantNumeric:'tabular-nums',overflowAnchor:'none'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:8px;font-weight:850;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
         const plannerPlan=planner[plannerHorizon]||planner['30']||null;
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min',3600:'1 h'})[plannerHorizon]||'30 s';
@@ -1308,6 +1308,8 @@ export class LocalPlaywrightDriver{
         const thresholdSide=!analysisStale&&combinedCall>=operationalDisplayThreshold&&combinedCall>combinedPut?'CALL':!analysisStale&&combinedPut>=operationalDisplayThreshold&&combinedPut>combinedCall?'PUT':'AGUARDAR';
         const averageValues=[marketCallPct,strategyCallPct,combinedCall].filter(v=>Number.isFinite(Number(v)));
         const averageCallPct=averageValues.length?Math.round(averageValues.reduce((a,v)=>a+Number(v),0)/averageValues.length):50,averagePutPct=100-averageCallPct;
+        const averageConfidenceValues=[marketConfidence,strategyConfidence,generalStrength].filter(v=>Number.isFinite(Number(v)));
+        const averageConfidence=averageConfidenceValues.length?Math.round(averageConfidenceValues.reduce((a,v)=>a+Number(v),0)/averageConfidenceValues.length):0;
         const averageSide=!analysisStale&&averageCallPct>=averageDisplayThreshold&&averageCallPct>averagePutPct?'CALL':!analysisStale&&averagePutPct>=averageDisplayThreshold&&averagePutPct>averageCallPct?'PUT':'AGUARDAR';
         const averageTone=averageSide==='CALL'?callTone:averageSide==='PUT'?putTone:neutralTone;
         const operationalState=String(operational.state||'AGUARDAR').toUpperCase();
@@ -1436,10 +1438,10 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" title="Atualizar leitura da corretora" style="border:1px solid ${panelBorder};border-radius:8px;height:29px;padding:0 8px;background:${uiTheme==='light'?'linear-gradient(180deg,#fff,#f4eee2)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:900 7.5px/1 inherit;cursor:pointer;white-space:nowrap">↻ LEITURA</button>
                 <button data-sentinel-scroll title="Descer / voltar ao topo" style="border:1px solid ${panelBorder};border-radius:8px;width:29px;height:29px;background:${uiTheme==='light'?'#fff':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${goldSoft};font:950 15px/1 inherit;cursor:pointer;display:grid;place-items:center">↓</button>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(3,minmax(82px,1fr));gap:5px;width:100%;max-width:300px">
-                <button data-sentinel-action="start" style="height:31px;border:1px solid rgba(215,182,93,.56);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,#f2dc9a,#cda646)':'linear-gradient(180deg,rgba(215,182,93,.18),rgba(215,182,93,.06))'};color:${runtime==='running'?'#19130a':goldSoft};font:950 9.2px/1 inherit;letter-spacing:.035em;cursor:pointer">● INICIAR</button>
-                <button data-sentinel-action="pause" style="height:31px;border:1px solid rgba(215,182,93,.42);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,#ead18b,#b99137)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${runtime==='paused'?'#19130a':goldSoft};font:950 9.2px/1 inherit;letter-spacing:.035em;cursor:pointer">Ⅱ PAUSAR</button>
-                <button data-sentinel-action="stop" style="height:31px;border:1px solid rgba(215,182,93,.34);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(140,104,35,.78),rgba(78,57,20,.88))':'linear-gradient(180deg,rgba(215,182,93,.09),rgba(215,182,93,.025))'};color:${goldSoft};font:950 9.2px/1 inherit;letter-spacing:.035em;cursor:pointer">■ PARAR</button>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(78px,1fr));gap:5px;width:100%;max-width:310px">
+                <button data-sentinel-action="start" style="height:31px;border:1px solid rgba(215,182,93,.56);border-radius:8px;background:${runtime==='running'?'linear-gradient(180deg,#f2dc9a,#cda646)':'linear-gradient(180deg,rgba(215,182,93,.18),rgba(215,182,93,.06))'};color:${runtime==='running'?'#19130a':goldSoft};font:950 8.7px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">● INICIAR</button>
+                <button data-sentinel-action="pause" style="height:31px;border:1px solid rgba(215,182,93,.42);border-radius:8px;background:${runtime==='paused'?'linear-gradient(180deg,#ead18b,#b99137)':'linear-gradient(180deg,rgba(215,182,93,.12),rgba(215,182,93,.035))'};color:${runtime==='paused'?'#19130a':goldSoft};font:950 8.7px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">Ⅱ PAUSAR</button>
+                <button data-sentinel-action="stop" style="height:31px;border:1px solid rgba(215,182,93,.34);border-radius:8px;background:${runtime==='stopped'?'linear-gradient(180deg,rgba(140,104,35,.78),rgba(78,57,20,.88))':'linear-gradient(180deg,rgba(215,182,93,.09),rgba(215,182,93,.025))'};color:${goldSoft};font:950 8.7px/1 inherit;letter-spacing:.035em;cursor:pointer;white-space:nowrap;overflow:hidden">■ PARAR</button>
               </div>
               <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:7.2px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
             </div>
@@ -1569,7 +1571,7 @@ export class LocalPlaywrightDriver{
           if(el.dataset.geometryClamped!=='1'){
             el.dataset.geometryClamped='1';
             const r=el.getBoundingClientRect();
-            if(r.width>window.innerWidth-16)el.style.width=Math.max(430,window.innerWidth-16)+'px';
+            if(r.width>window.innerWidth-16)el.style.width=Math.max(500,window.innerWidth-16)+'px';
             if(r.height>window.innerHeight-16)el.style.height=Math.max(360,window.innerHeight-16)+'px';
             const rr=el.getBoundingClientRect();
             if(rr.right>window.innerWidth-8){el.style.left=Math.max(8,window.innerWidth-rr.width-8)+'px';el.style.right='auto'}
