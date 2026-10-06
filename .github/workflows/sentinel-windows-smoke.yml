@@ -53,7 +53,8 @@ jobs:
           if(strategy.includes("includes(strategy))applyCore()"))throw new Error('strategies_still_share_legacy_core');
           for(const k of ['entryReady','preEntry','reversalBlocked','technicalEdge','_mergeScenarioConfluence','_generalConsensus','family-balanced-market-vs-strategies'])if(!runtime.includes(k))throw new Error('runtime_gate_missing:'+k);
           for(const k of ['strategy2','strategy3','_strategyPanel','strategyCards','strategyConfluence'])if(!runtime.includes(k))throw new Error('strategy_panel_missing:'+k);
-          for(const k of ['SINAL OPERACIONAL','data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
+          for(const k of ['data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
+          for(const k of ['futureDecisionPaused','feedPausedAt','maxFeedPauseMs=12000','MÉDIA DOS 3 TOTAIS'])if(!driverSource.includes(k))throw new Error('v13_future_ui_missing:'+k);
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
