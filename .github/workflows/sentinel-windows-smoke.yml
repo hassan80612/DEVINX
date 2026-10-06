@@ -59,8 +59,9 @@ jobs:
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
-          if(!runtime.includes('_generalConsensus')||!runtime.includes('horizon_forecast_v2')||!runtime.includes('consensusAligned')||!runtime.includes('modelConfidence'))throw new Error('future_forecast_runtime_missing');
-          if(!strategy.includes("modelVersion:'future-v2'")||!strategy.includes('callProbability')||!strategy.includes('projectedPrice'))throw new Error('future_forecast_strategy_missing');
+          if(!runtime.includes('_generalConsensus')||!runtime.includes('horizon_forecast_v3')||!runtime.includes('strategy_forecast_v3')||!runtime.includes('_strategyCredibilityMap')||!runtime.includes('consensusAligned'))throw new Error('future_v3_runtime_missing');
+          if(!strategy.includes("modelVersion:'future-v3'")||!strategy.includes('strategyForecasts')||!strategy.includes('strategyWeightPct')||!strategy.includes('callProbability')||!strategy.includes('projectedPrice'))throw new Error('future_v3_strategy_missing');
+          if(!engine.includes('analysisContext?.strategies')||!engine.includes('strategyCredibility'))throw new Error('future_v3_engine_context_missing');
           if(!runtime.includes('incomingAsset&&incomingAsset!==currentAsset')||!runtime.includes('this.lastResult={asset:incomingAsset')||!worker.includes('resultAsset'))throw new Error('asset_switch_scenario_invalidation_missing');
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
@@ -76,7 +77,7 @@ jobs:
           if(!runtime.includes('_priceAtExpiry')||!runtime.includes("settlementQuality!=='approx'")||!runtime.includes('expirationMatch')||!runtime.includes('brokerExpirationDurationMs'))throw new Error('exact_expiry_validation_missing');
           if(!runtime.includes('Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30))'))throw new Error('statistical_sample_floor_missing');
           if(!worker.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
-          for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO FUTURO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
+          for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO FUTURO','FUTURE V3','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
           if(!worker.includes("if(action==='refresh')"))throw new Error('refresh_action_missing');
@@ -97,19 +98,27 @@ jobs:
             return{from:Math.floor((forecastNow-(120-i)*60000)/1000),to:Math.floor((forecastNow-(119-i)*60000)/1000),open:base-.00002,high:base+.00008,low:base-.00007,close:base,volume:10+i%7}
           });
           const forecastQuotes=Array.from({length:160},(_,i)=>({ts:forecastNow-(159-i)*1000,price:1.2040+i*.0000015+Math.sin(i/9)*.00001}));
-          const future=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'smart_confluence',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
-          if(future?.entryPlanner?.modelVersion!=='future-v2')throw new Error('future_v2_model_missing');
+          const future=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'smart_confluence',strategies:['smart_confluence','trend','mean_reversion'],strategyCredibility:{trend:{'60':{multiplier:1.12,samples:24}}},minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
+          if(future?.entryPlanner?.modelVersion!=='future-v3')throw new Error('future_v3_model_missing');
+          if((future.entryPlanner?.strategies||[]).join(',')!=='smart_confluence,trend,mean_reversion')throw new Error('future_v3_strategy_set_missing');
           for(const h of ['30','60','120','300','600','900']){
             const p=future?.entryPlanner?.horizons?.[h];
-            if(!p||p.modelVersion!=='future-v2'||!Number.isFinite(Number(p.confidence))||!Number.isFinite(Number(p.projectedPrice)))throw new Error('future_horizon_invalid:'+h);
-            if(Math.round(Number(p.callProbability||0)+Number(p.putProbability||0))!==100)throw new Error('future_probability_invalid:'+h)
+            if(!p||p.modelVersion!=='future-v3'||!Number.isFinite(Number(p.confidence))||!Number.isFinite(Number(p.projectedPrice)))throw new Error('future_horizon_invalid:'+h);
+            if(Math.round(Number(p.callProbability||0)+Number(p.putProbability||0))!==100)throw new Error('future_probability_invalid:'+h);
+            if(!Array.isArray(p.strategyForecasts)||p.strategyForecasts.length!==3)throw new Error('future_strategy_forecasts_missing:'+h)
           }
+          if(Number(future.entryPlanner.horizons['30'].strategyWeightPct)!==30||Number(future.entryPlanner.horizons['900'].strategyWeightPct)!==55)throw new Error('future_horizon_strategy_weights_invalid');
           if(Number(future.forecast30?.callStrength)!==Number(future.entryPlanner.horizons['30'].callProbability))throw new Error('forecast30_not_bound_to_future_engine');
+          const trendA=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'trend',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
+          const trendB=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'trend_following',minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
+          if(Number(trendA.metrics?.rawBuyScore)!==Number(trendB.metrics?.rawBuyScore)||Number(trendA.metrics?.rawSellScore)!==Number(trendB.metrics?.rawSellScore))throw new Error('trend_alias_not_consistent');
+          const pausedFuture=analyzeMarket({candles:forecastCandles,quoteHistory:forecastQuotes,strategy:'smart_confluence',strategies:[],minConfidence:74,durationMs:60000,quoteTs:forecastNow,now:forecastNow});
+          if((pausedFuture.entryPlanner?.horizons?.['30']?.strategyForecasts||[]).length!==0||pausedFuture.entryPlanner?.horizons?.['30']?.outlookReady===true)throw new Error('paused_strategies_still_drive_future');
           const assetRuntime=new DemoTradingRuntime();
           assetRuntime.lastResult={asset:'EUR/USD',action:'WAIT',analysis:{side:'WAIT',confidence:0}};
           assetRuntime.setExternalMarket({symbol:'GBP/CAD',provider:'iq_option',feedValidated:false,candles:[],quoteHistory:[],quote:0});
           if(assetRuntime.settings.asset!=='GBP/CAD'||assetRuntime.lastResult?.asset!=='GBP/CAD'||!String(assetRuntime.lastResult?.reasons?.[0]||'').includes('novo ativo'))throw new Error('runtime_asset_scenario_not_invalidated');
-          console.log('V11.8 FUTURE V2 + ASSET INVALIDATION: PASS');
+          console.log('V11.8 FUTURE V3 + MULTI-STRATEGY + ASSET INVALIDATION: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -130,6 +139,11 @@ jobs:
           d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',source:'click'});
           if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0)throw new Error('asset_switch_not_atomic');
 
+          st.activeMap.set('GOLD',76);st.uiSymbol='USD/HKD OTC';st.symbol='USD/HKD OTC';st.activeId=1382;st.candles=[{from:1,to:2,open:1,high:1,low:1,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
+          d.applyActiveSelection('iq_option',{symbol:'Gold',activeId:76,source:'click'});
+          if(st.uiSymbol!=='Gold'||st.symbol!=='Gold'||Number(st.activeId)!==76||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0)throw new Error('generic_gold_switch_not_atomic');
+
+          d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',activeId:1382,source:'click'});
           st.candleSize=60;
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'binary-options.open-option',body:{active_id:9999,duration:120,size:120}}}),'page-out');
           if(Number(st.activeId)!==1382||Number(st.candleSize)!==60)throw new Error('order_retargeted_analysis_asset');
