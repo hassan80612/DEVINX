@@ -1,0 +1,83 @@
+name: Sentinel V13 Windows validation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
+      - '.github/workflows/sentinel-v13-windows.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: sentinel-v13-forecast-engine-20261006
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate source
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          Get-ChildItem 'sentinel-trading-lab/agent' -Recurse -Filter '*.mjs' | ForEach-Object {
+            & node --check $_.FullName
+            if($LASTEXITCODE -ne 0){throw "Syntax failed: $($_.FullName)"}
+          }
+          $worker=Get-Content 'sentinel-trading-lab/agent/worker/index.mjs' -Raw
+          if($worker -notmatch "VERSION='13\.0\.0'"){throw 'worker not V13'}
+          $manager=Get-Content 'sentinel-trading-lab/agent/worker/agent-manager.mjs' -Raw
+          if($manager -notmatch "VERSION='13\.0\.0'"){throw 'manager not V13'}
+          Write-Host 'V13 SOURCE: PASS'
+      - name: Build Windows Agent
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Force -Path 'sentinel-trading-lab/public/downloads' | Out-Null
+          Compress-Archive -Path 'sentinel-trading-lab/agent/*' -DestinationPath 'sentinel-trading-lab/public/downloads/agent_payload_v88.zip' -Force
+          go build -trimpath -ldflags="-s -w -buildid=" -o 'sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe' 'sentinel-trading-lab/agent-launcher.go'
+          if($LASTEXITCODE -ne 0){throw 'EXE build failed'}
+          Write-Host 'V13 BUILD: PASS'
+      - name: Install health test
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:SENTINEL_INSTALL_TEST='1'
+          $env:SENTINEL_SUPABASE_URL='http://127.0.0.1:9'
+          & 'sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe'
+          if($LASTEXITCODE -ne 0){throw "Installer failed: $LASTEXITCODE"}
+          $ok=$false
+          for($i=0;$i -lt 120;$i++){
+            try{
+              $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.0.0'){$ok=$true;break}
+            }catch{}
+            Start-Sleep -Milliseconds 500
+          }
+          if(-not $ok){throw 'V13 Agent/Worker unhealthy'}
+          Write-Host 'V13 INSTALL HEALTH: PASS'
+      - name: Stop Agent
+        if: always()
+        shell: powershell
+        run: |
+          try{Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 2|Out-Null}catch{}
+      - name: Commit artifacts
+        if: success()
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          git diff --cached --quiet
+          if($LASTEXITCODE -eq 0){Write-Host 'Artifacts unchanged'; exit 0}
+          git commit -m "build(sentinel): publish Windows Agent V13"
+          git pull --rebase origin sentinel-v13-forecast-engine-20261006
+          git push origin HEAD:sentinel-v13-forecast-engine-20261006
