@@ -438,7 +438,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const enoughFlow=seconds>60||micro.ready;
    const outlookReady=enoughHistory&&enoughFlow&&quality>=.72;
    const hasDirection=outlookReady&&modelConfidence>=minForecastConfidence&&Math.abs(signal)>=.16&&agreement>=.52;
-   const directionalBias=outlookReady&&Math.abs(signal)>=.035?(signal>0?'CALL':'PUT'):'NEUTRO';
+   const directionalBias=outlookReady&&Math.abs(signal)>=.02?(signal>0?'CALL':'PUT'):'NEUTRO';
    const bias=directionalBias;
    const projectedMove=expectedMove*signal*(.58+modelConfidence/250);
    const projectedPrice=last+projectedMove;
