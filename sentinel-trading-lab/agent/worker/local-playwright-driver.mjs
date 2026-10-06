@@ -1036,7 +1036,7 @@ export class LocalPlaywrightDriver{
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
     const st=this.state(provider),aid=Number(activeId);
-    let next=symbol?pairStrings(symbol)[0]||null:null;
+    let next=symbol?instrumentLabel(symbol)||null:null;
     if(!next&&Number.isFinite(aid)){
       const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===aid)?.[0]||null;
       if(key)next=[...st.assets].find(x=>pairKey(x)===key)||(key.endsWith('OTC')?`${key.slice(0,3)}/${key.slice(3,6)} OTC`:`${key.slice(0,3)}/${key.slice(3,6)}`);
