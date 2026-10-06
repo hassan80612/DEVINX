@@ -184,6 +184,7 @@ function protocolScan(data,st,direction='in'){
   const sizeRaw=body?.size??body?.duration??data?.msg?.size??data?.msg?.duration;
   const command=`${outer} ${inner}`.toLowerCase();
   const marketCommand=/get-candles|candle-generated|instrument-quotes|quote-generated|subscribe.*candle|subscribe.*quote|^candles$/.test(command);
+  const pageSelectionCommand=/get-candles/.test(command);
   const outboundMarket=/(?:page|direct)-out/.test(direction)&&activeRaw!=null&&marketCommand;
   if(outboundMarket){
     const aid=n(activeRaw),rid=marketRequestId(data);
@@ -191,7 +192,7 @@ function protocolScan(data,st,direction='in'){
   }
   if(/page-out/.test(direction)&&activeRaw!=null){
     const aid=n(activeRaw);
-    if(aid!=null&&marketCommand){
+    if(aid!=null&&pageSelectionCommand){
       const prevPageId=n(st.pageActiveId),prevActiveId=n(st.activeId);
       const activeChanged=(prevPageId!=null&&Number(prevPageId)!==Number(aid))||(prevPageId==null&&prevActiveId!=null&&Number(prevActiveId)!==Number(aid));
       st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
@@ -618,7 +619,7 @@ export class LocalPlaywrightDriver{
     // The broker page's own outbound market subscription is the source of truth for
     // the chart selected by the user. Sentinel's direct requests are "direct-out"
     // and therefore can never retarget the selected asset.
-    if(/page-out/.test(direction)&&st.pageActiveId!=null){
+    if(/page-out/.test(direction)&&pageSelectionCommand&&st.pageActiveId!=null){
       this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page'});
     }
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
@@ -1211,7 +1212,13 @@ export class LocalPlaywrightDriver{
     st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;
     st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${next}`;
     try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source,assetChanged:true})).catch(()=>{})}catch{}
-    setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
+    if(st.switchRequestTimer){clearTimeout(st.switchRequestTimer);st.switchRequestTimer=null}
+    if(!String(source).startsWith('protocol-page')){
+      st.switchRequestTimer=setTimeout(()=>{
+        st.switchRequestTimer=null;
+        if(st.activeId!=null&&st.candles.length<20)this.requestMarketData(provider,{force:true}).catch(()=>{})
+      },220)
+    }
     return true
   }
   async maintain(provider){
