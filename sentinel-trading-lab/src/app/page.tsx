@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useMemo,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
 type Status=any;
 const tabDefs=[
@@ -48,16 +48,38 @@ async function rawLocal(base:string,path:string,method='GET',body?:any,timeout=1
   try{const init:any={method,headers:{'content-type':'application/json'},cache:'no-store',signal:controller.signal,targetAddressSpace:'loopback'};if(body!==undefined)init.body=JSON.stringify(body);const r=await fetch(`${base}/${path.replace(/^\//,'')}`,init);const j=await r.json().catch(()=>({}));if(!r.ok||j?.ok===false)throw new Error(j?.error||`local_${r.status}`);return j?.data??j}finally{clearTimeout(timer)}
 }
 const localFetch=(path:string,method='GET',body?:any,timeout=2200)=>rawLocal(LOCAL_WORKER,path,method,body,timeout);
-const managerFetch=(path:string,method='GET',body?:any)=>rawLocal(LOCAL_MANAGER,path,method,body,2200);
+const managerFetch=(path:string,method='GET',body?:any,timeout=2200)=>rawLocal(LOCAL_MANAGER,path,method,body,timeout);
 async function cloudFetch(path:string,method='GET',body?:any){const r=await fetch(`/api/runtime/${path.replace(/^\//,'')}`,{method,headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),cache:'no-store'});const j=await r.json();if(!j.ok)throw new Error(j.error);return j.data}
 
 export default function Page(){
-  const[tab,setTab]=useState('Dashboard');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');
+  const[tab,setTab]=useState('Dashboard');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const refreshBusy=useRef(false);
   const isMaster=account?.profile?.role==='master';const agentAccess=isMaster||account?.profile?.access_active===true;const visibleTabs=tabDefs.filter(x=>x.key!=='Master Console'||isMaster);
   const refreshMe=useCallback(async()=>{try{const r=await fetch('/api/auth/me',{cache:'no-store'});const j=await r.json();if(r.ok&&j.ok)setAccount(j);else if(r.status===401)window.location.href='/login'}catch{}},[]);
-  const refresh=useCallback(async()=>{let mh:any=null;try{mh=await managerFetch('health');setAgent((v:any)=>({...v,process:true,worker:!!mh.workerHealthy,remote:false,version:mh.version,status:mh.status,lastSeen:Date.now()}))}catch{setAgent((v:any)=>({...v,process:false,worker:false}))}
-    try{const data=await localFetch('status');setS(data);setSource('local');setErr('');setAgent((v:any)=>({...v,process:true,worker:true,remote:false,version:data.agentVersion||v.version,lastSeen:Date.now(),pairingCode:data.remoteRelay?.pairingCode||null,paired:data.remoteRelay?.paired}));if(data.remoteRelay?.paired===false&&data.remoteRelay?.pairingCode)setPairCode((v:string)=>v||String(data.remoteRelay.pairingCode).toUpperCase());return}catch(e:any){if(mh?.ok){setSource('local');setErr(`Agent aberto, mas o worker não respondeu (${String(e?.message||e)}).`);return}}
-    try{const data=await cloudFetch('status');setS(data);setSource('remote');const online=!!data?.remote?.online;setAgent((v:any)=>({...v,remote:online,process:online,worker:online,paired:true,version:data.agentVersion||v.version}));setErr(online?'':'PC vinculado, mas Agent offline.')}catch(e:any){setS(null);setSource('remote');setAgent((v:any)=>({...v,remote:false,process:false,worker:false}));const m=String(e?.message||e);setErr(m==='pc_nao_vinculado'?'':m)}},[]);
+  const refresh=useCallback(async()=>{
+    if(refreshBusy.current)return;refreshBusy.current=true;
+    try{
+      const [mhResult,localResult]=await Promise.allSettled([managerFetch('health','GET',undefined,1200),localFetch('status','GET',undefined,1500)]);
+      const mh=mhResult.status==='fulfilled'?mhResult.value:null;
+      if(localResult.status==='fulfilled'){
+        const data=localResult.value;setS(data);setSource('local');setErr('');
+        setAgent((v:any)=>({...v,process:true,worker:true,remote:false,version:data.agentVersion||v.version,lastSeen:Date.now(),pairingCode:data.remoteRelay?.pairingCode||null,paired:data.remoteRelay?.paired}));
+        if(data.remoteRelay?.paired===false&&data.remoteRelay?.pairingCode)setPairCode((v:string)=>v||String(data.remoteRelay.pairingCode).toUpperCase());
+        return
+      }
+      if(mh?.ok){
+        setAgent((v:any)=>({...v,process:true,worker:!!mh.workerHealthy,remote:false,version:mh.version,status:mh.status,lastSeen:Date.now()}));
+        setSource('local');setErr(`Agent aberto, mas o worker não respondeu (${String(localResult.status==='rejected'?localResult.reason?.message||localResult.reason:'timeout')}).`);return
+      }
+      try{
+        const data=await cloudFetch('status');setS(data);setSource('remote');const online=!!data?.remote?.online;
+        setAgent((v:any)=>({...v,remote:online,process:online,worker:online,paired:true,version:data.agentVersion||v.version}));
+        setErr(online?'':'PC vinculado, mas Agent offline.')
+      }catch(e:any){
+        setS(null);setSource('remote');setAgent((v:any)=>({...v,remote:false,process:false,worker:false}));
+        const m=String(e?.message||e);setErr(m==='pc_nao_vinculado'?'':m)
+      }
+    }finally{refreshBusy.current=false}
+  },[]);
   useEffect(()=>{try{const saved=localStorage.getItem('sentinel-theme');const next=saved==='light'?'light':'dark';setTheme(next);document.documentElement.dataset.theme=next}catch{}},[]);
   useEffect(()=>{try{document.documentElement.dataset.theme=theme;localStorage.setItem('sentinel-theme',theme)}catch{}},[theme]);
   useEffect(()=>{refreshMe();try{const q=new URLSearchParams(window.location.search);const c=q.get('pair');if(c)setPairCode(c.toUpperCase())}catch{};refresh();const id=setInterval(refresh,2500);return()=>clearInterval(id)},[refresh,refreshMe]);
