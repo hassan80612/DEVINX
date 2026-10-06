@@ -65,6 +65,7 @@ export class DemoTradingRuntime{
       this.generalConsensusDisplay=null;
       this.entryStability={side:'WAIT',since:0,count:0};
       this.entryRelease={side:'WAIT',at:0};
+      this.entrySetup={side:'WAIT',kind:null,since:0};
       this.lastResult={asset:incomingAsset,action:'WAIT',analysis:{asset:incomingAsset,side:'WAIT',confidence:0,reasons:['Atualizando análise para o novo ativo.']},reasons:['Atualizando análise para o novo ativo.']};
       this.nextEvalMs=0
     }
@@ -88,11 +89,12 @@ export class DemoTradingRuntime{
       if(strategy==='none'||!labels[strategy])return{slot:index+1,strategy:'none',label:'Estratégia não selecionada',active:false,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:[]};
       try{
         const a=analyzeMarket({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now});
-        const rawCall=Math.max(0,Number(a?.metrics?.rawBuyScore||0)),rawPut=Math.max(0,Number(a?.metrics?.rawSellScore||0));
-        const callPct=Math.max(0,Math.min(100,Math.round(rawCall))),putPct=Math.max(0,Math.min(100,Math.round(rawPut))),edge=callPct-putPct,strongest=Math.max(callPct,putPct);
-        const side=strongest<35||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
+        const rawCall=Math.max(0,Number(a?.metrics?.rawBuyScore||0)),rawPut=Math.max(0,Number(a?.metrics?.rawSellScore||0)),rawTotal=rawCall+rawPut;
+        const callPct=rawTotal>0?Math.max(0,Math.min(100,Math.round(rawCall/rawTotal*100))):50,putPct=100-callPct,edge=callPct-putPct;
+        const evidence=Math.max(0,Math.min(1,rawTotal/70));
+        const side=evidence<.12||Math.abs(edge)<10?'NEUTRO':edge>0?'CALL':'PUT';
         const reasons=(Array.isArray(a?.reasons)?a.reasons:[]).filter(x=>!/entrada aguardando|bloqueado por risco|fluxo \d+s|EMA micro|microestrutura/i.test(String(x))).slice(0,3);
-        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,reasons};
+        return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side,callPct,putPct,rawCall,rawPut,rawTotal,evidence,reasons};
       }catch{
         return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,rawCall:0,rawPut:0,reasons:['Leitura indisponível neste ciclo']};
       }
@@ -124,9 +126,12 @@ export class DemoTradingRuntime{
       const rawBias=['CALL','PUT'].includes(String(plan.bias||'').toUpperCase())?String(plan.bias).toUpperCase():'NEUTRO';
       const durationMs=Math.max(10000,Number(secondsKey||plan.horizonSeconds||30)*1000);
       plan.rawBias=rawBias;
+      plan.asset=asset;
+      plan.generatedAt=now;
       plan.generalBias=generalSide;
       plan.consensusAligned=generalSide!=='AGUARDAR'&&rawBias!=='NEUTRO'&&generalSide===rawBias;
-      plan.executionBias=plan.consensusAligned?rawBias:'NEUTRO';
+      plan.entryAligned=plan.consensusAligned;
+      plan.executionBias=rawBias;
       plan.modelConfidence=Math.max(0,Number(plan.modelConfidence??plan.confidence??0));
       if(plan.outlookReady===true&&rawBias!=='NEUTRO'&&Number.isFinite(Number(snap?.price))&&Number(snap.price)>0){
         this._queueSignalCandidate({
@@ -144,8 +149,8 @@ export class DemoTradingRuntime{
       const calibrated=historyWeight>0?Math.round(plan.modelConfidence*(1-historyWeight)+validation.smoothedWinRate*historyWeight):Math.round(plan.modelConfidence);
       plan.confidence=Math.max(0,Math.min(100,calibrated));
       plan.validation={samples:validation.samples,wins:validation.wins,losses:validation.losses,winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,calibrated:historyWeight>0};
-      plan.basis='previsão futura multi-fator'+(plan.consensusAligned?' + consenso atual alinhado':generalSide==='AGUARDAR'?' + consenso atual ainda formando':' + consenso atual divergente');
-      plan.consensusSources=['previsão '+rawBias+' '+Math.round(plan.confidence)+'%','consenso atual '+generalSide]
+      plan.basis='previsão futura multi-fator independente'+(plan.consensusAligned?' · entrada atual alinhada':generalSide==='AGUARDAR'?' · entrada atual ainda formando':' · entrada atual divergente');
+      plan.consensusSources=['previsão futura '+rawBias+' '+Math.round(plan.confidence)+'%','leitura atual '+generalSide]
     }
   }
   _generalConsensus(analysis,strategyPanel){
@@ -155,7 +160,7 @@ export class DemoTradingRuntime{
       {key:'market_confluence',group:'market',label:'Confluência Técnica',call:final.callStrength,put:final.putStrength},
       {key:'market_entry',group:'market',label:'Prontidão de Entrada',call:q.technicalBuy??m.buyScore,put:q.technicalSell??m.sellScore},
       {key:'market_reversal',group:'market',label:'Virada / Reversão',call:short.reversalCallScore,put:short.reversalPutScore},
-      ...((strategyPanel?.cards||[]).filter(x=>x?.active).map(x=>({key:'strategy_'+Number(x.slot),group:'strategy',label:x.label||('Estratégia '+x.slot),call:x.callPct,put:x.putPct})))
+      ...((strategyPanel?.cards||[]).filter(x=>x?.active).map(x=>({key:'strategy_'+Number(x.slot),group:'strategy',label:x.label||('Estratégia '+x.slot),call:x.callPct,put:x.putPct,evidence:Number(x.evidence)})))
     ].map(x=>({...x,paused:paused[x.key]===true,valid:finite(x.call)&&finite(x.put)}));
     const active=sourceRows.filter(x=>!x.paused&&x.valid);
     const marketActive=active.filter(x=>x.group==='market'),strategyActive=active.filter(x=>x.group==='strategy');
@@ -163,7 +168,8 @@ export class DemoTradingRuntime{
       const prepared=rows.map(x=>{
         const call=Math.max(0,Number(x.call||0)),put=Math.max(0,Number(x.put||0)),rawTotal=call+put;
         const informative=rawTotal>=5;
-        const evidence=informative?Math.max(.08,Math.min(1,rawTotal/70)):0;
+        const explicitEvidence=Number.isFinite(Number(x.evidence))?Math.max(0,Math.min(1,Number(x.evidence))):null;
+        const evidence=informative?(explicitEvidence??Math.max(.08,Math.min(1,rawTotal/70))):0;
         const callRatio=rawTotal>0?call/rawTotal:.5,putRatio=1-callRatio;
         const vote=callRatio>=.55?'CALL':putRatio>=.55?'PUT':'NEUTRO';
         return{...x,call,put,rawTotal,informative,evidence,callRatio,putRatio,vote}
@@ -218,8 +224,9 @@ export class DemoTradingRuntime{
   _operationalSignalState(analysis,snap,now=Date.now()){
     const general=analysis?.generalConsensus||{},quality=analysis?.quality||{},plans=analysis?.entryPlanner?.horizons||{};
     const durationMs=Math.max(15000,Number(this.settings.orderDurationMs||60000)),durationKey=String(Math.round(durationMs/1000));
-    const plan=plans[durationKey]||plans['30']||Object.values(plans)[0]||null;
+    const rawPlan=plans[durationKey]||plans['30']||Object.values(plans)[0]||null;
     const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
+    const plan=rawPlan&&String(rawPlan.asset||asset).toUpperCase()===asset?rawPlan:null;
     const currentSide=['CALL','PUT'].includes(String(general.side||'').toUpperCase())?String(general.side).toUpperCase():'AGUARDAR';
     const futureSide=plan&&['CALL','PUT'].includes(String(plan.rawBias||plan.bias||'').toUpperCase())?String(plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
     const futureConfidence=Math.max(0,Number(plan?.confidence||plan?.modelConfidence||0));
