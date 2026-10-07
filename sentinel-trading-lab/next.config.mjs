@@ -4,7 +4,7 @@ const nextConfig={
   async headers(){
     return[
       {
-        source:'/downloads/Sentinel-Agent-Windows.exe',
+        source:'/downloads/Sentinel-Agent-V13.3.exe',
         headers:[
           {key:'Content-Type',value:'application/octet-stream'},
           {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-V13.3.exe"'},
