@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='13.1.0';
+const VERSION='13.1.0-r12';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -32,8 +32,16 @@ const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.i
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
 let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0,lastOverlayAt=0,lastPersistAt=0;
-driver.setMarketUpdateHandler?.((provider)=>{
-  if(provider!==activeProvider||runtime.stateName!=='running')return;
+driver.setMarketUpdateHandler?.((provider,event={})=>{
+  if(provider!==activeProvider)return;
+  // Troca de ativo é uma barreira forte: sincronize o runtime imediatamente para
+  // invalidar níveis/percentuais do ativo anterior antes de qualquer nova análise.
+  if(event?.assetChanged===true){
+    syncRuntimeMarket();
+    lastRealtimeEvalAt=0;
+    runtime.requestImmediateEvaluation?.();
+    if(runtime.stateName!=='running')return;
+  }else if(runtime.stateName!=='running')return;
   const now=Date.now();
   if(now-lastRealtimeEvalAt<500)return;
   lastRealtimeEvalAt=now;
