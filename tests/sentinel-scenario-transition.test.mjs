@@ -158,3 +158,28 @@ test('quotes remaining beyond a level cannot confirm entry while moving the wron
     assert.equal(r._operationalSignalState(a,snap(restored,t+500),t+500).actionable,true);
   }
 });
+
+test('independently confirmed opposite continuation can replace an active side without a reversal label',()=>{
+  for(const oldSide of ['CALL','PUT']){
+    const r=runtime(),oldPrice=oldSide==='CALL'?100.01:99.99;
+    const first=r._operationalSignalState(analysis(oldSide),snap([oldPrice,oldPrice],t),t);assert.equal(first.actionable,true);
+    const original=structuredClone(r.signalValidation.pending[0]),side=oldSide==='CALL'?'PUT':'CALL',price=side==='CALL'?100.02:99.98;
+    const a=analysis(side);for(const p of Object.values(a.entryPlanner.horizons)){p.scenario.continuationReady=true;p.displayCallProbability=oldSide==='CALL'?80:20;p.displayPutProbability=100-p.displayCallProbability}
+    const o=r._operationalSignalState(a,snap([price,price],t+1000),t+1000);
+    assert.equal(o.side,side);assert.equal(o.actionable,true);assert.equal(o.transition.fromSide,oldSide);assert.match(o.transition.reason,/Continuação/);
+    assert.equal(r.signalValidation.pending.length,2);assert.deepEqual(r.signalValidation.pending[0],original);
+    assert.equal(r._operationalSignalState(a,snap([price,price],t+5000),t+5000).actionable,false);
+  }
+});
+test('opposite continuation still needs both horizons, aligned flow and independent prices',()=>{
+  for(const block of ['unqualified-kind','flow','weakening','horizon','one-quote']){
+    const r=runtime();r._operationalSignalState(analysis('CALL'),snap([100.01,100.01],t),t);
+    const a=analysis('PUT');for(const p of Object.values(a.entryPlanner.horizons))p.scenario.continuationReady=true;
+    if(block==='unqualified-kind')a.entryPlanner.horizons['30'].scenario.kind='forming';
+    if(block==='flow')a.metrics.micro.delta15=.01;
+    if(block==='weakening')a.metrics.shortModel.weakeningDown=true;
+    if(block==='horizon')a.entryPlanner.horizons['30'].directionReady=false;
+    const q=block==='one-quote'?{price:99.98,quoteTs:t+1000,quoteHistory:[{ts:t+1000,price:99.98}]}:snap([99.98,99.98],t+1000);
+    const o=r._operationalSignalState(a,q,t+1000);assert.equal(o.actionable,false,block);assert.equal(o.side,'CALL',block);assert.equal(r.signalValidation.pending.length,1,block);
+  }
+});

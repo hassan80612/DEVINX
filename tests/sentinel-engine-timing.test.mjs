@@ -167,3 +167,39 @@ test('a confidence dip during the entry burst never continues to authorize an en
   const op=r._operationalSignalState(a,{price:100},t+1000);
   assert.equal(op.actionable,false);assert.equal(op.ready,false);assert.equal(op.targetAt,t+60000);assert.doesNotMatch(op.reason,/estão alinhados/);
 });
+
+test('current opposite analysis is visible without authorizing an unconfirmed opposite entry',()=>{
+  const r=runtime(),op=r._operationalSignalState(analysis('CALL',99),confirmedSnap(),t);
+  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,rawBias:'PUT',callProbability:20,putProbability:80};
+  const view=scenarioViewFromRuntime({operational:op,forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
+  assert.equal(view.side,'CALL');assert.equal(view.analysisSide,'PUT');assert.equal(view.oppositeAnalysis,true);assert.equal(view.canEnter,false);assert.equal(view.entryWindowOpen,false);assert.equal(view.deadline,op.targetAt);
+  assert.equal(r.signalValidation.pending.length,1);assert.equal(r.signalValidation.pending[0].side,'BUY');
+  const wrong=scenarioViewFromRuntime({operational:op,forecast:{...forecast,asset:'OTHER'},asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
+  assert.equal(wrong.analysisSide,null);assert.equal(wrong.canEnter,false);
+});
+test('entry window opens immediately with the engine release and lasts only its useful burst',()=>{
+  const r=runtime(),a=analysis('CALL',100),waiting=r._operationalSignalState(a,{price:99,quoteTs:t},t);
+  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,rawBias:'CALL',callProbability:80,putProbability:20};
+  const pending=scenarioViewFromRuntime({operational:waiting,forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t});
+  assert.equal(pending.hasSetup,true);assert.equal(pending.entryWindowOpen,false);assert.equal(pending.analysisSide,'CALL');
+  const entered=r._operationalSignalState(a,confirmedSnap(100.01,t+1000),t+1000);
+  const open=scenarioViewFromRuntime({operational:entered,forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+1000});
+  assert.equal(open.entryWindowOpen,true);assert.equal(open.canEnter,true);assert.equal(open.entryRemainingSeconds,4);assert.equal(open.deadline,waiting.targetAt);
+  const ended=scenarioViewFromRuntime({operational:entered,forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+4501});
+  assert.equal(ended.entryWindowOpen,false);assert.equal(ended.canEnter,false);assert.equal(ended.hasSetup,true);
+});
+
+
+test('current calibrated probabilities release the first confirmed entry without waiting for display smoothing',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime();r.settings.futureDisplayThreshold=70;
+    const a=analysis(side,side==='CALL'?99:101);
+    for(const p of Object.values(a.entryPlanner.horizons)){p.displayCallProbability=side==='CALL'?55:45;p.displayPutProbability=100-p.displayCallProbability}
+    const op=r._operationalSignalState(a,confirmedSnap(),t);
+    assert.equal(op.state,'ENTRADA');assert.equal(op.actionable,true);assert.equal(op.entryAt,t);
+    assert.equal(r.signalValidation.pending.length,1);
+    const bad=runtime();bad.settings.futureDisplayThreshold=70;
+    for(const p of Object.values(a.entryPlanner.horizons)){p.callProbability=side==='CALL'?60:40;p.putProbability=100-p.callProbability;p.displayCallProbability=side==='CALL'?85:15;p.displayPutProbability=100-p.displayCallProbability}
+    assert.equal(bad._operationalSignalState(a,confirmedSnap(),t).actionable,false);
+  }
+});

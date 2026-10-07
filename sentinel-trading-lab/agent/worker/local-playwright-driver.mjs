@@ -1314,22 +1314,22 @@ export class LocalPlaywrightDriver{
     try{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
-      payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs});
+      payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
         window.__sentinelLastOverlayData=d;
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.4'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.5'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.4';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.5';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.4';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.5';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1496,8 +1496,8 @@ export class LocalPlaywrightDriver{
         const plannerConfirmed=plannerReadable&&plannerPlan?.directionReady===true;
         const rawOutlook=plannerReadable?String(plannerPlan?.displayBias||plannerPlan?.rawBias||plannerPlan?.bias||'NEUTRO').toUpperCase():'SEM LEITURA';
         const futureConfidence=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.confidence||plannerPlan?.modelConfidence||0))):0;
-        const futureCallPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.displayCallProbability??plannerPlan?.callProbability??50))):50;
-        const futurePutPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.displayPutProbability??plannerPlan?.putProbability??50))):50;
+        const futureCallPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.callProbability??plannerPlan?.displayCallProbability??50))):50;
+        const futurePutPct=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.putProbability??plannerPlan?.displayPutProbability??50))):50;
         let futureDisplayThreshold=Math.max(50,Math.min(95,Math.round(Number(d.futureDisplayThreshold??70))));
         if(d.futureDisplayThreshold==null)try{const saved=Number(localStorage.getItem('sentinel-future-display-threshold-v13'));if(Number.isFinite(saved))futureDisplayThreshold=Math.max(50,Math.min(95,Math.round(saved)))}catch{}
         const candidateOutlook=!plannerReadable?'SEM LEITURA':!analysisStale&&futureCallPct>=futureDisplayThreshold&&futureCallPct>futurePutPct?'CALL':!analysisStale&&futurePutPct>=futureDisplayThreshold&&futurePutPct>futureCallPct?'PUT':'AGUARDAR';
@@ -1521,20 +1521,22 @@ export class LocalPlaywrightDriver{
         const feedPauseSeconds=Math.max(0,Math.ceil((Number(d.liveAgeMs||0)+elapsedSincePayload)/1000));
         const pilotLabel=runtime!=='running'?'PILOTO PAUSADO':d.demoAutopilot!==true?'PILOTO DEMO DESLIGADO':String(d.brokerMode||d.mode)!=='demo'?'PILOTO · CONTA DEMO NÃO DETECTADA':d.executionReady!==true?'PILOTO LIGADO · AGUARDANDO BOTÕES E VALOR DA CORRETORA':'PILOTO DEMO LIGADO · AGUARDANDO SINAL';
         const displayCandidate=candidateOutlook;
-        const outlook=runtimeOperationalSide||displayCandidate;
+        const formingSide=plannerReadable&&String(operational?.asset||visibleAsset).toUpperCase()===visibleAsset&&['CALL','PUT'].includes(runtimeView.analysisSide)?runtimeView.analysisSide:null;
+        const outlook=formingSide||runtimeOperationalSide||displayCandidate;
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
-        const formingSide=displayCandidate==='CALL'||displayCandidate==='PUT'?displayCandidate:null;
         const operationalHeroSide=runtimeOperationalSide;
         const operationalMismatch=!!operationalHeroSide&&!!formingSide&&operationalHeroSide!==formingSide;
         const operationalMatchesForecast=!operationalMismatch;
         const operationalNow=!!futureDecision&&runtimeView.canEnter===true&&!entryDeadlinePassed&&operationalMatchesForecast&&liveNow&&analysisFresh&&!analysisTransient;
-        const actionTone=operationalNow&&operationalHeroSide?(operationalHeroSide==='CALL'?callTone:putTone):futureDecision?outlookTone:neutralTone;
+        const actionTone=operationalNow&&operationalHeroSide?(operationalHeroSide==='CALL'?callTone:putTone):formingSide||futureDecision?outlookTone:neutralTone;
         const windowSeconds=futureDecision?Math.max(0,Math.ceil((runtimeDeadline-decisionNow)/1000)):null;
         const durationText=({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]||Math.round(duration/1000)+' s';
         const entrySeconds=operationalNow?Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000)):null;
-        const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':operationalNow?('ENTRAR AGORA · '+operationalHeroSide):futureDecision&&operationalTimingState==='ACOMPANHANDO'?(futureDecision.side+' · ACOMPANHANDO'):timingClosed?'CENÁRIO ENCERRADO':futureDecision?(futureDecision.side+' · AGUARDE'):'AGUARDE';
-        const futureDecisionStatus=!plannerReadable?'SEM LEITURA':timingClosed?operationalTimingState:futureDecision?('FECHA EM '+windowSeconds+'s'):'EM ANÁLISE';
-        const futurePhase=!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':operationalNow?('ENTRADA DISPONÍVEL POR '+entrySeconds+'s · EXPIRAÇÃO '+durationText):futureDecision?(operationalTimingState==='ACOMPANHANDO'?'ACOMPANHANDO · ENTRADA ENCERRADA':operationalTimingState==='AGUARDAR PRAZO'?'REVALIDAÇÃO · AGUARDE O SINAL DE ENTRADA':'JANELA ABERTA · AGUARDE O SINAL DE ENTRADA'):timingClosed?'AGUARDE UM NOVO CENÁRIO':'ANALISANDO · AGUARDANDO CONFIRMAÇÃO';
+        const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO'&&!operationalMismatch;
+        const futureActionLabel=operationalNow?('ENTRAR AGORA · '+operationalHeroSide):trackingSameSide?(futureDecision.side+' · ACOMPANHANDO'):operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('ANÁLISE '+formingSide+' · AGUARDE'):'AGUARDE';
+        const futureDecisionStatus=!plannerReadable?'SEM LEITURA':operationalNow?('FECHA EM '+entrySeconds+'s'):futureDecision?('FECHA EM '+windowSeconds+'s'):timingClosed?operationalTimingState:'EM ANÁLISE';
+        const futurePhase=!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':operationalNow?('ENTRADA DISPONÍVEL POR '+entrySeconds+'s · EXPIRAÇÃO '+durationText):trackingSameSide?'ACOMPANHANDO · ENTRADA ENCERRADA':timingClosed?'AGUARDE UM NOVO CENÁRIO':formingSide?'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA':'ANALISANDO · AGUARDANDO CONFIRMAÇÃO';
+        const currentAnalysisReason=operationalMismatch?('Leitura atual '+formingSide+'; aguarde confirmação do novo lado. Cenário anterior '+operationalHeroSide+' preservado no histórico.'):String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
         const futureDecisionConfidence=futureConfidence;
         const measuredHistory=plannerPlan?.validation||{},measuredSamples=Math.max(0,Number(measuredHistory.decisionSamples||0));
         const measuredHistoryLabel=measuredSamples>=60?('Acerto medido das previsões: '+n(measuredHistory.decisionWinRate,1)+'% · '+measuredSamples+' sinais'):('Em teste: '+measuredSamples+'/60 sinais · CALL/PUT estimados');
@@ -1724,7 +1726,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.4')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.5')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -1765,7 +1767,7 @@ export class LocalPlaywrightDriver{
               <span data-sentinel-scenario-status style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:16px;font-weight:750;line-height:1.2;max-width:155px;min-height:46px;display:flex;align-items:center">${esc(futureDecisionStatus)}</span>
               <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:10px;line-height:1.35;min-height:27px"><span data-sentinel-scenario-phase style="color:${ink};font-weight:700">${esc(futurePhase)}</span><span style="color:${goldSoft};font-weight:700">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-weight:600">${liveLabel}</span></div>
             </div>
-            <div style="color:${muted};font-size:11px;font-weight:650;line-height:1.4;margin-bottom:7px;min-height:47px;overflow:visible">${futureDecisionPaused?(liveNow?'Atualizando leitura deste prazo; entrada suspensa.':('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.')):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.'))}</div>
+            <div style="color:${muted};font-size:11px;font-weight:650;line-height:1.4;margin-bottom:7px;min-height:47px;overflow:visible">${futureDecisionPaused?(liveNow?'Atualizando leitura deste prazo; entrada suspensa.':('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.')):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(currentAnalysisReason)}</div>
             <div data-sentinel-scenario-plan style="min-height:172px">${planHtml}</div>
           </div>
 

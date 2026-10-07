@@ -41,8 +41,7 @@ test('Future overlay uses runtime windows and confirms the order horizon',async(
   assert.ok(ui.includes('sentinel-future-decision-v13|'));
   assert.ok(!ui.includes("operationalHeroSide+' EM '+operationalWaitSeconds+'s'"));
   assert.ok(ui.includes("'ENTRAR AGORA · '+operationalHeroSide"));
-  assert.ok(ui.includes('JANELA ABERTA'));
-  assert.ok(ui.includes('JANELA ABERTA · AGUARDE O SINAL DE ENTRADA'));
+  assert.ok(ui.includes('ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA'));
   assert.ok(ui.includes('const futureActionLabel='));
   assert.ok(ui.includes('operationalMatchesForecast'));
   assert.ok(ui.includes('operationalMismatch'));
