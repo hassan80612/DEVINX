@@ -39,9 +39,9 @@ test('strategy display still avoids fake 100/0 from sparse evidence',()=>{
 test('Future overlay treats the horizon as entry-now validity, with compact totals and average confidence',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
   assert.ok(ui.includes('sentinel-future-decision-v13|'));
-  assert.ok(ui.includes('JANELA ATIVA · PRAZO'));
-  assert.ok(ui.includes("futureDecision.side+' AGORA · '+decisionRemaining+'s'"));
-  assert.ok(ui.includes('não é uma espera para entrar'));
+  assert.ok(ui.includes('AGUARDANDO GATILHO'));
+  assert.ok(ui.includes('operationalNow'));\n  assert.ok(ui.includes("operationalNow?(futureDecision.side+' AGORA · '+decisionRemaining+'s')"));
+  assert.ok(ui.includes('Aguardando gatilho e confirmação operacional'));\n  assert.ok(ui.includes('ENTRADA '+"'"+"+futureDecision.side+'"+"'"+' CONFIRMADA AGORA'));
   assert.ok(!ui.includes("futureDecision.side+' EM '+decisionRemaining+'s'"));
   assert.ok(ui.includes('MÉDIA DOS 3 TOTAIS'));
   assert.ok(ui.includes('CONF MÉDIA'));
