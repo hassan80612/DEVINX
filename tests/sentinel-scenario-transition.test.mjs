@@ -183,3 +183,34 @@ test('opposite continuation still needs both horizons, aligned flow and independ
     const o=r._operationalSignalState(a,q,t+1000);assert.equal(o.actionable,false,block);assert.equal(o.side,'CALL',block);assert.equal(r.signalValidation.pending.length,1,block);
   }
 });
+
+test('qualified main scenario stays locked while an opposite forecast is only a candidate',()=>{
+  const r=runtime(),first=r._operationalSignalState(analysis('CALL'),snap([100.01,100.01],t),t);
+  assert.equal(first.side,'CALL');assert.equal(r.operationalSetup.side,'CALL');
+  const opposite=analysis('PUT');
+  for(let i=1;i<=4;i++){
+    const o=r._operationalSignalState(opposite,snap([99.99,99.99],t+i*250),t+i*250);
+    assert.equal(o.side,'CALL','candidate must not replace the main scenario');
+    assert.notEqual(o.state,'INVALIDADO','raw opposite forecast must not cancel the main scenario');
+  }
+  assert.equal(r.operationalSetup.side,'CALL');
+});
+
+test('independently confirmed execution horizon can enter same-side before the longer trigger',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),call=side==='CALL',a=analysis(side,{kind:'continuation',trigger:call?101:99});
+    const p30=a.entryPlanner.horizons['30'],p60=a.entryPlanner.horizons['60'];
+    p60.callTrigger=101;p60.putTrigger=99;
+    p30.callTrigger=100;p30.putTrigger=100;p30.scenario.continuationReady=true;
+    a.metrics.shortModel={ready:true,structureReadyCall:call,structureReadyPut:!call,flowReadyCall:call,flowReadyPut:!call,callRoomOk:call,putRoomOk:!call};
+    a.metrics.micro={delta5:call?.02:-.02,delta15:call?.04:-.04};
+    const prices=call?[100.01,100.02]:[99.99,99.98];
+    const o=r._operationalSignalState(a,snap(prices,t),t);
+    assert.equal(o.actionable,true,side);
+    assert.equal(o.side,side);
+    assert.equal(o.entryDecisionHorizonSeconds,30);
+    assert.equal(o.trigger,100);
+    assert.equal(o.targetAt,t+60000,'execution timing must preserve the main scenario deadline');
+    assert.equal(r.operationalSetup.entryDecisionHorizonSeconds,30);
+  }
+});
