@@ -67,7 +67,7 @@ test('Future overlay treats the horizon as entry-now validity, with compact tota
   assert.ok(ui.includes("startsWith('sentinel-future-decision-v13|')"));
   assert.ok(ui.includes("startsWith('sentinel-future-expired-v13|')"));
   assert.ok(ui.includes('sameExpiredSide'));
-  assert.ok(ui.includes('AGUARDAR · NOVO CENÁRIO'));
+  assert.ok(ui.includes('AGUARDAR · NOVA LEITURA'));
   assert.ok(ui.includes('JANELA ENCERRADA'));
   assert.ok(ui.includes('CALL — confirmação'));
   assert.ok(ui.includes('PUT — confirmação'));
