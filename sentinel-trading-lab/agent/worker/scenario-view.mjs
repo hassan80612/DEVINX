@@ -10,7 +10,7 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
   if(contextMatches&&!terminal.includes(state)&&deadline>0&&now>=deadline)state=op.entryAt||entryEnd?'JANELA ENCERRADA':'JANELA PERDIDA';
   const closed=terminal.includes(state),hasSetup=contextMatches&&!closed&&Number(op.createdAt)>0&&deadline>now;
   const signalHorizonSeconds=Number(op.entryDecisionHorizonSeconds||horizonSeconds);
-  const forecastMatches=forecast&&String(forecast.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(forecast.horizonSeconds||signalHorizonSeconds)===signalHorizonSeconds;
+  const forecastMatches=!!forecast&&String(forecast.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(forecast.horizonSeconds||signalHorizonSeconds)===signalHorizonSeconds;
   const forecastSide=String(forecast?.rawBias??forecast?.bias??forecast?.displayBias??'NEUTRO').toUpperCase();
   const forecastLead=forecastSide==='CALL'?Number(forecast?.callProbability??50):forecastSide==='PUT'?Number(forecast?.putProbability??50):0;
   const analysisSide=forecast===undefined?(contextMatches?(['CALL','PUT'].includes(op.futureSide)?op.futureSide:side):null):forecastMatches&&forecast.outlookReady===true&&forecastLead>=Number(displayThreshold)&&Number(forecast.confidence??forecast.modelConfidence??0)>=Number(minPoints)&&['CALL','PUT'].includes(forecastSide)?forecastSide:null;
