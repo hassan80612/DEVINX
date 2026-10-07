@@ -21,7 +21,7 @@ function quoteFlow(last,{direction=1,now=Date.now()}={}){
   }))
 }
 
-test('V13.1 future engine exposes 30s through 1h horizons',()=>{
+test('V13.3 future engine exposes 30s through 1h horizons',()=>{
   const now=Date.now(),candles=trendCandles({now}),last=candles.at(-1).close,quotes=quoteFlow(last,{direction:1,now});
   const a=analyzeMarket({candles,quoteHistory:quotes,strategy:'trend',minConfidence:70,durationMs:300000,freshnessMs:5000,quoteTs:now,now});
   assert.equal(a.entryPlanner.modelVersion,'future-v4.1');
@@ -64,7 +64,7 @@ test('advanced market structure helpers return quality instead of a single blind
   assert.ok(Number.isFinite(Number(vol.ratio)));
 });
 
-test('V13.1 forecast calibration uses confidence bands, decision-grade stats and non-overlapping exact samples',()=>{
+test('V13.3 forecast calibration uses confidence bands, decision-grade stats and non-overlapping exact samples',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   rt.settings.asset='GOLD';
   const modelKey='future-v4.2:smart_confluence:trend';
@@ -96,7 +96,7 @@ test('V13.1 forecast calibration uses confidence bands, decision-grade stats and
   assert.equal(p.validation.bucket,'80-89');
   assert.ok(p.validation.bucketSamples>=120);
   assert.ok(p.callProbability<82,'band-aware calibration should pull an overconfident raw probability toward empirical accuracy');
-  assert.ok(rt.signalValidation.pending.some(x=>x.kind==='horizon_decision_v13_2'),'decision-grade prediction should be audited separately');
+  assert.ok(rt.signalValidation.pending.some(x=>x.kind==='horizon_decision_v13_3'),'decision-grade prediction should be audited separately');
 
   rt.signalValidation.pending=[];rt.signalValidation.lastQueued={};
   const t=Date.now();
@@ -107,7 +107,7 @@ test('V13.1 forecast calibration uses confidence bands, decision-grade stats and
   assert.equal(rt.signalValidation.pending.length,2);
 });
 
-test('V13.1 exact tie is recorded as draw and excluded from forecast win-rate samples',()=>{
+test('V13.3 exact tie is recorded as draw and excluded from forecast win-rate samples',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   const now=Date.now(),key=rt._validationKey('horizon_forecast_v41','EUR/USD',30000,'future-v4.1:trend:range');
   rt.signalValidation.pending=[{
