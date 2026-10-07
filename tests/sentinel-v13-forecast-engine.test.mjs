@@ -67,6 +67,7 @@ test('advanced market structure helpers return quality instead of a single blind
 test('V13.3 forecast calibration uses confidence bands, decision-grade stats and non-overlapping exact samples',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   rt.settings.asset='GOLD';
+  rt.settings.futureDisplayThreshold=60;
   const modelKey='future-v4.2:smart_confluence:trend';
   const key=rt._validationKey('horizon_forecast_v42','GOLD',60000,modelKey);
   rt.signalValidation.outcomes=Array.from({length:120},(_,i)=>({
