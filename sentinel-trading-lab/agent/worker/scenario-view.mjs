@@ -16,7 +16,7 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
   const analysisSide=forecast===undefined?(contextMatches?(['CALL','PUT'].includes(op.futureSide)?op.futureSide:side):null):forecastMatches&&forecast.outlookReady===true&&forecastLead>=Number(displayThreshold)&&Number(forecast.confidence??forecast.modelConfidence??0)>=Number(minPoints)&&['CALL','PUT'].includes(forecastSide)?forecastSide:null;
   const oppositeAnalysis=contextMatches&&!!analysisSide&&analysisSide!==side;
   const executionMatches=(!forecast&&signalHorizonSeconds===Number(horizonSeconds))||(forecastMatches&&forecast.outlookReady===true&&forecastSide===side);
-  const displaySide=closed?side:hasSetup?side:analysisSide;
+  const displaySide=closed?side:hasSetup?side:null;
   const canEnter=executionMatches&&hasSetup&&state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now;
   return{signalHorizonSeconds,analysisSide,displaySide,oppositeAnalysis,entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.max(0,Math.ceil((entryEnd-now)/1000)):null,contextMatches,side:contextMatches?side:null,state,closed,hasSetup,canEnter,deadline:hasSetup?deadline:null,remainingSeconds:hasSetup?Math.max(0,Math.ceil((deadline-now)/1000)):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null,confidence:Number(op.technicalConfidence??op.strength??0)};
 }
