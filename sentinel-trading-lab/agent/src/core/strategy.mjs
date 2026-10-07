@@ -646,7 +646,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
    const shortBars=quoteBars(quoteHistory,5000,now),previousShort=shortBars.at(-2);
    const recentShort=previousShort&&previousShort.volume>=2&&now-previousShort.to*1000>=0&&now-previousShort.to*1000<=5000;
-   const continuationTrigger=continuationReady&&recentShort;
+   const continuationTrigger=!reversalMode&&continuationReady&&recentShort;
    const entryTolerance=Math.max((Number(previousShort?.high||last)-Number(previousShort?.low||last))*.5,expectedMove*.12,Math.abs(last)*.000002);
    if(reversalMode){
      const lower=nearestLower??(last-expectedMove),upper=nearestUpper??(last+expectedMove);

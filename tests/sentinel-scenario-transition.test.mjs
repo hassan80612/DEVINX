@@ -136,3 +136,14 @@ test('lost strength withdraws an active burst and recovery needs a new independe
     assert.equal(r._operationalSignalState(a,snap([price,price],t+14000),t+14000).actionable,false);
   }
 });
+
+test('withdrawn entry cannot reuse prices from before its loss of strength',()=>{
+  const r=runtime(),a=analysis('CALL'),price=100.01;
+  r._operationalSignalState(a,snap([price,price],t),t);
+  a.metrics.shortModel={ready:true,weakeningUp:true};a.metrics.micro.delta2=-.01;
+  r._operationalSignalState(a,snap([price,price],t+500),t+500);
+  a.metrics.shortModel={ready:true};a.metrics.micro.delta2=.01;
+  const old={price,quoteTs:t+600,quoteHistory:[{ts:t,price},{ts:t+600,price}]};
+  assert.equal(r._operationalSignalState(a,old,t+600).actionable,false);
+  assert.equal(r._operationalSignalState(a,snap([price,price],t+800),t+800).actionable,true);
+});

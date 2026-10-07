@@ -408,6 +408,7 @@ export class DemoTradingRuntime{
       setup.invalidated=true;setup.invalidationReason='Cenário invalidado pelo preço; entrada bloqueada.';
       return{...base,side,state:'INVALIDADO',trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:'Cenário invalidado pelo preço; entrada bloqueada.'}
     }
+    if(setupContextMatches&&impulseConflict){setup.forceSuspendedAt=now;setup.triggerQuotes=[]}
     if(!executionSupported)return{...base,side,state:'AGUARDAR PRAZO',trigger:setup?.trigger??null,invalidation:setup?.invalidation??null,createdAt:setup?.createdAt??null,targetAt:setup?.targetAt??null,entryWindowEndAt:setup?.entryWindowEndAt??null,reason:'Entrada bloqueada: a previsão de '+Math.round(durationMs/1000)+'s precisa confirmar o mesmo lado, a porcentagem e os pontos mínimos.'};
     if(historyBlocked){return{...base,side,reason:'Combinação pausada pelo histórico limpo: '+validation.smoothedWinRate+'% em '+validation.samples+' sinais.'}}
     const triggerPlan=executionPlan||plan,liveTrigger=Number(side==='CALL'?triggerPlan?.callTrigger:triggerPlan?.putTrigger);
@@ -456,7 +457,7 @@ export class DemoTradingRuntime{
     const quoteTs=Number(snap.quoteTs||snap.quoteHistory?.at(-1)?.ts||now),price=Number(snap.price);
     const holds=p=>side==='CALL'?p>=level:p<=level;
     if(!holds(price)){setup.triggerQuotes=[];return false}
-    const rows=(snap.quoteHistory||[]).filter(q=>Number(q.ts)<=Math.min(now,quoteTs)&&Number.isFinite(Number(q.price))).slice(-4);
+    const rows=(snap.quoteHistory||[]).filter(q=>Number(q.ts)>Number(setup.forceSuspendedAt||0)&&Number(q.ts)<=Math.min(now,quoteTs)&&Number.isFinite(Number(q.price))).slice(-4);
     rows.push({ts:quoteTs,price});
     let evidence=setup.triggerQuotes||[];
     for(const q of rows){const ts=Number(q.ts);if(ts<=Number(evidence.at(-1)?.ts||0))continue;if(!holds(Number(q.price)))evidence=[];else evidence.push({ts,price:Number(q.price)})}
