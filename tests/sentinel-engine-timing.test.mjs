@@ -229,3 +229,77 @@ test('qualified opposite preview and actual opposite release stay distinct witho
  const released=scenarioViewFromRuntime({operational:{...op,side:'PUT',state:'ENTRADA',ready:true,actionable:true,activeUntil:t+3500},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
  assert.equal(released.displaySide,'PUT');assert.equal(released.canEnter,true);
 });
+
+function independentlyConfirmedExpiry(side='CALL'){
+  const a=analysis(side,100),call=side==='CALL';
+  a.entryPlanner.horizons['30'].horizonSeconds=30;
+  a.entryPlanner.horizons['30'].scenario={kind:'continuation',continuationReady:true,triggerBasis:'structural-level'};
+  a.entryPlanner.horizons['60']=analysis(call?'PUT':'CALL',100).entryPlanner.horizons['60'];
+  a.entryPlanner.horizons['60'].horizonSeconds=60;
+  a.metrics.shortModel={ready:true,structureReadyCall:call,flowReadyCall:call,callRoomOk:call,structureReadyPut:!call,flowReadyPut:!call,putRoomOk:!call};
+  a.metrics.micro={delta2:call?.01:-.01,delta5:call?.02:-.02,delta15:call?.03:-.03};
+  return a;
+}
+test('independently confirmed expiry enters on the first qualified frame without waiting for a longer scenario',()=>{
+  for(const side of ['CALL','PUT'])for(const opposite of [true,false]){
+    const r=runtime(),a=independentlyConfirmedExpiry(side);
+    if(!opposite){a.entryPlanner.horizons['60']={...a.entryPlanner.horizons['30'],horizonSeconds:60,directionReady:false}}
+    const price=side==='CALL'?100.3:99.7,op=r._operationalSignalState(a,confirmedSnap(price),t);
+    assert.equal(op.state,'ENTRADA');assert.equal(op.actionable,true);assert.equal(op.side,side);
+    assert.equal(op.entryDecisionHorizonSeconds,30);assert.equal(op.targetAt,t+60000);assert.equal(op.activeUntil,t+3500);
+    assert.equal(r.signalValidation.pending[0].dueAt,t+30000);assert.match(r.signalValidation.pending[0].strategy,/independent-expiry-v1$/);
+    const v=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,forecast:a.entryPlanner.horizons['30'],now:t});
+    assert.equal(v.canEnter,true);assert.equal(v.displaySide,side);assert.equal(v.signalHorizonSeconds,30);
+    const wrong=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,forecast:a.entryPlanner.horizons['60'],now:t});
+    assert.equal(wrong.canEnter,false);
+  }
+});
+test('independent expiry still requires direction, structure, force, room, price and its own safety',()=>{
+  for(const side of ['CALL','PUT'])for(const failure of ['structure','flow','room','direction','safety','weakening','quote','trigger','future-quote']){
+    const r=runtime(),a=independentlyConfirmedExpiry(side),call=side==='CALL',p=a.entryPlanner.horizons['30'];
+    let s=confirmedSnap(call?100.3:99.7);
+    if(['structure','flow','room'].includes(failure))a.metrics.shortModel[{structure:call?'structureReadyCall':'structureReadyPut',flow:call?'flowReadyCall':'flowReadyPut',room:call?'callRoomOk':'putRoomOk'}[failure]]=false;
+    if(failure==='direction')p.directionReady=false;
+    if(failure==='safety')p.safety={blocked:true};
+    if(failure==='weakening'){a.metrics.shortModel[call?'weakeningUp':'weakeningDown']=true;a.metrics.micro.delta2=call?-.01:.01}
+    if(failure==='quote')s={price:s.price,quoteTs:t,quoteHistory:[{ts:t,price:s.price}]};
+    if(failure==='future-quote')s={price:s.price,quoteTs:t,quoteHistory:[{ts:t+100,price:s.price}]};
+    if(failure==='trigger')s=confirmedSnap(call?99.7:100.3);
+    const op=r._operationalSignalState(a,s,t);
+    assert.equal(op.actionable,false,side+' '+failure);assert.equal(r.signalValidation.pending.length,0,side+' '+failure);
+  }
+});
+test('independent expiry can reverse an active scenario and keeps the previous outcome and fixed burst',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),oldSide=side==='CALL'?'PUT':'CALL',old=r._operationalSignalState(analysis(oldSide,100),confirmedSnap(oldSide==='CALL'?100.3:99.7),t);
+    assert.equal(old.actionable,true);const prior=structuredClone(r.signalValidation.pending[0]);
+    const a=independentlyConfirmedExpiry(side),s=confirmedSnap(side==='CALL'?100.3:99.7,t+500);
+    const op=r._operationalSignalState(a,s,t+500);
+    assert.equal(op.side,side);assert.equal(op.actionable,true);assert.equal(op.transition.fromSide,oldSide);
+    assert.deepEqual(r.signalValidation.pending[0],prior);assert.equal(r.signalValidation.pending.length,2);
+    const after=r._operationalSignalState(a,confirmedSnap(s.price,t+4500),t+4500);
+    assert.equal(after.state,'ACOMPANHANDO');assert.equal(after.actionable,false);assert.equal(after.entryDecisionHorizonSeconds,30);
+    assert.equal(r.signalValidation.pending.length,2);
+  }
+});
+test('unready expiry reports the actual waiting criterion',()=>{
+  const r=runtime(),a=analysis('CALL',99);a.entryPlanner.horizons['30'].directionReady=false;
+  assert.match(r._operationalSignalState(a,confirmedSnap(),t).reason,/direção ainda sem confirmação técnica/i);
+});
+test('qualified expiry need not wait for the longer model confidence or percentage threshold',()=>{
+  for(const criterion of ['confidence','percentage']){
+    const r=runtime(),a=independentlyConfirmedExpiry('CALL');
+    a.entryPlanner.horizons['60']={...a.entryPlanner.horizons['30'],horizonSeconds:60};
+    if(criterion==='confidence'){a.entryPlanner.horizons['60'].confidence=40;a.entryPlanner.horizons['60'].strategyFuture={confidence:40}}
+    else{r.settings.futureDisplayThreshold=70;a.entryPlanner.horizons['60'].callProbability=60;a.entryPlanner.horizons['60'].putProbability=40}
+    const op=r._operationalSignalState(a,confirmedSnap(100.3),t);
+    assert.equal(op.actionable,true);assert.equal(op.entryDecisionHorizonSeconds,30);
+  }
+});
+test('independent expiry has its own measured history block and preserves stored outcomes',()=>{
+  const r=runtime(),a=independentlyConfirmedExpiry('CALL'),first=r._operationalSignalState(a,confirmedSnap(100.3),t),key=first.validation.key;
+  r.signalValidation.outcomes=Array.from({length:60},(_,i)=>({key,won:false,settlementQuality:'exact',createdAt:t-i*30000}));
+  r.signalValidation.pending=[];r.operationalSetup=null;
+  const op=r._operationalSignalState(a,confirmedSnap(100.3,t+1000),t+1000);
+  assert.equal(op.historyBlocked,true);assert.equal(op.actionable,false);assert.equal(r.signalValidation.pending.length,0);assert.equal(r.signalValidation.outcomes.length,60);
+});
