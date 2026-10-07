@@ -68,3 +68,13 @@ Chronological replay of 3,314 actual quote frames retained all ten baseline sign
 An independent quote-derived support/resistance event requires separated tests, a meaningful intervening swing, its neckline break, two advancing real quotes, an intact invalidation and room before the opposite barrier. The price event can supply its own trigger to an already qualified expiration forecast, including a fresh opposite opportunity or a new event after cancellation. It never manufactures confidence, probability or forecast direction. Ordinary forecasts, strategy weights, safety and history thresholds remain unchanged. Events expire after ten seconds from confirmation; entry bursts remain fixed at 3.5 seconds and previous results are preserved. Repeated-rejection entries have a distinct validation key. Future, duplicate and pre-break quote evidence cannot authorize entry.
 
 Twelve new symmetric tests verify first eligible release, reversal and cancellation recovery, original forecast quality requirements, price evidence, space, gaps and separate history blocking. A chronological replay of 3,314 recorded quotes retained the same ten signals (4 wins, 5 losses, 1 without nearby settlement quote); no newly qualified neckline event occurred in that sample. A second 389-quote sample had no qualified reaction or entry. These samples do not demonstrate an improvement in prediction accuracy. A broader approach promoting micro-rejections was rejected after it increased losing entries. No trades or account/risk changes were made.
+
+## 13.4.9 — scenario ownership and first-valid entry timing
+
+- The qualified main scenario owns the headline and identity until it expires, invalidates by real price/force evidence, or an independently confirmed opposite setup replaces it.
+- An opposite forecast is tracked as a candidate; it no longer changes the main CALL/PUT label by itself and no longer cancels the scenario only because probabilities oscillated.
+- A structurally qualified execution horizon may own entry timing even when the longer scenario is still qualified on the same side. Its first trigger is adopted once without resetting the scenario deadline, avoiding trigger chasing.
+- Runtime evaluation cadence is 400 ms to reduce avoidable delivery delay. Quote confirmation still requires independent timestamps; faster evaluation does not turn repeated reads of the same quote into confirmation.
+- The presentation follows the engine authorization directly; it does not add a second raw-analysis veto after the runtime has released ENTRAR AGORA.
+- These changes address timing/state coherence. They do not prove a higher win rate or profitability and must be validated with chronological broker data.
+
