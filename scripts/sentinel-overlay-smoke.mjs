@@ -32,7 +32,11 @@ try{
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   await driver.updateOverlay('iq_option',{...data,entryPlanner:{horizons:{'60':{...plan,confidence:72}}}});
   assert.match(await card.innerText(),/MODELO 72 pts/);
-  assert.equal(await card.evaluate(el=>el.scrollWidth<=el.clientWidth),true,'scenario must fit its card');
+  await mkdir('sentinel-test-output',{recursive:true});
+  await card.screenshot({path:'sentinel-test-output/scenario-open.png'});
+  const dimensions=await card.evaluate(el=>({scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,children:[...el.querySelectorAll('*')].filter(x=>x.getBoundingClientRect().right>el.getBoundingClientRect().right+1).map(x=>({tag:x.tagName,text:x.textContent.slice(0,90),right:x.getBoundingClientRect().right}))}));
+  console.log('SCENARIO_LAYOUT',JSON.stringify(dimensions));
+  assert.equal(dimensions.scrollWidth<=dimensions.clientWidth,true,'scenario must fit its card');
   const status=card.locator('span').filter({hasText:/FECHA EM/}).first();
   assert.equal(await status.evaluate(el=>getComputedStyle(el).fontSize),'15px');
   await mkdir('sentinel-test-output',{recursive:true});

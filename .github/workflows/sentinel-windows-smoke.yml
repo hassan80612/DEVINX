@@ -5,6 +5,8 @@ on:
     branches: [sentinel-engine-fix-1331-1007]
     paths:
       - 'sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe'
+      - 'sentinel-trading-lab/agent/**'
+      - 'scripts/sentinel-overlay-smoke.mjs'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
       - '.github/workflows/sentinel-windows-smoke.yml'
@@ -195,6 +197,7 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Rendered scenario regression failed'}
 
       - name: Upload scenario screenshot
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sentinel-scenario-13.3.1
