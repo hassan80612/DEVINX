@@ -3,7 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
 type Status=any;
 const tabDefs=[
-  {key:'Dashboard',label:'Início',icon:'⌂',group:'Visão geral',title:'Sentinel 13.1',subtitle:'Resumo da conta, do Agent e da sessão em andamento.'},
+  {key:'Dashboard',label:'Início',icon:'⌂',group:'Visão geral',title:'Sentinel 13.3',subtitle:'Resumo da conta, do Agent e da sessão em andamento.'},
   {key:'Bot Control',label:'Piloto',icon:'◉',group:'Operação',title:'Piloto automático',subtitle:'Arme a automação somente na conta de prática da própria corretora, com limites de sessão.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Operação',title:'Análise de mercado',subtitle:'Sinal, confiança, indicadores e motivos da decisão.'},
   {key:'Trades / History',label:'Histórico',icon:'≡',group:'Operação',title:'Operações e histórico',subtitle:'Revise entradas, resultados e desempenho da sessão.'},
