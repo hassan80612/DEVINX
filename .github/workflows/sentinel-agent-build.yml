@@ -3,7 +3,7 @@ name: Sentinel Windows Agent V13.3
 
 on:
   push:
-    branches: [main]
+    branches: [sentinel-broker-fix-1333-1007]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sentinel-agent-main
+  group: sentinel-broker-fix-1333-1007
   cancel-in-progress: true
 
 jobs:
@@ -75,8 +75,8 @@ jobs:
           cp sentinel-trading-lab/public/downloads/agent_payload_v88.zip "$tmpdir/"
           cp sentinel-trading-lab/public/favicon.ico "$tmpdir/favicon.ico"
 
-          git fetch origin main
-          git reset --hard origin/main
+          git fetch origin sentinel-broker-fix-1333-1007
+          git reset --hard origin/sentinel-broker-fix-1333-1007
 
           cp "$tmpdir/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/agent_payload_v88.zip" sentinel-trading-lab/public/downloads/
@@ -92,4 +92,4 @@ jobs:
             exit 0
           fi
           git commit -m 'build(sentinel): refresh Windows Agent V13.3'
-          git push origin HEAD:main
+          git push origin HEAD:sentinel-broker-fix-1333-1007

@@ -26,6 +26,7 @@ export class BrowserBrokerAdapter extends BrokerAdapterContract{
   }
   async validateReadOnly({soft=false}={}){
     if(!this.connected)throw new Error('broker_not_connected');
+    if(this.driver?.liveStatus?.(this.provider)?.feedValidated===true)return this.refreshFromLive();
     const failures=[];
     try{const account=await this.driver.call(this.provider,'account',{method:'GET'});const mode=String(account?.mode||'').toLowerCase();this.accountMode=mode||'unknown';const ok=['demo','real'].includes(mode);this._step('account_mode',ok,ok?`conta ${mode.toUpperCase()} ativa`:`modo recebido: ${mode||'desconhecido'}`);if(!ok)failures.push('account_mode_not_detected')}catch(e){this._step('account_mode',false,String(e?.message||e));failures.push(String(e?.message||e))}
     try{const bal=await this.driver.call(this.provider,'balance',{method:'GET'});safeNumber(bal?.balance??bal);this._step('balance',true,`saldo ${this.accountMode==='real'?'REAL':this.accountMode==='demo'?'DEMO':''} lido`.trim())}catch(e){this._step('balance',false,String(e?.message||e));failures.push(String(e?.message||e))}

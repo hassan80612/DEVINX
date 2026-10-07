@@ -14,7 +14,7 @@ try{
   const driver=new LocalPlaywrightDriver();driver.session=async()=>({page,background:false});
   const now=Date.now(),plan={asset:'TEST',generatedAt:now,confidence:80,modelConfidence:80,callProbability:80,putProbability:20,displayBias:'CALL',outlookReady:true,directionReady:true,currentPrice:100,callTrigger:102,putTrigger:98,callInvalidation:90,putInvalidation:110,validation:{decisionSamples:0}};
   const operational={asset:'TEST',side:'CALL',state:'JANELA ABERTA',createdAt:now,entryWindowEndAt:now+60000,targetAt:now+60000,forecastHorizonSeconds:60,durationMs:30000,sideSupported:true,trigger:101,invalidation:90,technicalConfidence:80,reason:'Aguardando gatilho fixo.'};
-  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.3.2',forecastHorizonSeconds:60,durationMs:30000,metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
+  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.3.3',forecastHorizonSeconds:60,durationMs:30000,metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
   const card=page.locator('[data-sentinel-card="horizon"]');
   assert.equal(await driver.updateOverlay('iq_option',data),true);
   assert.match(await page.locator('[data-sentinel-pilot-status]').innerText(),/PILOTO LIGADO.*AGUARDANDO BOTÕES/);
@@ -25,6 +25,18 @@ try{
   await page.evaluate(()=>{const panel=document.createElement('section');panel.id='broker-panel';panel.innerHTML='<button data-test="deal-button-up">CALL</button><button data-test="deal-button-down">PUT</button><label>Valor <input name="amount" placeholder="Valor"></label><button data-test="expiration">30 s</button>';document.body.append(panel)});
   await driver.scanExecutionUi('iq_option');
   assert.equal(broker.executionReady,true);assert.equal(broker.expirationDurationMs,30000);
+  await page.evaluate(()=>{
+    document.getElementById('broker-panel').remove();
+    window.testOrders=0;const host=document.createElement('div');host.id='closed-broker-panel';document.body.append(host);
+    const root=host.attachShadow({mode:'closed'});root.innerHTML='<button>ACIMA</button><button>ABAIXO</button><label>Valor <input name="amount" value="10"></label><button data-test="expiration">30 s</button>';
+    root.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>window.testOrders++));
+  });
+  driver.session=async()=>({page,context:page.context(),background:false});
+  const native=await driver._domExecutionUi('iq_option');
+  assert.equal(native.buy,true);assert.equal(native.sell,true);assert.equal(native.amount,true);assert.equal(native.expirationDurationMs,30000);
+  assert.ok(native.ax.buyBackendId);assert.ok(native.ax.sellBackendId);assert.notEqual(native.ax.buyBackendId,native.ax.sellBackendId);
+  await driver.scanExecutionUi('iq_option');assert.equal(broker.executionReady,true);
+  assert.equal(await page.evaluate(()=>window.testOrders),0,'read-only recognition must not click an order');
   assert.match(await card.innerText(),/CALL · JANELA ABERTA/);
   assert.match(await card.innerText(),/FECHA EM/);
   assert.match(await card.innerText(),/MODELO 80 pts/);
@@ -52,5 +64,5 @@ try{
   await page.waitForTimeout(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
-  console.log('SENTINEL 13.3.2 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
+  console.log('SENTINEL 13.3.3 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}

@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='13.3.2';
+const VERSION='13.3.3';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -190,6 +190,8 @@ function overlayAnalysis(view,asset,now=Date.now()){
   if(!switched){const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200)return{analysis:cached.analysis,transient:true}}
   return{analysis:current||{},transient:false}
 }
+const brokerMaintenancePending=new Set();
+function scheduleBrokerMaintenance(provider){if(brokerMaintenancePending.has(provider))return;brokerMaintenancePending.add(provider);Promise.resolve(driver.maintain?.(provider)).then(()=>brokers[provider]?.refreshFromLive?.()).catch(()=>{}).finally(()=>brokerMaintenancePending.delete(provider))}
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   const licensed=await enforceAccessLease();
   if(!licensed){if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}return}
@@ -200,7 +202,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       activeProvider=null;lastBrokerMaintainAt=0;lastMarketSyncAt=0;lastOverlayAt=0
     }
   }
-  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
+  if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider)}
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
   await runtime.tick(loopNow);
   if(activeProvider){
