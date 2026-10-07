@@ -64,7 +64,7 @@ jobs:
           for(const k of ['correlationPenalty','evidenceFamilyCount','future-v4.1'])if(!strategy.includes(k))throw new Error('v13_1_diversity_missing:'+k);
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
-          if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational_v2'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
+          if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational_v3'")||!runtime.includes('setup.firedAt')||!runtime.includes('forecastHorizonSeconds'))throw new Error('synchronized_operational_setup_missing');
           if(!runtime.includes("gated.operationalSignal?.actionable!==true")||!runtime.includes("operationalSetup.releasedAt=now"))throw new Error('execution_not_gated_by_operational_timing');
           if(!runtime.includes("strategyPanel=this._strategyPanel(snap,now)")||!runtime.includes("pausedReadings")||!runtime.includes("sourceRows"))throw new Error('pause_aware_totals_not_recomputed');
 
