@@ -1564,14 +1564,14 @@ export class LocalPlaywrightDriver{
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
         const formingSide=displayCandidate==='CALL'||displayCandidate==='PUT'?displayCandidate:null;
         const operationalHeroSide=['CALL','PUT'].includes(String(operational?.side||'').toUpperCase())?String(operational.side).toUpperCase():null;
-        const operationalState=String(operational?.state||'AGUARDAR').toUpperCase();
+        const operationalTimingState=String(operational?.state||'AGUARDAR').toUpperCase();
         const operationalWaitSeconds=Number.isFinite(Number(operational?.timeToEntryMs))?Math.max(0,Math.ceil(Number(operational.timeToEntryMs)/1000)):null;
-        const operationalNow=operational?.actionable===true&&operational?.ready===true&&operationalState==='ENTRADA'&&!!operationalHeroSide&&liveNow&&analysisFresh;
-        const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO','AJUSTAR PRAZO'].includes(operationalState);
-        const waitingForce=operationalState==='AGUARDAR FORÇA';
-        const waitingWindow=operationalState==='AGUARDAR JANELA'&&operationalWaitSeconds!=null&&operationalHeroSide;
+        const operationalNow=operational?.actionable===true&&operational?.ready===true&&operationalTimingState==='ENTRADA'&&!!operationalHeroSide&&liveNow&&analysisFresh;
+        const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO','AJUSTAR PRAZO'].includes(operationalTimingState);
+        const waitingForce=operationalTimingState==='AGUARDAR FORÇA';
+        const waitingWindow=operationalTimingState==='AGUARDAR JANELA'&&operationalWaitSeconds!=null&&operationalHeroSide;
         const futureActionLabel=operationalNow?(operationalHeroSide+' AGORA'):(waitingWindow?(operationalHeroSide+' EM '+operationalWaitSeconds+'s'):(waitingForce?(operationalHeroSide+' · AGUARDAR'):(timingClosed?'AGUARDAR':futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):('PREVISÃO '+futureDecision.side)):(sameExpiredSide?'AGUARDAR':(!plannerConfirmed&&formingSide?'AGUARDAR':(formingSide?('PREVISÃO '+formingSide):('AGUARDAR · '+horizonLabel)))))));
-        const futureDecisionStatus=operationalNow?'ENTRADA CONFIRMADA':waitingWindow?'JANELA AUTOMÁTICA':waitingForce?'FORÇA CONTRÁRIA':timingClosed?operationalState:(futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':'AGUARDANDO GATILHO'):(sameExpiredSide?'JANELA ENCERRADA':(!plannerConfirmed&&formingSide?'AGUARDANDO CONFIRMAÇÃO':(formingSide?'PREVISÃO ATIVA':'SEM DECISÃO'))));
+        const futureDecisionStatus=operationalNow?'ENTRADA CONFIRMADA':waitingWindow?'JANELA AUTOMÁTICA':waitingForce?'FORÇA CONTRÁRIA':timingClosed?operationalTimingState:(futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':'AGUARDANDO GATILHO'):(sameExpiredSide?'JANELA ENCERRADA':(!plannerConfirmed&&formingSide?'AGUARDANDO CONFIRMAÇÃO':(formingSide?'PREVISÃO ATIVA':'SEM DECISÃO'))));
         const futureDecisionConfidence=futureDecision?Math.max(0,Math.min(100,Number(futureDecision.confidence||0))):futureConfidence;
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:5px">'+
