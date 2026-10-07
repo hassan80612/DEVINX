@@ -36,8 +36,8 @@ test('premium overlay has thresholds on every total and no fake scenario refresh
   assert.ok(driver.includes('MÉDIA DOS 3 TOTAIS'));
   assert.ok(driver.includes('sentinel-future-decision-v13|'));
   assert.ok(driver.includes('JANELA ABERTA'));
-  assert.ok(driver.includes('FORÇA CONTRÁRIA'));
-  assert.ok(driver.includes("operationalHeroSide+' — ENTRAR AGORA'"));
+  assert.ok(driver.includes('AGUARDE O SINAL DE ENTRADA'));
+  assert.ok(driver.includes("'ENTRAR AGORA · '+operationalHeroSide"));
   assert.ok(!driver.includes('PARA ENTRADA AGORA'));
   assert.ok(!driver.includes('DECISÃO TRAVADA'));
   assert.ok(!driver.includes('data-sentinel-action="refreshScenario"'));
