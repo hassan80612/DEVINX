@@ -37,6 +37,9 @@ try{
   assert.ok(native.ax.buyBackendId);assert.ok(native.ax.sellBackendId);assert.notEqual(native.ax.buyBackendId,native.ax.sellBackendId);
   await driver.scanExecutionUi('iq_option');assert.equal(broker.executionReady,true);
   assert.equal(await page.evaluate(()=>window.testOrders),0,'read-only recognition must not click an order');
+  // Accessibility scans can outlive feed freshness on a busy Windows runner.
+  // Supply the next simulated worker frame before checking a live scenario.
+  await driver.updateOverlay('iq_option',data);
   assert.match(await card.innerText(),/CALL · CENÁRIO ATIVO/);
   assert.match(await card.innerText(),/FECHA EM/);
   assert.match(await card.innerText(),/MODELO 80 pts/);

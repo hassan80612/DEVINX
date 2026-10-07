@@ -35,7 +35,7 @@ export async function replayJournal(paths,{delays=[0,1000,2000],analyze=analyzeR
       // Forming candle is updated only with quotes received by this frame.
       const candles=ctx.candles.map(c=>({...c})),last=candles.at(-1),visible=ctx.quotes.filter(q=>q.ts>=Number(last.from||0)*1000);
       if(visible.length){last.close=visible.at(-1).price;last.high=Math.max(Number(last.high),...visible.map(q=>q.price));last.low=Math.min(Number(last.low),...visible.map(q=>q.price))}
-      const snap={candles,quoteHistory:ctx.quotes.filter(q=>e.ts-q.ts<=180000),quoteTs:Number(e.quoteTs),price:Number(e.quote),provider:e.provider,source:'RECORDED'};
+      const snap={candles,quoteHistory:ctx.quotes.filter(q=>e.ts-q.ts<=180000).slice(-900),quoteTs:Number(e.quoteTs),price:Number(e.quote),provider:e.provider,source:'RECORDED'};
       const a=analyze(r,snap,e.ts);analyses++;const op=a.operationalSignal||{};states[op.state||'NO_DATA']=(states[op.state||'NO_DATA']||0)+1;
       if(op.actionable){const id=key+'|'+op.createdAt+'|'+op.side;if(!seen.has(id)){seen.add(id);for(const delay of delays)pending.push({key,id,side:op.side,signalAt:e.ts,entryDeadline:op.activeUntil,durationMs:op.durationMs,delay,done:false});score(ctx,e.ts)}}
     }
