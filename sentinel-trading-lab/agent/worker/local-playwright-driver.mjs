@@ -1790,7 +1790,14 @@ export class LocalPlaywrightDriver{
             ${planHtml}
           </div>
 
-
+          <div class="sentinel-shine" data-sentinel-summary="average-total" style="position:relative;margin-top:8px;padding:10px 11px;min-height:72px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${averageSide!=='AGUARDAR'?averageTone:panelBorder};box-shadow:${panelShadow}">
+            <div style="display:grid;grid-template-columns:minmax(0,1.45fr) .58fr .58fr .52fr;gap:8px;align-items:center;height:100%">
+              <div style="min-width:0"><div class="sentinel-metal-gold" style="font-size:11.2px;font-weight:950;letter-spacing:.04em">MÉDIA DOS 3 TOTAIS</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:2px"><b style="font-size:17px;color:${averageTone}">${averageSide}</b><span style="font-size:8px;font-weight:900;color:${goldSoft}">CONF MÉDIA ${n(averageConfidence,0)}%</span></div></div>
+              <div style="text-align:center;color:${callTone};font-size:8px;font-weight:900">CALL<b style="display:block;font-size:14px">${n(averageCallPct,0)}%</b></div>
+              <div style="text-align:center;color:${putTone};font-size:8px;font-weight:900">PUT<b style="display:block;font-size:14px">${n(averagePutPct,0)}%</b></div>
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px" title="Limite visual da média"><input data-sentinel-total-threshold="average" data-sentinel-average-threshold type="number" min="50" max="95" step="1" value="${averageDisplayThreshold}" style="width:44px;height:24px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};font:950 11px/1 inherit;padding:0 4px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></div>
+            </div>
+          </div>
 
           <div class="sentinel-metal-gold" style="font-size:11.5px;font-weight:950;letter-spacing:.065em;margin-top:10px;margin-bottom:7px">TOTAIS</div>
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:stretch">
@@ -1822,14 +1829,7 @@ export class LocalPlaywrightDriver{
             </div>
           </div>
 
-          <div class="sentinel-shine" data-sentinel-summary="average-total" style="position:relative;margin-top:8px;padding:10px 11px;min-height:72px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${averageSide!=='AGUARDAR'?averageTone:panelBorder};box-shadow:${panelShadow}">
-            <div style="display:grid;grid-template-columns:minmax(0,1.45fr) .58fr .58fr .52fr;gap:8px;align-items:center;height:100%">
-              <div style="min-width:0"><div class="sentinel-metal-gold" style="font-size:11.2px;font-weight:950;letter-spacing:.04em">MÉDIA DOS 3 TOTAIS</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:2px"><b style="font-size:17px;color:${averageTone}">${averageSide}</b><span style="font-size:8px;font-weight:900;color:${goldSoft}">CONF MÉDIA ${n(averageConfidence,0)}%</span></div></div>
-              <div style="text-align:center;color:${callTone};font-size:8px;font-weight:900">CALL<b style="display:block;font-size:14px">${n(averageCallPct,0)}%</b></div>
-              <div style="text-align:center;color:${putTone};font-size:8px;font-weight:900">PUT<b style="display:block;font-size:14px">${n(averagePutPct,0)}%</b></div>
-              <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px" title="Limite visual da média"><input data-sentinel-total-threshold="average" data-sentinel-average-threshold type="number" min="50" max="95" step="1" value="${averageDisplayThreshold}" style="width:44px;height:24px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};font:950 11px/1 inherit;padding:0 4px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></div>
-            </div>
-          </div>
+
 
 
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;margin-bottom:6px">
