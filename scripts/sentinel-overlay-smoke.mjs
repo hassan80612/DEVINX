@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import {mkdir} from 'node:fs/promises';
+import {chromium} from '../sentinel-trading-lab/agent/node_modules/playwright-core/index.mjs';
+import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+
+const server=http.createServer((_req,res)=>{res.end('<html><body style="background:#18282a">Sentinel overlay test</body></html>')});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+const browser=await chromium.launch({channel:process.platform==='win32'?'msedge':undefined,headless:true});
+try{
+  const page=await browser.newPage({viewport:{width:1100,height:850}}),errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('http://127.0.0.1:'+server.address().port);
+  const driver=new LocalPlaywrightDriver();driver.session=async()=>({page,background:false});
+  const now=Date.now(),plan={asset:'TEST',generatedAt:now,confidence:80,modelConfidence:80,callProbability:80,putProbability:20,displayBias:'CALL',outlookReady:true,directionReady:true,currentPrice:100,callTrigger:102,putTrigger:98,callInvalidation:90,putInvalidation:110,validation:{decisionSamples:0}};
+  const operational={asset:'TEST',side:'CALL',state:'JANELA ABERTA',createdAt:now,entryWindowEndAt:now+60000,targetAt:now+60000,forecastHorizonSeconds:60,durationMs:30000,sideSupported:true,trigger:101,invalidation:90,technicalConfidence:80,reason:'Aguardando gatilho fixo.'};
+  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',agentVersion:'13.3.1',forecastHorizonSeconds:60,durationMs:30000,metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
+  const card=page.locator('[data-sentinel-card="horizon"]');
+  assert.equal(await driver.updateOverlay('iq_option',data),true);
+  assert.match(await card.innerText(),/CALL · JANELA ABERTA/);
+  assert.match(await card.innerText(),/FECHA EM/);
+  assert.match(await card.innerText(),/MODELO 80 pts/);
+  assert.match(await card.innerText(),/Em teste: 0\/60 sinais/);
+  assert.match(await card.innerText(),/101\.000/,'display must show the locked engine trigger');
+  assert.doesNotMatch(await card.innerText(),/102\.000/);
+  assert.equal(await page.evaluate(()=>localStorage.getItem('sentinel-future-decision-v13|TEST|60')),null);
+  await driver.updateOverlay('iq_option',{...data,operationalSignal:{...operational,state:'JANELA ENCERRADA'}});
+  assert.match(await card.innerText(),/JANELA ENCERRADA/);assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
+  await driver.updateOverlay('iq_option',{...data,operationalSignal:{...operational,state:'AGUARDAR PRAZO',sideSupported:false}});
+  assert.match(await card.innerText(),/PRAZOS SEM CONFIRMAÇÃO/);assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|ENTRAR AGORA/);
+  await driver.updateOverlay('iq_option',{...data,analysisStale:true});
+  assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
+  await driver.updateOverlay('iq_option',{...data,entryPlanner:{horizons:{'60':{...plan,confidence:72}}}});
+  assert.match(await card.innerText(),/MODELO 72 pts/);
+  await mkdir('sentinel-test-output',{recursive:true});
+  await card.screenshot({path:'sentinel-test-output/scenario-open.png'});
+  const dimensions=await card.evaluate(el=>({scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,children:[...el.querySelectorAll('*')].filter(x=>x.getBoundingClientRect().right>el.getBoundingClientRect().right+1).map(x=>({tag:x.tagName,text:x.textContent.slice(0,90),right:x.getBoundingClientRect().right}))}));
+  console.log('SCENARIO_LAYOUT',JSON.stringify(dimensions));
+  assert.equal(dimensions.scrollWidth<=dimensions.clientWidth,true,'scenario must fit its card');
+  const status=card.locator('span').filter({hasText:/FECHA EM/}).first();
+  assert.equal(await status.evaluate(el=>getComputedStyle(el).fontSize),'15px');
+  await mkdir('sentinel-test-output',{recursive:true});
+  await card.screenshot({path:'sentinel-test-output/scenario-open.png'});
+  await page.waitForTimeout(4000); // No new worker payload: the browser clock must expire freshness itself.
+  assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
+  assert.deepEqual(errors,[]);
+  console.log('SENTINEL 13.3.1 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
+}finally{await browser.close();await new Promise(resolve=>server.close(resolve))}

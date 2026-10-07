@@ -4,7 +4,9 @@ on:
   push:
     branches: [sentinel-v12-clean-restore-20261006, main]
     paths:
+      - 'sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe'
       - 'sentinel-trading-lab/agent/**'
+      - 'scripts/sentinel-overlay-smoke.mjs'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
       - '.github/workflows/sentinel-windows-smoke.yml'
@@ -54,7 +56,7 @@ jobs:
           for(const k of ['entryReady','preEntry','reversalBlocked','technicalEdge','_mergeScenarioConfluence','_generalConsensus','family-balanced-market-vs-strategies'])if(!runtime.includes(k))throw new Error('runtime_gate_missing:'+k);
           for(const k of ['strategy2','strategy3','_strategyPanel','strategyCards','strategyConfluence'])if(!runtime.includes(k))throw new Error('strategy_panel_missing:'+k);
           for(const k of ['data-sentinel-setting="strategy2"','data-sentinel-setting="strategy3"'])if(!driverSource.includes(k))throw new Error('strategy_ui_missing:'+k);
-          for(const k of ['futureDecisionPaused','feedPausedAt','maxFeedPauseMs=12000'])if(!driverSource.includes(k))throw new Error('v13_future_ui_missing:'+k);
+          for(const k of ['futureDecisionPaused','scenarioViewFromRuntime','runtimeDeadline'])if(!driverSource.includes(k))throw new Error('v13_future_ui_missing:'+k);
           if(!driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().includes('MEDIA DOS 3 TOTAIS'))throw new Error('v13_future_ui_missing:MEDIA_DOS_3_TOTAIS');
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
@@ -89,8 +91,8 @@ jobs:
           if(installer.includes("$_ .Name -eq 'chrome.exe'".replace('$_ ','$_'))||installer.includes("$_ .Name -eq 'msedge.exe'".replace('$_ ','$_')))throw new Error('installer_still_kills_broker_browser');
           if(!worker.includes("runtime.setMode(payload.mode"))throw new Error('mode_route_missing');
           if(worker.includes("async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain"))throw new Error('status_poll_still_runs_heavy_maintain');
-          if(!worker.includes("const VERSION='13.3.0'"))throw new Error('agent_version_not_13_3');
-          console.log('V13.3 STARTUP + PAID ACCESS GATE: PASS');
+          if(!worker.includes("const VERSION='13.3.1'"))throw new Error('agent_version_not_13_3');
+          console.log('V13.3.1 STARTUP + PAID ACCESS GATE: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -157,6 +159,12 @@ jobs:
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-hybrid-smoke.mjs'
 
+      - name: Test Sentinel forecast and timing regressions
+        shell: powershell
+        run: |
+          node --test (Get-ChildItem 'tests/sentinel*.test.mjs').FullName
+          if($LASTEXITCODE -ne 0){throw 'Sentinel regression tests failed'}
+
       - name: Build and install EXE
         shell: powershell
         run: |
@@ -173,12 +181,27 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.3.0'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.3.1'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
           if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
           Write-Host 'HYBRID V13.3 INSTALL: PASS'
+
+      - name: Verify rendered scenario card
+        shell: powershell
+        run: |
+          npm install --prefix sentinel-trading-lab/agent --ignore-scripts --no-audit --no-fund
+          if($LASTEXITCODE -ne 0){throw 'Playwright dependencies failed'}
+          node scripts/sentinel-overlay-smoke.mjs
+          if($LASTEXITCODE -ne 0){throw 'Rendered scenario regression failed'}
+
+      - name: Upload scenario screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-scenario-13.3.1
+          path: sentinel-test-output/scenario-open.png
 
       - name: Cleanup
         if: always()

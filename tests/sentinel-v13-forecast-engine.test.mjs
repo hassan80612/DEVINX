@@ -302,15 +302,13 @@ test('operational runtime no longer contains broker-expiration mismatch gates',a
 });
 
 
-test('future overlay source blocks immediate same-side relock after expiry or invalidation',async()=>{
+test('future overlay follows engine-owned windows and removes independent browser decisions',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
-  assert.ok(!ui.includes('const sameExpiredSide=false'));
-  assert.ok(ui.includes("const sameExpiredSide=!!expiredDecision&&plannerReadable&&candidateOutlook===String(expiredDecision.side||'').toUpperCase()"));
-  assert.ok(ui.includes('plannerConfirmed&&!sameExpiredSide'));
-  assert.ok(ui.includes("reason:'runtime-invalidated'"));
-  assert.ok(ui.includes('JANELA ABERTA'));
-  assert.ok(!ui.includes("operationalHeroSide+' EM '+operationalWaitSeconds+'s'"));
-  assert.ok(ui.includes('AVISO: expiração maior que o cenário; não bloqueia o sinal.'));
+  assert.ok(ui.includes('scenarioViewFromRuntime'));
+  assert.ok(ui.includes('runtimeDeadline'));
+  assert.ok(ui.includes('localStorage.removeItem(decisionKey);localStorage.removeItem(expiredKey)'));
+  assert.ok(!ui.includes('localStorage.setItem(decisionKey'));
+  assert.ok(!ui.includes('targetAt:inheritedTargetAt||decisionNow+decisionSeconds*1000'));
 });
 
 test('locked forecast side does not chatter and a true reversal keeps the original target',()=>{

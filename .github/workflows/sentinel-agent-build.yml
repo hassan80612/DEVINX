@@ -36,6 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test tests/sentinel*.test.mjs
 
       - name: Build Agent V13.3 payload
         shell: bash
@@ -80,11 +81,12 @@ jobs:
           cp "$tmpdir/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/agent_payload_v88.zip" sentinel-trading-lab/public/downloads/
           cp "$tmpdir/favicon.ico" sentinel-trading-lab/public/favicon.ico
+          cp "$tmpdir/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
           sed -i 's/v=13\.3\.0-r4&release=sentinel-v13-3-market-window/v=13.3.0-r5\&release=sentinel-v13-3-pilot-failover/g' sentinel-trading-lab/src/app/page.tsx
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/favicon.ico sentinel-trading-lab/src/app/page.tsx
+          git add sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/favicon.ico sentinel-trading-lab/src/app/page.tsx
           if git diff --cached --quiet; then
             echo 'Agent 13.3 generated files already current.'
             exit 0

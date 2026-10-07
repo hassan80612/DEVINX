@@ -36,7 +36,7 @@ test('strategy display still avoids fake 100/0 from sparse evidence',()=>{
   assert.ok(p.putPct>25&&p.putPct<45,JSON.stringify(p));
 });
 
-test('Future overlay opens the forecast window immediately and keeps expiration advisory',async()=>{
+test('Future overlay uses runtime windows and confirms the order horizon',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
   assert.ok(ui.includes('sentinel-future-decision-v13|'));
   assert.ok(!ui.includes("operationalHeroSide+' EM '+operationalWaitSeconds+'s'"));
@@ -49,7 +49,7 @@ test('Future overlay opens the forecast window immediately and keeps expiration 
   assert.ok(ui.includes("operationalMismatch?'REVALIDANDO LADO'"));
   assert.ok(ui.includes("operationalHeroSide==='CALL'?callTone:putTone"));
   assert.ok(!ui.includes("['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO','AJUSTAR PRAZO']"));
-  assert.ok(ui.includes('a expiração não controla a abertura da janela.'));
+  assert.ok(ui.includes('PRAZOS SEM CONFIRMAÇÃO'));
   assert.ok(ui.includes('data-sentinel-plan-horizon'));
   assert.ok(ui.includes('data-sentinel-setting="duration"'));
   assert.ok(ui.includes('data-sentinel-setting="minConfidence"'));
@@ -71,7 +71,7 @@ test('Future overlay opens the forecast window immediately and keeps expiration 
   assert.ok(ui.includes('plannerFreshAfterAssetSwitch'));
   assert.ok(ui.includes("startsWith('sentinel-future-decision-v13|')"));
   assert.ok(ui.includes("startsWith('sentinel-future-expired-v13|')"));
-  assert.ok(ui.includes('sameExpiredSide'));
+  assert.ok(ui.includes('runtimeContextMatches'));
   assert.ok(ui.includes('CALL — confirmação'));
   assert.ok(ui.includes('PUT — confirmação'));
 });

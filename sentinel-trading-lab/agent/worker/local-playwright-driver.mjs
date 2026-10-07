@@ -2,6 +2,7 @@
 import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
+import {scenarioViewFromRuntime} from './scenario-view.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 
@@ -1293,21 +1294,23 @@ export class LocalPlaywrightDriver{
     const s=await this.session(provider);if(!s?.page||s.background)return false;
     try{
       const payload=JSON.parse(JSON.stringify(data||{}));
+      payload.overlayReceivedAt=Date.now();
+      payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
         window.__sentinelLastOverlayData=d;
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.3'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.3.1'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.3';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.3.1';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
-          reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{transform:translateX(145%) skewX(-18deg);opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{transform:translateX(-145%) skewX(-18deg);opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);transform:translateX(145%) skewX(-18deg);animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
+          reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.3';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.3.1';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1396,9 +1399,10 @@ export class LocalPlaywrightDriver{
         const contextSell=!analysisStale&&m.sellScore!=null?Math.max(0,Math.min(100,Number(m.sellScore))):null;
         const buy=shortReady?contextBuy:null,sell=shortReady?contextSell:null;
         const runtime=String(d.state||'stopped').toLowerCase(),runtimeLabel=runtime==='running'?'ATIVO':runtime==='paused'?'PAUSADO':runtime==='error'?'ERRO':'PARADO';
-        const liveAge=Number(d.liveAgeMs),liveNow=Number.isFinite(liveAge)&&liveAge<3500;
+        const elapsedSincePayload=Math.max(0,Date.now()-Number(d.overlayReceivedAt||Date.now()));
+        const liveAge=d.liveAgeMs==null?NaN:Number(d.liveAgeMs)+elapsedSincePayload,liveNow=Number.isFinite(liveAge)&&liveAge<3500;
         const liveLabel=analysisStale?'SINCRONIZANDO FEED':analysisTransient?'ATUALIZANDO ANÁLISE':liveNow?'Tempo REAL · AGORA':Number.isFinite(liveAge)?'Tempo REAL · '+(liveAge/1000).toFixed(1)+'s':'AGUARDANDO FEED';
-        const analysisAge=Number(d.analysisAgeMs),analysisFresh=runtime==='running'&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
+        const analysisAge=Number(d.analysisAgeMs)+elapsedSincePayload,analysisFresh=runtime==='running'&&!analysisStale&&d.analysisAgeMs!=null&&Number.isFinite(analysisAge)&&analysisAge<3500;
         const planner=d.entryPlanner?.horizons||{};
         const price=v=>{const x=Number(v);if(!Number.isFinite(x))return'—';const a=Math.abs(x),dg=a>=100?3:a>=10?4:5;return x.toFixed(dg)};
         const reasons=(d.reasons||[]).slice(0,4).map(x=>'<div style="margin-top:4px">• '+esc(x)+'</div>').join('');
@@ -1482,122 +1486,52 @@ export class LocalPlaywrightDriver{
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureRegime=plannerReadable?String(plannerPlan?.regime?.label||'—').toUpperCase():'—';
 
-        // O horizonte (30s/1m/...) define o alvo futuro a partir de agora.
-        // A expiração escolhida no card define quanto tempo a operação ficará aberta.
-        // A janela de entrada é calculada por horizonte - expiração; a expiração lida da corretora não participa desta equação.
-        const decisionAsset=visibleAsset,decisionSeconds=Math.max(30,Number(plannerHorizon)||30),runtimeOperationalState=String(operational?.state||'AGUARDAR').toUpperCase(),runtimeOperationalSide=['CALL','PUT'].includes(String(operational?.side||'').toUpperCase())?String(operational.side).toUpperCase():null;
-        const decisionKey='sentinel-future-decision-v13|'+decisionAsset+'|'+String(plannerHorizon),expiredKey='sentinel-future-expired-v13|'+decisionAsset+'|'+String(plannerHorizon),decisionNow=Date.now(),maxFeedPauseMs=12000;
-        let futureDecision=null,expiredDecision=null,inheritedTargetAt=null;
-        try{futureDecision=JSON.parse(localStorage.getItem(decisionKey)||'null')}catch{futureDecision=null}
-        try{expiredDecision=JSON.parse(localStorage.getItem(expiredKey)||'null')}catch{expiredDecision=null}
-        // If the visible broker tab is not the validated asset, never keep showing an
-        // old locked decision from the validated feed. The banner explains how to switch.
-        if(screenCandidateAsset){
-          try{localStorage.removeItem(decisionKey);localStorage.removeItem(expiredKey)}catch{}
-          futureDecision=null;expiredDecision=null
-        }
-        if(futureDecision&&(String(futureDecision.asset||'')!==decisionAsset||Number(futureDecision.seconds)!==decisionSeconds)){
-          try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
-        }
-        if(futureDecision&&!plannerReadable){
-          const pausedAt=Number(futureDecision.feedPausedAt||0);
-          if(!pausedAt)futureDecision.feedPausedAt=decisionNow;
-          futureDecision.lastCheckedAt=decisionNow;
-          if(decisionNow-Number(futureDecision.feedPausedAt||decisionNow)>maxFeedPauseMs){
-            try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
-          }else{
-            try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
-          }
-        }else if(futureDecision&&plannerReadable&&Number(futureDecision.feedPausedAt||0)>0){
-          const pausedMs=Math.max(0,decisionNow-Number(futureDecision.feedPausedAt));
-          futureDecision.targetAt=Number(futureDecision.targetAt||decisionNow)+pausedMs;
-          futureDecision.feedPausedAt=0;
-          futureDecision.lastCheckedAt=decisionNow;
-          try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
-        }
-        if(futureDecision&&plannerReadable&&decisionNow<Number(futureDecision.targetAt||0)){
-          const livePlannerPrice=Number(plannerPlan?.currentPrice),ownInvalidation=Number(futureDecision.side==='CALL'?plannerPlan?.callInvalidation:plannerPlan?.putInvalidation);
-          const priceInvalidated=Number.isFinite(livePlannerPrice)&&Number.isFinite(ownInvalidation)&&(futureDecision.side==='CALL'?livePlannerPrice<=ownInvalidation:livePlannerPrice>=ownInvalidation);
-          if(priceInvalidated){
-            expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0),reason:'price-invalidated'};
-            try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
-          }
-        }
-        if(futureDecision&&plannerReadable&&decisionNow<Number(futureDecision.targetAt||0)){
-          const ownPct=futureDecision.side==='CALL'?futureCallPct:futurePutPct,oppositePct=futureDecision.side==='CALL'?futurePutPct:futureCallPct;
-          const oppositeSide=futureDecision.side==='CALL'?'PUT':'CALL';
-          const strongInvalidation=plannerConfirmed&&candidateOutlook===oppositeSide&&oppositePct>=Math.max(72,futureDisplayThreshold+8)&&futureConfidence>=68&&futureAgreement>=62&&(oppositePct-ownPct)>=16;
-          futureDecision.invalidations=strongInvalidation?Number(futureDecision.invalidations||0)+1:0;
-          futureDecision.lastCheckedAt=decisionNow;
-          if(futureDecision.invalidations>=2){
-            expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0),reason:'opposition-invalidated'};
-            try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
-          }else{
-            try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
-          }
-        }
-        if(futureDecision&&runtimeOperationalState==='INVALIDADO'&&runtimeOperationalSide===String(futureDecision.side||'').toUpperCase()){
-          expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0),reason:'runtime-invalidated'};
-          try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
-        }
-        if(futureDecision&&decisionNow>=Number(futureDecision.targetAt||0)){
-          expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0)};
-          try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
-        }
-        // Depois que a janela "AGORA" termina, a mesma direção não pode relockar imediatamente.
-        // A trava só é liberada quando o cenário deixa aquela direção (AGUARDAR/oposto) ou o ativo muda.
-        if(expiredDecision&&(!plannerReadable||candidateOutlook!==String(expiredDecision.side||''))){
-          if(plannerReadable&&['price-invalidated','opposition-invalidated','runtime-invalidated'].includes(String(expiredDecision.reason||''))&&Number(expiredDecision.targetAt||0)>decisionNow)inheritedTargetAt=Number(expiredDecision.targetAt);
-          try{localStorage.removeItem(expiredKey)}catch{};expiredDecision=null
-        }
-        const sameExpiredSide=!!expiredDecision&&plannerReadable&&candidateOutlook===String(expiredDecision.side||'').toUpperCase();
-        const candidatePct=candidateOutlook==='CALL'?futureCallPct:candidateOutlook==='PUT'?futurePutPct:0;
-        const decisionEligible=plannerReadable&&plannerConfirmed&&!sameExpiredSide&&plannerPlan?.outlookReady===true&&['CALL','PUT'].includes(candidateOutlook)&&candidatePct>=futureDisplayThreshold;
-        if(!futureDecision&&decisionEligible){
-          futureDecision={
-            asset:decisionAsset,seconds:decisionSeconds,side:candidateOutlook,lockedAt:decisionNow,targetAt:inheritedTargetAt||decisionNow+decisionSeconds*1000,
-            confidence:futureConfidence,callPct:futureCallPct,putPct:futurePutPct,agreement:futureAgreement,invalidations:0,feedPausedAt:0
-          };
-          try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
-        }
-        const decisionPausedAt=futureDecision?Number(futureDecision.feedPausedAt||0):0;
-        const futureDecisionPaused=!!futureDecision&&decisionPausedAt>0&&!plannerReadable;
-        const countdownNow=futureDecisionPaused?decisionPausedAt:decisionNow;
-        const decisionRemaining=futureDecision?Math.max(0,Math.ceil((Number(futureDecision.targetAt||countdownNow)-countdownNow)/1000)):null;
-        const feedPauseSeconds=futureDecisionPaused?Math.max(0,Math.ceil((decisionNow-decisionPausedAt)/1000)):0;
-        const decisionPhase=!futureDecision?'WAIT':futureDecisionPaused?'PAUSED':decisionRemaining>0?'ACTIVE':'EXPIRED';
-        const displayCandidate=sameExpiredSide?'AGUARDAR':candidateOutlook;
-        const outlook=futureDecision?.side||displayCandidate;
+        // The engine owns the setup, side and deadline. Remove pre-fix browser decisions.
+        const decisionSeconds=Math.max(30,Number(plannerHorizon)||30),decisionNow=Date.now();
+        const decisionKey='sentinel-future-decision-v13|'+visibleAsset+'|'+String(plannerHorizon),expiredKey='sentinel-future-expired-v13|'+visibleAsset+'|'+String(plannerHorizon);
+        try{localStorage.removeItem(decisionKey);localStorage.removeItem(expiredKey)}catch{}
+        const runtimeView=d.scenarioView||{},runtimeContextMatches=runtimeView.contextMatches===true&&Number(operational?.forecastHorizonSeconds)===decisionSeconds&&Number(operational?.durationMs)===duration;
+        const runtimeOperationalSide=runtimeContextMatches?runtimeView.side:null;
+        const runtimeDeadline=runtimeContextMatches?Number(runtimeView.deadline||0):0;
+        const deadlinePassed=runtimeDeadline>0&&decisionNow>=runtimeDeadline;
+        const operationalTimingState=deadlinePassed?(runtimeView.state==='ENTRADA'?'JANELA ENCERRADA':'JANELA PERDIDA'):runtimeView.state||'AGUARDAR';
+        const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO'].includes(operationalTimingState);
+        const futureDecision=plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup&&!timingClosed&&runtimeDeadline>decisionNow?{side:runtimeOperationalSide,targetAt:runtimeDeadline}:null;
+        const futureDecisionPaused=!plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup;
+        const feedPauseSeconds=Math.max(0,Math.ceil(Number(d.liveAgeMs||0)/1000));
+        const displayCandidate=candidateOutlook;
+        const outlook=runtimeOperationalSide||displayCandidate;
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
         const formingSide=displayCandidate==='CALL'||displayCandidate==='PUT'?displayCandidate:null;
         const operationalHeroSide=runtimeOperationalSide;
-        const operationalTimingState=runtimeOperationalState;
-        const operationalWaitSeconds=Number.isFinite(Number(operational?.timeToEntryMs))?Math.max(0,Math.ceil(Number(operational.timeToEntryMs)/1000)):null;
-        const lockedDisplaySide=futureDecision&&['CALL','PUT'].includes(String(futureDecision.side||'').toUpperCase())?String(futureDecision.side).toUpperCase():null;
-        const operationalMatchesForecast=!lockedDisplaySide||!operationalHeroSide||operationalHeroSide===lockedDisplaySide;
-        const operationalMismatch=!!lockedDisplaySide&&!!operationalHeroSide&&operationalHeroSide!==lockedDisplaySide;
-        const operationalNow=operational?.actionable===true&&operational?.ready===true&&operationalTimingState==='ENTRADA'&&!!operationalHeroSide&&operationalMatchesForecast&&liveNow&&analysisFresh;
-        const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO'].includes(operationalTimingState);
+        const operationalMismatch=!!operationalHeroSide&&!!formingSide&&operationalHeroSide!==formingSide;
+        const operationalMatchesForecast=!operationalMismatch;
+        const operationalNow=!!futureDecision&&runtimeView.canEnter===true&&operationalMatchesForecast&&liveNow&&analysisFresh&&!analysisTransient;
         const waitingForce=operationalTimingState==='AGUARDAR FORÇA';
-        const waitingWindow=false;
-        const forecastLabel=futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):('PREVISÃO '+futureDecision.side)):(formingSide?('PREVISÃO '+formingSide):('AGUARDAR · '+horizonLabel));
+        const forecastLabel=futureDecision?('PREVISÃO '+futureDecision.side):(operationalHeroSide?('PREVISÃO '+operationalHeroSide):formingSide?('PREVISÃO '+formingSide):('AGUARDAR · '+horizonLabel));
         const actionTone=operationalNow&&operationalHeroSide?(operationalHeroSide==='CALL'?callTone:putTone):outlookTone;
-        const windowSeconds=futureDecision&&decisionRemaining!=null?decisionRemaining:null;
-        const futureActionLabel=operationalMismatch?forecastLabel:(operationalNow?(operationalHeroSide+' — ENTRAR AGORA'):(futureDecision&&['CALL','PUT'].includes(String(futureDecision.side||'').toUpperCase())?(futureDecision.side+' · JANELA ABERTA'):(waitingForce?forecastLabel:forecastLabel)));
-        const futureDecisionStatus=operationalMismatch?'REVALIDANDO LADO':operationalNow?'ENTRADA CONFIRMADA':futureDecision&&windowSeconds!=null?('FECHA EM '+windowSeconds+'s'):waitingForce?'FORÇA CONTRÁRIA':timingClosed?operationalTimingState:(formingSide?'PREVISÃO ATIVA':'SEM DECISÃO');
-        const futureDecisionConfidence=futureDecision?Math.max(0,Math.min(100,Number(futureDecision.confidence||0))):futureConfidence;
+        const windowSeconds=futureDecision?Math.max(0,Math.ceil((runtimeDeadline-decisionNow)/1000)):null;
+        const openWindow=!!futureDecision&&operationalTimingState==='JANELA ABERTA'&&operational?.sideSupported===true&&analysisFresh&&!analysisTransient;
+        const futureActionLabel=operationalNow?(operationalHeroSide+' — ENTRAR AGORA'):openWindow?(futureDecision.side+' · JANELA ABERTA'):forecastLabel;
+        const futureDecisionStatus=!plannerReadable?'SEM LEITURA':timingClosed?operationalTimingState:operationalMismatch?'REVALIDANDO LADO':operationalTimingState==='AGUARDAR PRAZO'?'PRAZOS SEM CONFIRMAÇÃO':waitingForce?'FORÇA CONTRÁRIA':futureDecision&&(openWindow||operationalNow)?('FECHA EM '+windowSeconds+'s'):formingSide?'AGUARDANDO CONFIRMAÇÃO':'SEM DECISÃO';
+        const futureDecisionConfidence=futureConfidence;
+        const measuredHistory=plannerPlan?.validation||{},measuredSamples=Math.max(0,Number(measuredHistory.decisionSamples||0));
+        const measuredHistoryLabel=measuredSamples>=60?('Acerto medido das previsões: '+n(measuredHistory.decisionWinRate,1)+'% · '+measuredSamples+' sinais'):('Em teste: '+measuredSamples+'/60 sinais · CALL/PUT estimados');
+        const displayedCallTrigger=operationalHeroSide==='CALL'&&operational?.trigger!=null?operational.trigger:plannerPlan?.callTrigger,displayedPutTrigger=operationalHeroSide==='PUT'&&operational?.trigger!=null?operational.trigger:plannerPlan?.putTrigger;
+        const displayedCallInvalidation=operationalHeroSide==='CALL'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.callInvalidation,displayedPutInvalidation=operationalHeroSide==='PUT'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.putInvalidation;
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:5px">'+
-            '<div style="padding:5px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:7px;color:'+subtle+';font-weight:900">CONFIANÇA</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+'%</b></div>'+
+            '<div style="padding:5px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:7px;color:'+subtle+';font-weight:900">CONFIANÇA DO MODELO</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+' pts</b></div>'+
             '<div style="padding:5px;border-radius:8px;background:rgba(114,230,185,.05);border:1px solid rgba(105,225,181,.11);text-align:center"><span style="display:block;font-size:7px;color:'+callTone+';font-weight:900">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(futureCallPct,0)+'%</b></div>'+
             '<div style="padding:5px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,156,.11);text-align:center"><span style="display:block;font-size:7px;color:'+putTone+';font-weight:900">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(futurePutPct,0)+'%</b></div>'+
           '</div>'+
           '<div style="font-size:11px;color:'+muted+';margin-bottom:5px;line-height:1.38;white-space:normal;overflow-wrap:anywhere">Agora <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b>'+(futureProjectedPrice!=null?' · projeção <b style="color:'+outlookTone+'">'+price(futureProjectedPrice)+'</b>':'')+' · acordo '+n(futureAgreement,0)+'% · '+esc(futureRegime)+'</div>'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+
-            '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8.2px;color:'+callTone+';font-weight:850">CALL — confirmação</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(plannerPlan.callTrigger)+'</div><div style="font-size:7.7px;color:'+muted+';margin-top:2px">invalida &lt; '+price(plannerPlan.callInvalidation)+'</div></div>'+
-            '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8.2px;color:'+putTone+';font-weight:850">PUT — confirmação</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(plannerPlan.putTrigger)+'</div><div style="font-size:7.7px;color:'+muted+';margin-top:2px">invalida &gt; '+price(plannerPlan.putInvalidation)+'</div></div>'+
+            '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:8.2px;color:'+callTone+';font-weight:850">CALL — confirmação</div><div style="font-size:14px;font-weight:900;color:#69e1b5;margin-top:2px">'+price(displayedCallTrigger)+'</div><div style="font-size:7.7px;color:'+muted+';margin-top:2px">invalida &lt; '+price(displayedCallInvalidation)+'</div></div>'+
+            '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:8.2px;color:'+putTone+';font-weight:850">PUT — confirmação</div><div style="font-size:14px;font-weight:900;color:#ff8f9c;margin-top:2px">'+price(displayedPutTrigger)+'</div><div style="font-size:7.7px;color:'+muted+';margin-top:2px">invalida &gt; '+price(displayedPutInvalidation)+'</div></div>'+
           '</div>'+
-          '<div style="margin-top:5px;font-size:8.8px;line-height:1.34;color:'+ink+';font-weight:760">Entrada somente quando o Sinal Operacional confirmar o gatilho.</div>'
+          '<div style="margin-top:5px;font-size:8.8px;line-height:1.34;color:'+ink+';font-weight:760">Entrada somente quando o Sinal Operacional confirmar o gatilho.</div>'+
+          '<div style="margin-top:5px;font-size:9px;line-height:1.35;color:'+muted+'">'+esc(measuredHistoryLabel)+' · confiança em pontos não é taxa de acerto.</div>'
         ):'<div style="font-size:9px;color:'+muted+'">Aguardando leitura atual deste prazo.</div>';
         const strategyCardsHtml=[1,2,3].map(slot=>{
           const card=strategyCards.find(x=>Number(x?.slot)===slot)||{slot,active:false,label:'Estratégia não selecionada'};
@@ -1757,6 +1691,8 @@ export class LocalPlaywrightDriver{
           });
         }
 
+        const currentAction=el.querySelector('[data-sentinel-scenario-action]'),currentStatus=el.querySelector('[data-sentinel-scenario-status]');
+        if(currentAction)currentAction.textContent=futureActionLabel;if(currentStatus)currentStatus.textContent=futureDecisionStatus;
         const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select,input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')))return;
 
         
@@ -1768,7 +1704,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:950;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:900">V${esc(d.agentVersion||'13.3.0')}</span></div>
+                <div style="font-size:13.5px;font-weight:950;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:900">V${esc(d.agentVersion||'13.3.1')}</span></div>
                 <div style="font-size:9px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -1803,14 +1739,14 @@ export class LocalPlaywrightDriver{
               <label style="display:flex;align-items:center;gap:3px;font-size:8.1px;font-weight:950;color:${ink}">FILTRO <select data-sentinel-setting="minConfidence" title="Filtro mínimo de pontos técnicos" style="height:25px;min-width:58px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 4px;font-size:9px;font-weight:850"><option value="55" ${minConfidence===55?'selected':''}>55 pts</option><option value="60" ${minConfidence===60?'selected':''}>60 pts</option><option value="65" ${minConfidence===65?'selected':''}>65 pts</option><option value="70" ${minConfidence===70?'selected':''}>70 pts</option><option value="75" ${minConfidence===75?'selected':''}>75 pts</option><option value="80" ${minConfidence===80?'selected':''}>80 pts</option><option value="85" ${minConfidence===85?'selected':''}>85 pts</option><option value="90" ${minConfidence===90?'selected':''}>90 pts</option><option value="95" ${minConfidence===95?'selected':''}>95 pts</option></select></label>
               <label style="display:flex;align-items:center;gap:2px;font-size:8.1px;font-weight:950;color:${ink}" title="Percentual mínimo para considerar CALL ou PUT">SINAL <input data-sentinel-future-threshold type="number" min="50" max="95" step="1" value="${futureDisplayThreshold}" style="width:38px;height:25px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font:950 10px/1 inherit;padding:0 3px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></label>
             </div>
-            <div style="display:flex;align-items:baseline;gap:10px;margin:9px 0 6px;flex-wrap:wrap;min-height:32px;overflow:visible;white-space:normal"><b style="font-size:24px;line-height:1;color:${actionTone};letter-spacing:.015em;text-shadow:0 0 16px color-mix(in srgb,${actionTone} 28%,transparent)">${esc(futureActionLabel)}</b><span style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:15px;font-weight:950">${esc(futureDecisionStatus)}</span><span style="color:${goldSoft};font-size:9.3px;font-weight:950;text-shadow:${goldGlow}">${plannerReadable||futureDecision?'CONF '+n(futureDecisionConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9.3px;font-weight:850">${liveLabel}</span></div>
-            <div style="color:${muted};font-size:12px;font-weight:820;line-height:1.45;margin-bottom:7px;min-height:26px;overflow:visible">${futureDecisionPaused?('Feed pausado há '+feedPauseSeconds+'s.'):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':operationalNow?('Gatilho confirmado · janela fecha em '+(windowSeconds??0)+'s · expiração '+({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]+'.'):waitingForce?esc(String(operational?.reason||'Aguardando a força atual desacelerar.')):timingClosed?esc(String(operational?.reason||'Janela encerrada.')):futureDecision?('Janela aberta · fecha em '+(windowSeconds??0)+'s · expiração '+({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]+(duration>decisionSeconds*1000?' · AVISO: expiração maior que o cenário; não bloqueia o sinal.':' · a expiração não controla a abertura da janela.')):candidateOutlook==='AGUARDAR'?('Sem decisão: CALL '+n(futureCallPct,0)+'% · PUT '+n(futurePutPct,0)+'%.'):(!plannerConfirmed&&formingSide?'Aguardando confirmação.':'Previsão pronta; a janela abrirá assim que a direção for validada.')}</div>
+            <div style="display:flex;align-items:baseline;gap:10px;margin:9px 0 6px;flex-wrap:wrap;min-height:32px;overflow:visible;white-space:normal"><b data-sentinel-scenario-action style="font-size:24px;line-height:1;color:${actionTone};letter-spacing:.015em;text-shadow:0 0 16px color-mix(in srgb,${actionTone} 28%,transparent)">${esc(futureActionLabel)}</b><span data-sentinel-scenario-status style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:15px;font-weight:950">${esc(futureDecisionStatus)}</span><span style="color:${goldSoft};font-size:9.3px;font-weight:950;text-shadow:${goldGlow}">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-size:9.3px;font-weight:850">${liveLabel}</span></div>
+            <div style="color:${muted};font-size:12px;font-weight:820;line-height:1.45;margin-bottom:7px;min-height:26px;overflow:visible">${futureDecisionPaused?('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.'):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.'))}</div>
             ${planHtml}
           </div>
 
           <div class="sentinel-shine" data-sentinel-summary="average-total" style="position:relative;margin-top:8px;padding:10px 11px;min-height:72px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${averageSide!=='AGUARDAR'?averageTone:panelBorder};box-shadow:${panelShadow}">
             <div style="display:grid;grid-template-columns:minmax(0,1.45fr) .58fr .58fr .52fr;gap:8px;align-items:center;height:100%">
-              <div style="min-width:0"><div class="sentinel-metal-gold" style="font-size:11.2px;font-weight:950;letter-spacing:.04em">MÉDIA DOS 3 TOTAIS</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:2px"><b style="font-size:17px;color:${averageTone}">${averageSide}</b><span style="font-size:8px;font-weight:900;color:${goldSoft}">CONF MÉDIA ${n(averageConfidence,0)}%</span></div></div>
+              <div style="min-width:0"><div class="sentinel-metal-gold" style="font-size:11.2px;font-weight:950;letter-spacing:.04em">MÉDIA DOS 3 TOTAIS</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:2px"><b style="font-size:17px;color:${averageTone}">${averageSide}</b><span style="font-size:8px;font-weight:900;color:${goldSoft}">CONF MÉDIA ${n(averageConfidence,0)} pts</span></div></div>
               <div style="text-align:center;color:${callTone};font-size:8px;font-weight:900">CALL<b style="display:block;font-size:14px">${n(averageCallPct,0)}%</b></div>
               <div style="text-align:center;color:${putTone};font-size:8px;font-weight:900">PUT<b style="display:block;font-size:14px">${n(averagePutPct,0)}%</b></div>
               <div style="display:flex;align-items:center;justify-content:flex-end;gap:2px" title="Limite visual da média"><input data-sentinel-total-threshold="average" data-sentinel-average-threshold type="number" min="50" max="95" step="1" value="${averageDisplayThreshold}" style="width:44px;height:24px;border:1px solid ${fieldBorder};border-radius:7px;background:${fieldBg};color:${fieldInk};font:950 11px/1 inherit;padding:0 4px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></div>
@@ -1821,7 +1757,7 @@ export class LocalPlaywrightDriver{
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:stretch">
             <div class="sentinel-shine" data-sentinel-summary="market-total" style="position:relative;padding:10px 34px 10px 10px;min-height:${isSummaryCollapsed('market-total')?'44px':'118px'};height:${isSummaryCollapsed('market-total')?'44px':'auto'};box-sizing:border-box;overflow:${isSummaryCollapsed('market-total')?'hidden':'visible'};border-radius:13px;background:${panelBg};border:1px solid ${marketDisplaySide!=='AGUARDAR'?marketDisplayTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
               <div style="font-size:10.2px;font-weight:950;color:${ink};white-space:nowrap">TOTAL MERCADO</div>
-              <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">${marketActiveCount}/3 · CONF ${n(marketConfidence,0)}%</div>
+              <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">${marketActiveCount}/3 · CONF ${n(marketConfidence,0)} pts</div>
               ${summaryBtn('market-total')}
               <div style="margin-top:5px;font-size:18px;font-weight:950;line-height:1;color:${marketDisplayTone}">${marketDisplaySide}</div>
               <div style="display:flex;align-items:center;gap:9px;margin-top:7px;font-size:8px;font-weight:900"><span style="color:${callTone}">CALL <b style="font-size:13px">${n(marketCallPct,0)}%</b></span><span style="color:${putTone}">PUT <b style="font-size:13px">${n(marketPutPct,0)}%</b></span></div>
@@ -1830,7 +1766,7 @@ export class LocalPlaywrightDriver{
 
             <div class="sentinel-shine" data-sentinel-summary="strategy-total" style="position:relative;padding:10px 34px 10px 10px;min-height:${isSummaryCollapsed('strategy-total')?'44px':'118px'};height:${isSummaryCollapsed('strategy-total')?'44px':'auto'};box-sizing:border-box;overflow:${isSummaryCollapsed('strategy-total')?'hidden':'visible'};border-radius:13px;background:${panelBg};border:1px solid ${strategyDisplaySide!=='AGUARDAR'?strategyDisplayTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
               <div style="font-size:10.2px;font-weight:950;color:${ink};white-space:nowrap">TOTAL ESTRATÉGIAS</div>
-              <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">${strategyActiveCount}/3 · CONF ${n(strategyConfidence,0)}%</div>
+              <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">${strategyActiveCount}/3 · CONF ${n(strategyConfidence,0)} pts</div>
               ${summaryBtn('strategy-total')}
               <div style="margin-top:5px;font-size:18px;font-weight:950;line-height:1;color:${strategyDisplayTone}">${strategyDisplaySide}</div>
               <div style="display:flex;align-items:center;gap:9px;margin-top:7px;font-size:8px;font-weight:900"><span style="color:${callTone}">CALL <b style="font-size:13px">${n(strategyCallPct,0)}%</b></span><span style="color:${putTone}">PUT <b style="font-size:13px">${n(strategyPutPct,0)}%</b></span></div>
@@ -1839,7 +1775,7 @@ export class LocalPlaywrightDriver{
 
             <div class="sentinel-shine" data-sentinel-summary="operational-total" data-sentinel-card="operational-signal" style="position:relative;padding:10px 34px 10px 10px;min-height:${isSummaryCollapsed('operational-total')?'44px':'118px'};height:${isSummaryCollapsed('operational-total')?'44px':'auto'};box-sizing:border-box;overflow:${isSummaryCollapsed('operational-total')?'hidden':'visible'};border-radius:13px;background:${panelBg};border:1px solid ${totalSixDirectional?totalSixTone:panelBorder};min-width:0;box-shadow:${panelShadow}">
               <div style="font-size:10.2px;font-weight:950;color:${ink};white-space:nowrap">TOTAL PRESENTE + FUTURO</div>
-              <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">3 presente + ${strategyActiveCount} futuro · CONF ${n(generalStrength,0)}%</div>
+              <div style="margin-top:2px;font-size:7.8px;font-weight:800;color:${muted}">3 presente + ${strategyActiveCount} futuro · CONF ${n(generalStrength,0)} pts</div>
               ${summaryBtn('operational-total')}
               <div style="margin-top:5px;font-size:18px;font-weight:950;line-height:1;color:${totalSixTone}">${operationalDisplay}</div>
               <div style="display:flex;align-items:center;gap:9px;margin-top:7px;font-size:8px;font-weight:900"><span style="color:${callTone}">CALL <b style="font-size:13px">${n(generalCall,0)}%</b></span><span style="color:${putTone}">PUT <b style="font-size:13px">${n(generalPut,0)}%</b></span></div>
@@ -1851,13 +1787,13 @@ export class LocalPlaywrightDriver{
 
 
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;margin-bottom:6px">
-            <div><div style="font-size:10px;font-weight:950;letter-spacing:.045em;color:${ink}">LEITURA RÁPIDA DO MERCADO</div><div style="font-size:7.8px;color:${subtle};margin-top:1px">3 leituras independentes</div></div>
+            <div><div style="font-size:10px;font-weight:950;letter-spacing:.045em;color:${ink}">LEITURA RÁPIDA DO MERCADO</div><div style="font-size:7.8px;color:${subtle};margin-top:1px">3 leituras do mercado</div></div>
             <span style="font-size:7.8px;font-weight:900;color:${muted}">${marketActiveCount}/3 ativas</span>
           </div>
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:start">
             <div data-sentinel-role="confluence" data-sentinel-card="quick-confluence" style="padding:8px;border-radius:11px;background:${panelBg};border:1px ${isPaused('market_confluence')?'dashed':'solid'} ${panelBorder};min-width:0;min-height:110px;height:auto;overflow:visible;box-shadow:${panelShadow};opacity:${isPaused('market_confluence')?'.48':'1'}">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:4px"><span style="font-size:10px;font-weight:950;color:${ink}">CONFLUÊNCIA TÉCNICA</span>${pauseBtn('market_confluence')}</div>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-top:7px"><b style="font-size:15px;color:${finalTone}">${isPaused('market_confluence')?'PAUSADA':finalSide}</b><span style="font-size:7.2px;color:${subtle}">força ${n(finalStrength,0)}%</span></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-top:7px"><b style="font-size:15px;color:${finalTone}">${isPaused('market_confluence')?'PAUSADA':finalSide}</b><span style="font-size:7.2px;color:${subtle}">força ${n(finalStrength,0)} pts</span></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px"><div style="padding:5px;border-radius:7px;background:rgba(114,230,185,.05);text-align:center"><span style="font-size:7px;color:${callTone};font-weight:900">CALL</span><b style="display:block;font-size:15.5px;color:${callTone}">${n(finalCall,0)}%</b></div><div style="padding:5px;border-radius:7px;background:rgba(255,143,157,.05);text-align:center"><span style="font-size:7px;color:${putTone};font-weight:900">PUT</span><b style="display:block;font-size:15.5px;color:${putTone}">${n(finalPut,0)}%</b></div></div>
               <div style="margin-top:5px;font-size:8px;color:${subtle}">${isPaused('market_confluence')?'Fora dos totais enquanto pausada.':'Contexto técnico combinado.'}</div>
             </div>
@@ -1937,6 +1873,11 @@ export class LocalPlaywrightDriver{
         })
         };
         window.__sentinelRenderOverlay=render;
+        if(!window.__sentinelOverlayClock)window.__sentinelOverlayClock=setInterval(()=>{
+          const latest=window.__sentinelLastOverlayData;
+          if(!document.getElementById('sentinel-trading-overlay-host')){clearInterval(window.__sentinelOverlayClock);window.__sentinelOverlayClock=null;return}
+          if(latest&&Date.now()-Number(latest.overlayReceivedAt||0)>=1250)window.__sentinelRenderOverlay?.(latest)
+        },500);
         render(d)
       },payload);
       return true
