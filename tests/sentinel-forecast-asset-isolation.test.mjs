@@ -266,24 +266,22 @@ test('Market recovery retries only the broker-visible asset and never probes alt
   assert.equal(st.suggestedSymbol,null);
 });
 
-test('High-frequency market frames refresh generic instrument mapping at a throttled cadence', async () => {
+test('High-frequency market frames skip the generic recursive scan', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes('const highFrequencyMarketFrame='));
-  assert.ok(ui.includes('const shouldGenericScan=!highFrequencyMarketFrame||!st.lastGenericMarketScanAt'));
-  assert.ok(ui.includes('if(shouldGenericScan){'));
-  assert.ok(ui.includes('st.lastGenericMarketScanAt=genericScanNow'));
-  assert.ok(!ui.includes('Sugestão disponível:'));
+  assert.ok(ui.includes('const shouldGenericScan=!highFrequencyMarketFrame'));
+  assert.ok(ui.includes('if(shouldGenericScan)try{recursiveScan(data,out)}catch{}'));
+  assert.ok(!ui.includes('lastGenericMarketScanAt'));
 });
 
 
-test('Explicit IQ tab click cannot be undone by stale DOM and is rechecked after the tab settles', async () => {
+test('Existing tab clicks become hints and never retarget the validated asset by themselves', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
-  assert.ok(ui.includes("if(symbol===last&&source!=='click')return"));
-  assert.ok(ui.includes('const beforeSelected=selectedPair()'));
-  assert.ok(ui.includes("direct=p[0];publish(direct,'click')"));
-  assert.ok(ui.includes("if(p&&(!beforeSelected||p!==beforeSelected||p===direct))"));
-  assert.ok(ui.includes("publish(p,'selected-tab-settled')"));
-  assert.ok(!ui.includes("queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')})"));
+  assert.ok(ui.includes("source:'tab-click-hint'"));
+  assert.ok(ui.includes("if(source==='tab-click-hint'&&changed&&current)"));
+  assert.ok(ui.includes("st.marketStatus='unvalidated'"));
+  assert.ok(ui.includes('Ativo clicado ainda não validado'));
+  assert.ok(!ui.includes('selected-tab-settled'));
 });
 
 test('Future UI does not stay in an endless CONFIRMANDO state when direction is not ready', async () => {
@@ -319,11 +317,53 @@ test('Protocol active_id changes are surfaced as assetChanged events', () => {
 });
 
 
-test('IQ selected-tab watcher corrects a missed click without scanning the full body', async () => {
+test('IQ asset tracking has no continuous DOM polling or selected-tab watcher', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
-  assert.ok(ui.includes("window.__sentinelAssetWatchTimer=setInterval(watchSelected,450)"));
-  assert.ok(ui.includes("if(watchHits>=2)publish(p,'selected-tab-watch')"));
-  assert.ok(ui.includes("source==='selected-tab-watch'"));
-  assert.ok(ui.includes('vividLineScore'));
+  assert.ok(!ui.includes('__sentinelAssetWatchTimer'));
+  assert.ok(!ui.includes('watchSelected'));
+  assert.ok(!ui.includes('vividLineScore'));
   assert.ok(!ui.includes('new MutationObserver'));
+});
+
+test('Quote history appends in place instead of copying a large array on every tick', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes('function appendQuoteSample(st,ts,price)'));
+  assert.ok(ui.includes('st.quoteHistory.push({ts:t,price:p})'));
+  assert.ok(ui.includes('if(st.quoteHistory.length>960)st.quoteHistory.splice(0,st.quoteHistory.length-900)'));
+  assert.ok(!ui.includes("slice(-1800)"));
+});
+
+test('Calibration epoch isolates broken historical feed results from the new engine', async () => {
+  const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
+  assert.ok(runtime.includes("const CALIBRATION_EPOCH='feed-v2-future-strategies-v1'"));
+  assert.ok(runtime.includes("['micro-v5',CALIBRATION_EPOCH,kind"));
+  assert.ok(runtime.includes("filter(x=>String(x?.key||'').startsWith(prefix))"));
+  assert.ok(runtime.includes("confidenceSource:'model'"));
+  assert.ok(runtime.includes('historyWeight=Math.min(.30'));
+});
+
+test('Strategy cards use their own future horizon forecasts instead of current raw score', async () => {
+  const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
+  assert.ok(runtime.includes('futureByHorizon'));
+  assert.ok(runtime.includes("a?.entryPlanner?.horizons||{}"));
+  assert.ok(runtime.includes('projectionHorizonSeconds'));
+  assert.ok(runtime.includes("modelVersion='future-v4.2'"));
+  assert.ok(runtime.includes('strategyFutureBias'));
+});
+
+test('Operational decision no longer requires present side to equal future side', async () => {
+  const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
+  assert.ok(runtime.includes("const presentSide=['CALL','PUT'].includes"));
+  assert.ok(runtime.includes("const side=futureReady?futureSide:'AGUARDAR'"));
+  assert.ok(runtime.includes('reversalTransition'));
+  assert.ok(runtime.includes("gated.side=operationalSide"));
+  assert.ok(!runtime.includes('operationalSide!==rawSide'));
+});
+
+test('Overlay explicitly shows the validated asset and the safe switch instruction', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes('ATIVO VALIDADO · '));
+  assert.ok(ui.includes('ATIVO DA TELA NÃO VALIDADO'));
+  assert.ok(ui.includes('feche o ativo atual e abra o novo pelo botão + da corretora'));
+  assert.ok(ui.includes('PROJEÇÃO FUTURA DAS ESTRATÉGIAS'));
 });
