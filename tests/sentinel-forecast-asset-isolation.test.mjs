@@ -301,7 +301,7 @@ test('Asset-change events force immediate runtime synchronization before new ana
   assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
   assert.ok(worker.includes('if(event?.assetChanged===true){'));
   assert.ok(worker.includes('syncRuntimeMarket();'));
-  assert.ok(worker.includes("const VERSION='13.3.5'"));
+  assert.ok(worker.includes("const VERSION='13.4.0'"));
 });
 
 test('Protocol active_id changes are surfaced as assetChanged events', () => {
@@ -338,7 +338,7 @@ test('Quote history appends in place instead of copying a large array on every t
 
 test('Calibration epoch isolates broken historical feed results from the new engine', async () => {
   const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
-  assert.ok(runtime.includes("const CALIBRATION_EPOCH='feed-v3-correct-horizon-single-pass'"));
+  assert.ok(runtime.includes("const CALIBRATION_EPOCH='feed-v4-context-confirmed-quotes'"));
   assert.ok(runtime.includes("['micro-v5',CALIBRATION_EPOCH,kind"));
   assert.ok(runtime.includes("filter(x=>String(x?.key||'').startsWith(prefix))"));
   assert.ok(runtime.includes("probabilitySource:historyWeight>0?'model+empirical':'model'"));
@@ -350,7 +350,7 @@ test('Strategy cards use their own future horizon forecasts instead of current r
   assert.ok(runtime.includes('futureByHorizon'));
   assert.ok(runtime.includes("a?.entryPlanner?.horizons||{}"));
   assert.ok(runtime.includes('projectionHorizonSeconds'));
-  assert.ok(runtime.includes("modelVersion='future-v4.2'"));
+  assert.ok(runtime.includes("modelVersion='future-v5.0'"));
   assert.ok(runtime.includes('strategyFutureBias'));
 });
 
@@ -411,7 +411,8 @@ test('Operational entry uses the user threshold and points filter without hidden
   const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
   assert.ok(runtime.includes('futureDisplayThreshold:70'));
   assert.ok(runtime.includes('futureLead>=futureThreshold&&decisionStrength>=signalPoints'));
-  assert.ok(runtime.includes("timingConfirmed=reversal?(triggerMet&&(preSide===side||entrySide===side||presentAligned)):triggerMet"));
+  assert.ok(runtime.includes("timingConfirmed=reversal?(sustainedTrigger"));
+  assert.ok(runtime.includes("_confirmPriceTrigger"));
   assert.ok(!runtime.includes('futureConfidence>=64'));
   assert.ok(!runtime.includes('futureAgreement>=58'));
   assert.ok(!runtime.includes('(strategySupport||strongSoloFuture)'));

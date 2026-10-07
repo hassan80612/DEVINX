@@ -4,6 +4,7 @@ import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime
 import {scenarioViewFromRuntime} from '../sentinel-trading-lab/agent/worker/scenario-view.mjs';
 
 const t=Date.UTC(2026,9,7,12);
+const confirmedSnap=(price=100,ts=t)=>({price,quoteTs:ts,quoteHistory:[{ts:ts-200,price},{ts,price}]});
 function runtime(){const r=new DemoTradingRuntime();Object.assign(r.settings,{asset:'TEST',forecastHorizonSeconds:60,orderDurationMs:30000,futureDisplayThreshold:50});r.settings.risk.minConfidence=70;return r}
 test('runtime status carries broker feed and account metadata to the overlay',async()=>{
   const r=runtime();r.setExternalMarket({provider:'iq_option',symbol:'TEST',uiSymbol:'TEST',validatedSymbol:'TEST',assetValidated:true,feedValidated:true,brokerMode:'demo',executionReady:false,lastQuoteAt:t,lastCandleAt:t-10,quoteTs:t,quote:100,candles:[],expirationDurationMs:30000});
@@ -44,20 +45,20 @@ test('restore discards calibration produced by the broken epoch and retains trad
 test('CALL and PUT continuation triggers stay fixed and can actually be crossed',()=>{
   for(const side of ['CALL','PUT']){
     const r=runtime(),trigger=side==='CALL'?100.2:99.8,a=analysis(side,trigger);
-    const first=r._operationalSignalState(a,{price:100},t);assert.equal(first.state,'JANELA ABERTA');
+    const first=r._operationalSignalState(a,confirmedSnap(),t);assert.equal(first.state,'JANELA ABERTA');
     const price=side==='CALL'?100.5:99.5,next=analysis(side,side==='CALL'?100.7:99.3);
-    const entered=r._operationalSignalState(next,{price},t+1000);
+    const entered=r._operationalSignalState(next,confirmedSnap(price,t+1000),t+1000);
     assert.equal(entered.trigger,trigger);assert.equal(entered.state,'ENTRADA');assert.equal(entered.actionable,true);
     assert.equal(entered.targetAt,first.targetAt);assert.equal(r.signalValidation.pending[0].dueAt,t+31000);
   }
 });
 test('opposite prediction at the order expiry blocks a stronger scenario at another horizon',()=>{
   const r=runtime(),a=analysis('CALL',99);a.entryPlanner.horizons['30']=analysis('PUT',99).entryPlanner.horizons['30'];
-  const op=r._operationalSignalState(a,{price:100},t);
+  const op=r._operationalSignalState(a,confirmedSnap(),t);
   assert.equal(op.state,'AGUARDAR PRAZO');assert.equal(op.actionable,false);assert.equal(r.signalValidation.pending.length,0);
 });
 test('missing or unconfirmed order horizon cannot fall back to the scenario',()=>{
-  for(const missing of [true,false]){const r=runtime(),a=analysis('CALL',99);if(missing)delete a.entryPlanner.horizons['30'];else a.entryPlanner.horizons['30'].directionReady=false;const op=r._operationalSignalState(a,{price:100},t);assert.equal(op.actionable,false)}
+  for(const missing of [true,false]){const r=runtime(),a=analysis('CALL',99);if(missing)delete a.entryPlanner.horizons['30'];else a.entryPlanner.horizons['30'].directionReady=false;const op=r._operationalSignalState(a,confirmedSnap(),t);assert.equal(op.actionable,false)}
 });
 test('a repeated snapshot cannot compound confidence or smoothing confirmations',()=>{
   const r=runtime(),a=analysis();a.entryPlanner.horizons['60'].modelConfidence=70;
@@ -79,13 +80,13 @@ test('a full runtime tick evaluates scenario and operational setup only once',as
   await r.tick(Date.now());assert.ok(r.lastResult.analysis);assert.equal(merges,1);assert.equal(ops,1);
 });
 test('an expired untriggered setup stays closed instead of silently opening another countdown',()=>{
-  const r=runtime(),a=analysis();r._operationalSignalState(a,{price:100},t);
+  const r=runtime(),a=analysis();r._operationalSignalState(a,confirmedSnap(),t);
   const ended=r._operationalSignalState(a,{price:100},t+61000);
   assert.equal(ended.state,'JANELA PERDIDA');assert.equal(ended.targetAt,t+60000);
   assert.equal(r._operationalSignalState(a,{price:100},t+62000).state,'JANELA PERDIDA');
 });
 test('changing order duration creates a distinct operational context',()=>{
-  const r=runtime(),a=analysis();const old=r._operationalSignalState(a,{price:100},t);r.settings.orderDurationMs=60000;
+  const r=runtime(),a=analysis();const old=r._operationalSignalState(a,confirmedSnap(),t);r.settings.orderDurationMs=60000;
   const next=r._operationalSignalState(a,{price:100},t+1000);assert.notEqual(next.createdAt,old.createdAt);assert.equal(next.durationMs,60000);
 });
 test('missing invalidation is not interpreted as a zero-price PUT cancellation',()=>{
@@ -98,7 +99,7 @@ test('duplicate market scores contribute once to the consensus',()=>{
   const paused=r._generalConsensus(a,{cards:[]});assert.equal(first.rapid.callPct,paused.rapid.callPct);assert.equal(first.rapid.contributingCount,2);
 });
 test('scenario display shares the engine deadline and current confidence',()=>{
-  const r=runtime(),op=r._operationalSignalState(analysis('CALL',99),{price:100},t);
+  const r=runtime(),op=r._operationalSignalState(analysis('CALL',99),confirmedSnap(),t);
   const view=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+1000});
   assert.equal(view.canEnter,true);assert.equal(view.deadline,t+60000);assert.equal(view.remainingSeconds,59);assert.equal(view.entryDeadline,t+3500);
   const expired=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+4000});
@@ -110,7 +111,7 @@ test('terminal and mismatched runtime states never display an open window',()=>{
 });
 
 test('shorter expiry revalidation preserves the full scenario deadline without releasing entry',()=>{
-  const r=runtime(),a=analysis();const first=r._operationalSignalState(a,{price:100},t);
+  const r=runtime(),a=analysis();const first=r._operationalSignalState(a,confirmedSnap(),t);
   a.entryPlanner.horizons['30'].directionReady=false;
   a.entryPlanner.horizons['30'].confidence=54;
   const paused=r._operationalSignalState(a,{price:100},t+2000);
@@ -125,14 +126,14 @@ test('shorter expiry revalidation preserves the full scenario deadline without r
 test('blocked forecasts explain safety and direction rather than thresholds already met',()=>{
   for(const safety of [false,true]){
     const r=runtime(),a=analysis();a.entryPlanner.horizons['60'].directionReady=false;a.entryPlanner.horizons['60'].safety={blocked:safety};
-    const op=r._operationalSignalState(a,{price:100},t);
+    const op=r._operationalSignalState(a,confirmedSnap(),t);
     assert.equal(op.actionable,false);assert.doesNotMatch(op.reason,/alcançar/);
     assert.match(op.reason,safety?/exaustão/:/confirmação técnica/);
   }
 });
 
 test('entry burst expiration keeps the forecast alive without extending entry or releasing twice',()=>{
-  const r=runtime(),a=analysis('CALL',99);const first=r._operationalSignalState(a,{price:100},t);
+  const r=runtime(),a=analysis('CALL',99);const first=r._operationalSignalState(a,confirmedSnap(),t);
   assert.equal(first.state,'ENTRADA');assert.equal(first.actionable,true);
   r.operationalSetup.releasedAt=t+1000;
   const used=r._operationalSignalState(a,{price:100},t+2000);assert.equal(used.actionable,false);
@@ -148,7 +149,7 @@ test('entry burst expiration keeps the forecast alive without extending entry or
 });
 test('price invalidation is immediate even if the shorter order horizon no longer confirms',()=>{
   for(const side of ['CALL','PUT']){
-    const r=runtime(),a=analysis(side);r._operationalSignalState(a,{price:100},t);
+    const r=runtime(),a=analysis(side);r._operationalSignalState(a,confirmedSnap(),t);
     a.entryPlanner.horizons['30'].directionReady=false;
     const op=r._operationalSignalState(a,{price:side==='CALL'?89:111},t+1000);
     assert.equal(op.state,'INVALIDADO');assert.equal(op.actionable,false);assert.match(op.reason,/preço/);
@@ -161,7 +162,7 @@ test('price invalidation is immediate even if the shorter order horizon no longe
   }
 });
 test('a confidence dip during the entry burst never continues to authorize an entry',()=>{
-  const r=runtime(),a=analysis('CALL',99);assert.equal(r._operationalSignalState(a,{price:100},t).actionable,true);
+  const r=runtime(),a=analysis('CALL',99);assert.equal(r._operationalSignalState(a,confirmedSnap(),t).actionable,true);
   a.entryPlanner.horizons['60'].confidence=54;
   const op=r._operationalSignalState(a,{price:100},t+1000);
   assert.equal(op.actionable,false);assert.equal(op.ready,false);assert.equal(op.targetAt,t+60000);assert.doesNotMatch(op.reason,/estão alinhados/);
