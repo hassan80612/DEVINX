@@ -15,9 +15,9 @@ export function wilson(wins,total){
 }
 export class ForecastResearch{
   constructor(saved={}){this.models=saved.version===1?saved.models||{}:{};this.pending=saved.version===1?saved.pending||[]:[];this.lastQueued=saved.version===1?saved.lastQueued||{}:{};this.outcomes=saved.version===1?saved.outcomes||[]:[];this.events=[];this.unresolved=Number(saved.unresolved||0)}
-  key(asset,seconds){return String(asset).toUpperCase()+'|'+seconds}
-  forecast(asset,plan){
-    const key=this.key(asset,plan.horizonSeconds),x=forecastFeatures(plan),m=this.models[key];
+  key(asset,seconds,provider=''){return (provider?String(provider).toLowerCase()+'|':'')+String(asset).toUpperCase()+'|'+seconds}
+  forecast(asset,plan,provider=''){
+    const key=this.key(asset,plan.horizonSeconds,provider),x=forecastFeatures(plan),m=this.models[key];
     const callProbability=Math.round(sigmoid((m?.bias||0)+x.reduce((v,a,i)=>v+a*Number(m?.weights?.[i]||0),0))*100);
     const rows=this.outcomes.filter(r=>r.key===key&&r.draw!==true).slice(-240),samples=rows.length;
     const differences=rows.map(r=>r.baselineLoss-r.modelLoss),mean=samples?differences.reduce((a,b)=>a+b,0)/samples:0;
@@ -31,11 +31,11 @@ export class ForecastResearch{
     return{mode:qualified?'qualified':'shadow',qualified,candidateQualified,candidateSamples:candidateRows.length,candidateImprovementLowerBound,callProbability,samples,sessions,improvementLowerBound,modelBrier:samples?rows.reduce((v,r)=>v+r.modelLoss,0)/samples:null,baselineBrier:samples?rows.reduce((v,r)=>v+r.baselineLoss,0)/samples:null,features:x};
   }
   observe({asset,analysis,snap,now}){
-    const price=Number(snap.price),quotes=(snap.quoteHistory||[]).filter(q=>Number(q.ts)<=now&&Number.isFinite(Number(q.price)));
+    const provider=String(snap.provider||'').toLowerCase(),price=Number(snap.price),quotes=(snap.quoteHistory||[]).filter(q=>Number(q.ts)<=now&&Number.isFinite(Number(q.price)));
     const keep=[];
     for(const p of this.pending){
       if(p.dueAt>now){keep.push(p);continue}
-      if(p.asset!==asset){if(now-p.dueAt<15000)keep.push(p);else this.unresolved++;continue}
+      if(p.asset!==asset||String(p.provider||'')!==provider){if(now-p.dueAt<15000)keep.push(p);else this.unresolved++;continue}
       const q=quotes.filter(q=>Math.abs(Number(q.ts)-p.dueAt)<=1500).sort((a,b)=>Math.abs(a.ts-p.dueAt)-Math.abs(b.ts-p.dueAt))[0];
       if(!q){if(now-p.dueAt<15000)keep.push(p);else this.unresolved++;continue}
       const delta=Number(q.price)-p.price,draw=Math.abs(delta)<=Math.abs(p.price)*1e-10,y=delta>0?1:0;
@@ -51,12 +51,12 @@ export class ForecastResearch{
     if(!Number.isFinite(price)||price<=0)return;
     for(const plan of Object.values(analysis?.entryPlanner?.horizons||{})){
       if(!plan?.outlookReady)continue;
-      const seconds=Number(plan.horizonSeconds),key=this.key(asset,seconds);
+      const seconds=Number(plan.horizonSeconds),key=this.key(asset,seconds,provider);
       if(now-Number(this.lastQueued[key]||0)<seconds*1000)continue;
       this.lastQueued[key]=now;
-      const shadow=this.forecast(asset,plan),op=analysis.operationalSignal||{};
+      const shadow=this.forecast(asset,plan,provider),op=analysis.operationalSignal||{};
       const baselineProbability=clamp(Number(plan.unlearnedCallProbability??plan.callProbability??50)/100,.05,.95);
-      const candidate={key,asset,seconds,createdAt:now,dueAt:now+seconds*1000,price,features:shadow.features,modelProbability:shadow.callProbability/100,baselineProbability,candidateProbability:plan.candidate?Number(plan.candidate.callProbability)/100:null,scenario:plan.scenario?.kind||plan.regime?.label||'unknown',blocked:plan.directionReady!==true||op.actionable!==true,blockReason:op.reason||null};
+      const candidate={key,asset,provider,seconds,createdAt:now,dueAt:now+seconds*1000,price,features:shadow.features,modelProbability:shadow.callProbability/100,baselineProbability,candidateProbability:plan.candidate?Number(plan.candidate.callProbability)/100:null,scenario:plan.scenario?.kind||plan.regime?.label||'unknown',blocked:plan.directionReady!==true||op.actionable!==true,blockReason:op.reason||null};
       this.pending.push(candidate);this.events.push({type:'forecast-sample',...candidate});
     }
   }

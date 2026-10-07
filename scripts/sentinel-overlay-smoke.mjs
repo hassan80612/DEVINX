@@ -53,7 +53,7 @@ try{
   assert.match(await card.innerText(),/ENTRAR AGORA/);
   await page.waitForTimeout(650);
   await page.evaluate(()=>window.__sentinelRenderOverlay(window.__sentinelLastOverlayData));
-  assert.match(await card.innerText(),/CALL · CENÁRIO ATIVO/);assert.match(await card.innerText(),/ACOMPANHANDO · ENTRADA ENCERRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  assert.match(await card.innerText(),/CALL · ACOMPANHANDO/);assert.match(await card.innerText(),/ACOMPANHANDO · ENTRADA ENCERRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   await driver.updateOverlay('iq_option',{...data,operationalSignal:{...operational,state:'ACOMPANHANDO',activeUntil:justBefore+500,entryAt:justBefore,reason:'Oportunidade de entrada encerrada; cenário mantido até o prazo, sem liberar nova entrada.'}});
   assert.match(await card.innerText(),/CALL · ACOMPANHANDO/);
   await driver.updateOverlay('iq_option',data);

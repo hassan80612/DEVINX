@@ -77,3 +77,13 @@ test('replay uses chronological prices, measures execution delay, and never call
     rows[1].quotes[0].ts=t+100000;await writeFile(path,rows.map(x=>JSON.stringify(x)).join('\n'));await assert.rejects(replayJournal([path]),/future_quote/);
   }finally{await rm(dir,{recursive:true,force:true})}
 });
+
+ test('research never settles or learns a same-symbol forecast using another broker',()=>{
+  const research=new ForecastResearch(),{a}=fixture();a.entryPlanner.horizons={'30':a.entryPlanner.horizons['30']};
+  research.observe({asset:'TEST',analysis:a,snap:{provider:'broker-a',price:100,quoteHistory:[]},now:t});
+  research.observe({asset:'TEST',analysis:a,snap:{provider:'broker-b',price:200,quoteHistory:[{ts:t+30000,price:200}]},now:t+30000});
+  assert.equal(research.outcomes.length,0);assert.equal(Object.keys(research.models).length,0);
+  research.observe({asset:'TEST',analysis:a,snap:{provider:'broker-a',price:99,quoteHistory:[{ts:t+30000,price:99}]},now:t+30001});
+  assert.equal(research.outcomes.length,1);assert.equal(research.outcomes[0].baselineWon,false);
+  assert.equal(research.models['broker-a|TEST|30'].updates,1);assert.equal(research.forecast('TEST',a.entryPlanner.horizons['30'],'broker-b').samples,0);
+ });

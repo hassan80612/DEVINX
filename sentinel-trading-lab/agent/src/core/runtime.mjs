@@ -185,7 +185,7 @@ export class DemoTradingRuntime{
       const candidatePlan=candidateAnalysis?.entryPlanner?.horizons?.[secondsKey],candidateStrategy=candidatePanel?.confluence?.horizons?.[secondsKey];
       const mix=(p,row)=>{const base=Number(p?.rawCallProbability??p?.callProbability??50),weight=row?.activeCount?Math.min(row.activeCount>=2?.30:.16,.10+Number(row.evidence||0)/500):0;return Math.round(base*(1-weight)+Number(row?.callPct??50)*weight)};
       const controlCall=mix(controlPlan,controlStrategy),candidateCall=candidatePlan?mix(candidatePlan,candidateStrategy):controlCall;
-      const research=this.forecastResearch.forecast(asset,controlPlan);
+      const research=this.forecastResearch.forecast(asset,controlPlan,snap?.provider);
       const useCandidate=research.candidateQualified&&candidatePlan?.outlookReady===true;
       if(useCandidate)Object.assign(plan,candidatePlan);
       plan.candidate={callProbability:candidateCall,directionReady:candidatePlan?.directionReady===true,scenario:candidatePlan?.scenario||null};
