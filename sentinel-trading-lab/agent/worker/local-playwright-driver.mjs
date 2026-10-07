@@ -485,14 +485,19 @@ export class LocalPlaywrightDriver{
           document.addEventListener('click',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
+              const beforeSelected=selectedPair();
               const nodes=[];let node=ev.target,direct='';
               for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
               if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
               for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){direct=p[0];publish(direct,'click');break}}
-              // Do not immediately re-read the old selected tab after an explicit click:
-              // IQ updates its selected CSS state slightly later and that used to undo
-              // the new symbol in the same event turn.
+              // IQ atualiza o estado visual da aba depois do clique. Nunca volte ao ativo
+              // anterior só porque o DOM ainda não terminou a transição; confirme de novo
+              // quando a seleção visual já assentou.
               if(!direct)setTimeout(()=>{const p=selectedPair();if(p)publish(p,'selected-tab-fallback')},90);
+              setTimeout(()=>{
+                const p=selectedPair();
+                if(p&&(!beforeSelected||p!==beforeSelected||p===direct))publish(p,'selected-tab-settled')
+              },450);
             }catch{}
           },true);
           // Do not continuously walk the IQ DOM. The broker websocket active_id is
@@ -595,7 +600,16 @@ export class LocalPlaywrightDriver{
     const frameKind=(String(data?.name||'')+' '+String(data?.msg?.name||data?.msg?.event||'')).toLowerCase();
     const highFrequencyMarketFrame=/candle-generated|quote-generated|instrument-quotes|ticker/.test(frameKind)||String(data?.name||'').toLowerCase()==='candles';
     const out={balanceCandidates:[],modeCandidates:[],assets:new Set(st.assets),activeMap:new Map(st.activeMap),quote:null,symbol:null,candles:[],lastQuoteAt:null,lastCandleAt:null};
-    if(!highFrequencyMarketFrame)try{recursiveScan(data,out)}catch{}
+    // r10 extraía o mapa de instrumentos também dos frames de mercado. O r11 cortou
+    // isso por completo e a identificação da aba ficou mais frágil. Recuperamos essa
+    // riqueza, mas limitamos o scan genérico a ~1x/s nos frames rápidos para não voltar
+    // ao custo de CPU do r10. Preço/candles continuam aceitos somente pelo active_id.
+    const genericScanNow=Date.now();
+    const shouldGenericScan=!highFrequencyMarketFrame||!st.lastGenericMarketScanAt||genericScanNow-Number(st.lastGenericMarketScanAt)>850;
+    if(shouldGenericScan){
+      try{recursiveScan(data,out)}catch{}
+      if(highFrequencyMarketFrame)st.lastGenericMarketScanAt=genericScanNow;
+    }
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
@@ -628,8 +642,9 @@ export class LocalPlaywrightDriver{
     // Background candle/quote subscriptions are deliberately ignored for retargeting.
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
+    const assetChanged=(before.activeId!=null&&st.activeId!=null&&Number(before.activeId)!==Number(st.activeId))||(before.symbol&&st.symbol&&pairKey(before.symbol)!==pairKey(st.symbol))||(String(st.marketStatus||'').toLowerCase()==='switching'&&(before.activeId!==st.activeId||before.symbol!==st.symbol));
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
-    if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol})).catch(()=>{})}catch{}}
+    if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol,assetChanged,marketStatus:st.marketStatus})).catch(()=>{})}catch{}}
   }
   attachNetwork(provider,page){if(page.__sentinelAttached)return;page.__sentinelAttached=true;
     page.on('websocket',ws=>{ws.on('framereceived',e=>this.ingest(provider,e.payload,'page-in'));ws.on('framesent',e=>this.ingest(provider,e.payload,'page-out'))});
@@ -650,9 +665,17 @@ export class LocalPlaywrightDriver{
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
     const targetId=activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
-    const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId),needsSubscribe=changed||st.subscribedActiveId==null;
-    if(changed&&st.subscribedActiveId!=null){
+    const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId);
+    // r10 renovava a assinatura em toda leitura forçada, o que ajudava a recuperar
+    // microfluxo mas podia empilhar subscriptions. Aqui renovamos somente se a mesma
+    // assinatura ficou realmente sem atualização por alguns segundos: unsubscribe
+    // primeiro, subscribe depois, mantendo uma única fonte viva.
+    const quoteAgeMs=st.lastQuoteAt==null?Infinity:Math.max(0,Date.now()-Number(st.lastQuoteAt));
+    const refreshSubscription=force&&!changed&&st.subscribedActiveId!=null&&quoteAgeMs>5000;
+    const needsSubscribe=changed||st.subscribedActiveId==null||refreshSubscription;
+    if((changed||refreshSubscription)&&st.subscribedActiveId!=null){
       await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(st.subscribedActiveId),size}}},request_id:reqId('unsub')}).catch(()=>{});
+      if(refreshSubscription){st.subscribedSymbol=null;st.subscribedActiveId=null}
     }
     if(changed){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.candleIntegrity={ok:false,reason:'asset_switch'}}
     st.symbol=targetSymbol;st.activeId=Number(targetId);
@@ -1253,6 +1276,7 @@ export class LocalPlaywrightDriver{
         st.uiSymbol=nextUi;st.symbol=nextUi;st.activeId=st.activeMap.get(pairKey(nextUi))??null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;
         st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.candleIntegrity={ok:false,reason:'asset_switch'};st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;
         st.marketStatus='switching';st.marketReason=`Trocando leitura e análise para ${nextUi}`;st.lastRequestAt=null;st.autoSelected=false;
+        try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:nextUi,uiSymbol:nextUi,activeId:st.activeId,assetChanged:true,source:uiSource,marketStatus:'switching'})).catch(()=>{})}catch{}
       }else{st.uiSymbol=nextUi;st.lastUiSignalAt=Date.now();st.uiSymbolSource=uiSource;if(!st.autoSelected||pairKey(st.uiSymbol)===pairKey(st.symbol)){st.symbol=st.uiSymbol;st.autoSelected=false}}
     }else if(!st.uiSymbol&&!fast){const p=assetStrings(text);if(p.length===1){st.uiSymbol=p[0];st.symbol=p[0];st.lastUiSignalAt=Date.now();st.uiSymbolSource='body-single'}}
     if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
