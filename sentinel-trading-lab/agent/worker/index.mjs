@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='13.3.1';
+const VERSION='13.3.2';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -209,7 +209,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const currentAsset=brokerSwitching?'SINCRONIZANDO':(view.liveBroker?.uiSymbol||view.liveBroker?.symbol||view.settings?.asset||'—');
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-    const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.liveBroker?.latestCandleTs||0));
+    const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.feed?.quoteTs||0));
     if(Date.now()-lastOverlayAt>=1000){
       lastOverlayAt=Date.now();
     await driver.updateOverlay?.(activeProvider,{
@@ -254,6 +254,8 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       brokerMode:view.liveBroker?.mode||view.mode,
       mode:view.mode,
       state:view.state,
+      demoAutopilot:view.autopilot?.enabled===true,
+      executionReady:view.autopilot?.eligible===true,
       agentVersion:VERSION
     }).catch(()=>{});
     }

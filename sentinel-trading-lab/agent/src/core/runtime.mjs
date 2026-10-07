@@ -574,8 +574,8 @@ export class DemoTradingRuntime{
       }
       if(['DEMO_ORDER','PREPARE_REAL'].includes(String(result.action||''))&&this.operationalSetup?.firedAt)this.operationalSetup.releasedAt=now;
       if(this.settings.mode==='demo'&&result.action==='DEMO_READY'){
-        result.executionMode=pendingExternalDemo?'broker_demo_wait_settlement':liveAttached?(brokerMode==='demo'?'broker_demo_disarmed':'broker_real_detected'):'broker_demo_wait';
-        result.reasons=[...(result.reasons||[]),pendingExternalDemo?'Operação DEMO anterior ainda aberta — nenhuma entrada sobreposta será enviada.':brokerMode==='demo'?'Piloto DEMO desarmado — análise continua sem clicar na corretora.':'Piloto DEMO só arma quando a conta DEMO da própria corretora estiver ativa e validada.'];
+        result.executionMode=pendingExternalDemo?'broker_demo_wait_settlement':liveAttached?(brokerMode==='demo'?(this.settings.demoAutopilot===true?'broker_demo_wait':'broker_demo_disarmed'):'broker_real_detected'):'broker_demo_wait';
+        result.reasons=[...(result.reasons||[]),pendingExternalDemo?'Operação DEMO anterior ainda aberta — nenhuma entrada sobreposta será enviada.':brokerMode==='demo'?(this.settings.demoAutopilot===true?'Piloto DEMO ligado, mas os botões e o campo de valor da corretora ainda não foram reconhecidos.':'Piloto DEMO desarmado — análise continua sem clicar na corretora.'):'Piloto DEMO só arma quando a conta DEMO da própria corretora estiver ativa e validada.'];
       }else if(this.settings.mode==='demo'&&liveAttached&&!canUseExternalDemo&&result.action==='DEMO_ORDER'){
         result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas a conta DEMO/controles da corretora não estão validados — nenhuma ordem foi clicada.']
       }else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
@@ -609,6 +609,7 @@ export class DemoTradingRuntime{
     return{state:this.stateName,mode:this.settings.mode,killSwitch:this.killSwitch,masterFrozen:this.masterFrozen,balance,pnl:this.trades.reduce((s,t)=>s+Number(t.pnl||0),0),trades:this.trades.length,wins,losses,winRate:this.trades.length?wins/this.trades.length*100:0,
       drawdownPct:this.state.drawdownPct,consecutiveLosses:this.state.consecutiveLosses,lastHeartbeat:this.lastHeartbeat,lastEvalMs:this.lastEvalMs,nextEvalMs:this.nextEvalMs,lastResult:this.lastResult,
       feed:{label:snap.source||'OFFLINE',price:snap.price,quoteTs:snap.quoteTs},analysisSource:this.externalMarket?.provider?(snap.feedValidated?'LIVE':'WAITING_LIVE'):(this.settings.requireLiveBroker?'OFFLINE':'SIMULATED'),
+      liveBroker:this.externalMarket?{...this.externalMarket,mode:brokerMode}:null,
       executionMode:this.settings.mode==='real'?'real_manual':demoEligible?(this.settings.demoAutopilot===true?'broker_demo_auto':'broker_demo_disarmed'):'broker_demo_wait',
       autopilot:{enabled:this.settings.demoAutopilot===true,eligible:demoEligible,brokerMode:brokerMode||'unknown',sessionStartedAt:this.state.sessionStartedAt,sessionTrades,maxSessionTrades:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)},
       startBlockedReason:this._startBlockReason(),broker:await this.broker.getStatus(),pending:this.pending.length,recentTrades:this.trades.slice(0,50),recentAnalyses:this.analyses.slice(0,20),signalValidation:this.lastResult?.analysis?.quality||null,incidents:this.incidents.slice(0,50),settings:this.settings,audit:this.audit.list().slice(-100).reverse()}
