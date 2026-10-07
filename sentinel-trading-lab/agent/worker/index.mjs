@@ -10,7 +10,7 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 
-const VERSION='13.1.0';
+const VERSION='13.3.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -104,6 +104,11 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }else if(key==='minConfidence'){
       const n=Math.round(Number(value));if(!Number.isFinite(n)||n<55||n>95)throw new Error('invalid_min_confidence');
       runtime.patchSettings({risk:{minConfidence:n}},'overlay');
+      runtime.requestImmediateEvaluation?.();
+    }else if(key==='futureDisplayThreshold'){
+      const n=Math.round(Number(value));if(!Number.isFinite(n)||n<50||n>95)throw new Error('invalid_future_threshold');
+      runtime.patchSettings({futureDisplayThreshold:n},'overlay');
+      runtime.requestImmediateEvaluation?.();
     }else if(key==='readingPause'){
       const allowed=['market_confluence','market_entry','market_reversal','strategy_1','strategy_2','strategy_3'];
       const reading=String(payload.reading||'');if(!allowed.includes(reading))throw new Error('invalid_reading_pause');
@@ -207,6 +212,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       entryPlanner:a.entryPlanner||null,
       quality:a.quality||view.signalValidation||null,
       minConfidence:view.settings?.risk?.minConfidence||74,
+      futureDisplayThreshold:view.settings?.futureDisplayThreshold||70,
       pausedReadings:view.settings?.pausedReadings||{},
       reasons:a.reasons||view.lastResult?.reasons||[],
       metrics:m,
