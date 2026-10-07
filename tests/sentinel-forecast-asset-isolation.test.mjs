@@ -287,7 +287,7 @@ test('Existing tab clicks become hints and never retarget the validated asset by
 
 test('Future UI does not stay in an endless CONFIRMANDO state when direction is not ready', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
-  assert.ok(ui.includes("AGUARDAR · '+formingSide+' EM FORMAÇÃO"));
+  assert.ok(ui.includes("!plannerConfirmed&&formingSide?'AGUARDAR'"));\n  assert.ok(ui.includes('AGUARDANDO CONFIRMAÇÃO'));
   assert.ok(ui.includes('AINDA NÃO CONFIRMADO'));
   assert.ok(ui.includes('ainda sem confirmação suficiente para liberar entrada'));
   assert.ok(!ui.includes("('CONFIRMANDO '+displayCandidate)"));
