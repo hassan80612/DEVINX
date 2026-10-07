@@ -11,7 +11,7 @@ import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
-const VERSION='13.4.3';
+const VERSION='13.4.4';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -50,7 +50,7 @@ const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FIL
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
-let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0,lastOverlayAt=0,lastPersistAt=0,lastMarketSyncAt=0;
+let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastPersistAt=0,lastMarketSyncAt=0;
 driver.setMarketUpdateHandler?.((provider,event={})=>{
   if(provider!==activeProvider)return;
   // Troca de ativo é uma barreira forte: sincronize o runtime imediatamente para
@@ -68,6 +68,8 @@ driver.setMarketUpdateHandler?.((provider,event={})=>{
   if(realtimeKick)return;
   realtimeKick=setTimeout(()=>{
     realtimeKick=null;
+    // Evaluate the quote that caused this event, not the previous 700ms snapshot.
+    syncRuntimeMarket();lastMarketSyncAt=Date.now();
     loop().catch(()=>{});
   },100);
 });
@@ -217,7 +219,9 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
     const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.feed?.quoteTs||0));
-    if(Date.now()-lastOverlayAt>=1000){
+    const op=a.operationalSignal||{},overlayTimingKey=[currentAsset,op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil].join('|');
+    if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
+      lastOverlayTimingKey=overlayTimingKey;
       lastOverlayAt=Date.now();
     await driver.updateOverlay?.(activeProvider,{
       asset:currentAsset,

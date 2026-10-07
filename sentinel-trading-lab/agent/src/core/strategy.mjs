@@ -644,6 +644,10 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const continuationReady=directionalFlow&&!safetyBlocked&&((signal>0&&!short.callOverextended&&!short.turnDown)||(signal<0&&!short.putOverextended&&!short.turnUp))&&(Math.abs(historySignal)>=.15&&Math.sign(historySignal)===Math.sign(signal)||breakoutDirection===Math.sign(signal));
    const kind=reversalMode?'reversal':breakoutDirection===Math.sign(signal)?'breakout':continuationReady?'continuation':'forming';
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
+   const shortBars=quoteBars(quoteHistory,5000,now),previousShort=shortBars.at(-2);
+   const recentShort=previousShort&&previousShort.volume>=2&&now-previousShort.to*1000>=0&&now-previousShort.to*1000<=5000;
+   const continuationTrigger=candidateModel&&!reversalMode&&continuationReady&&recentShort;
+   const entryTolerance=Math.max((Number(previousShort?.high||last)-Number(previousShort?.low||last))*.5,expectedMove*.12,Math.abs(last)*.000002);
    if(reversalMode){
      const lower=nearestLower??(last-expectedMove),upper=nearestUpper??(last+expectedMove);
      callTrigger=lower+triggerBuffer*.10;putTrigger=upper-triggerBuffer*.10;callInvalidation=lower-triggerBuffer*.40;putInvalidation=upper+triggerBuffer*.40;
@@ -651,9 +655,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    }else{
      const upper=nearestUpper!=null&&nearestUpper<=last+expectedMove*2?nearestUpper:last+expectedMove*.45;
      const lower=nearestLower!=null&&nearestLower>=last-expectedMove*2?nearestLower:last-expectedMove*.45;
-     // A confirmed continuation uses the previous short bar; it need not wait for distant resistance.
-     const shortBars=quoteBars(quoteHistory,5000,now),previousShort=shortBars.at(-2);
-     callTrigger=candidateModel&&continuationReady&&signal>0&&previousShort?Number(previousShort.high):Math.max(last+triggerBuffer*.55,upper+triggerBuffer*.10);putTrigger=candidateModel&&continuationReady&&signal<0&&previousShort?Number(previousShort.low):Math.min(last-triggerBuffer*.55,lower-triggerBuffer*.10);
+     // Earlier local-bar timing remains in the research candidate until forward results support it.
+     callTrigger=continuationTrigger&&signal>0?Number(previousShort.high):Math.max(last+triggerBuffer*.55,upper+triggerBuffer*.10);putTrigger=continuationTrigger&&signal<0?Number(previousShort.low):Math.min(last-triggerBuffer*.55,lower-triggerBuffer*.10);
      const localLows=shortBars.slice(-5,-1).map(b=>Number(b.low)).filter(p=>p<last),localHighs=shortBars.slice(-5,-1).map(b=>Number(b.high)).filter(p=>p>last);
      const floor=localLows.length?Math.min(...localLows):nearestLower,ceiling=localHighs.length?Math.max(...localHighs):nearestUpper;
      callInvalidation=floor!=null?floor-triggerBuffer*.10:last-expectedMove;putInvalidation=ceiling!=null?ceiling+triggerBuffer*.10:last+expectedMove;
@@ -666,7 +669,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      projectedMove,projectedPrice,signal,rawCallProbability,rawPutProbability,callProbability:rawCallProbability,putProbability:rawPutProbability,
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
-     regime:m.regime,modelRole:candidateModel?'candidate':'control',scenario:{kind,continuationReady,reversalConfirmed,triggerBasis:continuationReady?'previous-short-bar':'structural-level',invalidationBasis:'recent-swing'},evidenceFamilies,multiTimeframe:mtf,
+     regime:m.regime,modelRole:candidateModel?'candidate':'control',scenario:{kind,continuationReady,reversalConfirmed,triggerBasis:continuationTrigger?'previous-short-bar':'structural-level',invalidationBasis:'recent-swing'},entryTiming:{maxDistance:candidateModel?entryTolerance:null,sourceBarAt:recentShort?previousShort.ts:null},evidenceFamilies,multiTimeframe:mtf,
      reversalAuthority:{side:reversalAuthoritySide,callVotes:reversalCallVotes,putVotes:reversalPutVotes,callScore:Number(short.reversalCallScore||0),putScore:Number(short.reversalPutScore||0)},
      safety:{blocked:safetyBlocked,chaseBlocked,barrierBlocked,mtfConflict,blockedSide:safetyBlocked?signalSide:null},
      reliability:{evidenceFamilyCount,familyAgreement:Math.round(familyAgreement*100),featureAgreement:Math.round(agreement*100),correlationPenalty,baseModelConfidence,leadAligned,microLead:Math.round(microLeadSignal*100)},
