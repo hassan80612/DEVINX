@@ -31,22 +31,22 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
     side:analysis.side,amount,asset:settings.asset,referencePrice:snap.price,confidence:analysis.confidence,
     createdAt:new Date(now).toISOString(),expiresAt:new Date(now+Math.max(15_000,Number(settings.orderProposalTtlMs||60_000))).toISOString()
   };
-  const autoTrade=settings.autoTrade===true||settings.demoAutopilot===true;
-  if(!autoTrade)return{action:'AUTO_READY',analysis,amount,proposal,reasons:['piloto automático desarmado'],latency:{feedMs:feedLatencyMs,decisionMs}};
+  if(settings.mode==='real')return{action:'PREPARE_REAL',analysis,amount,proposal,reasons:['aguardando confirmação humana'],latency:{feedMs:feedLatencyMs,decisionMs}};
+  if(settings.demoAutopilot!==true)return{action:'DEMO_READY',analysis,amount,proposal,reasons:['piloto DEMO desarmado'],latency:{feedMs:feedLatencyMs,decisionMs}};
   const started=Date.now();
   const order=await broker.placeOrder(proposal);
-  return{action:'AUTO_ORDER',analysis,amount,order,proposal,latency:{feedMs:feedLatencyMs,decisionMs,executionMs:Date.now()-started}};
+  return{action:'DEMO_ORDER',analysis,amount,order,proposal,latency:{feedMs:feedLatencyMs,decisionMs,executionMs:Date.now()-started}};
 }
 
 export async function executePreparedOrder({proposal,broker,settings,state,now=Date.now(),humanConfirmed=false,realAdapterValidated=false}){
+  if(settings?.mode==='real')return{action:'BLOCKED',reasons:['execução REAL permanece manual na corretora']};
   if(!proposal)throw new Error('proposal_missing');
   if(new Date(proposal.expiresAt).getTime()<=now)throw new Error('proposal_expired');
-  const autoTrade=settings?.autoTrade===true||settings?.demoAutopilot===true;
-  const gate=evaluateExecutionGate({...state,now,mode:settings.mode,humanConfirmed:autoTrade||humanConfirmed,realAdapterValidated:autoTrade||realAdapterValidated,
+  const gate=evaluateExecutionGate({...state,now,mode:settings.mode,humanConfirmed,realAdapterValidated,
     signalSide:proposal.side,confidence:proposal.confidence,minConfidence:settings.risk.minConfidence,
     maxFeedLatencyMs:settings.risk.maxFeedLatencyMs,dailyProfitTarget:settings.risk.dailyProfitTarget});
   if(!gate.allowed)return{action:'BLOCKED',reasons:gate.reasons};
   const started=Date.now();
   const order=await broker.placeOrder({...proposal,humanConfirmed:true});
-  return{action:'AUTO_ORDER',order,executionMs:Date.now()-started};
+  return{action:settings.mode==='real'?'REAL_ORDER':'DEMO_ORDER',order,executionMs:Date.now()-started};
 }
