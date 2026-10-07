@@ -67,11 +67,15 @@ test('a repeated snapshot cannot compound confidence or smoothing confirmations'
   r._mergeScenarioConfluence(a,panel,{price:100},t);assert.deepEqual(a.entryPlanner.horizons['60'],first);
   r._mergeScenarioConfluence(a,panel,{price:100},t+1000);assert.equal(a.entryPlanner.horizons['60'].modelConfidence,first.modelConfidence);
 });
-test('two calls at the same timestamp count as one opposing confirmation',()=>{
+test('raw opposite forecasts never accumulate cancellation confirmations by themselves',()=>{
   const r=runtime();r._operationalSignalState(analysis(),{price:100},t);
-  const opposite=analysis('PUT');r._operationalSignalState(opposite,{price:100},t+1000);r._operationalSignalState(opposite,{price:100},t+1000);
-  assert.equal(r.operationalSetup.oppositionCycles,1);
-  assert.equal(r._operationalSignalState(opposite,{price:100},t+2000).state,'INVALIDADO');
+  const opposite=analysis('PUT');
+  for(const ms of [1000,1000,2000,3000]){
+    const op=r._operationalSignalState(opposite,{price:100},t+ms);
+    assert.equal(op.side,'CALL');
+    assert.notEqual(op.state,'INVALIDADO');
+  }
+  assert.equal(r.operationalSetup.oppositionCycles,0);
 });
 test('a full runtime tick evaluates scenario and operational setup only once',async()=>{
   const r=runtime();r.settings.requireLiveBroker=false;r.stateName='running';r.settings.schedule.timezone='UTC';
