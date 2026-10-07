@@ -96,6 +96,11 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }else if(key==='duration'){
       const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
       runtime.patchSettings({orderDurationMs:n},'overlay');
+      runtime.requestImmediateEvaluation?.();
+    }else if(key==='forecastHorizon'){
+      const n=Math.round(Number(value));if(![30,60,120,300,600,900,3600].includes(n))throw new Error('invalid_forecast_horizon');
+      runtime.patchSettings({forecastHorizonSeconds:n},'overlay');
+      runtime.requestImmediateEvaluation?.();
     }else if(key==='minConfidence'){
       const n=Math.round(Number(value));if(!Number.isFinite(n)||n<55||n>95)throw new Error('invalid_min_confidence');
       runtime.patchSettings({risk:{minConfidence:n}},'overlay');
@@ -213,6 +218,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       liveAgeMs:liveTs>0?Math.max(0,Date.now()-liveTs):null,
       analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
       durationMs:view.settings?.orderDurationMs||60000,
+      forecastHorizonSeconds:view.settings?.forecastHorizonSeconds||Math.round(Number(view.settings?.orderDurationMs||60000)/1000),
       intervalMs:view.settings?.schedule?.intervalMs||1000,
       brokerMode:view.liveBroker?.mode||view.mode,
       mode:view.mode,
