@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import { analyzeMarket } from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
 import { supportResistanceZones, trendLineQuality, swingFibonacci, volatilityState } from '../sentinel-trading-lab/agent/src/core/indicators.mjs';
