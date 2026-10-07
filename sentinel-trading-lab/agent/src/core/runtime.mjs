@@ -383,7 +383,7 @@ export class DemoTradingRuntime{
       if(newReaction||(futureReady&&futureSide!==setup.side)||(now>=Number(setup.targetAt||0)&&!futureReady)){this.operationalSetup=null;setup=null}
       else return{side:setup.side,state:terminalState,ready:false,actionable:false,asset,forecastHorizonSeconds,durationMs,entryDecisionHorizonSeconds:setup.entryDecisionHorizonSeconds||forecastHorizonSeconds,trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowEndAt:setup.entryWindowEndAt,activeUntil:setup.activeUntil||null,strength:decisionStrength,decisionStrength,reason:setup.invalidationReason||'Esta janela terminou. Aguardando um novo cenário confirmado.'};
     }
-    if(!setup&&scenarioQualified&&['CALL','PUT'].includes(scenarioSide)){
+    if(!setup&&scenarioQualified&&executionPlan?.reaction?.qualified!==true&&['CALL','PUT'].includes(scenarioSide)){
       const scenarioSetup=this._newOperationalSetup({contextKey:setupContextKey,asset,forecastHorizonSeconds,durationMs,combo,side:scenarioSide,plan:scenarioPlan,now});
       if(scenarioSetup){
         scenarioSetup.entryDecisionHorizonSeconds=forecastHorizonSeconds;
