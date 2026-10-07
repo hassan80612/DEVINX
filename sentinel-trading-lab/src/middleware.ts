@@ -21,21 +21,11 @@ async function authInfo(token:string):Promise<AuthInfo>{
 
 export async function middleware(req:NextRequest){
   const p=req.nextUrl.pathname;
-  if(p==='/favicon.ico'||p.startsWith('/_next/'))return NextResponse.next();
+  if(p==='/favicon.ico'||p.startsWith('/_next/')||p.startsWith('/downloads/'))return NextResponse.next();
   if(p==='/login'||p.startsWith('/api/auth/'))return NextResponse.next();
 
   const token=req.cookies.get(SESSION_COOKIE)?.value||'';
   const auth=await authInfo(token);
-
-  // V13.1: arquivos do Agent deixam de ser downloads públicos. Mesmo com a URL direta,
-  // somente Master ou conta com acesso ativo recebe o instalador/payload.
-  if(p.startsWith('/downloads/')){
-    if(!auth.ok){
-      const url=req.nextUrl.clone();url.pathname='/login';url.searchParams.set('next',p);return NextResponse.redirect(url)
-    }
-    if(auth.role!=='master'&&auth.accessActive!==true)return NextResponse.json({ok:false,error:'agent_access_required'},{status:403});
-    return NextResponse.next()
-  }
 
   if(auth.ok)return NextResponse.next();
 
