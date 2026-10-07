@@ -1567,11 +1567,12 @@ export class LocalPlaywrightDriver{
         const operationalTimingState=String(operational?.state||'AGUARDAR').toUpperCase();
         const operationalWaitSeconds=Number.isFinite(Number(operational?.timeToEntryMs))?Math.max(0,Math.ceil(Number(operational.timeToEntryMs)/1000)):null;
         const operationalNow=operational?.actionable===true&&operational?.ready===true&&operationalTimingState==='ENTRADA'&&!!operationalHeroSide&&liveNow&&analysisFresh;
-        const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO','AJUSTAR PRAZO'].includes(operationalTimingState);
+        const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO'].includes(operationalTimingState);
         const waitingForce=operationalTimingState==='AGUARDAR FORÇA';
         const waitingWindow=operationalTimingState==='AGUARDAR JANELA'&&operationalWaitSeconds!=null&&operationalHeroSide;
-        const futureActionLabel=operationalNow?(operationalHeroSide+' AGORA'):(waitingWindow?(operationalHeroSide+' EM '+operationalWaitSeconds+'s'):(waitingForce?(operationalHeroSide+' · AGUARDAR'):(timingClosed?'AGUARDAR':futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):('PREVISÃO '+futureDecision.side)):(sameExpiredSide?'AGUARDAR':(!plannerConfirmed&&formingSide?'AGUARDAR':(formingSide?('PREVISÃO '+formingSide):('AGUARDAR · '+horizonLabel)))))));
-        const futureDecisionStatus=operationalNow?'ENTRADA CONFIRMADA':waitingWindow?'JANELA AUTOMÁTICA':waitingForce?'FORÇA CONTRÁRIA':timingClosed?operationalTimingState:(futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':'AGUARDANDO GATILHO'):(sameExpiredSide?'JANELA ENCERRADA':(!plannerConfirmed&&formingSide?'AGUARDANDO CONFIRMAÇÃO':(formingSide?'PREVISÃO ATIVA':'SEM DECISÃO'))));
+        const forecastLabel=futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):('PREVISÃO '+futureDecision.side)):(formingSide?('PREVISÃO '+formingSide):('AGUARDAR · '+horizonLabel));
+        const futureActionLabel=operationalNow?(operationalHeroSide+' AGORA'):(waitingWindow?(operationalHeroSide+' EM '+operationalWaitSeconds+'s'):(waitingForce?forecastLabel:forecastLabel));
+        const futureDecisionStatus=operationalNow?'ENTRADA CONFIRMADA':waitingWindow?'JANELA AUTOMÁTICA':waitingForce?'FORÇA CONTRÁRIA':timingClosed?operationalTimingState:(futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':'PREVISÃO ATIVA'):(formingSide?'PREVISÃO ATIVA':'SEM DECISÃO'));
         const futureDecisionConfidence=futureDecision?Math.max(0,Math.min(100,Number(futureDecision.confidence||0))):futureConfidence;
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:5px">'+
