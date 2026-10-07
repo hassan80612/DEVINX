@@ -77,13 +77,17 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   if(action==='start'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     await ensureLocalCockpitBroker(provider);
+    const live=syncRuntimeMarket(),mode=String(live?.m?.mode||live?.mode||driver.liveStatus?.(provider)?.mode||'').toLowerCase();
+    if(mode!=='demo')throw new Error('Execução automática pelo card disponível somente na conta de prática.');
+    runtime.patchSettings({demoAutopilot:true},'overlay');
     await runtime.start('overlay');
+    runtime.requestImmediateEvaluation?.();
     await saveState();
-    return{ok:true,message:'Bot iniciado pelo card'}
+    return{ok:true,message:'Bot automático iniciado pelo card'}
   }
   if(action==='refresh'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];await driver.maintain?.(provider).catch(()=>{});await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});adapter?.refreshFromLive?.();syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Leitura atualizada'}}
   if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
-  if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado'}}
+  if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;runtime.patchSettings({demoAutopilot:false},'overlay');await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado e piloto desarmado'}}
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
