@@ -3,6 +3,7 @@ import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {scenarioViewFromRuntime} from './scenario-view.mjs';
+import {readBrokerDomControls} from './broker-dom-controls.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 
@@ -323,7 +324,7 @@ export class LocalPlaywrightDriver{
     if(s.context&&s.page&&!s.background){
       try{
         const current=String(s.page.url()||'');
-        if(!current.includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
+        if(!current.includes(cfg.domain))await s.page.goto(cfg.tradeUrl,{waitUntil:'commit',timeout:15000});
         await s.page.bringToFront();
       }catch{}
       this.lastManualOpenAt.set(provider,Date.now());return s
@@ -367,8 +368,8 @@ export class LocalPlaywrightDriver{
       let pages=context.pages();s.page=pages.find(p=>p.url().includes(cfg.domain))||pages[0]||await context.newPage();
       const startupUrl=String(s.page.url()||'');
       await this.installBridge(s.page,provider);this.attachNetwork(provider,s.page);
-      if(!startupUrl.includes(cfg.domain)||!/traderoom|platform|trade/i.test(startupUrl))await s.page.goto(cfg.tradeUrl,{waitUntil:'domcontentloaded',timeout:30000});
-      else await s.page.reload({waitUntil:'domcontentloaded',timeout:30000}).catch(()=>{});
+      if(!startupUrl.includes(cfg.domain)||!/traderoom|platform|trade/i.test(startupUrl))await s.page.goto(cfg.tradeUrl,{waitUntil:'commit',timeout:15000});
+      // Reuse a restored traderoom; a forced reload delays opening and loses its live stream.
       await this.installBridge(s.page,provider).catch(()=>{});
       await sleep(180);
       try{await s.page.bringToFront()}catch{}
@@ -756,7 +757,7 @@ export class LocalPlaywrightDriver{
       const sentinelAx=/sentinel\s*v13|painel premium|cen[aá]rio futuro por prazo|m[eé]dia dos 3 totais|piloto autom[aá]tico/i;
       const usable=nodes.filter(n=>!n.ignored&&n.backendDOMNodeId&&!sentinelAx.test(context(n)));
       const score=(n,kind)=>{
-        const d=context(n),r=role(n);let sc=0;
+        const d=own(n).toLowerCase(),r=role(n);let sc=0;
         const rx=kind==='buy'?/\b(acima|higher|buy|comprar|compra|call|up)\b/i:/\b(abaixo|lower|sell|vender|venda|put|down)\b/i;
         if(rx.test(d))sc+=12;
         if(/button/.test(r))sc+=5;
@@ -786,6 +787,10 @@ export class LocalPlaywrightDriver{
     }catch{return null}
     finally{try{await cdp?.detach()}catch{}}
   }
+  async _domExecutionUi(provider){
+    const sess=await this.session(provider);if(!sess.page||!sess.context?.newCDPSession)return null;
+    let cdp=null;try{cdp=await sess.context.newCDPSession(sess.page);return await readBrokerDomControls(cdp)}catch{return null}finally{try{await cdp?.detach()}catch{}}
+  }
   async _axClickBackend(cdp,page,backendNodeId){
     if(!backendNodeId)return false;
     try{
@@ -799,7 +804,7 @@ export class LocalPlaywrightDriver{
   }
   async _axDemoOrder(provider,{amount,side}={}){
     const sess=await this.session(provider);if(!sess.page||!sess.context?.newCDPSession)return null;
-    const ax=await this._axExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)return null;
+    let ax=await this._axExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)ax=await this._domExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)return null;
     let cdp=null;
     try{
       cdp=await sess.context.newCDPSession(sess.page);
@@ -812,7 +817,7 @@ export class LocalPlaywrightDriver{
       const targetId=String(side).toUpperCase()==='BUY'?ax.ax?.buyBackendId:ax.ax?.sellBackendId;
       const buttonOk=await this._axClickBackend(cdp,sess.page,targetId);
       if(!buttonOk)return{ok:false,error:'ax_trade_button_click_failed'};
-      return{ok:true,button:String(side).toUpperCase()==='BUY'?ax.buyText:ax.sellText,amountControl:ax.amountText,source:'accessibility-tree'}
+      return{ok:true,button:String(side).toUpperCase()==='BUY'?ax.buyText:ax.sellText,amountControl:ax.amountText,source:ax.source||'accessibility-tree'}
     }catch(e){return{ok:false,error:'ax_execution_failed',detail:String(e?.message||e)}}
     finally{try{await cdp?.detach()}catch{}}
   }
@@ -1064,6 +1069,10 @@ export class LocalPlaywrightDriver{
         }
       }
 
+      if(!ui.buy||!ui.sell||!ui.amount||!ui.expirationDurationMs){
+        const native=await this._domExecutionUi(provider).catch(()=>null);
+        if(native){ui={...ui,buy:ui.buy||native.buy,sell:ui.sell||native.sell,amount:ui.amount||native.amount,buyText:ui.buyText||native.buyText,sellText:ui.sellText||native.sellText,amountText:ui.amountText||native.amountText};if(native.buy&&native.sell&&native.amount)ui.ax=native.ax;if(!ui.expirationDurationMs&&native.expirationDurationMs)Object.assign(ui,{expirationDurationMs:native.expirationDurationMs,expirationRaw:native.expirationRaw,expirationKind:native.expirationKind,expirationConfidence:native.expirationConfidence})}
+      }
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
       if(Number.isFinite(Number(ui.expirationDurationMs))&&Number(ui.expirationDurationMs)>=10000){
         st.expirationDurationMs=Number(ui.expirationDurationMs);st.expirationRaw=String(ui.expirationRaw||'');st.expirationKind=ui.expirationKind||null;st.expirationConfidence=Number(ui.expirationConfidence||0);st.expirationUpdatedAt=Date.now();
@@ -1263,7 +1272,7 @@ export class LocalPlaywrightDriver{
   async sessionInfo(provider){const cfg=this.config(provider),s=await this.session(provider);
     if(s.normal&&!s.normal.killed){const info={provider,open:true,sessionPresent:false,likelyAuthenticated:false,url:cfg.url,title:cfg.label,cookieCount:0,phase:'normal-login',updatedAt:nowIso()};this.last.set(provider,info);return info}
     if(!s.browser){return{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:nowIso()}}
-    let snap;try{snap=await this.domSnapshot(provider,{allowAttach:false})}catch{snap={url:s.page?.url?.()||'',title:'',text:'',st:this.state(provider)}}
+    let snap;try{snap=await this.domSnapshot(provider,{allowAttach:false,fast:true})}catch{snap={url:s.page?.url?.()||'',title:'',text:'',st:this.state(provider)}}
     let cookies=[];try{cookies=await s.context.cookies([`https://${cfg.domain}`])}catch{}
     let authCookieSeen=cookies.some(x=>String(x?.name||'').toLowerCase()==='ssid'&&String(x?.value||'').length>8);
     let loginish=/login|signin|entrar|register|cadastro/i.test(`${snap.url} ${snap.title}`);
@@ -1303,15 +1312,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.3.2'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.3.3'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.3.2';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.3.3';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.3.2';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.3.3';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1706,7 +1715,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:950;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:900">V${esc(d.agentVersion||'13.3.2')}</span></div>
+                <div style="font-size:13.5px;font-weight:950;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:900">V${esc(d.agentVersion||'13.3.3')}</span></div>
                 <div style="font-size:9px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -1888,8 +1897,8 @@ export class LocalPlaywrightDriver{
   }
   async call(provider,action,{method='POST',body}={}){
     const cfg=this.config(provider);
-    if(action==='resume-visible'){await this.launchNormal(provider,{manual:true});return{opened:true,resumed:true,label:cfg.label,...await this.sessionInfo(provider)}}
-    if(action==='login'){if(body?.userInitiated!==true)throw new Error('broker_open_requires_manual_action');await this.launchNormal(provider,{manual:true});return{opened:true,label:cfg.label,...await this.sessionInfo(provider)}}
+    if(action==='resume-visible'){await this.launchNormal(provider,{manual:true});return{opened:true,resumed:true,label:cfg.label,...this.peek(provider)}}
+    if(action==='login'){if(body?.userInitiated!==true)throw new Error('broker_open_requires_manual_action');await this.launchNormal(provider,{manual:true});return{opened:true,label:cfg.label,...this.peek(provider)}}
     if(action==='session'){await this.attachAutomation(provider,{manual:true});return this.sessionInfo(provider)}
     if(action==='background'){await this.launchBackground(provider,{force:true});return this.sessionInfo(provider)}
     if(action==='connect'){await this.attachAutomation(provider,{manual:false});const info=await this.sessionInfo(provider);if(!info.open)throw new Error('broker_window_not_open');if(!info.sessionPresent)throw new Error('broker_session_not_detected');await this.domSnapshot(provider).catch(()=>{});await this.requestBaseData(provider).catch(()=>{});await sleep(350);await this.domSnapshot(provider).catch(()=>{});await this.requestMarketData(provider,{force:true}).catch(()=>{});return{connected:true,accountMode:this.state(provider).mode||'unknown',...info}}
