@@ -368,3 +368,28 @@ test('Overlay explicitly shows the validated asset and the safe switch instructi
   assert.ok(ui.includes('feche o ativo atual e abra o novo pelo botão + da corretora'));
   assert.ok(ui.includes('PROJEÇÃO FUTURA DAS ESTRATÉGIAS'));
 });
+
+
+test('Legacy analysis snapshots are never rebuilt into the clean calibration epoch', async () => {
+  const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
+  const start=runtime.indexOf('  _bootstrapSignalValidation(){');
+  const end=runtime.indexOf('\n  _settleDue(now){',start);
+  const block=runtime.slice(start,end);
+  assert.ok(block.includes('never reconstructed into statistical confidence samples'));
+  assert.ok(!block.includes('this.signalValidation.outcomes.push'));
+});
+
+test('An unvalidated clicked tab makes the broker feed fail closed even if old candles stay healthy', () => {
+  const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/test-unvalidated-fail-closed'});
+  const st=d.state('iq_option');
+  st.balance=10000;st.mode='demo';st.symbol='EUR/USD OTC';st.uiSymbol='EUR/USD OTC';st.activeId=76;st.candleActiveId=76;
+  const now=Math.floor(Date.now()/1000);
+  st.candles=Array.from({length:60},(_,i)=>({from:now-(60-i)*60,to:now-(59-i)*60,open:1.1,high:1.101,low:1.099,close:1.1,volume:1}));
+  st.quote=1.1;st.lastQuoteAt=Date.now();st.lastCandleAt=Date.now();
+  st.screenCandidateSymbol='GBP/CAD OTC';
+  const live=d.liveStatus('iq_option');
+  assert.equal(live.assetValidated,false);
+  assert.equal(live.feedValidated,false);
+  assert.equal(live.marketStatus,'unvalidated');
+  assert.match(live.marketReason,/não validado/i);
+});
