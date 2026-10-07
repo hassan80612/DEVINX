@@ -67,6 +67,20 @@ test('reaction entry needs two distinct current quotes after the structural brea
   assert.equal(r._operationalSignalState(a,bad,s.quoteTs).actionable,false,failure);
  }
 });
+test('a new structural break owns the turn despite a lagging previous five-second direction',()=>{
+ for(const side of ['CALL','PUT']){
+  const r=runtime(),s=market(side),a=merge(r,forecast(side),s),call=side==='CALL';
+  a.metrics.micro.delta5=call?-.02:.02;a.metrics.micro.delta15=call?-.03:.03;
+  a.metrics.shortModel[call?'reversalPutConfirmed':'reversalCallConfirmed']=true;
+  assert.equal(r._operationalSignalState(a,s,s.quoteTs).actionable,true);
+ }
+});
+test('losing the current reaction confirmation withdraws its entry immediately without switching history keys',()=>{
+ const r=runtime(),s=market(),a=merge(r,forecast('PUT'),s),first=r._operationalSignalState(a,s,s.quoteTs);
+ delete a.entryPlanner.horizons['30'].reaction;
+ const next={...s,quoteTs:s.quoteTs+1000,quoteHistory:[...s.quoteHistory,{price:s.price,ts:s.quoteTs+1000}]},withdrawn=r._operationalSignalState(a,next,next.quoteTs);
+ assert.equal(withdrawn.actionable,false);assert.equal(withdrawn.validation.key,first.validation.key);assert.equal(withdrawn.targetAt,first.targetAt);assert.equal(r.signalValidation.pending.filter(x=>x.kind==='operational_v3').length,1);
+});
 test('an independently confirmed opposite reaction preserves the prior signal outcome',()=>{
  for(const side of ['CALL','PUT']){
   const r=runtime(),opposite=side==='PUT'?'CALL':'PUT',old=forecast(opposite);old.quality.entrySide=opposite==='CALL'?'BUY':'SELL';old.generalConsensus.rapid.side=opposite;
