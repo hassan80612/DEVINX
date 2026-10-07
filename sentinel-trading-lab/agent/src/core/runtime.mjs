@@ -140,12 +140,14 @@ export class DemoTradingRuntime{
         return{slot:index+1,strategy,label:labels[strategy],active:true,paused:isPaused,pauseKey,side:'NEUTRO',callPct:null,putPct:null,evidence:0,futureByHorizon:{},reasons:['Projeção indisponível neste ciclo']};
       }
     });
-    const activeConfigured=cards.filter(x=>x.active&&!x.paused),seenStrategies=new Set();
+    const activeConfigured=cards.filter(x=>x.active&&!x.paused),seenStrategies=new Set(),seenFamilies=new Set();
+    const strategyFamily=id=>id==='smart_confluence'?'aggregate':id==='trend'?'trend':(['trendline_breakout','breakout'].includes(id)?'breakout':(['support_resistance','fibonacci_retest','mean_reversion'].includes(id)?'location_reversion':id==='price_action'?'price_action':id));
     for(const card of activeConfigured){
-      let penalty=1;
-      if(card.strategy==='smart_confluence'&&activeConfigured.length>1){penalty*=.55;card.reasons=[...(card.reasons||[]),'peso reduzido para evitar duplicar especialistas'].slice(0,3)}
+      let penalty=1;const family=strategyFamily(card.strategy);card.family=family;
+      if(card.strategy==='smart_confluence'&&activeConfigured.length>1){penalty*=.55;card.reasons=[...(card.reasons||[]),'peso reduzido: agregador não conta como especialista independente'].slice(0,3)}
       if(seenStrategies.has(card.strategy)){penalty*=.30;card.reasons=[...(card.reasons||[]),'peso reduzido: estratégia repetida'].slice(0,3)}
-      seenStrategies.add(card.strategy);
+      else if(seenFamilies.has(family)&&family!=='price_action'){penalty*=.55;card.reasons=[...(card.reasons||[]),'peso reduzido: evidência correlacionada com outra estratégia'].slice(0,3)}
+      seenStrategies.add(card.strategy);seenFamilies.add(family);
       card.evidence=Math.max(0,Number(card.evidence||0)*penalty);
       for(const row of Object.values(card.futureByHorizon||{}))row.evidence=Math.max(0,Number(row.evidence||0)*penalty)
     }
