@@ -355,7 +355,7 @@ test('Strategy cards use their own future horizon forecasts instead of current r
 test('Operational decision no longer requires present side to equal future side', async () => {
   const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
   assert.ok(runtime.includes("const presentSide=['CALL','PUT'].includes"));
-  assert.ok(runtime.includes("const side=futureReady?futureSide:'AGUARDAR'"));
+  assert.ok(runtime.includes("side=futureReady?futureSide:'AGUARDAR'"));
   assert.ok(runtime.includes('reversalTransition'));
   assert.ok(runtime.includes("gated.side=operationalSide"));
   assert.ok(!runtime.includes('operationalSide!==rawSide'));
