@@ -58,13 +58,13 @@ jobs:
           if(!driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().includes('MEDIA DOS 3 TOTAIS'))throw new Error('v13_future_ui_missing:MEDIA_DOS_3_TOTAIS');
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
-          if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('ANALISE DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
-          if(!runtime.includes('_generalConsensus')||!runtime.includes('family-balanced-market-vs-strategies')||!runtime.includes('horizon_forecast_v41')||!runtime.includes('horizon_decision_v13_1'))throw new Error('v13_1_consensus_runtime_missing');
+          if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('PROJECAO FUTURA DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL PRESENTE + FUTURO')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
+          if(!runtime.includes('_generalConsensus')||!runtime.includes('family-balanced-market-vs-strategies')||!runtime.includes('horizon_forecast_v42')||!runtime.includes('horizon_decision_v13_2'))throw new Error('v13_2_consensus_runtime_missing');
           for(const k of ['_probabilityBucket','bucketValidation','decisionValidation','decisionHistoryWeak','probabilityBucket'])if(!runtime.includes(k))throw new Error('v13_1_reliability_missing:'+k);
           for(const k of ['correlationPenalty','evidenceFamilyCount','future-v4.1'])if(!strategy.includes(k))throw new Error('v13_1_diversity_missing:'+k);
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
           if(!strategy.includes('strategyBuy*.65+microBuy*.35')||!strategy.includes('strategySell*.65+microSell*.35'))throw new Error('short_horizon_not_strategy_led');
-          if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
+          if(!runtime.includes('_operationalSignalState')||!runtime.includes("kind:'operational_v2'")||!runtime.includes('setup.firedAt'))throw new Error('frozen_operational_setup_missing');
           if(!runtime.includes("gated.operationalSignal?.actionable!==true")||!runtime.includes("operationalSetup.releasedAt=now"))throw new Error('execution_not_gated_by_operational_timing');
           if(!runtime.includes("strategyPanel=this._strategyPanel(snap,now)")||!runtime.includes("pausedReadings")||!runtime.includes("sourceRows"))throw new Error('pause_aware_totals_not_recomputed');
 
@@ -72,7 +72,7 @@ jobs:
           if(!driverSource.includes('operationalSignal')||!driverSource.includes('operationalTrigger')||!driverSource.includes('operationalDisplayThreshold'))throw new Error('operational_ui_not_bound_to_runtime');
           if(!driverSource.includes('expirationDurationMs')||!driverSource.includes('parseExpiry')||!driverSource.includes('expiryLabel'))throw new Error('broker_expiry_detection_missing');
           if(!uiAscii.includes('CONFIANCA')||!uiAscii.includes('MOSTRAR CALL / PUT A PARTIR DE'))throw new Error('summary_confidence_threshold_ui_missing');
-          if(!driverSource.includes('data-sentinel-reading-pause')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL DOS 6'))throw new Error('pause_aware_three_totals_ui_missing');
+          if(!driverSource.includes('data-sentinel-reading-pause')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL PRESENTE + FUTURO'))throw new Error('pause_aware_three_totals_ui_missing');
           if(!runtime.includes('_priceAtExpiry')||!runtime.includes("settlementQuality!=='approx'")||!runtime.includes('expirationMatch')||!runtime.includes('brokerExpirationDurationMs'))throw new Error('exact_expiry_validation_missing');
           if(!runtime.includes('Math.max(30,Number(this.settings.risk.signalValidationMinSamples||30))'))throw new Error('statistical_sample_floor_missing');
           if(!worker.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
@@ -110,8 +110,10 @@ jobs:
           if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382)throw new Error('protocol_asset_switch_failed');
 
           st.uiSymbol='USD/CAD OTC';st.symbol='USD/CAD OTC';st.activeId=2112;st.candles=[{from:1,to:2,open:1,high:1.1,low:.9,close:1}];st.quote=1;st.quoteHistory=[{ts:Date.now(),price:1}];
-          d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',source:'click'});
-          if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0)throw new Error('asset_switch_not_atomic');
+          d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',source:'tab-click-hint'});
+          if(st.uiSymbol!=='USD/CAD OTC'||st.symbol!=='USD/CAD OTC'||Number(st.activeId)!==2112||st.screenCandidateSymbol!=='USD/HKD OTC'||st.marketStatus!=='unvalidated')throw new Error('tab_click_retargeted_validated_asset');
+          d.applyActiveSelection('iq_option',{symbol:'USD/HKD OTC',activeId:1382,source:'protocol-page'});
+          if(st.uiSymbol!=='USD/HKD OTC'||st.symbol!=='USD/HKD OTC'||Number(st.activeId)!==1382||st.candles.length!==0||st.quote!==null||st.quoteHistory.length!==0||st.screenCandidateSymbol!==null)throw new Error('validated_asset_switch_not_atomic');
 
           st.candleSize=60;
           d.ingest('iq_option',JSON.stringify({name:'sendMessage',msg:{name:'binary-options.open-option',body:{active_id:9999,duration:120,size:120}}}),'page-out');
