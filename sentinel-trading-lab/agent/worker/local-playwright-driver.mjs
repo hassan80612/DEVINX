@@ -1482,9 +1482,9 @@ export class LocalPlaywrightDriver{
         const futureAgreement=plannerReadable?Math.max(0,Math.min(100,Number(plannerPlan?.agreement||0))):0;
         const futureRegime=plannerReadable?String(plannerPlan?.regime?.label||'—').toUpperCase():'—';
 
-        // O horizonte (30s/1m/...) mede o resultado A PARTIR DE AGORA.
-        // Portanto a contagem é validade/expiração da previsão, nunca espera antes da entrada.
-        // Oscilações normais não trocam CALL/PUT; oposição forte e repetida pode invalidar antes do vencimento.
+        // O horizonte (30s/1m/...) define o alvo futuro a partir de agora.
+        // A expiração escolhida no card define quanto tempo a operação ficará aberta.
+        // A janela de entrada é calculada por horizonte - expiração; a expiração lida da corretora não participa desta equação.
         const decisionAsset=visibleAsset,decisionSeconds=Math.max(30,Number(plannerHorizon)||30);
         const decisionKey='sentinel-future-decision-v13|'+decisionAsset+'|'+String(plannerHorizon),expiredKey='sentinel-future-expired-v13|'+decisionAsset+'|'+String(plannerHorizon),decisionNow=Date.now(),maxFeedPauseMs=12000;
         let futureDecision=null,expiredDecision=null;
