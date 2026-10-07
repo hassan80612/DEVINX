@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {analyzeMarket} from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
 
@@ -61,5 +62,77 @@ test('opposite candidates respect expiration, barriers, reset and no future quot
     const q=snap([99.99,100.01,100.01],t+1000);if(block==='future-touch')q.quoteHistory[0].ts=t+5000;
     assert.equal(r._operationalSignalState(a,q,t+1000).actionable,false,block);
     r.patchSettings({asset:'OTHER'});assert.equal(r.oppositeOperationalSetup,null);assert.equal(r.operationalSetup,null);
+  }
+});
+
+test('continuation cannot authorize the old direction during a confirmed short turn',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),a=analysis(side),call=side==='CALL',price=call?100.01:99.99;
+    // The 15s trend still favors the forecast, while the 5s reaction has turned.
+    a.metrics.micro={delta5:call?-.01:.01,delta15:call?.10:-.10};
+    a.metrics.shortModel={ready:true,turnDown:call,turnUp:!call};
+    const o=r._operationalSignalState(a,snap([price,price],t),t);
+    assert.equal(o.actionable,false);assert.equal(o.state,'AGUARDAR FORÇA');assert.match(o.reason,/virada curta/);assert.equal(r.signalValidation.pending.length,0);
+  }
+});
+test('a forecast cannot enter as its movement weakens and begins to retrace',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),a=analysis(side),call=side==='CALL',price=call?100.01:99.99;
+    a.metrics.micro={delta2:call?-.01:.01,delta5:call?.02:-.02,delta15:call?.10:-.10};
+    a.metrics.shortModel={ready:true,weakeningUp:call,weakeningDown:!call};
+    const o=r._operationalSignalState(a,snap([price,price],t),t);
+    assert.equal(o.actionable,false);assert.match(o.reason,/perdeu força/);
+  }
+});
+test('a point already exceeded does not become a late fresh entry',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),a=analysis(side),call=side==='CALL';
+    for(const p of Object.values(a.entryPlanner.horizons))p.entryTiming={maxDistance:.05};
+    const price=call?100.1:99.9,o=r._operationalSignalState(a,snap([price,price],t),t);
+    assert.equal(o.actionable,false);assert.equal(o.state,'AGUARDAR PONTO');assert.equal(r.signalValidation.pending.length,0);
+    const recovered=call?100.02:99.98;
+    const next=r._operationalSignalState(a,snap([recovered,recovered],t+1000),t+1000);
+    assert.equal(next.actionable,true);assert.equal(next.targetAt,o.targetAt);
+  }
+});
+test('forming setup adopts a qualified closer continuation once without resetting the window',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),call=side==='CALL',initial=analysis(side,{kind:'forming',trigger:call?101:99});
+    const first=r._operationalSignalState(initial,snap([100,100],t),t);assert.equal(first.actionable,false);
+    const a=analysis(side,{kind:'continuation',trigger:100});
+    for(const p of Object.values(a.entryPlanner.horizons)){p.scenario.triggerBasis='previous-short-bar';p.entryTiming={maxDistance:.05}}
+    const price=call?100.02:99.98,next=r._operationalSignalState(a,snap([price,price],t+1000),t+1000);
+    assert.equal(next.actionable,true);assert.equal(next.createdAt,first.createdAt);assert.equal(next.targetAt,first.targetAt);assert.equal(next.trigger,100);
+    const moved=analysis(side,{kind:'continuation',trigger:call?100.5:99.5});
+    const later=r._operationalSignalState(moved,snap([price,price],t+1500),t+1500);assert.equal(later.trigger,100);
+  }
+});
+
+test('control continuation uses the closed local bar on a chronological real-price frame',()=>{
+  const data=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation-prices.json',import.meta.url)));
+  assert.ok(data.candles.every(c=>c.to*1000<=data.now));assert.ok(data.quoteHistory.every(q=>q.ts<=data.now));
+  const p=analyzeMarket({...data,quoteTs:data.now,durationMs:30000,minConfidence:55}).entryPlanner.horizons['30'];
+  const bucket=Math.floor(data.now/5000)*5000-5000,closed=data.quoteHistory.filter(q=>q.ts>=bucket&&q.ts<bucket+5000);
+  assert.equal(p.modelRole,'control');assert.equal(p.directionReady,true);assert.equal(p.scenario.kind,'continuation');
+  assert.equal(p.callTrigger,Math.max(...closed.map(q=>q.price)));assert.equal(p.entryTiming.sourceBarAt,bucket);
+  assert.ok(data.quoteHistory.at(-1).price-p.callTrigger<=p.entryTiming.maxDistance);
+});
+test('lost strength withdraws an active burst and recovery needs a new independently confirmed point',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),call=side==='CALL',price=call?100.01:99.99,a=analysis(side);
+    const first=r._operationalSignalState(a,snap([price,price],t),t);assert.equal(first.actionable,true);
+    const original=structuredClone(r.signalValidation.pending[0]);
+    a.metrics.shortModel={ready:true,weakeningUp:call,weakeningDown:!call};a.metrics.micro.delta2=call?-.01:.01;
+    const wait=r._operationalSignalState(a,snap([price,price],t+500),t+500);assert.equal(wait.actionable,false);assert.equal(wait.state,'AGUARDAR FORÇA');
+    a.metrics.shortModel={ready:true};a.metrics.micro.delta2=call?.01:-.01;
+    for(const p of Object.values(a.entryPlanner.horizons)){p.scenario.triggerBasis='previous-short-bar';p.entryTiming={maxDistance:.05,sourceBarAt:t}}
+    const old=r._operationalSignalState(a,snap([price,price],t+4000),t+4000);assert.equal(old.actionable,false);assert.equal(r.signalValidation.pending.length,1);
+    for(const p of Object.values(a.entryPlanner.horizons))p.entryTiming.sourceBarAt=t+5000;
+    const single={price,quoteTs:t+10000,quoteHistory:[{ts:t+10000,price}]};
+    assert.equal(r._operationalSignalState(a,single,t+10000).actionable,false);
+    const next=r._operationalSignalState(a,snap([price,price],t+10200),t+10200);
+    assert.equal(next.actionable,true);assert.equal(next.targetAt,first.targetAt);assert.notEqual(next.createdAt,first.createdAt);
+    assert.equal(next.activeUntil,t+13700);assert.equal(r.signalValidation.pending.length,2);assert.deepEqual(r.signalValidation.pending[0],original);
+    assert.equal(r._operationalSignalState(a,snap([price,price],t+14000),t+14000).actionable,false);
   }
 });
