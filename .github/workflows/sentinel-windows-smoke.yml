@@ -1,4 +1,4 @@
-name: Sentinel Hybrid Smoke V13.1
+name: Sentinel Hybrid Smoke V13.3
 
 on:
   push:
@@ -59,7 +59,7 @@ jobs:
           if(!driverSource.includes('strategyCardsHtml')||!driverSource.includes('strategyConfluence'))throw new Error('strategy_ui_engine_binding_missing');
           const uiAscii=driverSource.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
           if(!uiAscii.includes('LEITURA RAPIDA DO MERCADO')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('PROJECAO FUTURA DAS ESTRATEGIAS')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL PRESENTE + FUTURO')||!driverSource.includes('generalConsensus'))throw new Error('summary_hierarchy_ui_missing');
-          if(!runtime.includes('_generalConsensus')||!runtime.includes('family-balanced-market-vs-strategies')||!runtime.includes('horizon_forecast_v42')||!runtime.includes('horizon_decision_v13_2'))throw new Error('v13_2_consensus_runtime_missing');
+          if(!runtime.includes('_generalConsensus')||!runtime.includes('family-balanced-market-vs-strategies')||!runtime.includes('horizon_forecast_v42')||!runtime.includes('horizon_decision_v13_3'))throw new Error('v13_2_consensus_runtime_missing');
           for(const k of ['_probabilityBucket','bucketValidation','decisionValidation','decisionHistoryWeak','probabilityBucket'])if(!runtime.includes(k))throw new Error('v13_1_reliability_missing:'+k);
           for(const k of ['correlationPenalty','evidenceFamilyCount','future-v4.1'])if(!strategy.includes(k))throw new Error('v13_1_diversity_missing:'+k);
           if(!strategy.includes('bars.length<5'))throw new Error('micro_warmup_not_progressive');
@@ -133,7 +133,7 @@ jobs:
           st.candles=[];st.quote=null;st.quoteHistory=[];st.candleActiveId=null;
           d.ingest('iq_option',JSON.stringify({name:'candles',request_id:'foreign-history',msg:{candles:history}}),'direct-in');
           if(st.candles.length!==0)throw new Error('uncorrelated_history_was_accepted');
-          console.log('V13.1 HISTORY BACKFILL ACTIVE-ID ISOLATION: PASS');
+          console.log('V13.3 HISTORY BACKFILL ACTIVE-ID ISOLATION: PASS');
 
           let requested=[];
           d._requestCandles=async(_provider,args)=>{requested.push(args);return false};
@@ -151,8 +151,8 @@ jobs:
           delayed.ingest('iq_option',JSON.stringify({name:'instrument-map',msg:{symbol:'USD/HKD OTC',active_id:1382}}),'page-in');
           await new Promise(r=>setTimeout(r,30));
           if(late.symbol!=='USD/HKD OTC'||late.uiSymbol!=='USD/HKD OTC'||backfills<1)throw new Error('late_active_map_did_not_bind_and_backfill:'+JSON.stringify({symbol:late.symbol,ui:late.uiSymbol,backfills}));
-          console.log('V13.1 LATE ACTIVE MAP + BACKFILL: PASS');
-          console.log('HYBRID V13.1 CORE: PASS');
+          console.log('V13.3 LATE ACTIVE MAP + BACKFILL: PASS');
+          console.log('HYBRID V13.3 CORE: PASS');
           '@
           Set-Content -Path 'sentinel-hybrid-smoke.mjs' -Value $script -Encoding UTF8
           node 'sentinel-hybrid-smoke.mjs'
