@@ -21,11 +21,6 @@ async function authInfo(token:string):Promise<AuthInfo>{
 
 export async function middleware(req:NextRequest){
   const p=req.nextUrl.pathname;
-  if(p==='/downloads/sentinel-agent-windows.exe'){
-    const url=req.nextUrl.clone();
-    url.pathname='/downloads/Sentinel-Agent-Windows.exe';
-    return NextResponse.rewrite(url);
-  }
   if(p==='/favicon.ico'||p.startsWith('/_next/')||p.startsWith('/downloads/'))return NextResponse.next();
   if(p==='/login'||p.startsWith('/api/auth/'))return NextResponse.next();
 
