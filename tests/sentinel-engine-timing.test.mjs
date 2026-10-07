@@ -305,3 +305,13 @@ test('independent expiry has its own measured history block and preserves stored
   const op=r._operationalSignalState(a,confirmedSnap(100.3,t+1000),t+1000);
   assert.equal(op.historyBlocked,true);assert.equal(op.actionable,false);assert.equal(r.signalValidation.pending.length,0);assert.equal(r.signalValidation.outcomes.length,60);
 });
+
+test('scenario view keeps the active scenario side while opposite analysis is only a candidate',()=>{
+  const op={asset:'TEST',side:'CALL',state:'JANELA ABERTA',ready:false,actionable:false,forecastHorizonSeconds:60,durationMs:30000,createdAt:t,targetAt:t+60000,entryWindowEndAt:t+60000,oppositeOpportunity:{side:'PUT'},futureSide:'PUT'};
+  const forecast={asset:'TEST',horizonSeconds:60,rawBias:'PUT',outlookReady:true,directionReady:true,confidence:80,callProbability:20,putProbability:80};
+  const view=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,forecast,displayThreshold:70,minPoints:55,now:t+1000});
+  assert.equal(view.analysisSide,'PUT');
+  assert.equal(view.oppositeAnalysis,true);
+  assert.equal(view.displaySide,'CALL');
+  assert.equal(view.canEnter,false);
+});
