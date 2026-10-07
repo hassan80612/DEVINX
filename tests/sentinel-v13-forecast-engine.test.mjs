@@ -247,3 +247,25 @@ test('forecast horizon is persisted independently from expiration',()=>{
   assert.equal(rt.settings.forecastHorizonSeconds,120);
   assert.equal(rt.settings.orderDurationMs,30000);
 });
+
+
+test('broker expiration is diagnostic only and never changes the card timing equation',()=>{
+  const rt=new DemoTradingRuntime({seed:48,balance:10000});
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
+  const t=Date.now(),analysis=timedAnalysis('CALL');
+  const snap={price:1.10,brokerExpirationDurationMs:60000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
+  const state=rt._operationalSignalState(analysis,snap,t);
+  assert.equal(state.state,'AGUARDAR JANELA');
+  assert.ok(state.timeToEntryMs>=29500&&state.timeToEntryMs<=30000,JSON.stringify(state));
+  assert.equal(state.expiration.source,'card-setting');
+  assert.equal(state.expiration.selectedMs,30000);
+  assert.equal(state.expiration.brokerMs,undefined);
+});
+
+test('operational runtime no longer contains broker-expiration mismatch gates',async()=>{
+  const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
+  assert.ok(!runtime.includes("state:'AJUSTAR PRAZO'"));
+  assert.ok(!runtime.includes("state:'VERIFICAR PRAZO'"));
+  assert.ok(runtime.includes("expirationSource:'card-setting'"));
+  assert.ok(runtime.includes("settleDurationMs:durationMs"));
+});
