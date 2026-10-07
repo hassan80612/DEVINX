@@ -69,3 +69,12 @@ test('strategy cards aggregate independent future horizons instead of present-on
   assert.match(runtime,/strategyFutureBias/);
   assert.match(runtime,/strategyBlend/);
 });
+
+
+test('three-total average sits immediately after the future scenario and before the total cards', async()=>{
+  const driver=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+  const future=driver.indexOf('data-sentinel-card="horizon"');
+  const average=driver.indexOf('data-sentinel-summary="average-total"');
+  const totals=driver.indexOf('>TOTAIS</div>',future);
+  assert.ok(future>=0&&average>future&&totals>average,{future,average,totals});
+});
