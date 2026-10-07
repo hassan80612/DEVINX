@@ -76,9 +76,9 @@ test('V13.1 worker binds automation to the broker account and disarms on REAL',a
   assert.ok(broker.includes("throw new Error('real_execution_requires_human_confirmation')"));
 });
 
-test('V13.1 web console uses broker mode as truth and exposes mobile DEMO pilot controls',async()=>{
+test('V13.1 web console uses broker mode as truth while hiding DEMO wording from users',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/src/app/page.tsx',import.meta.url),'utf8');
-  assert.ok(ui.includes('ARMAR PILOTO DEMO'));
+  assert.ok(ui.includes('ARMAR PILOTO'));\n  assert.ok(!ui.includes('ARMAR PILOTO DEMO'));\n  assert.ok(!ui.includes('DEMO PRONTA'));\n  assert.ok(!ui.includes('DEMO DETECTADA'));
   assert.ok(ui.includes('SOMENTE ANALISAR'));
   assert.ok(ui.includes('DESARMAR E PARAR'));
   assert.ok(ui.includes("brokerMode==='REAL'"));
