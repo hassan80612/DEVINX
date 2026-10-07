@@ -2,17 +2,18 @@ name: Sentinel Hybrid Smoke V13.4
 
 on:
   push:
-    branches: [sentinel-v12-clean-restore-20261006, main]
+    branches: [sentinel-1348-agent-rebuild-1007]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
       - '.github/workflows/sentinel-windows-smoke.yml'
       - 'scripts/sentinel-overlay-smoke.mjs'
+      - 'tests/sentinel-agent-lifecycle.test.mjs'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   smoke:
@@ -169,7 +170,11 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           New-Item -ItemType Directory -Force -Path 'sentinel-trading-lab/public/downloads' | Out-Null
-          Compress-Archive -Path 'sentinel-trading-lab/agent/*' -DestinationPath 'sentinel-trading-lab/public/downloads/agent_payload_v88.zip' -Force
+          $payloadStage=Join-Path $env:RUNNER_TEMP 'sentinel-clean-payload'
+          New-Item -ItemType Directory -Force $payloadStage | Out-Null
+          Copy-Item 'sentinel-trading-lab/agent/*' $payloadStage -Recurse -Force
+          Remove-Item (Join-Path $payloadStage 'worker/data'),(Join-Path $payloadStage 'node_modules') -Recurse -Force -ErrorAction SilentlyContinue
+          Compress-Archive -Path (Join-Path $payloadStage '*') -DestinationPath 'sentinel-trading-lab/public/downloads/agent_payload_v88.zip' -Force
           go build -trimpath -ldflags="-s -w -buildid=" -o 'sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe' 'sentinel-trading-lab/agent-launcher.go'
           if($LASTEXITCODE -ne 0){throw 'EXE build failed'}
           $env:SENTINEL_INSTALL_TEST='1'
@@ -185,7 +190,40 @@ jobs:
             Start-Sleep -Milliseconds 500
           }
           if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
-          Write-Host 'HYBRID V13.3 INSTALL: PASS'
+          if($h.build -ne '13.4.8-rebuild-1007'){throw 'Wrong manager build'}
+          $wh=Invoke-RestMethod 'http://127.0.0.1:8787/health'
+          if($wh.version -ne '13.4.8' -or $wh.build -ne $h.build -or $wh.pid -ne $h.workerPid){throw 'Mixed manager/worker installation'}
+          Write-Host 'HYBRID V13.4.8 INSTALL: PASS'
+
+      - name: Upgrade from old relative-command worker and reinstall
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $root=Join-Path $env:LOCALAPPDATA 'SentinelTradingLab'
+          Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post | Out-Null
+          Start-Sleep -Seconds 2
+          Set-Content (Join-Path $root 'worker/data/upgrade-preserved.txt') 'identity-and-sessions-preserved'
+          $legacy=@'
+          const http=require('http');http.createServer((q,r)=>{r.setHeader('content-type','application/json');r.end(JSON.stringify({ok:true,version:'13.4.6'}))}).listen(8787,'127.0.0.1');
+          '@
+          Set-Content (Join-Path $root 'worker/legacy-worker.cjs') $legacy
+          $old=Start-Process -FilePath (Join-Path $root '.sentinel-runtime/node.exe') -ArgumentList 'legacy-worker.cjs' -WorkingDirectory (Join-Path $root 'worker') -PassThru
+          Start-Sleep -Seconds 1
+          $oldHealth=Invoke-RestMethod 'http://127.0.0.1:8787/health'
+          if($oldHealth.version -ne '13.4.6'){throw 'Old worker fixture failed'}
+          $env:SENTINEL_INSTALL_TEST='1'
+          $env:SENTINEL_SUPABASE_URL='http://127.0.0.1:9'
+          1..2 | ForEach-Object {
+            & 'sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe'
+            if($LASTEXITCODE -ne 0){throw "Upgrade/reinstall failed: $LASTEXITCODE"}
+            $h=Invoke-RestMethod 'http://127.0.0.1:8788/health'
+            $wh=Invoke-RestMethod 'http://127.0.0.1:8787/health'
+            if(-not $h.workerHealthy -or $h.build -ne '13.4.8-rebuild-1007' -or $wh.build -ne $h.build -or $wh.pid -ne $h.workerPid){throw 'Version or PID conflict after upgrade'}
+            if((Get-Content (Join-Path $root 'worker/data/upgrade-preserved.txt')) -ne 'identity-and-sessions-preserved'){throw 'Persistent data lost'}
+          }
+          if(Get-Process -Id $old.Id -ErrorAction SilentlyContinue){throw 'Old worker survived update'}
+          Write-Host '13.4.6 -> 13.4.8 UPGRADE + REINSTALL: PASS'
+
 
       - name: Verify rendered scenario card
         shell: powershell
@@ -206,3 +244,15 @@ jobs:
         shell: powershell
         run: |
           try{Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 2|Out-Null}catch{}
+
+      - name: Commit validated Windows executable and payload
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+          git commit -m 'build(sentinel): validated Windows Agent 13.4.8 rebuild'
+          git push origin HEAD:sentinel-1348-agent-rebuild-1007

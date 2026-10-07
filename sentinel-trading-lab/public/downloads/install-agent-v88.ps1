@@ -4,13 +4,25 @@ $ProgressPreference = 'SilentlyContinue'
 $site = 'https://sentinel-trading-lab.vercel.app'
 $root = Join-Path $env:LOCALAPPDATA 'SentinelTradingLab'
 $runtime = Join-Path $root '.sentinel-runtime'
-$payloadZip = Join-Path $env:TEMP 'sentinel-agent-v88-payload.zip'
-$payloadTmp = Join-Path $env:TEMP 'sentinel-agent-v88-payload'
+$stage = Join-Path $env:TEMP ('sentinel-v88-' + [Guid]::NewGuid().ToString('N'))
+$payloadZip = Join-Path $stage 'payload.zip'
+$payloadTmp = Join-Path $stage 'payload'
+$installMutex = New-Object System.Threading.Mutex($false, 'Local\SentinelTradingLabInstall')
+$locked = $false
 
 function Step($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; if ($env:SENTINEL_INSTALL_TEST -ne '1') { Read-Host 'Pressione ENTER para fechar' | Out-Null }; exit 1 }
 
 try {
+  $locked = $installMutex.WaitOne(0)
+  if (-not $locked) { throw 'Outra instalacao do Sentinel esta em andamento. Aguarde ela terminar.' }
+  New-Item -ItemType Directory -Force -Path $stage | Out-Null
+  if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.8-rebuild-1007" -OutFile $payloadZip }
+  Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
+  $manifest = Get-Content (Join-Path $payloadTmp 'package.json') -Raw | ConvertFrom-Json
+  if ($manifest.version -ne '13.4.8' -or -not (Select-String -LiteralPath (Join-Path $payloadTmp 'worker\index.mjs') -SimpleMatch "13.4.8-rebuild-1007" -Quiet)) { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.8.' }
+  try { Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 3 | Out-Null } catch {}
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
   Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
   try {
@@ -26,10 +38,19 @@ try {
     }
   } catch {}
   try {
-    Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.TaskName -like 'Sentinel*' } | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
+    Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.TaskName -like 'Sentinel*' } | ForEach-Object { $_ | Stop-ScheduledTask -ErrorAction SilentlyContinue; $_ | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue }
   } catch {}
   Start-Sleep -Milliseconds 900
 
+  # Nenhum listener antigo pode sobreviver e ser confundido com o novo Worker.
+  foreach ($port in @(8787,8788)) {
+    foreach ($connection in @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)) {
+      $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$($connection.OwningProcess)"
+      if ($owner.Name -eq 'node.exe' -and $owner.CommandLine -and ($owner.CommandLine -like '*SentinelTradingLab*' -or $owner.ExecutablePath -like "$root\*")) {
+        Stop-Process -Id $owner.ProcessId -Force -ErrorAction Stop
+      } else { throw "Porta $port ocupada por outro programa (PID $($connection.OwningProcess))." }
+    }
+  }
   Write-Host '========================================' -ForegroundColor DarkCyan
   Write-Host '       SENTINEL WINDOWS AGENT V13.4.8' -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
@@ -37,29 +58,19 @@ try {
 
   Step '1/5 Atualizando arquivos do Agent...'
   New-Item -ItemType Directory -Force -Path $root | Out-Null
-  if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.8-reaction-timing-1007" -OutFile $payloadZip }
-  if (Test-Path $payloadTmp) { Remove-Item $payloadTmp -Recurse -Force }
-  New-Item -ItemType Directory -Force -Path $payloadTmp | Out-Null
-  Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
-
   # Limpa codigo antigo sem apagar identidade, sessoes da corretora ou runtime Node.
   $dataDir = Join-Path $root 'worker\data'
-  $dataBackup = Join-Path $env:TEMP 'sentinel-v88-data-backup'
-  if (Test-Path $dataBackup) { Remove-Item $dataBackup -Recurse -Force }
-  if (Test-Path $dataDir) {
-    New-Item -ItemType Directory -Force -Path $dataBackup | Out-Null
-    Copy-Item (Join-Path $dataDir '*') $dataBackup -Recurse -Force -ErrorAction SilentlyContinue
+  $workerDir = Join-Path $root 'worker'
+  if (Test-Path $workerDir) {
+    Get-ChildItem -LiteralPath $workerDir -Force | Where-Object { $_.Name -ne 'data' } | Remove-Item -Recurse -Force
   }
-  foreach ($item in @('worker','src','node_modules','package.json','package-lock.json')) {
+  foreach ($item in @('src','node_modules','package.json','package-lock.json')) {
     $target = Join-Path $root $item
-    if (Test-Path $target) { Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue }
+    if (Test-Path $target) { Remove-Item $target -Recurse -Force }
   }
+  # O pacote nunca substitui os dados locais do usuario.
+  Remove-Item (Join-Path $payloadTmp 'worker\data') -Recurse -Force -ErrorAction SilentlyContinue
   Copy-Item (Join-Path $payloadTmp '*') $root -Recurse -Force
-  if (Test-Path $dataBackup) {
-    New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
-    Copy-Item (Join-Path $dataBackup '*') $dataDir -Recurse -Force -ErrorAction SilentlyContinue
-  }
   # Estado transitório nunca deve sobreviver a uma reinstalação.
   foreach ($transient in @('agent.exit','manager.pid','worker.pid')) {
     Remove-Item -LiteralPath (Join-Path $dataDir $transient) -Force -ErrorAction SilentlyContinue
@@ -123,7 +134,7 @@ try {
   for ($i=0; $i -lt 120; $i++) {
     try {
       $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.8') { $ready = $true; break }
+      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.8' -and $h.build -eq '13.4.8-rebuild-1007') { $ready = $true; break }
     } catch {}
     Start-Sleep -Milliseconds 500
   }
@@ -137,4 +148,8 @@ try {
     Start-Sleep -Seconds 2
   }
   exit 0
-} catch { Fail $_.Exception.Message }
+} catch { Fail $_.Exception.Message } finally {
+  if ($locked) { try { $installMutex.ReleaseMutex() } catch {} }
+  $installMutex.Dispose()
+  Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
+}

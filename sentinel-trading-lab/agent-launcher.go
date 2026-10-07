@@ -30,10 +30,12 @@ func fail(msg string, err error) {
 }
 
 func main() {
-    tmpRoot := filepath.Join(os.TempDir(), "SentinelAgentV88")
-    if err := os.MkdirAll(tmpRoot, 0o755); err != nil {
+    tmpRoot, err := os.MkdirTemp("", "SentinelAgentV88-")
+    if err != nil {
         fail("Não foi possível preparar a instalação", err)
     }
+
+    defer os.RemoveAll(tmpRoot)
 
     installerPath := filepath.Join(tmpRoot, "install-agent-v88.ps1")
     payloadPath := filepath.Join(tmpRoot, "agent_payload_v88.zip")
@@ -62,7 +64,9 @@ func main() {
     }
 
     // Open the product after a successful install.
-    _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://sentinel-trading-lab.vercel.app").Start()
+    if os.Getenv("SENTINEL_INSTALL_TEST") != "1" {
+        _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://sentinel-trading-lab.vercel.app").Start()
+    }
 
     _ = os.Remove(installerPath)
     _ = os.Remove(payloadPath)

@@ -24,7 +24,8 @@ $ok=$false
 $reason='health_fail'
 try {
   $h=Invoke-RestMethod -UseBasicParsing $health -TimeoutSec 2
-  $ok=($h.ok -eq $true -and $h.workerHealthy -eq $true)
+  $ok=($h.ok -eq $true -and $h.version -eq '13.4.8' -and $h.build -eq '13.4.8-rebuild-1007' -and ($h.workerHealthy -eq $true -or $h.workerEnabled -eq $false))
+  if ($ok -and $h.workerEnabled -eq $false) { exit 0 }
   if ($ok) {
     try {
       $ri=Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8787/remote-info' -TimeoutSec 2
@@ -44,7 +45,7 @@ Log ($reason+' reiniciando_manager')
 
 try {
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-    $_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine -like '*SentinelTradingLab*agent-manager.mjs*'
+    $_.Name -eq 'node.exe' -and $_.CommandLine -and $_.CommandLine -like '*SentinelTradingLab*' -and ($_.CommandLine -like '*agent-manager.mjs*' -or $_.CommandLine -like '*worker*index.mjs*')
   } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 } catch {}
 
