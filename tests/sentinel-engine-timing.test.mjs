@@ -164,5 +164,5 @@ test('a confidence dip during the entry burst never continues to authorize an en
   const r=runtime(),a=analysis('CALL',99);assert.equal(r._operationalSignalState(a,{price:100},t).actionable,true);
   a.entryPlanner.horizons['60'].confidence=54;
   const op=r._operationalSignalState(a,{price:100},t+1000);
-  assert.equal(op.actionable,false);assert.equal(op.ready,false);assert.equal(op.targetAt,t+60000);
+  assert.equal(op.actionable,false);assert.equal(op.ready,false);assert.equal(op.targetAt,t+60000);assert.doesNotMatch(op.reason,/estão alinhados/);
 });
