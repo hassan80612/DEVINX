@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig={
   reactStrictMode:true,
+  compress:false,
   async redirects(){
     return[
       {source:'/downloads/Sentinel-Agent-V13.3.exe',destination:'/downloads/Sentinel-Agent-Windows.exe',permanent:false}
@@ -13,7 +14,7 @@ const nextConfig={
         headers:[
           {key:'Content-Type',value:'application/octet-stream'},
           {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-V13.3.exe"'},
-          {key:'Cache-Control',value:'public, max-age=0, must-revalidate'}
+          {key:'Cache-Control',value:'private, no-store, no-cache, must-revalidate, no-transform'}
         ]
       },
       {
@@ -21,7 +22,7 @@ const nextConfig={
         headers:[
           {key:'Content-Type',value:'application/octet-stream'},
           {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-V13.3.exe"'},
-          {key:'Cache-Control',value:'public, max-age=0, must-revalidate'}
+          {key:'Cache-Control',value:'private, no-store, no-cache, must-revalidate, no-transform'}
         ]
       },
       {
