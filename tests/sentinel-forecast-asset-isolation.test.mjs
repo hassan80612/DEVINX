@@ -300,7 +300,7 @@ test('Asset-change events force immediate runtime synchronization before new ana
   assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
   assert.ok(worker.includes('if(event?.assetChanged===true){'));
   assert.ok(worker.includes('syncRuntimeMarket();'));
-  assert.ok(worker.includes("const VERSION='13.1.0'"));
+  assert.ok(worker.includes("const VERSION='13.3.0'"));
 });
 
 test('Protocol active_id changes are surfaced as assetChanged events', () => {
@@ -405,12 +405,15 @@ test('Unvalidated broker tab clears any locked future decision immediately', asy
 });
 
 
-test('Operational entry requires stronger future confidence, agreement, edge and strategy support', async () => {
+test('Operational entry uses the user threshold and points filter without hidden duplicate gates', async () => {
   const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
-  assert.ok(runtime.includes('futureConfidence>=64'));
-  assert.ok(runtime.includes('futureAgreement>=58'));
-  assert.ok(runtime.includes('(strategySupport||strongSoloFuture)'));
-  assert.ok(runtime.includes('decisionStrength>=64&&futureEdge>=16'));
+  assert.ok(runtime.includes('futureDisplayThreshold:70'));
+  assert.ok(runtime.includes('futureLead>=futureThreshold&&decisionStrength>=signalPoints'));
+  assert.ok(runtime.includes("timingConfirmed=reversal?(triggerMet&&(preSide===side||entrySide===side||presentAligned)):triggerMet"));
+  assert.ok(!runtime.includes('futureConfidence>=64'));
+  assert.ok(!runtime.includes('futureAgreement>=58'));
+  assert.ok(!runtime.includes('(strategySupport||strongSoloFuture)'));
+  assert.ok(!runtime.includes('decisionStrength>=64&&futureEdge>=16'));
 });
 
 test('Overlay default footprint is smaller without reducing typography', async () => {
