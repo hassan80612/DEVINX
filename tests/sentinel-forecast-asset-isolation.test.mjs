@@ -393,3 +393,11 @@ test('An unvalidated clicked tab makes the broker feed fail closed even if old c
   assert.equal(live.marketStatus,'unvalidated');
   assert.match(live.marketReason,/não validado/i);
 });
+
+
+test('Unvalidated broker tab clears any locked future decision immediately', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes('if(screenCandidateAsset){'));
+  assert.ok(ui.includes('localStorage.removeItem(decisionKey);localStorage.removeItem(expiredKey)'));
+  assert.ok(ui.includes('futureDecision=null;expiredDecision=null'));
+});
