@@ -175,6 +175,14 @@ function applyKnownBalance(st){
   const eligible=arr.filter(x=>[1,4].includes(Number(x?.type)));if(!selected&&eligible.length===1)selected=eligible[0];
   if(!selected)return false;const typ=Number(selected.type);if(typ===1)st.mode='real';if(typ===4)st.mode='demo';const id=n(selected.id);if(id!=null)st.balanceId=id;const val=n(selected.amount??selected.balance);if(val!=null){st.balance=val;st.balanceSource='protocol:balances';return true}return false
 }
+function appendQuoteSample(st,ts,price){
+  const t=Number(ts),p=Number(price);if(!Number.isFinite(t)||!Number.isFinite(p)||p<=0)return;
+  if(!Array.isArray(st.quoteHistory))st.quoteHistory=[];
+  const prev=st.quoteHistory.at(-1);
+  if(prev&&prev.price===p&&t-Number(prev.ts||0)<250)return;
+  st.quoteHistory.push({ts:t,price:p});
+  if(st.quoteHistory.length>960)st.quoteHistory.splice(0,st.quoteHistory.length-900)
+}
 function protocolScan(data,st,direction='in'){
   if(!data||typeof data!=='object')return;
   const outer=String(data.name||data.event||'');
@@ -199,7 +207,7 @@ function protocolScan(data,st,direction='in'){
       if(activeChanged&&prevActiveId!=null&&Number(prevActiveId)!==Number(aid)){
         const resolved=symbolForActiveId(st,aid);
         st.activeId=Number(aid);st.pendingPageActiveId=Number(aid);
-        st.symbol=resolved||null;st.uiSymbol=resolved||null;st.uiSymbolSource=resolved?'protocol-page':'protocol-page-pending';
+        st.symbol=resolved||null;st.uiSymbol=resolved||null;st.uiSymbolSource=resolved?'protocol-page':'protocol-page-pending';st.screenCandidateSymbol=null;st.validatedAt=Date.now();
         st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.candleIntegrity={ok:false,reason:'active_id_switch'};
         st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;
         st.marketStatus='switching';st.marketReason=resolved?`Ativo alterado na corretora: ${resolved}`:'Ativo alterado na corretora · identificando novo ativo';
@@ -237,7 +245,7 @@ function protocolScan(data,st,direction='in'){
       st.activeId=Number(aid);st.candleActiveId=Number(aid);st.candles=mergeCandles(st.candles,arr);st.lastCandleAt=Date.now();
       const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
       if(!integrity.ok){st.lastIntegrityError={...integrity,at:Date.now(),activeId:Number(aid),symbol:st.symbol};st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;st.candles=[];st.quote=null;st.quoteHistory=[];st.candleActiveId=null;st.marketStatus='recovering';st.marketReason='Histórico rejeitado por mistura/inconsistência de ativo'}
-      else{const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800)}}
+      else{const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();appendQuoteSample(st,Date.now(),st.quote)}}
     }else if(arr.length){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
     if(rid)st.marketRequests?.delete?.(rid)
   }
@@ -248,7 +256,7 @@ function protocolScan(data,st,direction='in'){
     if(matches&&candle){
       st.activeId=Number(aid);st.candleActiveId=Number(aid);const candidate=mergeCandles(st.candles,[candle]);const integrity=candleSeriesIntegrity(candidate,candle.close);st.candleIntegrity=integrity;
       if(!integrity.ok){st.lastIntegrityError={...integrity,at:Date.now(),activeId:Number(aid),symbol:st.symbol};st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;st.candles=[];st.quote=null;st.quoteHistory=[];st.candleActiveId=null;st.marketStatus='recovering';st.marketReason='Candle rejeitada por inconsistência de ativo'}
-      else{st.candles=candidate;st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||Date.now()-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts:Date.now(),price:st.quote}].slice(-1800);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
+      else{st.candles=candidate;st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();appendQuoteSample(st,Date.now(),st.quote);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
     }else if(candle){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
   }
   if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){
@@ -261,7 +269,7 @@ function protocolScan(data,st,direction='in'){
       const bid=n(row.bid),ask=n(row.ask),q=n(row.price??row.value??row.close??row.current_price??row.spot_price)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
       if(q==null)continue;
       const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at),ts=rawTs==null?Date.now():(rawTs<1e12?rawTs*1000:rawTs);
-      st.quote=Number(q);st.lastQuoteAt=ts;const prev=st.quoteHistory?.at?.(-1);if(!prev||prev.price!==st.quote||ts-Number(prev.ts||0)>=250)st.quoteHistory=[...(st.quoteHistory||[]),{ts,price:st.quote}].slice(-1800)
+      st.quote=Number(q);st.lastQuoteAt=ts;appendQuoteSample(st,ts,st.quote)
     }
   }
 }
@@ -302,7 +310,7 @@ export class LocalPlaywrightDriver{
   setOverlayActionHandler(handler){this.overlayActionHandler=typeof handler==='function'?handler:null;return this}
   setMarketUpdateHandler(handler){this.marketUpdateHandler=typeof handler==='function'?handler:null;return this}
   config(provider){const c=PROVIDERS[provider];if(!c)throw new Error('unsupported_provider');return c}
-  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,pendingPageActiveId:null,marketRequests:new Map(),candleActiveId:null,candleIntegrity:{ok:false,reason:'sem_candles'},rejectedMarketFrames:0,lastIntegrityError:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null});return this.live.get(provider)}
+  state(provider){if(!this.live.has(provider))this.live.set(provider,{balance:null,balanceId:null,balanceSource:null,lastBalances:[],assets:new Set(),activeMap:new Map(),activeId:null,quote:null,symbol:null,uiSymbol:null,screenCandidateSymbol:null,validatedAt:null,lastUiSignalAt:null,uiSymbolSource:null,candles:[],quoteHistory:[],candleSize:60,lastFrameAt:null,lastDomAt:null,lastQuoteAt:null,lastCandleAt:null,lastRequestAt:null,lastMaintainAt:null,lastRecoveryAt:null,subscribedSymbol:null,subscribedActiveId:null,mode:null,protocol:'passive',directStatus:null,lastDirectError:null,lastCandleRequest:null,lastCandleResponse:null,pageActiveId:null,lastPageActiveAt:null,pendingPageActiveId:null,marketRequests:new Map(),candleActiveId:null,candleIntegrity:{ok:false,reason:'sem_candles'},rejectedMarketFrames:0,lastIntegrityError:null,suggestedSymbol:null,marketStatus:'unknown',marketReason:'Aguardando mercado',autoSelected:false,executionReady:false,executionUi:null,expirationDurationMs:null,expirationRaw:null,expirationKind:null,expirationConfidence:0,expirationUpdatedAt:null});return this.live.get(provider)}
   async engine(){if(!this.chromium){const mod=await import('playwright-core');this.chromium=mod.chromium}return this.chromium}
   async browserPath(){for(const p of findBrowser())if(await exists(p))return p;throw new Error('chrome_or_edge_not_found')}
   async session(provider){if(!this.sessions.has(provider))this.sessions.set(provider,{provider,normal:null,cdp:null,browser:null,context:null,page:null,background:false,debugPort:null,profileDir:resolve(this.dataDir,provider)});return this.sessions.get(provider)}
@@ -463,98 +471,24 @@ export class LocalPlaywrightDriver{
             for(const [needle,label] of named)if(new RegExp('(^|[^A-Z])'+needle.replace(' ','\\\\s+')+'([^A-Z]|$)','i').test(raw))out.push(label+(raw.includes('OTC')?' OTC':''));
             return [...new Set(out)];
           };
-          const selectedPair=()=>{
-            const selectors='[aria-selected],[aria-checked],[aria-current],[data-state],[role="tab"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i]';
-            const visible=el=>{try{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8}catch{return false}};
-            const vividLineScore=(style)=>{
-              try{
-                const w=parseFloat(style?.borderBottomWidth||'0'),c=String(style?.borderBottomColor||'');
-                if(w<2||!c||c==='transparent'||c==='rgba(0, 0, 0, 0)')return 0;
-                const nums=(c.match(/[\d.]+/g)||[]).map(Number),a=nums.length>3?nums[3]:1;
-                if(a===0)return 0;
-                const rgb=nums.slice(0,3),spread=rgb.length===3?Math.max(...rgb)-Math.min(...rgb):0;
-                return spread>=45?58:18
-              }catch{return 0}
-            };
-            const stateScore=el=>{
-              let score=0,node=el;
-              for(let d=0;d<5&&node;d++,node=node.parentElement){
-                const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();
-                if(node.getAttribute?.('aria-selected')==='true')score+=120;
-                if(node.getAttribute?.('aria-checked')==='true')score+=110;
-                if(cur&&cur!=='false')score+=100;
-                if(/active|selected|current|checked/.test(state))score+=90;
-                if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))score+=75;
-                try{
-                  score+=vividLineScore(getComputedStyle(node));
-                  for(const pseudo of ['::before','::after']){
-                    const ps=getComputedStyle(node,pseudo),h=parseFloat(ps.height||'0'),bottom=parseFloat(ps.bottom||'999');
-                    const bg=String(ps.backgroundColor||''),nums=(bg.match(/[\d.]+/g)||[]).map(Number),alpha=nums.length>3?nums[3]:1,spread=nums.length>=3?Math.max(...nums.slice(0,3))-Math.min(...nums.slice(0,3)):0;
-                    if(h>0&&h<=7&&Math.abs(bottom)<=4&&alpha>0&&spread>=45)score+=46
-                  }
-                }catch{}
-              }
-              const r=el.getBoundingClientRect();
-              if(r.top<180)score+=5;
-              try{
-                const kids=[...el.querySelectorAll('*')].slice(0,32);
-                for(const k of kids){
-                  const kr=k.getBoundingClientRect();if(kr.width<r.width*.35||kr.height<=0||kr.height>7||kr.bottom<r.bottom-10)continue;
-                  const cs=getComputedStyle(k),bg=String(cs.backgroundColor||''),nums=(bg.match(/[\d.]+/g)||[]).map(Number),alpha=nums.length>3?nums[3]:1,spread=nums.length>=3?Math.max(...nums.slice(0,3))-Math.min(...nums.slice(0,3)):0;
-                  if(alpha>0&&spread>=45){score+=42;break}
-                }
-              }catch{}
-              return score
-            };
-            const ranked=[];
-            for(const el of [...document.querySelectorAll(selectors)].filter(visible)){const p=pairsFrom(el.textContent||'');if(p.length===1)ranked.push({p:p[0],score:stateScore(el)})}
-            ranked.sort((a,b)=>b.score-a.score);
-            return ranked[0]?.score>0?ranked[0].p:''
-          };
-          let last='';
-          const publish=(symbol,source)=>{
-            if(!symbol)return;
-            // An explicit tab click is authoritative even when our local "last" hint
-            // was seeded incorrectly by an earlier DOM guess.
-            if(symbol===last&&source!=='click')return;
-            last=symbol;
+          let lastHint='';
+          const publishHint=(symbol)=>{
+            if(!symbol||symbol===lastHint)return;
+            lastHint=symbol;
             window.__sentinelClickedSymbol=symbol;window.__sentinelClickedSymbolAt=Date.now();
-            try{window.__sentinelAssetChanged?.({symbol,source,at:Date.now()})}catch{}
+            try{window.__sentinelAssetChanged?.({symbol,source:'tab-click-hint',at:Date.now()})}catch{}
           };
           document.addEventListener('click',ev=>{
             try{
               if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
-              const beforeSelected=selectedPair();
-              const nodes=[];let node=ev.target,direct='';
-              for(let i=0;i<10&&node;i++,node=node.parentElement)nodes.push(node);
-              if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY))if(!nodes.includes(x))nodes.push(x);
-              for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){direct=p[0];publish(direct,'click');break}}
-              // IQ atualiza o estado visual da aba depois do clique. Nunca volte ao ativo
-              // anterior só porque o DOM ainda não terminou a transição; confirme de novo
-              // quando a seleção visual já assentou.
-              if(!direct)setTimeout(()=>{const p=selectedPair();if(p)publish(p,'selected-tab-fallback')},90);
-              setTimeout(()=>{
-                const p=selectedPair();
-                if(p&&(!beforeSelected||p!==beforeSelected||p===direct))publish(p,'selected-tab-settled')
-              },450);
+              const nodes=[];let node=ev.target;
+              for(let i=0;i<8&&node;i++,node=node.parentElement)nodes.push(node);
+              if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY).slice(0,12))if(!nodes.includes(x))nodes.push(x);
+              for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){publishHint(p[0]);break}}
             }catch{}
           },true);
-          // The broker websocket active_id remains authoritative for market data, but
-          // IQ can switch an already-open tab without emitting the same protocol command
-          // every time. Keep a very small watcher over the tab row only; two equal reads
-          // are required before it can retarget the Sentinel.
-          let watchSymbol='',watchHits=0;
-          const watchSelected=()=>{
-            try{
-              const p=selectedPair();if(!p)return;
-              if(p===watchSymbol)watchHits++;else{watchSymbol=p;watchHits=1}
-              if(watchHits>=2)publish(p,'selected-tab-watch')
-            }catch{}
-          };
-          const initial=selectedPair();if(initial){watchSymbol=initial;watchHits=1;publish(initial,'selected-tab')}
-          window.__sentinelAssetWatchTimer=setInterval(watchSelected,450);
         }
-        if(!document.getElementById('__sentinel-amount-listener-marker')){
+                if(!document.getElementById('__sentinel-amount-listener-marker')){
           const amountMarker=document.createElement('span');amountMarker.id='__sentinel-amount-listener-marker';amountMarker.style.display='none';(document.documentElement||document.body)?.appendChild(amountMarker);
           window.__sentinelAmountBuffer='';
           window.__sentinelAmountFocusUntil=0;
@@ -654,12 +588,8 @@ export class LocalPlaywrightDriver{
     // isso por completo e a identificação da aba ficou mais frágil. Recuperamos essa
     // riqueza, mas limitamos o scan genérico a ~1x/s nos frames rápidos para não voltar
     // ao custo de CPU do r10. Preço/candles continuam aceitos somente pelo active_id.
-    const genericScanNow=Date.now();
-    const shouldGenericScan=!highFrequencyMarketFrame||!st.lastGenericMarketScanAt||genericScanNow-Number(st.lastGenericMarketScanAt)>850;
-    if(shouldGenericScan){
-      try{recursiveScan(data,out)}catch{}
-      if(highFrequencyMarketFrame)st.lastGenericMarketScanAt=genericScanNow;
-    }
+    const shouldGenericScan=!highFrequencyMarketFrame;
+    if(shouldGenericScan)try{recursiveScan(data,out)}catch{}
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
@@ -1242,42 +1172,35 @@ export class LocalPlaywrightDriver{
     return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
-    const st=this.state(provider),aid=Number(activeId);
-    let next=symbol?assetStrings(symbol)[0]||null:null;
+    const st=this.state(provider),aid=Number(activeId);let next=symbol?assetStrings(symbol)[0]||null:null;
     if(!next&&Number.isFinite(aid)){
       const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===aid)?.[0]||null;
-      if(key){
-        const named={GOLD:'Gold',SILVER:'Silver',BITCOIN:'Bitcoin',ETHEREUM:'Ethereum',CRUDEOIL:'Crude Oil',NATURALGAS:'Natural Gas'};
-        next=[...st.assets].find(x=>pairKey(x)===key)||named[key]||((key.length===6||key.endsWith('OTC'))?(key.endsWith('OTC')?`${key.slice(0,3)}/${key.slice(3,6)} OTC`:`${key.slice(0,3)}/${key.slice(3,6)}`):null)
-      }
+      if(key){const named={GOLD:'Gold',SILVER:'Silver',BITCOIN:'Bitcoin',ETHEREUM:'Ethereum',CRUDEOIL:'Crude Oil',NATURALGAS:'Natural Gas'};next=[...st.assets].find(x=>pairKey(x)===key)||named[key]||((key.length===6||key.endsWith('OTC'))?(key.endsWith('OTC')?key.slice(0,3)+'/'+key.slice(3,6)+' OTC':key.slice(0,3)+'/'+key.slice(3,6)):null)}
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
-    const authoritativeUi=source==='click'||source==='selected-tab-watch'||source==='selected-tab-settled'||String(source).startsWith('protocol-page');
+    if(source==='tab-click-hint'&&changed&&current){
+      st.screenCandidateSymbol=next;st.marketStatus='unvalidated';st.marketReason='Ativo clicado ainda não validado. Feche o atual e abra o novo pelo botão + da corretora.';
+      try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:st.symbol,uiSymbol:st.uiSymbol,activeId:st.activeId,source,assetChanged:false,visualMismatch:true,screenCandidateSymbol:next,marketStatus:'unvalidated'})).catch(()=>{})}catch{}
+      return false
+    }
+    const authoritativeUi=String(source).startsWith('protocol-page')||source==='broker-validated';
     if(changed&&!authoritativeUi&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
-      st.pendingUiHits=Number(st.pendingUiHits||0)+1;
-      if(st.pendingUiHits<2)return false;
+      st.pendingUiHits=Number(st.pendingUiHits||0)+1;if(st.pendingUiHits<2)return false
     }
     st.pendingUiKey=null;st.pendingUiHits=0;
     if(!changed){
-      st.uiSymbol=next;st.symbol=next;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;
+      st.uiSymbol=next;st.symbol=next;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.screenCandidateSymbol=null;
       const mapped=st.activeMap.get(key);if(mapped!=null)st.activeId=Number(mapped);
-      return true;
+      if(st.activeId!=null)st.validatedAt=st.validatedAt||Date.now();
+      return true
     }
-    st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??(Number.isFinite(aid)?aid:null);st.pendingPageActiveId=null;
-    st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;
-    st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.candleIntegrity={ok:false,reason:'asset_switch'};
-    st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;
-    st.marketStatus='switching';st.marketReason=`Ativo alterado na corretora: ${next}`;
-    try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source,assetChanged:true})).catch(()=>{})}catch{}
+    st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??(Number.isFinite(aid)?aid:null);st.pendingPageActiveId=null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;st.screenCandidateSymbol=null;st.validatedAt=Date.now();
+    st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.candleIntegrity={ok:false,reason:'asset_switch'};st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;st.marketStatus='switching';st.marketReason='Validando novo ativo: '+next;
+    try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source,assetChanged:true,validatedAt:st.validatedAt})).catch(()=>{})}catch{}
     if(st.switchRequestTimer){clearTimeout(st.switchRequestTimer);st.switchRequestTimer=null}
-    if(!String(source).startsWith('protocol-page')){
-      st.switchRequestTimer=setTimeout(()=>{
-        st.switchRequestTimer=null;
-        if(st.activeId!=null&&st.candles.length<20)this.requestMarketData(provider,{force:true}).catch(()=>{})
-      },220)
-    }
+    if(!String(source).startsWith('protocol-page'))st.switchRequestTimer=setTimeout(()=>{st.switchRequestTimer=null;if(st.activeId!=null&&st.candles.length<20)this.requestMarketData(provider,{force:true}).catch(()=>{})},220);
     return true
   }
   async maintain(provider){
@@ -1301,7 +1224,8 @@ export class LocalPlaywrightDriver{
     }
     const actualAge=latestCandleAgeMs(st);const stale=actualAge==null||actualAge>Math.max(90000,Number(st.candleSize||60)*2000);
     if(st.candles.length<50||stale||!st.lastCandleRequest||now-Number(st.lastCandleRequest||0)>9000)await this.requestMarketData(provider,{force:st.candles.length<50||stale}).catch(()=>{});
-    if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=`${st.symbol||'Ativo'} com candles atuais`}
+    if(st.screenCandidateSymbol&&pairKey(st.screenCandidateSymbol)!==pairKey(st.symbol||'')){st.marketStatus='unvalidated';st.marketReason='Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.'}
+    else if(candleFreshForState(st)){st.marketStatus='open';st.marketReason=(st.symbol||'Ativo')+' validado e com candles atuais'}
     else if(st.marketStatus!=='recovering'&&st.marketStatus!=='closed'){st.marketStatus='stale';st.marketReason='Feed conectado, mas sem candle recente'}
     if(!st.lastExecutionScanAt||now-st.lastExecutionScanAt>15000){
       st.lastExecutionScanAt=now;
@@ -1361,7 +1285,8 @@ export class LocalPlaywrightDriver{
     const candleAssetMatch=st.activeId!=null&&st.candleActiveId!=null&&Number(st.activeId)===Number(st.candleActiveId);
     const feedValidated=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh&&integrity.ok&&candleAssetMatch);
     const marketStatus=feedValidated?'open':(st.marketStatus||'stale');const marketReason=feedValidated?`${st.symbol||'Ativo'} atualizado e isolado por active_id`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
-    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    const assetValidated=!!(st.symbol&&st.activeId!=null&&!st.screenCandidateSymbol);
+    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated:feedValidated&&assetValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
