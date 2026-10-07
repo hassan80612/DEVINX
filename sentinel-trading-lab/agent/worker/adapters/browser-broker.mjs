@@ -40,13 +40,14 @@ export class BrowserBrokerAdapter extends BrokerAdapterContract{
     if(failures.length&&!soft&&!this.validated)throw new Error(failures[0]);
     return this.status()
   }
-  async validateDemoOrder(){const md=this.driver?.liveStatus?.(this.provider)||{};if(this.accountMode!=='demo')throw new Error('demo_account_required');if(!md.executionReady)throw new Error('demo_order_controls_not_detected');return{ok:true,provider:this.provider,mode:this.accountMode}}
+  async validateAutoOrder(){const md=this.driver?.liveStatus?.(this.provider)||{};if(!['demo','real'].includes(this.accountMode))throw new Error('account_mode_required');if(!md.executionReady)throw new Error('auto_order_controls_not_detected');return{ok:true,provider:this.provider,mode:this.accountMode}}
+  async validateDemoOrder(){if(this.accountMode!=='demo')throw new Error('demo_account_required');return this.validateAutoOrder()}
   async getAccountMode(){return this.accountMode}
   async getBalance(){const r=await this.driver.call(this.provider,'balance',{method:'GET'});return safeNumber(r?.balance??r)}
   async getQuote(asset){return this.driver.call(this.provider,`quote?symbol=${encodeURIComponent(asset)}`,{method:'GET'})}
   async listAssets(){return this.driver.call(this.provider,'assets',{method:'GET'})}
   async placeDemoOrder(order){if(!this.connected)throw new Error('broker_not_connected');if(this.accountMode!=='demo')throw new Error('demo_account_required');return this.driver.call(this.provider,'orders/demo',{method:'POST',body:order})}
-  async placeOrder(order){if(this.accountMode==='demo')return this.placeDemoOrder(order);throw new Error('real_execution_requires_human_confirmation')}
-  async prepareRealOrder(order){return{...order,provider:this.provider,status:'prepared',requiresHumanConfirmation:true}}
-  async confirmRealOrder(){throw new Error('real_execution_requires_human_confirmation_and_separate_validated_flow')}
+  async placeOrder(order){if(!this.connected)throw new Error('broker_not_connected');if(!['demo','real'].includes(this.accountMode))throw new Error('account_mode_required');return this.driver.call(this.provider,'orders/auto',{method:'POST',body:order})}
+  async prepareRealOrder(order){return{...order,provider:this.provider,status:'prepared',requiresHumanConfirmation:false}}
+  async confirmRealOrder(order){return this.placeOrder(order)}
 }
