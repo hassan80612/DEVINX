@@ -87,3 +87,28 @@ test('replay uses chronological prices, measures execution delay, and never call
   assert.equal(research.outcomes.length,1);assert.equal(research.outcomes[0].baselineWon,false);
   assert.equal(research.models['broker-a|TEST|30'].updates,1);assert.equal(research.forecast('TEST',a.entryPlanner.horizons['30'],'broker-b').samples,0);
  });
+
+test('entry quality blocks mediocre setups without delaying a strong setup after the trigger',()=>{
+  const{r,a}=fixture('CALL');
+  for(const key of ['30','60']){
+    const p=a.entryPlanner.horizons[key];
+    p.callProbability=72;p.putProbability=28;p.confidence=74;p.modelConfidence=74;p.agreement=52;p.dataQuality=66;
+    p.reliability={familyAgreement:50,evidenceFamilyCount:3};
+    p.strategyFuture={activeCount:1,evidence:20,confidence:74};
+  }
+  const weak=r._operationalSignalState(a,{price:100.01,quoteTs:t,quoteHistory:[{ts:t-200,price:100.01},{ts:t,price:100.01}]},t);
+  assert.equal(weak.actionable,false);
+  assert.ok(weak.entryQuality<weak.entryQualityThreshold,JSON.stringify(weak));
+
+  for(const key of ['30','60']){
+    const p=a.entryPlanner.horizons[key];
+    p.callProbability=86;p.putProbability=14;p.confidence=86;p.modelConfidence=86;p.agreement=82;p.dataQuality=88;
+    p.reliability={familyAgreement:82,evidenceFamilyCount:4};
+    p.strategyFuture={activeCount:2,evidence:80,confidence:86};
+  }
+  a.generalConsensus.strategies.strength=86;
+  const strong=r._operationalSignalState(a,{price:100.02,quoteTs:t+200,quoteHistory:[{ts:t,price:100.01},{ts:t+200,price:100.02}]},t+200);
+  assert.equal(strong.qualityQualified,true);
+  assert.equal(strong.actionable,true);
+  assert.equal(strong.side,'CALL');
+});
