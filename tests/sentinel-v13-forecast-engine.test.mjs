@@ -25,11 +25,11 @@ function quoteFlow(last,{direction=1,now=Date.now()}={}){
 test('V13.3 future engine exposes 30s through 1h horizons',()=>{
   const now=Date.now(),candles=trendCandles({now}),last=candles.at(-1).close,quotes=quoteFlow(last,{direction:1,now});
   const a=analyzeMarket({candles,quoteHistory:quotes,strategy:'trend',minConfidence:70,durationMs:300000,freshnessMs:5000,quoteTs:now,now});
-  assert.equal(a.entryPlanner.modelVersion,'future-v4.1');
+  assert.equal(a.entryPlanner.modelVersion,'future-v5.0');
   for(const h of ['30','60','120','300','600','900','3600'])assert.ok(a.entryPlanner.horizons[h],`missing horizon ${h}`);
   for(const h of ['300','900','3600']){
     const p=a.entryPlanner.horizons[h];
-    assert.equal(p.modelVersion,'future-v4.1');
+    assert.equal(p.modelVersion,'future-v5.0');
     assert.ok(p.callProbability>50,`expected CALL bias on trend horizon ${h}: ${JSON.stringify(p)}`);
     assert.equal(p.bias,'CALL');
     assert.ok(p.regime?.label);
@@ -69,7 +69,7 @@ test('V13.3 forecast calibration uses confidence bands, decision-grade stats and
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   rt.settings.asset='GOLD';
   rt.settings.futureDisplayThreshold=60;
-  const modelKey='future-v4.2:smart_confluence:trend';
+  const modelKey='future-v5.0:smart_confluence:trend';
   const key=rt._validationKey('horizon_forecast_v42','GOLD',60000,modelKey);
   rt.signalValidation.outcomes=Array.from({length:120},(_,i)=>({
     key,settlementQuality:'exact',won:i<78,probability:82,probabilityBucket:'80-89'
@@ -91,7 +91,7 @@ test('V13.3 forecast calibration uses confidence bands, decision-grade stats and
   };
   rt._mergeScenarioConfluence(analysis,{cards:[]},{price:4200,payout:.82},Date.now());
   const p=analysis.entryPlanner.horizons['60'];
-  assert.equal(p.modelVersion,'future-v4.2');
+  assert.equal(p.modelVersion,'future-v5.0');
   assert.equal(p.executionBias,'CALL');
   assert.equal(p.entryAligned,false);
   assert.ok(p.validation.historyWeight>0&&p.validation.historyWeight<=65);
@@ -111,10 +111,10 @@ test('V13.3 forecast calibration uses confidence bands, decision-grade stats and
 
 test('V13.3 exact tie is recorded as draw and excluded from forecast win-rate samples',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
-  const now=Date.now(),key=rt._validationKey('horizon_forecast_v41','EUR/USD',30000,'future-v4.1:trend:range');
+  const now=Date.now(),key=rt._validationKey('horizon_forecast_v41','EUR/USD',30000,'future-v5.0:trend:range');
   rt.signalValidation.pending=[{
     key,kind:'horizon_forecast_v42',asset:'EUR/USD',durationMs:30000,settleDurationMs:30000,
-    strategy:'future-v4.1:trend:range',side:'BUY',confidence:74,probability:74,probabilityBucket:'70-79',
+    strategy:'future-v5.0:trend:range',side:'BUY',confidence:74,probability:74,probabilityBucket:'70-79',
     referencePrice:1.085,createdAt:now-30000,dueAt:now
   }];
   rt._settleSignalValidation(now,{price:1.085,quoteHistory:[{ts:now,price:1.085}]});
@@ -207,7 +207,7 @@ function timedAnalysis(side='CALL'){
 test('1m forecast plus 30s expiration opens the forecast window immediately',()=>{
   const rt=new DemoTradingRuntime({seed:44,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
-  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,quoteHistory:[{ts:t-200,price:1.10},{ts:t,price:1.10}]};
   const state=rt._operationalSignalState(analysis,snap,t);
   assert.notEqual(state.state,'AGUARDAR JANELA');
   assert.equal(state.timeToEntryMs,0);
@@ -219,7 +219,7 @@ test('1m forecast plus 30s expiration opens the forecast window immediately',()=
 test('30s forecast plus 30s expiration opens immediately and only closes the confirmed trigger burst',()=>{
   const rt=new DemoTradingRuntime({seed:45,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
-  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,quoteHistory:[{ts:t-200,price:1.10},{ts:t,price:1.10}]};
   const now=rt._operationalSignalState(analysis,snap,t);
   assert.equal(now.state,'ENTRADA');
   assert.equal(now.actionable,true);

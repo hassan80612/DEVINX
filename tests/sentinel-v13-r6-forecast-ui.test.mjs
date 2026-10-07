@@ -13,18 +13,18 @@ function closedTrend({count=180,start=4200,step=.16,now=Date.now()}={}){
   })
 }
 
-test('V4.1 future model carries multi-window closed-candle history into every horizon',()=>{
+test('V5.0 future model carries multi-window closed-candle history into every horizon',()=>{
   const now=Date.now(),candles=closedTrend({now}),last=candles.at(-1).close;
   const quoteHistory=Array.from({length:70},(_,i)=>({ts:now-(69-i)*1000,price:last+(i-69)*.01}));
   const a=analyzeMarket({candles,quoteHistory,strategy:'trend',minConfidence:70,durationMs:60000,freshnessMs:5000,quoteTs:now,now});
-  assert.equal(a.entryPlanner.modelVersion,'future-v4.1');
+  assert.equal(a.entryPlanner.modelVersion,'future-v5.0');
   assert.ok(a.metrics.historyContext);
   assert.ok(Array.isArray(a.metrics.historyContext.legs));
   assert.ok(a.metrics.historyContext.legs.length>=2);
   for(const h of ['30','60','120','300','600','900','3600']){
     const p=a.entryPlanner.horizons[h];
     assert.ok(p, h);
-    assert.equal(p.modelVersion,'future-v4.1');
+    assert.equal(p.modelVersion,'future-v5.0');
     assert.ok(p.evidenceFamilies?.history,'history evidence missing '+h);
   }
 });
