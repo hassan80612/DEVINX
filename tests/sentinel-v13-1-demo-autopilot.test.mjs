@@ -23,7 +23,7 @@ function state(now=Date.now()){
   return{killSwitch:false,botFrozen:false,brokerConnected:true,engineHealthy:true,executionError:false,feedLatencyMs:0,feedStale:false,tradesToday:0,tradesLastHour:0,consecutiveLosses:0,dailyPnl:0,drawdownPct:0,cooldownUntil:null,now}
 }
 
-test('V13.1 DEMO autopilot never clicks until explicitly armed',async()=>{
+test('V13.3 DEMO autopilot never clicks until explicitly armed',async()=>{
   // Fixed midday UTC keeps this safety test independent from the wall clock at 23:59.
   const now=Date.parse('2026-10-06T12:00:00Z'),cs=candles(now),last=cs.at(-1).close;
   const feed={snapshot:()=>({candles:cs,quoteHistory:[],quoteTs:now,price:last})};
@@ -40,7 +40,7 @@ test('V13.1 DEMO autopilot never clicks until explicitly armed',async()=>{
   assert.equal(calls,1,'armed DEMO should submit exactly one order');
 });
 
-test('V13.1 arming a fresh DEMO session resets only session counters',()=>{
+test('V13.3 arming a fresh DEMO session resets only session counters',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   rt.trades=Array.from({length:7},(_,i)=>({id:String(i),openedAt:new Date().toISOString(),closedAt:new Date().toISOString(),won:i%2===0,pnl:i%2===0?8.2:-10}));
   rt.state.consecutiveLosses=2;
@@ -52,7 +52,7 @@ test('V13.1 arming a fresh DEMO session resets only session counters',()=>{
   assert.ok(Number(rt.state.sessionStartedAt)>0);
 });
 
-test('V13.1 DEMO session cap disarms and stops before another market click',async()=>{
+test('V13.3 DEMO session cap disarms and stops before another market click',async()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   rt.settings.mode='demo';
   rt.settings.demoAutopilot=true;
@@ -66,7 +66,7 @@ test('V13.1 DEMO session cap disarms and stops before another market click',asyn
   assert.ok((rt.lastResult?.reasons||[]).includes('limite da sessão de operações'));
 });
 
-test('V13.1 worker binds automation to the broker account and disarms on REAL',async()=>{
+test('V13.3 worker binds automation to the broker account and disarms on REAL',async()=>{
   const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
   const broker=await readFile(new URL('../sentinel-trading-lab/agent/worker/adapters/browser-broker.mjs',import.meta.url),'utf8');
   assert.ok(worker.includes("runtime.setMode(brokerMode,'broker')"));
@@ -76,7 +76,7 @@ test('V13.1 worker binds automation to the broker account and disarms on REAL',a
   assert.ok(broker.includes("throw new Error('real_execution_requires_human_confirmation')"));
 });
 
-test('V13.1 web console uses broker mode as truth while hiding DEMO wording from users',async()=>{
+test('V13.3 web console uses broker mode as truth while hiding DEMO wording from users',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/src/app/page.tsx',import.meta.url),'utf8');
   assert.ok(ui.includes('ARMAR PILOTO'));
   assert.ok(!ui.includes('ARMAR PILOTO DEMO'));
@@ -91,7 +91,7 @@ test('V13.1 web console uses broker mode as truth while hiding DEMO wording from
 });
 
 
-test('V13.1 DEMO settlement treats an exact tie as draw, not as a consecutive loss',()=>{
+test('V13.3 DEMO settlement treats an exact tie as draw, not as a consecutive loss',()=>{
   const rt=new DemoTradingRuntime({seed:13,balance:10000});
   const now=Date.now();
   rt.settings.mode='demo';
@@ -107,7 +107,7 @@ test('V13.1 DEMO settlement treats an exact tie as draw, not as a consecutive lo
   assert.equal(rt.state.consecutiveLosses,2,'draw must not increment the loss streak');
 });
 
-test('V13.1 runtime keeps only one external DEMO order open at a time',async()=>{
+test('V13.3 runtime keeps only one external DEMO order open at a time',async()=>{
   const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
   assert.ok(runtime.includes("pendingExternalDemo=this.pending.some"));
   assert.ok(runtime.includes("demoAutopilot:this.settings.demoAutopilot===true&&canUseExternalDemo&&!pendingExternalDemo"));
@@ -115,7 +115,7 @@ test('V13.1 runtime keeps only one external DEMO order open at a time',async()=>
 });
 
 
-test('V13.1 web console normalizes partial Agent state instead of crashing the client',async()=>{
+test('V13.3 web console normalizes partial Agent state instead of crashing the client',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/src/app/page.tsx',import.meta.url),'utf8');
   assert.ok(ui.includes('function normalizeStatus'));
   assert.ok(ui.includes("schedule:{timezone:'America/Sao_Paulo'"));
@@ -124,7 +124,7 @@ test('V13.1 web console normalizes partial Agent state instead of crashing the c
   assert.ok(ui.includes("schedule=s.settings?.schedule||{}"));
 });
 
-test('V13.1 Agent manager records worker stderr before automatic restart',async()=>{
+test('V13.3 Agent manager records worker stderr before automatic restart',async()=>{
   const manager=await readFile(new URL('../sentinel-trading-lab/agent/worker/agent-manager.mjs',import.meta.url),'utf8');
   assert.ok(manager.includes("const WORKER_LOG=resolve(PID_DIR,'worker.log')"));
   assert.ok(manager.includes("stdio:['ignore','pipe','pipe']"));
