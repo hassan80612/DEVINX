@@ -172,7 +172,8 @@ test('Broker active_id switch invalidates the old asset before symbol resolution
   assert.ok(ui.includes("st.candles=[];st.quote=null;st.quoteHistory=[]"));
   assert.ok(ui.includes("st.marketStatus='switching'"));
   assert.ok(ui.includes("let next=symbol?assetStrings(symbol)[0]||null:null"));
-  assert.ok(worker.includes("unresolvedSwitch=String(m.marketStatus||'').toLowerCase()==='switching'"));
+  assert.ok(worker.includes("status=String(m.marketStatus||'').toLowerCase()"));
+  assert.ok(worker.includes("unresolvedSwitch=status==='switching'"));
   assert.ok(worker.includes("brokerSwitching?'SINCRONIZANDO'"));
 });
 
