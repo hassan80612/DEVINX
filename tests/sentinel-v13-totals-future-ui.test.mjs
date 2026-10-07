@@ -60,10 +60,11 @@ test('future UI smoothing keeps raw forecast intact and reacts faster at short h
   assert.ok(short.displayCallProbability<long.displayCallProbability,'30s display should react faster than 15m');
 });
 
-test('strategy UI percentages are softened while aggregation keeps the raw directional ratio', async()=>{
+test('strategy cards aggregate independent future horizons instead of present-only scores', async()=>{
   const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
-  assert.match(runtime,/signalCallPct/);
-  assert.match(runtime,/displayBlend/);
-  assert.match(runtime,/50\+\(signalCallPct-50\)\*displayBlend/);
-  assert.match(runtime,/x\.signalCallPct\?\?x\.callPct/);
+  assert.match(runtime,/futureByHorizon/);
+  assert.match(runtime,/entryPlanner\?\.horizons/);
+  assert.match(runtime,/projectionHorizonSeconds/);
+  assert.match(runtime,/strategyFutureBias/);
+  assert.match(runtime,/strategyBlend/);
 });
