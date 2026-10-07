@@ -78,12 +78,12 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     await ensureLocalCockpitBroker(provider);
     const live=syncRuntimeMarket(),mode=String(live?.m?.mode||live?.mode||driver.liveStatus?.(provider)?.mode||'').toLowerCase();
-    if(mode!=='demo')throw new Error('Execução automática pelo card disponível somente na conta de prática.');
-    runtime.patchSettings({demoAutopilot:true},'overlay');
+    const practiceMode=mode==='demo';
+    runtime.patchSettings({demoAutopilot:practiceMode},'overlay');
     await runtime.start('overlay');
     runtime.requestImmediateEvaluation?.();
     await saveState();
-    return{ok:true,message:'Bot automático iniciado pelo card'}
+    return{ok:true,message:practiceMode?'Sentinel iniciado · execução automática de prática ativa':'Sentinel iniciado · análise e sinais ativos'}
   }
   if(action==='refresh'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];await driver.maintain?.(provider).catch(()=>{});await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});adapter?.refreshFromLive?.();syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Leitura atualizada'}}
   if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
