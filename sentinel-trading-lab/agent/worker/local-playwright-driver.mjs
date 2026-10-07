@@ -1768,9 +1768,9 @@ export class LocalPlaywrightDriver{
               <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:7.2px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
             </div>
           </div>
-          <div style="margin-top:7px;padding:7px 9px;border-radius:9px;background:${screenCandidateAsset?(uiTheme==='light'?'rgba(151,45,67,.08)':'rgba(255,143,156,.07)'):(uiTheme==='light'?'rgba(8,112,82,.07)':'rgba(124,233,193,.055)')};border:1px solid ${screenCandidateAsset?'rgba(255,143,156,.24)':'rgba(124,233,193,.20)'};font-size:8.4px;line-height:1.35;color:${screenCandidateAsset?putTone:muted};font-weight:820">
-            <b style="color:${screenCandidateAsset?putTone:callTone}">${screenCandidateAsset?'ATIVO DA TELA NÃO VALIDADO':'ATIVO VALIDADO · '+esc(validatedAsset)+' ✓'}</b>
-            ${screenCandidateAsset?' · clicado '+esc(screenCandidateAsset)+' · análise pausada até validação.':''}
+          <div style="margin-top:7px;padding:7px 9px;border-radius:9px;background:${screenCandidateAsset?(uiTheme==='light'?'rgba(151,45,67,.08)':'rgba(255,143,156,.07)'):assetValidated?(uiTheme==='light'?'rgba(8,112,82,.07)':'rgba(124,233,193,.055)'):(uiTheme==='light'?'rgba(122,90,18,.07)':'rgba(230,200,121,.055)')};border:1px solid ${screenCandidateAsset?'rgba(255,143,156,.24)':assetValidated?'rgba(124,233,193,.20)':'rgba(230,200,121,.22)'};font-size:8.4px;line-height:1.35;color:${screenCandidateAsset?putTone:muted};font-weight:820">
+            <b style="color:${screenCandidateAsset?putTone:assetValidated?callTone:warnTone}">${screenCandidateAsset?'ATIVO DA TELA NÃO VALIDADO':assetValidated?'ATIVO VALIDADO · '+esc(validatedAsset)+' ✓':'VALIDANDO NOVO ATIVO'}</b>
+            ${screenCandidateAsset?' · clicado '+esc(screenCandidateAsset)+' · análise pausada até validação.':!assetValidated?' · aguardando nome + active_id + feed do mesmo ativo.':''}
             <span style="color:${subtle}"> · Para trocar: feche o ativo atual e abra o novo pelo botão + da corretora.</span>
           </div>
 
