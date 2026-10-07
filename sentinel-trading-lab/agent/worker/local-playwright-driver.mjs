@@ -810,10 +810,19 @@ export class LocalPlaywrightDriver{
       cdp=await sess.context.newCDPSession(sess.page);
       const amountOk=await this._axClickBackend(cdp,sess.page,ax.ax?.amountBackendId);
       if(!amountOk)return{ok:false,error:'ax_amount_click_failed'};
+      // A broker's displayed amount may open an editor rather than be editable.
+      // Locate that actual editor before typing, and verify its result before ordering.
+      let amountUi=await this._domExecutionUi(provider);
+      if(!amountUi?.amountEditable)return{ok:false,error:'ax_amount_editor_not_detected'};
+      if(!(await this._axClickBackend(cdp,sess.page,amountUi.ax?.amountBackendId)))return{ok:false,error:'ax_amount_editor_click_failed'};
       await sess.page.keyboard.press('Control+A').catch(()=>{});
       await sess.page.keyboard.type(String(amount),{delay:15}).catch(()=>{});
       await sess.page.keyboard.press('Enter').catch(()=>{});
       await sleep(120);
+      amountUi=await this._domExecutionUi(provider);
+      const rawAmount=String(amountUi?.amountValue||'').replace(/[^\d.,]/g,'');
+      const normalizedAmount=/[.,]\d{1,2}$/.test(rawAmount)?rawAmount.replace(/[.,](?=.*[.,])/g,'').replace(',','.'):rawAmount.replace(/[.,]/g,'');
+      if(!amountUi?.amount||Math.abs(Number(normalizedAmount)-Number(amount))>.001||!normalizedAmount)return{ok:false,error:'ax_amount_not_confirmed'};
       const targetId=String(side).toUpperCase()==='BUY'?ax.ax?.buyBackendId:ax.ax?.sellBackendId;
       const buttonOk=await this._axClickBackend(cdp,sess.page,targetId);
       if(!buttonOk)return{ok:false,error:'ax_trade_button_click_failed'};
@@ -1312,15 +1321,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.2'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.3'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.2';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.3';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.2';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.3';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1715,7 +1724,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.2')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.3')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>

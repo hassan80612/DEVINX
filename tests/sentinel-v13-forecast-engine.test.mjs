@@ -296,7 +296,10 @@ test('operational runtime no longer contains broker-expiration mismatch gates',a
   assert.ok(!runtime.includes("state:'VERIFICAR PRAZO'"));
   assert.ok(!runtime.includes("state:'AJUSTAR TEMPO'"));
   assert.ok(runtime.includes('timingOffsetMs=0'));
-  assert.ok(runtime.includes('entryWindowStartAt=now'));
+  const rt=new DemoTradingRuntime();
+  const setup=rt._newOperationalSetup({contextKey:'TEST|60|30000',asset:'TEST',forecastHorizonSeconds:60,durationMs:30000,combo:'trend',side:'CALL',plan:{callTrigger:101},now:100000});
+  assert.equal(setup.entryWindowStartAt,100000);
+  assert.equal(setup.entryWindowEndAt,160000);
   assert.ok(runtime.includes("expirationSource:'card-setting'"));
   assert.ok(runtime.includes("settleDurationMs:durationMs"));
 });

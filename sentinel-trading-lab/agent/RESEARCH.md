@@ -21,3 +21,12 @@ Porcentagens continuam sendo estimativas. A nova época de calibração não rea
 Candles construídos de cotações identificam seu volume como `quote-count`. Isso não é volume negociado. Não foram acrescentados livro de ofertas, delta de agressão, VWAP por volume real ou mapa de liquidez, pois esses dados não foram confirmados no feed.
 
 Validação de software: casos de primeiro toque, sustentação, candidato sem virada, cancelamento com cotação repetida, buckets de prazo, especialização das estratégias, separação temporal de aprendizado, gravação e replay; testes de regressão; executável e renderização Windows. Esses testes verificam comportamento, não taxa de acerto do mercado.
+
+
+## 13.4.3 — tipo do cenário e reversão independente
+
+O tipo de entrada é scenario.kind do planner no prazo da operação: continuação/rompimento usam rompimento sustentado; reversão usa toque e reação confirmada. A descrição geral das técnicas não classifica o cenário. Em planos antigos sem o campo, só a regra específica serve de compatibilidade.
+
+Uma candidatura oposta é avaliada separadamente enquanto o cenário original continua. Só substitui o cenário com previsão e expiração alinhadas, filtros existentes, confirmação estrutural e gatilho sustentado em cotações independentes. Cancelar não libera automaticamente o contrário. Um toque recente real, até cinco segundos antes, pode fundamentar uma reação já iniciada; cotações futuras e regiões rompidas não são reutilizadas. O resultado anterior permanece registrado e o novo sinal tem sua própria referência, prazo e oportunidade única. Amostras prospectivas de forecast continuam sem sobreposição; resultados operacionais podem registrar cenários opostos sobrepostos e não são amostras independentes de validação estatística.
+
+O reconhecimento nativo do campo de investimento também aceita um número clicável dentro do painel de investimento da corretora, inclusive componentes fechados, excluindo saldo, payout, expiração e controles Sentinel. Essa apresentação pode abrir o editor real; a execução precisa localizar o editor e confirmar o valor após a alteração antes de clicar na direção. A inspeção não clica nem envia ordens. O teste em tela simulada não comprova a execução na conta real do usuário.

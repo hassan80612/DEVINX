@@ -14,7 +14,7 @@ try{
   const driver=new LocalPlaywrightDriver();driver.session=async()=>({page,background:false});
   const now=Date.now(),plan={asset:'TEST',generatedAt:now,confidence:80,modelConfidence:80,callProbability:80,putProbability:20,displayBias:'CALL',outlookReady:true,directionReady:true,currentPrice:100,callTrigger:102,putTrigger:98,callInvalidation:90,putInvalidation:110,validation:{decisionSamples:0}};
   const operational={asset:'TEST',side:'CALL',state:'JANELA ABERTA',createdAt:now,entryWindowEndAt:now+60000,targetAt:now+60000,forecastHorizonSeconds:60,durationMs:30000,sideSupported:true,trigger:101,invalidation:90,technicalConfidence:80,reason:'Aguardando gatilho fixo.'};
-  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.4.2',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
+  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.4.3',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
   const card=page.locator('[data-sentinel-card="horizon"]');
   assert.equal(await driver.updateOverlay('iq_option',data),true);
   assert.match(await page.locator('[data-sentinel-pilot-status]').innerText(),/PILOTO LIGADO.*AGUARDANDO BOTÕES/);
@@ -37,6 +37,26 @@ try{
   assert.ok(native.ax.buyBackendId);assert.ok(native.ax.sellBackendId);assert.notEqual(native.ax.buyBackendId,native.ax.sellBackendId);
   await driver.scanExecutionUi('iq_option');assert.equal(broker.executionReady,true);
   assert.equal(await page.evaluate(()=>window.testOrders),0,'read-only recognition must not click an order');
+  // The broker may show an editable amount as a numeric display in a closed component.
+  // Detect the investment display, excluding the balance, and verify read-only scans.
+  await page.evaluate(()=>{
+    document.getElementById('closed-broker-panel').remove();
+    const host=document.createElement('div');host.id='closed-broker-value-panel';document.body.append(host);
+    const root=host.attachShadow({mode:'closed'});
+    root.innerHTML='<div>Balance <button>$46,400.00</button></div><button>CALL</button><button>PUT</button><section><label>Invest</label><button id="amount-display">$10,000.00</button></section><button data-test="expiration">30 s</button>';
+    root.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>window.testOrders++));
+  });
+  const amountDisplay=await driver._domExecutionUi('iq_option');
+  assert.equal(amountDisplay.amount,true);assert.equal(amountDisplay.amountEditable,false);
+  assert.equal(amountDisplay.amountValue,'$10,000.00');assert.doesNotMatch(amountDisplay.amountText,/46,400/);
+  await driver.scanExecutionUi('iq_option');assert.equal(broker.executionReady,true);
+  assert.equal(await page.evaluate(()=>window.testOrders),0);
+  await page.evaluate(()=>{
+    document.getElementById('closed-broker-value-panel').remove();
+    const host=document.createElement('div');host.id='readonly-broker-value-panel';document.body.append(host);
+    const root=host.attachShadow({mode:'closed'});root.innerHTML='<button>CALL</button><button>PUT</button><section><label>Invest</label><span>$10,000.00</span></section>';
+  });
+  assert.equal((await driver._domExecutionUi('iq_option')).amount,false,'a passive number is not a writable investment control');
   // Accessibility scans can outlive feed freshness on a busy Windows runner.
   // Supply the next simulated worker frame before checking a live scenario.
   await driver.updateOverlay('iq_option',data);
@@ -134,5 +154,5 @@ try{
   await page.waitForTimeout(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
-  console.log('SENTINEL 13.4.2 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
+  console.log('SENTINEL 13.4.3 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
