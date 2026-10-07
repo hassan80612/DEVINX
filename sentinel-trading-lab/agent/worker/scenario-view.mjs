@@ -1,5 +1,5 @@
 // Presentation follows the operational engine; it never creates or extends a setup.
-export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,durationMs,forecast,displayThreshold=50,now=Date.now()}={}){
+export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,durationMs,forecast,displayThreshold=50,minPoints=55,now=Date.now()}={}){
   const op=operational||{},side=['CALL','PUT'].includes(op.side)?op.side:null;
   const contextMatches=!!side&&String(op.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(op.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(op.durationMs)===Number(durationMs);
   let state=contextMatches?String(op.state||'AGUARDAR'):'AGUARDAR';
@@ -12,8 +12,10 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
   const forecastMatches=forecast&&String(forecast.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(forecast.horizonSeconds||horizonSeconds)===Number(horizonSeconds);
   const forecastSide=String(forecast?.rawBias??forecast?.bias??forecast?.displayBias??'NEUTRO').toUpperCase();
   const forecastLead=forecastSide==='CALL'?Number(forecast?.callProbability??50):forecastSide==='PUT'?Number(forecast?.putProbability??50):0;
-  const analysisSide=forecast===undefined?(contextMatches?(['CALL','PUT'].includes(op.futureSide)?op.futureSide:side):null):forecastMatches&&forecast.outlookReady===true&&forecastLead>=Number(displayThreshold)&&['CALL','PUT'].includes(forecastSide)?forecastSide:null;
+  const analysisSide=forecast===undefined?(contextMatches?(['CALL','PUT'].includes(op.futureSide)?op.futureSide:side):null):forecastMatches&&forecast.outlookReady===true&&forecastLead>=Number(displayThreshold)&&Number(forecast.confidence??forecast.modelConfidence??0)>=Number(minPoints)&&['CALL','PUT'].includes(forecastSide)?forecastSide:null;
   const oppositeAnalysis=contextMatches&&!!analysisSide&&analysisSide!==side;
-  const canEnter=(!forecast||analysisSide===side)&&hasSetup&&state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now;
-  return{analysisSide,oppositeAnalysis,entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.max(0,Math.ceil((entryEnd-now)/1000)):null,contextMatches,side:contextMatches?side:null,state,closed,hasSetup,canEnter,deadline:hasSetup?deadline:null,remainingSeconds:hasSetup?Math.max(0,Math.ceil((deadline-now)/1000)):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null,confidence:Number(op.technicalConfidence??op.strength??0)};
+  const executionMatches=!forecast||(forecastMatches&&forecast.outlookReady===true&&forecastSide===side);
+  const displaySide=closed?side:hasSetup?(op.oppositeOpportunity?.side===analysisSide?analysisSide:side):analysisSide;
+  const canEnter=executionMatches&&hasSetup&&state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now;
+  return{analysisSide,displaySide,oppositeAnalysis,entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.max(0,Math.ceil((entryEnd-now)/1000)):null,contextMatches,side:contextMatches?side:null,state,closed,hasSetup,canEnter,deadline:hasSetup?deadline:null,remainingSeconds:hasSetup?Math.max(0,Math.ceil((deadline-now)/1000)):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null,confidence:Number(op.technicalConfidence??op.strength??0)};
 }

@@ -48,3 +48,10 @@ Operational thresholds use the current calibrated probabilities rather than the 
 An active setup can be replaced by an independently qualified opposite continuation/breakout with aligned 5s/15s flow and sustained price trigger, without requiring it to retain a momentary reversal label. Confirmed structural reactions retain their independent path. Prior outcomes survive the transition. The current analysis side is visible even while the old operational setup awaits confirmation; analysis countdown and the maximum 3.5s entry burst are distinct.
 
 Chronological replay: 3314 frames from one asset/session; unchanged control and current-probability revision both yielded 4 wins, 5 losses and 1 unsettled. A broader earlier continuation prototype yielded 5 wins, 7 losses and 1 unsettled, so it was not promoted. This small sample does not establish predictive accuracy or reproduce the user's manual trades. Local-bar anticipation and its distance cap remain in research.
+
+
+## 13.4.6 — stable scenario status during live forecast changes
+
+The user's 29.8s recording on13.4.5 showed a cancelled PUT changing color with fresh CALL previews, and active direction labels changing on forecasts with46–54 confidence points below the configured55-point filter. No entry release appeared in that recording. Terminal scenarios now retain their own direction/color/reason; active display follows the operational setup unless the engine has a separately qualified opposite opportunity. Below-filter live forecasts do not take over the main direction label. Current metrics remain visible. Actual entry permission still comes directly from the engine, without a new presentation delay or a new forecast filter.
+
+Tests cover the recorded confidence sequence, stable cancellation colors, strong independent opposite preview, immediate opposite entry permission, and outcome/deadline preservation. Runtime strategy and trigger logic are unchanged in this revision. This display correction does not demonstrate improved prediction quality.
