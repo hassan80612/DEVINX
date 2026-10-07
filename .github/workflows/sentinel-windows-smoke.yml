@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: sentinel-1348-rebuild
+  cancel-in-progress: true
+
 jobs:
   smoke:
     runs-on: windows-latest

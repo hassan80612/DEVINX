@@ -31,7 +31,7 @@ function Start-Manager {
     $env:SENTINEL_WORKER_PORT = '8787'
     $env:SENTINEL_MANAGER_PORT = '8788'
     $env:SENTINEL_ALLOWED_ORIGINS = 'https://sentinel-trading-lab.vercel.app,https://sentinel-trading-lab-iguassu-shop.vercel.app'
-    Start-Process -FilePath $node -ArgumentList @($manager) -WorkingDirectory $root -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath $node -ArgumentList @("`"$manager`"") -WorkingDirectory $root -WindowStyle Hidden | Out-Null
   } catch {}
 }
 function Get-Health { try { return Invoke-RestMethod -UseBasicParsing $managerHealth -TimeoutSec 1 } catch { return $null } }

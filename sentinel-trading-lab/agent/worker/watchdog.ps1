@@ -55,7 +55,7 @@ $env:SENTINEL_WORKER_PORT='8787'
 $env:SENTINEL_MANAGER_PORT='8788'
 $env:SENTINEL_ALLOWED_ORIGINS='https://sentinel-trading-lab.vercel.app,https://sentinel-trading-lab-iguassu-shop.vercel.app'
 try {
-  Start-Process -FilePath $node -ArgumentList @($manager) -WorkingDirectory $root -WindowStyle Hidden | Out-Null
+  Start-Process -FilePath $node -ArgumentList @("`"$manager`"") -WorkingDirectory $root -WindowStyle Hidden | Out-Null
   Log 'manager_iniciado'
 } catch {
   Log ('falha_iniciar_manager '+$_.Exception.Message)

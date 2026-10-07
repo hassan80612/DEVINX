@@ -14,7 +14,7 @@ function Step($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; if ($env:SENTINEL_INSTALL_TEST -ne '1') { Read-Host 'Pressione ENTER para fechar' | Out-Null }; exit 1 }
 
 try {
-  $locked = $installMutex.WaitOne(0)
+  try { $locked = $installMutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $locked = $true }
   if (-not $locked) { throw 'Outra instalacao do Sentinel esta em andamento. Aguarde ela terminar.' }
   New-Item -ItemType Directory -Force -Path $stage | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
@@ -117,7 +117,7 @@ try {
     $env:SENTINEL_WORKER_HOST='127.0.0.1'
     $env:SENTINEL_WORKER_PORT='8787'
     $env:SENTINEL_MANAGER_PORT='8788'
-    Start-Process -FilePath $node -ArgumentList @($manager) -WorkingDirectory $root -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath $node -ArgumentList @("`"$manager`"") -WorkingDirectory $root -WindowStyle Hidden | Out-Null
   } else {
     $watchdogHost = Join-Path $root 'worker\watchdog-host.ps1'
     $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
@@ -126,8 +126,8 @@ try {
     Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -Value $runCmd -Force
     Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLabWatchdog' -Value $watchdogCmd -Force
 
-    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',$watchdogHost) -WindowStyle Hidden | Out-Null
-    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',$tray) -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$watchdogHost`"") -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$tray`"") -WindowStyle Hidden | Out-Null
   }
 
   $ready = $false
