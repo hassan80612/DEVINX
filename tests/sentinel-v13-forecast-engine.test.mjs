@@ -270,3 +270,30 @@ test('operational runtime no longer contains broker-expiration mismatch gates',a
   assert.ok(runtime.includes("expirationSource:'card-setting'"));
   assert.ok(runtime.includes("settleDurationMs:durationMs"));
 });
+
+
+test('locked forecast side cannot alternate CALL and PUT inside the same entry window',()=>{
+  const rt=new DemoTradingRuntime({seed:49,balance:10000});
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
+  const t=Date.now(),snap={price:1.10};
+  const first=rt._operationalSignalState(timedAnalysis('CALL'),snap,t);
+  assert.equal(first.side,'CALL');
+  assert.equal(first.state,'AGUARDAR JANELA');
+  const firstWindow=first.entryWindowStartAt;
+
+  const oppositeOnce=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+1000);
+  assert.equal(oppositeOnce.side,'CALL',JSON.stringify(oppositeOnce));
+  assert.equal(oppositeOnce.entryWindowStartAt,firstWindow);
+  assert.equal(rt.operationalSetup.side,'CALL');
+  assert.equal(rt.operationalSetup.oppositionCycles,1);
+
+  const oppositeTwice=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2000);
+  assert.equal(oppositeTwice.side,'CALL');
+  assert.equal(oppositeTwice.state,'INVALIDADO');
+  assert.match(oppositeTwice.reason,/duas confirmações fortes/i);
+
+  const newPut=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2500);
+  assert.equal(newPut.side,'PUT');
+  assert.equal(newPut.state,'AGUARDAR JANELA');
+  assert.ok(newPut.entryWindowStartAt>firstWindow);
+});
