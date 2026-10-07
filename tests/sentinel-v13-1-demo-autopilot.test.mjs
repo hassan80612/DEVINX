@@ -131,3 +131,11 @@ test('V13.3 Agent manager records worker stderr before automatic restart',async(
   assert.ok(manager.includes("worker.stderr?.on('data'"));
   assert.ok(manager.includes('lastExit'));
 });
+
+
+test('V13.3 card start explicitly arms practice autopilot and stop disarms it',async()=>{
+  const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
+  assert.ok(worker.includes("runtime.patchSettings({demoAutopilot:true},'overlay')"));
+  assert.ok(worker.includes("if(mode!=='demo')throw new Error('Execução automática pelo card disponível somente na conta de prática.')"));
+  assert.ok(worker.includes("runtime.patchSettings({demoAutopilot:false},'overlay')"));
+});
