@@ -317,3 +317,13 @@ test('Protocol active_id changes are surfaced as assetChanged events', () => {
   assert.equal(st.candles.length,0);
   assert.equal(st.quoteHistory.length,0);
 });
+
+
+test('IQ selected-tab watcher corrects a missed click without scanning the full body', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("window.__sentinelAssetWatchTimer=setInterval(watchSelected,450)"));
+  assert.ok(ui.includes("if(watchHits>=2)publish(p,'selected-tab-watch')"));
+  assert.ok(ui.includes("source==='selected-tab-watch'"));
+  assert.ok(ui.includes('vividLineScore'));
+  assert.ok(!ui.includes('new MutationObserver'));
+});
