@@ -183,3 +183,66 @@ test('future strategy aggregation discounts correlated strategy families', async
   assert.match(source,/penalty\*=\.55/);
   assert.ok(rt);
 });
+
+
+function timedAnalysis(side='CALL'){
+  const call=side==='CALL',plan={
+    asset:'EUR/USD OTC',bias:side,rawBias:side,displayBias:side,
+    callProbability:call?78:22,putProbability:call?22:78,displayCallProbability:call?78:22,displayPutProbability:call?22:78,
+    modelConfidence:78,confidence:78,outlookReady:true,directionReady:true,agreement:72,
+    strategyFutureBias:side,strategyFuture:{activeCount:2,evidence:70,confidence:76},
+    callTrigger:1.099,putTrigger:1.101,callInvalidation:1.095,putInvalidation:1.105,
+    callRule:'CALL somente após romper e sustentar acima do gatilho',putRule:'PUT somente após romper e sustentar abaixo do gatilho'
+  };
+  return{
+    generalConsensus:{rapid:{side},strategies:{side,strength:76},side},
+    quality:{technicalEdge:24,entryReady:true,entrySide:call?'BUY':'SELL',preEntry:{active:false,side:'WAIT'}},
+    metrics:{last:1.10,shortModel:{ready:true,accelDown:false,accelUp:false,turnUp:false,turnDown:false,reversalCallCandidate:false,reversalPutCandidate:false,failedBreakDown:false,failedBreakUp:false},micro:{delta5:0,delta15:0,p5:0,pulse:0}},
+    entryPlanner:{horizons:{'30':{...plan},'60':{...plan}}}
+  }
+}
+
+test('1m forecast plus 30s expiration automatically waits about 30s before the entry window',()=>{
+  const rt=new DemoTradingRuntime({seed:44,balance:10000});
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,brokerExpirationDurationMs:30000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
+  const early=rt._operationalSignalState(analysis,snap,t);
+  assert.equal(early.state,'AGUARDAR JANELA');
+  assert.ok(early.timeToEntryMs>=29500&&early.timeToEntryMs<=30000,JSON.stringify(early));
+  const atWindow=rt._operationalSignalState(analysis,snap,t+30000);
+  assert.equal(atWindow.state,'ENTRADA');
+  assert.equal(atWindow.actionable,true);
+});
+
+test('30s forecast plus 30s expiration opens immediately and is not chased after its short window',()=>{
+  const rt=new DemoTradingRuntime({seed:45,balance:10000});
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,brokerExpirationDurationMs:30000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
+  const now=rt._operationalSignalState(analysis,snap,t);
+  assert.equal(now.state,'ENTRADA');
+  assert.equal(now.actionable,true);
+  const late=rt._operationalSignalState(analysis,snap,t+6000);
+  assert.equal(late.actionable,false);
+  assert.equal(late.state,'JANELA ENCERRADA');
+});
+
+test('a future CALL is kept but entry waits while the live candle is still burning strongly down',()=>{
+  const rt=new DemoTradingRuntime({seed:46,balance:10000});
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,brokerExpirationDurationMs:30000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
+  analysis.metrics.shortModel={...analysis.metrics.shortModel,ready:true,accelDown:true,turnUp:false,reversalCallCandidate:false,failedBreakDown:false};
+  analysis.metrics.micro={delta5:-0.001,delta15:-0.002,p5:-1.7,pulse:-11};
+  const blocked=rt._operationalSignalState(analysis,snap,t);
+  assert.equal(blocked.side,'CALL');
+  assert.equal(blocked.state,'AGUARDAR FORÇA');
+  assert.equal(blocked.actionable,false);
+  assert.equal(blocked.impulseConflict,true);
+  assert.match(blocked.reason,/força de queda/i);
+});
+
+test('forecast horizon is persisted independently from expiration',()=>{
+  const rt=new DemoTradingRuntime({seed:47,balance:10000});
+  rt.patchSettings({forecastHorizonSeconds:120,orderDurationMs:30000},'test');
+  assert.equal(rt.settings.forecastHorizonSeconds,120);
+  assert.equal(rt.settings.orderDurationMs,30000);
+});
