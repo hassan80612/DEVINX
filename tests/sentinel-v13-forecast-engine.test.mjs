@@ -171,3 +171,15 @@ test('strong future strategy conflict blocks a directional release without chang
   assert.equal(p.directionReady,false);
   assert.equal(p.presentBias,'CALL');
 });
+
+
+test('future strategy aggregation discounts correlated strategy families', async()=>{
+  const runtime=await import('../sentinel-trading-lab/agent/src/core/runtime.mjs');
+  const rt=new runtime.DemoTradingRuntime({seed:33,balance:10000});
+  const source=await import('node:fs/promises').then(x=>x.readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url),'utf8'));
+  assert.match(source,/strategyFamily/);
+  assert.match(source,/location_reversion/);
+  assert.match(source,/evidência correlacionada/);
+  assert.match(source,/penalty\*=\.55/);
+  assert.ok(rt);
+});
