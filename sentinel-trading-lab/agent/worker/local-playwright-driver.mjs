@@ -1069,21 +1069,21 @@ export class LocalPlaywrightDriver{
         st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;
       }
       st.executionUi={...ui,assetMatch,uiSymbol:st.uiSymbol,marketSymbol:st.symbol,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence};
-      st.executionReady=!!(ui.buy&&ui.sell&&ui.amount&&['demo','real'].includes(st.mode)&&assetMatch);
+      st.executionReady=!!(ui.buy&&ui.sell&&ui.amount&&st.mode==='demo'&&assetMatch);
       return st.executionReady
     }catch(e){
       st.executionUi={buy:false,sell:false,amount:false,assetMatch:false,error:String(e?.message||e)};
       st.executionReady=false;return false
     }
   }
-  async placeAutoOrder(provider,order={}){
+  async placeDemoOrder(provider,order={}){
     const st=this.state(provider);await this.domSnapshot(provider).catch(()=>{});await this.scanExecutionUi(provider);
-    if(!['demo','real'].includes(st.mode))throw new Error('auto_order_account_mode_unknown');
-    if(!st.executionReady)throw new Error('auto_order_controls_not_detected');
-    if(!st.uiSymbol||!order.asset||pairKey(st.uiSymbol)!==pairKey(order.asset)||pairKey(st.symbol)!==pairKey(order.asset))throw new Error('auto_order_asset_mismatch');
+    if(st.mode!=='demo')throw new Error('demo_order_blocked_account_not_demo');
+    if(!st.executionReady)throw new Error('demo_order_controls_not_detected');
+    if(!st.uiSymbol||!order.asset||pairKey(st.uiSymbol)!==pairKey(order.asset)||pairKey(st.symbol)!==pairKey(order.asset))throw new Error('demo_order_asset_mismatch');
     const amount=Number(order.amount),side=String(order.side||'').toUpperCase();
-    if(!Number.isFinite(amount)||amount<=0)throw new Error('auto_order_invalid_amount');
-    if(!['BUY','SELL'].includes(side))throw new Error('auto_order_invalid_side');
+    if(!Number.isFinite(amount)||amount<=0)throw new Error('demo_order_invalid_amount');
+    if(!['BUY','SELL'].includes(side))throw new Error('demo_order_invalid_side');
     const s=await this.session(provider);
     let result=null,bestScore=-1;
     for(const frame of s.page.frames()){
@@ -1167,11 +1167,10 @@ export class LocalPlaywrightDriver{
       const axResult=await this._axDemoOrder(provider,{amount,side}).catch(()=>null);
       if(axResult?.ok)result=axResult;
     }
-    if(!result?.ok)throw new Error(result?.error||'auto_order_click_failed');
+    if(!result?.ok)throw new Error(result?.error||'demo_order_click_failed');
     st.lastRequestAt=Date.now();
-    return{id:`${st.mode}-${provider}-${Date.now()}`,provider,mode:st.mode,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
+    return{id:`demo-${provider}-${Date.now()}`,provider,asset:st.symbol,side,amount,status:'submitted',openedAt:new Date().toISOString(),referencePrice:st.quote,external:true,button:result.button,amountControl:result.amountControl}
   }
-  async placeDemoOrder(provider,order={}){const st=this.state(provider);if(st.mode!=='demo')throw new Error('demo_account_required');return this.placeAutoOrder(provider,order)}
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
     const st=this.state(provider),aid=Number(activeId);let next=symbol?assetStrings(symbol)[0]||null:null;
     if(!next&&Number.isFinite(aid)){
@@ -1776,19 +1775,16 @@ export class LocalPlaywrightDriver{
               <div data-sentinel-control-msg style="min-height:8px;max-width:250px;font-size:7.2px;font-weight:800;color:${goldSoft};line-height:1.1;text-align:right"></div>
             </div>
           </div>
-          <div style="margin-top:7px;padding:7px 9px;border-radius:9px;background:${uiTheme==='light'?'linear-gradient(90deg,rgba(8,112,82,.10),rgba(201,166,91,.08))':'linear-gradient(90deg,rgba(124,233,193,.10),rgba(215,182,93,.08))'};border:1px solid ${uiTheme==='light'?'rgba(8,112,82,.32)':'rgba(124,233,193,.34)'};box-shadow:inset 0 0 0 1px rgba(255,255,255,.025),0 0 10px ${uiTheme==='light'?'rgba(8,112,82,.06)':'rgba(124,233,193,.08)'};font-size:9.4px;line-height:1.34;color:${uiTheme==='light'?'#111318':'#ffffff'};font-weight:850">
-            ${validatedAsset&&validatedAsset!=='—'?'<b style="color:'+callTone+';text-shadow:0 0 8px rgba(105,225,181,.16)">ATIVO VALIDADO · '+esc(validatedAsset)+' ✓</b><span style="color:'+(uiTheme==='light'?'#3d4650':'#ffffff')+'"> · </span>':''}<span style="color:${uiTheme==='light'?'#20252b':'#ffffff'};font-weight:900">Para trocar, feche o ativo atual e abra o novo pelo botão + da corretora.</span>
+          <div style="margin-top:7px;padding:7px 9px;border-radius:9px;background:${uiTheme==='light'?'rgba(8,112,82,.06)':'rgba(124,233,193,.045)'};border:1px solid ${panelBorder};font-size:9.4px;line-height:1.34;color:${uiTheme==='light'?'#111318':'#ffffff'};font-weight:850">
+            ${validatedAsset&&validatedAsset!=='—'?'<b style="color:'+callTone+'">ATIVO VALIDADO · '+esc(validatedAsset)+' ✓</b><span style="color:'+(uiTheme==='light'?'#3d4650':'#ffffff')+'"> · </span>':''}<span style="color:${uiTheme==='light'?'#20252b':'#ffffff'}">Para trocar, feche o ativo atual e abra o novo pelo botão + da corretora.</span>
           </div>
 
           <div class="sentinel-shine" data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="position:relative;margin-top:10px;padding:10px 11px;min-height:230px;height:auto;overflow:visible;border:1px solid ${uiTheme==='light'?'rgba(145,105,34,.42)':'rgba(226,194,105,.66)'};border-left:4px solid ${outlookTone};background:${heroPanelBg};border-radius:15px;box-sizing:border-box;box-shadow:${heroShadow}">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:7px;flex-wrap:wrap;min-height:31px;overflow:visible">
               <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span class="sentinel-metal-gold" style="font-size:12.5px;font-weight:950;letter-spacing:.055em">CENÁRIO FUTURO POR PRAZO</span><span style="font-size:7.8px;font-weight:950;color:${ink};letter-spacing:.06em">PRÓXIMO PASSO</span></div>
               <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap">
-                <span style="font-size:7.4px;font-weight:950;color:${subtle};letter-spacing:.04em">CEN</span>
                 <select data-sentinel-plan-horizon title="Prazo do cenário futuro" style="height:27px;min-width:69px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 5px;font-size:9px;font-weight:900;outline:none"><option value="30" ${plannerHorizon==='30'?'selected':''}>30 s</option><option value="60" ${plannerHorizon==='60'?'selected':''}>1 min</option><option value="120" ${plannerHorizon==='120'?'selected':''}>2 min</option><option value="300" ${plannerHorizon==='300'?'selected':''}>5 min</option><option value="600" ${plannerHorizon==='600'?'selected':''}>10 min</option><option value="900" ${plannerHorizon==='900'?'selected':''}>15 min</option><option value="3600" ${plannerHorizon==='3600'?'selected':''}>1 h</option></select>
-                <span style="font-size:7.4px;font-weight:950;color:${subtle};letter-spacing:.04em">EXP</span>
                 <select data-sentinel-setting="duration" title="Expiração da operação" style="height:27px;min-width:69px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 5px;font-size:9px;font-weight:850"><option value="30000" ${duration===30000?'selected':''}>30 s</option><option value="60000" ${duration===60000?'selected':''}>1 min</option><option value="120000" ${duration===120000?'selected':''}>2 min</option><option value="300000" ${duration===300000?'selected':''}>5 min</option><option value="600000" ${duration===600000?'selected':''}>10 min</option><option value="900000" ${duration===900000?'selected':''}>15 min</option></select>
-                <span style="font-size:7.4px;font-weight:950;color:${subtle};letter-spacing:.04em">PTS</span>
                 <select data-sentinel-setting="minConfidence" title="Filtro mínimo de pontos" style="height:27px;min-width:61px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 4px;font-size:9px;font-weight:850"><option value="55" ${minConfidence===55?'selected':''}>55 pts</option><option value="60" ${minConfidence===60?'selected':''}>60 pts</option><option value="65" ${minConfidence===65?'selected':''}>65 pts</option><option value="70" ${minConfidence===70?'selected':''}>70 pts</option><option value="75" ${minConfidence===75?'selected':''}>75 pts</option><option value="80" ${minConfidence===80?'selected':''}>80 pts</option><option value="85" ${minConfidence===85?'selected':''}>85 pts</option><option value="90" ${minConfidence===90?'selected':''}>90 pts</option><option value="95" ${minConfidence===95?'selected':''}>95 pts</option></select>
                 <div style="display:flex;align-items:center;gap:2px" title="Percentual mínimo para exibir CALL ou PUT"><input data-sentinel-future-threshold type="number" min="50" max="95" step="1" value="${futureDisplayThreshold}" style="width:39px;height:27px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font:950 10px/1 inherit;padding:0 3px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></div>
               </div>
@@ -1947,7 +1943,7 @@ export class LocalPlaywrightDriver{
     if(action.startsWith('quote?')){const u=new URL('http://x/'+action);const symbol=u.searchParams.get('symbol')||st.symbol;if(st.quote==null)throw new Error(`${provider}_quote_not_found`);return{symbol,price:st.quote,ts:st.lastCandleAt||st.lastFrameAt||st.lastDomAt||Date.now(),source:st.lastFrameAt?'network':'dom'}}
     if(action.startsWith('candles?')){if(st.candles.length<50){await this.requestBaseData(provider).catch(()=>{});await this.requestMarketData(provider,{force:true}).catch(()=>{});await sleep(550)}if(st.candles.length<50)throw new Error(`${provider}_candles_waiting_for_active_stream`);return st.candles.slice(-Number(new URL('http://x/'+action).searchParams.get('limit')||50))}
     if(action==='market-snapshot'){await this.maintain(provider).catch(()=>{});return this.liveStatus(provider);}
-    if(action==='orders/auto')return this.placeAutoOrder(provider,body||{});if(action==='orders/demo')return this.placeDemoOrder(provider,body||{});if(action.startsWith('orders/'))throw new Error(`${provider}_unsupported_order_action`);
+    if(action==='orders/demo')return this.placeDemoOrder(provider,body||{});if(action.startsWith('orders/'))throw new Error(`${provider}_real_execution_requires_human_confirmation`);
     throw new Error(`unsupported_driver_action:${provider}:${method}:${action}`);
   }
 }
