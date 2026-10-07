@@ -281,7 +281,7 @@ test('Explicit IQ tab click cannot be undone by stale DOM and is rechecked after
   assert.ok(ui.includes("if(symbol===last&&source!=='click')return"));
   assert.ok(ui.includes('const beforeSelected=selectedPair()'));
   assert.ok(ui.includes("direct=p[0];publish(direct,'click')"));
-  assert.ok(ui.includes("if(!beforeSelected||p!==beforeSelected||p===direct)"));
+  assert.ok(ui.includes("if(p&&(!beforeSelected||p!==beforeSelected||p===direct))"));
   assert.ok(ui.includes("publish(p,'selected-tab-settled')"));
   assert.ok(!ui.includes("queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')})"));
 });
