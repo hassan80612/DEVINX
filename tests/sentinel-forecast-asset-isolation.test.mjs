@@ -361,11 +361,12 @@ test('Operational decision no longer requires present side to equal future side'
   assert.ok(!runtime.includes('operationalSide!==rawSide'));
 });
 
-test('Overlay explicitly shows the validated asset and the safe switch instruction', async () => {
+test('Overlay keeps asset switching simple and exposes only the validated asset plus instruction', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes('ATIVO VALIDADO · '));
-  assert.ok(ui.includes('ATIVO DA TELA NÃO VALIDADO'));
   assert.ok(ui.includes('feche o ativo atual e abra o novo pelo botão + da corretora'));
+  assert.ok(!ui.includes('VALIDANDO NOVO ATIVO'));
+  assert.ok(!ui.includes('aguardando nome + active_id + feed do mesmo ativo'));
   assert.ok(ui.includes('PROJEÇÃO FUTURA DAS ESTRATÉGIAS'));
 });
 
@@ -400,4 +401,21 @@ test('Unvalidated broker tab clears any locked future decision immediately', asy
   assert.ok(ui.includes('if(screenCandidateAsset){'));
   assert.ok(ui.includes('localStorage.removeItem(decisionKey);localStorage.removeItem(expiredKey)'));
   assert.ok(ui.includes('futureDecision=null;expiredDecision=null'));
+});
+
+
+test('Operational entry requires stronger future confidence, agreement, edge and strategy support', async () => {
+  const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
+  assert.ok(runtime.includes('futureConfidence>=64'));
+  assert.ok(runtime.includes('futureAgreement>=58'));
+  assert.ok(runtime.includes('(strategySupport||strongSoloFuture)'));
+  assert.ok(runtime.includes('decisionStrength>=64&&futureEdge>=16'));
+});
+
+test('Overlay default footprint is smaller without reducing typography', async () => {
+  const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
+  assert.ok(ui.includes("width:'500px',height:'min(560px"));
+  assert.ok(ui.includes("minWidth:'420px'"));
+  assert.ok(ui.includes("sentinel-overlay-size-v13r2"));
+  assert.ok(ui.includes("fontSize:'13px'"));
 });
