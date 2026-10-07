@@ -314,7 +314,7 @@ test('future overlay follows engine-owned windows and removes independent browse
   assert.ok(!ui.includes('targetAt:inheritedTargetAt||decisionNow+decisionSeconds*1000'));
 });
 
-test('locked forecast side does not chatter and a confirmed opposite scenario gets its own full horizon',()=>{
+test('locked forecast side does not chatter when raw opposite bias oscillates',()=>{
   const rt=new DemoTradingRuntime({seed:49,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
   const t=Date.now(),snap={price:1.10};
@@ -323,21 +323,14 @@ test('locked forecast side does not chatter and a confirmed opposite scenario ge
   assert.notEqual(first.state,'AGUARDAR JANELA');
   const firstTarget=first.targetAt;
 
-  const oppositeOnce=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+1000);
-  assert.equal(oppositeOnce.side,'CALL',JSON.stringify(oppositeOnce));
-  assert.equal(oppositeOnce.targetAt,firstTarget);
+  for(const ms of [1000,2000,2500,3000]){
+    const opposite=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+ms);
+    assert.equal(opposite.side,'CALL',JSON.stringify(opposite));
+    assert.equal(opposite.targetAt,firstTarget);
+    assert.notEqual(opposite.state,'INVALIDADO');
+  }
   assert.equal(rt.operationalSetup.side,'CALL');
-  assert.equal(rt.operationalSetup.oppositionCycles,1);
-
-  const oppositeTwice=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2000);
-  assert.equal(oppositeTwice.side,'CALL');
-  assert.equal(oppositeTwice.state,'INVALIDADO');
-
-  const newPut=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2500);
-  assert.equal(newPut.side,'PUT');
-  assert.notEqual(newPut.state,'AGUARDAR JANELA');
-  assert.equal(newPut.targetAt,t+2500+60000);
-
+  assert.equal(rt.operationalSetup.oppositionCycles,0);
 });
 
 
