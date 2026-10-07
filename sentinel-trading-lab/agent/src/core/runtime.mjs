@@ -470,20 +470,10 @@ export class DemoTradingRuntime{
     return{allowed:true,analysis:gated}
   }
   _bootstrapSignalValidation(){
-    if(this.signalValidation.outcomes.length||!Array.isArray(this.analyses)||this.analyses.length<3)return;
-    const rows=[...this.analyses].filter(x=>x?.ts&&Number.isFinite(Number(x?.metrics?.last))).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
-    const seen=new Set();
-    for(let i=0;i<rows.length;i++){
-      const a=rows[i],t0=new Date(a.ts).getTime(),asset=String(a.asset||'—'),strategy=String(a.metrics?.strategy||this.settings.strategy||'smart_confluence'),p0=Number(a.metrics.last);
-      const b=rows.find((x,j)=>j>i&&String(x.asset||'—')===asset&&new Date(x.ts).getTime()>=t0+25000&&new Date(x.ts).getTime()<=t0+40000&&Number.isFinite(Number(x?.metrics?.last)));
-      if(!b)continue;const p1=Number(b.metrics.last);
-      for(const [kind,side,confidence] of [['forecast30',String(a.forecast30?.side||'WAIT').toUpperCase(),Number(a.forecast30?.confidence||0)],['confirmed',String(a.side||'WAIT').toUpperCase(),Number(a.confidence||0)]]){
-        if(!['BUY','SELL'].includes(side))continue;
-        const key=this._validationKey(kind,asset,30000,strategy),bucket=Math.floor(t0/15000),id=key+'|'+bucket;if(seen.has(id))continue;seen.add(id);
-        this.signalValidation.outcomes.push({key,kind,asset,durationMs:30000,strategy,side,confidence,referencePrice:p0,createdAt:t0,dueAt:t0+30000,settledAt:new Date(b.ts).getTime(),settledPrice:p1,won:side==='BUY'?p1>p0:p1<p0,bootstrap:true,settlementQuality:'approx'});
-      }
-    }
-    this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-500);
+    // Calibration V5 intentionally starts from exact outcomes produced by the current
+    // feed/model epoch. Old analysis snapshots are kept for history/UI only and are
+    // never reconstructed into statistical confidence samples.
+    return
   }
   _settleDue(now){
     const price=this._marketSnapshot().price;
