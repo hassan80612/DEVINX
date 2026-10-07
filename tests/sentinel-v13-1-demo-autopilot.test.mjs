@@ -24,7 +24,8 @@ function state(now=Date.now()){
 }
 
 test('V13.1 DEMO autopilot never clicks until explicitly armed',async()=>{
-  const now=Date.now(),cs=candles(now),last=cs.at(-1).close;
+  // Fixed midday UTC keeps this safety test independent from the wall clock at 23:59.
+  const now=Date.parse('2026-10-06T12:00:00Z'),cs=candles(now),last=cs.at(-1).close;
   const feed={snapshot:()=>({candles:cs,quoteHistory:[],quoteTs:now,price:last})};
   let calls=0;
   const broker={getBalance:async()=>10000,placeOrder:async proposal=>{calls++;return{id:'demo-test',...proposal,external:true}}};
