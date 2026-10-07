@@ -41,7 +41,7 @@ try{
   assert.equal(await status.evaluate(el=>getComputedStyle(el).fontSize),'15px');
   await mkdir('sentinel-test-output',{recursive:true});
   await card.screenshot({path:'sentinel-test-output/scenario-open.png'});
-  await page.evaluate(()=>{window.__sentinelLastOverlayData.overlayReceivedAt=Date.now()-4000;window.__sentinelRenderOverlay(window.__sentinelLastOverlayData)});
+  await page.waitForTimeout(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
   console.log('SENTINEL 13.3.1 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');

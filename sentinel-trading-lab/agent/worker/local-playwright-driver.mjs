@@ -1691,6 +1691,8 @@ export class LocalPlaywrightDriver{
           });
         }
 
+        const currentAction=el.querySelector('[data-sentinel-scenario-action]'),currentStatus=el.querySelector('[data-sentinel-scenario-status]');
+        if(currentAction)currentAction.textContent=futureActionLabel;if(currentStatus)currentStatus.textContent=futureDecisionStatus;
         const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select,input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')))return;
 
         
@@ -1737,7 +1739,7 @@ export class LocalPlaywrightDriver{
               <label style="display:flex;align-items:center;gap:3px;font-size:8.1px;font-weight:950;color:${ink}">FILTRO <select data-sentinel-setting="minConfidence" title="Filtro mínimo de pontos técnicos" style="height:25px;min-width:58px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 4px;font-size:9px;font-weight:850"><option value="55" ${minConfidence===55?'selected':''}>55 pts</option><option value="60" ${minConfidence===60?'selected':''}>60 pts</option><option value="65" ${minConfidence===65?'selected':''}>65 pts</option><option value="70" ${minConfidence===70?'selected':''}>70 pts</option><option value="75" ${minConfidence===75?'selected':''}>75 pts</option><option value="80" ${minConfidence===80?'selected':''}>80 pts</option><option value="85" ${minConfidence===85?'selected':''}>85 pts</option><option value="90" ${minConfidence===90?'selected':''}>90 pts</option><option value="95" ${minConfidence===95?'selected':''}>95 pts</option></select></label>
               <label style="display:flex;align-items:center;gap:2px;font-size:8.1px;font-weight:950;color:${ink}" title="Percentual mínimo para considerar CALL ou PUT">SINAL <input data-sentinel-future-threshold type="number" min="50" max="95" step="1" value="${futureDisplayThreshold}" style="width:38px;height:25px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font:950 10px/1 inherit;padding:0 3px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></label>
             </div>
-            <div style="display:flex;align-items:baseline;gap:10px;margin:9px 0 6px;flex-wrap:wrap;min-height:32px;overflow:visible;white-space:normal"><b style="font-size:24px;line-height:1;color:${actionTone};letter-spacing:.015em;text-shadow:0 0 16px color-mix(in srgb,${actionTone} 28%,transparent)">${esc(futureActionLabel)}</b><span style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:15px;font-weight:950">${esc(futureDecisionStatus)}</span><span style="color:${goldSoft};font-size:9.3px;font-weight:950;text-shadow:${goldGlow}">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-size:9.3px;font-weight:850">${liveLabel}</span></div>
+            <div style="display:flex;align-items:baseline;gap:10px;margin:9px 0 6px;flex-wrap:wrap;min-height:32px;overflow:visible;white-space:normal"><b data-sentinel-scenario-action style="font-size:24px;line-height:1;color:${actionTone};letter-spacing:.015em;text-shadow:0 0 16px color-mix(in srgb,${actionTone} 28%,transparent)">${esc(futureActionLabel)}</b><span data-sentinel-scenario-status style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:15px;font-weight:950">${esc(futureDecisionStatus)}</span><span style="color:${goldSoft};font-size:9.3px;font-weight:950;text-shadow:${goldGlow}">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-size:9.3px;font-weight:850">${liveLabel}</span></div>
             <div style="color:${muted};font-size:12px;font-weight:820;line-height:1.45;margin-bottom:7px;min-height:26px;overflow:visible">${futureDecisionPaused?('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.'):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.'))}</div>
             ${planHtml}
           </div>
@@ -1871,6 +1873,11 @@ export class LocalPlaywrightDriver{
         })
         };
         window.__sentinelRenderOverlay=render;
+        if(!window.__sentinelOverlayClock)window.__sentinelOverlayClock=setInterval(()=>{
+          const latest=window.__sentinelLastOverlayData;
+          if(!document.getElementById('sentinel-trading-overlay-host')){clearInterval(window.__sentinelOverlayClock);window.__sentinelOverlayClock=null;return}
+          if(latest&&Date.now()-Number(latest.overlayReceivedAt||0)>=1250)window.__sentinelRenderOverlay?.(latest)
+        },500);
         render(d)
       },payload);
       return true
