@@ -225,11 +225,11 @@ test('terminal scenario keeps its own display side while live forecasts change',
   assert.equal(view.displaySide,'PUT');assert.equal(view.closed,true);assert.equal(view.canEnter,false);
  }
 });
-test('qualified opposite preview and actual opposite release stay distinct without a presentation delay',()=>{
+test('opposite preview stays secondary until the runtime actually replaces the scenario',()=>{
  const r=runtime(),a=analysis('CALL',99),op=r._operationalSignalState(a,confirmedSnap(),t);
  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,confidence:80,rawBias:'PUT',callProbability:20,putProbability:80};
  const pending=scenarioViewFromRuntime({operational:{...op,ready:false,actionable:false,oppositeOpportunity:{side:'PUT'}},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
- assert.equal(pending.displaySide,'PUT');assert.equal(pending.canEnter,false);
+ assert.equal(pending.displaySide,'CALL');assert.equal(pending.analysisSide,'PUT');assert.equal(pending.canEnter,false);
  const released=scenarioViewFromRuntime({operational:{...op,side:'PUT',state:'ENTRADA',ready:true,actionable:true,activeUntil:t+3500},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
  assert.equal(released.displaySide,'PUT');assert.equal(released.canEnter,true);
 });
