@@ -83,7 +83,7 @@ try{
   const reversedAnalysis={...putWaiting,operationalSignal:{...operational,state:'JANELA ABERTA',futureSide:'PUT',oppositeOpportunity:{side:'PUT'},actionable:false,ready:false}};
   await update(reversedAnalysis);
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ANÁLISE CALL · AGUARDE');
-  assert.match(await card.innerText(),/Leitura atual PUT/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  assert.match(await card.innerText(),/Possível virada PUT em confirmação/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   assert.equal(await card.locator('[data-sentinel-scenario-action]').evaluate(el=>getComputedStyle(el).color),callActionColor);
   await card.screenshot({path:'sentinel-test-output/scenario-opposite-analysis.png'});
   for(const confidence of [46,48,51,52,54]){
