@@ -13,7 +13,7 @@ const nextConfig={
         headers:[
           {key:'Content-Type',value:'application/octet-stream'},
           {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-V13.3.exe"'},
-          {key:'Cache-Control',value:'public, max-age=0, must-revalidate'}
+          {key:'Cache-Control',value:'no-store, no-cache, must-revalidate, no-transform'}
         ]
       },
       {
@@ -21,7 +21,7 @@ const nextConfig={
         headers:[
           {key:'Content-Type',value:'application/octet-stream'},
           {key:'Content-Disposition',value:'attachment; filename="Sentinel-Agent-V13.3.exe"'},
-          {key:'Cache-Control',value:'public, max-age=0, must-revalidate'}
+          {key:'Cache-Control',value:'no-store, no-cache, must-revalidate, no-transform'}
         ]
       },
       {
