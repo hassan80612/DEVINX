@@ -170,7 +170,7 @@ test('a confidence dip during the entry burst never continues to authorize an en
 
 test('current opposite analysis is visible without authorizing an unconfirmed opposite entry',()=>{
   const r=runtime(),op=r._operationalSignalState(analysis('CALL',99),confirmedSnap(),t);
-  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,rawBias:'PUT',callProbability:20,putProbability:80};
+  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,confidence:80,rawBias:'PUT',callProbability:20,putProbability:80};
   const view=scenarioViewFromRuntime({operational:op,forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
   assert.equal(view.side,'CALL');assert.equal(view.analysisSide,'PUT');assert.equal(view.oppositeAnalysis,true);assert.equal(view.canEnter,false);assert.equal(view.entryWindowOpen,false);assert.equal(view.deadline,op.targetAt);
   assert.equal(r.signalValidation.pending.length,1);assert.equal(r.signalValidation.pending[0].side,'BUY');
@@ -179,7 +179,7 @@ test('current opposite analysis is visible without authorizing an unconfirmed op
 });
 test('entry window opens immediately with the engine release and lasts only its useful burst',()=>{
   const r=runtime(),a=analysis('CALL',100),waiting=r._operationalSignalState(a,{price:99,quoteTs:t},t);
-  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,rawBias:'CALL',callProbability:80,putProbability:20};
+  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,confidence:80,rawBias:'CALL',callProbability:80,putProbability:20};
   const pending=scenarioViewFromRuntime({operational:waiting,forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t});
   assert.equal(pending.hasSetup,true);assert.equal(pending.entryWindowOpen,false);assert.equal(pending.analysisSide,'CALL');
   const entered=r._operationalSignalState(a,confirmedSnap(100.01,t+1000),t+1000);
@@ -202,4 +202,30 @@ test('current calibrated probabilities release the first confirmed entry without
     for(const p of Object.values(a.entryPlanner.horizons)){p.callProbability=side==='CALL'?60:40;p.putProbability=100-p.callProbability;p.displayCallProbability=side==='CALL'?85:15;p.displayPutProbability=100-p.displayCallProbability}
     assert.equal(bad._operationalSignalState(a,confirmedSnap(),t).actionable,false);
   }
+});
+
+
+test('weak live forecasts do not replace the active display side or authorize an opposite entry',()=>{
+ const r=runtime(),op=r._operationalSignalState(analysis('PUT',101),confirmedSnap(),t);
+ for(const confidence of [46,48,51,52,54]){
+  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,confidence,rawBias:'CALL',callProbability:56,putProbability:44};
+  const view=scenarioViewFromRuntime({operational:{...op,state:'AGUARDAR PRAZO',ready:false,actionable:false},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,minPoints:55,now:t+500});
+  assert.equal(view.analysisSide,null);assert.equal(view.displaySide,'PUT');assert.equal(view.canEnter,false);assert.equal(view.deadline,op.targetAt);
+ }
+});
+test('terminal scenario keeps its own display side while live forecasts change',()=>{
+ const r=runtime(),original=r._operationalSignalState(analysis('PUT',101),confirmedSnap(),t);
+ for(const side of ['CALL','PUT']){
+  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,confidence:80,rawBias:side,callProbability:side==='CALL'?80:20,putProbability:side==='PUT'?80:20};
+  const view=scenarioViewFromRuntime({operational:{...original,state:'INVALIDADO',ready:false,actionable:false},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+500});
+  assert.equal(view.displaySide,'PUT');assert.equal(view.closed,true);assert.equal(view.canEnter,false);
+ }
+});
+test('qualified opposite preview and actual opposite release stay distinct without a presentation delay',()=>{
+ const r=runtime(),a=analysis('CALL',99),op=r._operationalSignalState(a,confirmedSnap(),t);
+ const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,confidence:80,rawBias:'PUT',callProbability:20,putProbability:80};
+ const pending=scenarioViewFromRuntime({operational:{...op,ready:false,actionable:false,oppositeOpportunity:{side:'PUT'}},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
+ assert.equal(pending.displaySide,'PUT');assert.equal(pending.canEnter,false);
+ const released=scenarioViewFromRuntime({operational:{...op,side:'PUT',state:'ENTRADA',ready:true,actionable:true,activeUntil:t+3500},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+100});
+ assert.equal(released.displaySide,'PUT');assert.equal(released.canEnter,true);
 });

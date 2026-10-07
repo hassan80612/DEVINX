@@ -14,7 +14,7 @@ try{
   const driver=new LocalPlaywrightDriver();driver.session=async()=>({page,background:false});
   const now=Date.now(),plan={asset:'TEST',generatedAt:now,confidence:80,modelConfidence:80,callProbability:80,putProbability:20,displayBias:'CALL',outlookReady:true,directionReady:true,currentPrice:100,callTrigger:102,putTrigger:98,callInvalidation:90,putInvalidation:110,validation:{decisionSamples:0}};
   const operational={asset:'TEST',side:'CALL',state:'JANELA ABERTA',createdAt:now,entryWindowEndAt:now+60000,targetAt:now+60000,forecastHorizonSeconds:60,durationMs:30000,sideSupported:true,trigger:101,invalidation:90,technicalConfidence:80,reason:'Aguardando gatilho fixo.'};
-  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.4.5',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
+  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.4.6',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
   const card=page.locator('[data-sentinel-card="horizon"]');
   assert.equal(await driver.updateOverlay('iq_option',data),true);
   assert.match(await page.locator('[data-sentinel-pilot-status]').innerText(),/PILOTO LIGADO.*AGUARDANDO BOTÕES/);
@@ -72,12 +72,27 @@ try{
   assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   await mkdir('sentinel-test-output',{recursive:true});
   await card.screenshot({path:'sentinel-test-output/scenario-put-wait.png'});
-  const reversedAnalysis={...putWaiting,operationalSignal:{...operational,state:'JANELA ABERTA',futureSide:'PUT',actionable:false,ready:false}};
+  const reversedAnalysis={...putWaiting,operationalSignal:{...operational,state:'JANELA ABERTA',futureSide:'PUT',oppositeOpportunity:{side:'PUT'},actionable:false,ready:false}};
   await driver.updateOverlay('iq_option',reversedAnalysis);
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ANÁLISE PUT · AGUARDE');
   assert.match(await card.innerText(),/Leitura atual PUT/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   assert.equal(await card.locator('[data-sentinel-scenario-action]').evaluate(el=>getComputedStyle(el).color),putActionColor);
   await card.screenshot({path:'sentinel-test-output/scenario-opposite-analysis.png'});
+  for(const confidence of [46,48,51,52,54]){
+    const weak={...data,minConfidence:55,entryPlanner:{horizons:{'60':{...plan,confidence,modelConfidence:confidence,rawBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,state:'AGUARDAR PRAZO',ready:false,actionable:false}};
+    await driver.updateOverlay('iq_option',weak);
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ANÁLISE CALL · AGUARDE');
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').evaluate(el=>getComputedStyle(el).color),callActionColor);
+    assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  }
+  const cancelled={...putWaiting,operationalSignal:{...putWaiting.operationalSignal,state:'INVALIDADO',ready:false,actionable:false}};
+  for(const side of ['CALL','PUT']){
+    await driver.updateOverlay('iq_option',{...cancelled,entryPlanner:{horizons:{'60':{...plan,rawBias:side,callProbability:side==='CALL'?80:20,putProbability:side==='PUT'?80:20}}}});
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CANCELADO');
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').evaluate(el=>getComputedStyle(el).color),putActionColor);
+    assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  }
+
 
   await driver.updateOverlay('iq_option',data);
   assert.match(await card.innerText(),/FECHA EM/);
@@ -162,5 +177,5 @@ try{
   await page.waitForTimeout(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
-  console.log('SENTINEL 13.4.5 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
+  console.log('SENTINEL 13.4.6 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
