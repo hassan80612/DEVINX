@@ -1502,6 +1502,12 @@ export class LocalPlaywrightDriver{
         let futureDecision=null,expiredDecision=null;
         try{futureDecision=JSON.parse(localStorage.getItem(decisionKey)||'null')}catch{futureDecision=null}
         try{expiredDecision=JSON.parse(localStorage.getItem(expiredKey)||'null')}catch{expiredDecision=null}
+        // If the visible broker tab is not the validated asset, never keep showing an
+        // old locked decision from the validated feed. The banner explains how to switch.
+        if(screenCandidateAsset){
+          try{localStorage.removeItem(decisionKey);localStorage.removeItem(expiredKey)}catch{}
+          futureDecision=null;expiredDecision=null
+        }
         if(futureDecision&&(String(futureDecision.asset||'')!==decisionAsset||Number(futureDecision.seconds)!==decisionSeconds)){
           try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
         }
