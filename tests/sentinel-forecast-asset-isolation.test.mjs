@@ -222,19 +222,33 @@ test('Background IQ subscriptions never retarget the selected asset', () => {
 });
 
 
-test('Forced history refresh does not stack duplicate live candle subscriptions', async () => {
+test('Forced history refresh does not stack duplicate live candle subscriptions while the stream is fresh', async () => {
   const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/test-subscription-dedupe'});
   const st=d.state('iq_option');
   st.uiSymbol='EUR/USD OTC';st.symbol='EUR/USD OTC';st.activeId=76;st.subscribedSymbol='EUR/USD OTC';st.subscribedActiveId=76;
   st.activeMap.set('EURUSDOTC',76);st.assets.add('EUR/USD OTC');
   st.candles=Array.from({length:50},(_,i)=>({from:1700000000+i*60,to:1700000060+i*60,open:1,high:1.01,low:.99,close:1,volume:1}));
-  st.candleActiveId=76;
+  st.candleActiveId=76;st.lastQuoteAt=Date.now();
   const sent=[];
   d.directFeed=async()=>({ready:true,serverTimeSeconds:()=>1700010000,request:async()=>({name:'candles',request_id:'x',msg:{}})});
   d.wsSend=async(_provider,payload)=>{sent.push(payload);return{ok:true,transport:'test'}};
   await d._requestCandles('iq_option',{symbol:'EUR/USD OTC',activeId:76,force:true});
   assert.equal(sent.filter(x=>x?.name==='subscribeMessage'&&x?.msg?.name==='candle-generated').length,0);
   assert.equal(sent.filter(x=>x?.name==='unsubscribeMessage'&&x?.msg?.name==='candle-generated').length,0);
+});
+
+test('A stale live stream is renewed once without stacking subscriptions', async () => {
+  const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/test-subscription-revive'});
+  const st=d.state('iq_option');
+  st.uiSymbol='EUR/USD OTC';st.symbol='EUR/USD OTC';st.activeId=76;st.subscribedSymbol='EUR/USD OTC';st.subscribedActiveId=76;
+  st.activeMap.set('EURUSDOTC',76);st.assets.add('EUR/USD OTC');
+  st.lastQuoteAt=Date.now()-9000;
+  const sent=[];
+  d.directFeed=async()=>({ready:true,serverTimeSeconds:()=>Math.floor(Date.now()/1000),request:async()=>({name:'candles',request_id:'x',msg:{}})});
+  d.wsSend=async(_provider,payload)=>{sent.push(payload);return{ok:true,transport:'test'}};
+  await d._requestCandles('iq_option',{symbol:'EUR/USD OTC',activeId:76,force:true});
+  assert.equal(sent.filter(x=>x?.name==='unsubscribeMessage'&&x?.msg?.name==='candle-generated').length,1);
+  assert.equal(sent.filter(x=>x?.name==='subscribeMessage'&&x?.msg?.name==='candle-generated').length,1);
 });
 
 test('Market recovery retries only the broker-visible asset and never probes alternatives', async () => {
@@ -252,19 +266,23 @@ test('Market recovery retries only the broker-visible asset and never probes alt
   assert.equal(st.suggestedSymbol,null);
 });
 
-test('High-frequency market frames bypass the expensive generic recursive scan', async () => {
+test('High-frequency market frames refresh generic instrument mapping at a throttled cadence', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes('const highFrequencyMarketFrame='));
-  assert.ok(ui.includes('if(!highFrequencyMarketFrame)try{recursiveScan(data,out)}catch{}'));
+  assert.ok(ui.includes('const shouldGenericScan=!highFrequencyMarketFrame||!st.lastGenericMarketScanAt'));
+  assert.ok(ui.includes('if(shouldGenericScan){'));
+  assert.ok(ui.includes('st.lastGenericMarketScanAt=genericScanNow'));
   assert.ok(!ui.includes('Sugestão disponível:'));
 });
 
 
-test('Explicit IQ tab click cannot be undone by the stale selected-tab DOM state', async () => {
+test('Explicit IQ tab click cannot be undone by stale DOM and is rechecked after the tab settles', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes("if(symbol===last&&source!=='click')return"));
+  assert.ok(ui.includes('const beforeSelected=selectedPair()'));
   assert.ok(ui.includes("direct=p[0];publish(direct,'click')"));
-  assert.ok(ui.includes("if(!direct)setTimeout(()=>{const p=selectedPair();if(p)publish(p,'selected-tab-fallback')},90)"));
+  assert.ok(ui.includes("if(!beforeSelected||p!==beforeSelected||p===direct)"));
+  assert.ok(ui.includes("publish(p,'selected-tab-settled')"));
   assert.ok(!ui.includes("queueMicrotask(()=>{const p=selectedPair();if(p)publish(p,'selected-tab')})"));
 });
 
@@ -274,4 +292,28 @@ test('Future UI does not stay in an endless CONFIRMANDO state when direction is 
   assert.ok(ui.includes('AINDA NÃO CONFIRMADO'));
   assert.ok(ui.includes('ainda sem confirmação suficiente para liberar entrada'));
   assert.ok(!ui.includes("('CONFIRMANDO '+displayCandidate)"));
+});
+
+
+test('Asset-change events force immediate runtime synchronization before new analysis', async () => {
+  const worker = await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs', import.meta.url), 'utf8');
+  assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
+  assert.ok(worker.includes('if(event?.assetChanged===true){'));
+  assert.ok(worker.includes('syncRuntimeMarket();'));
+  assert.ok(worker.includes("const VERSION='13.1.0-r12'"));
+});
+
+test('Protocol active_id changes are surfaced as assetChanged events', () => {
+  const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/test-switch-event'});
+  const st=d.state('iq_option');
+  st.uiSymbol='EUR/USD OTC';st.symbol='EUR/USD OTC';st.activeId=76;st.pageActiveId=76;
+  st.activeMap.set('EURUSDOTC',76);st.activeMap.set('GBPCADOTC',86);
+  st.assets.add('EUR/USD OTC');st.assets.add('GBP/CAD OTC');
+  let event=null;
+  d.setMarketUpdateHandler((_provider,payload)=>{event=payload});
+  d.ingest('iq_option',JSON.stringify({name:'sendMessage',request_id:'chart-switch-2',msg:{name:'get-candles',body:{active_id:86,size:60}}}),'page-out');
+  assert.equal(event?.assetChanged,true);
+  assert.equal(st.marketStatus,'switching');
+  assert.equal(st.candles.length,0);
+  assert.equal(st.quoteHistory.length,0);
 });
