@@ -3,7 +3,7 @@ const nextConfig={
   reactStrictMode:true,
   async redirects(){
     return[
-      {source:'/downloads/Sentinel-Agent-V13.3.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/main/sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe',permanent:false}
+      {source:'/downloads/Sentinel-Agent-V13.3.exe',destination:'https://raw.githubusercontent.com/hassan80612/DEVINX/0b75ce46beebbf1a7d672505bd8b13b857e65ce7/sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe',permanent:false}
     ]
   },
   async headers(){
