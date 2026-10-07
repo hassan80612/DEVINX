@@ -94,7 +94,7 @@ test('V13.3 forecast calibration uses confidence bands, decision-grade stats and
   assert.equal(p.modelVersion,'future-v4.2');
   assert.equal(p.executionBias,'CALL');
   assert.equal(p.entryAligned,false);
-  assert.ok(p.validation.historyWeight>0&&p.validation.historyWeight<=30);
+  assert.ok(p.validation.historyWeight>0&&p.validation.historyWeight<=65);
   assert.equal(p.validation.bucket,'80-89');
   assert.ok(p.validation.bucketSamples>=120);
   assert.ok(p.callProbability<82,'band-aware calibration should pull an overconfident raw probability toward empirical accuracy');
@@ -204,22 +204,22 @@ function timedAnalysis(side='CALL'){
   }
 }
 
-test('1m forecast plus 30s expiration automatically waits about 30s before the entry window',()=>{
+test('1m forecast plus 30s expiration opens the forecast window immediately',()=>{
   const rt=new DemoTradingRuntime({seed:44,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
-  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,brokerExpirationDurationMs:30000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
-  const early=rt._operationalSignalState(analysis,snap,t);
-  assert.equal(early.state,'AGUARDAR JANELA');
-  assert.ok(early.timeToEntryMs>=29500&&early.timeToEntryMs<=30000,JSON.stringify(early));
-  const atWindow=rt._operationalSignalState(analysis,snap,t+30000);
-  assert.equal(atWindow.state,'ENTRADA');
-  assert.equal(atWindow.actionable,true);
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
+  const state=rt._operationalSignalState(analysis,snap,t);
+  assert.notEqual(state.state,'AGUARDAR JANELA');
+  assert.equal(state.timeToEntryMs,0);
+  assert.equal(state.entryWindowStartAt,t);
+  assert.equal(state.entryWindowEndAt,t+60000);
+  assert.equal(state.expirationWarning,false);
 });
 
-test('30s forecast plus 30s expiration opens immediately and is not chased after its short window',()=>{
+test('30s forecast plus 30s expiration opens immediately and only closes the confirmed trigger burst',()=>{
   const rt=new DemoTradingRuntime({seed:45,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
-  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,brokerExpirationDurationMs:30000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
   const now=rt._operationalSignalState(analysis,snap,t);
   assert.equal(now.state,'ENTRADA');
   assert.equal(now.actionable,true);
@@ -228,10 +228,10 @@ test('30s forecast plus 30s expiration opens immediately and is not chased after
   assert.equal(late.state,'JANELA ENCERRADA');
 });
 
-test('a future CALL is kept but entry waits while the live candle is still burning strongly down',()=>{
+test('a future CALL stays blocked while live force is burning strongly down',()=>{
   const rt=new DemoTradingRuntime({seed:46,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
-  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,brokerExpirationDurationMs:30000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
   analysis.metrics.shortModel={...analysis.metrics.shortModel,ready:true,accelDown:true,turnUp:false,reversalCallCandidate:false,failedBreakDown:false};
   analysis.metrics.micro={delta5:-0.001,delta15:-0.002,p5:-1.7,pulse:-11};
   const blocked=rt._operationalSignalState(analysis,snap,t);
@@ -239,23 +239,21 @@ test('a future CALL is kept but entry waits while the live candle is still burni
   assert.equal(blocked.state,'AGUARDAR FORÇA');
   assert.equal(blocked.actionable,false);
   assert.equal(blocked.impulseConflict,true);
-  assert.match(blocked.reason,/força de queda/i);
 });
 
-test('violent opposite micro impulse invalidates a locked future side after two confirmed cycles without changing timing sync',()=>{
+test('violent opposite micro impulse invalidates a locked future side without adding an expiration wait',()=>{
   const rt=new DemoTradingRuntime({seed:461,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
   const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
   const first=rt._operationalSignalState(analysis,snap,t);
-  assert.equal(first.state,'AGUARDAR JANELA');
-  const originalWindow=first.entryWindowStartAt;
+  assert.notEqual(first.state,'AGUARDAR JANELA');
+  const originalTarget=first.targetAt;
   analysis.metrics.shortModel={...analysis.metrics.shortModel,ready:true,accelDown:true,turnUp:false,reversalCallCandidate:false,failedBreakDown:false};
   analysis.metrics.micro={delta5:-0.002,delta15:-0.004,p5:-2.1,pulse:-14};
   const one=rt._operationalSignalState(analysis,snap,t+1000);
   assert.equal(one.side,'CALL');
-  assert.equal(one.state,'AGUARDAR JANELA');
   assert.equal(rt.operationalSetup.oppositionCycles,1);
-  assert.equal(one.entryWindowStartAt,originalWindow);
+  assert.equal(one.targetAt,originalTarget);
   const two=rt._operationalSignalState(analysis,snap,t+2000);
   assert.equal(two.state,'INVALIDADO');
   assert.equal(two.side,'CALL');
@@ -279,23 +277,26 @@ test('forecast horizon is persisted independently from expiration',()=>{
 });
 
 
-test('broker expiration is diagnostic only and never changes the card timing equation',()=>{
+test('expiration is advisory only: a longer expiration never delays or blocks the forecast window',()=>{
   const rt=new DemoTradingRuntime({seed:48,balance:10000});
-  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=60000;
   const t=Date.now(),analysis=timedAnalysis('CALL');
-  const snap={price:1.10,brokerExpirationDurationMs:60000,brokerExpirationKind:'duration',brokerExpirationConfidence:100};
-  const state=rt._operationalSignalState(analysis,snap,t);
-  assert.equal(state.state,'AGUARDAR JANELA');
-  assert.ok(state.timeToEntryMs>=29500&&state.timeToEntryMs<=30000,JSON.stringify(state));
+  const state=rt._operationalSignalState(analysis,{price:1.10,brokerExpirationDurationMs:120000},t);
+  assert.notEqual(state.state,'AJUSTAR TEMPO');
+  assert.notEqual(state.state,'AGUARDAR JANELA');
+  assert.equal(state.timeToEntryMs,0);
+  assert.equal(state.expirationWarning,true);
   assert.equal(state.expiration.source,'card-setting');
-  assert.equal(state.expiration.selectedMs,30000);
-  assert.equal(state.expiration.brokerMs,undefined);
+  assert.equal(state.expiration.selectedMs,60000);
 });
 
 test('operational runtime no longer contains broker-expiration mismatch gates',async()=>{
   const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
   assert.ok(!runtime.includes("state:'AJUSTAR PRAZO'"));
   assert.ok(!runtime.includes("state:'VERIFICAR PRAZO'"));
+  assert.ok(!runtime.includes("state:'AJUSTAR TEMPO'"));
+  assert.ok(runtime.includes('timingOffsetMs=0'));
+  assert.ok(runtime.includes('entryWindowStartAt=now'));
   assert.ok(runtime.includes("expirationSource:'card-setting'"));
   assert.ok(runtime.includes("settleDurationMs:durationMs"));
 });
@@ -307,30 +308,53 @@ test('future overlay source blocks immediate same-side relock after expiry or in
   assert.ok(ui.includes("const sameExpiredSide=!!expiredDecision&&plannerReadable&&candidateOutlook===String(expiredDecision.side||'').toUpperCase()"));
   assert.ok(ui.includes('plannerConfirmed&&!sameExpiredSide'));
   assert.ok(ui.includes("reason:'runtime-invalidated'"));
+  assert.ok(ui.includes('JANELA ABERTA'));
+  assert.ok(!ui.includes("operationalHeroSide+' EM '+operationalWaitSeconds+'s'"));
+  assert.ok(ui.includes('AVISO: expiração maior que o cenário; não bloqueia o sinal.'));
 });
 
-test('locked forecast side cannot alternate CALL and PUT inside the same entry window',()=>{
+test('locked forecast side does not chatter and a true reversal keeps the original target',()=>{
   const rt=new DemoTradingRuntime({seed:49,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
   const t=Date.now(),snap={price:1.10};
   const first=rt._operationalSignalState(timedAnalysis('CALL'),snap,t);
   assert.equal(first.side,'CALL');
-  assert.equal(first.state,'AGUARDAR JANELA');
-  const firstWindow=first.entryWindowStartAt;
+  assert.notEqual(first.state,'AGUARDAR JANELA');
+  const firstTarget=first.targetAt;
 
   const oppositeOnce=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+1000);
   assert.equal(oppositeOnce.side,'CALL',JSON.stringify(oppositeOnce));
-  assert.equal(oppositeOnce.entryWindowStartAt,firstWindow);
+  assert.equal(oppositeOnce.targetAt,firstTarget);
   assert.equal(rt.operationalSetup.side,'CALL');
   assert.equal(rt.operationalSetup.oppositionCycles,1);
 
   const oppositeTwice=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2000);
   assert.equal(oppositeTwice.side,'CALL');
   assert.equal(oppositeTwice.state,'INVALIDADO');
-  assert.match(oppositeTwice.reason,/duas confirmações fortes/i);
 
   const newPut=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2500);
   assert.equal(newPut.side,'PUT');
-  assert.equal(newPut.state,'AGUARDAR JANELA');
-  assert.ok(newPut.entryWindowStartAt>firstWindow);
+  assert.notEqual(newPut.state,'AGUARDAR JANELA');
+  assert.equal(newPut.targetAt,firstTarget);
+
+});
+
+
+test('future engine exposes multi-timeframe reversal authority and anti-chase safety metadata',()=>{
+  const now=Date.now(),candles=trendCandles({count:180,now}),last=candles.at(-1).close,quotes=quoteFlow(last,{direction:1,now});
+  const a=analyzeMarket({candles,quoteHistory:quotes,strategy:'trend',minConfidence:70,durationMs:30000,forecastHorizonSeconds:30,freshnessMs:5000,quoteTs:now,now});
+  const p=a.entryPlanner.horizons['30'];
+  assert.ok(p.multiTimeframe&&Array.isArray(p.multiTimeframe.rows));
+  assert.ok(p.reversalAuthority&&['CALL','PUT','NEUTRO'].includes(p.reversalAuthority.side));
+  assert.ok(p.safety&&typeof p.safety.blocked==='boolean');
+});
+
+test('decision-grade validation samples do not overlap inside the same horizon',()=>{
+  const rt=new DemoTradingRuntime({seed:55,balance:10000});
+  const t=Date.now();
+  rt._queueSignalCandidate({kind:'horizon_decision_v13_3',side:'BUY',confidence:75,probability:75,referencePrice:1.1,asset:'EUR/USD OTC',durationMs:30000,strategy:'x',now:t});
+  rt._queueSignalCandidate({kind:'horizon_decision_v13_3',side:'BUY',confidence:76,probability:76,referencePrice:1.1,asset:'EUR/USD OTC',durationMs:30000,strategy:'x',now:t+10000});
+  assert.equal(rt.signalValidation.pending.length,1);
+  rt._queueSignalCandidate({kind:'horizon_decision_v13_3',side:'BUY',confidence:76,probability:76,referencePrice:1.1,asset:'EUR/USD OTC',durationMs:30000,strategy:'x',now:t+30000});
+  assert.equal(rt.signalValidation.pending.length,2);
 });

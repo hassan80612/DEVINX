@@ -7,9 +7,12 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
   const gate=scheduleGate(settings.schedule,new Date(now));
   if(!gate.allowed)return{action:'WAIT',reasons:[gate.reason],latency:{decisionMs:Date.now()-cycleStarted}};
   const snap=feed.snapshot();
+  const forecastSeconds=Math.max(30,Number(settings.forecastHorizonSeconds||Math.round(Number(settings.orderDurationMs||60000)/1000)));
+  const configuredFreshness=Math.max(500,Number(settings.risk.maxFeedLatencyMs||2500));
+  const effectiveFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshness,1500):forecastSeconds<=60?Math.min(configuredFreshness,2000):configuredFreshness;
   let analysis=analyzeMarket({
     candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:settings.strategy,minConfidence:settings.risk.minConfidence,
-    durationMs:settings.orderDurationMs,freshnessMs:settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now
+    durationMs:settings.orderDurationMs,forecastHorizonSeconds:forecastSeconds,freshnessMs:effectiveFreshnessMs,quoteTs:snap.quoteTs,now
   });
   if(signalGate){
     const gated=await signalGate({analysis,snap,settings,now});
@@ -18,8 +21,8 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
   }
   const feedLatencyMs=Math.max(0,now-Number(snap.quoteTs||now));
   const risk=evaluateRisk({...state,now,mode:settings.mode,signalSide:analysis.side,confidence:analysis.confidence,
-    minConfidence:settings.risk.minConfidence,maxFeedLatencyMs:settings.risk.maxFeedLatencyMs,
-    feedLatencyMs:Math.max(Number(state.feedLatencyMs||0),feedLatencyMs),feedStale:feedLatencyMs>settings.risk.maxFeedLatencyMs,
+    minConfidence:settings.risk.minConfidence,maxFeedLatencyMs:effectiveFreshnessMs,
+    feedLatencyMs:Math.max(Number(state.feedLatencyMs||0),feedLatencyMs),feedStale:feedLatencyMs>effectiveFreshnessMs,
     dailyProfitTarget:settings.risk.dailyProfitTarget});
   const decisionMs=Date.now()-cycleStarted;
   if(decisionMs>Number(settings.risk.maxDecisionLatencyMs||250))return{action:'WAIT',analysis,reasons:['latência de decisão acima do limite'],latency:{feedMs:feedLatencyMs,decisionMs}};
