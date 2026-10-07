@@ -36,25 +36,25 @@ test('strategy display still avoids fake 100/0 from sparse evidence',()=>{
   assert.ok(p.putPct>25&&p.putPct<45,JSON.stringify(p));
 });
 
-test('Future overlay treats the horizon as entry-now validity, with compact totals and average confidence',async()=>{
+test('Future overlay calculates an automatic entry window from forecast horizon minus expiration',async()=>{
   const ui=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
   assert.ok(ui.includes('sentinel-future-decision-v13|'));
-  assert.ok(ui.includes('AGUARDANDO GATILHO'));
-  assert.ok(ui.includes('operationalNow'));
-  assert.ok(ui.includes("operationalNow?(futureDecision.side+' AGORA · '+decisionRemaining+'s')"));
-  assert.ok(ui.includes('Aguardando gatilho e confirmação operacional'));
-  assert.ok(ui.includes("'ENTRADA '+futureDecision.side+' CONFIRMADA AGORA."));
-  assert.ok(!ui.includes("futureDecision.side+' EM '+decisionRemaining+'s'"));
+  assert.ok(ui.includes('operationalWaitSeconds'));
+  assert.ok(ui.includes("operationalHeroSide+' EM '+operationalWaitSeconds+'s'"));
+  assert.ok(ui.includes("operationalHeroSide+' AGORA'"));
+  assert.ok(ui.includes('JANELA AUTOMÁTICA'));
+  assert.ok(ui.includes('FORÇA CONTRÁRIA'));
+  assert.ok(ui.includes('Entrada sincronizada com expiração de '));
+  assert.ok(ui.includes('data-sentinel-plan-horizon'));
+  assert.ok(ui.includes('data-sentinel-setting="duration"'));
+  assert.ok(ui.includes('data-sentinel-setting="minConfidence"'));
+  assert.ok(ui.includes('data-sentinel-future-threshold'));
+  assert.ok(!ui.includes('MOSTRAR CALL / PUT A PARTIR DE'));
   assert.ok(ui.includes('MÉDIA DOS 3 TOTAIS'));
   assert.ok(ui.includes('CONF MÉDIA'));
   assert.ok(ui.includes('data-sentinel-total-threshold="market"'));
   assert.ok(ui.includes('data-sentinel-total-threshold="strategy"'));
   assert.ok(ui.includes('data-sentinel-op-threshold'));
-  assert.ok(!ui.includes('MOSTRAR A PARTIR DE'));
-  assert.ok(!ui.includes('MOSTRAR CALL / PUT<br>A PARTIR DE'));
-  assert.ok(!ui.includes("futureConfidenceSource==='CALIBRATED'"));
-  assert.ok(!ui.includes("'MODELO '"));
-  assert.ok(!ui.includes("'CAL '"));
   assert.ok(!ui.includes('Motores: '));
   assert.ok(!ui.includes('Cenário em formação:'));
   assert.ok(ui.includes('Entrada somente quando o Sinal Operacional confirmar o gatilho.'));
@@ -67,8 +67,6 @@ test('Future overlay treats the horizon as entry-now validity, with compact tota
   assert.ok(ui.includes("startsWith('sentinel-future-decision-v13|')"));
   assert.ok(ui.includes("startsWith('sentinel-future-expired-v13|')"));
   assert.ok(ui.includes('sameExpiredSide'));
-  assert.ok(ui.includes('AGUARDAR · NOVA LEITURA'));
-  assert.ok(ui.includes('JANELA ENCERRADA'));
   assert.ok(ui.includes('CALL — confirmação'));
   assert.ok(ui.includes('PUT — confirmação'));
 });
