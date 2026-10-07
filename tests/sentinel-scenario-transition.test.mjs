@@ -108,12 +108,14 @@ test('forming setup adopts a qualified closer continuation once without resettin
   }
 });
 
-test('control continuation uses the closed local bar on a chronological real-price frame',()=>{
+test('unvalidated earlier local timing stays in research on a chronological real-price frame',()=>{
   const data=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation-prices.json',import.meta.url)));
   assert.ok(data.candles.every(c=>c.to*1000<=data.now));assert.ok(data.quoteHistory.every(q=>q.ts<=data.now));
-  const p=analyzeMarket({...data,quoteTs:data.now,durationMs:30000,minConfidence:55}).entryPlanner.horizons['30'];
+  const control=analyzeMarket({...data,quoteTs:data.now,durationMs:30000,minConfidence:55}).entryPlanner.horizons['30'];
+  const p=analyzeMarket({...data,quoteTs:data.now,durationMs:30000,minConfidence:55,candidateModel:true}).entryPlanner.horizons['30'];
   const bucket=Math.floor(data.now/5000)*5000-5000,closed=data.quoteHistory.filter(q=>q.ts>=bucket&&q.ts<bucket+5000);
-  assert.equal(p.modelRole,'control');assert.equal(p.directionReady,true);assert.equal(p.scenario.kind,'continuation');
+  assert.equal(control.modelRole,'control');assert.equal(control.entryTiming.maxDistance,null);assert.equal(control.scenario.triggerBasis,'structural-level');assert.ok(control.callTrigger>p.callTrigger);
+  assert.equal(p.modelRole,'candidate');assert.equal(control.directionReady,true);assert.equal(p.directionReady,false);assert.equal(p.scenario.kind,'continuation');
   assert.equal(p.callTrigger,Math.max(...closed.map(q=>q.price)));assert.equal(p.entryTiming.sourceBarAt,bucket);
   assert.ok(data.quoteHistory.at(-1).price-p.callTrigger<=p.entryTiming.maxDistance);
 });
@@ -146,4 +148,13 @@ test('withdrawn entry cannot reuse prices from before its loss of strength',()=>
   const old={price,quoteTs:t+600,quoteHistory:[{ts:t,price},{ts:t+600,price}]};
   assert.equal(r._operationalSignalState(a,old,t+600).actionable,false);
   assert.equal(r._operationalSignalState(a,snap([price,price],t+800),t+800).actionable,true);
+});
+
+test('quotes remaining beyond a level cannot confirm entry while moving the wrong way',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),call=side==='CALL',a=analysis(side),falling=call?[100.03,100.02]:[99.97,99.98];
+    const o=r._operationalSignalState(a,snap(falling,t),t);assert.equal(o.actionable,false);assert.equal(r.signalValidation.pending.length,0);
+    const restored=call?[100.02,100.03]:[99.98,99.97];
+    assert.equal(r._operationalSignalState(a,snap(restored,t+500),t+500).actionable,true);
+  }
 });

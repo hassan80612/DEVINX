@@ -462,7 +462,9 @@ export class DemoTradingRuntime{
     let evidence=setup.triggerQuotes||[];
     for(const q of rows){const ts=Number(q.ts);if(ts<=Number(evidence.at(-1)?.ts||0))continue;if(!holds(Number(q.price)))evidence=[];else evidence.push({ts,price:Number(q.price)})}
     setup.triggerQuotes=evidence.slice(-3);
-    return setup.triggerQuotes.length>=2&&holds(price);
+    const previous=setup.triggerQuotes.at(-2),latest=setup.triggerQuotes.at(-1);
+    const progressing=previous&&latest&&(side==='CALL'?latest.price>=previous.price:latest.price<=previous.price);
+    return setup.triggerQuotes.length>=2&&holds(price)&&!!progressing;
   }
 
   async start(actor='user'){const reason=this._startBlockReason();if(reason)throw new Error(reason);if(this.stateName!=='paused'){this.state.sessionStartedAt=Date.now();this.state.sessionTradeStartCount=this.trades.length}this.stateName='running';this.nextEvalMs=Date.now();this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'bot.start',metadata:{demoAutopilot:this.settings.demoAutopilot===true}});return this.status()}
