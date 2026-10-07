@@ -216,6 +216,16 @@ export class DemoTradingRuntime{
       plan.validation={samples:validation.samples,wins:validation.wins,losses:validation.losses,draws:validation.draws,winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,avgPredicted:validation.avgPredicted,brierScore:validation.brierScore,calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),calibrated:historyWeight>0,historyWeak,regime,bucket,bucketSamples:bucketValidation.samples,bucketWinRate:bucketValidation.winRate,bucketSmoothedWinRate:bucketValidation.smoothedWinRate,legacyPriorWeight:0,decisionSamples:decisionValidation.samples,decisionWins:decisionValidation.wins,decisionLosses:decisionValidation.losses,decisionDraws:decisionValidation.draws,decisionWinRate:decisionValidation.winRate,decisionSmoothedWinRate:decisionValidation.smoothedWinRate,decisionBrierScore:decisionValidation.brierScore,decisionHistoryWeak,economicBreakEven:economicBreakEven==null?null:Math.round(economicBreakEven*10)/10,confidenceSource:'model',probabilitySource:historyWeight>0?'model+empirical':'model',calibrationEpoch:CALIBRATION_EPOCH,fast30Samples:fast30Validation?.samples??null,fast30WinRate:fast30Validation?.winRate??null,fast30SmoothedWinRate:fast30Validation?.smoothedWinRate??null,fast30HistoryWeak};
       plan.modelVersion='future-v5.0';plan.basis='previsão futura V5.0 · motor estrutural + projeções independentes das estratégias por prazo · calibração histórica separada da confiança do modelo';plan.consensusSources=['motor futuro '+rawBias+' '+Math.round(rawLeadProbability)+'%','estratégias futuras '+strategySide+(strategyActive?' · '+strategyActive+' ativa(s)':''),'presente '+presentSide]
     }
+    const executionSeconds=String(Math.round(Number(this.settings.orderDurationMs||60000)/1000)),executionPlan=planner[executionSeconds],reaction=analysis?.metrics?.shortModel?.repeatedReaction;
+    if(reaction?.qualified===true&&reaction.expiresAt>now&&executionPlan?.outlookReady===true&&executionPlan.directionReady===true&&executionPlan.rawBias===reaction.side&&executionPlan.strategyFutureConflict!==true&&executionPlan.safety?.blocked!==true){
+      const call=reaction.side==='CALL';
+      executionPlan.reaction={...reaction};
+      executionPlan.scenario={kind:'reversal',continuationReady:false,reversalConfirmed:true,triggerBasis:'confirmed-repeated-rejection',invalidationBasis:'tested-region'};
+      if(call){executionPlan.callTrigger=reaction.trigger;executionPlan.callInvalidation=reaction.invalidation;executionPlan.callRule='CALL após rejeições do suporte e reação de preço confirmada'}
+      else{executionPlan.putTrigger=reaction.trigger;executionPlan.putInvalidation=reaction.invalidation;executionPlan.putRule='PUT após rejeições da resistência e reação de preço confirmada'}
+      executionPlan.entryTiming={maxDistance:reaction.maxDistance,sourceBarAt:reaction.touchAt};
+    }
+
   }
 
   _generalConsensus(analysis,strategyPanel){
@@ -304,8 +314,9 @@ export class DemoTradingRuntime{
     // It is documentation, not the type of this particular entry.
     const explicitKind=String(plan?.scenario?.kind||'');
     const kind=explicitKind||(/reação|tocar a região|rejeitar/i.test(rule)?'reversal':'continuation');
-    const targetAt=now+forecastHorizonSeconds*1000;
-    return{key:[contextKey,side,now].join('|'),contextKey,asset,forecastHorizonSeconds,durationMs,combo,side,kind,trigger,maxEntryDistance:Number(plan?.entryTiming?.maxDistance)||null,triggerBasis:plan?.scenario?.triggerBasis||null,invalidation:rawInvalidation==null?null:Number(rawInvalidation),createdAt:now,targetAt,entryWindowStartAt:now,entryWindowEndAt:targetAt,expiresAt:targetAt,armed:false,armedAt:0,confirmLevel:null,firedAt:0,invalidated:false,missed:false,oppositionCycles:0,basis:String(plan?.basis||''),rule};
+    const reaction=plan?.reaction?.qualified===true?plan.reaction:null;
+    const targetAt=reaction?Math.min(now+forecastHorizonSeconds*1000,Number(reaction.expiresAt)):now+forecastHorizonSeconds*1000;
+    return{key:[contextKey,side,now].join('|'),contextKey,asset,forecastHorizonSeconds,durationMs,combo,side,kind,reactionId:reaction?.id||null,reactionConfirmedAt:reaction?.confirmedAt||0,trigger,maxEntryDistance:Number(plan?.entryTiming?.maxDistance)||null,triggerBasis:plan?.scenario?.triggerBasis||null,invalidation:rawInvalidation==null?null:Number(rawInvalidation),createdAt:now,targetAt,entryWindowStartAt:now,entryWindowEndAt:targetAt,expiresAt:targetAt,armed:!!reaction,armedAt:reaction?.touchAt||0,confirmLevel:reaction?trigger:null,firedAt:0,invalidated:false,missed:false,oppositionCycles:0,basis:String(plan?.basis||''),rule};
   }
   _operationalTrigger(setup,snap,plan,now){
     const side=setup.side,price=Number(snap.price),reversal=setup.kind==='reversal';
@@ -351,22 +362,24 @@ export class DemoTradingRuntime{
     const scenarioConfidence=Number(scenarioPlan?.confidence||scenarioPlan?.modelConfidence||0),scenarioStrategyStrength=Number(scenarioPlan?.strategyFuture?.confidence||general?.strategies?.strength||0);
     const scenarioStrength=Math.round(scenarioStrategyStrength>0?scenarioConfidence*.72+scenarioStrategyStrength*.28:scenarioConfidence);
     const scenarioQualified=!!scenarioPlan&&scenarioPlan.outlookReady===true&&scenarioPlan.directionReady===true&&scenarioPlan.strategyFutureConflict!==true&&scenarioPlan.safety?.blocked!==true&&scenarioLead>=futureThreshold&&scenarioStrength>=signalPoints;
-    const plan=independentExpiry&&(!sameScenarioSide||!scenarioQualified)?executionPlan:scenarioPlan;
+    const plan=(executionPlan?.reaction?.qualified===true||(independentExpiry&&(!sameScenarioSide||!scenarioQualified)))?executionPlan:scenarioPlan;
     const independentEntry=plan===executionPlan&&plan!==scenarioPlan,entryDecisionHorizonSeconds=independentEntry?Math.round(durationMs/1000):forecastHorizonSeconds;
-    const operationalStrategy=combo+'|h'+forecastHorizonSeconds+(independentEntry?'|independent-expiry-v1':'');
+    const operationalStrategy=combo+'|h'+forecastHorizonSeconds+(executionPlan?.reaction?.qualified?'|repeated-rejection-v1':independentEntry?'|independent-expiry-v1':'');
     const expirationWarning=durationMs>forecastHorizonMs,timingCompatible=true,timingOffsetMs=0,entryWindowMs=forecastHorizonMs;
     const presentSide=['CALL','PUT'].includes(String(general?.rapid?.side||'').toUpperCase())?String(general.rapid.side).toUpperCase():'AGUARDAR',strategyFutureSide=['CALL','PUT'].includes(String(plan?.strategyFutureBias||general?.strategies?.side||'').toUpperCase())?String(plan?.strategyFutureBias||general.strategies.side).toUpperCase():'AGUARDAR',futureSide=plan&&['CALL','PUT'].includes(String(plan.rawBias||plan.bias||'').toUpperCase())?String(plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
     // Display smoothing must not delay a currently qualified entry or opposite side.
     const futureConfidence=Math.max(0,Number(plan?.confidence||plan?.modelConfidence||0)),futureAgreement=Math.max(0,Number(plan?.agreement||0)),strategyConflict=plan?.strategyFutureConflict===true,strategyProjection=plan?.strategyFuture||{},strategyActiveCount=Math.max(0,Number(strategyProjection.activeCount||0)),strategyEvidence=Math.max(0,Number(strategyProjection.evidence||0)),strategySupport=strategyFutureSide===futureSide&&strategyActiveCount>=1&&strategyEvidence>=25,strongSoloFuture=futureConfidence>=signalPoints,price=Number(snap?.price??metrics?.last),strategyStrength=Math.max(0,Number(plan?.strategyFuture?.confidence||general?.strategies?.strength||0)),decisionStrength=Math.round(strategyStrength>0?futureConfidence*.72+strategyStrength*.28:futureConfidence),futureCall=Number(plan?.callProbability??plan?.displayCallProbability??50),futurePut=Number(plan?.putProbability??plan?.displayPutProbability??50),futureLead=futureSide==='CALL'?futureCall:futureSide==='PUT'?futurePut:0,futureEdge=Math.abs(futureCall-futurePut),futureReady=!!plan&&plan.outlookReady===true&&plan.directionReady===true&&!strategyConflict&&futureSide!=='NEUTRO'&&futureLead>=futureThreshold&&decisionStrength>=signalPoints,candidateSide=futureReady?futureSide:'AGUARDAR',technicalEdge=Math.abs(Number(quality.technicalEdge||0));
     const liveDown=short?.ready===true&&Number(micro?.delta5)<0&&Number(micro?.delta15)<0&&(Number(micro?.p5)<=-1.15||Number(micro?.pulse)<=-7||short?.accelDown===true),liveUp=short?.ready===true&&Number(micro?.delta5)>0&&Number(micro?.delta15)>0&&(Number(micro?.p5)>=1.15||Number(micro?.pulse)>=7||short?.accelUp===true);const violentDown=short?.ready===true&&Number(micro?.delta5)<0&&Number(micro?.delta15)<0&&(Number(micro?.p5)<=-1.75||Number(micro?.pulse)<=-12||(short?.accelDown===true&&Number(micro?.p5)<=-1.35)),violentUp=short?.ready===true&&Number(micro?.delta5)>0&&Number(micro?.delta15)>0&&(Number(micro?.p5)>=1.75||Number(micro?.pulse)>=12||(short?.accelUp===true&&Number(micro?.p5)>=1.35));
-    const callTurnConfirmed=Number(micro?.delta5)>0&&(short?.turnUp===true||short?.reversalCallConfirmed===true||short?.failedBreakDown===true),putTurnConfirmed=Number(micro?.delta5)<0&&(short?.turnDown===true||short?.reversalPutConfirmed===true||short?.failedBreakUp===true);
+    const reactionPlan=executionPlan?.reaction?.qualified===true?executionPlan.reaction:null;
+    const callTurnConfirmed=(reactionPlan?.side==='CALL'&&reactionPlan.advancing===true)||(Number(micro?.delta5)>0&&(short?.turnUp===true||short?.reversalCallConfirmed===true||short?.failedBreakDown===true)),putTurnConfirmed=(reactionPlan?.side==='PUT'&&reactionPlan.advancing===true)||(Number(micro?.delta5)<0&&(short?.turnDown===true||short?.reversalPutConfirmed===true||short?.failedBreakUp===true));
     const validation=this._validationStats(this._validationKey('operational_v3',asset,durationMs,operationalStrategy)),historyBlocked=validation.samples>=validation.minSamples&&validation.smoothedWinRate<validation.minWinRate;
     const executionSide=String(executionPlan?.rawBias||executionPlan?.bias||'NEUTRO').toUpperCase(),executionConfidence=Number(executionPlan?.confidence??executionPlan?.modelConfidence??0),executionProbability=executionSide==='CALL'?Number(executionPlan?.callProbability??executionPlan?.displayCallProbability??50):executionSide==='PUT'?Number(executionPlan?.putProbability??executionPlan?.displayPutProbability??50):0;
     const executionSupported=!!executionPlan&&executionPlan.outlookReady===true&&executionPlan.directionReady===true&&executionPlan.strategyFutureConflict!==true&&executionPlan.safety?.blocked!==true&&executionSide===futureSide&&executionProbability>=futureThreshold&&executionConfidence>=signalPoints;
     const setupContextKey=[asset,forecastHorizonSeconds,durationMs,combo].join('|');let setup=this.operationalSetup;
     if(setup?.contextKey===setupContextKey&&(setup.invalidated||setup.missed||now>=Number(setup.targetAt||0))){
       const terminalState=setup.invalidated?'INVALIDADO':setup.firedAt?'JANELA ENCERRADA':'JANELA PERDIDA';
-      if((futureReady&&futureSide!==setup.side)||(now>=Number(setup.targetAt||0)&&!futureReady)){this.operationalSetup=null;setup=null}
+      const newReaction=!!reactionPlan&&futureReady&&executionSupported&&reactionPlan.id!==setup.reactionId&&Number(reactionPlan.confirmedAt)>Number(setup.invalidatedAt||setup.createdAt);
+      if(newReaction||(futureReady&&futureSide!==setup.side)||(now>=Number(setup.targetAt||0)&&!futureReady)){this.operationalSetup=null;setup=null}
       else return{side:setup.side,state:terminalState,ready:false,actionable:false,asset,forecastHorizonSeconds,durationMs,entryDecisionHorizonSeconds:setup.entryDecisionHorizonSeconds||forecastHorizonSeconds,trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowEndAt:setup.entryWindowEndAt,activeUntil:setup.activeUntil||null,strength:decisionStrength,decisionStrength,reason:setup.invalidationReason||'Esta janela terminou. Aguardando um novo cenário confirmado.'};
     }
     const currentMatches=!!setup&&setup.contextKey===setupContextKey&&now<Number(setup.targetAt||0)&&!setup.invalidated&&!setup.missed;
@@ -386,13 +399,17 @@ export class DemoTradingRuntime{
         if(((turnConfirmed&&structuralReaction)||confirmedContinuation)&&trigger.sustained&&!trigger.invalidated&&!impulseConflict){
           const previous=setup;
           candidate.transition={fromSide:previous.side,fromCreatedAt:previous.createdAt,confirmedAt:now,reason:confirmedContinuation?'Continuação do novo lado e gatilho confirmados independentemente.':'Reversão estrutural e gatilho do novo lado confirmados independentemente.'};
-          previous.invalidated=true;previous.invalidationReason='Cenário substituído por reversão confirmada; resultado anterior preservado.';
+          previous.invalidated=true;previous.invalidatedAt=now;previous.invalidationReason='Cenário substituído por reversão confirmada; resultado anterior preservado.';
           this.lastInvalidatedSetup={contextKey:previous.contextKey,side:previous.side,targetAt:previous.targetAt,invalidatedAt:now};
           setup=candidate;this.operationalSetup=candidate;this.oppositeOperationalSetup=null;
           this.audit.write({actorId:'engine',actorRole:'system',action:'scenario.reversal_confirmed',metadata:candidate.transition});
         }
       }
     }else this.oppositeOperationalSetup=null;
+    if(setup&&setup.contextKey===setupContextKey&&!setup.invalidated&&reactionPlan&&futureReady&&executionSupported&&!historyBlocked&&futureSide===setup.side&&reactionPlan.id!==setup.reactionId&&reactionPlan.confirmedAt>setup.createdAt){
+      const fresh=this._newOperationalSetup({contextKey:setupContextKey,asset,forecastHorizonSeconds,durationMs,combo,side:futureSide,plan:executionPlan,now});
+      if(fresh){fresh.transition={fromSide:setup.side,fromCreatedAt:setup.createdAt,confirmedAt:now,reason:'Nova rejeição e reação confirmadas; gatilho próprio e resultado anterior preservado.'};setup=fresh;this.operationalSetup=fresh}
+    }
     const setupContextMatches=!!setup&&setup.contextKey===setupContextKey&&now<Number(setup.targetAt||0)&&setup.invalidated!==true&&setup.missed!==true;
     const lockedSide=setupContextMatches&&['CALL','PUT'].includes(String(setup.side||'').toUpperCase())?String(setup.side).toUpperCase():null;
     const side=lockedSide||candidateSide,sideProbability=side==='CALL'?futureCall:side==='PUT'?futurePut:0;
@@ -409,7 +426,7 @@ export class DemoTradingRuntime{
       const oppositionQuoteTs=Number(snap?.quoteTs||snap?.quoteHistory?.at(-1)?.ts||now);
       if(setup.lastOppositionAt!==oppositionQuoteTs){setup.oppositionCycles=strongOpposition?Number(setup.oppositionCycles||0)+1:0;setup.lastOppositionAt=oppositionQuoteTs}
       if(setup.oppositionCycles>=2){
-        setup.invalidated=true;
+        setup.invalidated=true;setup.invalidatedAt=now;
         this.lastInvalidatedSetup={contextKey:setup.contextKey,side:lockedSide,targetAt:setup.targetAt,invalidatedAt:now};
         setup.invalidationReason=safetyInvalidation?'Previsão '+lockedSide+' cancelada por exaustão, barreira ou conflito estrutural.':'Previsão '+lockedSide+' invalidada por duas confirmações fortes do lado oposto.';
         return{...base,side:lockedSide,state:'INVALIDADO',trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:setup.invalidationReason}
@@ -424,7 +441,7 @@ export class DemoTradingRuntime{
     if(side==='AGUARDAR')return{...base,reason:'Aguardando direção futura definida.'};
     // Invalidation stays authoritative even while the order horizon is suspended.
     if(lockedSide&&setup.invalidation!=null&&Number.isFinite(Number(setup.invalidation))&&(lockedSide==='CALL'?price<=Number(setup.invalidation):price>=Number(setup.invalidation))){
-      setup.invalidated=true;setup.invalidationReason='Cenário invalidado pelo preço; entrada bloqueada.';
+      setup.invalidated=true;setup.invalidatedAt=now;setup.invalidationReason='Cenário invalidado pelo preço; entrada bloqueada.';
       return{...base,side,state:'INVALIDADO',trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:'Cenário invalidado pelo preço; entrada bloqueada.'}
     }
     if(setupContextMatches&&impulseConflict){setup.forceSuspendedAt=now;setup.triggerQuotes=[]}
@@ -460,23 +477,24 @@ export class DemoTradingRuntime{
       }
     }
     const {reversal,triggerMet,sustained:sustainedTrigger,invalidated,pointPassed}=this._operationalTrigger(setup,snap,triggerPlan,now);
-    if(invalidated){setup.invalidated=true;setup.invalidationReason='Cenário invalidado pelo preço; entrada bloqueada.';return{...base,side,state:'INVALIDADO',trigger:setup.trigger,invalidation:setup.invalidation,armed:setup.armed,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:setup.invalidationReason}}
+    if(invalidated){setup.invalidated=true;setup.invalidatedAt=now;setup.invalidationReason='Cenário invalidado pelo preço; entrada bloqueada.';return{...base,side,state:'INVALIDADO',trigger:setup.trigger,invalidation:setup.invalidation,armed:setup.armed,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:setup.invalidationReason}}
     if(pointPassed)return{...base,side,state:'AGUARDAR PONTO',trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,activeUntil:setup.activeUntil||null,reason:'Ponto de entrada ultrapassado; aguardando novo ponto confirmado, sem perseguir o movimento.'};
-    const entrySide=String(quality.entrySide||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.entrySide||'WAIT').toUpperCase()==='SELL'?'PUT':null,preSide=quality.preEntry?.active===true?(String(quality.preEntry.side||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.preEntry.side||'WAIT').toUpperCase()==='SELL'?'PUT':null):null,presentAligned=presentSide===side,reversalTransition=['CALL','PUT'].includes(presentSide)&&presentSide!==side,timingConfirmed=reversal?(sustainedTrigger&&(preSide===side||entrySide===side||presentAligned)&&(side==='CALL'?callTurnConfirmed:putTurnConfirmed)):sustainedTrigger,ready=triggerMet&&timingConfirmed&&sideSupported&&!impulseConflict;
+    const entrySide=String(quality.entrySide||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.entrySide||'WAIT').toUpperCase()==='SELL'?'PUT':null,preSide=quality.preEntry?.active===true?(String(quality.preEntry.side||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.preEntry.side||'WAIT').toUpperCase()==='SELL'?'PUT':null):null,presentAligned=presentSide===side,reversalTransition=['CALL','PUT'].includes(presentSide)&&presentSide!==side,timingConfirmed=reversal?(sustainedTrigger&&(reactionPlan?.side===side||preSide===side||entrySide===side||presentAligned)&&(side==='CALL'?callTurnConfirmed:putTurnConfirmed)):sustainedTrigger,ready=triggerMet&&timingConfirmed&&sideSupported&&!impulseConflict;
     const windowOpen=now<=Number(setup.entryWindowEndAt||0);
     if(ready&&windowOpen&&!setup.firedAt){setup.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;base.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;setup.firedAt=now;this._queueSignalCandidate({kind:'operational_v3',side:side==='CALL'?'BUY':'SELL',confidence:decisionStrength,probability:side==='CALL'?futureCall:futurePut,referencePrice:price,asset,durationMs,strategy:operationalStrategy,now,settleDurationMs:durationMs,expirationSource:'card-setting'})}
     const activeUntil=setup.firedAt?Math.min(Number(setup.entryWindowEndAt||0),Number(setup.firedAt)+3500):0,activeWindow=Number(setup.firedAt||0)>0&&now<=activeUntil,actionable=activeWindow&&ready&&!Number(setup.releasedAt||0);
     setup.activeUntil=activeUntil;
     if(Number(setup.firedAt||0)>0&&!activeWindow)return{...base,side,state:'ACOMPANHANDO',activeUntil,entryAt:setup.firedAt,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet,armed:setup.armed,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:'Oportunidade de entrada encerrada; cenário mantido até o prazo, sem liberar nova entrada.'};
     const waitingReason=triggerMet&&!sustainedTrigger?'Gatilho tocado; aguardando sustentação em novas cotações.':!sideSupported?'Previsão '+side+' mantida; revalidando o mesmo lado antes da entrada.':reversal&&!setup.armed?'Análise em andamento; aguardando tocar a região de reversão.':reversal&&setup.armed&&!triggerMet?'Região tocada; aguardando reação confirmada.':!triggerMet?'Análise em andamento; aguardando o preço atingir o gatilho.':reversalTransition?'Análise em andamento; aguardando confirmação curta da reversão.':presentAligned?'Análise em andamento; aguardando timing final.':'Análise em andamento; aguardando confirmação técnica.';
-    return{...base,side,state:activeWindow?'ENTRADA':'JANELA ABERTA',ready:activeWindow&&ready,actionable,activeUntil,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet,armed:setup.armed,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,entryAt:activeWindow?setup.firedAt:null,timeToEntryMs:0,windowRemainingMs,presentAligned,reversalTransition,confirmation:{kind:reversal?'reversal':'continuation',quotes:setup.triggerQuotes?.length||0,sustained:sustainedTrigger},reason:activeWindow&&ready?'Gatilho confirmado; cenário e prazo da operação estão alinhados.':waitingReason}
+    return{...base,side,state:activeWindow?'ENTRADA':'JANELA ABERTA',ready:activeWindow&&ready,actionable,activeUntil,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet,armed:setup.armed,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,entryAt:activeWindow?setup.firedAt:null,timeToEntryMs:0,windowRemainingMs,presentAligned,reversalTransition,confirmation:{kind:reversal?'reversal':'continuation',quotes:setup.triggerQuotes?.length||0,sustained:sustainedTrigger},reason:activeWindow&&ready?(reactionPlan?'Rejeições, reação e gatilho confirmados; entrada disponível neste ponto.':'Gatilho confirmado; cenário e prazo da operação estão alinhados.'):waitingReason}
   }
 
   _confirmPriceTrigger(setup,snap,side,level,now){
     const quoteTs=Number(snap.quoteTs||snap.quoteHistory?.at(-1)?.ts||now),price=Number(snap.price);
+    if(quoteTs>now){setup.triggerQuotes=[];return false}
     const holds=p=>side==='CALL'?p>=level:p<=level;
     if(!holds(price)){setup.triggerQuotes=[];return false}
-    const rows=(snap.quoteHistory||[]).filter(q=>Number(q.ts)>Number(setup.forceSuspendedAt||0)&&Number(q.ts)<=Math.min(now,quoteTs)&&Number.isFinite(Number(q.price))).slice(-4);
+    const rows=(snap.quoteHistory||[]).filter(q=>Number(q.ts)>Math.max(Number(setup.forceSuspendedAt||0),Number(setup.reactionConfirmedAt||0)-1)&&Number(q.ts)<=Math.min(now,quoteTs)&&Number.isFinite(Number(q.price))).slice(-4);
     rows.push({ts:quoteTs,price});
     let evidence=setup.triggerQuotes||[];
     for(const q of rows){const ts=Number(q.ts);if(ts<=Number(evidence.at(-1)?.ts||0))continue;if(!holds(Number(q.price)))evidence=[];else evidence.push({ts,price:Number(q.price)})}

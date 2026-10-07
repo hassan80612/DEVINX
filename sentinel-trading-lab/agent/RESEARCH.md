@@ -56,8 +56,15 @@ The user's 29.8s recording on13.4.5 showed a cancelled PUT changing color with f
 
 Tests cover the recorded confidence sequence, stable cancellation colors, strong independent opposite preview, immediate opposite entry permission, and outcome/deadline preservation. Runtime strategy and trigger logic are unchanged in this revision. This display correction does not demonstrate improved prediction quality.
 
-## 13.4.7 — independent execution horizon timing
+## 13.4.8 — independent execution horizon timing
 
 A confirmed structural opportunity at the selected order expiry can qualify without matching the longer scenario: continuation/breakout requires short structure, flow, room and aligned 5s/15s deltas; reversal retains its confirmed touch/reaction requirements. Existing execution direction, confidence, probability, safety, history and independent price confirmations still apply. The ordinary aligned path and fixed 3.5s entry burst remain intact. Independent opportunities use a separate validation strategy key, preserving previous outcomes. The card shows the forecast and metrics that authorized the actual entry and labels its horizon. Waiting explains the failing execution criterion.
 
 Chronological replay of 3,314 actual quote frames retained all ten baseline signals at the same timestamps (4 wins, 5 losses, 1 unavailable settlement). This sample contains no newly qualified independent-horizon entries and therefore establishes no accuracy or profitability improvement. The unrestricted expiry-only prototype removed a baseline winner and was rejected; broader early local-bar triggers remain research-only. Symmetric synthetic regressions cover first eligible CALL/PUT frames and reversal while the longer scenario stays opposite, including forbidden safety/weakening/missing-structure cases.
+
+
+## 13.4.8 — repeated price rejection entry timing
+
+An independent quote-derived support/resistance event requires separated tests, a meaningful intervening swing, its neckline break, two advancing real quotes, an intact invalidation and room before the opposite barrier. The price event can supply its own trigger to an already qualified expiration forecast, including a fresh opposite opportunity or a new event after cancellation. It never manufactures confidence, probability or forecast direction. Ordinary forecasts, strategy weights, safety and history thresholds remain unchanged. Events expire after ten seconds from confirmation; entry bursts remain fixed at 3.5 seconds and previous results are preserved. Repeated-rejection entries have a distinct validation key. Future, duplicate and pre-break quote evidence cannot authorize entry.
+
+Ten new symmetric tests verify first eligible release, reversal and cancellation recovery, original forecast quality requirements, price evidence, space, gaps and separate history blocking. A chronological replay of 3,314 recorded quotes retained the same ten signals (4 wins, 5 losses, 1 without nearby settlement quote); no newly qualified neckline event occurred in that sample. A second 389-quote sample had no qualified reaction or entry. These samples do not demonstrate an improvement in prediction accuracy. A broader approach promoting micro-rejections was rejected after it increased losing entries. No trades or account/risk changes were made.
