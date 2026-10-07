@@ -11,7 +11,7 @@ import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
-const VERSION='13.4.9';
+const VERSION='13.5.0';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -50,28 +50,31 @@ const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FIL
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
-let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastPersistAt=0,lastMarketSyncAt=0;
+let realtimeKick=null,lastRealtimeEvalAt=0,lastRealtimeQuoteAt=0,lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastPersistAt=0,lastMarketSyncAt=0;
 driver.setMarketUpdateHandler?.((provider,event={})=>{
   if(provider!==activeProvider)return;
   // Troca de ativo é uma barreira forte: sincronize o runtime imediatamente para
   // invalidar níveis/percentuais do ativo anterior antes de qualquer nova análise.
   if(event?.assetChanged===true){
     syncRuntimeMarket();
-    lastRealtimeEvalAt=0;
+    lastRealtimeEvalAt=0;lastRealtimeQuoteAt=0;
     runtime.requestImmediateEvaluation?.();
     if(runtime.stateName!=='running')return;
   }else if(runtime.stateName!=='running')return;
-  const now=Date.now();
-  if(now-lastRealtimeEvalAt<500)return;
-  lastRealtimeEvalAt=now;
+  const quoteAt=Number(event?.lastQuoteAt||0);
+  if(quoteAt>0&&quoteAt<=lastRealtimeQuoteAt)return;
+  if(quoteAt>0)lastRealtimeQuoteAt=quoteAt;
   runtime.requestImmediateEvaluation?.();
   if(realtimeKick)return;
+  const wait=Math.max(20,120-Math.max(0,Date.now()-lastRealtimeEvalAt));
   realtimeKick=setTimeout(()=>{
     realtimeKick=null;
-    // Evaluate the quote that caused this event, not the previous 700ms snapshot.
-    syncRuntimeMarket();lastMarketSyncAt=Date.now();
+    // Event-driven timing: evaluate the newest unique broker quote instead of
+    // dropping it behind the old 500 ms throttle.
+    syncRuntimeMarket();lastMarketSyncAt=Date.now();lastRealtimeEvalAt=Date.now();
+    runtime.requestImmediateEvaluation?.();
     loop().catch(()=>{});
-  },100);
+  },wait);
 });
 async function ensureLocalCockpitBroker(provider){
   assertLicensedAccess();
@@ -273,9 +276,14 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
   }
   if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,400).unref();
-function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
-async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
-  return{...base,marketJournal:marketJournal.status(),agentVersion:VERSION,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
+function compactLiveMarket(m=null){
+  if(!m||typeof m!=='object')return null;
+  const {candles,quoteHistory,assets,...rest}=m;
+  return{...rest,assets:Array.isArray(assets)?assets.slice(0,80):[],candleCount:Array.isArray(candles)?candles.length:0,quoteHistoryCount:Array.isArray(quoteHistory)?quoteHistory.length:0}
+}
+function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:compactLiveMarket(driver.liveStatus?.(k)||null)}]))}
+async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null,publicLive=compactLiveMarket(live);
+  return{...base,marketJournal:marketJournal.status(),agentVersion:VERSION,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...publicLive}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);const ALLOWED_ORIGINS=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
 function allowedOrigin(origin=''){
@@ -297,7 +305,7 @@ function ensureAccess(path,{local=false}={}){
   assertLicensedAccess();
 }
 async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
-  const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
+  const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:compactLiveMarket(driver.liveStatus?.(p.name)||null)},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{
       const info=await withTimeout(driver.call(p.name,'login',{body:{accountMode:'auto',userInitiated:payload.userInitiated===true}}),28000,'broker_open_timeout');
