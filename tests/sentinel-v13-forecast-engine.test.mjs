@@ -225,7 +225,7 @@ test('30s forecast plus 30s expiration opens immediately and only closes the con
   assert.equal(now.actionable,true);
   const late=rt._operationalSignalState(analysis,snap,t+6000);
   assert.equal(late.actionable,false);
-  assert.equal(late.state,'JANELA ENCERRADA');
+  assert.equal(late.state,'ACOMPANHANDO');
 });
 
 test('a future CALL stays blocked while live force is burning strongly down',()=>{
@@ -311,7 +311,7 @@ test('future overlay follows engine-owned windows and removes independent browse
   assert.ok(!ui.includes('targetAt:inheritedTargetAt||decisionNow+decisionSeconds*1000'));
 });
 
-test('locked forecast side does not chatter and a true reversal keeps the original target',()=>{
+test('locked forecast side does not chatter and a confirmed opposite scenario gets its own full horizon',()=>{
   const rt=new DemoTradingRuntime({seed:49,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
   const t=Date.now(),snap={price:1.10};
@@ -333,7 +333,7 @@ test('locked forecast side does not chatter and a true reversal keeps the origin
   const newPut=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2500);
   assert.equal(newPut.side,'PUT');
   assert.notEqual(newPut.state,'AGUARDAR JANELA');
-  assert.equal(newPut.targetAt,firstTarget);
+  assert.equal(newPut.targetAt,t+2500+60000);
 
 });
 
