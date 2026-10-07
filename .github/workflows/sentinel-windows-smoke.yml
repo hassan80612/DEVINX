@@ -2,7 +2,7 @@ name: Sentinel Hybrid Smoke V13.4
 
 on:
   push:
-    branches: [sentinel-v12-clean-restore-20261006, main]
+    branches: [sentinel-colored-wait-1342-1007]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -90,8 +90,8 @@ jobs:
           if(installer.includes("$_ .Name -eq 'chrome.exe'".replace('$_ ','$_'))||installer.includes("$_ .Name -eq 'msedge.exe'".replace('$_ ','$_')))throw new Error('installer_still_kills_broker_browser');
           if(!worker.includes("runtime.setMode(payload.mode"))throw new Error('mode_route_missing');
           if(worker.includes("async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain"))throw new Error('status_poll_still_runs_heavy_maintain');
-          if(!worker.includes("const VERSION='13.4.1'"))throw new Error('agent_version_not_13_3');
-          console.log('V13.4.1 STARTUP + PAID ACCESS GATE: PASS');
+          if(!worker.includes("const VERSION='13.4.2'"))throw new Error('agent_version_not_13_3');
+          console.log('V13.4.2 STARTUP + PAID ACCESS GATE: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -180,7 +180,7 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.1'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.2'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
@@ -198,7 +198,7 @@ jobs:
       - name: Upload scenario screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: sentinel-scenario-13.4.1
+          name: sentinel-scenario-13.4.2
           path: sentinel-test-output/*.png
 
       - name: Cleanup
