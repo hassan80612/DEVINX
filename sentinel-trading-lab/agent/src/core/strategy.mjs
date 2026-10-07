@@ -1,5 +1,6 @@
 import {ema,rsi,atr,bollinger,momentum,supportResistance,macd,stochastic,marketStructure,trendLines,fibonacci,candlePatterns,breakoutRetest,aggregateCandles,aggregateTimedCandles,supportResistanceZones,trendLineQuality,swingFibonacci,volatilityState} from './indicators.mjs';
 import {SignalSide} from './types.mjs';
+import {repeatedReaction} from './repeated-reaction.mjs';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const near=(a,b,t)=>a!=null&&b!=null&&Math.abs(a-b)<=Math.max(t,Math.abs(b)*.00015);
@@ -678,6 +679,11 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    }
  };
  const planner=Object.fromEntries(plannerHorizons.map(seconds=>[String(seconds),forecastFor(seconds)]));
+ const executionSeconds=Math.round(Number(durationMs||30000)/1000),executionPlan=planner[String(executionSeconds)];
+ // Price events are measured separately. Forecast confidence and probabilities
+ // remain untouched; the runtime may adopt this point only after qualification.
+ short.repeatedReaction=executionSeconds<=60&&executionPlan?repeatedReaction({quoteHistory,now,expected2:micro.expected2,expectedMove:executionPlan.expectedMove,oppositeSupport:nearestLower,oppositeResistance:nearestUpper}):null;
+
  const selectedSeconds=String(Math.max(30,Math.round(horizon/1000))),selectedForecast=planner[selectedSeconds]||planner['60']||planner['30'];
  const forecast30Plan=planner['30'];
  const projectedBuy=Number(selectedForecast?.callProbability||50),projectedSell=Number(selectedForecast?.putProbability||50);
