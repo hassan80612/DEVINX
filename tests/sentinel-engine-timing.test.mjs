@@ -5,6 +5,13 @@ import {scenarioViewFromRuntime} from '../sentinel-trading-lab/agent/worker/scen
 
 const t=Date.UTC(2026,9,7,12);
 function runtime(){const r=new DemoTradingRuntime();Object.assign(r.settings,{asset:'TEST',forecastHorizonSeconds:60,orderDurationMs:30000,futureDisplayThreshold:50});r.settings.risk.minConfidence=70;return r}
+test('runtime status carries broker feed and account metadata to the overlay',async()=>{
+  const r=runtime();r.setExternalMarket({provider:'iq_option',symbol:'TEST',uiSymbol:'TEST',validatedSymbol:'TEST',assetValidated:true,feedValidated:true,brokerMode:'demo',executionReady:false,lastQuoteAt:t,lastCandleAt:t-10,quoteTs:t,quote:100,candles:[],expirationDurationMs:30000});
+  const view=await r.status();
+  assert.equal(view.liveBroker.lastQuoteAt,t);assert.equal(view.liveBroker.feedValidated,true);
+  assert.equal(view.liveBroker.assetValidated,true);assert.equal(view.liveBroker.mode,'demo');
+  assert.equal(view.liveBroker.expirationDurationMs,30000);assert.equal(view.autopilot.eligible,false);
+});
 function analysis(side='CALL',trigger=null){
   const call=side==='CALL',p={asset:'TEST',bias:side,rawBias:side,displayBias:side,outlookReady:true,directionReady:true,confidence:80,modelConfidence:80,agreement:80,callProbability:call?80:20,putProbability:call?20:80,strategyFutureBias:side,strategyFuture:{activeCount:1,evidence:70,confidence:80},callTrigger:trigger??101,putTrigger:trigger??99,callInvalidation:90,putInvalidation:110,callRule:'romper',putRule:'romper'};
   return{quality:{entrySide:call?'BUY':'SELL'},generalConsensus:{rapid:{side},strategies:{side,strength:80}},metrics:{last:100,micro:{},shortModel:{}},entryPlanner:{horizons:{'30':{...p},'60':{...p}}}};
