@@ -8,6 +8,7 @@ on:
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
       - '.github/workflows/sentinel-windows-smoke.yml'
+      - 'scripts/sentinel-overlay-smoke.mjs'
   workflow_dispatch:
 
 permissions:
