@@ -149,3 +149,16 @@ test('V13.3 worker fails over the overlay when the active broker window closes',
   assert.ok(worker.includes("if(brokers[activeProvider])brokers[activeProvider].connected=false"));
   assert.ok(worker.includes("if(!activeProvider&&peek?.open){activeProvider=name;syncRuntimeMarket()}"));
 });
+
+test('V13.5 keeps REAL manual entry alive and removes hot-loop UI payloads',async()=>{
+  const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
+  const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
+  const driver=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+  assert.ok(runtime.includes("if(result.action==='DEMO_ORDER'&&this.operationalSetup?.firedAt)this.operationalSetup.releasedAt=now"));
+  assert.ok(!runtime.includes("['DEMO_ORDER','PREPARE_REAL'].includes"));
+  assert.ok(worker.includes('function compactLiveMarket'));
+  assert.ok(worker.includes('lastRealtimeQuoteAt'));
+  assert.ok(worker.includes('Math.max(20,120-'));
+  assert.ok(!driver.includes('window.__sentinelOverlayClock=setInterval'));
+  assert.ok(driver.includes("backdropFilter:'none'"));
+});
