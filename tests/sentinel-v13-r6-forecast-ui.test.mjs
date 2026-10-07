@@ -45,6 +45,10 @@ test('Future overlay calculates an automatic entry window from forecast horizon 
   assert.ok(ui.includes('JANELA AUTOMÁTICA'));
   assert.ok(ui.includes('FORÇA CONTRÁRIA'));
   assert.ok(ui.includes('const forecastLabel=futureDecision?'));
+  assert.ok(ui.includes('operationalMatchesForecast'));
+  assert.ok(ui.includes('operationalMismatch'));
+  assert.ok(ui.includes("operationalMismatch?'REVALIDANDO LADO'"));
+  assert.ok(ui.includes("operationalHeroSide==='CALL'?callTone:putTone"));
   assert.ok(!ui.includes("['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO','AJUSTAR PRAZO']"));
   assert.ok(ui.includes('Entrada sincronizada com expiração de '));
   assert.ok(ui.includes('data-sentinel-plan-horizon'));
