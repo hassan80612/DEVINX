@@ -14,9 +14,9 @@ test('V13 total cards expose independent visual thresholds and a non-execution a
   assert.match(driver,/CONF MÉDIA/);
   assert.match(driver,/PRÓXIMO PASSO/);
   assert.match(driver,/sentinel-future-decision-v13/);
-  assert.match(driver,/JANELA AUTOMÁTICA/);
+  assert.match(driver,/JANELA ABERTA/);
   assert.match(driver,/AGUARDAR FORÇA/);
-  assert.match(driver,/operationalHeroSide\+' AGORA'/);
+  assert.match(driver,/operationalHeroSide\+' — ENTRAR AGORA'/);
   assert.doesNotMatch(driver,/PREVISÃO .* PARA ENTRADA AGORA/);
   assert.doesNotMatch(driver,/DECISÃO TRAVADA/);
 });

@@ -332,7 +332,7 @@ test('Quote history appends in place instead of copying a large array on every t
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes('function appendQuoteSample(st,ts,price)'));
   assert.ok(ui.includes('st.quoteHistory.push({ts:t,price:p})'));
-  assert.ok(ui.includes('if(st.quoteHistory.length>960)st.quoteHistory.splice(0,st.quoteHistory.length-900)'));
+  assert.ok(ui.includes('if(st.quoteHistory.length>7200)st.quoteHistory.splice(0,st.quoteHistory.length-6800)'));
   assert.ok(!ui.includes("slice(-1800)"));
 });
 
@@ -341,8 +341,8 @@ test('Calibration epoch isolates broken historical feed results from the new eng
   assert.ok(runtime.includes("const CALIBRATION_EPOCH='feed-v2-future-strategies-v1'"));
   assert.ok(runtime.includes("['micro-v5',CALIBRATION_EPOCH,kind"));
   assert.ok(runtime.includes("filter(x=>String(x?.key||'').startsWith(prefix))"));
-  assert.ok(runtime.includes("confidenceSource:'model'"));
-  assert.ok(runtime.includes('historyWeight=Math.min(.30'));
+  assert.ok(runtime.includes("confidenceSource:historyWeight>0?'model+empirical':'model'"));
+  assert.ok(runtime.includes('historyWeight=Math.min(.65'));
 });
 
 test('Strategy cards use their own future horizon forecasts instead of current raw score', async () => {

@@ -34,10 +34,10 @@ function liveMicro(quoteHistory=[],last,vol,baseSeconds,now=Date.now()){
  const trend=pulse>=4?'UP':pulse<=-4?'DOWN':'FLAT';
  return{ready,points:points.length,spanMs:span,last:current,delta2:d2,delta5:d5,delta15:d15,delta30:d30,delta60:d60,p2,p5,p15,p30,expected2,expected5,expected15,expected30,lead,fastRate,prior3Rate,pulse,trend}
 }
-function quoteBars(quoteHistory=[],bucketMs=5000,now=Date.now()){
+function quoteBars(quoteHistory=[],bucketMs=5000,now=Date.now(),maxAgeMs=5*60*1000){
  const pts=(Array.isArray(quoteHistory)?quoteHistory:[])
    .map(x=>({ts:Number(x?.ts),price:Number(x?.price)}))
-   .filter(x=>Number.isFinite(x.ts)&&Number.isFinite(x.price)&&x.price>0&&now-x.ts<=5*60*1000)
+   .filter(x=>Number.isFinite(x.ts)&&Number.isFinite(x.price)&&x.price>0&&now-x.ts<=Math.max(bucketMs*2,Number(maxAgeMs||5*60*1000)))
    .sort((a,b)=>a.ts-b.ts);
  const out=[];let cur=null;
  for(const p of pts){
@@ -50,7 +50,7 @@ function quoteBars(quoteHistory=[],bucketMs=5000,now=Date.now()){
    }
  }
  if(cur)out.push(cur);
- return out.slice(-72)
+ return out.slice(-240)
 }
 function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence=74,now=Date.now()}){
  const bars=quoteBars(quoteHistory,5000,now);
@@ -192,19 +192,49 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  }
 }
 
-export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,freshnessMs=5000,quoteTs=Date.now(),now=Date.now()}){
+export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,forecastHorizonSeconds=null,freshnessMs=5000,quoteTs=Date.now(),now=Date.now()}){
  if(!Array.isArray(candles)||candles.length<35)return{side:SignalSide.WAIT,confidence:0,reasons:['dados insuficientes: mínimo 35 candles'],metrics:{sourceCandles:candles?.length||0}};
  if(now-quoteTs>freshnessMs)return{side:SignalSide.WAIT,confidence:0,reasons:['feed atrasado'],metrics:{sourceCandles:candles.length}};
 
  const closes=candles.map(c=>Number(c.close)),prior=candles.slice(0,-1),candleLast=closes.at(-1),vol=atr(candles,14)||Math.abs(candleLast)*.001;
  const baseSeconds=candleSeconds(candles),micro=liveMicro(quoteHistory,candleLast,vol,baseSeconds,now),last=Number(micro.last||candleLast);
- const higher=aggregateCandles(candles,5),higherCloses=higher.map(c=>Number(c.close));
+ const mergeTf=(a=[],b=[])=>{
+   const map=new Map();
+   for(const row of [...a,...b]){
+     if(!row||![row.open,row.high,row.low,row.close].every(v=>Number.isFinite(Number(v))))continue;
+     const key=String(Number(row.from??row.ts??row.to??map.size));
+     map.set(key,{...row,open:Number(row.open),high:Number(row.high),low:Number(row.low),close:Number(row.close)})
+   }
+   return [...map.values()].sort((x,y)=>Number(x.from||x.ts||0)-Number(y.from||y.ts||0)).slice(-240)
+ };
+ const tfRows=(seconds)=>{
+   const factor=baseSeconds<=seconds&&seconds%baseSeconds===0?Math.max(1,Math.round(seconds/baseSeconds)):0;
+   const historical=factor===1?[...candles]:factor>1?aggregateCandles(candles,factor):[];
+   const live=quoteBars(quoteHistory,seconds*1000,now,35*60*1000);
+   return mergeTf(historical,live)
+ };
+ const summarizeTf=(rows,seconds)=>{
+   if(!Array.isArray(rows)||rows.length<5)return{seconds,candles:rows?.length||0,ready:false,signal:0,direction:'NEUTRO'};
+   const xs=rows.map(c=>Number(c.close)).filter(Number.isFinite);
+   const fast=ema(xs,Math.min(9,Math.max(3,Math.floor(xs.length/2)))),slow=ema(xs,Math.min(21,Math.max(5,xs.length-1)));
+   const structure=marketStructure(rows),tfRsi=rsi(xs,Math.min(14,Math.max(5,xs.length-1)));
+   let signal=0;
+   if(fast!=null&&slow!=null)signal+=fast>slow?.34:fast<slow?-.34:0;
+   signal+=structure?.bias==='bullish'?.34:structure?.bias==='bearish'?-.34:0;
+   if(tfRsi!=null)signal+=tfRsi>=56?.16:tfRsi<=44?-.16:0;
+   const tail=rows.slice(-Math.min(6,rows.length)),delta=tail.length>=2?Number(tail.at(-1).close)-Number(tail[0].close):0;
+   if(delta>0)signal+=.16;else if(delta<0)signal-=.16;
+   signal=clamp(signal,-1,1);
+   return{seconds,candles:rows.length,ready:rows.length>=5,signal,direction:signal>=.10?'CALL':signal<=-.10?'PUT':'NEUTRO',fast,slow,rsi:tfRsi,structure:structure?.bias||'neutral'}
+ };
+ const multiTF=Object.fromEntries([60,120,300,600,900].map(seconds=>[String(seconds),summarizeTf(tfRows(seconds),seconds)]));
+ const higherRows=tfRows(300),higher=higherRows.length>=5?higherRows:aggregateCandles(candles,5),higherCloses=higher.map(c=>Number(c.close));
  const m={
    fast:ema(closes,9),slow:ema(closes,21),ema50:ema(closes,50),ema200:ema(closes,200),rsi:rsi(closes,14),atr:vol,bb:bollinger(closes,20,2),momentum:momentum(closes,10),
    sr:supportResistance(prior,50),srZones:supportResistanceZones(prior,90),last,macd:macd(closes),stoch:stochastic(candles,14),structure:marketStructure(candles),
    trendlines:trendLines(candles),lineQuality:trendLineQuality(prior),fib:fibonacci(candles,80),swingFib:swingFibonacci(prior,120),volatility:volatilityState(candles),
    patterns:candlePatterns(candles),retest:breakoutRetest(candles,35),
-   higherTF:{fast:ema(higherCloses,9),slow:ema(higherCloses,21),structure:marketStructure(higher),candles:higher.length},sourceCandles:candles.length,baseCandleSeconds:baseSeconds,micro
+   higherTF:{fast:ema(higherCloses,9),slow:ema(higherCloses,21),structure:marketStructure(higher),candles:higher.length},multiTF,sourceCandles:candles.length,baseCandleSeconds:baseSeconds,micro
  };
  const trendUp=m.fast!=null&&m.slow!=null&&m.fast>m.slow,trendDn=m.fast!=null&&m.slow!=null&&m.fast<m.slow;
  const higherUp=m.higherTF.fast!=null&&m.higherTF.slow!=null&&m.higherTF.fast>m.higherTF.slow,higherDn=m.higherTF.fast!=null&&m.higherTF.slow!=null&&m.higherTF.fast<m.higherTF.slow;
@@ -428,6 +458,11 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
  const reversalSignal=clamp(reversalSignalBase+(short.turnUp?0.28:0)-(short.turnDown?0.28:0)+(short.failedBreakDown||failedSupport?0.24:0)-(short.failedBreakUp||failedResistance?0.24:0)+((short.putOverextended&&(short.turnUp||short.reversalCallCandidate))?0.16:0)-((short.callOverextended&&(short.turnDown||short.reversalPutCandidate))?0.16:0),-1,1);
  const reversalConfirmed=!!(short.reversalCallCandidate||short.reversalPutCandidate||short.turnUp||short.turnDown||short.failedBreakDown||short.failedBreakUp||failedSupport||failedResistance);
  const forecastReversalSignal=clamp(reversalSignal*(reversalConfirmed?1:.35),-1,1);
+ const reversalCallVotes=[short.reversalCallCandidate===true,short.turnUp===true,short.failedBreakDown===true,failedSupport===true,srNearSupport&&supportStrength>=38,bullishReject===true,short.putOverextended===true,micro.ready&&Number(micro.p5)>0&&Number(micro.p15)<0].filter(Boolean).length;
+ const reversalPutVotes=[short.reversalPutCandidate===true,short.turnDown===true,short.failedBreakUp===true,failedResistance===true,srNearResistance&&resistanceStrength>=38,bearishReject===true,short.callOverextended===true,micro.ready&&Number(micro.p5)<0&&Number(micro.p15)>0].filter(Boolean).length;
+ const reversalAuthorityCall=micro.ready&&Number(short.reversalCallScore||0)>=62&&reversalCallVotes>=3&&(short.turnUp||short.failedBreakDown||failedSupport||bullishReject);
+ const reversalAuthorityPut=micro.ready&&Number(short.reversalPutScore||0)>=62&&reversalPutVotes>=3&&(short.turnDown||short.failedBreakUp||failedResistance||bearishReject);
+ const reversalAuthoritySide=reversalAuthorityCall&&!reversalAuthorityPut?'CALL':reversalAuthorityPut&&!reversalAuthorityCall?'PUT':'NEUTRO';
  const shortSlopeRaw=closes.length>=6?(last-Number(closes.at(-6)))/5:0,mediumSlopeRaw=closes.length>=21?(last-Number(closes.at(-21)))/20:shortSlopeRaw;
  const shortSlopeSignal=norm(shortSlopeRaw,safeVol*.18),mediumSlopeSignal=norm(mediumSlopeRaw,safeVol*.10);
  const candleAccelerationSignal=clamp((shortSlopeSignal-mediumSlopeSignal)*.72,-1,1);
@@ -462,13 +497,13 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    :clamp(trendSignal*.25+momentumSignal*.20,-.35,.35);
 
  const weightsFor=seconds=>seconds<=30
-   ?{micro:.15,reversal:.12,momentum:.09,trend:.08,history:.16,location:.09,setup:.07,strategy:.07,persistence:.06,acceleration:.07,regime:.04}
-   :seconds<=60?{micro:.12,reversal:.10,momentum:.10,trend:.10,history:.18,location:.11,setup:.07,strategy:.07,persistence:.06,acceleration:.06,regime:.03}
-   :seconds<=120?{micro:.09,reversal:.08,momentum:.12,trend:.13,history:.21,location:.13,setup:.06,strategy:.06,persistence:.06,acceleration:.02,regime:.04}
-   :seconds<=300?{micro:.04,reversal:.05,momentum:.11,trend:.17,history:.22,location:.16,setup:.05,strategy:.05,persistence:.06,acceleration:.01,regime:.08}
-   :seconds<=600?{micro:.025,reversal:.04,momentum:.10,trend:.19,history:.23,location:.17,setup:.04,strategy:.05,persistence:.06,acceleration:.005,regime:.09}
-   :seconds<=900?{micro:.015,reversal:.03,momentum:.09,trend:.21,history:.24,location:.18,setup:.035,strategy:.045,persistence:.065,acceleration:0,regime:.09}
-   :{micro:0,reversal:.02,momentum:.08,trend:.24,history:.25,location:.18,setup:.03,strategy:.04,persistence:.07,acceleration:0,regime:.09};
+   ?{micro:.16,reversal:.17,momentum:.08,trend:.05,history:.09,location:.10,setup:.07,strategy:.06,persistence:.05,acceleration:.07,regime:.03,mtf:.07}
+   :seconds<=60?{micro:.14,reversal:.15,momentum:.09,trend:.07,history:.11,location:.11,setup:.07,strategy:.06,persistence:.05,acceleration:.06,regime:.03,mtf:.06}
+   :seconds<=120?{micro:.10,reversal:.12,momentum:.10,trend:.10,history:.14,location:.13,setup:.06,strategy:.05,persistence:.05,acceleration:.03,regime:.04,mtf:.08}
+   :seconds<=300?{micro:.04,reversal:.07,momentum:.10,trend:.14,history:.16,location:.16,setup:.05,strategy:.05,persistence:.05,acceleration:.01,regime:.08,mtf:.09}
+   :seconds<=600?{micro:.025,reversal:.05,momentum:.09,trend:.17,history:.18,location:.17,setup:.04,strategy:.05,persistence:.055,acceleration:.005,regime:.09,mtf:.075}
+   :seconds<=900?{micro:.015,reversal:.04,momentum:.08,trend:.18,history:.19,location:.18,setup:.035,strategy:.045,persistence:.06,acceleration:0,regime:.09,mtf:.085}
+   :{micro:0,reversal:.03,momentum:.07,trend:.20,history:.20,location:.18,setup:.03,strategy:.04,persistence:.06,acceleration:0,regime:.09,mtf:.10};
 
  const featureRegimeMultiplier=(name)=>{
    if(regimeLabel==='trend'&&['trend','persistence','regime'].includes(name))return 1.18;
@@ -479,6 +514,18 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    return 1
  };
 
+ const multiTfFor=(seconds)=>{
+   const weights=seconds<=60?{'60':.34,'120':.28,'300':.20,'600':.11,'900':.07}
+     :seconds<=120?{'60':.20,'120':.34,'300':.24,'600':.13,'900':.09}
+     :seconds<=300?{'60':.10,'120':.15,'300':.34,'600':.25,'900':.16}
+     :{'60':.05,'120':.10,'300':.24,'600':.29,'900':.32};
+   const rows=Object.entries(weights).map(([k,w])=>({...(multiTF[k]||{}),weight:w})).filter(x=>x.ready&&Number.isFinite(Number(x.signal)));
+   const total=rows.reduce((a,x)=>a+x.weight,0);
+   const signal=total>0?clamp(rows.reduce((a,x)=>a+Number(x.signal)*x.weight,0)/total,-1,1):0;
+   const directional=rows.filter(x=>Math.abs(Number(x.signal))>=.10),aligned=directional.filter(x=>signal===0||Math.sign(Number(x.signal))===Math.sign(signal)).length;
+   const agreement=directional.length?aligned/directional.length:.5;
+   return{ready:rows.length>=3,signal,agreement,rows:rows.map(x=>({seconds:x.seconds,direction:x.direction,signal:x.signal,candles:x.candles}))}
+ };
  const forecastFor=seconds=>{
    const scale=Math.sqrt(Math.max(.5,seconds/60)),expectedMove=Math.max(safeVol*.35,safeVol*scale),triggerBuffer=Math.max(safeVol*.08,expectedMove*.24);
    const barsBack=Math.max(2,Math.ceil(seconds/Math.max(5,baseSeconds)));
@@ -495,6 +542,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      const bbPos=clamp(((last-bbMid)/(Number(m.bb.upper)-Number(m.bb.lower)))*2,-1,1);
      locationSignal=clamp(locationSignal-bbPos*.12,-1,1)
    }
+   const mtf=multiTfFor(seconds);
    const w=weightsFor(seconds),declaredWeight=Object.values(w).reduce((a,b)=>a+Number(b||0),0)||1;
    const features=[
      {name:'microfluxo',key:'micro',value:microSignal,weight:w.micro,available:w.micro>0&&micro.ready},
@@ -507,7 +555,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      {name:'estratégia atual',key:'strategy',value:rawStrategySignal,weight:w.strategy,available:true},
      {name:'persistência',key:'persistence',value:persistenceForecastSignal,weight:w.persistence,available:recentDeltas.length>=5},
      {name:'aceleração',key:'acceleration',value:accelerationSignal,weight:w.acceleration,available:w.acceleration>0&&closes.length>=21},
-     {name:'regime '+regimeLabel,key:'regime',value:regimeSignal,weight:w.regime,available:regimeConfidence>=35}
+     {name:'regime '+regimeLabel,key:'regime',value:regimeSignal,weight:w.regime,available:regimeConfidence>=35},
+     {name:'multi-timeframe 1m/2m/5m/10m/15m',key:'mtf',value:mtf.signal,weight:w.mtf,available:w.mtf>0&&mtf.ready}
    ].map(x=>({...x,weight:x.weight*featureRegimeMultiplier(x.key)}));
    const available=features.filter(x=>x.available&&x.weight>0),weightTotal=available.reduce((a,x)=>a+x.weight,0)||1;
    let signal=available.reduce((a,x)=>a+x.value*x.weight,0)/weightTotal;
@@ -524,6 +573,11 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    if(seconds<=60&&trendSignal<-.20&&microSignal>.25)signal+=Math.min(.28,.05+Math.abs(microSignal)*.16+Math.max(0,accelerationSignal)*.10);
    if(signal>0&&accelerationSignal<-.35)signal-=Math.min(.16,Math.abs(accelerationSignal)*.18);
    if(signal<0&&accelerationSignal>.35)signal+=Math.min(.16,Math.abs(accelerationSignal)*.18);
+   if(seconds<=120&&reversalAuthoritySide!=='NEUTRO'){
+     const score=reversalAuthoritySide==='CALL'?Number(short.reversalCallScore||0):Number(short.reversalPutScore||0);
+     const magnitude=clamp(.38+Math.max(0,score-62)/95,.38,.72),authoritySignal=reversalAuthoritySide==='CALL'?magnitude:-magnitude;
+     signal=clamp(signal*.38+authoritySignal*.62,-1,1)
+   }
    const historyConflict=historyDirection!==0&&Math.sign(signal)!==0&&Math.sign(signal)!==historyDirection&&Math.abs(historySignal)>=.32;
    if(historyConflict&&!reversalConfirmed)signal*=seconds<=60?.62:seconds<=300?.74:.84;
    if(regimeLabel==='chaotic')signal*=.72;
@@ -555,6 +609,13 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const evidenceFamilyCount=familyRows.length;
    const correlationPenalty=Math.round(clamp(Math.max(0,agreement-familyAgreement)*10+Math.max(0,3-evidenceFamilyCount)*1.5,0,6));
    const quality=clamp(weightTotal/declaredWeight,0,1);
+   const signalSide=signal>0?'CALL':signal<0?'PUT':'NEUTRO';
+   const strongBarrierPut=signalSide==='PUT'&&srNearSupport&&supportStrength>=38&&!srBreakDown&&!lineBreakDown&&reversalAuthoritySide!=='PUT';
+   const strongBarrierCall=signalSide==='CALL'&&srNearResistance&&resistanceStrength>=38&&!srBreakUp&&!lineBreakUp&&reversalAuthoritySide!=='CALL';
+   const chaseBlocked=seconds<=60&&((signalSide==='CALL'&&short.callOverextended&&!srBreakUp&&!lineBreakUp)||(signalSide==='PUT'&&short.putOverextended&&!srBreakDown&&!lineBreakDown));
+   const barrierBlocked=seconds<=120&&(strongBarrierCall||strongBarrierPut);
+   const mtfConflict=seconds<=120&&mtf.ready&&Math.abs(Number(mtf.signal||0))>=.18&&Math.sign(Number(mtf.signal||0))!==0&&Math.sign(Number(mtf.signal||0))!==Math.sign(signal)&&Number(mtf.agreement||0)>=.55&&reversalAuthoritySide==='NEUTRO';
+   const safetyBlocked=chaseBlocked||barrierBlocked||mtfConflict;
    const rawCallProbability=clamp(Math.round(50+Math.tanh(signal*1.28)*43),5,95),rawPutProbability=100-rawCallProbability;
    const regimeBonus=Math.max(0,(regimeConfidence-50)*.08);
    const baseModelConfidence=Math.round(48+Math.abs(signal)*30+Math.max(0,agreement-.5)*22+Math.max(0,quality-.68)*12+regimeBonus-conflict*10);
@@ -564,7 +625,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const leadAligned=seconds<=60&&Math.abs(microLeadSignal)>=.42&&Math.sign(microLeadSignal)===Math.sign(signal)&&(historyDirection===0||Math.sign(signal)===historyDirection||reversalConfirmed);
    const readyConfidence=leadAligned?minForecastConfidence-2:minForecastConfidence,readyAgreement=leadAligned?minAgreement-.04:minAgreement,readySignal=leadAligned?minSignal*.78:minSignal;
    const outlookReady=enoughHistory&&enoughFlow&&quality>=.66&&historyLegs.length>=2;
-   const directionReady=outlookReady&&modelConfidence>=readyConfidence&&Math.abs(signal)>=readySignal&&agreement>=readyAgreement&&regimeLabel!=='chaotic';
+   const directionReady=outlookReady&&modelConfidence>=readyConfidence&&Math.abs(signal)>=readySignal&&agreement>=readyAgreement&&regimeLabel!=='chaotic'&&!safetyBlocked;
    const bias=outlookReady&&Math.abs(signal)>=.025?(signal>0?'CALL':'PUT'):'NEUTRO';
    const projectedMove=expectedMove*signal*(.55+modelConfidence/240),projectedPrice=last+projectedMove;
    let callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule;
@@ -586,9 +647,11 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      projectedMove,projectedPrice,signal,rawCallProbability,rawPutProbability,callProbability:rawCallProbability,putProbability:rawPutProbability,
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
-     regime:m.regime,evidenceFamilies,
+     regime:m.regime,evidenceFamilies,multiTimeframe:mtf,
+     reversalAuthority:{side:reversalAuthoritySide,callVotes:reversalCallVotes,putVotes:reversalPutVotes,callScore:Number(short.reversalCallScore||0),putScore:Number(short.reversalPutScore||0)},
+     safety:{blocked:safetyBlocked,chaseBlocked,barrierBlocked,mtfConflict,blockedSide:safetyBlocked?signalSide:null},
      reliability:{evidenceFamilyCount,familyAgreement:Math.round(familyAgreement*100),featureAgreement:Math.round(agreement*100),correlationPenalty,baseModelConfidence,leadAligned,microLead:Math.round(microLeadSignal*100)},
-     basis:'previsão futura V4.1 independente do consenso atual por horizonte + candles fechados multi-janela + regime + persistência + confiança corrigida por diversidade; entrada atual é separada',drivers:strongest,
+     basis:'previsão futura V4.1 independente do consenso atual por horizonte + multi-timeframe 1m/2m/5m/10m/15m + reversão estrutural + S/R + candles fechados + regime; entrada atual é separada',drivers:strongest,
      automaticExecution:false,modelVersion:'future-v4.1'
    }
  };

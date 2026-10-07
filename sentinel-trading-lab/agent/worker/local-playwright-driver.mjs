@@ -181,7 +181,7 @@ function appendQuoteSample(st,ts,price){
   const prev=st.quoteHistory.at(-1);
   if(prev&&prev.price===p&&t-Number(prev.ts||0)<250)return;
   st.quoteHistory.push({ts:t,price:p});
-  if(st.quoteHistory.length>960)st.quoteHistory.splice(0,st.quoteHistory.length-900)
+  if(st.quoteHistory.length>7200)st.quoteHistory.splice(0,st.quoteHistory.length-6800)
 }
 function protocolScan(data,st,direction='in'){
   if(!data||typeof data!=='object')return;
@@ -1287,7 +1287,7 @@ export class LocalPlaywrightDriver{
     const assetValidated=!!(st.symbol&&st.activeId!=null&&!st.screenCandidateSymbol),feedValidated=feedCoreReady&&assetValidated;
     const marketStatus=st.screenCandidateSymbol?'unvalidated':feedValidated?'open':(st.marketStatus||'stale');
     const marketReason=st.screenCandidateSymbol?'Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.':feedValidated?`${st.symbol||'Ativo'} validado e isolado por active_id`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
-    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-900),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1487,7 +1487,7 @@ export class LocalPlaywrightDriver{
         // A janela de entrada é calculada por horizonte - expiração; a expiração lida da corretora não participa desta equação.
         const decisionAsset=visibleAsset,decisionSeconds=Math.max(30,Number(plannerHorizon)||30),runtimeOperationalState=String(operational?.state||'AGUARDAR').toUpperCase(),runtimeOperationalSide=['CALL','PUT'].includes(String(operational?.side||'').toUpperCase())?String(operational.side).toUpperCase():null;
         const decisionKey='sentinel-future-decision-v13|'+decisionAsset+'|'+String(plannerHorizon),expiredKey='sentinel-future-expired-v13|'+decisionAsset+'|'+String(plannerHorizon),decisionNow=Date.now(),maxFeedPauseMs=12000;
-        let futureDecision=null,expiredDecision=null;
+        let futureDecision=null,expiredDecision=null,inheritedTargetAt=null;
         try{futureDecision=JSON.parse(localStorage.getItem(decisionKey)||'null')}catch{futureDecision=null}
         try{expiredDecision=JSON.parse(localStorage.getItem(expiredKey)||'null')}catch{expiredDecision=null}
         // If the visible broker tab is not the validated asset, never keep showing an
@@ -1547,6 +1547,7 @@ export class LocalPlaywrightDriver{
         // Depois que a janela "AGORA" termina, a mesma direção não pode relockar imediatamente.
         // A trava só é liberada quando o cenário deixa aquela direção (AGUARDAR/oposto) ou o ativo muda.
         if(expiredDecision&&(!plannerReadable||candidateOutlook!==String(expiredDecision.side||''))){
+          if(plannerReadable&&['price-invalidated','opposition-invalidated','runtime-invalidated'].includes(String(expiredDecision.reason||''))&&Number(expiredDecision.targetAt||0)>decisionNow)inheritedTargetAt=Number(expiredDecision.targetAt);
           try{localStorage.removeItem(expiredKey)}catch{};expiredDecision=null
         }
         const sameExpiredSide=!!expiredDecision&&plannerReadable&&candidateOutlook===String(expiredDecision.side||'').toUpperCase();
@@ -1554,7 +1555,7 @@ export class LocalPlaywrightDriver{
         const decisionEligible=plannerReadable&&plannerConfirmed&&!sameExpiredSide&&plannerPlan?.outlookReady===true&&['CALL','PUT'].includes(candidateOutlook)&&candidatePct>=futureDisplayThreshold;
         if(!futureDecision&&decisionEligible){
           futureDecision={
-            asset:decisionAsset,seconds:decisionSeconds,side:candidateOutlook,lockedAt:decisionNow,targetAt:decisionNow+decisionSeconds*1000,
+            asset:decisionAsset,seconds:decisionSeconds,side:candidateOutlook,lockedAt:decisionNow,targetAt:inheritedTargetAt||decisionNow+decisionSeconds*1000,
             confidence:futureConfidence,callPct:futureCallPct,putPct:futurePutPct,agreement:futureAgreement,invalidations:0,feedPausedAt:0
           };
           try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
@@ -1578,11 +1579,12 @@ export class LocalPlaywrightDriver{
         const operationalNow=operational?.actionable===true&&operational?.ready===true&&operationalTimingState==='ENTRADA'&&!!operationalHeroSide&&operationalMatchesForecast&&liveNow&&analysisFresh;
         const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO'].includes(operationalTimingState);
         const waitingForce=operationalTimingState==='AGUARDAR FORÇA';
-        const waitingWindow=operationalTimingState==='AGUARDAR JANELA'&&operationalWaitSeconds!=null&&!!operationalHeroSide&&operationalMatchesForecast;
+        const waitingWindow=false;
         const forecastLabel=futureDecision?(decisionPhase==='PAUSED'?(futureDecision.side+' · REVALIDANDO'):('PREVISÃO '+futureDecision.side)):(formingSide?('PREVISÃO '+formingSide):('AGUARDAR · '+horizonLabel));
-        const actionTone=(operationalNow||waitingWindow)&&operationalHeroSide?(operationalHeroSide==='CALL'?callTone:putTone):outlookTone;
-        const futureActionLabel=operationalMismatch?forecastLabel:(operationalNow?(operationalHeroSide+' AGORA'):(waitingWindow?(operationalHeroSide+' EM '+operationalWaitSeconds+'s'):(waitingForce?forecastLabel:forecastLabel)));
-        const futureDecisionStatus=operationalMismatch?'REVALIDANDO LADO':operationalNow?'ENTRADA CONFIRMADA':waitingWindow?'JANELA AUTOMÁTICA':waitingForce?'FORÇA CONTRÁRIA':timingClosed?operationalTimingState:(futureDecision?(decisionPhase==='PAUSED'?'FEED PAUSADO':'PREVISÃO ATIVA'):(formingSide?'PREVISÃO ATIVA':'SEM DECISÃO'));
+        const actionTone=operationalNow&&operationalHeroSide?(operationalHeroSide==='CALL'?callTone:putTone):outlookTone;
+        const windowSeconds=futureDecision&&decisionRemaining!=null?decisionRemaining:null;
+        const futureActionLabel=operationalMismatch?forecastLabel:(operationalNow?(operationalHeroSide+' — ENTRAR AGORA'):(futureDecision&&['CALL','PUT'].includes(String(futureDecision.side||'').toUpperCase())?(futureDecision.side+' · JANELA ABERTA'):(waitingForce?forecastLabel:forecastLabel)));
+        const futureDecisionStatus=operationalMismatch?'REVALIDANDO LADO':operationalNow?'ENTRADA CONFIRMADA':futureDecision&&windowSeconds!=null?('FECHA EM '+windowSeconds+'s'):waitingForce?'FORÇA CONTRÁRIA':timingClosed?operationalTimingState:(formingSide?'PREVISÃO ATIVA':'SEM DECISÃO');
         const futureDecisionConfidence=futureDecision?Math.max(0,Math.min(100,Number(futureDecision.confidence||0))):futureConfidence;
         const planHtml=plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:5px">'+
@@ -1802,7 +1804,7 @@ export class LocalPlaywrightDriver{
               <label style="display:flex;align-items:center;gap:2px;font-size:8.1px;font-weight:950;color:${ink}" title="Percentual mínimo para considerar CALL ou PUT">SINAL <input data-sentinel-future-threshold type="number" min="50" max="95" step="1" value="${futureDisplayThreshold}" style="width:38px;height:25px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font:950 10px/1 inherit;padding:0 3px;text-align:center;outline:none"><b style="font-size:9px;color:${goldSoft}">%</b></label>
             </div>
             <div style="display:flex;align-items:baseline;gap:10px;margin:9px 0 6px;flex-wrap:wrap;min-height:32px;overflow:visible;white-space:normal"><b style="font-size:24px;line-height:1;color:${actionTone};letter-spacing:.015em;text-shadow:0 0 16px color-mix(in srgb,${actionTone} 28%,transparent)">${esc(futureActionLabel)}</b><span style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:9.3px;font-weight:950">${esc(futureDecisionStatus)}</span><span style="color:${goldSoft};font-size:9.3px;font-weight:950;text-shadow:${goldGlow}">${plannerReadable||futureDecision?'CONF '+n(futureDecisionConfidence,0)+'%':''}</span><span style="color:${muted};font-size:9.3px;font-weight:850">${liveLabel}</span></div>
-            <div style="color:${muted};font-size:10.2px;font-weight:780;line-height:1.42;margin-bottom:7px;min-height:24px;overflow:visible">${futureDecisionPaused?('Feed pausado há '+feedPauseSeconds+'s.'):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':operationalNow?('Entrada sincronizada com expiração de '+({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]+'.'):waitingWindow?('Entrada em '+operationalWaitSeconds+'s · expiração '+({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]+' · alvo '+horizonLabel+'.'):waitingForce?esc(String(operational?.reason||'Aguardando a força atual desacelerar.')):timingClosed?esc(String(operational?.reason||'Janela encerrada.')):futureDecision?esc(String(operational?.reason||('Previsão '+futureDecision.side+' ativa; aguardando gatilho.'))):candidateOutlook==='AGUARDAR'?('Sem decisão: CALL '+n(futureCallPct,0)+'% · PUT '+n(futurePutPct,0)+'%.'):(!plannerConfirmed&&formingSide?'Aguardando confirmação.':'Previsão pronta; aguardando janela e gatilho.')}</div>
+            <div style="color:${muted};font-size:10.2px;font-weight:780;line-height:1.42;margin-bottom:7px;min-height:24px;overflow:visible">${futureDecisionPaused?('Feed pausado há '+feedPauseSeconds+'s.'):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':operationalNow?('Gatilho confirmado · janela fecha em '+(windowSeconds??0)+'s · expiração '+({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]+'.'):waitingForce?esc(String(operational?.reason||'Aguardando a força atual desacelerar.')):timingClosed?esc(String(operational?.reason||'Janela encerrada.')):futureDecision?('Janela aberta · fecha em '+(windowSeconds??0)+'s · expiração '+({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]+(duration>decisionSeconds*1000?' · AVISO: expiração maior que o cenário; não bloqueia o sinal.':' · a expiração não controla a abertura da janela.')):candidateOutlook==='AGUARDAR'?('Sem decisão: CALL '+n(futureCallPct,0)+'% · PUT '+n(futurePutPct,0)+'%.'):(!plannerConfirmed&&formingSide?'Aguardando confirmação.':'Previsão pronta; a janela abrirá assim que a direção for validada.')}</div>
             ${planHtml}
           </div>
 
