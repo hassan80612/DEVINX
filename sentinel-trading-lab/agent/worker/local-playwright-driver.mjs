@@ -466,7 +466,46 @@ export class LocalPlaywrightDriver{
           const selectedPair=()=>{
             const selectors='[aria-selected],[aria-checked],[aria-current],[data-state],[role="tab"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i]';
             const visible=el=>{try{const cs=getComputedStyle(el),r=el.getBoundingClientRect();return cs.display!=='none'&&cs.visibility!=='hidden'&&r.width>8&&r.height>8}catch{return false}};
-            const stateScore=el=>{let score=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')score+=120;if(node.getAttribute?.('aria-checked')==='true')score+=110;if(cur&&cur!=='false')score+=100;if(/active|selected|current|checked/.test(state))score+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))score+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')score+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)score+=5;return score};
+            const vividLineScore=(style)=>{
+              try{
+                const w=parseFloat(style?.borderBottomWidth||'0'),c=String(style?.borderBottomColor||'');
+                if(w<2||!c||c==='transparent'||c==='rgba(0, 0, 0, 0)')return 0;
+                const nums=(c.match(/[\d.]+/g)||[]).map(Number),a=nums.length>3?nums[3]:1;
+                if(a===0)return 0;
+                const rgb=nums.slice(0,3),spread=rgb.length===3?Math.max(...rgb)-Math.min(...rgb):0;
+                return spread>=45?58:18
+              }catch{return 0}
+            };
+            const stateScore=el=>{
+              let score=0,node=el;
+              for(let d=0;d<5&&node;d++,node=node.parentElement){
+                const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();
+                if(node.getAttribute?.('aria-selected')==='true')score+=120;
+                if(node.getAttribute?.('aria-checked')==='true')score+=110;
+                if(cur&&cur!=='false')score+=100;
+                if(/active|selected|current|checked/.test(state))score+=90;
+                if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))score+=75;
+                try{
+                  score+=vividLineScore(getComputedStyle(node));
+                  for(const pseudo of ['::before','::after']){
+                    const ps=getComputedStyle(node,pseudo),h=parseFloat(ps.height||'0'),bottom=parseFloat(ps.bottom||'999');
+                    const bg=String(ps.backgroundColor||''),nums=(bg.match(/[\d.]+/g)||[]).map(Number),alpha=nums.length>3?nums[3]:1,spread=nums.length>=3?Math.max(...nums.slice(0,3))-Math.min(...nums.slice(0,3)):0;
+                    if(h>0&&h<=7&&Math.abs(bottom)<=4&&alpha>0&&spread>=45)score+=46
+                  }
+                }catch{}
+              }
+              const r=el.getBoundingClientRect();
+              if(r.top<180)score+=5;
+              try{
+                const kids=[...el.querySelectorAll('*')].slice(0,32);
+                for(const k of kids){
+                  const kr=k.getBoundingClientRect();if(kr.width<r.width*.35||kr.height<=0||kr.height>7||kr.bottom<r.bottom-10)continue;
+                  const cs=getComputedStyle(k),bg=String(cs.backgroundColor||''),nums=(bg.match(/[\d.]+/g)||[]).map(Number),alpha=nums.length>3?nums[3]:1,spread=nums.length>=3?Math.max(...nums.slice(0,3))-Math.min(...nums.slice(0,3)):0;
+                  if(alpha>0&&spread>=45){score+=42;break}
+                }
+              }catch{}
+              return score
+            };
             const ranked=[];
             for(const el of [...document.querySelectorAll(selectors)].filter(visible)){const p=pairsFrom(el.textContent||'');if(p.length===1)ranked.push({p:p[0],score:stateScore(el)})}
             ranked.sort((a,b)=>b.score-a.score);
@@ -500,9 +539,20 @@ export class LocalPlaywrightDriver{
               },450);
             }catch{}
           },true);
-          // Do not continuously walk the IQ DOM. The broker websocket active_id is
-          // authoritative for asset switches; this bridge is only a lightweight click hint.
-          const initial=selectedPair();if(initial)publish(initial,'selected-tab');
+          // The broker websocket active_id remains authoritative for market data, but
+          // IQ can switch an already-open tab without emitting the same protocol command
+          // every time. Keep a very small watcher over the tab row only; two equal reads
+          // are required before it can retarget the Sentinel.
+          let watchSymbol='',watchHits=0;
+          const watchSelected=()=>{
+            try{
+              const p=selectedPair();if(!p)return;
+              if(p===watchSymbol)watchHits++;else{watchSymbol=p;watchHits=1}
+              if(watchHits>=2)publish(p,'selected-tab-watch')
+            }catch{}
+          };
+          const initial=selectedPair();if(initial){watchSymbol=initial;watchHits=1;publish(initial,'selected-tab')}
+          window.__sentinelAssetWatchTimer=setInterval(watchSelected,450);
         }
         if(!document.getElementById('__sentinel-amount-listener-marker')){
           const amountMarker=document.createElement('span');amountMarker.id='__sentinel-amount-listener-marker';amountMarker.style.display='none';(document.documentElement||document.body)?.appendChild(amountMarker);
@@ -1203,7 +1253,8 @@ export class LocalPlaywrightDriver{
     }
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
-    if(changed&&source!=='click'&&!String(source).startsWith('protocol-page')&&current){
+    const authoritativeUi=source==='click'||source==='selected-tab-watch'||source==='selected-tab-settled'||String(source).startsWith('protocol-page');
+    if(changed&&!authoritativeUi&&current){
       if(st.pendingUiKey!==key){st.pendingUiKey=key;st.pendingUiHits=1;return false}
       st.pendingUiHits=Number(st.pendingUiHits||0)+1;
       if(st.pendingUiHits<2)return false;
