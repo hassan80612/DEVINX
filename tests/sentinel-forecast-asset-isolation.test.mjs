@@ -290,7 +290,7 @@ test('Future UI keeps the forecast visible independently from operational timing
   assert.ok(ui.includes("const forecastLabel=futureDecision?"));
   assert.ok(ui.includes("formingSide?('PREVISÃO '+formingSide)"));
   assert.ok(!ui.includes("!plannerConfirmed&&formingSide?'AGUARDAR'"));
-  assert.ok(!ui.includes('AGUARDANDO CONFIRMAÇÃO'));
+  assert.ok(ui.includes('AGUARDANDO CONFIRMAÇÃO'));
   assert.ok(!ui.includes("('CONFIRMANDO '+displayCandidate)"));
   assert.ok(!ui.includes('EM FORMAÇÃO'));
 });
@@ -301,7 +301,7 @@ test('Asset-change events force immediate runtime synchronization before new ana
   assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
   assert.ok(worker.includes('if(event?.assetChanged===true){'));
   assert.ok(worker.includes('syncRuntimeMarket();'));
-  assert.ok(worker.includes("const VERSION='13.3.0'"));
+  assert.ok(worker.includes("const VERSION='13.3.1'"));
 });
 
 test('Protocol active_id changes are surfaced as assetChanged events', () => {
@@ -338,10 +338,10 @@ test('Quote history appends in place instead of copying a large array on every t
 
 test('Calibration epoch isolates broken historical feed results from the new engine', async () => {
   const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
-  assert.ok(runtime.includes("const CALIBRATION_EPOCH='feed-v2-future-strategies-v1'"));
+  assert.ok(runtime.includes("const CALIBRATION_EPOCH='feed-v3-correct-horizon-single-pass'"));
   assert.ok(runtime.includes("['micro-v5',CALIBRATION_EPOCH,kind"));
   assert.ok(runtime.includes("filter(x=>String(x?.key||'').startsWith(prefix))"));
-  assert.ok(runtime.includes("confidenceSource:historyWeight>0?'model+empirical':'model'"));
+  assert.ok(runtime.includes("probabilitySource:historyWeight>0?'model+empirical':'model'"));
   assert.ok(runtime.includes('historyWeight=Math.min(.65'));
 });
 
@@ -401,9 +401,9 @@ test('An unvalidated clicked tab makes the broker feed fail closed even if old c
 
 test('Unvalidated broker tab clears any locked future decision immediately', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
-  assert.ok(ui.includes('if(screenCandidateAsset){'));
+  assert.ok(ui.includes('const plannerReadable=!assetJustChanged&&!analysisStale&&liveNow'));
   assert.ok(ui.includes('localStorage.removeItem(decisionKey);localStorage.removeItem(expiredKey)'));
-  assert.ok(ui.includes('futureDecision=null;expiredDecision=null'));
+  assert.ok(ui.includes('const futureDecision=plannerReadable&&runtimeContextMatches'));
 });
 
 
