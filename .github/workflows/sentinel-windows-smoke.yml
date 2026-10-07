@@ -15,10 +15,6 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: sentinel-1348-rebuild
-  cancel-in-progress: true
-
 jobs:
   smoke:
     runs-on: windows-latest
@@ -254,9 +250,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+          agent_blob="$(git hash-object -w sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe)"
+          git update-index --cacheinfo "100644,$agent_blob,sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe"
+          git update-index --cacheinfo "100644,$agent_blob,sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+          git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip
           git commit -m 'build(sentinel): validated Windows Agent 13.4.8 rebuild'
           git push origin HEAD:sentinel-1348-agent-rebuild-1007
