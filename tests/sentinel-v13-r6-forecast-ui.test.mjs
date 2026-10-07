@@ -52,9 +52,12 @@ test('Future overlay treats the horizon as entry-now validity, with compact tota
   assert.ok(ui.includes('data-sentinel-op-threshold'));
   assert.ok(!ui.includes('MOSTRAR A PARTIR DE'));
   assert.ok(!ui.includes('MOSTRAR CALL / PUT<br>A PARTIR DE'));
-  assert.ok(ui.includes("futureConfidenceSource==='CALIBRATED'"));
-  assert.ok(ui.includes("'MODELO '"));
-  assert.ok(ui.includes("'CAL '"));
+  assert.ok(!ui.includes("futureConfidenceSource==='CALIBRATED'"));
+  assert.ok(!ui.includes("'MODELO '"));
+  assert.ok(!ui.includes("'CAL '"));
+  assert.ok(!ui.includes('Motores: '));
+  assert.ok(!ui.includes('Cenário em formação:'));
+  assert.ok(ui.includes('Entrada somente quando o Sinal Operacional confirmar o gatilho.'));
   assert.ok(ui.includes('sentinelMetalSweep'));
   assert.ok(ui.includes('sentinel-metal-gold'));
   assert.ok(ui.includes("ev.key==='ArrowDown'"));
