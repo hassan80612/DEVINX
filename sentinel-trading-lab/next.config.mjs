@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig={
   reactStrictMode:true,
+  async redirects(){
+    return[
+      {source:'/downloads/Sentinel-Agent-Windows.exe',destination:'/downloads/Sentinel-Agent-V13.3.exe',permanent:false}
+    ]
+  },
   async headers(){
     return[
       {
