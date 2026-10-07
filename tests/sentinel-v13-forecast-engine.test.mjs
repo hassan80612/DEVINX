@@ -150,3 +150,24 @@ test('short future keeps model readiness separate from weak raw 30s history',()=
   assert.equal(p.validation.fast30HistoryWeak,true);
   assert.equal(p.directionReady,true,'weak legacy-style 30s history is advisory; only clean decision-grade history can block');
 });
+
+
+test('strong future strategy conflict blocks a directional release without changing present cards',()=>{
+  const rt=new DemoTradingRuntime({seed:21,balance:10000});
+  rt.settings.asset='EUR/USD OTC';
+  const analysis={
+    generalConsensus:{rapid:{side:'CALL'},side:'CALL'},
+    metrics:{regime:{label:'trend'}},
+    entryPlanner:{horizons:{'60':{
+      bias:'CALL',rawCallProbability:78,rawPutProbability:22,callProbability:78,putProbability:22,
+      modelConfidence:77,confidence:77,outlookReady:true,directionReady:true,agreement:70,
+      regime:{label:'trend',confidence:80},reliability:{evidenceFamilyCount:4,correlationPenalty:1}
+    }}}
+  };
+  const strategyPanel={cards:[],confluence:{horizons:{'60':{activeCount:2,callPct:28,putPct:72,side:'PUT',agreement:82,evidence:74,confidence:76}}}};
+  rt._mergeScenarioConfluence(analysis,strategyPanel,{price:1.10,payout:.82},Date.now());
+  const p=analysis.entryPlanner.horizons['60'];
+  assert.equal(p.strategyFutureConflict,true);
+  assert.equal(p.directionReady,false);
+  assert.equal(p.presentBias,'CALL');
+});
