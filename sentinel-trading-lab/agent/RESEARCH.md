@@ -78,3 +78,15 @@ Twelve new symmetric tests verify first eligible release, reversal and cancellat
 - The presentation follows the engine authorization directly; it does not add a second raw-analysis veto after the runtime has released ENTRAR AGORA.
 - These changes address timing/state coherence. They do not prove a higher win rate or profitability and must be validated with chronological broker data.
 - Candidate 13.4.9 refreshed after regression alignment for scenario lock and repeated-reaction compatibility.
+
+## 13.5.0 — clean signal, event-driven timing and UI load reduction
+
+- The main scenario card stays neutral until an operational scenario actually owns the window. Raw CALL/PUT analysis remains internal context and cannot chatter the headline.
+- Opposite direction replaces an owned scenario only through the existing confirmed structural reaction or independently confirmed continuation path; probability oscillation alone is not a side switch.
+- The worker evaluates each new broker quote by unique timestamp and requests an immediate runtime evaluation, removing the old 500 ms market-event throttle while preserving the requirement for two independent, progressing quotes at the trigger.
+- REAL mode no longer marks a manually presented PREPARE_REAL signal as consumed. The entry burst remains visible until its own timing window ends or the setup becomes invalid.
+- Status and heartbeat responses no longer copy thousands of quote/candle rows. Broker status exposes compact counters instead. The broker overlay also stops rebuilding its full DOM every 500 ms and no longer uses the expensive backdrop blur.
+- A final entry-quality score combines current probability, model strength, feature agreement and data quality. It is applied only at the last release gate: a mediocre setup can remain tracked without emitting ENTRAR AGORA, while a strong setup releases as soon as its real price trigger is confirmed. Thresholds are 78 for reversals, 76 for breakouts and 74 for other qualified setups.
+- Operational validation keys now separate scenario kind and market regime so a strong continuation history cannot hide a weak reversal family.
+- Entry quality is a selection score, not a calibrated probability of winning. The 10 wins / 2 losses target (83.3%) remains a forward-validation goal and is not established by software tests or the existing small replay.
+
