@@ -322,7 +322,11 @@ export class DemoTradingRuntime{
       }
     }
     if(!lockedSide&&strategyConflict){this.operationalSetup=null;return{...base,reason:'Estratégias futuras divergem da projeção principal; entrada bloqueada até nova confluência.'}}
-    if(!lockedSide&&!futureReady){this.operationalSetup=null;return{...base,reason:futureSide==='NEUTRO'?'Aguardando direção futura definida.':'Aguardando a previsão alcançar '+futureThreshold+'% e '+signalPoints+' pts.'}}
+    if(!lockedSide&&!futureReady){
+      this.operationalSetup=null;
+      const reason=planSafetyBlocked?'Entrada bloqueada por exaustão, barreira ou conflito estrutural.':plan.outlookReady!==true?'Aguardando dados suficientes deste prazo.':futureSide==='NEUTRO'?'Aguardando direção futura definida.':futureLead<futureThreshold||decisionStrength<signalPoints?'Aguardando a previsão alcançar '+futureThreshold+'% e '+signalPoints+' pts.':'Direção ainda sem confirmação técnica; entrada bloqueada.';
+      return{...base,reason}
+    }
     if(side==='AGUARDAR')return{...base,reason:'Aguardando direção futura definida.'};
     if(!executionSupported)return{...base,side,state:'AGUARDAR PRAZO',trigger:setup?.trigger??null,invalidation:setup?.invalidation??null,createdAt:setup?.createdAt??null,targetAt:setup?.targetAt??null,entryWindowEndAt:setup?.entryWindowEndAt??null,reason:'Entrada bloqueada: a previsão de '+Math.round(durationMs/1000)+'s precisa confirmar o mesmo lado, a porcentagem e os pontos mínimos.'};
     if(historyBlocked){return{...base,side,reason:'Combinação pausada pelo histórico limpo: '+validation.smoothedWinRate+'% em '+validation.samples+' sinais.'}}

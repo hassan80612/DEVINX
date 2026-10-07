@@ -108,3 +108,25 @@ test('terminal and mismatched runtime states never display an open window',()=>{
   for(const state of ['JANELA ENCERRADA','JANELA PERDIDA','INVALIDADO']){const view=scenarioViewFromRuntime({operational:{asset:'TEST',side:'CALL',state,createdAt:t,targetAt:t+60000,forecastHorizonSeconds:60,durationMs:30000},asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+1000});assert.equal(view.hasSetup,false);assert.equal(view.canEnter,false)}
   const view=scenarioViewFromRuntime({operational:{asset:'OTHER',side:'CALL',state:'ENTRADA',ready:true,actionable:true,activeUntil:t+3500,createdAt:t,targetAt:t+60000,forecastHorizonSeconds:60,durationMs:30000},asset:'TEST',horizonSeconds:60,durationMs:30000,now:t});assert.equal(view.contextMatches,false);assert.equal(view.canEnter,false);
 });
+
+test('shorter expiry revalidation preserves the full scenario deadline without releasing entry',()=>{
+  const r=runtime(),a=analysis();const first=r._operationalSignalState(a,{price:100},t);
+  a.entryPlanner.horizons['30'].directionReady=false;
+  a.entryPlanner.horizons['30'].confidence=54;
+  const paused=r._operationalSignalState(a,{price:100},t+2000);
+  assert.equal(paused.state,'AGUARDAR PRAZO');assert.equal(paused.side,'CALL');assert.equal(paused.actionable,false);
+  assert.equal(paused.targetAt,first.targetAt);assert.equal(paused.trigger,first.trigger);
+  const view=scenarioViewFromRuntime({operational:paused,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+2000});
+  assert.equal(view.hasSetup,true);assert.equal(view.canEnter,false);assert.equal(view.remainingSeconds,58);
+  a.entryPlanner.horizons['30'].directionReady=true;a.entryPlanner.horizons['30'].confidence=80;
+  const resumed=r._operationalSignalState(a,{price:100},t+3000);
+  assert.equal(resumed.targetAt,first.targetAt);assert.equal(resumed.trigger,first.trigger);assert.equal(resumed.state,'JANELA ABERTA');
+});
+test('blocked forecasts explain safety and direction rather than thresholds already met',()=>{
+  for(const safety of [false,true]){
+    const r=runtime(),a=analysis();a.entryPlanner.horizons['60'].directionReady=false;a.entryPlanner.horizons['60'].safety={blocked:safety};
+    const op=r._operationalSignalState(a,{price:100},t);
+    assert.equal(op.actionable,false);assert.doesNotMatch(op.reason,/alcançar/);
+    assert.match(op.reason,safety?/exaustão/:/confirmação técnica/);
+  }
+});

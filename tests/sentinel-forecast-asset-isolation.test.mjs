@@ -288,7 +288,7 @@ test('Existing tab clicks become hints and never retarget the validated asset by
 test('Future UI keeps the forecast visible independently from operational timing gates', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes("const forecastLabel=futureDecision?"));
-  assert.ok(ui.includes("formingSide?('PREVISÃO '+formingSide)"));
+  assert.ok(ui.includes("formingSide?('ANÁLISE '+formingSide)"));
   assert.ok(!ui.includes("!plannerConfirmed&&formingSide?'AGUARDAR'"));
   assert.ok(ui.includes('AGUARDANDO CONFIRMAÇÃO'));
   assert.ok(!ui.includes("('CONFIRMANDO '+displayCandidate)"));
