@@ -100,9 +100,9 @@ test('duplicate market scores contribute once to the consensus',()=>{
 test('scenario display shares the engine deadline and current confidence',()=>{
   const r=runtime(),op=r._operationalSignalState(analysis('CALL',99),{price:100},t);
   const view=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+1000});
-  assert.equal(view.canEnter,true);assert.equal(view.deadline,t+3500);assert.equal(view.remainingSeconds,3);
+  assert.equal(view.canEnter,true);assert.equal(view.deadline,t+60000);assert.equal(view.remainingSeconds,59);assert.equal(view.entryDeadline,t+3500);
   const expired=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+4000});
-  assert.equal(expired.closed,true);assert.equal(expired.canEnter,false);assert.equal(expired.hasSetup,false);
+  assert.equal(expired.closed,false);assert.equal(expired.canEnter,false);assert.equal(expired.hasSetup,true);assert.equal(expired.state,'ACOMPANHANDO');assert.equal(expired.remainingSeconds,56);
 });
 test('terminal and mismatched runtime states never display an open window',()=>{
   for(const state of ['JANELA ENCERRADA','JANELA PERDIDA','INVALIDADO']){const view=scenarioViewFromRuntime({operational:{asset:'TEST',side:'CALL',state,createdAt:t,targetAt:t+60000,forecastHorizonSeconds:60,durationMs:30000},asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+1000});assert.equal(view.hasSetup,false);assert.equal(view.canEnter,false)}
@@ -129,4 +129,40 @@ test('blocked forecasts explain safety and direction rather than thresholds alre
     assert.equal(op.actionable,false);assert.doesNotMatch(op.reason,/alcançar/);
     assert.match(op.reason,safety?/exaustão/:/confirmação técnica/);
   }
+});
+
+test('entry burst expiration keeps the forecast alive without extending entry or releasing twice',()=>{
+  const r=runtime(),a=analysis('CALL',99);const first=r._operationalSignalState(a,{price:100},t);
+  assert.equal(first.state,'ENTRADA');assert.equal(first.actionable,true);
+  r.operationalSetup.releasedAt=t+1000;
+  const used=r._operationalSignalState(a,{price:100},t+2000);assert.equal(used.actionable,false);
+  for(const ms of [4000,15000,59000]){
+    const op=r._operationalSignalState(a,{price:100},t+ms);
+    assert.equal(op.state,'ACOMPANHANDO');assert.equal(op.actionable,false);assert.equal(op.ready,false);
+    assert.equal(op.createdAt,first.createdAt);assert.equal(op.targetAt,first.targetAt);
+    const view=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t+ms});
+    assert.equal(view.hasSetup,true);assert.equal(view.canEnter,false);assert.equal(view.deadline,t+60000);
+  }
+  assert.equal(r.signalValidation.pending.length,1);
+  assert.equal(r._operationalSignalState(a,{price:100},t+60001).state,'JANELA ENCERRADA');
+});
+test('price invalidation is immediate even if the shorter order horizon no longer confirms',()=>{
+  for(const side of ['CALL','PUT']){
+    const r=runtime(),a=analysis(side);r._operationalSignalState(a,{price:100},t);
+    a.entryPlanner.horizons['30'].directionReady=false;
+    const op=r._operationalSignalState(a,{price:side==='CALL'?89:111},t+1000);
+    assert.equal(op.state,'INVALIDADO');assert.equal(op.actionable,false);assert.match(op.reason,/preço/);
+    a.entryPlanner.horizons['60'].directionReady=false;
+    const weak=r._operationalSignalState(a,{price:100},t+2000);
+    assert.equal(weak.state,'INVALIDADO');assert.equal(weak.targetAt,t+60000);assert.match(weak.reason,/preço/);
+    a.entryPlanner.horizons['60'].directionReady=true;
+    const back=r._operationalSignalState(a,{price:100},t+3000);
+    assert.equal(back.state,'INVALIDADO');assert.equal(back.createdAt,t);
+  }
+});
+test('a confidence dip during the entry burst never continues to authorize an entry',()=>{
+  const r=runtime(),a=analysis('CALL',99);assert.equal(r._operationalSignalState(a,{price:100},t).actionable,true);
+  a.entryPlanner.horizons['60'].confidence=54;
+  const op=r._operationalSignalState(a,{price:100},t+1000);
+  assert.equal(op.actionable,false);assert.equal(op.ready,false);assert.equal(op.targetAt,t+60000);assert.doesNotMatch(op.reason,/estão alinhados/);
 });

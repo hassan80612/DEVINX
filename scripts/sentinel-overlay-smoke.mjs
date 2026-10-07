@@ -14,7 +14,7 @@ try{
   const driver=new LocalPlaywrightDriver();driver.session=async()=>({page,background:false});
   const now=Date.now(),plan={asset:'TEST',generatedAt:now,confidence:80,modelConfidence:80,callProbability:80,putProbability:20,displayBias:'CALL',outlookReady:true,directionReady:true,currentPrice:100,callTrigger:102,putTrigger:98,callInvalidation:90,putInvalidation:110,validation:{decisionSamples:0}};
   const operational={asset:'TEST',side:'CALL',state:'JANELA ABERTA',createdAt:now,entryWindowEndAt:now+60000,targetAt:now+60000,forecastHorizonSeconds:60,durationMs:30000,sideSupported:true,trigger:101,invalidation:90,technicalConfidence:80,reason:'Aguardando gatilho fixo.'};
-  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.3.4',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
+  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.3.5',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
   const card=page.locator('[data-sentinel-card="horizon"]');
   assert.equal(await driver.updateOverlay('iq_option',data),true);
   assert.match(await page.locator('[data-sentinel-pilot-status]').innerText(),/PILOTO LIGADO.*AGUARDANDO BOTÕES/);
@@ -44,6 +44,16 @@ try{
   assert.match(await card.innerText(),/101\.000/,'display must show the locked engine trigger');
   assert.doesNotMatch(await card.innerText(),/102\.000/);
   assert.equal(await page.evaluate(()=>localStorage.getItem('sentinel-future-decision-v13|TEST|60')),null);
+  const justBefore=Date.now();
+  const entered={...operational,state:'ENTRADA',ready:true,actionable:true,entryAt:justBefore,activeUntil:justBefore+500};
+  await driver.updateOverlay('iq_option',{...data,operationalSignal:entered});
+  assert.match(await card.innerText(),/ENTRAR AGORA/);
+  await page.waitForTimeout(650);
+  await page.evaluate(()=>window.__sentinelRenderOverlay(window.__sentinelLastOverlayData));
+  assert.match(await card.innerText(),/CALL · CENÁRIO ATIVO/);assert.match(await card.innerText(),/ACOMPANHANDO · ENTRADA ENCERRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  await driver.updateOverlay('iq_option',{...data,operationalSignal:{...operational,state:'ACOMPANHANDO',activeUntil:justBefore+500,entryAt:justBefore,reason:'Oportunidade de entrada encerrada; cenário mantido até o prazo, sem liberar nova entrada.'}});
+  assert.match(await card.innerText(),/CENÁRIO ATIVO/);assert.match(await card.innerText(),/ACOMPANHANDO/);
+  await driver.updateOverlay('iq_option',data);
   const originalNodes=await page.evaluate(()=>{
     const root=document.getElementById('sentinel-trading-overlay-host').shadowRoot;
     window.retainedHorizon=root.querySelector('[data-sentinel-card="horizon"]');
@@ -85,6 +95,7 @@ try{
   await card.screenshot({path:'sentinel-test-output/scenario-open.png'});
   const panel=page.locator('#sentinel-trading-overlay');
   await panel.evaluate(el=>{el.style.height='2200px';el.style.maxHeight='none';el.style.width='500px';el.scrollTop=0});
+  assert.ok(await page.locator('[data-sentinel-summary="average-total"]').evaluate(el=>el.getBoundingClientRect().height)<160,'average card must not expand to the panel height');
   await panel.screenshot({path:'sentinel-test-output/panel-cards.png'});
   await panel.evaluate(el=>{el.style.width='420px';el.style.height='560px';el.style.maxHeight='calc(100vh - 18px)'});
   const narrow=await page.evaluate(()=>{
@@ -96,5 +107,5 @@ try{
   await page.waitForTimeout(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
-  console.log('SENTINEL 13.3.4 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
+  console.log('SENTINEL 13.3.5 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
