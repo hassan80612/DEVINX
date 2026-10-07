@@ -77,4 +77,4 @@ Twelve new symmetric tests verify first eligible release, reversal and cancellat
 - Runtime evaluation cadence is 400 ms to reduce avoidable delivery delay. Quote confirmation still requires independent timestamps; faster evaluation does not turn repeated reads of the same quote into confirmation.
 - The presentation follows the engine authorization directly; it does not add a second raw-analysis veto after the runtime has released ENTRAR AGORA.
 - These changes address timing/state coherence. They do not prove a higher win rate or profitability and must be validated with chronological broker data.
-
+- Candidate 13.4.9 refreshed after regression alignment for scenario lock and repeated-reaction compatibility.
