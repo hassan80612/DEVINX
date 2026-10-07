@@ -319,3 +319,12 @@ test('scenario view keeps the active scenario side while opposite analysis is on
   assert.equal(view.displaySide,'CALL');
   assert.equal(view.canEnter,false);
 });
+
+test('raw CALL/PUT analysis stays off the main headline until a scenario owns the window',()=>{
+  const forecast={asset:'TEST',horizonSeconds:60,outlookReady:true,directionReady:true,confidence:82,rawBias:'CALL',callProbability:82,putProbability:18};
+  const view=scenarioViewFromRuntime({operational:{asset:'TEST',state:'AGUARDAR',forecastHorizonSeconds:60,durationMs:30000},forecast,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t});
+  assert.equal(view.analysisSide,'CALL');
+  assert.equal(view.hasSetup,false);
+  assert.equal(view.displaySide,null);
+  assert.equal(view.canEnter,false);
+});
