@@ -1314,22 +1314,22 @@ export class LocalPlaywrightDriver{
     try{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
-      payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
+      payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
         window.__sentinelLastOverlayData=d;
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.6'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.7'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.6';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.7';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.6';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.7';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1474,7 +1474,8 @@ export class LocalPlaywrightDriver{
         const finalTone=finalSide==='CALL'?callTone:finalSide==='PUT'?putTone:warnTone;
         Object.assign(el.style,uiTheme==='light'?{background:'linear-gradient(155deg,#fffdf8,#e9e1d3)',color:'#15130f',border:'1px solid rgba(128,94,39,.36)',boxShadow:'0 28px 72px rgba(65,51,28,.20), inset 0 1px #fff'}:{background:'linear-gradient(160deg,#0b3537 0%,#0d3d3f 50%,#072428 100%)',color:'#f8fbfb',border:'1px solid rgba(226,194,105,.56)',boxShadow:'0 30px 88px rgba(0,0,0,.74),0 0 34px rgba(217,184,95,.055),0 0 0 1px rgba(217,184,95,.06) inset,inset 0 1px rgba(255,255,255,.075)'}, {fontVariantNumeric:'tabular-nums',overflowAnchor:'none'});
         const setupWindowHtml=preSide&&preRemaining!=null&&preRemaining>0&&!analysisStale?'<div style="margin-top:5px;padding:5px 7px;border-radius:7px;background:'+(uiTheme==='light'?'rgba(128,94,39,.09)':'rgba(201,166,91,.09)')+';border:1px solid '+panelBorder+';color:'+ink+';font-size:9.5px;font-weight:700;letter-spacing:.03em">JANELA DO SETUP · '+preSide+' · '+preRemaining+'s <span style="font-weight:650;color:'+muted+'">· validade, não contagem para entrar</span></div>':'';
-        const plannerPlan=planner[plannerHorizon]||planner['30']||null;
+        const entryDecisionHorizon=Number(operational?.entryDecisionHorizonSeconds||plannerHorizon);
+        const plannerPlan=entryDecisionHorizon!==Number(plannerHorizon)?(planner[String(entryDecisionHorizon)]||null):(planner[plannerHorizon]||planner['30']||null);
         const horizonLabel=({30:'30 s',60:'1 min',120:'2 min',300:'5 min',600:'10 min',900:'15 min',3600:'1 h'})[plannerHorizon]||'30 s';
         const validatedAsset=String(d.validatedAsset||d.asset||'—').trim().toUpperCase(),screenCandidateAsset=String(d.screenCandidateSymbol||'').trim().toUpperCase(),assetValidated=d.assetValidated===true&&!screenCandidateAsset;
         const visibleAsset=validatedAsset,plannerAsset=String(plannerPlan?.asset||'').trim().toUpperCase();
@@ -1536,7 +1537,8 @@ export class LocalPlaywrightDriver{
         const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO';
         const futureActionLabel=operationalNow?('ENTRAR AGORA · '+operationalHeroSide):trackingSameSide?(futureDecision.side+' · ACOMPANHANDO'):operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('ANÁLISE '+formingSide+' · AGUARDE'):'AGUARDE';
         const futureDecisionStatus=!plannerReadable?'SEM LEITURA':operationalNow?('FECHA EM '+entrySeconds+'s'):futureDecision?('FECHA EM '+windowSeconds+'s'):timingClosed?operationalTimingState:'EM ANÁLISE';
-        const futurePhase=!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':operationalNow?('ENTRADA DISPONÍVEL POR '+entrySeconds+'s · EXPIRAÇÃO '+durationText):trackingSameSide?'ACOMPANHANDO · ENTRADA ENCERRADA':timingClosed?'AGUARDE UM NOVO CENÁRIO':formingSide?'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA':'ANALISANDO · AGUARDANDO CONFIRMAÇÃO';
+        const entryAnalysisScope=entryDecisionHorizon!==Number(plannerHorizon)?'ANÁLISE DA ENTRADA '+Math.round(entryDecisionHorizon)+'s · ':'';
+        const futurePhase=entryAnalysisScope+(!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':operationalNow?('ENTRADA DISPONÍVEL POR '+entrySeconds+'s · EXPIRAÇÃO '+durationText):trackingSameSide?'ACOMPANHANDO · ENTRADA ENCERRADA':timingClosed?'AGUARDE UM NOVO CENÁRIO':formingSide?'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA':'ANALISANDO · AGUARDANDO CONFIRMAÇÃO');
         const currentAnalysisReason=operationalMismatch&&!timingClosed?('Leitura atual '+liveAnalysisSide+'; aguarde o gatilho do novo lado. Cenário '+operationalHeroSide+' preservado no histórico.'):String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
         const futureDecisionConfidence=futureConfidence;
         const measuredHistory=plannerPlan?.validation||{},measuredSamples=Math.max(0,Number(measuredHistory.decisionSamples||0));
@@ -1727,7 +1729,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.6')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.7')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>

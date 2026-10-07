@@ -14,7 +14,7 @@ try{
   const driver=new LocalPlaywrightDriver();driver.session=async()=>({page,background:false});
   const now=Date.now(),plan={asset:'TEST',generatedAt:now,confidence:80,modelConfidence:80,callProbability:80,putProbability:20,displayBias:'CALL',outlookReady:true,directionReady:true,currentPrice:100,callTrigger:102,putTrigger:98,callInvalidation:90,putInvalidation:110,validation:{decisionSamples:0}};
   const operational={asset:'TEST',side:'CALL',state:'JANELA ABERTA',createdAt:now,entryWindowEndAt:now+60000,targetAt:now+60000,forecastHorizonSeconds:60,durationMs:30000,sideSupported:true,trigger:101,invalidation:90,technicalConfidence:80,reason:'Aguardando gatilho fixo.'};
-  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.4.6',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
+  const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.4.7',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
   const card=page.locator('[data-sentinel-card="horizon"]');
   assert.equal(await driver.updateOverlay('iq_option',data),true);
   assert.match(await page.locator('[data-sentinel-pilot-status]').innerText(),/PILOTO LIGADO.*AGUARDANDO BOTÕES/);
@@ -136,6 +136,19 @@ try{
   await driver.updateOverlay('iq_option',{...data,operationalSignal:{...entered,activeUntil:Date.now()+3000,actionable:false}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ANÁLISE CALL · AGUARDE');
   assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  // The execution forecast can qualify independently while the longer scenario
+  // remains opposite. The rendered side, metrics and permission must all use 30s.
+  for(const side of ['CALL','PUT']){
+    const call=side==='CALL',independentNow=Date.now();
+    const p30={...plan,horizonSeconds:30,rawBias:side,displayBias:side,callProbability:call?82:18,putProbability:call?18:82};
+    const p60={...plan,horizonSeconds:60,rawBias:call?'PUT':'CALL',displayBias:call?'PUT':'CALL',callProbability:call?20:80,putProbability:call?80:20};
+    await driver.updateOverlay('iq_option',{...data,entryPlanner:{horizons:{'30':p30,'60':p60}},operationalSignal:{...operational,side,state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:independentNow,activeUntil:independentNow+3500,ready:true,actionable:true}});
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ENTRAR AGORA · '+side);
+    assert.match(await card.innerText(),/ANÁLISE DA ENTRADA 30s/);
+    assert.match(await card.innerText(),/82%/);
+    await card.screenshot({path:'sentinel-test-output/scenario-independent-'+side.toLowerCase()+'.png'});
+  }
+  await driver.updateOverlay('iq_option',data);
   const lowerLayout=await page.evaluate(()=>{
     const root=document.getElementById('sentinel-trading-overlay-host').shadowRoot;
     const cards=[...root.querySelectorAll('[data-sentinel-summary]:not([data-sentinel-summary="average-total"]),[data-sentinel-card="quick-confluence"],[data-sentinel-card="entry-status"],[data-sentinel-card="reversal"],[data-sentinel-card^="strategy-"]')];
@@ -177,5 +190,5 @@ try{
   await page.waitForTimeout(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
-  console.log('SENTINEL 13.4.6 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
+  console.log('SENTINEL 13.4.7 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
