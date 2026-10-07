@@ -1936,8 +1936,11 @@ export class LocalPlaywrightDriver{
         window.__sentinelOverlayStaleTimer=setTimeout(()=>{
           window.__sentinelOverlayStaleTimer=null;
           const latest=window.__sentinelLastOverlayData;
-          if(latest&&document.getElementById('sentinel-trading-overlay-host'))window.__sentinelRenderOverlay?.(latest)
-        },1300)
+          if(!latest)return;
+          const stale={...latest,analysisStale:true,analysisAgeMs:Math.max(3501,Number(latest.analysisAgeMs||0)),liveAgeMs:Math.max(3501,Number(latest.liveAgeMs||0))};
+          window.__sentinelLastOverlayData=stale;
+          window.__sentinelRenderOverlay?.(stale)
+        },3501)
       },payload);
       return true
     }catch{return false}
