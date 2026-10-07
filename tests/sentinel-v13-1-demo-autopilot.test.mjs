@@ -66,12 +66,12 @@ test('V13.3 DEMO session cap disarms and stops before another market click',asyn
   assert.ok((rt.lastResult?.reasons||[]).includes('limite da sessão de operações'));
 });
 
-test('V13.3 worker binds automation to the broker account and disarms on REAL',async()=>{
+test('V13.3 worker keeps the pilot armed across balance-mode changes',async()=>{
   const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
   const broker=await readFile(new URL('../sentinel-trading-lab/agent/worker/adapters/browser-broker.mjs',import.meta.url),'utf8');
   assert.ok(worker.includes("runtime.setMode(brokerMode,'broker')"));
-  assert.ok(worker.includes("brokerMode==='real'&&runtime.settings.demoAutopilot===true"));
-  assert.ok(worker.includes("runtime.patchSettings({demoAutopilot:false},'system')"));
+  assert.ok(!worker.includes("brokerMode==='real'&&runtime.settings.demoAutopilot===true"));
+  assert.ok(!worker.includes("runtime.patchSettings({demoAutopilot:false},'system')"));
   assert.ok(broker.includes("if(this.accountMode!=='demo')throw new Error('demo_account_required')"));
   assert.ok(broker.includes("throw new Error('real_execution_requires_human_confirmation')"));
 });
@@ -133,10 +133,19 @@ test('V13.3 Agent manager records worker stderr before automatic restart',async(
 });
 
 
-test('V13.3 card start works on real or practice balance while automatic clicking stays practice-only',async()=>{
+test('V13.3 card start always arms the pilot and never blocks start by balance mode',async()=>{
   const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
-  assert.ok(worker.includes("const practiceMode=mode==='demo'"));
-  assert.ok(worker.includes("runtime.patchSettings({demoAutopilot:practiceMode},'overlay')"));
+  assert.ok(worker.includes("runtime.patchSettings({demoAutopilot:true},'overlay')"));
+  assert.ok(worker.includes("return{ok:true,message:'Sentinel iniciado · piloto armado'}"));
   assert.ok(!worker.includes("if(mode!=='demo')throw new Error('Execução automática pelo card disponível somente na conta de prática.')"));
   assert.ok(worker.includes("runtime.patchSettings({demoAutopilot:false},'overlay')"));
+});
+
+
+test('V13.3 worker fails over the overlay when the active broker window closes',async()=>{
+  const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
+  assert.ok(worker.includes("if(activePeek?.updatedAt&&activePeek.open===false)activeProvider=null"));
+  assert.ok(worker.includes("if(activeProvider!==k)activeProvider=k"));
+  assert.ok(worker.includes("if(brokers[activeProvider])brokers[activeProvider].connected=false"));
+  assert.ok(worker.includes("if(!activeProvider&&peek?.open){activeProvider=name;syncRuntimeMarket()}"));
 });
