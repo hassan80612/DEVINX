@@ -95,6 +95,7 @@ try{
   await card.screenshot({path:'sentinel-test-output/scenario-open.png'});
   const panel=page.locator('#sentinel-trading-overlay');
   await panel.evaluate(el=>{el.style.height='2200px';el.style.maxHeight='none';el.style.width='500px';el.scrollTop=0});
+  assert.ok(await page.locator('[data-sentinel-summary="average-total"]').evaluate(el=>el.getBoundingClientRect().height)<160,'average card must not expand to the panel height');
   await panel.screenshot({path:'sentinel-test-output/panel-cards.png'});
   await panel.evaluate(el=>{el.style.width='420px';el.style.height='560px';el.style.maxHeight='calc(100vh - 18px)'});
   const narrow=await page.evaluate(()=>{

@@ -1763,7 +1763,7 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div class="sentinel-shine" data-sentinel-summary="average-total" style="position:relative;margin-top:8px;padding:10px 11px;min-height:72px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${averageSide!=='AGUARDAR'?averageTone:panelBorder};box-shadow:${panelShadow}">
-            <div style="display:grid;grid-template-columns:minmax(0,1.45fr) .58fr .58fr .52fr;gap:8px;align-items:center;height:100%">
+            <div style="display:grid;grid-template-columns:minmax(0,1.45fr) .58fr .58fr .52fr;gap:8px;align-items:center">
               <div style="min-width:0"><div class="sentinel-metal-gold" style="font-size:11.2px;font-weight:750;letter-spacing:.04em">MÉDIA DOS 3 TOTAIS</div><div style="display:flex;align-items:baseline;gap:7px;margin-top:2px"><b style="font-size:15px;color:${averageTone}">${averageSide}</b><span style="font-size:9.5px;font-weight:700;color:${goldSoft}">CONF MÉDIA ${n(averageConfidence,0)} pts</span></div></div>
               <div style="text-align:center;color:${callTone};font-size:9.5px;font-weight:700">CALL<b style="display:block;font-size:14px">${n(averageCallPct,0)}%</b></div>
               <div style="text-align:center;color:${putTone};font-size:9.5px;font-weight:700">PUT<b style="display:block;font-size:14px">${n(averagePutPct,0)}%</b></div>
