@@ -921,7 +921,7 @@ export class LocalPlaywrightDriver{
         }
         const expiryEls=[...document.querySelectorAll('input,button,[role=button],[role=spinbutton],[data-test],[data-testid],[class*="expir" i],[class*="duration" i],[class*="time" i]')].filter(visible).filter(el=>!sentinelNode(el));
         const expiryHint=el=>{let out='',node=el;for(let i=0;i<3&&node;i++,node=node.parentElement)out+=' '+desc(node);return out.slice(0,900)};
-        const rawValue=el=>String(el?.value??el?.getAttribute?.('aria-valuenow')??el?.getAttribute?.('data-value')??el?.textContent??'').trim();
+        const rawValue=el=>[el?.value,el?.getAttribute?.('aria-valuenow'),el?.getAttribute?.('data-value'),el?.textContent].map(v=>String(v??'').trim()).find(Boolean)||'';
         const parseClock=(h,m,s=0)=>{const now=new Date(),target=new Date(now);target.setHours(h,m,s,0);if(target.getTime()<=now.getTime()-1500)target.setDate(target.getDate()+1);const delta=target.getTime()-now.getTime();return delta>=10000&&delta<=3600000?delta:null};
         const parseExpiry=(raw,hint='')=>{
           const t=String(raw||'').trim().toLowerCase().replace(/\s+/g,' ');if(!t)return null;
