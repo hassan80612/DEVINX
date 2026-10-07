@@ -252,6 +252,8 @@ test('independently confirmed expiry enters on the first qualified frame without
     assert.equal(v.canEnter,true);assert.equal(v.displaySide,side);assert.equal(v.signalHorizonSeconds,30);
     const wrong=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,forecast:a.entryPlanner.horizons['60'],now:t});
     assert.equal(wrong.canEnter,false);
+    const missing=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:60,durationMs:30000,now:t});
+    assert.equal(missing.canEnter,false);
   }
 });
 test('independent expiry still requires direction, structure, force, room, price and its own safety',()=>{
