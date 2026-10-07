@@ -3,7 +3,7 @@ name: Sentinel Windows Agent V13.4
 
 on:
   push:
-    branches: [main, sentinel-scenario-lock-1349-1007]
+    branches: [main, sentinel-scenario-lock-1349-1007, sentinel-clean-signal-1350-1007]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
