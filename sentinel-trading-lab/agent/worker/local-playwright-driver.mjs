@@ -1927,10 +1927,17 @@ export class LocalPlaywrightDriver{
         })
         };
         window.__sentinelRenderOverlay=render;
-        // V13.5: the worker pushes meaningful changes and the entry deadline has
-        // its own exact timer. Do not rebuild the entire overlay every 500 ms.
+        // V13.5: the worker pushes meaningful changes. Keep a single one-shot
+        // freshness expiry so a disconnected/stalled feed can still turn stale
+        // without rebuilding the full overlay every 500 ms.
         if(window.__sentinelOverlayClock){clearInterval(window.__sentinelOverlayClock);window.__sentinelOverlayClock=null}
-        render(d)
+        if(window.__sentinelOverlayStaleTimer){clearTimeout(window.__sentinelOverlayStaleTimer);window.__sentinelOverlayStaleTimer=null}
+        render(d);
+        window.__sentinelOverlayStaleTimer=setTimeout(()=>{
+          window.__sentinelOverlayStaleTimer=null;
+          const latest=window.__sentinelLastOverlayData;
+          if(latest&&document.getElementById('sentinel-trading-overlay-host'))window.__sentinelRenderOverlay?.(latest)
+        },1300)
       },payload);
       return true
     }catch{return false}
