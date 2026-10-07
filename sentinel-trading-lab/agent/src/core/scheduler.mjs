@@ -36,6 +36,6 @@ export function scheduleGate(config,now=new Date()){
 }
 
 export function nextEvaluation(lastEvalMs,intervalMs,nowMs=Date.now()){
-  const base=Number(lastEvalMs||0),interval=Math.max(1000,Number(intervalMs||60000));
+  const base=Number(lastEvalMs||0),interval=Math.max(400,Number(intervalMs||60000));
   return Math.max(nowMs,base+interval);
 }
