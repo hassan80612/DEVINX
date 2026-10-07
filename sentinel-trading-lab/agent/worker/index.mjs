@@ -24,7 +24,22 @@ const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({base
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
-function chooseLive(){const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];for(const k of order){const b=brokers[k],m=driver.liveStatus?.(k);if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){return{k,m}}}return null}
+function chooseLive(){
+  if(activeProvider){
+    const activePeek=driver.peek?.(activeProvider);
+    if(activePeek?.updatedAt&&activePeek.open===false)activeProvider=null
+  }
+  const order=activeProvider?[activeProvider,...['iq_option','exnova'].filter(x=>x!==activeProvider)]:['iq_option','exnova'];
+  for(const k of order){
+    const b=brokers[k],peek=driver.peek?.(k),m=driver.liveStatus?.(k);
+    if(peek?.updatedAt&&peek.open===false)continue;
+    if(b?.connected&&m&&(m.balance!=null||m.quote!=null||m.candles?.length)){
+      if(activeProvider!==k)activeProvider=k;
+      return{k,m}
+    }
+  }
+  return null
+}
 function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,assetValidated:m.assetValidated,validatedSymbol:m.validatedSymbol||m.symbol,screenCandidateSymbol:m.screenCandidateSymbol||null,validatedAt:m.validatedAt||null,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,expirationDurationMs:m.expirationDurationMs,expirationRaw:m.expirationRaw,expirationKind:m.expirationKind,expirationConfidence:m.expirationConfidence,expirationUpdatedAt:m.expirationUpdatedAt,payout:Number.isFinite(Number(m.payout))?Number(m.payout):null,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
@@ -178,6 +193,13 @@ function overlayAnalysis(view,asset,now=Date.now()){
 let busy=false;async function loop(){if(busy)return;busy=true;try{
   const licensed=await enforceAccessLease();
   if(!licensed){if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}return}
+  if(activeProvider){
+    const activePeek=driver.peek?.(activeProvider);
+    if(activePeek?.updatedAt&&activePeek.open===false){
+      if(brokers[activeProvider])brokers[activeProvider].connected=false;
+      activeProvider=null;lastBrokerMaintainAt=0;lastMarketSyncAt=0;lastOverlayAt=0
+    }
+  }
   if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
   await runtime.tick(loopNow);
@@ -282,8 +304,11 @@ async function autoConnectVisibleBrokers(){
   if(autoBrokerBusy||!accessLeaseValid())return;autoBrokerBusy=true;
   try{
     for(const [name,adapter] of Object.entries(brokers)){
-      if(adapter.connected)continue;
       const peek=driver.peek?.(name);
+      if(adapter.connected){
+        if(!activeProvider&&peek?.open){activeProvider=name;syncRuntimeMarket()}
+        continue
+      }
       if(!peek?.open)continue;
       let info=null;
       try{
