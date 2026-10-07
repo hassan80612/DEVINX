@@ -242,6 +242,35 @@ test('a future CALL is kept but entry waits while the live candle is still burni
   assert.match(blocked.reason,/força de queda/i);
 });
 
+test('violent opposite micro impulse invalidates a locked future side after two confirmed cycles without changing timing sync',()=>{
+  const rt=new DemoTradingRuntime({seed:461,balance:10000});
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
+  const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
+  const first=rt._operationalSignalState(analysis,snap,t);
+  assert.equal(first.state,'AGUARDAR JANELA');
+  const originalWindow=first.entryWindowStartAt;
+  analysis.metrics.shortModel={...analysis.metrics.shortModel,ready:true,accelDown:true,turnUp:false,reversalCallCandidate:false,failedBreakDown:false};
+  analysis.metrics.micro={delta5:-0.002,delta15:-0.004,p5:-2.1,pulse:-14};
+  const one=rt._operationalSignalState(analysis,snap,t+1000);
+  assert.equal(one.side,'CALL');
+  assert.equal(one.state,'AGUARDAR JANELA');
+  assert.equal(rt.operationalSetup.oppositionCycles,1);
+  assert.equal(one.entryWindowStartAt,originalWindow);
+  const two=rt._operationalSignalState(analysis,snap,t+2000);
+  assert.equal(two.state,'INVALIDADO');
+  assert.equal(two.side,'CALL');
+});
+
+test('directionReady is mandatory before a future forecast becomes operational',()=>{
+  const rt=new DemoTradingRuntime({seed:462,balance:10000});
+  rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
+  const analysis=timedAnalysis('CALL');
+  analysis.entryPlanner.horizons['30'].directionReady=false;
+  const state=rt._operationalSignalState(analysis,{price:1.10},Date.now());
+  assert.equal(state.actionable,false);
+  assert.equal(state.side,'AGUARDAR');
+});
+
 test('forecast horizon is persisted independently from expiration',()=>{
   const rt=new DemoTradingRuntime({seed:47,balance:10000});
   rt.patchSettings({forecastHorizonSeconds:120,orderDurationMs:30000},'test');
@@ -271,6 +300,14 @@ test('operational runtime no longer contains broker-expiration mismatch gates',a
   assert.ok(runtime.includes("settleDurationMs:durationMs"));
 });
 
+
+test('future overlay source blocks immediate same-side relock after expiry or invalidation',async()=>{
+  const ui=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+  assert.ok(!ui.includes('const sameExpiredSide=false'));
+  assert.ok(ui.includes("const sameExpiredSide=!!expiredDecision&&plannerReadable&&candidateOutlook===String(expiredDecision.side||'').toUpperCase()"));
+  assert.ok(ui.includes('plannerConfirmed&&!sameExpiredSide'));
+  assert.ok(ui.includes("reason:'runtime-invalidated'"));
+});
 
 test('locked forecast side cannot alternate CALL and PUT inside the same entry window',()=>{
   const rt=new DemoTradingRuntime({seed:49,balance:10000});

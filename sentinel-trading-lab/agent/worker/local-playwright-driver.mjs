@@ -1485,7 +1485,7 @@ export class LocalPlaywrightDriver{
         // O horizonte (30s/1m/...) define o alvo futuro a partir de agora.
         // A expiração escolhida no card define quanto tempo a operação ficará aberta.
         // A janela de entrada é calculada por horizonte - expiração; a expiração lida da corretora não participa desta equação.
-        const decisionAsset=visibleAsset,decisionSeconds=Math.max(30,Number(plannerHorizon)||30);
+        const decisionAsset=visibleAsset,decisionSeconds=Math.max(30,Number(plannerHorizon)||30),runtimeOperationalState=String(operational?.state||'AGUARDAR').toUpperCase(),runtimeOperationalSide=['CALL','PUT'].includes(String(operational?.side||'').toUpperCase())?String(operational.side).toUpperCase():null;
         const decisionKey='sentinel-future-decision-v13|'+decisionAsset+'|'+String(plannerHorizon),expiredKey='sentinel-future-expired-v13|'+decisionAsset+'|'+String(plannerHorizon),decisionNow=Date.now(),maxFeedPauseMs=12000;
         let futureDecision=null,expiredDecision=null;
         try{futureDecision=JSON.parse(localStorage.getItem(decisionKey)||'null')}catch{futureDecision=null}
@@ -1519,7 +1519,8 @@ export class LocalPlaywrightDriver{
           const livePlannerPrice=Number(plannerPlan?.currentPrice),ownInvalidation=Number(futureDecision.side==='CALL'?plannerPlan?.callInvalidation:plannerPlan?.putInvalidation);
           const priceInvalidated=Number.isFinite(livePlannerPrice)&&Number.isFinite(ownInvalidation)&&(futureDecision.side==='CALL'?livePlannerPrice<=ownInvalidation:livePlannerPrice>=ownInvalidation);
           if(priceInvalidated){
-            try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
+            expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0),reason:'price-invalidated'};
+            try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
           }
         }
         if(futureDecision&&plannerReadable&&decisionNow<Number(futureDecision.targetAt||0)){
@@ -1529,10 +1530,15 @@ export class LocalPlaywrightDriver{
           futureDecision.invalidations=strongInvalidation?Number(futureDecision.invalidations||0)+1:0;
           futureDecision.lastCheckedAt=decisionNow;
           if(futureDecision.invalidations>=2){
-            try{localStorage.removeItem(decisionKey)}catch{};futureDecision=null
+            expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0),reason:'opposition-invalidated'};
+            try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
           }else{
             try{localStorage.setItem(decisionKey,JSON.stringify(futureDecision))}catch{}
           }
+        }
+        if(futureDecision&&runtimeOperationalState==='INVALIDADO'&&runtimeOperationalSide===String(futureDecision.side||'').toUpperCase()){
+          expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0),reason:'runtime-invalidated'};
+          try{localStorage.setItem(expiredKey,JSON.stringify(expiredDecision));localStorage.removeItem(decisionKey)}catch{};futureDecision=null
         }
         if(futureDecision&&decisionNow>=Number(futureDecision.targetAt||0)){
           expiredDecision={asset:decisionAsset,seconds:decisionSeconds,side:String(futureDecision.side||''),expiredAt:decisionNow,targetAt:Number(futureDecision.targetAt||0)};
@@ -1543,9 +1549,9 @@ export class LocalPlaywrightDriver{
         if(expiredDecision&&(!plannerReadable||candidateOutlook!==String(expiredDecision.side||''))){
           try{localStorage.removeItem(expiredKey)}catch{};expiredDecision=null
         }
-        const sameExpiredSide=false;
+        const sameExpiredSide=!!expiredDecision&&plannerReadable&&candidateOutlook===String(expiredDecision.side||'').toUpperCase();
         const candidatePct=candidateOutlook==='CALL'?futureCallPct:candidateOutlook==='PUT'?futurePutPct:0;
-        const decisionEligible=plannerReadable&&plannerPlan?.outlookReady===true&&['CALL','PUT'].includes(candidateOutlook)&&candidatePct>=futureDisplayThreshold;
+        const decisionEligible=plannerReadable&&plannerConfirmed&&!sameExpiredSide&&plannerPlan?.outlookReady===true&&['CALL','PUT'].includes(candidateOutlook)&&candidatePct>=futureDisplayThreshold;
         if(!futureDecision&&decisionEligible){
           futureDecision={
             asset:decisionAsset,seconds:decisionSeconds,side:candidateOutlook,lockedAt:decisionNow,targetAt:decisionNow+decisionSeconds*1000,
@@ -1563,8 +1569,8 @@ export class LocalPlaywrightDriver{
         const outlook=futureDecision?.side||displayCandidate;
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
         const formingSide=displayCandidate==='CALL'||displayCandidate==='PUT'?displayCandidate:null;
-        const operationalHeroSide=['CALL','PUT'].includes(String(operational?.side||'').toUpperCase())?String(operational.side).toUpperCase():null;
-        const operationalTimingState=String(operational?.state||'AGUARDAR').toUpperCase();
+        const operationalHeroSide=runtimeOperationalSide;
+        const operationalTimingState=runtimeOperationalState;
         const operationalWaitSeconds=Number.isFinite(Number(operational?.timeToEntryMs))?Math.max(0,Math.ceil(Number(operational.timeToEntryMs)/1000)):null;
         const lockedDisplaySide=futureDecision&&['CALL','PUT'].includes(String(futureDecision.side||'').toUpperCase())?String(futureDecision.side).toUpperCase():null;
         const operationalMatchesForecast=!lockedDisplaySide||!operationalHeroSide||operationalHeroSide===lockedDisplaySide;
