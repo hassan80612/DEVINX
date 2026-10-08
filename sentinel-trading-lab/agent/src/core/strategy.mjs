@@ -722,8 +722,11 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
 // a family budget. Selected strategies specialize this budget once.
 export function analyzePrediction(input={}){
   const normalized=predictionInput(input);
-  const analysis=analyzeMarket({...input,...normalized,candidateModel:true,predictionModel:true});
+  const analysis=analyzeMarket({...input,...normalized,candidateModel:input.experimentalTiming!==false,predictionModel:true});
   analysis.predictionInputQuality=normalized.inputQuality;
-  if(analysis.entryPlanner)analysis.entryPlanner.modelVersion=FORECAST_MODEL;
+  if(analysis.entryPlanner){
+    analysis.entryPlanner.modelVersion=input.experimentalTiming===false?'future-v6.1-evaluation':FORECAST_MODEL;
+    if(input.experimentalTiming===false)for(const plan of Object.values(analysis.entryPlanner.horizons)){plan.modelVersion='future-v6.1-evaluation';plan.modelRole='evaluation';}
+  }
   return analysis;
 }

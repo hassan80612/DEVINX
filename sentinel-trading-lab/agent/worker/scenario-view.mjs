@@ -1,5 +1,13 @@
 // Presentation follows the operational engine; it never creates or extends a setup.
 export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,durationMs,forecast,displayThreshold=50,minPoints=55,now=Date.now()}={}){
+  // A qualified entry does not create a main forecast when the latter is absent.
+  if(operational?.entryAnalyst?.independent===true&&!operational.scenario){
+    const op=operational,entrySide=['CALL','PUT'].includes(op.side)?op.side:null;
+    const contextMatches=String(op.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(op.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(op.durationMs)===Number(durationMs);
+    const entryEnd=Number(op.activeUntil||0),setupEnd=Number(op.entryWindowEndAt||op.targetAt||0);
+    const canEnter=contextMatches&&op.entryAnalyst.qualification?.allowed===true&&op.state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now&&setupEnd>now;
+    return {entrySide,signalHorizonSeconds:Number(op.entryDecisionHorizonSeconds||durationMs/1000),analysisSide:null,displaySide:null,oppositeAnalysis:false,contextMatches,side:null,state:'AGUARDAR',closed:false,hasSetup:false,canEnter,deadline:null,remainingSeconds:null,confidence:0,entryState:op.state||'AGUARDAR',entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.ceil((entryEnd-now)/1000):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null};
+  }
   const op=operational||{},entrySide=['CALL','PUT'].includes(op.side)?op.side:null,side=['CALL','PUT'].includes(op.scenario?.side)?op.scenario.side:entrySide;
   const contextMatches=!!side&&String(op.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(op.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(op.durationMs)===Number(durationMs);
   let state=contextMatches?String(op.state||'AGUARDAR'):'AGUARDAR';

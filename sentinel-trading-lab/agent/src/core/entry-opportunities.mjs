@@ -1,3 +1,4 @@
+import {reversalStructure} from './reversal-structure.mjs';
 const finite=v=>v!=null&&Number.isFinite(Number(v));
 // The window supplies permission to look, not the direction of the entry.
 // Both sides are assessed from received quotes and the local structure.
@@ -59,7 +60,7 @@ function mappedReaction({side,short,micro,price,quoteTs,recent,now,durationMs}){
   if(reaction.expiresAt<=now)return {...out,phase:'expired'};
   return {...out,qualified:true,room:true,phase:'confirmed-reaction',reaction};
 }
-export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30000}){
+export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30000,entryPolicy='local-v2'}){
   const short=analysis?.metrics?.shortModel||{},micro=analysis?.metrics?.micro||{},forecast=analysis?.entryPlanner?.horizons?.[String(Math.round(durationMs/1000))]||{};
   const quoteTs=Number(snap.quoteTs),price=Number(snap.price),fresh=quoteTs<=now&&now-quoteTs<=2500;
   const points=(snap.quoteHistory||[]).filter(q=>finite(q.ts)&&finite(q.price)&&Number(q.price)>0&&Number(q.ts)<=Math.min(now,quoteTs)&&Number(q.ts)>=now-10000).map(q=>({ts:Number(q.ts),price:Number(q.price)})).sort((a,b)=>a.ts-b.ts);
@@ -100,14 +101,21 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
       }
     }else if(continuation){trigger=call?Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price));invalidation=call?Math.min(...bar.map(q=>q.price))-maxDistance*.2:Math.max(...bar.map(q=>q.price))+maxDistance*.2;}
     const timingValid=finite(trigger)&&finite(invalidation)&&(!reaction||reaction.expiresAt>now);
-    const allowed=fresh&&short.ready===true&&flow&&structure&&room&&!adverse&&!exhausted&&(reversal||continuation)&&score>=minPoints&&timingValid;
-    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':!flow?'flow':!structure?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation)?'setup':score<minPoints?'score':!timingValid?'quotes':null;
-    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
+    const reversalEvidence=entryPolicy==='structural-reversals-v1'&&reversal?reversalStructure({side,snap,now,durationMs,reaction,expectedMove,oppositeLevel:call?short.sr?.resistance:short.sr?.support}):null;
+    if(reversalEvidence?.allowed){
+      // Own the structural break as the trigger. Reusing the first uptick's
+      // earlier trigger would incorrectly classify a timely break as late.
+      trigger=reversalEvidence.level+(call?1:-1)*reversalEvidence.buffer;
+      reaction={...reaction,trigger,structuralBreak:reversalEvidence};
+    }
+    const allowed=fresh&&short.ready===true&&flow&&structure&&room&&!adverse&&!exhausted&&(reversal||continuation)&&score>=minPoints&&timingValid&&(!reversalEvidence||reversalEvidence.allowed);
+    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':!flow?'flow':!structure?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation)?'setup':score<minPoints?'score':!timingValid?'quotes':reversalEvidence?.blockedBy??null;
+    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.','structure-history':'Reação curta sem estrutura anterior identificável.','structure-break':'Reação curta ainda não rompeu a estrutura anterior.','expiration-room':'Reversão sem espaço conhecido para o movimento da expiração.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
     const plan={...forecast,entryForecastProbability:Number(call?forecast.callProbability:forecast.putProbability),rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:repeated?.maxDistance||maxDistance,sourceBarAt:sourceAt},safety:{blocked:false}};
     if(call){plan.callTrigger=trigger;plan.callInvalidation=invalidation;}else{plan.putTrigger=trigger;plan.putInvalidation=invalidation;}
     // Percentages here are internal gating scores, not measured win probabilities.
     plan.callProbability=call?score:100-score;plan.putProbability=100-plan.callProbability;
-    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
+    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,reversalEvidence,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
   });
 }
 

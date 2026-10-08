@@ -195,6 +195,15 @@ try{
   assert.match(await card.innerText(),/FECHA EM/,'fresh market data keeps the main forecast open after the local entry expires');
   assert.doesNotMatch(await card.innerText(),/ENTRADA DISPONÍVEL|ENTRAR AGORA/);
   // Isolate the completed hold before the test harness moves virtual clock backward.
+  // Local entries without a qualified main forecast own only their entry clock.
+  for(const side of ['CALL','PUT','CALL']){
+    const at=Date.now();
+    await update({...data,operationalSignal:{...operational,side,scenario:null,entryAt:at,entryDecisionHorizonSeconds:30,state:'ENTRADA',ready:true,actionable:true,activeUntil:at+3500,entryAnalyst:{independent:true,qualification:{allowed:true},signal:{side,state:'ENTRADA',actionable:true,entryAt:at,activeUntil:at+3500}}}});
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'AGUARDE UM CENÁRIO');
+    assert.doesNotMatch(await card.innerText(),/FECHA EM/);
+    assert.match(await card.innerText(),/ENTRADA DISPONÍVEL/);
+    assert.match(await analyst.innerText(),new RegExp('Subanalista:\\s*'+side));
+  }
   await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
   await update(data);
   const lowerLayout=await page.evaluate(()=>{

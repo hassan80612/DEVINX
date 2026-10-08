@@ -1,3 +1,4 @@
+import {PredictionInputState} from './forecast-evidence.mjs';
 import {DemoBrokerAdapter} from './demo-broker.mjs';
 import {SimulatedFeed} from './simulated-feed.mjs';
 import {engineCycle} from './engine.mjs';
@@ -43,8 +44,8 @@ function signalPlan({analysis,settings,price,now=Date.now()}={}){
 }
 
 export class DemoTradingRuntime{
-  constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6'}={}){
-    this.predictionModel=predictionModel;
+  constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2'}={}){
+    this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
     this.broker=new DemoBrokerAdapter({balance,payout});
     this.audit=new AuditLog();
@@ -185,8 +186,11 @@ export class DemoTradingRuntime{
     const general=analysis?.generalConsensus||{},presentSide=['CALL','PUT'].includes(String(general?.rapid?.side||'').toUpperCase())?String(general.rapid.side).toUpperCase():'AGUARDAR';
     const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
     const predictionStrategies=[this.settings.strategy,this.settings.strategy2,this.settings.strategy3].filter((id,i)=>id&&id!=='none'&&this.settings.pausedReadings?.['strategy_'+(i+1)]!==true);
-    const qualityAnalysis=this.predictionModel==='family-v6'&&snap?.candles?.length>=35?analyzePrediction({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:this.settings.strategy,predictionStrategies,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now}):null;
-    if(qualityAnalysis){analysis.entryPlanner.modelVersion='future-v6.0';analysis.predictionMetrics=qualityAnalysis.metrics;analysis.predictionInputQuality=qualityAnalysis.predictionInputQuality;}
+    const evaluationMode=this.predictionModel==='family-v6-stable';
+    const predictionContext=[this.validationProvider,asset,combo,this.settings.forecastHorizonSeconds,this.settings.orderDurationMs,...predictionStrategies].join('|');
+    const predictionInput=evaluationMode?this.predictionInputState.prepare({candles:snap?.candles||[],quoteHistory:snap?.quoteHistory||[],now},predictionContext):null;
+    const qualityAnalysis=(this.predictionModel==='family-v6'||evaluationMode)&&snap?.candles?.length>=35?analyzePrediction({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:this.settings.strategy,predictionStrategies,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now,...(evaluationMode?{periodSeconds:predictionInput.inputQuality.periodSeconds,experimentalTiming:false}:{})}):null;
+    if(qualityAnalysis){analysis.entryPlanner.modelVersion=qualityAnalysis.entryPlanner?.modelVersion||'future-v6.0';analysis.predictionMetrics=qualityAnalysis.metrics;analysis.predictionInputQuality=qualityAnalysis.predictionInputQuality;}
     const candidateAnalysis=!qualityAnalysis&&snap?.candles?.length>=35?analyzeMarket({candidateModel:true,candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:this.settings.strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,quoteTs:snap.quoteTs,now}):null;
     const candidatePanel=candidateAnalysis?.entryPlanner?this._strategyPanel(snap,now,{candidateModel:true}):null;
     for(const [secondsKey,originalPlan] of Object.entries(planner)){
@@ -227,7 +231,7 @@ export class DemoTradingRuntime{
       const decisionValidation=this._validationStats(this._validationKey('horizon_decision_v13_3',asset,durationMs,decisionModelKey)),payout=Number(snap?.payout),economicBreakEven=Number.isFinite(payout)&&payout>0?100/(1+payout):null,configuredWinFloor=Math.max(60,Number(this.settings.risk.signalValidationMinWinRate||60)),economicFloor=economicBreakEven==null?configuredWinFloor:Math.max(configuredWinFloor,economicBreakEven+3),decisionHistoryWeak=decisionValidation.samples>=decisionValidation.minSamples&&decisionValidation.smoothedWinRate<economicFloor;
       if(decisionHistoryWeak)plan.directionReady=false;
       plan.validation={samples:validation.samples,wins:validation.wins,losses:validation.losses,draws:validation.draws,winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,avgPredicted:validation.avgPredicted,brierScore:validation.brierScore,calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),calibrated:historyWeight>0,historyWeak,regime,bucket,bucketSamples:bucketValidation.samples,bucketWinRate:bucketValidation.winRate,bucketSmoothedWinRate:bucketValidation.smoothedWinRate,legacyPriorWeight:0,decisionSamples:decisionValidation.samples,decisionWins:decisionValidation.wins,decisionLosses:decisionValidation.losses,decisionDraws:decisionValidation.draws,decisionWinRate:decisionValidation.winRate,decisionSmoothedWinRate:decisionValidation.smoothedWinRate,decisionBrierScore:decisionValidation.brierScore,decisionHistoryWeak,economicBreakEven:economicBreakEven==null?null:Math.round(economicBreakEven*10)/10,confidenceSource:'model',probabilitySource:historyWeight>0?'model+empirical':'model',calibrationEpoch:CALIBRATION_EPOCH,fast30Samples:fast30Validation?.samples??null,fast30WinRate:fast30Validation?.winRate??null,fast30SmoothedWinRate:fast30Validation?.smoothedWinRate??null,fast30HistoryWeak};
-      if(qualityPlan)plan.modelVersion='future-v6.0';else plan.modelVersion='future-v5.0';plan.basis=qualityPlan?'previsão futura V6.0 · evidências por família · estratégias com peso único · calibração por versão e prazo':'previsão futura V5.0 · motor estrutural + projeções independentes das estratégias por prazo · calibração histórica separada da confiança do modelo';plan.consensusSources=['motor futuro '+rawBias+' '+Math.round(rawLeadProbability)+'%','estratégias futuras '+strategySide+(strategyActive?' · '+strategyActive+' ativa(s)':''),'presente '+presentSide]
+      if(qualityPlan)plan.modelVersion=qualityPlan.modelVersion;else plan.modelVersion='future-v5.0';plan.basis=qualityPlan?'previsão futura V6.0 · evidências por família · estratégias com peso único · calibração por versão e prazo':'previsão futura V5.0 · motor estrutural + projeções independentes das estratégias por prazo · calibração histórica separada da confiança do modelo';plan.consensusSources=['motor futuro '+rawBias+' '+Math.round(rawLeadProbability)+'%','estratégias futuras '+strategySide+(strategyActive?' · '+strategyActive+' ativa(s)':''),'presente '+presentSide]
     }
     const executionSeconds=String(Math.round(Number(this.settings.orderDurationMs||60000)/1000)),executionPlan=planner[executionSeconds],reaction=(analysis.predictionMetrics||analysis.metrics)?.shortModel?.repeatedReaction;
     if(reaction?.qualified===true&&reaction.expiresAt>now&&executionPlan?.outlookReady===true&&executionPlan.directionReady===true&&executionPlan.rawBias===reaction.side&&executionPlan.strategyFutureConflict!==true&&executionPlan.safety?.blocked!==true){
@@ -427,8 +431,8 @@ export class DemoTradingRuntime{
       entryAt:previousEntry.firedAt||null,trigger:previousEntry.trigger,invalidation:previousEntry.invalidation,
       reason:'Esta oportunidade terminou; aguardando outro ponto estrutural confirmado.'});
     const entryPoints=Math.max(minPoints,threshold);
-    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs});
-    this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction})=>({side,kind,score,allowed,blockedBy,
+    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,entryPolicy:this.entryPolicy});
+    this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction,reversalEvidence})=>({side,kind,score,allowed,blockedBy,reversalEvidence,
       reason:blockedBy==='score'?'Pontuação técnica '+score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':reason,
       level,approaching,structuralReaction,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints}));
     const baselineCandidates=candidates.filter(x=>x.allowed);
@@ -455,7 +459,7 @@ export class DemoTradingRuntime{
       return decorate({...empty,side:this.operationalSetup?.side||main.side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',reason:this.entryQualification.reason});
     }
     const {side,kind,plan:localPlan}=candidate,call=side==='CALL';
-    const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
+    const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
     const prediction=this.entryResearch.predict(researchContext,features,Number.isFinite(baseline)?baseline:.5);
     const learnedWeak=prediction.qualified&&prediction.probability<10/12;
     this.entryQualification={allowed:!learnedWeak,flow:candidate.flow,structure:candidate.structure,fresh:candidate.fresh,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,blockedBy:learnedWeak?'entry-model':null,reason:learnedWeak?'Modelo qualificado não confirma este ponto.':candidate.reason};
@@ -510,7 +514,7 @@ export class DemoTradingRuntime{
     const plan=this._entryAnalysisMode?executionPlan:(executionPlan?.reaction?.qualified===true||(independentExpiry&&(!sameScenarioSide||!scenarioQualified)))?executionPlan:scenarioPlan;
     const independentEntry=plan===executionPlan&&plan!==scenarioPlan,entryDecisionHorizonSeconds=independentEntry?Math.round(durationMs/1000):forecastHorizonSeconds;
     const currentContextKey=[asset,forecastHorizonSeconds,durationMs,combo].join('|'),existingReaction=this.operationalSetup?.contextKey===currentContextKey&&!!this.operationalSetup?.reactionId&&expirySide===this.operationalSetup.side;
-    const operationalStrategy=combo+'|h'+forecastHorizonSeconds+(this._entryAnalysisMode?'|local-opportunities-v2|'+expiryKind+'|'+expirySide+'|'+String(executionPlan?.regime?.label||'unknown'):(executionPlan?.reaction?.qualified||existingReaction?'|repeated-rejection-v1':independentEntry?'|independent-expiry-v1':''));
+    const operationalStrategy=combo+'|h'+forecastHorizonSeconds+(this._entryAnalysisMode?'|local-opportunities-v2'+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+'|'+expiryKind+'|'+expirySide+'|'+String(executionPlan?.regime?.label||'unknown'):(executionPlan?.reaction?.qualified||existingReaction?'|repeated-rejection-v1':independentEntry?'|independent-expiry-v1':''));
     const expirationWarning=durationMs>forecastHorizonMs,timingCompatible=true,timingOffsetMs=0,entryWindowMs=forecastHorizonMs;
     const presentSide=['CALL','PUT'].includes(String(general?.rapid?.side||'').toUpperCase())?String(general.rapid.side).toUpperCase():'AGUARDAR',strategyFutureSide=['CALL','PUT'].includes(String(plan?.strategyFutureBias||general?.strategies?.side||'').toUpperCase())?String(plan?.strategyFutureBias||general.strategies.side).toUpperCase():'AGUARDAR',futureSide=plan&&['CALL','PUT'].includes(String(plan.rawBias||plan.bias||'').toUpperCase())?String(plan.rawBias||plan.bias).toUpperCase():'NEUTRO';
     // Display smoothing must not delay a currently qualified entry or opposite side.

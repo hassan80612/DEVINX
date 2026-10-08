@@ -1,4 +1,8 @@
 {
-  "version": "13.4.19",
-  "build": "13.4.19-evidence-tray-1008"
+  "version": "13.4.20",
+  "build": "13.4.20-structure-stability-1008",
+  "runtime": {
+    "predictionModel": "family-v6-stable",
+    "entryPolicy": "structural-reversals-v1"
+  }
 }

@@ -35,7 +35,7 @@ export function attenuateForecast(signal,{overextended=false,turning=false,flowC
   if(accelerationConflict)retain*=.82;
   return signal*retain;
 }
-export function predictionInput({candles=[],quoteHistory=[],now=Date.now()}={}){
+export function predictionInput({candles=[],quoteHistory=[],now=Date.now(),periodSeconds=null}={}){
   const byPeriod=new Map();
   for(const c of candles){
     const from=Number(c.from),to=Number(c.to),values=['open','high','low','close'].map(k=>Number(c[k]));
@@ -43,8 +43,8 @@ export function predictionInput({candles=[],quoteHistory=[],now=Date.now()}={}){
     const period=to-from;if(!byPeriod.has(period))byPeriod.set(period,new Map());
     byPeriod.get(period).set(from,{...c,from,to,open:values[0],high:values[1],low:values[2],close:values[3]});
   }
-  const periods=[...byPeriod.keys()].sort((a,b)=>a-b),usable=periods.find(p=>byPeriod.get(p).size>=35),period=usable??periods.sort((a,b)=>byPeriod.get(b).size-byPeriod.get(a).size)[0];
-  const cleanCandles=period==null?[]:[...byPeriod.get(period).values()].sort((a,b)=>a.from-b.from);
+  const periods=[...byPeriod.keys()].sort((a,b)=>a-b),usable=periods.find(p=>byPeriod.get(p).size>=35),period=periodSeconds??usable??periods.sort((a,b)=>byPeriod.get(b).size-byPeriod.get(a).size)[0];
+  const cleanCandles=period==null||!byPeriod.has(period)?[]:[...byPeriod.get(period).values()].sort((a,b)=>a.from-b.from);
   const quotes=[...new Map(quoteHistory.filter(q=>Number.isFinite(Number(q.ts))&&Number.isFinite(Number(q.price))&&Number(q.price)>0&&Number(q.ts)<=now).map(q=>[Number(q.ts),{ts:Number(q.ts),price:Number(q.price)}])).values()].sort((a,b)=>a.ts-b.ts);
   return {candles:cleanCandles,quoteHistory:quotes,inputQuality:{periodSeconds:period??null,sourceCandles:candles.length,uniqueCandles:cleanCandles.length,excludedCandles:candles.length-cleanCandles.length}};
 }
@@ -59,4 +59,19 @@ export function mergePredictionBars(historical=[],live=[],now=Date.now()){
   map.set(key,old?{...old,high:Math.max(Number(old.high),Number(c.high)),low:Math.min(Number(old.low),Number(c.low)),close:Number(c.close)}:{...c});
  }
  return [...map.values()].sort((a,b)=>Number(a.from)-Number(b.from)).slice(-240);
+}
+
+// A growing backfill must not silently switch the forecast from 2m to 1m.
+// This state belongs to a provider/asset/settings context, not a timer.
+export class PredictionInputState {
+ constructor(){this.periods=new Map()}
+ prepare(input,context){
+  const known=this.periods.get(context);
+  const normalized=predictionInput({...input,periodSeconds:known??null});
+  if(known==null&&normalized.candles.length>=35){
+   this.periods.set(context,normalized.inputQuality.periodSeconds);
+   if(this.periods.size>32)this.periods.delete(this.periods.keys().next().value);
+  }
+  return normalized;
+ }
 }

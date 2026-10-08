@@ -13,6 +13,7 @@ import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
 import {VERSION,BUILD} from './release.mjs';
+import {RUNTIME_OPTIONS} from './release.mjs';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -24,7 +25,7 @@ if(HOST!=='127.0.0.1'&&HOST!=='localhost'&&!TOKEN)throw new Error('SENTINEL_WORK
 const marketJournal=new MarketJournal({directory:resolve(dirname(STATE_FILE),'market-history')});
 let journalAnalysisAt=0;
 setInterval(()=>marketJournal.flush(),2000).unref();
-const runtime=new DemoTradingRuntime({seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
+const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
 const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({baseUrl:process.env.SENTINEL_BROWSER_DRIVER_URL,token:process.env.SENTINEL_BROWSER_DRIVER_TOKEN||''}):new LocalPlaywrightDriver({dataDir:process.env.SENTINEL_BROWSER_PROFILE_DIR||'worker/data/browser-profiles'});
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
