@@ -43,7 +43,7 @@ if (-not (Get-Health)) { Start-Manager }
 
 $notify = New-Object System.Windows.Forms.NotifyIcon
 try { $notify.Icon = New-Object System.Drawing.Icon($iconPath) } catch { $notify.Icon = [System.Drawing.SystemIcons]::Application }
-$notify.Text = 'Sentinel Agent V13.4.11'
+$notify.Text = 'Sentinel Agent V13.4.12'
 $notify.Visible = $true
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -175,12 +175,12 @@ $timer.Add_Tick({
       $accessItem.Text = 'Acesso: aguardando vínculo'
     }
   } catch {}
-  if ($h -and $h.ok -and $h.version -eq '13.4.11' -and $h.build -eq '13.4.11-structural-1008') {
+  if ($h -and $h.ok -and $h.version -eq '13.4.12' -and $h.build -eq '13.4.12-timing-1008') {
     $failCount = 0
     $script:agentEnabled = $true
     if ($h.workerHealthy) {
-      $statusItem.Text = 'Status: Agent 13.4.11 + Worker ONLINE'
-      $notify.Text = 'Sentinel Agent 13.4.11 - ONLINE'
+      $statusItem.Text = 'Status: Agent 13.4.12 + Worker ONLINE'
+      $notify.Text = 'Sentinel Agent 13.4.12 - ONLINE'
     } elseif ($h.workerEnabled -eq $false) {
       $statusItem.Text = 'Status: Agent ligado / Worker pausado'
       $notify.Text = 'Sentinel Agent - Worker pausado'

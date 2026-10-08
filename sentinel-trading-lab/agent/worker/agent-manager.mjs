@@ -3,8 +3,8 @@ import {spawn} from 'node:child_process';
 import {writeFile,mkdir,rm,appendFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 
-const VERSION='13.4.11';
-const BUILD='13.4.11-structural-1008';
+const VERSION='13.4.12';
+const BUILD='13.4.12-timing-1008';
 const HOST='127.0.0.1';
 const PORT=Number(process.env.SENTINEL_MANAGER_PORT||8788);
 const WORKER_PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
