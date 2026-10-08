@@ -102,7 +102,9 @@ try{
   for(const side of ['CALL','PUT']){
     await update({...cancelled,entryPlanner:{horizons:{'60':{...plan,rawBias:side,callProbability:side==='CALL'?80:20,putProbability:side==='PUT'?80:20}}}});
     assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CANCELADO');
-    assert.equal(await card.locator('[data-sentinel-scenario-action]').evaluate(el=>getComputedStyle(el).color),putActionColor);
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').evaluate(el=>getComputedStyle(el).color),'rgb(255, 255, 255)');
+    assert.equal(await card.locator('[data-sentinel-scenario-status]').innerText(),'00:00 · ENCERRADO');
+    assert.equal(await card.locator('[data-sentinel-scenario-header]').evaluate(el=>getComputedStyle(el).borderTopWidth),'2px');
     assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   }
 
