@@ -80,3 +80,11 @@ test('a new local reaction inside the active burst cannot queue a duplicate entr
  const r=runtime(),a=analysis(),first=r._operationalSignalState(a,snap([99.99,100.01,100.02]),t);assert.equal(first.actionable,true);
  r._operationalSignalState(a,snap([99.98,100.01,100.02],t+1000),t+1000);assert.equal(r.signalValidation.pending.length,1);assert.equal(r.entryResearch.pending.length,1);assert.equal(r.scenarioSetup.entryAt,t);
 });
+
+
+test('an unqualified forecast history cannot freeze the independent analyst before its own model validates',()=>{
+ const r=runtime(),a=analysis(),first=r._operationalSignalState(a,snap([99.99,100.01,100.02]),t);assert.equal(first.actionable,true);
+ const key=r.signalValidation.pending[0].key;r.signalValidation.outcomes=Array.from({length:60},()=>({key,won:false,draw:false,settlementQuality:'exact'}));
+ r.scenarioSetup=null;r.operationalSetup=null;const next=r._operationalSignalState(a,snap([99.99,100.01,100.02],t+2000),t+2000);
+ assert.equal(next.actionable,true);assert.equal(next.historyBlocked,false);assert.equal(next.validation.samples,60);assert.equal(next.entryResearch.qualified,false);
+});
