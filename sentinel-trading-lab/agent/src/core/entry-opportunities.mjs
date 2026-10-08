@@ -76,7 +76,7 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const flow=mapped.qualified||aligned&&(call?short.flowReadyCall===true:short.flowReadyPut===true)||aligned&&reversal;
     const structure=mapped.qualified||(call?short.structureReadyCall===true:short.structureReadyPut===true)||reversal;
     const room=mapped.qualified?mapped.room:repeated?repeated.roomOk===true:(call?short.callRoomOk===true:short.putRoomOk===true);
-    const adverse=!mapped.qualified&&(call?short.turnDown===true||short.weakeningUp===true&&Number(micro.delta2)<0:short.turnUp===true||short.weakeningDown===true&&Number(micro.delta2)>0);
+    const adverse=!mapped.qualified&&(call?short.turnDown===true||short.weakeningUp===true&&Number(micro.delta2)<0&&Number(micro.delta5)<0:short.turnUp===true||short.weakeningDown===true&&Number(micro.delta2)>0&&Number(micro.delta5)>0);
     const exhausted=!reversal&&(call?short.callOverextended===true||short.callReversalRisk===true:short.putOverextended===true||short.putReversalRisk===true);
     const localSetup=call?short.callSetup||short.readyCall||short.accelUp:short.putSetup||short.readyPut||short.accelDown;
     const forecastSetup=forecast.rawBias===side&&forecast.scenario?.continuationReady===true;
@@ -110,3 +110,4 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
   });
 }
+

@@ -14,9 +14,9 @@ test('PUT scenario survives a confirmed CALL entry at 30s with distinct headline
  assert.equal(o.actionable,true);assert.equal(o.side,'CALL');assert.equal(o.scenario.side,'PUT');assert.equal(o.entryDecisionHorizonSeconds,30);assert.equal(r.entryResearch.pending.length,1);
  const v=scenarioViewFromRuntime({operational:o,asset:'TEST',horizonSeconds:120,durationMs:30000,forecast:a.entryPlanner.horizons['30'],now:t,minPoints:55});assert.equal(v.canEnter,true);assert.equal(v.displaySide,'PUT');assert.equal(v.entrySide,'CALL');
  const flip=analysis('CALL','CALL');const next=r._operationalSignalState(flip,snap([100.02,100.02],t+500),t+500);assert.equal(next.scenario.side,'PUT');assert.equal(next.scenario.deadline,t+120000);assert.equal(r.entryResearch.pending.length,1);
- const ended=r._operationalSignalState(a,snap([100.02,100.02],t+4000),t+4000);assert.equal(ended.state,'OPORTUNIDADE CONSUMIDA');assert.equal(ended.actionable,false);assert.equal(ended.scenarioDeadline,null);
+ const ended=r._operationalSignalState(a,snap([100.02,100.02],t+4000),t+4000);assert.equal(ended.state,'OPORTUNIDADE CONSUMIDA');assert.equal(ended.actionable,false);assert.equal(ended.scenarioDeadline,t+120000);assert.equal(ended.scenario.closed,false);
  const late=r._operationalSignalState(analysis('PUT','PUT'),snap([99.99,99.98],t+10000),t+10000);assert.equal(late.actionable,false);assert.equal(r.entryResearch.pending.length,1);
- const closed=scenarioViewFromRuntime({operational:ended,asset:'TEST',horizonSeconds:120,durationMs:30000,now:t+4000});assert.equal(closed.deadline,null);assert.equal(closed.closed,true);
+ const closed=scenarioViewFromRuntime({operational:ended,asset:'TEST',horizonSeconds:120,durationMs:30000,now:t+4000});assert.equal(closed.deadline,t+120000);assert.equal(closed.closed,false);assert.equal(closed.entryState,'OPORTUNIDADE CONSUMIDA');assert.equal(closed.canEnter,false);
 });
 test('unconfirmed contrary direction and forming or weak flow never release or learn phantom entries',()=>{
  for(const block of ['forming','flow','structure','reversal','stale','future','room']){const r=runtime(),a=analysis();
@@ -26,7 +26,7 @@ test('unconfirmed contrary direction and forming or weak flow never release or l
  }
 });
 test('late point closes the opportunity and returning to its trigger cannot rearm it',()=>{
- const r=runtime(),a=analysis('CALL','CALL','continuation'),o=r._operationalSignalState(a,snap([100,100,100.2]),t);assert.equal(o.state,'OPORTUNIDADE PERDIDA');assert.equal(o.scenarioDeadline,null);
+ const r=runtime(),a=analysis('CALL','CALL','continuation'),o=r._operationalSignalState(a,snap([100,100,100.2]),t);assert.equal(o.state,'OPORTUNIDADE PERDIDA');assert.equal(o.scenarioDeadline,t+120000);assert.equal(o.scenario.closed,false);
  assert.equal(r._operationalSignalState(a,snap([100.01,100.02],t+1000),t+1000).actionable,false);assert.equal(r.entryResearch.pending.length,0);
 });
 test('structural invalidation cancels main window and provider changes start a separate context',()=>{
@@ -78,7 +78,7 @@ test('an invalidated window accepts a new valid scenario before the old deadline
 });
 test('a new local reaction inside the active burst cannot queue a duplicate entry',()=>{
  const r=runtime(),a=analysis(),first=r._operationalSignalState(a,snap([99.99,100.01,100.02]),t);assert.equal(first.actionable,true);
- r._operationalSignalState(a,snap([99.98,100.01,100.02],t+1000),t+1000);assert.equal(r.signalValidation.pending.length,1);assert.equal(r.entryResearch.pending.length,1);assert.equal(r.scenarioSetup.entryAt,t);
+ r._operationalSignalState(a,snap([99.98,100.01,100.02],t+1000),t+1000);assert.equal(r.signalValidation.pending.length,1);assert.equal(r.entryResearch.pending.length,1);assert.equal(r.operationalSetup.firedAt,t);assert.equal(r.scenarioSetup.status,'OPEN');assert.equal(r.scenarioSetup.closed,false);
 });
 
 
@@ -88,3 +88,55 @@ test('an unqualified forecast history cannot freeze the independent analyst befo
  r.scenarioSetup=null;r.operationalSetup=null;const next=r._operationalSignalState(a,snap([99.99,100.01,100.02],t+2000),t+2000);
  assert.equal(next.actionable,true);assert.equal(next.historyBlocked,false);assert.equal(next.validation.samples,60);assert.equal(next.entryResearch.qualified,false);
 });
+
+test('new same-side points keep separate entry prices and results while the scenario persists',()=>{
+ const r=runtime(),a=analysis('PUT','CALL','continuation');
+ const first=r._operationalSignalState(a,snap([100,100,100.01]),t),firstId=r.operationalSetup.key;
+ assert.equal(first.actionable,true);const original={...r.entryResearch.pending[0]};
+ const repeated=r._operationalSignalState(a,snap([100,100,100.01],t+4000),t+4000);
+ assert.equal(repeated.actionable,false);assert.equal(r.entryResearch.pending.length,1);
+ const second=r._operationalSignalState(a,snap([100.01,100.015,100.02],t+10000),t+10000);
+ assert.equal(second.actionable,true);assert.notEqual(r.operationalSetup.key,firstId);
+ assert.equal(second.scenario.id,first.scenario.id);assert.equal(second.scenario.deadline,t+120000);
+ assert.equal(r.entryResearch.pending.length,2);assert.deepEqual(r.entryResearch.pending[0],original);
+ assert.equal(r.entryResearch.pending[1].price,100.02);assert.equal(r.entryResearch.pending[1].createdAt,t+10000);
+ r.entryResearch.settle(snap([100.005],t+30000),t+30000);
+ assert.equal(r.entryResearch.outcomes.length,1);assert.equal(r.entryResearch.outcomes[0].won,false);assert.equal(r.entryResearch.pending.length,1);
+ r.entryResearch.settle(snap([100.03],t+40000),t+40000);
+ assert.equal(r.entryResearch.outcomes.length,2);assert.equal(r.entryResearch.outcomes[1].won,true);
+});
+
+test('main horizon rollover preserves the independent entry and its full expiry',()=>{
+ const r=runtime();r.settings.forecastHorizonSeconds=30;r.settings.orderDurationMs=60000;
+ const a=analysis('PUT','CALL');a.entryPlanner.horizons={'30':plan('PUT',30),'60':plan('CALL',60,'reversal')};
+ const observing={...a,metrics:{...a.metrics,shortModel:{...a.metrics.shortModel,flowReadyCall:false,reversalCallConfirmed:false,reversalCallCandidate:false}}};
+ r._operationalSignalState(observing,snap([100,100],t),t);
+ const start=t+29000,first=r._operationalSignalState(a,snap([99.99,100.01,100.02],start),start),entryId=r.operationalSetup.key;
+ assert.equal(first.actionable,true);assert.equal(first.activeUntil,start+3500);assert.equal(r.entryResearch.pending[0].dueAt,start+60000);
+ const q={...snap([100.03],t+30500),quoteHistory:[{ts:start-400,price:99.99},{ts:start-200,price:100.01},{ts:start,price:100.02},{ts:t+30000,price:100.025},{ts:t+30500,price:100.03}]};
+ const next=r._operationalSignalState(a,q,t+30500);
+ assert.equal(next.actionable,true);assert.notEqual(next.scenario.id,first.scenario.id);assert.equal(r.operationalSetup.key,entryId);assert.equal(r.entryResearch.pending.length,1);
+});
+
+test('an isolated two-second retrace retains the setup and trigger evidence without phantom entry',()=>{
+ const r=runtime(),a=analysis('CALL','CALL','continuation');
+ const first=r._operationalSignalState(a,snap([100,100,100.01]),t),id=r.operationalSetup.key;
+ const retrace=analysis('CALL','CALL','continuation');retrace.metrics.micro.delta2=-.002;retrace.metrics.shortModel.weakeningUp=true;
+ const next=r._operationalSignalState(retrace,snap([100,100.01,100.008],t+400),t+400);
+ assert.equal(next.scenario.id,first.scenario.id);assert.equal(next.scenario.closed,false);
+ assert.equal(r.operationalSetup.key,id);assert.equal(r.operationalSetup.invalidated,false);assert.ok(r.operationalSetup.triggerQuotes.length>=2);assert.equal(r.entryResearch.pending.length,1);
+ const contrary=analysis('CALL','CALL','continuation');contrary.metrics.micro.delta5=-.02;contrary.metrics.micro.delta2=-.01;contrary.metrics.shortModel.weakeningUp=true;
+ const blocked=r._operationalSignalState(contrary,snap([100.008,100.006],t+600),t+600);
+ assert.equal(blocked.actionable,false);assert.equal(blocked.scenario.closed,false);
+});
+
+test('missed entries require a genuinely later source, including opposite-side candidates',()=>{
+ const r=runtime(),a=analysis('CALL','CALL','continuation');
+ const missed=r._operationalSignalState(a,snap([100,100,100.2]),t);assert.equal(missed.actionable,false);
+ const opposite=r._operationalSignalState(analysis('CALL','PUT'),snap([100.02,100,99.99],t+200),t+200);
+ assert.equal(opposite.actionable,false,'an old extreme cannot rearm the missed opportunity');
+ const fresh=r._operationalSignalState(analysis('CALL','PUT'),snap([100.02,100,99.99],t+1000),t+1000);
+ assert.equal(fresh.actionable,true);assert.equal(fresh.side,'PUT');assert.equal(fresh.scenario.side,'CALL');
+ assert.equal(r.entryResearch.pending.length,1);
+});
+

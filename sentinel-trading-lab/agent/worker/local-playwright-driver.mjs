@@ -1321,15 +1321,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.17'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.18'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.17';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.18';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.17';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.18';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1515,7 +1515,7 @@ export class LocalPlaywrightDriver{
         const runtimeDeadline=runtimeContextMatches?Number(runtimeView.deadline||0):0;
         const deadlinePassed=runtimeDeadline>0&&decisionNow>=runtimeDeadline;
         const entryDeadlinePassed=Number(runtimeView.entryDeadline||0)>0&&decisionNow>=Number(runtimeView.entryDeadline);
-        const operationalTimingState=deadlinePassed?(operational?.entryAt?'JANELA ENCERRADA':'JANELA PERDIDA'):entryDeadlinePassed&&runtimeView.state==='ENTRADA'?(operational.scenario?'OPORTUNIDADE CONSUMIDA':'ACOMPANHANDO'):runtimeView.state||'AGUARDAR';
+        const operationalTimingState=deadlinePassed?(operational?.entryAt?'JANELA ENCERRADA':'JANELA PERDIDA'):entryDeadlinePassed&&runtimeView.state==='ENTRADA'?(operational.entryAnalyst?.independent===true&&operational.scenario?'JANELA ABERTA':operational.scenario?'OPORTUNIDADE CONSUMIDA':'ACOMPANHANDO'):runtimeView.state||'AGUARDAR';
         const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO','OPORTUNIDADE PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA'].includes(operationalTimingState);
         const futureDecision=plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup&&!timingClosed&&runtimeDeadline>decisionNow?{side:runtimeOperationalSide,targetAt:runtimeDeadline}:null;
         const futureDecisionPaused=!plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup;
@@ -1567,7 +1567,7 @@ export class LocalPlaywrightDriver{
           }
         }
         const subanalystSide=subHold&&subHold.until>decisionNow&&ownContextOk?subHold.side:null;
-        const subanalystStatus=subanalystSide||'OBSERVANDO ENTRADA';
+        const subanalystStatus=subanalystSide?(subanalystSide+(ownNow?'':' · sinal anterior')):'OBSERVANDO ENTRADA';
         const subanalystTone=subanalystSide==='CALL'?callTone:subanalystSide==='PUT'?putTone:ink;
         const subanalystHtml='<div data-sentinel-subanalyst-status style="display:flex;align-items:center;gap:7px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;overflow:hidden;white-space:nowrap;min-width:0;margin:0 0 7px;padding:0 8px;border-radius:8px;background:'+(uiTheme==='light'?'rgba(128,94,39,.07)':'rgba(215,182,93,.065)')+';border:1px solid '+panelBorder+'">'+
           '<span style="color:'+goldSoft+';font-size:13.5px;font-weight:800;flex-shrink:0">Subanalista:</span>'+
@@ -1600,7 +1600,7 @@ export class LocalPlaywrightDriver{
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:9.5px;color:'+callTone+';font-weight:700">CALL — confirmação</div><div style="font-size:14px;font-weight:700;color:#69e1b5;margin-top:2px">'+price(displayedCallTrigger)+'</div><div style="font-size:9.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(displayedCallInvalidation)+'</div></div>'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:9.5px;color:'+putTone+';font-weight:700">PUT — confirmação</div><div style="font-size:14px;font-weight:700;color:#ff8f9c;margin-top:2px">'+price(displayedPutTrigger)+'</div><div style="font-size:9.5px;color:'+muted+';margin-top:2px">invalida &gt; '+price(displayedPutInvalidation)+'</div></div>'+
           '</div>'+
-          '<div style="margin-top:5px;height:25px;min-height:25px;max-height:25px;overflow:hidden;font-size:9.5px;line-height:1.34;color:'+ink+';font-weight:760">Entrada somente quando o Sinal Operacional confirmar o gatilho.</div>'+
+          '<div style="margin-top:5px;height:25px;min-height:25px;max-height:25px;overflow:hidden;font-size:9.5px;line-height:1.34;color:'+ink+';font-weight:760">Percentuais do Cenário · Subanalista com decisão própria.</div>'+
           '<div style="margin-top:5px;height:28px;min-height:28px;max-height:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:9.5px;line-height:1.35;color:'+muted+'">'+esc(measuredHistoryLabel)+' · confiança em pontos não é taxa de acerto.</div>'
         ):'<div style="height:159px;box-sizing:border-box;font-size:10.5px;color:'+muted+'">Aguardando leitura atual deste prazo.</div>');
         const strategyCardsHtml=[1,2,3].map(slot=>{
@@ -1773,7 +1773,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.17')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.18')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -1999,3 +1999,4 @@ export class LocalPlaywrightDriver{
     throw new Error(`unsupported_driver_action:${provider}:${method}:${action}`);
   }
 }
+

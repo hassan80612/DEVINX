@@ -18,5 +18,21 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
   const executionMatches=op.entryAnalyst?.independent===true?op.entryAnalyst.qualification?.allowed===true:(!forecast&&signalHorizonSeconds===Number(horizonSeconds))||(forecastMatches&&forecast.outlookReady===true&&forecastSide===entrySide);
   const displaySide=closed||hasSetup?side:analysisSide;
   const canEnter=executionMatches&&hasSetup&&state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now;
+  if(op.entryAnalyst?.independent===true&&op.scenario){
+    const scenario=op.scenario,scenarioDeadline=Number(scenario.deadline||0);
+    const scenarioClosed=scenario.closed===true||scenarioDeadline<=now;
+    const scenarioState=scenario.status==='INVALIDADO'?'INVALIDADO':scenarioDeadline<=now?'JANELA ENCERRADA':scenarioClosed?String(scenario.status||'INVALIDADO'):'JANELA ABERTA';
+    const hasEntry=contextMatches&&Number(op.createdAt)>0&&setupEnd>now;
+    const independentCanEnter=executionMatches&&hasEntry&&state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now;
+    const scenarioHasSetup=contextMatches&&!scenarioClosed&&Number(scenario.createdAt)>0;
+    return{entrySide,signalHorizonSeconds,analysisSide,displaySide:side,oppositeAnalysis,
+      entryState:state,entryWindowOpen:independentCanEnter,
+      entryRemainingSeconds:independentCanEnter?Math.max(0,Math.ceil((entryEnd-now)/1000)):null,
+      contextMatches,side:contextMatches?side:null,state:independentCanEnter&&!scenarioClosed?'ENTRADA':scenarioState,
+      closed:scenarioClosed,hasSetup:scenarioHasSetup,canEnter:independentCanEnter,
+      deadline:scenarioHasSetup?scenarioDeadline:null,remainingSeconds:scenarioHasSetup?Math.max(0,Math.ceil((scenarioDeadline-now)/1000)):null,
+      entryDeadline:contextMatches&&entryEnd>0?entryEnd:null,confidence:Number(scenario.confidence||0)};
+  }
   return{entrySide,signalHorizonSeconds,analysisSide,displaySide,oppositeAnalysis,entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.max(0,Math.ceil((entryEnd-now)/1000)):null,contextMatches,side:contextMatches?side:null,state,closed,hasSetup,canEnter,deadline:hasSetup?deadline:null,remainingSeconds:hasSetup?Math.max(0,Math.ceil((deadline-now)/1000)):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null,confidence:Number(op.technicalConfidence??op.strength??0)};
 }
+

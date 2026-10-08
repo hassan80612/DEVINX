@@ -186,7 +186,8 @@ try{
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
   assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);
   await page.clock.runFor(4000);
-  assert.doesNotMatch(await card.innerText(),/FECHA EM|ENTRAR AGORA/,'expired local opportunity stops its countdown without another worker payload');
+  assert.doesNotMatch(await card.innerText(),/ENTRADA DISPONÍVEL|ENTRAR AGORA/,'expired local opportunity stops its authorization without another worker payload');
+  assert.match(await card.innerText(),/FECHA EM/,'main forecast keeps its own deadline after the local entry expires');
   assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);
   // Isolate the completed hold before the test harness moves virtual clock backward.
   await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
@@ -234,3 +235,4 @@ try{
   assert.deepEqual(errors,[]);
   console.log('SENTINEL COMPACT SUBANALYST OVERLAY: own call-put status, timing and fixed layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
+

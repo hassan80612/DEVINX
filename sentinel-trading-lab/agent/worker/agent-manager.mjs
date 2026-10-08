@@ -3,8 +3,8 @@ import {spawn} from 'node:child_process';
 import {writeFile,mkdir,rm,appendFile} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
 
-const VERSION='13.4.17';
-const BUILD='13.4.17-compact-subanalyst-1008';
+const VERSION='13.4.18';
+const BUILD='13.4.18-entry-lifecycle-1008';
 const HOST='127.0.0.1';
 const PORT=Number(process.env.SENTINEL_MANAGER_PORT||8788);
 const WORKER_PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
@@ -109,3 +109,4 @@ spawnWorker();
 
 async function shutdown(){if(exiting)return;exiting=true;await stopWorker();server.close(async()=>{await removePid(MANAGER_PID);process.exit(0)})}
 process.on('SIGTERM',shutdown);process.on('SIGINT',shutdown);process.on('uncaughtException',(e)=>{logLine(`manager_uncaught ${String(e?.stack||e)}`)});process.on('unhandledRejection',(e)=>{logLine(`manager_rejection ${String(e?.stack||e)}`)});
+

@@ -12,8 +12,8 @@ import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
-const VERSION='13.4.17';
-const BUILD='13.4.17-compact-subanalyst-1008';
+const VERSION='13.4.18';
+const BUILD='13.4.18-entry-lifecycle-1008';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -380,3 +380,4 @@ setInterval(remoteLoop,1500).unref();setTimeout(remoteLoop,350).unref();
 
 const server=http.createServer(async(req,res)=>{try{if(req.method==='OPTIONS'){res.writeHead(204,cors(req));return res.end()}const origin=String(req.headers.origin||'');if(origin&&!allowedOrigin(origin))return json(req,res,403,{ok:false,error:'origin_not_allowed'});const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);if(url.pathname==='/health')return json(req,res,200,{ok:true,service:'sentinel-worker',version:VERSION,build:BUILD,pid:process.pid,runtimeKind:'persistent-worker',driverConfigured:driver.available,vaultConfigured:true,remoteRelay:{...remoteRelay.info},ts:new Date().toISOString()});if(url.pathname==='/remote-info')return json(req,res,200,{ok:true,...remoteRelay.info,version:VERSION});if(!authorized(req))return json(req,res,401,{ok:false,error:'unauthorized'});const payload=['POST','PATCH','PUT','DELETE'].includes(req.method||'')?await body(req):{};const addr=String(req.socket?.remoteAddress||'');const local=addr==='127.0.0.1'||addr==='::1'||addr==='::ffff:127.0.0.1';const data=await act(url.pathname,req.method||'GET',payload,{local});await saveState();return json(req,res,200,{ok:true,data})}catch(e){return json(req,res,Number(e?.status||400),{ok:false,error:String(e?.message||e)})}});
 server.listen(PORT,HOST,()=>console.log(`Sentinel worker v${VERSION} listening on http://${HOST}:${PORT}`));process.on('SIGTERM',async()=>{await saveState();await marketJournal.flush();server.close(()=>process.exit(0))});process.on('SIGINT',async()=>{await saveState();await marketJournal.flush();server.close(()=>process.exit(0))});
+
