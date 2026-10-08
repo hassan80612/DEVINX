@@ -36,6 +36,9 @@ export function assessTurn({analysis={},snap={},now=Date.now(),durationMs=30000}
   const risk=near&&extended&&slowing;
   const warning={watchSide:near&&extended?side:null,risk,confirmed:false,
     barrier,peak,tolerance:tol,buffer,extended,slowing,barrierTested,
+    extensionRatio:clamp(leg/Math.max(expected*3,1e-12),0,1),
+    proximity:clamp(1-Math.abs(price-barrier)/(tol*2),0,1),
+    deceleration:clamp((isPut?-.0-Number(micro.lead):Number(micro.lead)),0,1),
     reason:risk?'near-structural-barrier-and-decelerating':near?'at-barrier':'no-structural-turn'};
   if(!near||!extended)return warning;
   const peaks=recent.filter(q=>q.price===peak);const top=peaks.at(-1);
@@ -76,17 +79,21 @@ export class TurnLearning{
     const rows=this.outcomes.filter(x=>x.key===key&&!x.draw).slice(-400),wins=rows.filter(x=>x.won).length;
     const sessions=new Set(rows.map(x=>new Date(x.createdAt).toISOString().slice(0,10))).size;
     const lower=wilsonLow(wins,rows.length),model=this.models[key],shadow=model?sigmoid(model.bias+features.reduce((s,x,i)=>s+x*(model.weights[i]||0),0)):.5;
+    const diffs=rows.map(x=>(.5-(x.won?1:0))**2-(Number(x.shadowAtObservation||.5)-(x.won?1:0))**2);
+    const improvement=rows.length?diffs.reduce((a,b)=>a+b,0)/rows.length:0;
+    const variance=rows.length>1?diffs.reduce((a,b)=>a+(b-improvement)**2,0)/(rows.length-1):0;
+    const improvementLowerBound=improvement-1.96*Math.sqrt(variance/Math.max(rows.length,1));
     // Shadow until repeated forward outcomes across days show evidence beyond chance.
-    const qualified=rows.length>=120&&sessions>=3&&lower>.56;
+    const qualified=rows.length>=120&&sessions>=3&&lower>.56&&improvementLowerBound>0;
     return{samples:rows.length,wins,winRate:rows.length?wins/rows.length:null,lowerBound:lower,
-      sessions,qualified,shadowProbability:shadow,probability:qualified?shadow:null};
+      sessions,qualified,shadowProbability:shadow,probability:qualified?shadow:null,improvementLowerBound};
   }
   observe({turn,provider,asset,durationMs,price,now,quoteTs}){
     if(!turn?.watchSide||!turn?.risk||!Number.isFinite(Number(quoteTs))||now-quoteTs>1200)return null;
-    const side=turn.watchSide,key=this.key({provider,asset,durationMs,side}),bucket=Math.floor(now/3000),id=key+'|'+bucket;
+    const side=turn.watchSide,key=this.key({provider,asset,durationMs,side}),bucket=Math.floor(now/Math.max(durationMs,10000)),id=key+'|'+bucket;
     if(this.lastObserved[key]===bucket||this.pending.some(x=>x.id===id)||this.outcomes.some(x=>x.id===id))return this.status(key);
     this.lastObserved[key]=bucket;
-    const features=[1,turn.extended?1:0,turn.slowing?1:0,turn.confirmed?1:0];
+    const features=[1,Number(turn.extensionRatio||0),Number(turn.proximity||0),Number(turn.deceleration||0),turn.confirmed?1:0];
     const status=this.status(key,features);
     this.pending.push({id,key,provider,asset,durationMs,side,createdAt:now,dueAt:now+durationMs,price:Number(price),
       features,shadowAtObservation:status.shadowProbability});
