@@ -24,7 +24,7 @@ function analysis(side='PUT'){
 const cfg=()=>{const r=new DemoTradingRuntime();Object.assign(r.settings,{asset:'TEST',forecastHorizonSeconds:30,orderDurationMs:30000,futureDisplayThreshold:70});r.settings.risk.minConfidence=55;return r};
 test('live rally warns of possible PUT at resistance before waiting for 5s momentum to turn',()=>{
  const a=analysis(),m=market(trail.slice(0,6));
- const turn=assessTurn({analysis:a,snap:m,now:now-500,durationMs:30000});
+ const turn=assessTurn({analysis:a,snap:m,now,durationMs:30000});
  assert.equal(turn.confirmed,false);
  assert.equal(turn.watchSide,'PUT');
  assert.equal(turn.risk,true);
@@ -67,8 +67,8 @@ test('late pullback and an actually broken resistance do not emit early PUT',()=
 });
 test('shadow learner records peak warnings, labels only at true expiry, and persists its state',()=>{
  const a=analysis(),m=market(trail.slice(0,6));
- const turn=assessTurn({analysis:a,snap:m,now:now-500}),learner=new TurnLearning();
- const entryTime=now-500,price=m.price;
+ const turn=assessTurn({analysis:a,snap:m,now}),learner=new TurnLearning();
+ const entryTime=now,price=m.price;
  const first=learner.observe({turn,provider:'iq_option',asset:'TEST',durationMs:30000,price,
   now:entryTime,quoteTs:m.quoteTs});
  assert.equal(first.samples,0);assert.equal(first.qualified,false);assert.equal(learner.pending.length,1);
