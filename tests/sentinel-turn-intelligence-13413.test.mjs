@@ -81,3 +81,37 @@ test('shadow learner records peak warnings, labels only at true expiry, and pers
  assert.equal(restored.status(learner.key({provider:'iq_option',asset:'TEST',durationMs:30000,side:'PUT'})).samples,1);
  assert.equal(restored.status(learner.key({provider:'iq_option',asset:'TEST',durationMs:30000,side:'PUT'})).qualified,false);
 });
+
+test('the opposite CALL turn works at support without waiting for 5s reversal',()=>{
+ const prices=trail.map(p=>200-p),a=analysis('CALL');
+ a.metrics.shortModel.sr={support:99.9,resistance:100.35};
+ const snap=market(prices),turn=assessTurn({analysis:a,snap,now});
+ assert.equal(turn.confirmed,true,JSON.stringify(turn));
+ assert.equal(turn.side,'CALL');
+ const candidates=entryOpportunities({analysis:a,snap,now,durationMs:30000,minPoints:70,turn});
+ assert.equal(candidates[0].allowed,true,JSON.stringify(candidates[0]));
+ assert.equal(candidates[1].allowed,false);
+});
+test('learning ignores a hypothetical profitable price before expiry and never transfers between assets',()=>{
+ const learner=new TurnLearning(),provider='iq_option',asset='TEST',durationMs=30000;
+ const snap=market(trail.slice(0,6)),turn=assessTurn({analysis:analysis(),snap,now});
+ learner.observe({turn,provider,asset,durationMs,price:snap.price,now,quoteTs:snap.quoteTs});
+ learner.settle({provider,asset:'OTHER',now:now+30000,snap:{quoteHistory:[{ts:now+30000,price:99}]}});
+ assert.equal(learner.outcomes.length,0);
+ learner.settle({provider,asset,now:now+30000,snap:{quoteHistory:[{ts:now+12000,price:98}]}});
+ assert.equal(learner.outcomes.length,0);
+ learner.settle({provider,asset,now:now+30000,snap:{quoteHistory:[{ts:now+30000,price:100.11}]}});
+ assert.equal(learner.outcomes[0].won,false,'PUT loses if expiry ends above entry');
+ const same=learner.status(learner.key({provider,asset,durationMs,side:'PUT'}));
+ assert.equal(same.qualified,false);
+ assert.equal(learner.status(learner.key({provider,asset:'OTHER',durationMs,side:'PUT'})).samples,0);
+});
+test('model is never trusted from a handful of favorable, correlated same-day examples',()=>{
+ const key='iq_option|TEST|30000|PUT',day=Date.UTC(2026,9,8,10);
+ const samples=Array.from({length:120},(_,i)=>({key,createdAt:day+i*30000,won:i<110,
+   draw:false,shadowAtObservation:i<110?.85:.15}));
+ const learner=new TurnLearning({version:1,pending:[],outcomes:samples,models:{[key]:{bias:2,weights:[0,0,0,0,0],updates:120}}});
+ const result=learner.status(key,[1,1,1,1,0]);
+ assert.equal(result.qualified,false);
+ assert.equal(result.sessions,1);
+});
