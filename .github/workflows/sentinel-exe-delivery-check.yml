@@ -1,0 +1,39 @@
+name: Sentinel EXE public download integrity
+on:
+  push:
+    branches: [sentinel-exe-delivery-check-1008]
+    paths: ['.github/workflows/sentinel-exe-delivery-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-original-exe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check original release EXE
+        shell: bash
+        run: |
+          set -euo pipefail
+          localfile="sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe"
+          test -s "$localfile" || { echo 'ORIGINAL_EXE_MISSING'; exit 11; }
+          file "$localfile"
+          test "$(od -An -tx1 -N2 "$localfile" | tr -d ' \n')" = "4d5a" || { echo 'INVALID_PE_HEADER'; exit 12; }
+          echo "ORIGINAL_EXE_BYTES=$(wc -c < "$localfile")"
+          echo "ORIGINAL_EXE_SHA256=$(sha256sum "$localfile" | cut -d' ' -f1)"
+      - name: Verify public response and full binary integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://sentinel-trading-lab.vercel.app/downloads/sentinel-agent-windows.exe?v=13.4.22-expiry-retrace-1008"
+          localfile="sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe"
+          echo '--- HTTP HEAD ---'
+          curl -sSIL --max-time 30 --connect-timeout 10 "$url" | sed -n '1,50p'
+          echo '--- FULL GET ---'
+          curl --location --fail-with-body --show-error --silent --retry 1 --retry-delay 2 --connect-timeout 10 --max-time 70 --dump-header "$RUNNER_TEMP/exe-http-headers" --output "$RUNNER_TEMP/public-agent.exe" --write-out 'HTTP_STATUS=%{http_code} CONTENT_TYPE=%{content_type} DOWNLOADED_BYTES=%{size_download} EFFECTIVE_URL=%{url_effective}\n' "$url"
+          sed -n '1,50p' "$RUNNER_TEMP/exe-http-headers"
+          echo "PUBLIC_EXE_BYTES=$(wc -c < "$RUNNER_TEMP/public-agent.exe")"
+          echo "PUBLIC_EXE_SHA256=$(sha256sum "$RUNNER_TEMP/public-agent.exe" | cut -d' ' -f1)"
+          cmp -s "$localfile" "$RUNNER_TEMP/public-agent.exe" || { echo 'PUBLIC_EXE_CONTENT_MISMATCH'; exit 21; }
+          echo 'VERIFIED_PUBLIC_EXE_MATCHES_GITHUB_ORIGINAL'
