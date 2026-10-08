@@ -219,7 +219,7 @@ try{
   await update({...data,operationalSignal:{...operational,state:'INVALIDADO',reason:'Cenário invalidado pelo preço; entrada bloqueada.'}});
   assert.match(await card.innerText(),/CENÁRIO CANCELADO/);assert.doesNotMatch(await card.innerText(),/PREVISÃO CALL|ENTRAR AGORA/);
   await update({...data,operationalSignal:{...operational,state:'JANELA ENCERRADA'}});
-  assert.match(await card.innerText(),/JANELA ENCERRADA/);assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
+  assert.match(await card.innerText(),/CENÁRIO ENCERRADO/);assert.equal(await card.locator('[data-sentinel-scenario-status]').innerText(),'00:00 · ENCERRADO');assert.match(await card.innerText(),/PRAZO ENCERRADO/);assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   await update({...data,operationalSignal:{...operational,state:'AGUARDAR PRAZO',sideSupported:false}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);assert.match(await card.innerText(),/ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   await update({...data,operationalSignal:{...operational,asset:'OTHER'}});
