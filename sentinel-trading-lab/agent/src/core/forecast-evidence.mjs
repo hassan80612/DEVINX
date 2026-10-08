@@ -35,7 +35,7 @@ export function attenuateForecast(signal,{overextended=false,turning=false,flowC
   if(accelerationConflict)retain*=.82;
   return signal*retain;
 }
-export function predictionInput({candles=[],quoteHistory=[],now=Date.now(),periodSeconds=null}={}){
+export function predictionInput({candles=[],quoteHistory=[],now=Date.now(),periodSeconds=null,requireFresh=false}={}){
   const byPeriod=new Map();
   for(const c of candles){
     const from=Number(c.from),to=Number(c.to),values=['open','high','low','close'].map(k=>Number(c[k]));
@@ -46,7 +46,10 @@ export function predictionInput({candles=[],quoteHistory=[],now=Date.now(),perio
   const periods=[...byPeriod.keys()].sort((a,b)=>a-b),usable=periods.find(p=>byPeriod.get(p).size>=35),period=periodSeconds??usable??periods.sort((a,b)=>byPeriod.get(b).size-byPeriod.get(a).size)[0];
   const cleanCandles=period==null||!byPeriod.has(period)?[]:[...byPeriod.get(period).values()].sort((a,b)=>a.from-b.from);
   const quotes=[...new Map(quoteHistory.filter(q=>Number.isFinite(Number(q.ts))&&Number.isFinite(Number(q.price))&&Number(q.price)>0&&Number(q.ts)<=now).map(q=>[Number(q.ts),{ts:Number(q.ts),price:Number(q.price)}])).values()].sort((a,b)=>a.ts-b.ts);
-  return {candles:cleanCandles,quoteHistory:quotes,inputQuality:{periodSeconds:period??null,sourceCandles:candles.length,uniqueCandles:cleanCandles.length,excludedCandles:candles.length-cleanCandles.length}};
+  const latestTo=cleanCandles.length?Math.max(...cleanCandles.map(c=>c.to))*1000:null;
+  const ageMs=latestTo==null?null:Math.max(0,now-latestTo);
+  const fresh=ageMs!=null&&ageMs<=Number(period)*2000;
+  return {candles:cleanCandles,quoteHistory:quotes,inputQuality:{periodSeconds:period??null,sourceCandles:candles.length,uniqueCandles:cleanCandles.length,excludedCandles:candles.length-cleanCandles.length,latestTo,ageMs,fresh,ready:cleanCandles.length>=35&&(!requireFresh||fresh),reason:cleanCandles.length<35?'insufficient-period-history':requireFresh&&!fresh?'stale-period-history':'ok'}};
 }
 
 // A quote window may cover only part of an existing candle. Never replace

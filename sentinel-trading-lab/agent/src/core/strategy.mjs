@@ -724,6 +724,12 @@ export function analyzePrediction(input={}){
   const normalized=predictionInput(input);
   const analysis=analyzeMarket({...input,...normalized,candidateModel:input.experimentalTiming!==false,predictionModel:true});
   analysis.predictionInputQuality=normalized.inputQuality;
+  if(input.requireFresh&& !normalized.inputQuality.ready){
+    for(const plan of Object.values(analysis.entryPlanner?.horizons||{})){
+      plan.outlookReady=false;plan.directionReady=false;plan.inputQuality=normalized.inputQuality;
+    }
+    analysis.reasons=[normalized.inputQuality.reason==='stale-period-history'?'Histórico do período da previsão desatualizado; renovando a base.':'Histórico insuficiente no período da previsão.',...(analysis.reasons||[])];
+  }
   if(analysis.entryPlanner){
     analysis.entryPlanner.modelVersion=input.experimentalTiming===false?'future-v6.1-evaluation':FORECAST_MODEL;
     if(input.experimentalTiming===false)for(const plan of Object.values(analysis.entryPlanner.horizons)){plan.modelVersion='future-v6.1-evaluation';plan.modelRole='evaluation';}

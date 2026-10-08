@@ -1,8 +1,9 @@
 {
-  "version": "13.4.20",
-  "build": "13.4.20-structure-stability-1008",
+  "version": "13.4.21",
+  "build": "13.4.21-input-structure-1008",
   "runtime": {
-    "predictionModel": "family-v6-stable",
-    "entryPolicy": "structural-reversals-v1"
+    "predictionModel": "family-v6-verified-input",
+    "entryPolicy": "structural-reversals-v1",
+    "scenarioPolicy": "closed-structure-v1"
   }
 }

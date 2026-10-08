@@ -22,7 +22,7 @@ const VAULT_FILE=resolve(process.env.SENTINEL_SESSION_VAULT_FILE||'worker/data/b
 const SECRET_FILE=resolve(process.env.SENTINEL_LOCAL_SECRET_FILE||'worker/data/local-agent.secret');
 if(HOST!=='127.0.0.1'&&HOST!=='localhost'&&!TOKEN)throw new Error('SENTINEL_WORKER_TOKEN is required when exposing worker beyond loopback');
 
-const marketJournal=new MarketJournal({directory:resolve(dirname(STATE_FILE),'market-history')});
+const marketJournal=new MarketJournal({directory:resolve(dirname(STATE_FILE),'market-history'),release:{version:VERSION,build:BUILD,runtime:RUNTIME_OPTIONS}});
 let journalAnalysisAt=0;
 setInterval(()=>marketJournal.flush(),2000).unref();
 const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
@@ -199,7 +199,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
   if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider)}
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
   await runtime.tick(loopNow);
-  if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())marketJournal.enqueue(event)}
+  if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())marketJournal.enqueue(event)}
   if(activeProvider){
     const view=await runtime.status();
     const brokerSwitching=String(view.liveBroker?.marketStatus||'').toLowerCase()==='switching'&&!view.liveBroker?.uiSymbol&&!view.liveBroker?.symbol;

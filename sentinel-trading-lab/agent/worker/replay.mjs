@@ -21,21 +21,22 @@ export async function replayJournal(paths,{delays=[0,1000,2000],analyze=analyzeR
   for(const path of paths){
     const lines=createInterface({input:createReadStream(path),crlfDelay:Infinity});
     for await(const line of lines){
-      if(!line.trim())continue;const e=JSON.parse(line);if(e.schema!==1)throw new Error('unsupported_journal_schema');
+      if(!line.trim())continue;const e=JSON.parse(line);if(![1,2].includes(e.schema))throw new Error('unsupported_journal_schema');
       if(e.type!=='market')continue;
       if(Number(e.ts)<previousTs)throw new Error('journal_not_chronological');previousTs=Number(e.ts);events++;
-      const key=e.provider+'|'+e.asset;let ctx=contexts.get(key);
-      if(!ctx){ctx={key,quotes:[],candles:[],runtime:new DemoTradingRuntime(),lastAnalysis:0};contexts.set(key,ctx)}
+      const key=e.provider+'|'+e.asset+(e.release?.build?'|'+e.release.build:'');let ctx=contexts.get(key);
+      if(!ctx){ctx={key,quotes:[],candles:[],predictionCandles:[],runtime:new DemoTradingRuntime(e.release?.runtime||{}),lastAnalysis:0};contexts.set(key,ctx)}
       const r=ctx.runtime;r.settings.asset=e.asset;Object.assign(r.settings,{...e.settings,demoAutopilot:false,mode:'real'});r.settings.risk.minConfidence=Number(e.settings?.minConfidence||74);
       if(e.candles)ctx.candles=e.candles.filter(c=>Number(c.from||0)*1000<=e.ts);
+      if(e.predictionCandles)ctx.predictionCandles=e.predictionCandles.filter(c=>Number(c.from||0)*1000<=e.ts);
       for(const q of e.quotes||[]){if(Number(q.ts)>e.ts)throw new Error('future_quote_in_journal');if(Number(q.ts)>Number(ctx.quotes.at(-1)?.ts||0))ctx.quotes.push({ts:Number(q.ts),price:Number(q.price)})}
       ctx.quotes=ctx.quotes.slice(-9000);score(ctx,e.ts);
       if(e.ts-ctx.lastAnalysis<1000||ctx.candles.length<35)continue;
       ctx.lastAnalysis=e.ts;
       // Forming candle is updated only with quotes received by this frame.
       const candles=ctx.candles.map(c=>({...c})),last=candles.at(-1),visible=ctx.quotes.filter(q=>q.ts>=Number(last.from||0)*1000);
-      if(visible.length){last.close=visible.at(-1).price;last.high=Math.max(Number(last.high),...visible.map(q=>q.price));last.low=Math.min(Number(last.low),...visible.map(q=>q.price))}
-      const snap={candles,quoteHistory:ctx.quotes.filter(q=>e.ts-q.ts<=180000).slice(-900),quoteTs:Number(e.quoteTs),price:Number(e.quote),provider:e.provider,source:'RECORDED'};
+      if(visible.length&&Number(last.to)*1000>e.ts){last.close=visible.at(-1).price;last.high=Math.max(Number(last.high),...visible.map(q=>q.price));last.low=Math.min(Number(last.low),...visible.map(q=>q.price))}
+      const snap={candles,predictionCandles:ctx.predictionCandles.length?ctx.predictionCandles:candles,quoteHistory:ctx.quotes.filter(q=>e.ts-q.ts<=180000).slice(-900),quoteTs:Number(e.quoteTs),price:Number(e.quote),provider:e.provider,source:'RECORDED'};
       const a=analyze(r,snap,e.ts);analyses++;const op=a.operationalSignal||{};states[op.state||'NO_DATA']=(states[op.state||'NO_DATA']||0)+1;
       if(op.actionable){const id=key+'|'+op.createdAt+'|'+op.side;if(!seen.has(id)){seen.add(id);for(const delay of delays)pending.push({key,id,side:op.side,signalAt:e.ts,entryDeadline:op.activeUntil,durationMs:op.durationMs,delay,done:false});score(ctx,e.ts)}}
     }
@@ -53,3 +54,4 @@ export async function replayJournal(paths,{delays=[0,1000,2000],analyze=analyzeR
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const paths=process.argv.slice(2);if(!paths.length)throw new Error('Use: node worker/replay.mjs history-1.jsonl history-2.jsonl');console.log(JSON.stringify(await replayJournal(paths),null,2));
 }
+
