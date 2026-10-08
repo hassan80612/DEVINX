@@ -1321,15 +1321,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.15'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.16'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.15';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.16';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.15';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.16';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1537,6 +1537,39 @@ export class LocalPlaywrightDriver{
         const entrySeconds=operationalNow?Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000)):null;
         const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO';
         const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide):'AGUARDE UM CENÁRIO';
+
+        // Separate execution channel: do not require futureDecision, an open
+        // scenario, or agreement between the main forecast and subanalyst.
+        const ownAnalyst=operational?.entryAnalyst||{},ownSignal=ownAnalyst.signal||{};
+        const ownCandidates=Array.isArray(ownAnalyst.candidates)?ownAnalyst.candidates:[];
+        const ownBest=ownCandidates.filter(x=>x.allowed===true)
+          .sort((a,b)=>Number(b.score||0)-Number(a.score||0))[0]||null;
+        const ownContextOk=String(operational?.asset||'').toUpperCase()===visibleAsset&&
+          Number(operational?.durationMs)===duration&&!assetJustChanged;
+        const ownFresh=ownContextOk&&liveNow&&analysisFresh&&!analysisStale&&!analysisTransient;
+        const ownNow=ownFresh&&ownAnalyst.independent===true&&
+          ownAnalyst.qualification?.allowed===true&&ownSignal.actionable===true&&
+          ownSignal.state==='ENTRADA'&&Number(ownSignal.activeUntil)>decisionNow&&
+          ['CALL','PUT'].includes(String(ownSignal.side));
+        const ownSide=ownNow?String(ownSignal.side):
+          ownBest?String(ownBest.side):
+          ['CALL','PUT'].includes(String(ownSignal.side))&&ownSignal.state!=='INVALIDADO'?String(ownSignal.side):'AGUARDAR';
+        const ownTone=ownSide==='CALL'?callTone:ownSide==='PUT'?putTone:neutralTone;
+        const ownWatch=operational?.entryAnalyst?.pathEvidence||{};
+        const ownWarning=ownFresh&&ownWatch.ready===true&&['CALL','PUT'].includes(ownWatch.watchSide)?ownWatch.watchSide:null;
+        const ownAction=!ownFresh?'SUBANALISTA · SEM LEITURA':
+          ownNow?('ENTRAR AGORA · '+ownSide):
+          ownBest?('OPORTUNIDADE '+ownBest.side+' · VALIDANDO TIMING'):
+          ownWarning?('OBSERVANDO POSSÍVEL '+ownWarning):
+          'ANALISANDO CALL E PUT';
+        const ownReason=ownNow?String(ownSignal.reason||'Gatilho próprio confirmado'):
+          ownBest?String(ownSignal.reason||ownBest.reason||'Aguardando o ponto estrutural independente'):
+          ownWarning?'Monitorando suporte, resistência e retração; isto ainda não é entrada.':
+          ownFresh?'Analisando os dois lados por estrutura e cotações reais.':
+          'Aguardando cotações atuais da corretora.';
+        const ownEntryExpiry=Math.round(duration/1000);
+        const ownReadyLabel=ownNow?'GATILHO CONFIRMADO':ownBest?'TIMING EM VALIDAÇÃO':
+          ownWarning?'ALERTA DE RETRAÇÃO':'SEM PONTO CONFIRMADO';
         const pathWatch=operational?.entryAnalyst?.pathEvidence||{};
         const pathWatching=analysisFresh&&liveNow&&!timingClosed&&!operationalNow&&
           pathWatch.ready===true&&['CALL','PUT'].includes(pathWatch.watchSide);
@@ -1738,7 +1771,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.15')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.16')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -1782,6 +1815,21 @@ export class LocalPlaywrightDriver{
             </div>
             <div style="color:${muted};font-size:11px;font-weight:650;line-height:1.4;margin-bottom:7px;min-height:47px;overflow:visible">${futureDecisionPaused?(liveNow?'Atualizando leitura deste prazo; entrada suspensa.':('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.')):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(currentAnalysisReason)}</div>
             <div data-sentinel-scenario-plan style="min-height:172px">${planHtml}</div>
+          </div>
+
+          <div class="sentinel-shine" data-sentinel-card="independent-subanalyst" data-sentinel-role="independent-subanalyst" style="position:relative;margin-top:9px;padding:11px 12px;min-height:151px;height:auto;border-radius:13px;border:1px solid ${ownNow?ownTone:panelBorder};border-left:4px solid ${ownNow?ownTone:goldSoft};background:${panelBg};box-shadow:${panelShadow};overflow:visible">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="sentinel-metal-gold" style="font-size:13px;font-weight:800;letter-spacing:.045em">SUBANALISTA INDEPENDENTE</span>
+              <span style="font-size:10px;font-weight:750;color:${ink}">EXPIRAÇÃO ${ownEntryExpiry}s · ${ownReadyLabel}</span>
+            </div>
+            <div data-sentinel-subanalyst-action style="margin-top:9px;font-size:18px;line-height:1.25;font-weight:800;color:${ownNow?ownTone:ownWarning?warnTone:ink};overflow-wrap:anywhere">${esc(ownAction)}</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px;line-height:1.4;color:${ink}">
+              <span>Gatilho <b style="color:${goldSoft}">${price(ownContextOk?ownSignal.trigger:null)}</b></span>
+              <span>Invalidação <b style="color:${goldSoft}">${price(ownContextOk?ownSignal.invalidation:null)}</b></span>
+              <span>Pontos técnicos <b>${n(ownSignal.technicalPoints,0)}</b></span>
+            </div>
+            <div data-sentinel-subanalyst-reason style="margin-top:7px;font-size:11px;line-height:1.4;color:${muted};overflow-wrap:anywhere">${esc(ownReason)}</div>
+            <div style="font-size:10px;line-height:1.35;margin-top:7px;font-weight:700;color:${goldSoft}">Análise própria de CALL e PUT · não depende do cenário futuro · alerta de retração não é ordem</div>
           </div>
 
           <div class="sentinel-shine" data-sentinel-summary="average-total" style="position:relative;margin-top:8px;padding:10px 11px;min-height:72px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${averageSide!=='AGUARDAR'?averageTone:panelBorder};box-shadow:${panelShadow}">
