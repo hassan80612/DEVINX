@@ -1537,6 +1537,39 @@ export class LocalPlaywrightDriver{
         const entrySeconds=operationalNow?Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000)):null;
         const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO';
         const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide):'AGUARDE UM CENÁRIO';
+
+        // Separate execution channel: do not require futureDecision, an open
+        // scenario, or agreement between the main forecast and subanalyst.
+        const ownAnalyst=operational?.entryAnalyst||{},ownSignal=ownAnalyst.signal||{};
+        const ownCandidates=Array.isArray(ownAnalyst.candidates)?ownAnalyst.candidates:[];
+        const ownBest=ownCandidates.filter(x=>x.allowed===true)
+          .sort((a,b)=>Number(b.score||0)-Number(a.score||0))[0]||null;
+        const ownContextOk=String(operational?.asset||'').toUpperCase()===visibleAsset&&
+          Number(operational?.durationMs)===duration&&!assetJustChanged;
+        const ownFresh=ownContextOk&&liveNow&&analysisFresh&&!analysisStale&&!analysisTransient;
+        const ownNow=ownFresh&&ownAnalyst.independent===true&&
+          ownAnalyst.qualification?.allowed===true&&ownSignal.actionable===true&&
+          ownSignal.state==='ENTRADA'&&Number(ownSignal.activeUntil)>decisionNow&&
+          ['CALL','PUT'].includes(String(ownSignal.side));
+        const ownSide=ownNow?String(ownSignal.side):
+          ownBest?String(ownBest.side):
+          ['CALL','PUT'].includes(String(ownSignal.side))&&ownSignal.state!=='INVALIDADO'?String(ownSignal.side):'AGUARDAR';
+        const ownTone=ownSide==='CALL'?callTone:ownSide==='PUT'?putTone:neutralTone;
+        const ownWatch=operational?.entryAnalyst?.pathEvidence||{};
+        const ownWarning=ownFresh&&ownWatch.ready===true&&['CALL','PUT'].includes(ownWatch.watchSide)?ownWatch.watchSide:null;
+        const ownAction=!ownFresh?'SUBANALISTA · SEM LEITURA':
+          ownNow?('ENTRAR AGORA · '+ownSide):
+          ownBest?('OPORTUNIDADE '+ownBest.side+' · VALIDANDO TIMING'):
+          ownWarning?('OBSERVANDO POSSÍVEL '+ownWarning):
+          'ANALISANDO CALL E PUT';
+        const ownReason=ownNow?String(ownSignal.reason||'Gatilho próprio confirmado'):
+          ownBest?String(ownSignal.reason||ownBest.reason||'Aguardando o ponto estrutural independente'):
+          ownWarning?'Monitorando suporte, resistência e retração; isto ainda não é entrada.':
+          ownFresh?'Analisando os dois lados por estrutura e cotações reais.':
+          'Aguardando cotações atuais da corretora.';
+        const ownEntryExpiry=Math.round(duration/1000);
+        const ownReadyLabel=ownNow?'GATILHO CONFIRMADO':ownBest?'PONTO EM FORMAÇÃO':
+          ownWarning?'ALERTA DE RETRAÇÃO':'SEM PONTO CONFIRMADO';
         const pathWatch=operational?.entryAnalyst?.pathEvidence||{};
         const pathWatching=analysisFresh&&liveNow&&!timingClosed&&!operationalNow&&
           pathWatch.ready===true&&['CALL','PUT'].includes(pathWatch.watchSide);
@@ -1782,6 +1815,21 @@ export class LocalPlaywrightDriver{
             </div>
             <div style="color:${muted};font-size:11px;font-weight:650;line-height:1.4;margin-bottom:7px;min-height:47px;overflow:visible">${futureDecisionPaused?(liveNow?'Atualizando leitura deste prazo; entrada suspensa.':('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.')):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(currentAnalysisReason)}</div>
             <div data-sentinel-scenario-plan style="min-height:172px">${planHtml}</div>
+          </div>
+
+          <div class="sentinel-shine" data-sentinel-card="independent-subanalyst" data-sentinel-role="independent-subanalyst" style="position:relative;margin-top:9px;padding:11px 12px;min-height:151px;height:auto;border-radius:13px;border:1px solid ${ownNow?ownTone:panelBorder};border-left:4px solid ${ownNow?ownTone:goldSoft};background:${panelBg};box-shadow:${panelShadow};overflow:visible">
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="sentinel-metal-gold" style="font-size:13px;font-weight:800;letter-spacing:.045em">SUBANALISTA INDEPENDENTE</span>
+              <span style="font-size:10px;font-weight:750;color:${ink}">EXPIRAÇÃO ${ownEntryExpiry}s · ${ownReadyLabel}</span>
+            </div>
+            <div data-sentinel-subanalyst-action style="margin-top:9px;font-size:18px;line-height:1.25;font-weight:800;color:${ownNow?ownTone:ownWarning?warnTone:ink};overflow-wrap:anywhere">${esc(ownAction)}</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:11px;line-height:1.4;color:${ink}">
+              <span>Gatilho <b style="color:${goldSoft}">${price(ownContextOk?ownSignal.trigger:null)}</b></span>
+              <span>Invalidação <b style="color:${goldSoft}">${price(ownContextOk?ownSignal.invalidation:null)}</b></span>
+              <span>Pontos técnicos <b>${n(ownSignal.technicalPoints,0)}</b></span>
+            </div>
+            <div data-sentinel-subanalyst-reason style="margin-top:7px;font-size:11px;line-height:1.4;color:${muted};overflow-wrap:anywhere">${esc(ownReason)}</div>
+            <div style="font-size:10px;line-height:1.35;margin-top:7px;font-weight:700;color:${goldSoft}">Análise própria de CALL e PUT · não depende do cenário futuro · alerta de retração não é ordem</div>
           </div>
 
           <div class="sentinel-shine" data-sentinel-summary="average-total" style="position:relative;margin-top:8px;padding:10px 11px;min-height:72px;height:auto;box-sizing:border-box;overflow:visible;border-radius:13px;background:${panelBg};border:1px solid ${averageSide!=='AGUARDAR'?averageTone:panelBorder};box-shadow:${panelShadow}">
