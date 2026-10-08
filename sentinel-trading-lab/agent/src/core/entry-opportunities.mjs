@@ -59,6 +59,33 @@ function mappedReaction({side,short,micro,price,quoteTs,recent,now,durationMs}){
   if(reaction.expiresAt<=now)return {...out,phase:'expired'};
   return {...out,qualified:true,room:true,phase:'confirmed-reaction',reaction};
 }
+// The first breakout belongs to the previously completed 5s bar, not to the
+// candle that has already travelled. Confirm two distinct progressing quotes
+// near that level; the 15s direction is contextual, not a delayed entry vote.
+function earlyContinuation({side,bar,recent,price,quoteTs,now,micro,maxDistance}){
+  if(bar.length<2||recent.length<4||!Number.isFinite(price)||quoteTs>now||now-quoteTs>1200)
+    return null;
+  const call=side==='CALL',level=call?Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price));
+  const quick=Number(micro.delta2),floor=Math.max(Math.abs(level)*.000001,maxDistance*.035);
+  if(!(call?quick>0:quick<0))return null;
+  const sorted=recent.filter(q=>q.ts>=quoteTs-3000&&q.ts<=quoteTs);
+  const crossed=sorted.find((q,i)=>i>0&&sorted[i-1].ts<q.ts&&
+    (call?sorted[i-1].price<=level&&q.price>level+floor:
+          sorted[i-1].price>=level&&q.price<level-floor));
+  if(!crossed||quoteTs-crossed.ts>1200)return null;
+  const next=sorted.find(q=>q.ts>crossed.ts&&q.ts-crossed.ts>=40&&
+    (call?q.price>=crossed.price+floor:q.price<=crossed.price-floor));
+  if(!next||quoteTs-next.ts>1000)return null;
+  const distance=call?price-level:level-price;
+  if(distance<0||distance>maxDistance)return null;
+  if(call?price<next.price:price>next.price)return null;
+  return {qualified:true,preMapped:true,earlyContinuation:true,side,
+    id:side+'|first-continuation|'+Math.floor(crossed.ts/5000)+'|'+level,
+    trigger:level,touchAt:crossed.ts,confirmedAt:next.ts,
+    expiresAt:Math.min(crossed.ts+1500,now+1200),maxDistance,
+    advancing:true,quoteConfirmations:2,roomOk:true};
+}
+
 export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30000}){
   const short=analysis?.metrics?.shortModel||{},micro=analysis?.metrics?.micro||{},forecast=analysis?.entryPlanner?.horizons?.[String(Math.round(durationMs/1000))]||{};
   const quoteTs=Number(snap.quoteTs),price=Number(snap.price),fresh=quoteTs<=now&&now-quoteTs<=2500;
@@ -88,6 +115,12 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const expectedMove=Math.max(Math.abs(Number(forecast.expectedMove||0)),Math.abs(Number(micro.expected30||0)),Math.abs(price)*.000002);
     const width=recent.length?Math.max(...recent.map(q=>q.price))-Math.min(...recent.map(q=>q.price)):0;
     const maxDistance=Math.max(expectedMove*.25,width*.25,Math.abs(price)*.000002);
+    const priorRange=bar.length?Math.max(...bar.map(q=>q.price))-Math.min(...bar.map(q=>q.price)):0;
+    const firstMoveLimit=bar.length>=2?Math.max(priorRange*.55,expectedMove*.12,Math.abs(price)*.000004):maxDistance;
+    const firstMove=earlyContinuation({side,bar,recent,price,quoteTs,now,micro,maxDistance:firstMoveLimit});
+    // A later, stronger forecast does not reset the original breakout price.
+    // Prevent the scenario from authorizing a trade near a late candle extreme.
+    const chased=!reversal&&bar.length>=2&&(call?price-Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price))-price)>firstMoveLimit;
     if(mapped.qualified){trigger=mapped.reaction.trigger;invalidation=mapped.reaction.invalidation;reaction=mapped.reaction;sourceAt=mapped.reaction.touchAt;}
     else if(repeated){trigger=Number(repeated.trigger);invalidation=Number(repeated.invalidation);reaction={...repeated};sourceAt=repeated.touchAt;}
     else if(reversal&&recent.length>=2){
@@ -99,14 +132,17 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
         reaction={qualified:true,side,id:side+'|local-reaction|'+anchor.ts,trigger,invalidation,touchAt:anchor.ts,confirmedAt:after[0].ts,expiresAt:anchor.ts+Math.min(durationMs,10000),maxDistance,advancing,roomOk:room};
       }
     }else if(continuation){trigger=call?Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price));invalidation=call?Math.min(...bar.map(q=>q.price))-maxDistance*.2:Math.max(...bar.map(q=>q.price))+maxDistance*.2;}
+    const earlyReady=!!firstMove&&short.ready===true&&(call?short.structureReadyCall===true:short.structureReadyPut===true)&&room&&!adverse&&!exhausted&&!reversal;
+    if(earlyReady){trigger=firstMove.trigger;reaction=firstMove;sourceAt=firstMove.touchAt;
+      invalidation=call?Math.min(...bar.map(q=>q.price))-firstMoveLimit*.2:Math.max(...bar.map(q=>q.price))+firstMoveLimit*.2;}
     const timingValid=finite(trigger)&&finite(invalidation)&&(!reaction||reaction.expiresAt>now);
-    const allowed=fresh&&short.ready===true&&flow&&structure&&room&&!adverse&&!exhausted&&(reversal||continuation)&&score>=minPoints&&timingValid;
-    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':!flow?'flow':!structure?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation)?'setup':score<minPoints?'score':!timingValid?'quotes':null;
-    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
-    const plan={...forecast,entryForecastProbability:Number(call?forecast.callProbability:forecast.putProbability),rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:repeated?.maxDistance||maxDistance,sourceBarAt:sourceAt},safety:{blocked:false}};
+    const allowed=fresh&&short.ready===true&&(flow||earlyReady)&&(structure||earlyReady)&&room&&!adverse&&!exhausted&&(reversal||continuation||earlyReady)&&score>=minPoints&&timingValid&&!chased;
+    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':chased?'late-entry':!(flow||earlyReady)?'flow':!(structure||earlyReady)?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation||earlyReady)?'setup':score<minPoints?'score':!timingValid?'quotes':null;
+    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.','late-entry':'Primeiro impulso já passou do ponto; não perseguir topo/fundo da vela.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
+    const plan={...forecast,entryForecastProbability:Number(call?forecast.callProbability:forecast.putProbability),rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:firstMove?.maxDistance||repeated?.maxDistance||(bar.length>=2&&!reversal?firstMoveLimit:maxDistance),sourceBarAt:sourceAt},safety:{blocked:false}};
     if(call){plan.callTrigger=trigger;plan.callInvalidation=invalidation;}else{plan.putTrigger=trigger;plan.putInvalidation=invalidation;}
     // Percentages here are internal gating scores, not measured win probabilities.
     plan.callProbability=call?score:100-score;plan.putProbability=100-plan.callProbability;
-    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
+    return{side,kind,score,allowed,flow:flow||earlyReady,structure:structure||earlyReady,room,fresh,blockedBy,reason,plan,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
   });
 }

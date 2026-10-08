@@ -344,7 +344,21 @@ export class DemoTradingRuntime{
     const triggerMet=(!reversal||setup.armed)&&(side==='CALL'?price>=level:price<=level);
     const distance=side==='CALL'?price-level:level-price;
     const pointPassed=triggerMet&&Number(setup.maxEntryDistance)>0&&distance>Number(setup.maxEntryDistance);
-    const sustained=triggerMet&&!invalidated&&!pointPassed&&this._confirmPriceTrigger(setup,snap,side,level,now);
+    // The pre-mapped analyst has already checked two distinct, progressing
+    // post-touch quotes. Re-check the current price and freshness here, but
+    // do not demand a third quote just to repeat the same confirmation.
+    const rx=plan?.reaction,confirmedAt=Number(rx?.confirmedAt||0),quoteTs=Number(snap.quoteTs||0);
+    const preconfirmed=this._entryAnalysisMode&&(reversal||rx?.earlyContinuation===true)&&rx?.preMapped===true&&rx?.qualified===true&&
+      rx?.advancing===true&&Number(rx?.quoteConfirmations)>=2&&
+      !!setup.reactionId&&setup.reactionId===rx.id&&confirmedAt>Number(rx.touchAt||0)&&
+      quoteTs>=confirmedAt&&quoteTs<=now&&now-quoteTs<=1200&&now-confirmedAt<=1500&&
+      (snap.quoteHistory||[]).some(q=>Number(q.ts)===confirmedAt&&Number.isFinite(Number(q.price)));
+    const sustained=triggerMet&&!invalidated&&!pointPassed&&
+      (preconfirmed||this._confirmPriceTrigger(setup,snap,side,level,now));
+    if(preconfirmed&&sustained)setup.triggerQuotes=(snap.quoteHistory||[])
+      .filter(q=>Number(q.ts)>Number(rx.touchAt)&&Number(q.ts)<=quoteTs&&
+        (side==='CALL'?Number(q.price)>=level:Number(q.price)<=level))
+      .slice(-2).map(q=>({ts:Number(q.ts),price:Number(q.price)}));
     if(!triggerMet||invalidated||pointPassed)setup.triggerQuotes=[];
     return{reversal,triggerMet,sustained,invalidated,pointPassed,distance};
   }
@@ -379,7 +393,7 @@ export class DemoTradingRuntime{
       this.scenarioSetup=main;this.operationalSetup=null;this.oppositeOperationalSetup=null;
     }
     const price=Number(snap.price),broken=main.invalidation!=null&&Number.isFinite(main.invalidation)&&(main.side==='CALL'?price<=main.invalidation:price>=main.invalidation);
-    if(broken&&!main.closed){main.closed=true;main.status='INVALIDADO';main.reason='Estrutura do cenário '+main.side+' invalidada pelo preço.';}
+    if(broken&&(!main.closed||main.status==='OPORTUNIDADE PERDIDA')){main.closed=true;main.status='INVALIDADO';main.reason='Estrutura do cenário '+main.side+' invalidada pelo preço.';}
     const decorate=op=>({...op,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,entryAnalyst:{side:op.side,status:op.state,kind:op.entryKind||'forming',independent:true,candidates:this.entryCandidates||[],qualification:this.entryQualification||null,validation:op.validation||null,research:op.entryResearch||null}});
     if(main.entryAt&&(now>=Number(main.entryActiveUntil||0)||Number(this.operationalSetup?.releasedAt)>0)){main.closed=true;main.status='OPORTUNIDADE CONSUMIDA';main.reason='Entrada já liberada; esta oportunidade está encerrada.';}
     if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
@@ -393,6 +407,21 @@ export class DemoTradingRuntime{
       level,approaching,structuralReaction,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints}));
     const candidate=candidates.filter(x=>x.allowed).sort((a,b)=>b.score-a.score)[0];
     if(!candidate){
+      // A main scenario may qualify after the first price move has already
+      // escaped its original trigger. Mark that window as missed instead of
+      // presenting a fresh entry at the top or bottom of the moving candle.
+      const timingPlan=entryPlan?.rawBias===main.side?entryPlan:mainPlan;
+      const anchor=Number(main.side==='CALL'?timingPlan?.callTrigger:timingPlan?.putTrigger);
+      const limit=Number(timingPlan?.entryTiming?.maxDistance);
+      const overshot=['CALL','PUT'].includes(main.side)&&Number.isFinite(anchor)&&
+        Number.isFinite(limit)&&limit>0&&
+        (main.side==='CALL'?price-anchor>limit:anchor-price>limit);
+      if(!main.independentOnly&&overshot&&!main.entryAt){
+        main.closed=true;main.status='OPORTUNIDADE PERDIDA';
+        main.reason='O primeiro movimento já ultrapassou o ponto de entrada; não perseguir o topo/fundo.';
+        return decorate({...empty,side:main.side,createdAt:main.createdAt,
+          targetAt:main.deadline,state:main.status,reason:main.reason});
+      }
       const relevant=candidates.slice().sort((a,b)=>b.score-a.score)[0];
       this.entryQualification={allowed:false,flow:relevant.flow,structure:relevant.structure,fresh:relevant.fresh,blockedBy:relevant.blockedBy,
         technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,

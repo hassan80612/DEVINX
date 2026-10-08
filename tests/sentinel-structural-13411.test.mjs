@@ -112,3 +112,79 @@ test('confirmation delayed beyond the first-reaction window is not pursued',()=>
  assert.equal(o.structuralReaction,false);
  assert.equal(o.allowed,false);
 });
+
+test('structural entry releases on its second confirmed reaction quote, without waiting for a third',()=>{
+ const confirmedAt=t-150,confirmedQuotes=up.slice(0,5);
+ const op=runtime()._operationalSignalState(analysis(),snap(confirmedQuotes),confirmedAt);
+ assert.equal(op.entryAnalyst.candidates[0].structuralReaction,true);
+ assert.equal(op.entryAnalyst.candidates[0].allowed,true);
+ assert.equal(op.actionable,true,JSON.stringify({state:op.state,reason:op.reason,confirmation:op.confirmation}));
+ assert.equal(op.entryAt,confirmedAt);
+});
+test('a reaction not evaluated in its first timing window cannot be released late',()=>{
+ const confirmedQuotes=up.slice(0,5),now=t+1800;
+ const op=runtime()._operationalSignalState(analysis(),snap(confirmedQuotes),now);
+ assert.equal(op.actionable,false);
+});
+
+test('PUT is released at the second resistance-rejection quote, with no extra wait',()=>{
+ const confirmedAt=t-150;
+ const op=runtime()._operationalSignalState(analysis('PUT'),snap(down.slice(0,5)),confirmedAt);
+ assert.equal(op.entryAnalyst.candidates[1].structuralReaction,true);
+ assert.equal(op.side,'PUT');
+ assert.equal(op.actionable,true,JSON.stringify({state:op.state,reason:op.reason,confirmation:op.confirmation}));
+ assert.equal(op.entryAt,confirmedAt);
+});
+
+test('scenario continuation recognizes first two quotes crossing a preclosed bar despite lagging 15s flow',()=>{
+ const closed=t-5000,quotes=[
+  {ts:closed+150,price:99.97},{ts:closed+950,price:99.98},{ts:closed+1400,price:100},
+  {ts:t+330,price:99.998},{ts:t+550,price:100.003},{ts:t+680,price:100.007}
+ ];
+ const a=analysis();Object.assign(a.metrics.shortModel,{sr:{support:99.5,resistance:100.5},callSetup:true,
+   callRoomOk:true,structureReadyCall:true,flowReadyCall:false,callScore:80,putScore:20,
+   reversalCallScore:0,reversalCallCandidate:false});
+ Object.assign(a.metrics.micro,{delta5:.002,delta15:-.03,delta2:.005});
+ const s=snap(quotes),now=t+680;
+ const c=entryOpportunities({analysis:a,snap:s,now,minPoints:70})[0];
+ assert.equal(c.kind,'continuation');
+ assert.equal(c.allowed,true,JSON.stringify({blockedBy:c.blockedBy,reason:c.reason}));
+ assert.equal(c.plan.reaction?.earlyContinuation,true);
+ const r=runtime({percent:70,points:55});
+ const o=r._operationalSignalState(a,s,now);
+ assert.equal(o.actionable,true,JSON.stringify({state:o.state,reason:o.reason,confirmation:o.confirmation}));
+ assert.equal(o.entryAt,now);
+});
+test('scenario continuation must not chase late breakout near the candle top',()=>{
+ const closed=t-5000,quotes=[
+  {ts:closed+150,price:99.97},{ts:closed+950,price:99.98},{ts:closed+1400,price:100},
+  {ts:t+100,price:100.001},{ts:t+300,price:100.014},{ts:t+500,price:100.065},
+  {ts:t+700,price:100.081},{ts:t+900,price:100.08}
+ ];
+ const a=analysis();Object.assign(a.metrics.shortModel,{callSetup:true,callRoomOk:true,
+  structureReadyCall:true,flowReadyCall:true,callScore:90,putScore:20,callOverextended:false});
+ Object.assign(a.metrics.micro,{delta5:.05,delta15:.07,delta2:-.001});
+ const s=snap(quotes),c=entryOpportunities({analysis:a,snap:s,now:t+900,minPoints:70})[0];
+ assert.equal(c.allowed,false,JSON.stringify({reason:c.reason,trigger:c.plan.callTrigger}));
+ assert.equal(c.blockedBy,'late-entry');
+ const o=runtime({percent:70,points:55})._operationalSignalState(a,s,t+900);
+ assert.equal(o.actionable,false);
+});
+
+test('PUT scenario catches first decline at prior closed-bar low rather than waiting for 15s momentum',()=>{
+ const closed=t-5000,quotes=[
+  {ts:closed+150,price:100.03},{ts:closed+950,price:100.02},{ts:closed+1400,price:100},
+  {ts:t+330,price:100.002},{ts:t+550,price:99.997},{ts:t+680,price:99.993}
+ ];
+ const a=analysis('PUT');Object.assign(a.metrics.shortModel,{sr:{support:99.5,resistance:100.5},putSetup:true,
+   putRoomOk:true,structureReadyPut:true,flowReadyPut:false,putScore:80,callScore:20,
+   reversalPutScore:0,reversalPutCandidate:false});
+ Object.assign(a.metrics.micro,{delta5:-.002,delta15:.03,delta2:-.005});
+ const s=snap(quotes),now=t+680;
+ const p=entryOpportunities({analysis:a,snap:s,now,minPoints:70})[1];
+ assert.equal(p.allowed,true,JSON.stringify({reason:p.reason,blockedBy:p.blockedBy}));
+ assert.equal(p.plan.reaction?.earlyContinuation,true);
+ const op=runtime({percent:70,points:55})._operationalSignalState(a,s,now);
+ assert.equal(op.actionable,true,JSON.stringify({reason:op.reason,state:op.state}));
+ assert.equal(op.side,'PUT');assert.equal(op.entryAt,now);
+});
