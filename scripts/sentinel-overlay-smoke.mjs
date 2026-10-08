@@ -220,7 +220,9 @@ try{
   await page.clock.runFor(4000);
   assert.doesNotMatch(await card.innerText(),/ENTRADA DISPONÍVEL|ENTRAR AGORA/,'expired local opportunity stops its authorization without another worker payload');
   assert.doesNotMatch(await card.innerText(),/FECHA EM/,'a stale feed still suspends the displayed countdown');
-  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL · sinal anterior/,'past entry stays visible but is explicitly stale for six seconds');
+  await page.clock.runFor(2100);
+  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/,'old CALL expires after the six-second display hold');
   const expiredEntryAt=Date.now()-4000;
   await update({...data,entryPlanner:{horizons:{'30':oppositeExpiry,'60':{...plan,rawBias:'PUT',displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'CALL',scenario:{side:'PUT',createdAt:localNow,deadline:localNow+60000},entryAnalyst:{independent:true,qualification:{allowed:true},signal:{side:'CALL',state:'ENTRADA',actionable:true,activeUntil:expiredEntryAt+3500}},state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:expiredEntryAt,activeUntil:expiredEntryAt+3500,ready:true,actionable:true}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
