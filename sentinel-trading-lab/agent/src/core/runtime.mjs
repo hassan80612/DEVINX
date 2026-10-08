@@ -365,7 +365,7 @@ export class DemoTradingRuntime{
     // An entry analyst may observe/act on a real structural opportunity even
     // when no main forecast qualified. Its neutral coordinator is never shown
     // as a fabricated main scenario; the old forecast retains its own rules.
-    if(main?.independentOnly&&mainQualified){main=null;this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;}
+    if(main?.independentOnly&&mainQualified&&!main.entryAt&&!this.operationalSetup?.firedAt){main=null;this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;}
     if(!main){
       main=mainQualified?{
         context,id:context+'|'+now,side:mainSide,createdAt:now,deadline:now+horizon*1000,
