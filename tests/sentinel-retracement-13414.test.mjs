@@ -28,6 +28,7 @@ test('subanalyst sees resistance before a PUT and does not relabel an active CAL
  const op=r._operationalSignalState(a,up,now);
  assert.equal(op.entryAnalyst.retracement?.state,'WATCH');
  assert.equal(op.scenarioFeedback.watchSide,'PUT');
+ assert.equal(op.scenarioSide,'CALL','main scenario must retain its own direction');
  assert.equal(op.scenarioFeedback.advisoryOnly,true);
  const direct=entryOpportunities({analysis:a,snap:up,now,minPoints:70,durationMs:30000});
  assert.equal(direct[1].allowed,false);
@@ -44,6 +45,17 @@ test('several independent significant down ticks are recognized, but cannot bypa
  assert.equal(op.entryAnalyst.retracement?.confirmed,true);
  assert.equal(op.scenarioFeedback.advisoryOnly,true);
  assert.equal(op.entryAnalyst.candidates[1].allowed,false);
+});
+test('downtrend support alert mirrors PUT as a possible CALL without forcing entry',()=>{
+ const a=analysis('PUT'),turnedDown=turned.map(p=>200-p);
+ a.metrics.shortModel.sr={support:100,resistance:100.4};
+ Object.assign(a.metrics.micro,{delta5:-.04,delta15:-.05,delta2:.012,lead:.5});
+ a.metrics.shortModel.putScore=82;a.metrics.shortModel.callScore=15;
+ const m=snap(turnedDown),watch=retracementWatch({analysis:a,snap:m,now});
+ assert.equal(watch.watchSide,'CALL',JSON.stringify(watch));
+ assert.equal(watch.state,'CONFIRMED');
+ const original=entryOpportunities({analysis:a,snap:m,now,minPoints:70,durationMs:30000});
+ assert.equal(original[0].allowed,false,'advisory must not create CALL via score override');
 });
 test('a pair of tiny falling quotes during a rally is not a confirmed reversal',()=>{
  const p=[...base,100.005,100.0048],a=analysis(),w=retracementWatch({analysis:a,snap:snap(p),now});
