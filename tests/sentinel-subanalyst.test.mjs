@@ -140,3 +140,11 @@ test('missed entries require a genuinely later source, including opposite-side c
  assert.equal(r.entryResearch.pending.length,1);
 });
 
+test('entries from different providers never share a research identity at the same timestamp',()=>{
+ const r=runtime(),a=analysis();
+ assert.equal(r._operationalSignalState(a,snap([99.99,100.01,100.02],t,'iq_option'),t).actionable,true);
+ assert.equal(r._operationalSignalState(a,snap([99.99,100.01,100.02],t,'exnova'),t).actionable,true);
+ assert.equal(r.entryResearch.pending.length,2);assert.notEqual(r.entryResearch.pending[0].id,r.entryResearch.pending[1].id);
+ assert.notEqual(r.entryResearch.pending[0].key,r.entryResearch.pending[1].key);
+});
+

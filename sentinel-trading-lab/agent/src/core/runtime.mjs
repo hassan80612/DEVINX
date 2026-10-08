@@ -466,7 +466,7 @@ export class DemoTradingRuntime{
     op.entryDecisionHorizonSeconds=durationMs/1000;op.entryResearch=prediction;
     if(!op.actionable&&!this.entryQualification.allowed)op.reason=this.entryQualification.reason;
     if(op.actionable){
-      this.entryResearch.record({id:this.operationalSetup.key,context:researchContext,features,baseline:Number.isFinite(baseline)?baseline:.5,price:this.operationalSetup.entryPrice??price,now:op.entryAt,durationMs,prediction});
+      this.entryResearch.record({id:provider+'|'+this.operationalSetup.key,context:researchContext,features,baseline:Number.isFinite(baseline)?baseline:.5,price:this.operationalSetup.entryPrice??price,now:op.entryAt,durationMs,prediction});
       op.reason=(op.side===main.side?'Entrada no sentido do cenário.':'Oportunidade de '+({reversal:'reversão',continuation:'continuação',breakout:'rompimento'}[kind]||'entrada')+' confirmada independentemente do cenário '+main.side+'.')+' '+op.side+' AGORA · expiração '+Math.round(durationMs/1000)+'s.';
     }
     const passed=op.state==='AGUARDAR PONTO',invalidated=op.state==='INVALIDADO',consumed=Number(this.operationalSetup?.firedAt)>0&&(now>=Number(this.operationalSetup?.activeUntil||0)||Number(this.operationalSetup?.releasedAt)>0);
