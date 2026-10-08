@@ -116,7 +116,7 @@ try{
   const justBefore=Date.now();
   const entered={...operational,state:'ENTRADA',ready:true,actionable:true,entryAt:justBefore,activeUntil:justBefore+500};
   await update({...data,operationalSignal:entered});
-  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ENTRAR AGORA · CALL');
+  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
   assert.match(await card.locator('[data-sentinel-scenario-status]').innerText(),/FECHA EM [1-9]\d?s/);
   assert.match(await card.locator('[data-sentinel-scenario-phase]').innerText(),/ENTRADA DISPONÍVEL POR 1s · EXPIRAÇÃO 30 s/);
   await page.clock.runFor(650);
@@ -125,7 +125,7 @@ try{
   assert.match(await card.innerText(),/CENÁRIO CALL/);
   const putEntryAt=Date.now();
   await update({...data,entryPlanner:{horizons:{'60':{...plan,displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'PUT',state:'ENTRADA',ready:true,actionable:true,entryAt:putEntryAt,activeUntil:putEntryAt+3000}});
-  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ENTRAR AGORA · PUT');
+  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
   await card.screenshot({path:'sentinel-test-output/scenario-enter.png'});
   await update(data);
   const originalNodes=await page.evaluate(()=>{
@@ -166,7 +166,7 @@ try{
     const p30={...plan,horizonSeconds:30,rawBias:side,displayBias:side,callProbability:call?82:18,putProbability:call?18:82};
     const p60={...plan,horizonSeconds:60,rawBias:call?'PUT':'CALL',displayBias:call?'PUT':'CALL',callProbability:call?20:80,putProbability:call?80:20};
     await update({...data,entryPlanner:{horizons:{'30':p30,'60':p60}},operationalSignal:{...operational,scenario:{side:call?'PUT':'CALL',createdAt:independentNow,deadline:independentNow+60000,closed:false},side,state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:independentNow,activeUntil:independentNow+3500,ready:true,actionable:true}});
-    assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ENTRAR AGORA · '+side);
+    assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO '+(call?'PUT':'CALL'));
     assert.match(await card.innerText(),/ANÁLISE DA ENTRADA 30s/);
     assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);
     assert.match(await card.innerText(),/80%/);
@@ -176,7 +176,7 @@ try{
   const localNow=Date.now(),oppositeExpiry={...plan,horizonSeconds:30,rawBias:'PUT',displayBias:'PUT',directionReady:false,confidence:45,callProbability:20,putProbability:80};
   await update({...data,entryPlanner:{horizons:{'30':oppositeExpiry,'60':{...plan,rawBias:'PUT',displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'CALL',scenario:{side:'PUT',createdAt:localNow,deadline:localNow+60000},entryAnalyst:{independent:true,qualification:{allowed:true},signal:{side:'CALL',state:'ENTRADA',actionable:true,activeUntil:localNow+3500}},state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:localNow,activeUntil:localNow+3500,ready:true,actionable:true}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
-  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'ENTRAR AGORA · CALL');
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);
   assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);
   await page.clock.runFor(4000);
   assert.doesNotMatch(await card.innerText(),/FECHA EM|ENTRAR AGORA/,'expired local opportunity stops its countdown without another worker payload');
@@ -192,7 +192,7 @@ try{
   await update({...data,operationalSignal:{...operational,state:'JANELA ENCERRADA'}});
   assert.match(await card.innerText(),/JANELA ENCERRADA/);assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   await update({...data,operationalSignal:{...operational,state:'AGUARDAR PRAZO',sideSupported:false}});
-  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');assert.match(await card.innerText(),/ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);assert.match(await card.innerText(),/ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   await update({...data,operationalSignal:{...operational,asset:'OTHER'}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'AGUARDE UM CENÁRIO');
   await update({...data,analysisStale:true});

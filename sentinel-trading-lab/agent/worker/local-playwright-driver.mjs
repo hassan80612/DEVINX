@@ -1554,7 +1554,7 @@ export class LocalPlaywrightDriver{
         const subanalystHtml='<div data-sentinel-subanalyst-status style="display:flex;align-items:center;gap:7px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;overflow:hidden;white-space:nowrap;min-width:0;margin:0 0 7px;padding:0 8px;border-radius:8px;background:'+(uiTheme==='light'?'rgba(128,94,39,.07)':'rgba(215,182,93,.065)')+';border:1px solid '+panelBorder+'">'+
           '<span style="color:'+goldSoft+';font-size:13.5px;font-weight:800;flex-shrink:0">Subanalista:</span>'+
           '<b data-sentinel-subanalyst-value style="font-size:15px;font-weight:800;color:'+subanalystTone+';overflow:hidden;text-overflow:ellipsis">'+subanalystStatus+'</b></div>';
-        const entryActionLabel=operationalNow?('ENTRAR AGORA · '+operationalHeroSide):futureActionLabel;
+        const entryActionLabel=futureActionLabel;
         // No second subanalyst headline: one compact status, above model/Call/Put.
         const futurePhase=(entryDecisionHorizon!==Number(plannerHorizon)?
           'ANÁLISE DA ENTRADA '+Math.round(entryDecisionHorizon)+'s · ':'')+
