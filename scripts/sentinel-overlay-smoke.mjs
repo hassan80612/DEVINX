@@ -9,7 +9,9 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await chromium.launch({channel:process.platform==='win32'?'msedge':undefined,headless:true});
 try{
   const page=await browser.newPage({viewport:{width:1100,height:850}}),errors=[];
-  await page.clock.install({time:Date.now()-1000});
+  // pauseAt advances rather than rewinds the browser clock. Leave enough
+  // distance for navigation and runner latency before freezing the test time.
+  await page.clock.install({time:Date.now()-3600000});
   page.on('pageerror',error=>errors.push(error.message));
   await page.goto('http://127.0.0.1:'+server.address().port);
   await page.clock.pauseAt(Date.now());
