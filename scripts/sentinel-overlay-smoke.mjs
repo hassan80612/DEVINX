@@ -156,11 +156,11 @@ try{
     assert.ok(Math.abs(h-stableAnalystHeight)<2,'subanalyst CALL/PUT must not jump the scenario card');
   }
   await update(data);
-  assert.match(await analyst.innerText(),/Subanalista:\\s*CALL/,'last confirmed side must survive immediate next observing frame');
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/,'last confirmed side must survive immediate next observing frame');
   await page.clock.runFor(2600);
-  assert.match(await analyst.innerText(),/Subanalista:\\s*CALL/,'confirmed CALL must remain readable during the first 3 seconds');
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/,'confirmed CALL must remain readable during the first 3 seconds');
   await page.clock.runFor(600);
-  assert.match(await analyst.innerText(),/Subanalista:\\s*OBSERVANDO ENTRADA/,'after 3 seconds the display hold must expire without new trade');
+  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/,'after 3 seconds the display hold must expire without new trade');
   await update({...data,operationalSignal:{...entered,activeUntil:Date.now()+3000,actionable:false}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
   assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
