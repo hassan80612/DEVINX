@@ -135,3 +135,38 @@ test('PUT is released at the second resistance-rejection quote, with no extra wa
  assert.equal(op.actionable,true,JSON.stringify({state:op.state,reason:op.reason,confirmation:op.confirmation}));
  assert.equal(op.entryAt,confirmedAt);
 });
+
+test('scenario continuation recognizes first two quotes crossing a preclosed bar despite lagging 15s flow',()=>{
+ const closed=t-5000,quotes=[
+  {ts:closed+150,price:99.97},{ts:closed+950,price:99.98},{ts:closed+1400,price:100},
+  {ts:t-330,price:99.998},{ts:t-200,price:100.003},{ts:t-100,price:100.007}
+ ];
+ const a=analysis();Object.assign(a.metrics.shortModel,{sr:{support:99.5,resistance:100.5},callSetup:true,
+   callRoomOk:true,structureReadyCall:true,flowReadyCall:false,callScore:80,putScore:20,
+   reversalCallScore:0,reversalCallCandidate:false});
+ Object.assign(a.metrics.micro,{delta5:.002,delta15:-.03,delta2:.005});
+ const s=snap(quotes),now=t-100;
+ const c=entryOpportunities({analysis:a,snap:s,now,minPoints:70})[0];
+ assert.equal(c.kind,'continuation');
+ assert.equal(c.allowed,true,JSON.stringify({blockedBy:c.blockedBy,reason:c.reason}));
+ assert.equal(c.plan.reaction?.earlyContinuation,true);
+ const r=runtime({percent:70,points:55});
+ const o=r._operationalSignalState(a,s,now);
+ assert.equal(o.actionable,true,JSON.stringify({state:o.state,reason:o.reason,confirmation:o.confirmation}));
+ assert.equal(o.entryAt,now);
+});
+test('scenario continuation must not chase late breakout near the candle top',()=>{
+ const closed=t-5000,quotes=[
+  {ts:closed+150,price:99.97},{ts:closed+950,price:99.98},{ts:closed+1400,price:100},
+  {ts:t-2800,price:100.001},{ts:t-2500,price:100.014},{ts:t-1200,price:100.065},
+  {ts:t-400,price:100.081},{ts:t,price:100.08}
+ ];
+ const a=analysis();Object.assign(a.metrics.shortModel,{callSetup:true,callRoomOk:true,
+  structureReadyCall:true,flowReadyCall:true,callScore:90,putScore:20,callOverextended:false});
+ Object.assign(a.metrics.micro,{delta5:.05,delta15:.07,delta2:-.001});
+ const s=snap(quotes),c=entryOpportunities({analysis:a,snap:s,now:t,minPoints:70})[0];
+ assert.equal(c.allowed,false,JSON.stringify({reason:c.reason,trigger:c.plan.callTrigger}));
+ assert.equal(c.blockedBy,'late-entry');
+ const o=runtime({percent:70,points:55})._operationalSignalState(a,s,t);
+ assert.equal(o.actionable,false);
+});
