@@ -1579,7 +1579,7 @@ export class LocalPlaywrightDriver{
           ownAnalyst.qualification?.allowed===true&&ownSignal.actionable===true&&
           ownSignal.state==='ENTRADA'&&Number(ownSignal.activeUntil)>decisionNow&&
           ['CALL','PUT'].includes(String(ownSignal.side));
-        // Keep a confirmed CALL/PUT legible for 3 seconds, even if the next
+        // Keep a confirmed CALL/PUT legible for 6 seconds, even if the next
         // frame switches to observing. This is a DISPLAY hold, not extra time
         // in which the engine may execute or authorize an entry.
         const subContext=visibleAsset+'|'+duration;
@@ -1588,13 +1588,13 @@ export class LocalPlaywrightDriver{
         if(ownNow){
           const entryId=subContext+'|'+String(ownSignal.entryAt??ownSignal.activeUntil)+'|'+ownSignal.side;
           if(!subHold||subHold.id!==entryId){
-            subHold={context:subContext,id:entryId,side:String(ownSignal.side),until:decisionNow+3000};
+            subHold={context:subContext,id:entryId,side:String(ownSignal.side),until:decisionNow+6000};
             window.__sentinelSubanalystHold=subHold;
             clearTimeout(window.__sentinelSubanalystClearTimer);
             window.__sentinelSubanalystClearTimer=setTimeout(()=>{
               if(window.__sentinelSubanalystHold?.id===entryId)
                 window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData);
-            },3000);
+            },6000);
           }
         }
         const subanalystSide=subHold&&subHold.until>decisionNow&&ownContextOk?subHold.side:null;

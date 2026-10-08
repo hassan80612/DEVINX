@@ -182,11 +182,18 @@ try{
   await update(data);
   assert.match(await analyst.innerText(),/Subanalista:\s*CALL/,'last confirmed side must survive immediate next observing frame');
   await page.clock.runFor(2600);
-  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/,'confirmed CALL must remain readable during the first 3 seconds');
+  assert.match(await analyst.innerText(),new RegExp('Subanalista:\\s*CALL'),'CALL should remain visible at 2.6 seconds');
   await page.clock.runFor(600);
-  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/,'after 3 seconds the display hold must expire without new trade');
+  assert.match(await analyst.innerText(),new RegExp('Subanalista:\\s*CALL'),'CALL remains visible at 3.2 seconds');
+  await page.clock.runFor(2300);
+  assert.match(await analyst.innerText(),new RegExp('Subanalista:\\s*CALL'),'CALL remains visible at 5.5 seconds');
+  assert.match(await analyst.innerText(),/sinal anterior/,'expired signal is labeled prior, not actionable');
+  await page.clock.runFor(600);
+  assert.match(await analyst.innerText(),new RegExp('Subanalista:\\s*OBSERVANDO ENTRADA'),'hold expires after 6 seconds without a new trade');
+  const heldHeight=await card.evaluate(el=>el.getBoundingClientRect().height);
+  assert.ok(Math.abs(heldHeight-stableAnalystHeight)<2,'longer hold cannot increase card height');
   // The test harness resets virtual browser time on the next payload (backwards).
-  // Isolate subsequent scenarios from the completed three-second hold.
+  // Isolate subsequent scenarios from the completed six-second hold.
   await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
   await update({...data,operationalSignal:{...entered,activeUntil:Date.now()+3000,actionable:false}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
