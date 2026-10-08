@@ -344,7 +344,21 @@ export class DemoTradingRuntime{
     const triggerMet=(!reversal||setup.armed)&&(side==='CALL'?price>=level:price<=level);
     const distance=side==='CALL'?price-level:level-price;
     const pointPassed=triggerMet&&Number(setup.maxEntryDistance)>0&&distance>Number(setup.maxEntryDistance);
-    const sustained=triggerMet&&!invalidated&&!pointPassed&&this._confirmPriceTrigger(setup,snap,side,level,now);
+    // The pre-mapped analyst has already checked two distinct, progressing
+    // post-touch quotes. Re-check the current price and freshness here, but
+    // do not demand a third quote just to repeat the same confirmation.
+    const rx=plan?.reaction,confirmedAt=Number(rx?.confirmedAt||0),quoteTs=Number(snap.quoteTs||0);
+    const preconfirmed=this._entryAnalysisMode&&reversal&&rx?.preMapped===true&&rx?.qualified===true&&
+      rx?.advancing===true&&Number(rx?.quoteConfirmations)>=2&&
+      !!setup.reactionId&&setup.reactionId===rx.id&&confirmedAt>Number(rx.touchAt||0)&&
+      quoteTs>=confirmedAt&&quoteTs<=now&&now-quoteTs<=1200&&now-confirmedAt<=1500&&
+      (snap.quoteHistory||[]).some(q=>Number(q.ts)===confirmedAt&&Number.isFinite(Number(q.price)));
+    const sustained=triggerMet&&!invalidated&&!pointPassed&&
+      (preconfirmed||this._confirmPriceTrigger(setup,snap,side,level,now));
+    if(preconfirmed&&sustained)setup.triggerQuotes=(snap.quoteHistory||[])
+      .filter(q=>Number(q.ts)>Number(rx.touchAt)&&Number(q.ts)<=quoteTs&&
+        (side==='CALL'?Number(q.price)>=level:Number(q.price)<=level))
+      .slice(-2).map(q=>({ts:Number(q.ts),price:Number(q.price)}));
     if(!triggerMet||invalidated||pointPassed)setup.triggerQuotes=[];
     return{reversal,triggerMet,sustained,invalidated,pointPassed,distance};
   }
