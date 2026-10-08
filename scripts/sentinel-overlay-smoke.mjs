@@ -120,7 +120,7 @@ try{
     reason:'Esta oportunidade terminou; aguardando outro ponto estrutural confirmado.'};
   await update({...data,operationalSignal:finishedPut});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
-  assert.match(await card.locator('[data-sentinel-scenario-status]').innerText(),/CENÁRIO · [1-9]\\d*s/);
+  assert.match(await card.locator('[data-sentinel-scenario-status]').innerText(),/CENÁRIO · [1-9][0-9]*s/);
   assert.match(await card.locator('[data-sentinel-scenario-phase]').innerText(),/ENTRADA ENCERRADA · NÃO ENTRAR/);
   assert.doesNotMatch(await card.locator('[data-sentinel-scenario-phase]').innerText(),/ANÁLISE EM ANDAMENTO/);
   const closingAlert=card.locator('[data-sentinel-entry-closure="ended"]');
