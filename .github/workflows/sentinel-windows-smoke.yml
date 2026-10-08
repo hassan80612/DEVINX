@@ -2,7 +2,7 @@ name: Sentinel Hybrid Smoke V13.4
 
 on:
   push:
-    branches: [sentinel-13422-expiry-retrace-1008]
+    branches: [sentinel-13423-persistent-reversal-1008]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -48,6 +48,7 @@ jobs:
 
           const driverSource=await readFile('./sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
           const worker=await readFile('./sentinel-trading-lab/agent/worker/index.mjs','utf8');
+          const marketBridge=await readFile('./sentinel-trading-lab/agent/worker/runtime-market.mjs','utf8');
           const runtime=await readFile('./sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
           const strategy=await readFile('./sentinel-trading-lab/agent/src/core/strategy.mjs','utf8');
 
@@ -78,7 +79,7 @@ jobs:
           if(!driverSource.includes('data-sentinel-reading-pause')||!uiAscii.includes('TOTAL MERCADO')||!uiAscii.includes('TOTAL ESTRATEGIAS')||!uiAscii.includes('TOTAL PRESENTE + FUTURO'))throw new Error('pause_aware_three_totals_ui_missing');
           if(!runtime.includes('_priceAtExpiry')||!runtime.includes("settlementQuality!=='approx'")||!runtime.includes("expirationSource:'card-setting'")||!runtime.includes('settleDurationMs:durationMs')||runtime.includes("state:'AJUSTAR PRAZO'")||runtime.includes("state:'VERIFICAR PRAZO'"))throw new Error('card_driven_expiry_timing_missing');
           if(!runtime.includes('Math.max(60,Number(this.settings.risk.signalValidationMinSamples||60))'))throw new Error('statistical_sample_floor_missing');
-          if(!worker.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
+          if(!marketBridge.includes('expirationDurationMs:m.expirationDurationMs')||!worker.includes('brokerExpirationDurationMs:view.liveBroker?.expirationDurationMs'))throw new Error('expiry_not_carried_end_to_end');
           for(const k of ['VIRADA / REVERS','PRONTIDAO DE ENTRADA','CENARIO FUTURO POR PRAZO','DATA-SENTINEL-ACTION="REFRESH"','DATA-SENTINEL-THEME="LIGHT"'])if(!uiAscii.includes(k))throw new Error('modern_ui_missing:'+k);
           if(!driverSource.includes("m=raw.match(/\\b([A-Z]{3})([A-Z]{3})"))throw new Error('compact_iq_asset_dom_parser_missing');
           if(worker.includes('readRecoveryPromise')||worker.includes('lastReadRecoveryAt'))throw new Error('legacy_recovery_stack_present');
@@ -93,7 +94,7 @@ jobs:
           if(!worker.includes("runtime.setMode(payload.mode"))throw new Error('mode_route_missing');
           if(worker.includes("async function status(){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain"))throw new Error('status_poll_still_runs_heavy_maintain');
           if(!worker.includes("import {VERSION,BUILD} from './release.mjs'"))throw new Error('agent_version_not_13_3');
-          console.log('V13.4.22 STARTUP + PAID ACCESS GATE: PASS');
+          console.log('V13.4.23 STARTUP + PAID ACCESS GATE: PASS');
 
           const d=new LocalPlaywrightDriver({dataDir:'sentinel-trading-lab/agent/worker/data/hybrid-smoke'});
           const st=d.state('iq_option');
@@ -187,15 +188,15 @@ jobs:
           for($i=0;$i -lt 120;$i++){
             try{
               $h=Invoke-RestMethod 'http://127.0.0.1:8788/health' -TimeoutSec 1
-              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.22'){$ok=$true;break}
+              if($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.23'){$ok=$true;break}
             }catch{}
             Start-Sleep -Milliseconds 500
           }
           if(-not $ok){throw 'Hybrid Agent/Worker unhealthy'}
-          if($h.build -ne '13.4.22-expiry-retrace-1008'){throw 'Wrong manager build'}
+          if($h.build -ne '13.4.23-persistent-reversal-1008'){throw 'Wrong manager build'}
           $wh=Invoke-RestMethod 'http://127.0.0.1:8787/health'
-          if($wh.version -ne '13.4.22' -or $wh.build -ne $h.build -or $wh.pid -ne $h.workerPid){throw 'Mixed manager/worker installation'}
-          Write-Host 'HYBRID V13.4.22 INSTALL: PASS'
+          if($wh.version -ne '13.4.23' -or $wh.build -ne $h.build -or $wh.pid -ne $h.workerPid){throw 'Mixed manager/worker installation'}
+          Write-Host 'HYBRID V13.4.23 INSTALL: PASS'
 
       - name: Upgrade from old relative-command worker and reinstall
         shell: powershell
@@ -220,11 +221,11 @@ jobs:
             if($LASTEXITCODE -ne 0){throw "Upgrade/reinstall failed: $LASTEXITCODE"}
             $h=Invoke-RestMethod 'http://127.0.0.1:8788/health'
             $wh=Invoke-RestMethod 'http://127.0.0.1:8787/health'
-            if(-not $h.workerHealthy -or $h.build -ne '13.4.22-expiry-retrace-1008' -or $wh.build -ne $h.build -or $wh.pid -ne $h.workerPid){throw 'Version or PID conflict after upgrade'}
+            if(-not $h.workerHealthy -or $h.build -ne '13.4.23-persistent-reversal-1008' -or $wh.build -ne $h.build -or $wh.pid -ne $h.workerPid){throw 'Version or PID conflict after upgrade'}
             if((Get-Content (Join-Path $root 'worker/data/upgrade-preserved.txt')) -ne 'identity-and-sessions-preserved'){throw 'Persistent data lost'}
           }
           if(Get-Process -Id $old.Id -ErrorAction SilentlyContinue){throw 'Old worker survived update'}
-          Write-Host '13.4.6 -> 13.4.22 UPGRADE + REINSTALL: PASS'
+          Write-Host '13.4.6 -> 13.4.23 UPGRADE + REINSTALL: PASS'
 
 
       - name: Verify tray startup and recovery
@@ -233,6 +234,25 @@ jobs:
         run: |
           & 'scripts/sentinel-tray-smoke.ps1'
           if($LASTEXITCODE -ne 0){throw 'Tray startup/recovery regression failed'}
+
+      - name: Verify real installer mode and repair incomplete runtime
+        timeout-minutes: 8
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $env:SENTINEL_INSTALL_TEST=''
+          $root=Join-Path $env:LOCALAPPDATA 'SentinelTradingLab'
+          1..2 | ForEach-Object {
+            if($_ -eq 2){Remove-Item (Join-Path $root '.sentinel-runtime/npm.cmd') -Force}
+            & 'sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe'
+            if($LASTEXITCODE -ne 0){throw "Real-mode installer failed: $LASTEXITCODE"}
+            $h=Invoke-RestMethod 'http://127.0.0.1:8788/health'
+            $th=Get-Content (Join-Path $root 'worker/data/tray-health.json') -Raw | ConvertFrom-Json
+            if(-not $h.workerHealthy -or $h.build -ne '13.4.23-persistent-reversal-1008' -or -not $th.iconVisible -or $th.build -ne $h.build){throw 'Normal installer manager/worker/tray mismatch'}
+            if(-not (Test-Path (Join-Path $root '.sentinel-runtime/npm.cmd'))){throw 'Partial Node runtime was not repaired'}
+            if(-not (Get-Content (Join-Path $root 'install.log') -Raw).Contains('Agent V13.4.23 pronto.')){throw 'Install diagnostic log missing'}
+          }
+          Write-Host 'NORMAL EXE + TRAY + PARTIAL NODE REPAIR: PASS'
 
       - name: Verify rendered scenario card
         shell: powershell
@@ -245,7 +265,7 @@ jobs:
       - name: Upload scenario screenshot
         uses: actions/upload-artifact@v4
         with:
-          name: sentinel-scenario-13.4.22
+          name: sentinel-scenario-13.4.23
           path: sentinel-test-output/*.png
 
       - name: Cleanup
@@ -265,6 +285,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add sentinel-trading-lab/public/downloads/agent_payload_v88.zip
-          git commit -m 'build(sentinel): validated Windows Agent 13.4.22 rebuild'
-          git push origin HEAD:sentinel-13422-expiry-retrace-1008
+          git commit -m 'build(sentinel): validated Windows Agent 13.4.23 rebuild'
+          git push origin HEAD:sentinel-13423-persistent-reversal-1008
 

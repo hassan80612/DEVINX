@@ -1345,15 +1345,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.22'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.23'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.22';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.23';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
-          reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
+          reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:none}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.22';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.23';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1362,7 +1362,7 @@ export class LocalPlaywrightDriver{
             background:'linear-gradient(155deg,rgba(7,17,24,.992),rgba(10,27,36,.986))',color:'#f4f8fa',
             border:'1px solid rgba(111,174,192,.24)',borderRadius:'18px',
             boxShadow:'0 24px 72px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.035)',
-            backdropFilter:'blur(18px)',
+            backdropFilter:'none',
             fontFamily:'"Segoe UI",Arial,sans-serif',
             fontSize:'13px',lineHeight:'1.30',padding:'12px',pointerEvents:'auto',userSelect:'none',fontVariantNumeric:'tabular-nums',overflowAnchor:'none',textRendering:'optimizeLegibility',
             scrollbarWidth:'thin',scrollbarColor:'#385461 transparent',outline:'none'
@@ -1593,9 +1593,19 @@ export class LocalPlaywrightDriver{
         const subanalystSide=subHold&&subHold.until>decisionNow&&ownContextOk?subHold.side:null;
         const subanalystStatus=subanalystSide?(subanalystSide+(ownNow?'':' · sinal anterior')):'OBSERVANDO ENTRADA';
         const subanalystTone=subanalystSide==='CALL'?callTone:subanalystSide==='PUT'?putTone:ink;
-        const subanalystHtml='<div data-sentinel-subanalyst-status style="display:flex;align-items:center;gap:7px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;overflow:hidden;white-space:nowrap;min-width:0;margin:0 0 7px;padding:0 8px;border-radius:8px;background:'+(uiTheme==='light'?'rgba(128,94,39,.07)':'rgba(215,182,93,.065)')+';border:1px solid '+panelBorder+'">'+
+        const legacySubanalystHtml='<div data-sentinel-subanalyst-status style="display:flex;align-items:center;gap:7px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;overflow:hidden;white-space:nowrap;min-width:0;margin:0 0 7px;padding:0 8px;border-radius:8px;background:'+(uiTheme==='light'?'rgba(128,94,39,.07)':'rgba(215,182,93,.065)')+';border:1px solid '+panelBorder+'">'+
           '<span style="color:'+goldSoft+';font-size:13.5px;font-weight:800;flex-shrink:0">Subanalista:</span>'+
           '<b data-sentinel-subanalyst-value style="font-size:15px;font-weight:800;color:'+subanalystTone+';overflow:hidden;text-overflow:ellipsis">'+subanalystStatus+'</b></div>';
+        const reversal=operational?.subanalyst,advisoryMode=reversal?.mode==='reversal-alert';
+        const reversalVisible=advisoryMode&&ownFresh&&reversal.active===true&&['CALL','PUT'].includes(reversal.alert?.side);
+        const reversalInfo=reversalVisible?reversal.alert:null;
+        const reversalLabel=reversalVisible?'POSSÍVEL REVERSÃO '+reversalInfo.side:ownFresh?'OBSERVANDO REVERSÃO':'SEM LEITURA ATUAL';
+        const reversalTone=reversalInfo?.side==='CALL'?callTone:reversalInfo?.side==='PUT'?putTone:ink;
+        const subanalystHtml=advisoryMode?'<div data-sentinel-subanalyst-status style="min-height:70px;padding:7px 8px;margin-bottom:7px;border:1px solid '+panelBorder+';border-radius:8px;background:'+panelBg+'">'+
+          '<div style="font-size:12px;font-weight:800;color:'+goldSoft+'">Subanalista · aviso de reversão</div>'+
+          '<b data-sentinel-subanalyst-value style="display:block;font-size:13px;color:'+reversalTone+'">'+reversalLabel+'</b>'+
+          '<div data-sentinel-reversal-level style="font-size:11px;line-height:1.4;color:'+ink+'">'+(reversalInfo?'Ponto '+price(reversalInfo.level)+' · gatilho '+price(reversalInfo.trigger)+' · invalida '+price(reversalInfo.invalidation):'Aguardando quebra e continuidade confirmadas.')+'</div>'+
+          '<div style="font-size:10px;color:'+muted+'">'+(reversalInfo?(reversalInfo.testing?'Estrutura em teste · aguarde fechamento.':'Persistência confirmada até esta leitura · apenas aviso.'):'Somente reversões com estrutura própria.')+'</div></div>':legacySubanalystHtml;
         const entryActionLabel=futureActionLabel;
         // No second subanalyst headline: one compact status, above model/Call/Put.
         const futurePhase=(entryDecisionHorizon!==Number(plannerHorizon)?
@@ -1604,13 +1614,13 @@ export class LocalPlaywrightDriver{
             operationalNow?'ENTRADA DISPONÍVEL POR '+Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000))+'s · EXPIRAÇÃO '+durationText:
             trackingSameSide?'ACOMPANHANDO · ENTRADA ENCERRADA':
             timingClosed?'PRAZO ENCERRADO · ESPERE NOVA ESTRUTURA':
-            formingSide?'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA':
+            formingSide?(advisoryMode?'CENÁRIO EM ACOMPANHAMENTO · SUBANALISTA SOMENTE AVISA':'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA'):
             'ANALISANDO · AGUARDANDO CONFIRMAÇÃO');
         const futureDecisionStatus=timingClosed?'00:00 · ENCERRADO':!plannerReadable?'SEM LEITURA':futureDecision?('FECHA EM '+windowSeconds+'s'):'EM ANÁLISE';
         const currentAnalysisReason=String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
         const futureDecisionConfidence=futureConfidence;
         const measuredHistory=operational?.entryAnalyst?.research||{},measuredSamples=Math.max(0,Number(measuredHistory.samples||0));
-        const measuredHistoryLabel=measuredSamples?('Entradas liberadas neste contexto: '+n(measuredHistory.winRate,1)+'% · '+measuredSamples+' resultados · '+(measuredHistory.qualified?'modelo qualificado':'em validação')):'Entradas deste contexto: ainda sem resultados medidos';
+        const measuredHistoryLabel=advisoryMode?'Alertas estruturais de reversão · sem autorização de entrada':measuredSamples?('Entradas liberadas neste contexto: '+n(measuredHistory.winRate,1)+'% · '+measuredSamples+' resultados · '+(measuredHistory.qualified?'modelo qualificado':'em validação')):'Entradas deste contexto: ainda sem resultados medidos';
         const displayedCallTrigger=operationalHeroSide==='CALL'&&operational?.trigger!=null?operational.trigger:plannerPlan?.callTrigger,displayedPutTrigger=operationalHeroSide==='PUT'&&operational?.trigger!=null?operational.trigger:plannerPlan?.putTrigger;
         const displayedCallInvalidation=operationalHeroSide==='CALL'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.callInvalidation,displayedPutInvalidation=operationalHeroSide==='PUT'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.putInvalidation;
         const planHtml=subanalystHtml+(plannerReadable?(
@@ -1624,7 +1634,7 @@ export class LocalPlaywrightDriver{
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:9.5px;color:'+callTone+';font-weight:700">CALL — confirmação</div><div style="font-size:14px;font-weight:700;color:#69e1b5;margin-top:2px">'+price(displayedCallTrigger)+'</div><div style="font-size:9.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(displayedCallInvalidation)+'</div></div>'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:9.5px;color:'+putTone+';font-weight:700">PUT — confirmação</div><div style="font-size:14px;font-weight:700;color:#ff8f9c;margin-top:2px">'+price(displayedPutTrigger)+'</div><div style="font-size:9.5px;color:'+muted+';margin-top:2px">invalida &gt; '+price(displayedPutInvalidation)+'</div></div>'+
           '</div>'+
-          '<div style="margin-top:5px;height:25px;min-height:25px;max-height:25px;overflow:hidden;font-size:9.5px;line-height:1.34;color:'+ink+';font-weight:760">Percentuais do Cenário · Subanalista com decisão própria.</div>'+
+          '<div style="margin-top:5px;height:25px;min-height:25px;max-height:25px;overflow:hidden;font-size:9.5px;line-height:1.34;color:'+ink+';font-weight:760">Percentuais do Cenário · Subanalista de reversão independente.</div>'+
           '<div style="margin-top:5px;height:28px;min-height:28px;max-height:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:9.5px;line-height:1.35;color:'+muted+'">'+esc(measuredHistoryLabel)+' · confiança em pontos não é taxa de acerto.</div>'
         ):'<div style="height:159px;box-sizing:border-box;font-size:10.5px;color:'+muted+'">Aguardando leitura atual deste prazo.</div>');
         const strategyCardsHtml=[1,2,3].map(slot=>{
@@ -1803,7 +1813,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.22')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.23')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -2003,7 +2013,8 @@ export class LocalPlaywrightDriver{
         if(!window.__sentinelOverlayClock)window.__sentinelOverlayClock=setInterval(()=>{
           const latest=window.__sentinelLastOverlayData;
           if(!document.getElementById('sentinel-trading-overlay-host')){clearInterval(window.__sentinelOverlayClock);window.__sentinelOverlayClock=null;return}
-          if(latest&&Date.now()-Number(latest.overlayReceivedAt||0)>=1250)window.__sentinelRenderOverlay?.(latest)
+          const clockSecond=Math.floor(Date.now()/1000);
+          if(latest&&Date.now()-Number(latest.overlayReceivedAt||0)>=1250&&window.__sentinelLastClockSecond!==clockSecond){window.__sentinelLastClockSecond=clockSecond;window.__sentinelRenderOverlay?.(latest)}
         },500);
         render(d)
       },payload);

@@ -1,4 +1,5 @@
 import {scenarioInvalidation} from './scenario-invalidation.mjs';
+import {PersistentReversalMonitor} from './persistent-reversal.mjs';
 import {PredictionInputState} from './forecast-evidence.mjs';
 import {DemoBrokerAdapter} from './demo-broker.mjs';
 import {SimulatedFeed} from './simulated-feed.mjs';
@@ -58,7 +59,8 @@ function newPriceStructure(main,side,snap){
 }
 
 export class DemoTradingRuntime{
-  constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1'}={}){
+  constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry'}={}){
+    this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
     this.broker=new DemoBrokerAdapter({balance,payout});
@@ -379,6 +381,9 @@ export class DemoTradingRuntime{
   _operationalSignalState(analysis,snap,now=Date.now()){
     if(analysis.predictionMetrics)analysis={...analysis,metrics:analysis.predictionMetrics};
     const asset=String(this.settings.asset||'—').toUpperCase(),provider=String(snap.provider||this.externalMarket?.provider||'unknown'),horizon=Number(this.settings.forecastHorizonSeconds||60),durationMs=Number(this.settings.orderDurationMs||60000),combo=this._strategyComboKey();
+    const reversalOnly=this.subanalystPolicy==='persistent-reversal-alert-v1';
+    const reversalAlert=reversalOnly?this.reversalMonitor.update({snap,now,asset,provider}):null;
+    if(!reversalOnly){
     this.validationProvider=provider;this.entryResearch.settle({...snap,provider,asset},now);
     // Experimental 13.4.15 evaluation: baseline 13.4.11 is untouched unless
     // an explicit offline replay opts into the non-directional guard.
@@ -386,6 +391,8 @@ export class DemoTradingRuntime{
     const path=this.pathEvidence=pathEvidence({analysis,snap,now,durationMs});
     if(path.ready)this.pathResearch.observe({evidence:path,provider,asset,
       durationMs,price:snap.price,quoteTs:snap.quoteTs,now});
+    }
+    const path=this.pathEvidence||{};
     const context=[provider,asset,horizon,durationMs,combo].join('|'),plans=analysis?.entryPlanner?.horizons||{},mainPlan=plans[String(horizon)],entryPlan=plans[String(Math.round(durationMs/1000))];
     let main=this.scenarioSetup;
     const previousContext=this.operationalContext||main?.context;
@@ -431,9 +438,16 @@ export class DemoTradingRuntime{
       };
       this.scenarioSetup=main;
     }
-    const price=Number(snap.price),confirmation=this.scenarioPolicy==='closed-structure-v1'?scenarioInvalidation(main,snap,now):null,broken=confirmation?confirmation.broken:main.invalidation!=null&&Number.isFinite(main.invalidation)&&(main.side==='CALL'?price<=main.invalidation:price>=main.invalidation);
+    const price=Number(snap.price),confirmation=!main.closed&&this.scenarioPolicy==='closed-structure-v1'?scenarioInvalidation(main,snap,now):null,broken=confirmation?confirmation.broken:main.invalidation!=null&&Number.isFinite(main.invalidation)&&(main.side==='CALL'?price<=main.invalidation:price>=main.invalidation);
     if(confirmation)main.invalidationTest=confirmation.testing;
     if(broken&&!main.closed){main.closed=true;main.status='INVALIDADO';main.invalidatedAt=now;main.invalidatedPrice=price;if(confirmation)main.invalidationEvidence=confirmation.evidence;main.reason='Estrutura do cenário '+main.side+' invalidada pelo preço.';}
+    if(reversalOnly)return{...empty,side:main.independentOnly?'AGUARDAR':main.side,
+      state:main.closed?main.status:main.independentOnly?'AGUARDAR':'JANELA ABERTA',
+      createdAt:main.independentOnly?null:main.createdAt,targetAt:main.deadline,
+      scenario:main.independentOnly?null:{...main},trigger:main.trigger??null,invalidation:main.invalidation,
+      reason:main.reason||'Cenário em acompanhamento; Subanalista apenas avisa reversões.',
+      subanalyst:reversalAlert,entryAnalyst:{mode:'reversal-alert',advisoryOnly:true,independent:true,
+        qualification:{allowed:false},signal:{side:'AGUARDAR',ready:false,actionable:false},reversalAlert}};
     const decorate=op=>({...op,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,
       scenarioFeedback:{mainSide:main.independentOnly?'NEUTRO':main.side,
         subanalystSide:path.watchSide||'NEUTRO',pathPhase:path.phase,conflict:!!path.watchSide&&!main.independentOnly&&path.watchSide!==main.side,

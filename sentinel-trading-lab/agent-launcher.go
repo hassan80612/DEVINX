@@ -3,6 +3,7 @@ package main
 import (
     _ "embed"
     "fmt"
+    "io"
     "os"
     "os/exec"
     "path/filepath"
@@ -59,15 +60,23 @@ func main() {
     )
     cmd.Stdout = os.Stdout
     cmd.Stderr = os.Stderr
+    logPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "SentinelTradingLab", "install.log")
+    _ = os.MkdirAll(filepath.Dir(logPath), 0o700)
+    logFile, logErr := os.Create(logPath)
+    if logErr == nil {
+        defer logFile.Close()
+        cmd.Stdout = io.MultiWriter(os.Stdout, logFile)
+        cmd.Stderr = io.MultiWriter(os.Stderr, logFile)
+    }
     cmd.Stdin = os.Stdin
     cmd.Env = append(os.Environ(), "SENTINEL_INSTALL_SOURCE=embedded-exe")
 
     if err := cmd.Run(); err != nil {
-        fail("A instalação do Sentinel Agent não foi concluída", err)
+        fail("A instalação do Sentinel Agent não foi concluída. Detalhes em " + logPath, err)
     }
 
     // Open the product after a successful install.
-    if os.Getenv("SENTINEL_INSTALL_TEST") != "1" {
+    if os.Getenv("SENTINEL_INSTALL_TEST") != "1" && os.Getenv("CI") != "true" {
         _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://sentinel-trading-lab.vercel.app").Start()
     }
 
@@ -75,3 +84,4 @@ func main() {
     _ = os.Remove(payloadPath)
     _ = os.Remove(tmpRoot)
 }
+

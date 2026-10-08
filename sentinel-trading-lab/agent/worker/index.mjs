@@ -1,4 +1,6 @@
+import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
+import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
 import http from 'node:http';
 import {readFile,writeFile,mkdir,rename,chmod} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
@@ -27,6 +29,7 @@ let journalAnalysisAt=0;
 setInterval(()=>marketJournal.flush(),2000).unref();
 const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
 const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({baseUrl:process.env.SENTINEL_BROWSER_DRIVER_URL,token:process.env.SENTINEL_BROWSER_DRIVER_TOKEN||''}):new LocalPlaywrightDriver({dataDir:process.env.SENTINEL_BROWSER_PROFILE_DIR||'worker/data/browser-profiles'});
+const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data));
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
 const loginStates={iq_option:null,exnova:null};
 let activeProvider=null;
@@ -46,7 +49,7 @@ function chooseLive(){
   }
   return null
 }
-function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.({provider:k,source:`${k==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,balance:m.balance,quote:m.quote,candles:m.candles,quoteHistory:m.quoteHistory||[],brokerMode:m.mode,symbol:screenSymbol,activeId:m.activeId,feedValidated:m.feedValidated,assetValidated:m.assetValidated,validatedSymbol:m.validatedSymbol||m.symbol,screenCandidateSymbol:m.screenCandidateSymbol||null,validatedAt:m.validatedAt||null,executionReady:m.executionReady,protocol:m.protocol,lastQuoteAt:m.lastQuoteAt,lastCandleAt:m.lastCandleAt,latestCandleTs:m.latestCandleTs,candleFresh:m.candleFresh,candleAgeMs:m.candleAgeMs,marketStatus:m.marketStatus,marketReason:m.marketReason,uiSymbol:m.uiSymbol,suggestedSymbol:m.suggestedSymbol,lastCandleRequest:m.lastCandleRequest,lastCandleResponse:m.lastCandleResponse,expirationDurationMs:m.expirationDurationMs,expirationRaw:m.expirationRaw,expirationKind:m.expirationKind,expirationConfidence:m.expirationConfidence,expirationUpdatedAt:m.expirationUpdatedAt,payout:Number.isFinite(Number(m.payout))?Number(m.payout):null,quoteTs:m.lastQuoteAt||m.lastCandleAt||0});runtime.setExecutionBroker?.(brokers[k]);marketJournal.market(runtime.externalMarket,runtime.settings);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
+function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.(runtimeMarketFromLive(k,m,screenSymbol));runtime.setExecutionBroker?.(brokers[k]);marketJournal.market(runtime.externalMarket,runtime.settings);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
@@ -211,7 +214,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
     if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayTimingKey=overlayTimingKey;
       lastOverlayAt=Date.now();
-    await driver.updateOverlay?.(activeProvider,{
+    overlayUpdates.publish(activeProvider,{
       asset:currentAsset,
       validatedAsset:view.liveBroker?.validatedSymbol||view.liveBroker?.symbol||currentAsset,
       assetValidated:view.liveBroker?.assetValidated===true,
@@ -256,7 +259,7 @@ let busy=false;async function loop(){if(busy)return;busy=true;try{
       demoAutopilot:view.autopilot?.enabled===true,
       executionReady:view.autopilot?.eligible===true,
       agentVersion:VERSION
-    }).catch(()=>{});
+    });
     }
   }
   if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}

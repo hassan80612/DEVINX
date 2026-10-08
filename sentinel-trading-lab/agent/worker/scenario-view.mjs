@@ -1,5 +1,15 @@
 // Presentation follows the operational engine; it never creates or extends a setup.
 export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,durationMs,forecast,displayThreshold=50,minPoints=55,now=Date.now()}={}){
+  if(operational?.subanalyst?.mode==='reversal-alert'){
+    const scenario=operational.scenario,contextMatches=String(operational.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(operational.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(operational.durationMs)===Number(durationMs);
+    const side=contextMatches&&['CALL','PUT'].includes(scenario?.side)?scenario.side:null;
+    const closed=!!side&&(scenario.closed===true||Number(scenario.deadline)<=now),hasSetup=!!side&&!closed;
+    return{contextMatches,side,displaySide:side,analysisSide:side,entrySide:null,
+      state:!side?'AGUARDAR':scenario.status==='INVALIDADO'?'INVALIDADO':closed?'JANELA ENCERRADA':'JANELA ABERTA',
+      closed,hasSetup,canEnter:false,entryWindowOpen:false,entryDeadline:null,entryState:'SEM ENTRADA',
+      deadline:hasSetup?Number(scenario.deadline):null,remainingSeconds:hasSetup?Math.max(0,Math.ceil((Number(scenario.deadline)-now)/1000)):null,
+      signalHorizonSeconds:Number(horizonSeconds),confidence:Number(scenario?.confidence||0)};
+  }
   // A qualified entry does not create a main forecast when the latter is absent.
   if(operational?.entryAnalyst?.independent===true&&!operational.scenario){
     const op=operational,entrySide=['CALL','PUT'].includes(op.side)?op.side:null;

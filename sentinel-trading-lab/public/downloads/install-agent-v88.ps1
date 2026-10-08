@@ -11,18 +11,18 @@ $installMutex = New-Object System.Threading.Mutex($false, 'Local\SentinelTrading
 $locked = $false
 
 function Step($t) { Write-Host "`n$t" -ForegroundColor Cyan }
-function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; if ($env:SENTINEL_INSTALL_TEST -ne '1') { Read-Host 'Pressione ENTER para fechar' | Out-Null }; exit 1 }
+function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; if ($env:SENTINEL_INSTALL_TEST -ne '1' -and $env:CI -ne 'true') { Read-Host 'Pressione ENTER para fechar' | Out-Null }; exit 1 }
 
 try {
   try { $locked = $installMutex.WaitOne(0) } catch [System.Threading.AbandonedMutexException] { $locked = $true }
   if (-not $locked) { throw 'Outra instalacao do Sentinel esta em andamento. Aguarde ela terminar.' }
   New-Item -ItemType Directory -Force -Path $stage | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.22-expiry-retrace-1008" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.23-persistent-reversal-1008" -OutFile $payloadZip }
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
   $manifest = Get-Content (Join-Path $payloadTmp 'package.json') -Raw | ConvertFrom-Json
   $agentRelease = Get-Content (Join-Path $payloadTmp 'release.json') -Raw | ConvertFrom-Json
-  if ($manifest.version -ne $agentRelease.version -or $agentRelease.version -ne '13.4.22' -or $agentRelease.build -ne '13.4.22-expiry-retrace-1008') { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.22.' }
+  if ($manifest.version -ne $agentRelease.version -or $agentRelease.version -ne '13.4.23' -or $agentRelease.build -ne '13.4.23-persistent-reversal-1008') { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.23.' }
   try { Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 3 | Out-Null } catch {}
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
   Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
@@ -53,7 +53,7 @@ try {
     }
   }
   Write-Host '========================================' -ForegroundColor DarkCyan
-  Write-Host '       SENTINEL WINDOWS AGENT V13.4.22' -ForegroundColor White
+  Write-Host '       SENTINEL WINDOWS AGENT V13.4.23' -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
   Write-Host '========================================' -ForegroundColor DarkCyan
 
@@ -79,19 +79,25 @@ try {
 
   $node = Join-Path $runtime 'node.exe'
   $npm = Join-Path $runtime 'npm.cmd'
-  if (-not (Test-Path $node)) {
+  $runtimeReady = (Test-Path $node) -and (Test-Path $npm) -and (Test-Path (Join-Path $runtime 'node_modules\npm\bin\npm-cli.js'))
+  if ($runtimeReady) { try { & $node --version | Out-Null; $runtimeReady = $LASTEXITCODE -eq 0 } catch { $runtimeReady = $false } }
+  if (-not $runtimeReady) {
     Step '2/5 Baixando Node LTS local (somente na primeira vez)...'
     $releases = Invoke-RestMethod 'https://nodejs.org/dist/index.json'
     $release = $releases | Where-Object { $_.lts -and ($_.files -contains 'win-x64-zip') } | Select-Object -First 1
     if (-not $release) { throw 'Nao foi encontrada uma versao Node LTS para Windows x64.' }
-    $nodeZip = Join-Path $env:TEMP 'sentinel-node.zip'
-    $nodeTmp = Join-Path $env:TEMP 'sentinel-node'
+    $nodeZip = Join-Path $stage 'sentinel-node.zip'
+    $nodeTmp = Join-Path $stage 'sentinel-node'
     Invoke-WebRequest -UseBasicParsing "https://nodejs.org/dist/$($release.version)/node-$($release.version)-win-x64.zip" -OutFile $nodeZip
     if (Test-Path $nodeTmp) { Remove-Item $nodeTmp -Recurse -Force }
-    if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path $nodeTmp,$runtime | Out-Null
+    New-Item -ItemType Directory -Force -Path $nodeTmp | Out-Null
     Expand-Archive -LiteralPath $nodeZip -DestinationPath $nodeTmp -Force
     $nodeFolder = Get-ChildItem $nodeTmp -Directory | Select-Object -First 1
+    if (-not $nodeFolder -or -not (Test-Path (Join-Path $nodeFolder.FullName 'node.exe')) -or -not (Test-Path (Join-Path $nodeFolder.FullName 'npm.cmd'))) { throw 'Download do Node incompleto. Execute novamente o instalador.' }
+    & (Join-Path $nodeFolder.FullName 'node.exe') --version | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Runtime Node baixado nao iniciou neste Windows.' }
+    if (Test-Path $runtime) { Remove-Item $runtime -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $runtime | Out-Null
     Copy-Item (Join-Path $nodeFolder.FullName '*') $runtime -Recurse -Force
   } else { Step '2/5 Node local pronto.' }
 
@@ -135,11 +141,11 @@ try {
   for ($i=0; $i -lt 120; $i++) {
     try {
       $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.22' -and $h.build -eq '13.4.22-expiry-retrace-1008') { $ready = $true; break }
+      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.23' -and $h.build -eq '13.4.23-persistent-reversal-1008') { $ready = $true; break }
     } catch {}
     Start-Sleep -Milliseconds 500
   }
-  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Execute novamente o Agent V13.4.22.' }
+  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Consulte install.log e worker\data\manager.log; execute novamente o Agent V13.4.23.' }
 
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     $trayReady = $false
@@ -153,7 +159,7 @@ try {
     }
     if (-not $trayReady) { throw 'Agent ativo, mas a bandeja nao iniciou. Consulte worker\data\tray.log.' }
   }
-  Write-Host "`nAgent V13.4.22 pronto." -ForegroundColor Green
+  Write-Host "`nAgent V13.4.23 pronto." -ForegroundColor Green
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan

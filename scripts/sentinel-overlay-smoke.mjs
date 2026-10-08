@@ -251,6 +251,30 @@ try{
   await page.clock.runFor(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
+  // The installed 13.4.23 policy has no entry window and no display hold.
+  // Its own trigger may oppose the main forecast without changing it.
+  const advisoryAt=Date.now(),alert={mode:'reversal-alert',advisoryOnly:true,active:true,alert:{id:'test-alert',side:'PUT',level:99,trigger:98.9,invalidation:101,target:95,createdAt:advisoryAt,testing:false}};
+  const advisoryData={...data,agentVersion:'13.4.23',demoAutopilot:false,operationalSignal:{...operational,createdAt:advisoryAt,state:'JANELA ABERTA',ready:false,actionable:false,subanalyst:alert,scenario:{side:'CALL',createdAt:advisoryAt,deadline:advisoryAt+60000,confidence:80,status:'OPEN',closed:false},entryAnalyst:{mode:'reversal-alert',advisoryOnly:true,independent:true,qualification:{allowed:false},signal:{side:'AGUARDAR',ready:false,actionable:false}}}};
+  await update(advisoryData);
+  assert.match(await analyst.innerText(),/POSSÍVEL REVERSÃO PUT/);
+  assert.match(await card.locator('[data-sentinel-reversal-level]').innerText(),/Ponto 99.*gatilho 98\.9.*invalida 101/);
+  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
+  assert.doesNotMatch(await card.innerText(),/ENTRADA DISPONÍVEL|ENTRAR AGORA|sinal anterior/);
+  await page.clock.runFor(4000);
+  assert.doesNotMatch(await analyst.innerText(),/POSSÍVEL REVERSÃO/,'stale alert must disappear without a new worker payload');
+  await update({...advisoryData,operationalSignal:{...advisoryData.operationalSignal,subanalyst:{...alert,active:false,alert:null}}});
+  assert.match(await analyst.innerText(),/OBSERVANDO REVERSÃO/,'a canceled structural alert must clear immediately without the old display hold');
+  await update(advisoryData);
+  await panel.evaluate(el=>{el.style.width='420px'});
+  assert.ok(await analyst.evaluate(el=>el.scrollWidth<=el.clientWidth),'reversal levels must fit the narrow panel');
+  await card.screenshot({path:'sentinel-test-output/scenario-reversal-alert-13423.png'});
+  const timings=[];
+  for(let i=0;i<40;i++){
+    const start=performance.now();await update({...advisoryData,analysisAgeMs:i});timings.push(performance.now()-start);
+  }
+  timings.sort((a,b)=>a-b);
+  console.log('OVERLAY_13423_UPDATE_MS',JSON.stringify({samples:timings.length,p50:timings[19],p95:timings[37],max:timings.at(-1)}));
+  assert.deepEqual(errors,[]);
   console.log('SENTINEL COMPACT SUBANALYST OVERLAY: own call-put status, timing and fixed layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
 
