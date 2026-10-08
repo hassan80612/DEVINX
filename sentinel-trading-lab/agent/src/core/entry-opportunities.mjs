@@ -86,7 +86,7 @@ function earlyContinuation({side,bar,recent,price,quoteTs,now,micro,maxDistance}
     advancing:true,quoteConfirmations:2,roomOk:true};
 }
 
-export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30000}){
+export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30000,turn=null}){
   const short=analysis?.metrics?.shortModel||{},micro=analysis?.metrics?.micro||{},forecast=analysis?.entryPlanner?.horizons?.[String(Math.round(durationMs/1000))]||{};
   const quoteTs=Number(snap.quoteTs),price=Number(snap.price),fresh=quoteTs<=now&&now-quoteTs<=2500;
   const points=(snap.quoteHistory||[]).filter(q=>finite(q.ts)&&finite(q.price)&&Number(q.price)>0&&Number(q.ts)<=Math.min(now,quoteTs)&&Number(q.ts)>=now-10000).map(q=>({ts:Number(q.ts),price:Number(q.price)})).sort((a,b)=>a.ts-b.ts);
@@ -99,18 +99,19 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const repeated=short.repeatedReaction?.qualified===true&&short.repeatedReaction.side===side&&short.repeatedReaction.expiresAt>now?short.repeatedReaction:null;
     const confirmed=call?short.reversalCallConfirmed===true:short.reversalPutConfirmed===true;
     const located=call?short.reversalCallCandidate||short.failedBreakDown||short.turnUp:short.reversalPutCandidate||short.failedBreakUp||short.turnDown;
-    const reversal=!!repeated||mapped.qualified||(confirmed&&!!located);
-    const flow=mapped.qualified||aligned&&(call?short.flowReadyCall===true:short.flowReadyPut===true)||aligned&&reversal;
-    const structure=mapped.qualified||(call?short.structureReadyCall===true:short.structureReadyPut===true)||reversal;
-    const room=mapped.qualified?mapped.room:repeated?repeated.roomOk===true:(call?short.callRoomOk===true:short.putRoomOk===true);
-    const adverse=!mapped.qualified&&(call?short.turnDown===true||short.weakeningUp===true&&Number(micro.delta2)<0:short.turnUp===true||short.weakeningDown===true&&Number(micro.delta2)>0);
+    const structuralTurn=turn?.confirmed===true&&turn.side===side?turn:null;
+    const reversal=!!structuralTurn||!!repeated||mapped.qualified||(confirmed&&!!located);
+    const flow=!!structuralTurn||mapped.qualified||aligned&&(call?short.flowReadyCall===true:short.flowReadyPut===true)||aligned&&reversal;
+    const structure=!!structuralTurn||mapped.qualified||(call?short.structureReadyCall===true:short.structureReadyPut===true)||reversal;
+    const room=structuralTurn?structuralTurn.reaction.roomOk===true:mapped.qualified?mapped.room:repeated?repeated.roomOk===true:(call?short.callRoomOk===true:short.putRoomOk===true);
+    const adverse=!mapped.qualified&&!structuralTurn&&(call?short.turnDown===true||short.weakeningUp===true&&Number(micro.delta2)<0:short.turnUp===true||short.weakeningDown===true&&Number(micro.delta2)>0);
     const exhausted=!reversal&&(call?short.callOverextended===true||short.callReversalRisk===true:short.putOverextended===true||short.putReversalRisk===true);
     const localSetup=call?short.callSetup||short.readyCall||short.accelUp:short.putSetup||short.readyPut||short.accelDown;
     const forecastSetup=forecast.rawBias===side&&forecast.scenario?.continuationReady===true;
     const continuation=!reversal&&!!(localSetup||forecastSetup)&&bar.length>=2;
     const kind=reversal?'reversal':short.retest?.side===(call?'BUY':'SELL')?'breakout':'continuation';
     const rawScore=Number(call?short.callScore:short.putScore),reversalScore=Number(call?short.reversalCallScore:short.reversalPutScore);
-    const score=Math.min(100,Math.max(Number.isFinite(rawScore)?rawScore:0,reversal&&Number.isFinite(reversalScore)?reversalScore:0)+(mapped.qualified?10:0));
+    const score=Math.min(100,Math.max(Number.isFinite(rawScore)?rawScore:0,reversal&&Number.isFinite(reversalScore)?reversalScore:0,structuralTurn?Number(structuralTurn.technicalScore||0):0)+(mapped.qualified?10:0));
     let trigger=null,invalidation=null,reaction=null,sourceAt=closedBucket;
     const expectedMove=Math.max(Math.abs(Number(forecast.expectedMove||0)),Math.abs(Number(micro.expected30||0)),Math.abs(price)*.000002);
     const width=recent.length?Math.max(...recent.map(q=>q.price))-Math.min(...recent.map(q=>q.price)):0;
@@ -121,7 +122,8 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     // A later, stronger forecast does not reset the original breakout price.
     // Prevent the scenario from authorizing a trade near a late candle extreme.
     const chased=!reversal&&bar.length>=2&&(call?price-Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price))-price)>firstMoveLimit;
-    if(mapped.qualified){trigger=mapped.reaction.trigger;invalidation=mapped.reaction.invalidation;reaction=mapped.reaction;sourceAt=mapped.reaction.touchAt;}
+    if(structuralTurn){trigger=structuralTurn.reaction.trigger;invalidation=structuralTurn.reaction.invalidation;reaction=structuralTurn.reaction;sourceAt=structuralTurn.reaction.touchAt;}
+    else if(mapped.qualified){trigger=mapped.reaction.trigger;invalidation=mapped.reaction.invalidation;reaction=mapped.reaction;sourceAt=mapped.reaction.touchAt;}
     else if(repeated){trigger=Number(repeated.trigger);invalidation=Number(repeated.invalidation);reaction={...repeated};sourceAt=repeated.touchAt;}
     else if(reversal&&recent.length>=2){
       const extreme=call?Math.min(...recent.map(q=>q.price)):Math.max(...recent.map(q=>q.price));
@@ -136,9 +138,12 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     if(earlyReady){trigger=firstMove.trigger;reaction=firstMove;sourceAt=firstMove.touchAt;
       invalidation=call?Math.min(...bar.map(q=>q.price))-firstMoveLimit*.2:Math.max(...bar.map(q=>q.price))+firstMoveLimit*.2;}
     const timingValid=finite(trigger)&&finite(invalidation)&&(!reaction||reaction.expiresAt>now);
-    const allowed=fresh&&short.ready===true&&(flow||earlyReady)&&(structure||earlyReady)&&room&&!adverse&&!exhausted&&(reversal||continuation||earlyReady)&&score>=minPoints&&timingValid&&!chased;
-    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':chased?'late-entry':!(flow||earlyReady)?'flow':!(structure||earlyReady)?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation||earlyReady)?'setup':score<minPoints?'score':!timingValid?'quotes':null;
-    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.','late-entry':'Primeiro impulso já passou do ponto; não perseguir topo/fundo da vela.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
+    // A warning is not a PUT. Avoid a new CALL into a tested, slowing resistance,
+    // while requiring two real opposite quotes before any PUT can qualify.
+    const directionRisk=turn?.risk===true&&turn.watchSide&&turn.watchSide!==side&&turn.barrierTested===true;
+    const allowed=fresh&&short.ready===true&&(flow||earlyReady)&&(structure||earlyReady)&&room&&!adverse&&!exhausted&&(reversal||continuation||earlyReady)&&score>=minPoints&&timingValid&&!chased&&!directionRisk;
+    const blockedBy=!fresh?'feed':short.ready!==true?'warmup':directionRisk?'turn-risk':chased?'late-entry':!(flow||earlyReady)?'flow':!(structure||earlyReady)?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation||earlyReady)?'setup':score<minPoints?'score':!timingValid?'quotes':null;
+    const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.','late-entry':'Primeiro impulso já passou do ponto; não perseguir topo/fundo da vela.','turn-risk':'Possível retração na barreira; evitar seguir a vela estendida.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
     const plan={...forecast,entryForecastProbability:Number(call?forecast.callProbability:forecast.putProbability),rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:firstMove?.maxDistance||repeated?.maxDistance||(bar.length>=2&&!reversal?firstMoveLimit:maxDistance),sourceBarAt:sourceAt},safety:{blocked:false}};
     if(call){plan.callTrigger=trigger;plan.callInvalidation=invalidation;}else{plan.putTrigger=trigger;plan.putInvalidation=invalidation;}
     // Percentages here are internal gating scores, not measured win probabilities.
