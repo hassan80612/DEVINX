@@ -161,6 +161,9 @@ try{
   assert.match(await analyst.innerText(),/Subanalista:\s*CALL/,'confirmed CALL must remain readable during the first 3 seconds');
   await page.clock.runFor(600);
   assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/,'after 3 seconds the display hold must expire without new trade');
+  // The test harness resets virtual browser time on the next payload (backwards).
+  // Isolate subsequent scenarios from the completed three-second hold.
+  await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
   await update({...data,operationalSignal:{...entered,activeUntil:Date.now()+3000,actionable:false}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
   assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
