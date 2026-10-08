@@ -85,6 +85,6 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     if(call){plan.callTrigger=trigger;plan.callInvalidation=invalidation;}else{plan.putTrigger=trigger;plan.putInvalidation=invalidation;}
     // Percentages here are internal gating scores, not measured win probabilities.
     plan.callProbability=call?score:100-score;plan.putProbability=100-plan.callProbability;
-    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
+    return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
   });
 }
