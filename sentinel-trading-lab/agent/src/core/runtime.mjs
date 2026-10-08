@@ -393,7 +393,7 @@ export class DemoTradingRuntime{
       this.scenarioSetup=main;this.operationalSetup=null;this.oppositeOperationalSetup=null;
     }
     const price=Number(snap.price),broken=main.invalidation!=null&&Number.isFinite(main.invalidation)&&(main.side==='CALL'?price<=main.invalidation:price>=main.invalidation);
-    if(broken&&!main.closed){main.closed=true;main.status='INVALIDADO';main.reason='Estrutura do cenário '+main.side+' invalidada pelo preço.';}
+    if(broken&&(!main.closed||main.status==='OPORTUNIDADE PERDIDA')){main.closed=true;main.status='INVALIDADO';main.reason='Estrutura do cenário '+main.side+' invalidada pelo preço.';}
     const decorate=op=>({...op,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,entryAnalyst:{side:op.side,status:op.state,kind:op.entryKind||'forming',independent:true,candidates:this.entryCandidates||[],qualification:this.entryQualification||null,validation:op.validation||null,research:op.entryResearch||null}});
     if(main.entryAt&&(now>=Number(main.entryActiveUntil||0)||Number(this.operationalSetup?.releasedAt)>0)){main.closed=true;main.status='OPORTUNIDADE CONSUMIDA';main.reason='Entrada já liberada; esta oportunidade está encerrada.';}
     if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
