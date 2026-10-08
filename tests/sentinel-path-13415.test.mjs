@@ -4,7 +4,7 @@ import {pathEvidence,PathResearch} from '../sentinel-trading-lab/agent/src/core/
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {entryOpportunities} from '../sentinel-trading-lab/agent/src/core/entry-opportunities.mjs';
 const now=Date.UTC(2026,9,8,12);
-const prices=[99.960,99.971,99.982,99.988,99.993,99.996,100.001,100.000,99.997,99.994,99.991];
+const prices=[99.960,99.971,99.977,99.983,99.986,99.989,99.992,99.995,99.998,100.001,99.998,99.995,99.992];
 const quotes=(p,end=now)=>p.map((price,i)=>({ts:end-(p.length-1-i)*230,price}));
 const snap=(p,end=now)=>({quoteTs:end,price:p.at(-1),quoteHistory:quotes(p,end),provider:'iq_option',asset:'TEST'});
 function analysis(){
