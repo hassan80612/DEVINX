@@ -74,3 +74,41 @@ test('stale independent quotes never release an operational signal',()=>{
  assert.equal(op.actionable,false);
  assert.equal(op.entryAnalyst.candidates[0].blockedBy,'feed');
 });
+
+test('a tiny two-tick bounce around support is noise, not a CALL reversal',()=>{
+ const jitter=[
+  {ts:t-1200,price:100.002},{ts:t-800,price:100.001},
+  {ts:t-600,price:100},{ts:t-300,price:100.001},
+  {ts:t-150,price:100.002},{ts:t,price:100.0025}
+ ];
+ const o=entryOpportunities({analysis:analysis(),snap:snap(jitter),now:t,minPoints:55})[0];
+ assert.equal(o.structuralReaction,false);
+ assert.equal(o.allowed,false);
+});
+test('a rebound that retouches the same extreme is rejected rather than called a reversal',()=>{
+ const choppy=[up[0],up[1],up[2],up[3],{ts:t-220,price:100.003},up[4],up[5]];
+ const o=entryOpportunities({analysis:analysis(),snap:snap(choppy),now:t,minPoints:55})[0];
+ assert.equal(o.structuralReaction,false);
+ assert.equal(o.allowed,false);
+});
+test('repeated quotes at one timestamp cannot impersonate independent confirmations',()=>{
+ const faked=[up[0],up[1],up[2],
+  {ts:t-300,price:100.014},{ts:t-300,price:100.02},
+  {ts:t-300,price:100.023}];
+ const o=entryOpportunities({analysis:analysis(),snap:snap(faked),now:t-300,minPoints:55})[0];
+ assert.equal(o.structuralReaction,false);
+ assert.equal(o.allowed,false);
+});
+test('a return toward the level after a valid rebound withdraws the signal',()=>{
+ const faded=[up[0],up[1],up[2],up[3],up[4],{ts:t,price:100.014}];
+ const o=entryOpportunities({analysis:analysis(),snap:snap(faded),now:t,minPoints:55})[0];
+ assert.equal(o.structuralReaction,false);
+ assert.equal(o.allowed,false);
+});
+test('confirmation delayed beyond the first-reaction window is not pursued',()=>{
+ const late=[{ts:t-4600,price:100.08},{ts:t-3000,price:100.012},{ts:t-2500,price:100},
+ {ts:t-1600,price:100.014},{ts:t-150,price:100.021},{ts:t,price:100.023}];
+ const o=entryOpportunities({analysis:analysis(),snap:snap(late),now:t,minPoints:55})[0];
+ assert.equal(o.structuralReaction,false);
+ assert.equal(o.allowed,false);
+});
