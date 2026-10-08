@@ -226,7 +226,7 @@ try{
   const expiredEntryAt=Date.now()-4000;
   await update({...data,entryPlanner:{horizons:{'30':oppositeExpiry,'60':{...plan,rawBias:'PUT',displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'CALL',scenario:{side:'PUT',createdAt:localNow,deadline:localNow+60000},entryAnalyst:{independent:true,qualification:{allowed:true},signal:{side:'CALL',state:'ENTRADA',actionable:true,activeUntil:expiredEntryAt+3500}},state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:expiredEntryAt,activeUntil:expiredEntryAt+3500,ready:true,actionable:true}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
-  assert.match(await card.innerText(),/FECHA EM/,'fresh market data keeps the main forecast open after the local entry expires');
+  assert.match(await card.locator('[data-sentinel-scenario-status]').innerText(),/CENÁRIO · [1-9][0-9]*s/,'fresh market data keeps the scenario countdown but does not reopen the expired entry');
   assert.doesNotMatch(await card.innerText(),/ENTRADA DISPONÍVEL|ENTRAR AGORA/);
   // Isolate the completed hold before the test harness moves virtual clock backward.
   // Local entries without a qualified main forecast own only their entry clock.
