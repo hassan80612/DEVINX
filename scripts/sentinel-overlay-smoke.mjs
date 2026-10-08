@@ -156,6 +156,11 @@ try{
     assert.ok(Math.abs(h-stableAnalystHeight)<2,'subanalyst CALL/PUT must not jump the scenario card');
   }
   await update(data);
+  assert.match(await analyst.innerText(),/Subanalista:\\s*CALL/,'last confirmed side must survive immediate next observing frame');
+  await page.clock.runFor(2600);
+  assert.match(await analyst.innerText(),/Subanalista:\\s*CALL/,'confirmed CALL must remain readable during the first 3 seconds');
+  await page.clock.runFor(600);
+  assert.match(await analyst.innerText(),/Subanalista:\\s*OBSERVANDO ENTRADA/,'after 3 seconds the display hold must expire without new trade');
   await update({...data,operationalSignal:{...entered,activeUntil:Date.now()+3000,actionable:false}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
   assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
@@ -176,7 +181,6 @@ try{
   const localNow=Date.now(),oppositeExpiry={...plan,horizonSeconds:30,rawBias:'PUT',displayBias:'PUT',directionReady:false,confidence:45,callProbability:20,putProbability:80};
   await update({...data,entryPlanner:{horizons:{'30':oppositeExpiry,'60':{...plan,rawBias:'PUT',displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'CALL',scenario:{side:'PUT',createdAt:localNow,deadline:localNow+60000},entryAnalyst:{independent:true,qualification:{allowed:true},signal:{side:'CALL',state:'ENTRADA',actionable:true,activeUntil:localNow+3500}},state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:localNow,activeUntil:localNow+3500,ready:true,actionable:true}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
-  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);
   assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);
   await page.clock.runFor(4000);
   assert.doesNotMatch(await card.innerText(),/FECHA EM|ENTRAR AGORA/,'expired local opportunity stops its countdown without another worker payload');
