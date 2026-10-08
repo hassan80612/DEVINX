@@ -15,7 +15,7 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
   const setupEnd=Number(op.entryWindowEndAt||op.targetAt||0),entryEnd=Number(op.activeUntil||0);
   const deadline=Number(op.scenario?.deadline||setupEnd);
   if(state==='ENTRADA'&&entryEnd>0&&now>=entryEnd)state=op.scenario?'OPORTUNIDADE CONSUMIDA':'ACOMPANHANDO';
-  if(contextMatches&&!terminal.includes(state)&&deadline>0&&now>=deadline)state=op.entryAt||entryEnd?'JANELA ENCERRADA':'JANELA PERDIDA';
+  if(contextMatches&&!terminal.includes(state)&&deadline>0&&now>=deadline&&!(op.entryAnalyst?.independent===true&&op.scenario))state=op.entryAt||entryEnd?'JANELA ENCERRADA':'JANELA PERDIDA';
   const closed=terminal.includes(state),hasSetup=contextMatches&&!closed&&Number(op.createdAt)>0&&deadline>now;
   const signalHorizonSeconds=Number(op.entryDecisionHorizonSeconds||horizonSeconds);
   const forecastMatches=!!forecast&&String(forecast.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(forecast.horizonSeconds||signalHorizonSeconds)===signalHorizonSeconds;

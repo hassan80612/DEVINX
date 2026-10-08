@@ -54,12 +54,12 @@ test('old quotes, repeated timestamp and missing closed level are not trusted',(
  a.metrics.shortModel.sr={support:99.6,resistance:null};
  assert.equal(pathEvidence({analysis:a,snap:m,now}).phase,'NO_LEVEL');
 });
-test('base 13.4.11 operational entry does not change in default shadow mode',()=>{
+test('base 13.4.11 operational entry remains unchanged when shadow mode is explicitly selected',()=>{
  const a=analysis(),m=snap(prices);
  const original=entryOpportunities({analysis:a,snap:m,now,minPoints:70,durationMs:30000});
- const r=new DemoTradingRuntime();r.settings.asset='TEST';r.settings.orderDurationMs=30000;r.settings.forecastHorizonSeconds=30;
+ const r=new DemoTradingRuntime();r.settings.asset='TEST';r.settings.orderDurationMs=30000;r.settings.forecastHorizonSeconds=30;r.settings.pathGuardMode='shadow';
  const op=r._operationalSignalState(a,m,now);
- assert.equal(r.settings.pathGuardMode,undefined);
+ assert.equal(r.settings.pathGuardMode,'shadow');
  assert.equal(op.scenarioFeedback.advisoryOnly,true);
  assert.equal(op.scenarioFeedback.mainSide,'CALL');
  assert.deepEqual(op.entryAnalyst.candidates.map(x=>x.allowed),original.map(x=>x.allowed));

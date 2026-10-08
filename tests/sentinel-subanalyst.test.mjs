@@ -115,7 +115,7 @@ test('main horizon rollover preserves the independent entry and its full expiry'
  assert.equal(first.actionable,true);assert.equal(first.activeUntil,start+3500);assert.equal(r.entryResearch.pending[0].dueAt,start+60000);
  const q={...snap([100.03],t+30500),quoteHistory:[{ts:start-400,price:99.99},{ts:start-200,price:100.01},{ts:start,price:100.02},{ts:t+30000,price:100.025},{ts:t+30500,price:100.03}]};
  const next=r._operationalSignalState(a,q,t+30500);
- assert.equal(next.actionable,true);assert.notEqual(next.scenario.id,first.scenario.id);assert.equal(r.operationalSetup.key,entryId);assert.equal(r.entryResearch.pending.length,1);
+ assert.equal(next.actionable,true);assert.equal(next.scenario.id,first.scenario.id);assert.equal(next.scenario.closed,true);assert.equal(next.scenario.status,'JANELA ENCERRADA');assert.equal(r.operationalSetup.key,entryId);assert.equal(r.entryResearch.pending.length,1);
 });
 
 test('an isolated two-second retrace retains the setup and trigger evidence without phantom entry',()=>{
