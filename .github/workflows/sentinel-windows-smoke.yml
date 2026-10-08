@@ -166,6 +166,7 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Sentinel regression tests failed'}
 
       - name: Build and install EXE
+        timeout-minutes: 12
         shell: powershell
         run: |
           $ErrorActionPreference='Stop'

@@ -19,12 +19,15 @@ func fail(msg string, err error) {
     if err != nil {
         text += ": " + err.Error()
     }
-    // MessageBox via PowerShell keeps the EXE friendly even when built as windowsgui.
-    dlg := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-        "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show($env:SENTINEL_ERROR,'Sentinel Agent') | Out-Null",
-    )
-    dlg.Env = append(os.Environ(), "SENTINEL_ERROR="+text)
-    _ = dlg.Run()
+    // On Windows CI / install verification, never show a modal error dialog:
+    // report the real installer failure to stderr and exit instead of hanging.
+    if os.Getenv("SENTINEL_INSTALL_TEST") != "1" && os.Getenv("CI") != "true" {
+        dlg := exec.Command("powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+            "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show($env:SENTINEL_ERROR,'Sentinel Agent') | Out-Null",
+        )
+        dlg.Env = append(os.Environ(), "SENTINEL_ERROR="+text)
+        _ = dlg.Run()
+    }
     fmt.Fprintln(os.Stderr, text)
     os.Exit(1)
 }
