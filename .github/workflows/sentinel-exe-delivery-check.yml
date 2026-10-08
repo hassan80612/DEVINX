@@ -37,3 +37,27 @@ jobs:
           echo "PUBLIC_EXE_SHA256=$(sha256sum "$RUNNER_TEMP/public-agent.exe" | cut -d' ' -f1)"
           cmp -s "$localfile" "$RUNNER_TEMP/public-agent.exe" || { echo 'PUBLIC_EXE_CONTENT_MISMATCH'; exit 21; }
           echo 'VERIFIED_PUBLIC_EXE_MATCHES_GITHUB_ORIGINAL'
+
+  verify-windows-download:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify download with Windows native HTTP stack
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $url='https://sentinel-trading-lab.vercel.app/downloads/sentinel-agent-windows.exe?v=13.4.22-expiry-retrace-1008'
+          $local='sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe'
+          $dest=Join-Path $env:RUNNER_TEMP 'sentinel-windows-download.exe'
+          $response=Invoke-WebRequest -Uri $url -Method Get -OutFile $dest -PassThru
+          Write-Output "WINDOWS_HTTP_STATUS=$($response.StatusCode)"
+          Write-Output "WINDOWS_DOWNLOAD_BYTES=$((Get-Item $dest).Length)"
+          $expected=(Get-FileHash $local -Algorithm SHA256).Hash.ToLowerInvariant()
+          $actual=(Get-FileHash $dest -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Output "WINDOWS_EXPECTED_SHA256=$expected"
+          Write-Output "WINDOWS_PUBLIC_SHA256=$actual"
+          if($expected -ne $actual){throw 'WINDOWS_DOWNLOAD_SHA256_MISMATCH'}
+          $sig=Get-AuthenticodeSignature -FilePath $dest
+          Write-Output "WINDOWS_AUTHENTICODE_STATUS=$($sig.Status)"
+          Write-Output 'VERIFIED_WINDOWS_DOWNLOAD_MATCHES_GITHUB_ORIGINAL'
