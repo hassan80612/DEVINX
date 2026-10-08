@@ -66,7 +66,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -399,8 +399,22 @@ export class DemoTradingRuntime{
     const newPriceValid=nextInvalidation==null||(mainSide==='CALL'?Number(snap.price)>Number(nextInvalidation):Number(snap.price)<Number(nextInvalidation));
     if(main?.status==='INVALIDADO'&&newStructure&&newPriceValid&&mainPlan?.outlookReady&&mainPlan.directionReady&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints){this.scenarioSetup=null;main=null;}
     const empty={asset,side:'AGUARDAR',forecastHorizonSeconds:horizon,durationMs,state:'AGUARDAR',ready:false,actionable:false,entryDecisionHorizonSeconds:durationMs/1000,reason:'Aguardando um cenário confirmado.'};
-    if(main&&now>=main.deadline){this.scenarioSetup=null;main=null;}
+    // Retain the terminal window instead of refreshing its same forecast.
+    if(main&&!main.closed&&now>=main.deadline){
+      main.closed=true;main.status='JANELA ENCERRADA';main.closedAt=main.deadline;
+      main.reason='Prazo do cenário encerrado. Aguardar novo nível estrutural confirmado.';
+    }
     const mainQualified=newPriceValid&&mainPlan?.outlookReady===true&&mainPlan.directionReady===true&&['CALL','PUT'].includes(mainSide)&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints;
+    if(main?.status==='JANELA ENCERRADA'&&mainQualified){
+      // Require a newer completed forecast source AND a changed price level.
+      const sourceAt=Number(mainPlan?.entryTiming?.sourceBarAt||0);
+      const tolerance=Math.max(Math.abs(Number(snap.price)||0)*.000002,1e-9);
+      const movedTrigger=Number.isFinite(Number(nextTrigger))&&Math.abs(Number(nextTrigger)-Number(main.trigger))>tolerance;
+      const movedInvalidation=nextInvalidation!=null&&main.invalidation!=null&&Math.abs(Number(nextInvalidation)-Number(main.invalidation))>tolerance;
+      if(sourceAt>main.deadline&&sourceAt<=Number(snap.quoteTs||now)&&(movedTrigger||movedInvalidation)){
+        this.scenarioSetup=null;main=null;
+      }
+    }
     // An entry analyst may observe/act on a real structural opportunity even
     // when no main forecast qualified. Its neutral coordinator is never shown
     // as a fabricated main scenario; the old forecast retains its own rules.

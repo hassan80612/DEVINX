@@ -1345,15 +1345,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.21'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.22'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.21';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.22';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:sentinelMetalSweep 8.5s ease-in-out infinite}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.21';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.22';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1603,10 +1603,10 @@ export class LocalPlaywrightDriver{
           (!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':
             operationalNow?'ENTRADA DISPONÍVEL POR '+Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000))+'s · EXPIRAÇÃO '+durationText:
             trackingSameSide?'ACOMPANHANDO · ENTRADA ENCERRADA':
-            timingClosed?'AGUARDE UM NOVO CENÁRIO':
+            timingClosed?'PRAZO ENCERRADO · ESPERE NOVA ESTRUTURA':
             formingSide?'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA':
             'ANALISANDO · AGUARDANDO CONFIRMAÇÃO');
-        const futureDecisionStatus=!plannerReadable?'SEM LEITURA':futureDecision?('FECHA EM '+windowSeconds+'s'):timingClosed?operationalTimingState:'EM ANÁLISE';
+        const futureDecisionStatus=timingClosed?'00:00 · ENCERRADO':!plannerReadable?'SEM LEITURA':futureDecision?('FECHA EM '+windowSeconds+'s'):'EM ANÁLISE';
         const currentAnalysisReason=String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
         const futureDecisionConfidence=futureConfidence;
         const measuredHistory=operational?.entryAnalyst?.research||{},measuredSamples=Math.max(0,Number(measuredHistory.samples||0));
@@ -1748,7 +1748,13 @@ export class LocalPlaywrightDriver{
               setTimeout(()=>{el.dataset.selectLock='0';ph.blur?.()},120);return
             }
             const x=ev.target?.closest?.('[data-sentinel-setting]');if(!x)return;
-            run({action:'setting',key:x.getAttribute('data-sentinel-setting'),value:x.value});
+            if(x.getAttribute('data-sentinel-setting')==='duration'){
+               const seconds=Math.round(Number(x.value)/1000);
+               el.dataset.plannerHorizon=String(seconds);
+               const select=el.querySelector('[data-sentinel-plan-horizon]');
+               if(select)select.value=String(seconds);
+             }
+             run({action:'setting',key:x.getAttribute('data-sentinel-setting'),value:x.value});
             setTimeout(()=>{el.dataset.selectLock='0';x.blur?.()},160)
           });
           el.addEventListener('click',ev=>{
@@ -1797,7 +1803,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.21')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.22')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -1833,12 +1839,12 @@ export class LocalPlaywrightDriver{
               <label style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:750;color:${ink}">FILTRO <select data-sentinel-setting="minConfidence" title="Filtro mínimo de pontos técnicos" style="height:25px;min-width:58px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 4px;font-size:9.5px;font-weight:700"><option value="55" ${minConfidence===55?'selected':''}>55 pts</option><option value="60" ${minConfidence===60?'selected':''}>60 pts</option><option value="65" ${minConfidence===65?'selected':''}>65 pts</option><option value="70" ${minConfidence===70?'selected':''}>70 pts</option><option value="75" ${minConfidence===75?'selected':''}>75 pts</option><option value="80" ${minConfidence===80?'selected':''}>80 pts</option><option value="85" ${minConfidence===85?'selected':''}>85 pts</option><option value="90" ${minConfidence===90?'selected':''}>90 pts</option><option value="95" ${minConfidence===95?'selected':''}>95 pts</option></select></label>
               <label style="display:flex;align-items:center;gap:2px;font-size:9.5px;font-weight:750;color:${ink}" title="Percentual mínimo para considerar CALL ou PUT">SINAL <input data-sentinel-future-threshold type="number" min="50" max="95" step="1" value="${futureDisplayThreshold}" style="width:38px;height:25px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font:700 10px/1 inherit;padding:0 3px;text-align:center;outline:none"><b style="font-size:9.5px;color:${goldSoft}">%</b></label>
             </div>
-            <div data-sentinel-scenario-header style="display:grid;grid-template-columns:minmax(0,1fr) minmax(104px,138px);gap:4px 7px;margin:9px 0 6px;height:111px;min-height:111px;max-height:111px;align-content:start;overflow:hidden;box-sizing:border-box">
-              <b data-sentinel-scenario-action style="font-size:18px;line-height:1.2;color:${actionTone};letter-spacing:0;height:48px;min-height:48px;max-height:48px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">${esc(entryActionLabel)}</b>
-              <span data-sentinel-scenario-status style="color:${futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:15px;font-weight:750;line-height:1.25;max-width:138px;height:48px;min-height:48px;max-height:48px;display:flex;align-items:center;overflow:hidden">${esc(futureDecisionStatus)}</span>
-              <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;flex-wrap:nowrap;font-size:10px;line-height:1.35;height:49px;min-height:49px;max-height:49px;overflow:hidden"><span data-sentinel-scenario-phase style="color:${ink};font-weight:700;flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(futurePhase)}</span><span style="color:${goldSoft};font-weight:700;flex-shrink:0">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-weight:600;flex-shrink:0">${liveLabel}</span></div>
+            <div data-sentinel-scenario-header style="display:grid;grid-template-columns:minmax(0,1fr) minmax(104px,138px);gap:4px 7px;margin:9px 0 6px;height:111px;min-height:111px;max-height:111px;align-content:start;overflow:hidden;box-sizing:border-box;padding:5px 7px;border-radius:10px;background:${timingClosed?(uiTheme==='light'?'#fff0ef':'#55262c'):'transparent'};border:2px solid ${timingClosed?(uiTheme==='light'?'#bc3846':'#ff6d7d'):'transparent'};box-shadow:${timingClosed?'0 0 17px rgba(234,83,101,.20)':'none'}">
+              <b data-sentinel-scenario-action style="font-size:${timingClosed?'20px':'18px'};line-height:1.2;color:${timingClosed?(uiTheme==='light'?'#9c2334':'#ffffff'):actionTone};letter-spacing:0;height:48px;min-height:48px;max-height:48px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">${esc(entryActionLabel)}</b>
+              <span data-sentinel-scenario-status style="color:${timingClosed?(uiTheme==='light'?'#9c2334':'#ffe0e2'):futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:${timingClosed?'17px':'15px'};font-weight:750;line-height:1.25;max-width:138px;height:48px;min-height:48px;max-height:48px;display:flex;align-items:center;overflow:hidden">${esc(futureDecisionStatus)}</span>
+              <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;flex-wrap:nowrap;font-size:10px;line-height:1.35;height:49px;min-height:49px;max-height:49px;overflow:hidden"><span data-sentinel-scenario-phase style="color:${timingClosed?(uiTheme==='light'?'#9c2334':'#ffffff'):ink};font-weight:${timingClosed?'900':'700'};flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(futurePhase)}</span><span style="color:${goldSoft};font-weight:700;flex-shrink:0">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-weight:600;flex-shrink:0">${liveLabel}</span></div>
             </div>
-            <div style="color:${muted};font-size:11px;font-weight:650;line-height:1.4;margin-bottom:7px;height:47px;min-height:47px;max-height:47px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${futureDecisionPaused?(liveNow?'Atualizando leitura deste prazo; entrada suspensa.':('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.')):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(currentAnalysisReason)}</div>
+            <div style="color:${expiryDetected&&!expiryMatch?putTone:muted};font-size:11px;font-weight:${expiryDetected&&!expiryMatch?'850':'650'};line-height:1.4;margin-bottom:7px;height:47px;min-height:47px;max-height:47px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${expiryDetected&&!expiryMatch?'ATENÇÃO: corretora em '+expiryDurationLabel+', Sentinel em '+durationText+'. Ajuste também a expiração na corretora.':futureDecisionPaused?(liveNow?'Atualizando leitura deste prazo; entrada suspensa.':('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.')):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(currentAnalysisReason)}</div>
             <div data-sentinel-scenario-plan style="min-height:172px">${planHtml}</div>
           </div>
 

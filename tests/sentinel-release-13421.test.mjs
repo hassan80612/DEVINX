@@ -6,7 +6,7 @@ import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime
 import {analyzeReplayFrame} from '../sentinel-trading-lab/agent/worker/replay.mjs';
 
 test('installed release activates the exact tested prediction and reversal policy',async()=>{
- assert.equal(VERSION,'13.4.21');assert.equal(BUILD,'13.4.21-input-structure-1008');
+ assert.equal(VERSION,'13.4.22');assert.equal(BUILD,'13.4.22-expiry-retrace-1008');
  const x=JSON.parse(await readFile('tests/fixtures/sentinel-continuation-prices.json','utf8'));
  const released=new DemoTradingRuntime(RUNTIME_OPTIONS),tested=new DemoTradingRuntime({predictionModel:'family-v6-verified-input',entryPolicy:'structural-reversals-v1',scenarioPolicy:'closed-structure-v1'});
  const original=new DemoTradingRuntime({predictionModel:'family-v6-stable',entryPolicy:'structural-reversals-v1'});
