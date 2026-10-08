@@ -72,7 +72,7 @@ export class PathResearch {
   constructor(saved={}){
     this.pending=Array.isArray(saved.pending)?saved.pending:[];
     this.outcomes=Array.isArray(saved.outcomes)?saved.outcomes:[];
-    this.unresolved=Number(saved.unresolved||0);
+    this.unresolved=Number(saved.unresolved||0);this._cachedSummary=null;
   }
   observe({evidence,provider,asset,durationMs,price,now,quoteTs,candidateSide=null}){
     if(!evidence?.ready||!finite(quoteTs)||now-Number(quoteTs)>1200||
@@ -83,34 +83,36 @@ export class PathResearch {
     const key=[provider,asset,durationMs,side,evidence.phase,candidateSide?'candidate':'watch'].join('|'),id=key+'|'+bucket;
     if(this.pending.some(x=>x.id===id)||this.outcomes.some(x=>x.id===id))return;
     const block=evidence.guardedSide===side;
+    this._cachedSummary=null;
     this.pending.push({id,key,provider,asset,side,durationMs,phase:evidence.phase,blocked:!!block,
       originalCandidate:!!candidateSide,observedPrice:Number(price),observedAt:now,
       dueAt:now+Number(durationMs)});
     if(this.pending.length>700){this.unresolved+=this.pending.length-700;this.pending=this.pending.slice(-700)}
   }
   settle({snap,provider,asset,now}){
-    const waiting=[];
+    const waiting=[];let changed=false;
     for(const p of this.pending){
       if(now<p.dueAt){waiting.push(p);continue}
-      if(p.provider!==provider||p.asset!==asset){if(now-p.dueAt<=15000)waiting.push(p);else this.unresolved++;continue}
+      if(p.provider!==provider||p.asset!==asset){if(now-p.dueAt<=15000)waiting.push(p);else{this.unresolved++;changed=true}continue}
       const q=(snap.quoteHistory||[]).filter(x=>finite(x.ts)&&finite(x.price)&&Number(x.price)>0&&
         Math.abs(Number(x.ts)-p.dueAt)<=1500)
         .sort((a,b)=>Math.abs(a.ts-p.dueAt)-Math.abs(b.ts-p.dueAt))[0];
-      if(!q){if(now-p.dueAt<=15000)waiting.push(p);else this.unresolved++;continue}
+      if(!q){if(now-p.dueAt<=15000)waiting.push(p);else{this.unresolved++;changed=true}continue}
       const delta=Number(q.price)-p.observedPrice,draw=Math.abs(delta)<=p.observedPrice*1e-10;
       const won=draw?null:(p.side==='CALL'?delta>0:delta<0);
-      this.outcomes.push({...p,settledAt:Number(q.ts),settledPrice:Number(q.price),draw,won});
+      this.outcomes.push({...p,settledAt:Number(q.ts),settledPrice:Number(q.price),draw,won});changed=true;
     }
-    this.pending=waiting;this.outcomes=this.outcomes.slice(-5000);
+    this.pending=waiting;this.outcomes=this.outcomes.slice(-5000);if(changed)this._cachedSummary=null;
   }
   summary(){
+    if(this._cachedSummary)return this._cachedSummary;
     const contexts={};
     for(const x of this.outcomes.filter(x=>!x.draw)){
       const key=[x.provider,x.asset,x.durationMs,x.phase,x.originalCandidate?'candidate':'watch'].join('|');
       const b=contexts[key]||(contexts[key]={samples:0,wins:0,blocked:0,days:new Set()});
       b.samples++;if(x.won)b.wins++;if(x.blocked)b.blocked++;b.days.add(new Date(x.observedAt).toISOString().slice(0,10));
     }
-    return {mode:'shadow-unvalidated',pending:this.pending.length,unresolved:this.unresolved,
+    return this._cachedSummary={mode:'shadow-unvalidated',pending:this.pending.length,unresolved:this.unresolved,
       outcomes:this.outcomes.length,contexts:Object.entries(contexts).map(([key,x])=>({
         key,samples:x.samples,wins:x.wins,winRate:x.samples?x.wins/x.samples:null,
         days:x.days.size,wilson: wilson(x.wins,x.samples),blocked:x.blocked,qualified:false}))};
