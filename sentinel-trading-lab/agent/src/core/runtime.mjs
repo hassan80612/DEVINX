@@ -348,7 +348,7 @@ export class DemoTradingRuntime{
     // post-touch quotes. Re-check the current price and freshness here, but
     // do not demand a third quote just to repeat the same confirmation.
     const rx=plan?.reaction,confirmedAt=Number(rx?.confirmedAt||0),quoteTs=Number(snap.quoteTs||0);
-    const preconfirmed=this._entryAnalysisMode&&reversal&&rx?.preMapped===true&&rx?.qualified===true&&
+    const preconfirmed=this._entryAnalysisMode&&(reversal||rx?.earlyContinuation===true)&&rx?.preMapped===true&&rx?.qualified===true&&
       rx?.advancing===true&&Number(rx?.quoteConfirmations)>=2&&
       !!setup.reactionId&&setup.reactionId===rx.id&&confirmedAt>Number(rx.touchAt||0)&&
       quoteTs>=confirmedAt&&quoteTs<=now&&now-quoteTs<=1200&&now-confirmedAt<=1500&&
