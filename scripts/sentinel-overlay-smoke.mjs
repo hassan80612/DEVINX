@@ -24,7 +24,10 @@ try{
   const operational={asset:'TEST',side:'CALL',state:'JANELA ABERTA',createdAt:now,entryWindowEndAt:now+60000,targetAt:now+60000,forecastHorizonSeconds:60,durationMs:30000,sideSupported:true,trigger:101,invalidation:90,technicalConfidence:80,reason:'Aguardando gatilho fixo.'};
   const data={asset:'TEST',validatedAsset:'TEST',assetValidated:true,analysisAgeMs:0,liveAgeMs:0,state:'running',demoAutopilot:true,executionReady:false,brokerMode:'demo',agentVersion:'13.4.10',forecastHorizonSeconds:60,durationMs:30000,strategyCards:[{slot:1,active:true,label:'Smart Confluence',projectionHorizonSeconds:60,side:'CALL',callPct:70,putPct:30,why:'Tendência e estrutura em confirmação.'},{slot:2,active:true,label:'Price Action',projectionHorizonSeconds:60,side:'AGUARDAR',callPct:53,putPct:47,why:'Aguardando reação na região do preço.'},{slot:3,active:true,label:'Mean Reversion',projectionHorizonSeconds:60,side:'PUT',callPct:38,putPct:62,why:'Exaustão sem confirmação da reversão.'}],metrics:{shortModel:{ready:true}},entryPlanner:{horizons:{'60':plan}},operationalSignal:operational};
   const card=page.locator('[data-sentinel-card="horizon"]');
+  const analyst=card.locator('[data-sentinel-subanalyst-status]');
   assert.equal(await update(data),true);
+  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);
+  assert.equal(await page.locator('[data-sentinel-card="independent-subanalyst"]').count(),0);
   assert.match(await page.locator('[data-sentinel-pilot-status]').innerText(),/PILOTO LIGADO.*AGUARDANDO BOTÕES/);
   const broker=driver.state('iq_option');Object.assign(broker,{symbol:'TEST',uiSymbol:'TEST',mode:'demo'});
   await driver.scanExecutionUi('iq_option');
@@ -113,7 +116,7 @@ try{
   const justBefore=Date.now();
   const entered={...operational,state:'ENTRADA',ready:true,actionable:true,entryAt:justBefore,activeUntil:justBefore+500};
   await update({...data,operationalSignal:entered});
-  assert.equal(await card.locator('[data-sentinel-entry-action]').innerText(),'ENTRAR AGORA · CALL');
+  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
   assert.match(await card.locator('[data-sentinel-scenario-status]').innerText(),/FECHA EM [1-9]\d?s/);
   assert.match(await card.locator('[data-sentinel-scenario-phase]').innerText(),/ENTRADA DISPONÍVEL POR 1s · EXPIRAÇÃO 30 s/);
   await page.clock.runFor(650);
@@ -122,7 +125,7 @@ try{
   assert.match(await card.innerText(),/CENÁRIO CALL/);
   const putEntryAt=Date.now();
   await update({...data,entryPlanner:{horizons:{'60':{...plan,displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'PUT',state:'ENTRADA',ready:true,actionable:true,entryAt:putEntryAt,activeUntil:putEntryAt+3000}});
-  assert.equal(await card.locator('[data-sentinel-entry-action]').innerText(),'ENTRAR AGORA · PUT');
+  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
   await card.screenshot({path:'sentinel-test-output/scenario-enter.png'});
   await update(data);
   const originalNodes=await page.evaluate(()=>{
@@ -141,6 +144,26 @@ try{
     assert.ok(Math.abs(current.height-originalNodes.height)<2,'scenario must not jump when expiry confirmation changes');
     assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');assert.doesNotMatch(await card.innerText(),/EM REVALIDAÇÃO|CENÁRIO ATIVO/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   }
+  // Analyst-only CALL/PUT changes must not change scenario card height.
+  const stableAnalystHeight=await card.evaluate(el=>el.getBoundingClientRect().height);
+  for(const subSide of ['CALL','PUT','CALL']){
+    const t=Date.now();
+    const sub={independent:true,qualification:{allowed:true},
+      signal:{side:subSide,state:'ENTRADA',actionable:true,activeUntil:t+3500}};
+    await update({...data,operationalSignal:{...operational,entryAnalyst:sub}});
+    assert.match(await analyst.innerText(),new RegExp('Subanalista:\\s*'+subSide));
+    const h=await card.evaluate(el=>el.getBoundingClientRect().height);
+    assert.ok(Math.abs(h-stableAnalystHeight)<2,'subanalyst CALL/PUT must not jump the scenario card');
+  }
+  await update(data);
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/,'last confirmed side must survive immediate next observing frame');
+  await page.clock.runFor(2600);
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/,'confirmed CALL must remain readable during the first 3 seconds');
+  await page.clock.runFor(600);
+  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/,'after 3 seconds the display hold must expire without new trade');
+  // The test harness resets virtual browser time on the next payload (backwards).
+  // Isolate subsequent scenarios from the completed three-second hold.
+  await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
   await update({...data,operationalSignal:{...entered,activeUntil:Date.now()+3000,actionable:false}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
   assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
@@ -151,19 +174,22 @@ try{
     const p30={...plan,horizonSeconds:30,rawBias:side,displayBias:side,callProbability:call?82:18,putProbability:call?18:82};
     const p60={...plan,horizonSeconds:60,rawBias:call?'PUT':'CALL',displayBias:call?'PUT':'CALL',callProbability:call?20:80,putProbability:call?80:20};
     await update({...data,entryPlanner:{horizons:{'30':p30,'60':p60}},operationalSignal:{...operational,scenario:{side:call?'PUT':'CALL',createdAt:independentNow,deadline:independentNow+60000,closed:false},side,state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:independentNow,activeUntil:independentNow+3500,ready:true,actionable:true}});
-    assert.equal(await card.locator('[data-sentinel-entry-action]').innerText(),'ENTRAR AGORA · '+side);
-    assert.match(await card.innerText(),/ANÁLISE DA ENTRADA 30s/);
     assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO '+(call?'PUT':'CALL'));
+    assert.match(await card.innerText(),/ANÁLISE DA ENTRADA 30s/);
+    assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);
     assert.match(await card.innerText(),/80%/);
     await card.screenshot({path:'sentinel-test-output/scenario-independent-'+side.toLowerCase()+'.png'});
   }
   // An independently confirmed local entry must survive an opposite, unqualified expiry forecast.
   const localNow=Date.now(),oppositeExpiry={...plan,horizonSeconds:30,rawBias:'PUT',displayBias:'PUT',directionReady:false,confidence:45,callProbability:20,putProbability:80};
-  await update({...data,entryPlanner:{horizons:{'30':oppositeExpiry,'60':{...plan,rawBias:'PUT',displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'CALL',scenario:{side:'PUT',createdAt:localNow,deadline:localNow+60000},entryAnalyst:{independent:true,qualification:{allowed:true}},state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:localNow,activeUntil:localNow+3500,ready:true,actionable:true}});
+  await update({...data,entryPlanner:{horizons:{'30':oppositeExpiry,'60':{...plan,rawBias:'PUT',displayBias:'PUT',callProbability:20,putProbability:80}}},operationalSignal:{...operational,side:'CALL',scenario:{side:'PUT',createdAt:localNow,deadline:localNow+60000},entryAnalyst:{independent:true,qualification:{allowed:true},signal:{side:'CALL',state:'ENTRADA',actionable:true,activeUntil:localNow+3500}},state:'ENTRADA',entryDecisionHorizonSeconds:30,entryAt:localNow,activeUntil:localNow+3500,ready:true,actionable:true}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
-  assert.equal(await card.locator('[data-sentinel-entry-action]').innerText(),'ENTRAR AGORA · CALL');
+  assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);
   await page.clock.runFor(4000);
   assert.doesNotMatch(await card.innerText(),/FECHA EM|ENTRAR AGORA/,'expired local opportunity stops its countdown without another worker payload');
+  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);
+  // Isolate the completed hold before the test harness moves virtual clock backward.
+  await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
   await update(data);
   const lowerLayout=await page.evaluate(()=>{
     const root=document.getElementById('sentinel-trading-overlay-host').shadowRoot;
@@ -176,7 +202,7 @@ try{
   await update({...data,operationalSignal:{...operational,state:'JANELA ENCERRADA'}});
   assert.match(await card.innerText(),/JANELA ENCERRADA/);assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   await update({...data,operationalSignal:{...operational,state:'AGUARDAR PRAZO',sideSupported:false}});
-  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');assert.match(await card.innerText(),/ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
+  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);assert.match(await card.innerText(),/ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA/);assert.match(await card.innerText(),/FECHA EM/);assert.doesNotMatch(await card.innerText(),/ENTRAR AGORA/);
   await update({...data,operationalSignal:{...operational,asset:'OTHER'}});
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'AGUARDE UM CENÁRIO');
   await update({...data,analysisStale:true});
@@ -189,7 +215,7 @@ try{
   console.log('SCENARIO_LAYOUT',JSON.stringify(dimensions));
   assert.equal(dimensions.scrollWidth<=dimensions.clientWidth,true,'scenario must fit its card');
   const status=card.locator('span').filter({hasText:/FECHA EM/}).first();
-  assert.equal(await status.evaluate(el=>getComputedStyle(el).fontSize),'16px');
+  assert.equal(await status.evaluate(el=>getComputedStyle(el).fontSize),'15px');
   await mkdir('sentinel-test-output',{recursive:true});
   await card.screenshot({path:'sentinel-test-output/scenario-open.png'});
   const panel=page.locator('#sentinel-trading-overlay');
@@ -206,5 +232,5 @@ try{
   await page.clock.runFor(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
-  console.log('SENTINEL 13.4.10 OVERLAY: engine state, deadlines, fresh feed, confidence, fixed trigger and layout PASS');
+  console.log('SENTINEL COMPACT SUBANALYST OVERLAY: own call-put status, timing and fixed layout PASS');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}

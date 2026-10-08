@@ -55,15 +55,25 @@ test('invalid or stale independent quotes cannot pass the execution gate',()=>{
  assert.equal(o.entryAnalyst.signal.actionable,false);
  assert.equal(o.actionable,false);
 });
-test('overlay has standalone subanalyst with explicit own entry gate, not planner',async()=>{
+test('overlay keeps the subanalyst independent in one compact line above confidence CALL PUT',async()=>{
  const source=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
- assert.ok(source.includes('data-sentinel-card="independent-subanalyst"'));
- assert.ok(source.includes('SUBANALISTA INDEPENDENTE'));
+ assert.equal(source.includes('data-sentinel-card="independent-subanalyst"'),false);
+ assert.equal(source.includes('data-sentinel-entry-action'),false);
+ assert.ok(source.includes('data-sentinel-subanalyst-status'));
+ assert.ok(source.includes('Subanalista:'));
  assert.ok(source.includes("ownSignal.actionable===true"));
  assert.ok(source.includes("ownAnalyst.qualification?.allowed===true"));
  assert.ok(source.includes("ownSignal.activeUntil)>decisionNow"));
  assert.ok(source.includes("ownContextOk&&liveNow&&analysisFresh"));
- const independentGate=source.slice(source.indexOf('const ownNow='),source.indexOf('const ownSide='));
+ const statusDefinition=source.indexOf("const subanalystHtml=");
+ const planDefinition=source.indexOf('const planHtml=subanalystHtml+(plannerReadable?(');
+ const confidenceDefinition=source.indexOf('CONFIANÇA DO MODELO');
+ assert.ok(statusDefinition>0&&statusDefinition<planDefinition&&planDefinition<confidenceDefinition);
+ assert.ok(source.includes('height:36px;min-height:36px;max-height:36px'));
+ assert.ok(source.includes('height:111px;min-height:111px;max-height:111px'));
+ assert.ok(source.includes('height:47px;min-height:47px;max-height:47px'));
+ assert.ok(!source.includes('SUBANALISTA INDEPENDENTE'));
+ const independentGate=source.slice(source.indexOf('const ownNow='),source.indexOf('const subanalystSide='));
  assert.ok(!independentGate.includes('futureDecision'),independentGate);
  assert.ok(!independentGate.includes('plannerReadable'),independentGate);
  assert.ok(!independentGate.includes('runtimeView.canEnter'),independentGate);

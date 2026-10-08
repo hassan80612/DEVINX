@@ -288,7 +288,8 @@ test('Existing tab clicks become hints and never retarget the validated asset by
 test('Future UI reserves directional entry instructions for operational timing gates', async () => {
   const ui = await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs', import.meta.url), 'utf8');
   assert.ok(ui.includes("const futureActionLabel="));
-  assert.ok(ui.includes("'ENTRAR AGORA · '+operationalHeroSide"));
+  assert.ok(ui.includes('ownSignal.actionable===true'));
+  assert.ok(ui.includes('data-sentinel-subanalyst-status'));
   assert.ok(!ui.includes("!plannerConfirmed&&formingSide?'AGUARDAR'"));
   assert.ok(ui.includes('AGUARDE O SINAL DE ENTRADA'));
   assert.ok(!ui.includes("('CONFIRMANDO '+displayCandidate)"));
@@ -301,7 +302,7 @@ test('Asset-change events force immediate runtime synchronization before new ana
   assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
   assert.ok(worker.includes('if(event.assetChanged===true){'));
   assert.ok(worker.includes('syncRuntimeMarket();'));
-  assert.ok(worker.includes("const VERSION='13.4.16'"));
+  assert.ok(worker.includes("const VERSION='13.4.17'"));
 });
 
 test('Protocol active_id changes are surfaced as assetChanged events', () => {
