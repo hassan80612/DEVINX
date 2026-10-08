@@ -383,19 +383,27 @@ export class DemoTradingRuntime{
     const decorate=op=>({...op,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,entryAnalyst:{side:op.side,status:op.state,kind:op.entryKind||'forming',independent:true,candidates:this.entryCandidates||[],qualification:this.entryQualification||null,validation:op.validation||null,research:op.entryResearch||null}});
     if(main.entryAt&&(now>=Number(main.entryActiveUntil||0)||Number(this.operationalSetup?.releasedAt)>0)){main.closed=true;main.status='OPORTUNIDADE CONSUMIDA';main.reason='Entrada já liberada; esta oportunidade está encerrada.';}
     if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
-    const candidates=entryOpportunities({analysis,snap,now,minPoints,durationMs});
-    this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason})=>({side,kind,score,allowed,blockedBy,reason}));
+    // The visible percentage threshold also constrains independent entries.
+    // Both settings remain explicit: technical points and the user's percent.
+    // Technical scores are heuristic rankings, never measured win probabilities.
+    const entryPoints=Math.max(minPoints,threshold);
+    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs});
+    this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction})=>({side,kind,score,allowed,blockedBy,
+      reason:blockedBy==='score'?'Pontuação técnica '+score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':reason,
+      level,approaching,structuralReaction,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints}));
     const candidate=candidates.filter(x=>x.allowed).sort((a,b)=>b.score-a.score)[0];
     if(!candidate){
       const relevant=candidates.slice().sort((a,b)=>b.score-a.score)[0];
-      this.entryQualification={allowed:false,flow:relevant.flow,structure:relevant.structure,fresh:relevant.fresh,blockedBy:relevant.blockedBy,reason:relevant.reason};
+      this.entryQualification={allowed:false,flow:relevant.flow,structure:relevant.structure,fresh:relevant.fresh,blockedBy:relevant.blockedBy,
+        technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,
+        reason:relevant.blockedBy==='score'?'Pontuação técnica '+relevant.score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':relevant.reason};
       return decorate({...empty,side:this.operationalSetup?.side||main.side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',reason:relevant.reason});
     }
     const {side,kind,plan:localPlan}=candidate,call=side==='CALL';
     const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
     const prediction=this.entryResearch.predict(researchContext,features,Number.isFinite(baseline)?baseline:.5);
     const learnedWeak=prediction.qualified&&prediction.probability<10/12;
-    this.entryQualification={allowed:!learnedWeak,flow:candidate.flow,structure:candidate.structure,fresh:candidate.fresh,blockedBy:learnedWeak?'entry-model':null,reason:learnedWeak?'Modelo qualificado não confirma este ponto.':candidate.reason};
+    this.entryQualification={allowed:!learnedWeak,flow:candidate.flow,structure:candidate.structure,fresh:candidate.fresh,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,blockedBy:learnedWeak?'entry-model':null,reason:learnedWeak?'Modelo qualificado não confirma este ponto.':candidate.reason};
     if(learnedWeak)return decorate({...empty,side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',entryResearch:prediction,reason:this.entryQualification.reason});
     const expiryKey=String(Math.round(durationMs/1000));
     const independent={...analysis,entryPlanner:{...analysis.entryPlanner,horizons:{...plans,[expiryKey]:localPlan}}};
