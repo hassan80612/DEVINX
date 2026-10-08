@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {fuseForecastEvidence,attenuateForecast,predictionInput} from '../sentinel-trading-lab/agent/src/core/forecast-evidence.mjs';
+import {fuseForecastEvidence,attenuateForecast,predictionInput,mergePredictionBars} from '../sentinel-trading-lab/agent/src/core/forecast-evidence.mjs';
 import {analyzeMarket,analyzePrediction} from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {ForecastResearch} from '../sentinel-trading-lab/agent/src/core/forecast-research.mjs';
@@ -47,4 +47,10 @@ test('manager, worker, tray and recovery use the same release metadata',async()=
  assert.equal(manifest.version,release.version);
  for(const p of ['worker/index.mjs','worker/agent-manager.mjs'])assert.match(await readFile(base+p,'utf8'),/import \{VERSION,BUILD\} from '\.\/release.mjs'/);
  for(const p of ['worker/tray-host.ps1','worker/watchdog.ps1']){const s=await readFile(base+p,'utf8');assert.match(s,/release\.json/);assert.match(s,/\$h\.version -eq \$release\.version/);assert.doesNotMatch(s,/13\.4\.17/);}
+});
+
+test('partial quote windows cannot rewrite closed history or erase the forming candle range',()=>{
+ const closed={from:0,to:60,open:100,high:104,low:98,close:103},forming={from:60,to:120,open:103,high:106,low:101,close:104};
+ const a=mergePredictionBars([closed,forming],[{from:0,to:60,open:101,high:102,low:100,close:101},{from:60,to:120,open:105,high:105,low:104,close:104.5}],90000);
+ assert.deepEqual(a[0],closed);assert.deepEqual(a[1],{...forming,close:104.5});
 });

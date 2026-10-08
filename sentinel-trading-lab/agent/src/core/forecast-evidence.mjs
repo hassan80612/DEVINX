@@ -48,3 +48,15 @@ export function predictionInput({candles=[],quoteHistory=[],now=Date.now()}={}){
   const quotes=[...new Map(quoteHistory.filter(q=>Number.isFinite(Number(q.ts))&&Number.isFinite(Number(q.price))&&Number(q.price)>0&&Number(q.ts)<=now).map(q=>[Number(q.ts),{ts:Number(q.ts),price:Number(q.price)}])).values()].sort((a,b)=>a.ts-b.ts);
   return {candles:cleanCandles,quoteHistory:quotes,inputQuality:{periodSeconds:period??null,sourceCandles:candles.length,uniqueCandles:cleanCandles.length,excludedCandles:candles.length-cleanCandles.length}};
 }
+
+// A quote window may cover only part of an existing candle. Never replace
+// its known open/high/low, or the official close of an already closed bar.
+export function mergePredictionBars(historical=[],live=[],now=Date.now()){
+ const map=new Map(historical.map(c=>[Number(c.from),{...c}]));
+ for(const c of live){
+  const key=Number(c.from),old=map.get(key);
+  if(old&&Number(old.to)*1000<=now)continue;
+  map.set(key,old?{...old,high:Math.max(Number(old.high),Number(c.high)),low:Math.min(Number(old.low),Number(c.low)),close:Number(c.close)}:{...c});
+ }
+ return [...map.values()].sort((a,b)=>Number(a.from)-Number(b.from)).slice(-240);
+}

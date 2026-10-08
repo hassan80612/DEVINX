@@ -1,4 +1,4 @@
-import {FORECAST_MODEL,fuseForecastEvidence,attenuateForecast,predictionInput,EVIDENCE_GROUPS} from './forecast-evidence.mjs';
+import {FORECAST_MODEL,fuseForecastEvidence,attenuateForecast,predictionInput,mergePredictionBars} from './forecast-evidence.mjs';
 import {ema,rsi,atr,bollinger,momentum,supportResistance,macd,stochastic,marketStructure,trendLines,fibonacci,candlePatterns,breakoutRetest,aggregateCandles,aggregateTimedCandles,supportResistanceZones,trendLineQuality,swingFibonacci,volatilityState} from './indicators.mjs';
 import {SignalSide} from './types.mjs';
 import {repeatedReaction} from './repeated-reaction.mjs';
@@ -217,7 +217,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const factor=baseSeconds<=seconds&&seconds%baseSeconds===0?Math.max(1,Math.round(seconds/baseSeconds)):0;
    const historical=factor===1?[...candles]:factor>1?aggregateTimedCandles(candles,seconds):[];
    const live=quoteBars(quoteHistory,seconds*1000,now,35*60*1000);
-   return mergeTf(historical,live)
+   return predictionModel?mergePredictionBars(historical,live,now):mergeTf(historical,live)
  };
  const summarizeTf=(rows,seconds)=>{
    if(!Array.isArray(rows)||rows.length<5)return{seconds,candles:rows?.length||0,ready:false,signal:0,direction:'NEUTRO'};
