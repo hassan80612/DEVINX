@@ -410,7 +410,12 @@ export class DemoTradingRuntime{
     // Both settings remain explicit: technical points and the user's percent.
     // Technical scores are heuristic rankings, never measured win probabilities.
     const entryPoints=Math.max(minPoints,threshold);
-    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,turn});
+    // A turn model stays shadow-only until it proves forward performance across
+    // sessions. Afterwards it may veto a weak reversal, never create a trade.
+    const learnedTurnVeto=turn.confirmed===true&&turnStatus?.qualified===true&&
+      Number(turnStatus.probability)<.58;
+    const effectiveTurn=learnedTurnVeto?{...turn,confirmed:false,reason:'learned-turn-veto'}:turn;
+    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,turn:effectiveTurn});
     this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction})=>({side,kind,score,allowed,blockedBy,
       reason:blockedBy==='score'?'Pontuação técnica '+score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':reason,
       level,approaching,structuralReaction,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints}));
