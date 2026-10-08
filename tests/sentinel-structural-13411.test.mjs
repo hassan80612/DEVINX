@@ -126,3 +126,12 @@ test('a reaction not evaluated in its first timing window cannot be released lat
  const op=runtime()._operationalSignalState(analysis(),snap(confirmedQuotes),now);
  assert.equal(op.actionable,false);
 });
+
+test('PUT is released at the second resistance-rejection quote, with no extra wait',()=>{
+ const confirmedAt=t-150;
+ const op=runtime()._operationalSignalState(analysis('PUT'),snap(down.slice(0,5)),confirmedAt);
+ assert.equal(op.entryAnalyst.candidates[1].structuralReaction,true);
+ assert.equal(op.side,'PUT');
+ assert.equal(op.actionable,true,JSON.stringify({state:op.state,reason:op.reason,confirmation:op.confirmation}));
+ assert.equal(op.entryAt,confirmedAt);
+});
