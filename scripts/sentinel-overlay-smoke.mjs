@@ -187,6 +187,9 @@ try{
   assert.match(await analyst.innerText(),/Subanalista:\s*CALL/);
   await page.clock.runFor(4000);
   assert.doesNotMatch(await card.innerText(),/FECHA EM|ENTRAR AGORA/,'expired local opportunity stops its countdown without another worker payload');
+  assert.match(await analyst.innerText(),/Subanalista:\s*OBSERVANDO ENTRADA/);
+  // Isolate the completed hold before the test harness moves virtual clock backward.
+  await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
   await update(data);
   const lowerLayout=await page.evaluate(()=>{
     const root=document.getElementById('sentinel-trading-overlay-host').shadowRoot;
