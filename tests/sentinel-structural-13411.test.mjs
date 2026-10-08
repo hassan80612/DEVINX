@@ -170,3 +170,21 @@ test('scenario continuation must not chase late breakout near the candle top',()
  const o=runtime({percent:70,points:55})._operationalSignalState(a,s,t+900);
  assert.equal(o.actionable,false);
 });
+
+test('PUT scenario catches first decline at prior closed-bar low rather than waiting for 15s momentum',()=>{
+ const closed=t-5000,quotes=[
+  {ts:closed+150,price:100.03},{ts:closed+950,price:100.02},{ts:closed+1400,price:100},
+  {ts:t+330,price:100.002},{ts:t+550,price:99.997},{ts:t+680,price:99.993}
+ ];
+ const a=analysis('PUT');Object.assign(a.metrics.shortModel,{sr:{support:99.5,resistance:100.5},putSetup:true,
+   putRoomOk:true,structureReadyPut:true,flowReadyPut:false,putScore:80,callScore:20,
+   reversalPutScore:0,reversalPutCandidate:false});
+ Object.assign(a.metrics.micro,{delta5:-.002,delta15:.03,delta2:-.005});
+ const s=snap(quotes),now=t+680;
+ const p=entryOpportunities({analysis:a,snap:s,now,minPoints:70})[1];
+ assert.equal(p.allowed,true,JSON.stringify({reason:p.reason,blockedBy:p.blockedBy}));
+ assert.equal(p.plan.reaction?.earlyContinuation,true);
+ const op=runtime({percent:70,points:55})._operationalSignalState(a,s,now);
+ assert.equal(op.actionable,true,JSON.stringify({reason:op.reason,state:op.state}));
+ assert.equal(op.side,'PUT');assert.equal(op.entryAt,now);
+});
