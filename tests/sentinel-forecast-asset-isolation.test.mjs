@@ -301,7 +301,7 @@ test('Asset-change events force immediate runtime synchronization before new ana
   assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
   assert.ok(worker.includes('if(event.assetChanged===true){'));
   assert.ok(worker.includes('syncRuntimeMarket();'));
-  assert.ok(worker.includes("const VERSION='13.4.9'"));
+  assert.ok(worker.includes("const VERSION='13.4.10'"));
 });
 
 test('Protocol active_id changes are surfaced as assetChanged events', () => {
@@ -410,7 +410,7 @@ test('Unvalidated broker tab clears any locked future decision immediately', asy
 test('Operational entry uses the user threshold and points filter without hidden duplicate gates', async () => {
   const runtime = await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs', import.meta.url), 'utf8');
   assert.ok(runtime.includes('futureDisplayThreshold:70'));
-  assert.ok(runtime.includes('futureLead>=futureThreshold&&decisionStrength>=signalPoints'));
+  assert.ok(runtime.includes('(this._entryAnalysisMode||futureLead>=futureThreshold)&&decisionStrength>=signalPoints'));
   assert.ok(runtime.includes("timingConfirmed=reversal?(sustainedTrigger"));
   assert.ok(runtime.includes("_confirmPriceTrigger"));
   assert.ok(!runtime.includes('futureConfidence>=64'));

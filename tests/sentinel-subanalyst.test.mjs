@@ -7,7 +7,7 @@ import {LatestQuoteScheduler} from '../sentinel-trading-lab/agent/worker/latest-
 const t=Date.UTC(2026,9,8,12),pause=ms=>new Promise(r=>setTimeout(r,ms));
 function runtime(){const r=new DemoTradingRuntime();Object.assign(r.settings,{asset:'TEST',forecastHorizonSeconds:120,orderDurationMs:30000,futureDisplayThreshold:70});r.settings.risk.minConfidence=55;return r;}
 function plan(side,horizon,kind='continuation'){const call=side==='CALL';return{asset:'TEST',horizonSeconds:horizon,rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:80,agreement:80,callProbability:call?80:20,putProbability:call?20:80,strategyFutureBias:side,strategyFuture:{confidence:80,activeCount:1,evidence:80},callTrigger:100,putTrigger:100,callInvalidation:90,putInvalidation:110,expectedMove:.1,entryTiming:{maxDistance:.05},scenario:{kind,continuationReady:kind==='continuation',reversalConfirmed:kind==='reversal'}};}
-function analysis(main='PUT',entry='CALL',kind='reversal'){const call=entry==='CALL';return{quality:{entrySide:call?'BUY':'SELL'},generalConsensus:{rapid:{side:entry},strategies:{side:entry,strength:80}},metrics:{micro:{delta5:call?.01:-.01,delta15:call?.01:-.01},shortModel:{ready:true,flowReadyCall:call,structureReadyCall:call,callRoomOk:call,flowReadyPut:!call,structureReadyPut:!call,putRoomOk:!call,reversalCallConfirmed:call,reversalPutConfirmed:!call}},entryPlanner:{horizons:{'120':plan(main,120),'30':plan(entry,30,kind)}}};}
+function analysis(main='PUT',entry='CALL',kind='reversal'){const call=entry==='CALL';return{quality:{entrySide:call?'BUY':'SELL'},generalConsensus:{rapid:{side:entry},strategies:{side:entry,strength:80}},metrics:{micro:{delta5:call?.01:-.01,delta15:call?.01:-.01},shortModel:{ready:true,callScore:call?80:10,putScore:call?10:80,reversalCallScore:call&&kind==='reversal'?80:0,reversalPutScore:!call&&kind==='reversal'?80:0,reversalCallCandidate:call&&kind==='reversal',reversalPutCandidate:!call&&kind==='reversal',callSetup:call&&kind==='continuation',putSetup:!call&&kind==='continuation',flowReadyCall:call,structureReadyCall:call,callRoomOk:call,flowReadyPut:!call,structureReadyPut:!call,putRoomOk:!call,reversalCallConfirmed:call&&kind==='reversal',reversalPutConfirmed:!call&&kind==='reversal'}},entryPlanner:{horizons:{'120':plan(main,120),'30':plan(entry,30,kind)}}};}
 const snap=(prices,now=t,provider='iq_option')=>({provider,asset:'TEST',price:prices.at(-1),quoteTs:now,quoteHistory:prices.map((price,i)=>({price,ts:now-(prices.length-i-1)*200}))});
 test('PUT scenario survives a confirmed CALL entry at 30s with distinct headline and expiry',()=>{
  const r=runtime(),a=analysis(),o=r._operationalSignalState(a,snap([99.99,100.01,100.02]),t);
@@ -19,14 +19,14 @@ test('PUT scenario survives a confirmed CALL entry at 30s with distinct headline
  const closed=scenarioViewFromRuntime({operational:ended,asset:'TEST',horizonSeconds:120,durationMs:30000,now:t+4000});assert.equal(closed.deadline,null);assert.equal(closed.closed,true);
 });
 test('unconfirmed contrary direction and forming or weak flow never release or learn phantom entries',()=>{
- for(const block of ['forming','flow','structure','reversal','stale','future','safety','continuation-opposite']){const r=runtime(),a=analysis();
- if(block==='forming')a.entryPlanner.horizons['30'].scenario.kind='forming';if(block==='flow')a.metrics.shortModel.flowReadyCall=false;if(block==='structure')a.metrics.shortModel.structureReadyCall=false;if(block==='reversal')a.entryPlanner.horizons['30'].scenario.reversalConfirmed=false;if(block==='safety')a.entryPlanner.horizons['30'].safety={blocked:true};if(block==='continuation-opposite')a.entryPlanner.horizons['30']=plan('CALL',30);
+ for(const block of ['forming','flow','structure','reversal','stale','future','room']){const r=runtime(),a=analysis();
+ if(block==='forming'){a.metrics.shortModel.reversalCallConfirmed=false;a.metrics.shortModel.reversalCallCandidate=false;}if(block==='flow')a.metrics.micro.delta5=-.01;if(block==='structure'){a.metrics.shortModel.structureReadyCall=false;a.metrics.shortModel.reversalCallConfirmed=false;}if(block==='reversal')a.metrics.shortModel.reversalCallConfirmed=false;if(block==='room')a.metrics.shortModel.callRoomOk=false;
  const q=snap([99.99,100.01,100.02]);if(block==='stale')q.quoteTs=t-3000;if(block==='future')q.quoteTs=t+1;
  const o=r._operationalSignalState(a,q,t);assert.equal(o.actionable,false,block);assert.equal(o.scenario.side,'PUT',block);assert.equal(r.entryResearch.pending.length,0,block);assert.equal(r.signalValidation.pending.length,0,block);
  }
 });
 test('late point closes the opportunity and returning to its trigger cannot rearm it',()=>{
- const r=runtime(),a=analysis('CALL','CALL','continuation'),o=r._operationalSignalState(a,snap([100.1,100.2]),t);assert.equal(o.state,'OPORTUNIDADE PERDIDA');assert.equal(o.scenarioDeadline,null);
+ const r=runtime(),a=analysis('CALL','CALL','continuation'),o=r._operationalSignalState(a,snap([100,100,100.2]),t);assert.equal(o.state,'OPORTUNIDADE PERDIDA');assert.equal(o.scenarioDeadline,null);
  assert.equal(r._operationalSignalState(a,snap([100.01,100.02],t+1000),t+1000).actionable,false);assert.equal(r.entryResearch.pending.length,0);
 });
 test('structural invalidation cancels main window and provider changes start a separate context',()=>{
@@ -51,4 +51,32 @@ test('qualification requires forward performance across sessions, and the target
  const qualified=e.predict(context,[1],.8);assert.equal(qualified.qualified,true);assert.equal(qualified.targetMet,false);
  e.outcomes.forEach(x=>x.createdAt=t);assert.equal(e.predict(context,[1],.8).qualified,false);
  e.outcomes.forEach((x,i)=>{x.createdAt=t+(i%3)*86400000;x.modelLoss=.4;});assert.equal(e.predict(context,[1],.8).qualified,false);
+});
+
+test('early CALL and PUT reversals do not wait for the old 15s direction or expiry forecast to flip',()=>{
+ for(const side of ['CALL','PUT']){const call=side==='CALL',main=call?'PUT':'CALL',r=runtime(),a=analysis(main,side);
+ a.metrics.micro.delta15=call?-.03:.03;a.metrics.shortModel[call?'turnUp':'turnDown']=true;a.metrics.shortModel[call?'flowReadyCall':'flowReadyPut']=false;
+ // The old forecast still points to the other side and is unqualified.
+ a.entryPlanner.horizons['30']={...plan(main,30,'forming'),directionReady:false,confidence:45,strategyFutureConflict:true,safety:{blocked:true}};
+ const o=r._operationalSignalState(a,snap(call?[99.99,100.01,100.02]:[100.01,99.99,99.98]),t);
+ assert.equal(o.actionable,true,side);assert.equal(o.side,side);assert.equal(o.scenario.side,main);assert.equal(o.entryAt,t);
+ const v=scenarioViewFromRuntime({operational:o,asset:'TEST',horizonSeconds:120,durationMs:30000,forecast:a.entryPlanner.horizons['30'],now:t,minPoints:55});assert.equal(v.canEnter,true);assert.equal(v.displaySide,main);
+ assert.equal(r.signalValidation.pending[0].probability,20,'baseline stays the old forecast probability, not a technical point score');
+ }
+});
+test('continuations can enter on either side of an open window without a reversal label',()=>{
+ for(const side of ['CALL','PUT']){const call=side==='CALL',r=runtime(),a=analysis(call?'PUT':'CALL',side,'continuation');
+ a.entryPlanner.horizons['30']=plan(call?'PUT':'CALL',30,'forming');a.entryPlanner.horizons['30'].directionReady=false;
+ const o=r._operationalSignalState(a,snap(call?[100,100,100.01]:[100,100,99.99]),t);assert.equal(o.actionable,true,side);assert.equal(o.side,side);assert.equal(o.entryAnalyst.kind,'continuation');assert.equal(o.scenario.side,call?'PUT':'CALL');
+ }
+});
+test('an invalidated window accepts a new valid scenario before the old deadline, with no resurrection of broken levels',()=>{
+ const r=runtime(),a=analysis('PUT','PUT','continuation');r._operationalSignalState(a,snap([100,100,100]),t);
+ const closed=r._operationalSignalState(a,snap([110,110],t+500),t+500);assert.equal(closed.state,'INVALIDADO');
+ const still=r._operationalSignalState(a,snap([110,110],t+1000),t+1000);assert.equal(still.state,'INVALIDADO');assert.equal(still.scenario.id,closed.scenario.id);
+ const fresh=analysis('CALL','CALL','continuation'),o=r._operationalSignalState(fresh,snap([100,100,100.01],t+1500),t+1500);assert.equal(o.scenario.side,'CALL');assert.equal(o.scenario.createdAt,t+1500);assert.ok(t+1500<closed.scenario.deadline);assert.notEqual(o.scenario.id,closed.scenario.id);
+});
+test('a new local reaction inside the active burst cannot queue a duplicate entry',()=>{
+ const r=runtime(),a=analysis(),first=r._operationalSignalState(a,snap([99.99,100.01,100.02]),t);assert.equal(first.actionable,true);
+ r._operationalSignalState(a,snap([99.98,100.01,100.02],t+1000),t+1000);assert.equal(r.signalValidation.pending.length,1);assert.equal(r.entryResearch.pending.length,1);assert.equal(r.scenarioSetup.entryAt,t);
 });
