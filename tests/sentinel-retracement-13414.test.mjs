@@ -6,7 +6,7 @@ import {entryOpportunities} from '../sentinel-trading-lab/agent/src/core/entry-o
 
 const now=Date.UTC(2026,9,8,12);
 const base=[99.90,99.925,99.95,99.975,99.99,100.00,100.006];
-const turned=[...base,100.004,100.0,99.992,99.985,99.98];
+const turned=[...base,100.004,99.999,99.992,99.988];
 const quotes=(prices,end=now)=>prices.map((price,i)=>({ts:end-(prices.length-1-i)*230,price}));
 const snap=(prices,end=now)=>({provider:'iq_option',asset:'TEST',price:prices.at(-1),quoteTs:end,quoteHistory:quotes(prices,end)});
 function analysis(side='CALL'){
