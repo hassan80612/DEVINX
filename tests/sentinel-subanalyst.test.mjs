@@ -42,7 +42,7 @@ test('entry learner freezes predictions, deduplicates, keeps context separate an
 test('quote coalescing evaluates the last update during both throttle and an ongoing evaluation',async()=>{
  let latest=1,busy=true,startFirst,releaseFirst;const started=new Promise(r=>startFirst=r),gate=new Promise(r=>releaseFirst=r),seen=[];
  const s=new LatestQuoteScheduler({intervalMs:20,isBusy:()=>busy,evaluate:async()=>{seen.push(latest);if(seen.length===1){startFirst();await gate;}}});
- try{s.request();latest=2;s.request();await pause(25);assert.equal(seen.length,0);busy=false;await started;latest=3;s.request();latest=4;s.request();releaseFirst();
+ try{s.request();latest=2;s.request();await pause(25);assert.equal(seen.length,0);busy=false;const firstDeadline=Date.now()+3000;while(seen.length<1&&Date.now()<firstDeadline)await pause(10);assert.equal(seen.length,1);latest=3;s.request();latest=4;s.request();releaseFirst();
  const deadline=Date.now()+3000;while(seen.length<2&&Date.now()<deadline)await pause(10);assert.deepEqual(seen,[2,4]);}finally{releaseFirst();s.close();}
 });
 test('qualification requires forward performance across sessions, and the target uses a confidence bound',()=>{
