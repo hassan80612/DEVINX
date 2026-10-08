@@ -407,6 +407,21 @@ export class DemoTradingRuntime{
       level,approaching,structuralReaction,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints}));
     const candidate=candidates.filter(x=>x.allowed).sort((a,b)=>b.score-a.score)[0];
     if(!candidate){
+      // A main scenario may qualify after the first price move has already
+      // escaped its original trigger. Mark that window as missed instead of
+      // presenting a fresh entry at the top or bottom of the moving candle.
+      const timingPlan=entryPlan?.rawBias===main.side?entryPlan:mainPlan;
+      const anchor=Number(main.side==='CALL'?timingPlan?.callTrigger:timingPlan?.putTrigger);
+      const limit=Number(timingPlan?.entryTiming?.maxDistance);
+      const overshot=['CALL','PUT'].includes(main.side)&&Number.isFinite(anchor)&&
+        Number.isFinite(limit)&&limit>0&&
+        (main.side==='CALL'?price-anchor>limit:anchor-price>limit);
+      if(!main.independentOnly&&overshot&&!main.entryAt){
+        main.closed=true;main.status='OPORTUNIDADE PERDIDA';
+        main.reason='O primeiro movimento já ultrapassou o ponto de entrada; não perseguir o topo/fundo.';
+        return decorate({...empty,side:main.side,createdAt:main.createdAt,
+          targetAt:main.deadline,state:main.status,reason:main.reason});
+      }
       const relevant=candidates.slice().sort((a,b)=>b.score-a.score)[0];
       this.entryQualification={allowed:false,flow:relevant.flow,structure:relevant.structure,fresh:relevant.fresh,blockedBy:relevant.blockedBy,
         technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,
