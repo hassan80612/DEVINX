@@ -1548,7 +1548,20 @@ export class LocalPlaywrightDriver{
           ownAnalyst.qualification?.allowed===true&&ownSignal.actionable===true&&
           ownSignal.state==='ENTRADA'&&Number(ownSignal.activeUntil)>decisionNow&&
           ['CALL','PUT'].includes(String(ownSignal.side));
-        const subanalystSide=ownNow?String(ownSignal.side):null;
+        // Keep a confirmed CALL/PUT legible for 3 seconds, even if the next
+        // frame switches to observing. This is a DISPLAY hold, not extra time
+        // in which the engine may execute or authorize an entry.
+        const subContext=visibleAsset+'|'+duration;
+        let subHold=window.__sentinelSubanalystHold;
+        if(subHold&&subHold.context!==subContext){subHold=null;window.__sentinelSubanalystHold=null}
+        if(ownNow){
+          const entryId=subContext+'|'+String(ownSignal.entryAt??ownSignal.activeUntil)+'|'+ownSignal.side;
+          if(!subHold||subHold.id!==entryId){
+            subHold={context:subContext,id:entryId,side:String(ownSignal.side),until:decisionNow+3000};
+            window.__sentinelSubanalystHold=subHold;
+          }
+        }
+        const subanalystSide=subHold&&subHold.until>decisionNow&&ownContextOk?subHold.side:null;
         const subanalystStatus=subanalystSide||'OBSERVANDO ENTRADA';
         const subanalystTone=subanalystSide==='CALL'?callTone:subanalystSide==='PUT'?putTone:ink;
         const subanalystHtml='<div data-sentinel-subanalyst-status style="display:flex;align-items:center;gap:7px;height:36px;min-height:36px;max-height:36px;box-sizing:border-box;overflow:hidden;white-space:nowrap;min-width:0;margin:0 0 7px;padding:0 8px;border-radius:8px;background:'+(uiTheme==='light'?'rgba(128,94,39,.07)':'rgba(215,182,93,.065)')+';border:1px solid '+panelBorder+'">'+
