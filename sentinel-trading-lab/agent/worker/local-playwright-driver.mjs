@@ -1553,12 +1553,17 @@ export class LocalPlaywrightDriver{
         // in which the engine may execute or authorize an entry.
         const subContext=visibleAsset+'|'+duration;
         let subHold=window.__sentinelSubanalystHold;
-        if(subHold&&subHold.context!==subContext){subHold=null;window.__sentinelSubanalystHold=null}
+        if(subHold&&subHold.context!==subContext){subHold=null;window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null}
         if(ownNow){
           const entryId=subContext+'|'+String(ownSignal.entryAt??ownSignal.activeUntil)+'|'+ownSignal.side;
           if(!subHold||subHold.id!==entryId){
             subHold={context:subContext,id:entryId,side:String(ownSignal.side),until:decisionNow+3000};
             window.__sentinelSubanalystHold=subHold;
+            clearTimeout(window.__sentinelSubanalystClearTimer);
+            window.__sentinelSubanalystClearTimer=setTimeout(()=>{
+              if(window.__sentinelSubanalystHold?.id===entryId)
+                window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData);
+            },3000);
           }
         }
         const subanalystSide=subHold&&subHold.until>decisionNow&&ownContextOk?subHold.side:null;
