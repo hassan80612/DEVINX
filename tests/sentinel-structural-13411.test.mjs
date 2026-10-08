@@ -112,3 +112,17 @@ test('confirmation delayed beyond the first-reaction window is not pursued',()=>
  assert.equal(o.structuralReaction,false);
  assert.equal(o.allowed,false);
 });
+
+test('structural entry releases on its second confirmed reaction quote, without waiting for a third',()=>{
+ const confirmedAt=t-150,confirmedQuotes=up.slice(0,5);
+ const op=runtime()._operationalSignalState(analysis(),snap(confirmedQuotes),confirmedAt);
+ assert.equal(op.entryAnalyst.candidates[0].structuralReaction,true);
+ assert.equal(op.entryAnalyst.candidates[0].allowed,true);
+ assert.equal(op.actionable,true,JSON.stringify({state:op.state,reason:op.reason,confirmation:op.confirmation}));
+ assert.equal(op.entryAt,confirmedAt);
+});
+test('a reaction not evaluated in its first timing window cannot be released late',()=>{
+ const confirmedQuotes=up.slice(0,5),now=t+1800;
+ const op=runtime()._operationalSignalState(analysis(),snap(confirmedQuotes),now);
+ assert.equal(op.actionable,false);
+});
