@@ -18,10 +18,10 @@ try {
   if (-not $locked) { throw 'Outra instalacao do Sentinel esta em andamento. Aguarde ela terminar.' }
   New-Item -ItemType Directory -Force -Path $stage | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.11-structural-1008" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.15-accuracy-lab-1008" -OutFile $payloadZip }
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
   $manifest = Get-Content (Join-Path $payloadTmp 'package.json') -Raw | ConvertFrom-Json
-  if ($manifest.version -ne '13.4.11' -or -not (Select-String -LiteralPath (Join-Path $payloadTmp 'worker\index.mjs') -SimpleMatch "13.4.11-structural-1008" -Quiet)) { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.11.' }
+  if ($manifest.version -ne '13.4.15' -or -not (Select-String -LiteralPath (Join-Path $payloadTmp 'worker\index.mjs') -SimpleMatch "13.4.15-accuracy-lab-1008" -Quiet)) { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.15.' }
   try { Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 3 | Out-Null } catch {}
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
   Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
@@ -52,7 +52,7 @@ try {
     }
   }
   Write-Host '========================================' -ForegroundColor DarkCyan
-  Write-Host '       SENTINEL WINDOWS AGENT V13.4.11' -ForegroundColor White
+  Write-Host '       SENTINEL WINDOWS AGENT V13.4.15' -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
   Write-Host '========================================' -ForegroundColor DarkCyan
 
@@ -134,13 +134,13 @@ try {
   for ($i=0; $i -lt 120; $i++) {
     try {
       $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.11' -and $h.build -eq '13.4.11-structural-1008') { $ready = $true; break }
+      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.15' -and $h.build -eq '13.4.15-accuracy-lab-1008') { $ready = $true; break }
     } catch {}
     Start-Sleep -Milliseconds 500
   }
-  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Execute novamente o Agent V13.4.11.' }
+  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Execute novamente o Agent V13.4.15.' }
 
-  Write-Host "`nAgent V13.4.11 pronto." -ForegroundColor Green
+  Write-Host "`nAgent V13.4.15 pronto." -ForegroundColor Green
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan

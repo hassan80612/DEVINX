@@ -10,7 +10,7 @@ export function analyzeReplayFrame(runtime,snap,now){
   const panel=runtime._strategyPanel(snap,now);analysis.strategyCards=panel.cards;analysis.strategyConfluence=panel.confluence;analysis.generalConsensus=runtime._generalConsensus(analysis,panel);runtime._mergeScenarioConfluence(analysis,panel,snap,now);analysis.operationalSignal=runtime._operationalSignalState(analysis,snap,now);runtime.forecastResearch.observe({asset:runtime.settings.asset,analysis,snap,now});return analysis;
 }
 // Replays recorded quotes and checkpoints in arrival order. Never calls a broker.
-export async function replayJournal(paths,{delays=[0,1000,2000],analyze=analyzeReplayFrame}={}){
+export async function replayJournal(paths,{delays=[0,1000,2000],analyze=analyzeReplayFrame,includeSignalOutcomes=false}={}){
   const contexts=new Map(),pending=[],outcomes=[],states={},seen=new Set();let previousTs=0,events=0,analyses=0,expiredWithoutQuote=0;
   const score=(ctx,now)=>{
     for(const p of pending.filter(p=>p.key===ctx.key&&!p.done)){
@@ -41,7 +41,14 @@ export async function replayJournal(paths,{delays=[0,1000,2000],analyze=analyzeR
     }
   }
   const results=delays.map(delay=>{const rows=outcomes.filter(x=>x.delay===delay&&x.filled),wins=rows.filter(x=>x.won===true).length,losses=rows.filter(x=>x.won===false).length;return{delayMs:delay,samples:wins+losses,wins,losses,draws:rows.length-wins-losses,winRate:wins+losses?100*wins/(wins+losses):null,unfilled:outcomes.filter(x=>x.delay===delay&&!x.filled).length}});
-  return{events,analyses,signals:seen.size,states,results,pending:pending.filter(x=>!x.done).length,expiredWithoutQuote,research:[...contexts.values()].map(c=>({asset:c.runtime.settings.asset,...c.runtime.forecastResearch.summary()})),note:'Reprodução de sinais; sem ordens. Resultados dependem da qualidade e cobertura dos dados gravados.'};
+  const signalOutcomes=includeSignalOutcomes?outcomes.map(x=>({key:x.key,side:x.side,signalAt:x.signalAt,
+    entryAt:x.entry?.ts??null,entryPrice:x.entry?.price??null,settledAt:x.settledAt??null,
+    settledPrice:x.settledPrice??null,delayMs:x.delay,filled:x.filled===true,
+    won:x.won??null,reason:x.reason??null})):undefined;
+  return{events,analyses,signals:seen.size,states,results,pending:pending.filter(x=>!x.done).length,expiredWithoutQuote,
+    ...(includeSignalOutcomes?{signalOutcomes}:{}),
+    research:[...contexts.values()].map(c=>({asset:c.runtime.settings.asset,...c.runtime.forecastResearch.summary()})),
+    note:'Reprodução de sinais; sem ordens. Resultados dependem da qualidade e cobertura dos dados gravados.'};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const paths=process.argv.slice(2);if(!paths.length)throw new Error('Use: node worker/replay.mjs history-1.jsonl history-2.jsonl');console.log(JSON.stringify(await replayJournal(paths),null,2));
