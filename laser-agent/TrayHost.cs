@@ -45,13 +45,16 @@ internal sealed class TrayHost : IDisposable
         var refresh=new ToolStripMenuItem("Atualizar agora");
         refresh.Click+=(_,_)=>RefreshRequested?.Invoke();
 
-        var uninstall=new ToolStripMenuItem(_mentorMode?"Encerrar mentoria":"Desinstalar DevinX Laser Agent");
+        var uninstall=new ToolStripMenuItem(_mentorMode?"Encerrar mentoria":
+            AgentDistribution.IsStoreBuild?"Desvincular e abrir desinstalação":"Desinstalar DevinX Laser Agent");
         uninstall.Click+=(_,_)=>
         {
             var result=MessageBox.Show(
                 _mentorMode
                     ?"Encerrar agora a sessão temporária de mentoria?\n\nO acesso remoto será revogado e este Agent temporário será fechado."
-                    :"Remover o DevinX Laser Agent deste computador?\n\nO vínculo, a inicialização automática e os arquivos locais serão removidos.",
+                    :AgentDistribution.IsStoreBuild
+                        ?"Desvincular este computador?\n\nO acesso será revogado e os dados locais serão apagados. Depois, selecione DevinX Laser Agent e Desinstalar nas Configurações do Windows para remover o aplicativo e sua inicialização automática."
+                        :"Remover o DevinX Laser Agent deste computador?\n\nO vínculo, a inicialização automática e os arquivos locais serão removidos.",
                 "DevinX Laser Agent",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);

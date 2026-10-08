@@ -9,6 +9,8 @@ internal static class StartupRegistration
 
     public static void EnsureRegistered()
     {
+        // The MSIX manifest owns startup registration; respect the user's OS setting.
+        if (AgentDistribution.IsStoreBuild) return;
         if (!OperatingSystem.IsWindows()) return;
 
         var exe = Environment.ProcessPath;
@@ -25,6 +27,7 @@ internal static class StartupRegistration
 
     public static void Remove()
     {
+        if (AgentDistribution.IsStoreBuild) return;
         if (!OperatingSystem.IsWindows()) return;
         using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable:true);
         key?.DeleteValue(ValueName, throwOnMissingValue:false);

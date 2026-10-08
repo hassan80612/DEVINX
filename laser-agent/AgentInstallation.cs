@@ -31,6 +31,7 @@ internal static class AgentInstallation
 
     public static bool TryInstallAndRelaunch(string[] args)
     {
+        if(AgentDistribution.IsStoreBuild)return false;
         if(!OperatingSystem.IsWindows()||IsInstalledCopy)return false;
         if(args.Any(a=>a.StartsWith("--",StringComparison.OrdinalIgnoreCase)))return false;
 
@@ -100,6 +101,14 @@ internal static class AgentInstallation
             AgentLocalState.ResetAll();
         }
         catch{}
+
+        if(AgentDistribution.IsStoreBuild)
+        {
+            // Package files are owned by Windows. Never copy or delete them.
+            try{Process.Start(new ProcessStartInfo("ms-settings:appsfeatures"){UseShellExecute=true});}
+            catch{}
+            return;
+        }
 
         if(!IsInstalledCopy)return;
 
