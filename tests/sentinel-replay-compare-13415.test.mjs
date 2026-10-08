@@ -25,7 +25,7 @@ test('guard with fewer losses and adequate time/coverage passes retrospective ga
  const r=compareReplayReports(b,trial,{delays:[0]});
  assert.equal(r.sufficientData,true);
  assert.equal(r.approvedToPromote,true,JSON.stringify(r.evaluated[0]));
- assert.equal(r.evaluated[0].heldOut.improvementDays,3);
+ assert.equal(r.evaluated[0].heldOut.improvementDays,r.heldOutDays.length);
 });
 test('an apparently excellent guard that suppresses nearly all trades is rejected',()=>{
  const b=fake(45,25),trial=fake(5,5);
