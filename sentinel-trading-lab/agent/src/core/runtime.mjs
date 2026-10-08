@@ -391,10 +391,20 @@ export class DemoTradingRuntime{
       scenarioFeedback:{mainSide:main.independentOnly?'NEUTRO':main.side,
         subanalystSide:path.watchSide||'NEUTRO',pathPhase:path.phase,conflict:!!path.watchSide&&!main.independentOnly&&path.watchSide!==main.side,
         advisoryOnly:this.settings.pathGuardMode!=='enforce',reason:path.reason},
-      entryAnalyst:{side:op.side,status:op.state,kind:op.entryKind||'forming',independent:true,candidates:this.entryCandidates||[],qualification:this.entryQualification||null,validation:op.validation||null,research:op.entryResearch||null,
+      entryAnalyst:{side:op.side,status:op.state,kind:op.entryKind||'forming',independent:true,
+        signal:{side:op.side,state:op.state,ready:op.ready===true,actionable:op.actionable===true,
+          reason:op.reason||null,trigger:op.trigger??null,invalidation:op.invalidation??null,
+          activeUntil:op.activeUntil??null,entryAt:op.entryAt??null,
+          createdAt:op.createdAt??null,expiresAt:op.expiresAt??null,durationMs,
+          technicalPoints:op.decisionStrength??op.strength??null},
+        candidates:this.entryCandidates||[],qualification:this.entryQualification||null,
+        validation:op.validation||null,research:op.entryResearch||null,
         pathEvidence:path,pathResearch:this.pathResearch.summary()}});
     if(main.entryAt&&(now>=Number(main.entryActiveUntil||0)||Number(this.operationalSetup?.releasedAt)>0)){main.closed=true;main.status='OPORTUNIDADE CONSUMIDA';main.reason='Entrada já liberada; esta oportunidade está encerrada.';}
-    if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
+    // Do NOT return here when the main forecast closes. The independent
+    // analyst keeps evaluating its own local support/resistance and expiry
+    // opportunities. The closed scenario stays closed; it never authorizes
+    // or vetoes the independent signal.
     // The visible percentage threshold also constrains independent entries.
     // Both settings remain explicit: technical points and the user's percent.
     // Technical scores are heuristic rankings, never measured win probabilities.
@@ -412,6 +422,7 @@ export class DemoTradingRuntime{
     const candidate=baselineCandidates.filter(c=>!guardEnabled||path.guardedSide!==c.side)
       .sort((a,b)=>b.score-a.score)[0];
     if(!candidate){
+      if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
       const relevant=candidates.slice().sort((a,b)=>b.score-a.score)[0];
       if(guardEnabled&&baselineCandidates.some(c=>c.side===path.guardedSide)){
         this.entryQualification={allowed:false,blockedBy:'path-rejection',requiredScore:entryPoints,
