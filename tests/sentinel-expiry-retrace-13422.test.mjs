@@ -33,5 +33,5 @@ test('changing expiration synchronizes forecast and expired message is highlight
  assert.match(worker,/orderDurationMs:n,forecastHorizonSeconds:n\/1000/);
  assert.match(overlay,/el\.dataset\.plannerHorizon=String\(seconds\)/);
  assert.match(overlay,/00:00 · ENCERRADO/);
- assert.match(overlay,/PRAZO ENCERRADO · ESPERE NOVA ESTRUTURA/);
+ assert.match(overlay,/CENÁRIO ENCERRADO · ESPERE NOVA ESTRUTURA/);
 });
