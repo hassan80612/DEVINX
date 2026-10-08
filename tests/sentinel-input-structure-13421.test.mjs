@@ -95,6 +95,8 @@ test('the installed prediction path blocks stale-base authorization without modi
  for(const r of [old,fixed]){r.settings.asset='TEST';r.settings.strategy='trend';r.settings.risk.minConfidence=55;r.settings.futureDisplayThreshold=50;}
  const a=analyzeReplayFrame(old,snap,x.now),b=analyzeReplayFrame(fixed,snap,x.now);
  assert.deepEqual(b.generalConsensus,a.generalConsensus);assert.equal(b.predictionInputQuality.ready,false);
+ assert.equal(b.entryPlanner.modelVersion,'future-v6.2-verified-input');
+ assert.notEqual(b.entryPlanner.horizons['60'].modelVersion,a.entryPlanner.horizons['60'].modelVersion);
  assert.equal(b.operationalSignal.actionable,false);assert.equal(b.operationalSignal.scenario,null);
  assert.ok(b.operationalSignal.entryAnalyst.candidates.every(c=>!c.allowed&&c.blockedBy==='prediction-history'));
 });

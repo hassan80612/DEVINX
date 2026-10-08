@@ -731,8 +731,9 @@ export function analyzePrediction(input={}){
     analysis.reasons=[normalized.inputQuality.reason==='stale-period-history'?'Histórico do período da previsão desatualizado; renovando a base.':'Histórico insuficiente no período da previsão.',...(analysis.reasons||[])];
   }
   if(analysis.entryPlanner){
-    analysis.entryPlanner.modelVersion=input.experimentalTiming===false?'future-v6.1-evaluation':FORECAST_MODEL;
-    if(input.experimentalTiming===false)for(const plan of Object.values(analysis.entryPlanner.horizons)){plan.modelVersion='future-v6.1-evaluation';plan.modelRole='evaluation';}
+    const modelVersion=input.requireFresh?'future-v6.2-verified-input':input.experimentalTiming===false?'future-v6.1-evaluation':FORECAST_MODEL;
+    analysis.entryPlanner.modelVersion=modelVersion;
+    if(input.requireFresh||input.experimentalTiming===false)for(const plan of Object.values(analysis.entryPlanner.horizons)){plan.modelVersion=modelVersion;plan.modelRole=input.requireFresh?'verified-input':'evaluation';}
   }
   return analysis;
 }
