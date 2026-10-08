@@ -1544,7 +1544,7 @@ export class LocalPlaywrightDriver{
         const futureDecision=plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup&&!timingClosed&&runtimeDeadline>decisionNow?{side:runtimeOperationalSide,targetAt:runtimeDeadline}:null;
         const futureDecisionPaused=!plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup;
         const feedPauseSeconds=Math.max(0,Math.ceil((Number(d.liveAgeMs||0)+elapsedSincePayload)/1000));
-        const pilotLabel=runtime!=='running'?'PILOTO PAUSADO':d.demoAutopilot!==true?'PILOTO DEMO DESLIGADO':String(d.brokerMode||d.mode)!=='demo'?'PILOTO · CONTA DEMO NÃO DETECTADA':d.executionReady!==true?'PILOTO LIGADO · AGUARDANDO BOTÕES E VALOR DA CORRETORA':'PILOTO DEMO LIGADO · AGUARDANDO SINAL';
+        const pilotLabel=operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'PILOTO PAUSADO':d.demoAutopilot!==true?'PILOTO DEMO DESLIGADO':String(d.brokerMode||d.mode)!=='demo'?'PILOTO · CONTA DEMO NÃO DETECTADA':d.executionReady!==true?'PILOTO LIGADO · AGUARDANDO BOTÕES E VALOR DA CORRETORA':'PILOTO DEMO LIGADO · AGUARDANDO SINAL';
         const displayCandidate=candidateOutlook;
         const formingSide=plannerReadable&&String(operational?.asset||visibleAsset).toUpperCase()===visibleAsset&&['CALL','PUT'].includes(runtimeView.displaySide)?runtimeView.displaySide:null;
         const outlook=formingSide||((runtimeView.hasSetup||timingClosed)?runtimeOperationalSide:null)||'AGUARDAR';
@@ -2013,8 +2013,13 @@ export class LocalPlaywrightDriver{
         if(!window.__sentinelOverlayClock)window.__sentinelOverlayClock=setInterval(()=>{
           const latest=window.__sentinelLastOverlayData;
           if(!document.getElementById('sentinel-trading-overlay-host')){clearInterval(window.__sentinelOverlayClock);window.__sentinelOverlayClock=null;return}
-          const clockSecond=Math.floor(Date.now()/1000);
-          if(latest&&Date.now()-Number(latest.overlayReceivedAt||0)>=1250&&window.__sentinelLastClockSecond!==clockSecond){window.__sentinelLastClockSecond=clockSecond;window.__sentinelRenderOverlay?.(latest)}
+          const clockNow=Date.now(),payloadAge=clockNow-Number(latest?.overlayReceivedAt||0);
+          const clockKey=[Math.floor(clockNow/1000),payloadAge+Number(latest?.liveAgeMs||0)>=3500,payloadAge+Number(latest?.analysisAgeMs||0)>=3500,
+            Number(latest?.scenarioView?.deadline||0)>0&&clockNow>=Number(latest.scenarioView.deadline),
+            Number(latest?.scenarioView?.entryDeadline||0)>0&&clockNow>=Number(latest.scenarioView.entryDeadline)].join('|');
+          // Time labels refresh once a second; freshness/expiry transitions
+          // bypass that coalescing so stale signals disappear promptly.
+          if(latest&&payloadAge>=1250&&window.__sentinelLastClockKey!==clockKey){window.__sentinelLastClockKey=clockKey;window.__sentinelRenderOverlay?.(latest)}
         },500);
         render(d)
       },payload);
