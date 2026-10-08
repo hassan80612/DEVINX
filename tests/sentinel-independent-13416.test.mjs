@@ -73,7 +73,7 @@ test('overlay keeps the subanalyst independent in one compact line above confide
  assert.ok(source.includes('height:111px;min-height:111px;max-height:111px'));
  assert.ok(source.includes('height:47px;min-height:47px;max-height:47px'));
  assert.ok(!source.includes('SUBANALISTA INDEPENDENTE'));
- const independentGate=source.slice(source.indexOf('const ownNow='),source.indexOf('const ownSide='));
+ const independentGate=source.slice(source.indexOf('const ownNow='),source.indexOf('const subanalystSide='));
  assert.ok(!independentGate.includes('futureDecision'),independentGate);
  assert.ok(!independentGate.includes('plannerReadable'),independentGate);
  assert.ok(!independentGate.includes('runtimeView.canEnter'),independentGate);
