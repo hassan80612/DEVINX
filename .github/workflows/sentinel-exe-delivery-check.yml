@@ -61,3 +61,37 @@ jobs:
           $sig=Get-AuthenticodeSignature -FilePath $dest
           Write-Output "WINDOWS_AUTHENTICODE_STATUS=$($sig.Status)"
           Write-Output 'VERIFIED_WINDOWS_DOWNLOAD_MATCHES_GITHUB_ORIGINAL'
+      - name: Verify actual Microsoft Edge browser download
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          npm install --prefix sentinel-trading-lab/agent --ignore-scripts --no-audit --no-fund
+          @'
+          import {chromium} from './sentinel-trading-lab/agent/node_modules/playwright-core/index.mjs';
+          import {readFile, mkdir} from 'node:fs/promises';
+          import {createHash} from 'node:crypto';
+          const url='https://sentinel-trading-lab.vercel.app/downloads/sentinel-agent-windows.exe?v=13.4.22-expiry-retrace-1008';
+          const expected=await readFile('sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe');
+          const browser=await chromium.launch({channel:'msedge',headless:true});
+          try{
+            const context=await browser.newContext({acceptDownloads:true});
+            const page=await context.newPage();
+            await page.goto('https://sentinel-trading-lab.vercel.app/login',{waitUntil:'domcontentloaded',timeout:25000});
+            const [download]=await Promise.all([
+              page.waitForEvent('download',{timeout:35000}),
+              page.evaluate(u=>{const a=document.createElement('a');a.href=u;a.download='sentinel-agent-windows.exe';document.body.appendChild(a);a.click();},url)
+            ]);
+            const failure=await download.failure();
+            console.log('EDGE_DOWNLOAD_SUGGESTED_FILENAME='+download.suggestedFilename());
+            console.log('EDGE_DOWNLOAD_FAILURE='+(failure||'none'));
+            if(failure)throw new Error('EDGE_DOWNLOAD_FAILED: '+failure);
+            const path=await download.path();
+            const payload=await readFile(path);
+            const hash=b=>createHash('sha256').update(b).digest('hex');
+            console.log('EDGE_DOWNLOAD_BYTES='+payload.length);
+            console.log('EDGE_DOWNLOAD_SHA256='+hash(payload));
+            if(hash(payload)!==hash(expected))throw new Error('EDGE_SHA256_MISMATCH');
+            console.log('EDGE_DOWNLOAD_FULL_EXE_VERIFIED');
+          }finally{await browser.close();}
+          '@ | Set-Content -Encoding UTF8 'edge-download-check.mjs'
+          node edge-download-check.mjs
