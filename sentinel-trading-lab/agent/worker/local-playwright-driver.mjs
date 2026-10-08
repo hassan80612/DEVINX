@@ -1568,7 +1568,7 @@ export class LocalPlaywrightDriver{
           ownFresh?'Analisando os dois lados por estrutura e cotações reais.':
           'Aguardando cotações atuais da corretora.';
         const ownEntryExpiry=Math.round(duration/1000);
-        const ownReadyLabel=ownNow?'GATILHO CONFIRMADO':ownBest?'PONTO EM FORMAÇÃO':
+        const ownReadyLabel=ownNow?'GATILHO CONFIRMADO':ownBest?'TIMING EM VALIDAÇÃO':
           ownWarning?'ALERTA DE RETRAÇÃO':'SEM PONTO CONFIRMADO';
         const pathWatch=operational?.entryAnalyst?.pathEvidence||{};
         const pathWatching=analysisFresh&&liveNow&&!timingClosed&&!operationalNow&&
