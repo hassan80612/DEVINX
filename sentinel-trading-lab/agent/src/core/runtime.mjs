@@ -361,13 +361,26 @@ export class DemoTradingRuntime{
     if(main?.status==='INVALIDADO'&&newStructure&&newPriceValid&&mainPlan?.outlookReady&&mainPlan.directionReady&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;main=null;}
     const empty={asset,side:'AGUARDAR',forecastHorizonSeconds:horizon,durationMs,state:'AGUARDAR',ready:false,actionable:false,entryDecisionHorizonSeconds:durationMs/1000,reason:'Aguardando um cenário confirmado.'};
     if(main&&now>=main.deadline){this.scenarioSetup=null;this.operationalSetup=null;main=null;}
+    const mainQualified=newPriceValid&&mainPlan?.outlookReady===true&&mainPlan.directionReady===true&&['CALL','PUT'].includes(mainSide)&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints;
+    // An entry analyst may observe/act on a real structural opportunity even
+    // when no main forecast qualified. Its neutral coordinator is never shown
+    // as a fabricated main scenario; the old forecast retains its own rules.
+    if(main?.independentOnly&&mainQualified){main=null;this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;}
     if(!main){
-      if(!newPriceValid||!mainPlan?.outlookReady||!mainPlan.directionReady||!['CALL','PUT'].includes(mainSide)||mainLead<threshold||Number(mainPlan.confidence||0)<minPoints)return empty;
-      main={context,id:context+'|'+now,side:mainSide,createdAt:now,deadline:now+horizon*1000,invalidation:(mainSide==='CALL'?mainPlan.callInvalidation:mainPlan.putInvalidation)==null?null:Number(mainSide==='CALL'?mainPlan.callInvalidation:mainPlan.putInvalidation),trigger:Number(nextTrigger),confidence:Number(mainPlan.confidence),closed:false,status:'OPEN'};this.scenarioSetup=main;this.operationalSetup=null;this.oppositeOperationalSetup=null;
+      main=mainQualified?{
+        context,id:context+'|'+now,side:mainSide,createdAt:now,deadline:now+horizon*1000,
+        invalidation:(mainSide==='CALL'?mainPlan.callInvalidation:mainPlan.putInvalidation)==null?null:Number(mainSide==='CALL'?mainPlan.callInvalidation:mainPlan.putInvalidation),
+        trigger:Number(nextTrigger),confidence:Number(mainPlan.confidence),closed:false,status:'OPEN'
+      }:{
+        context,id:context+'|independent|'+now,side:'NEUTRO',createdAt:now,
+        deadline:now+durationMs,invalidation:null,closed:false,status:'OBSERVANDO',
+        independentOnly:true
+      };
+      this.scenarioSetup=main;this.operationalSetup=null;this.oppositeOperationalSetup=null;
     }
     const price=Number(snap.price),broken=main.invalidation!=null&&Number.isFinite(main.invalidation)&&(main.side==='CALL'?price<=main.invalidation:price>=main.invalidation);
     if(broken&&!main.closed){main.closed=true;main.status='INVALIDADO';main.reason='Estrutura do cenário '+main.side+' invalidada pelo preço.';}
-    const decorate=op=>({...op,scenario:{...main},scenarioSide:main.side,scenarioCreatedAt:main.createdAt,scenarioDeadline:main.closed?null:main.deadline,entryAnalyst:{side:op.side,status:op.state,kind:op.entryKind||'forming',independent:true,candidates:this.entryCandidates||[],qualification:this.entryQualification||null,validation:op.validation||null,research:op.entryResearch||null}});
+    const decorate=op=>({...op,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,entryAnalyst:{side:op.side,status:op.state,kind:op.entryKind||'forming',independent:true,candidates:this.entryCandidates||[],qualification:this.entryQualification||null,validation:op.validation||null,research:op.entryResearch||null}});
     if(main.entryAt&&(now>=Number(main.entryActiveUntil||0)||Number(this.operationalSetup?.releasedAt)>0)){main.closed=true;main.status='OPORTUNIDADE CONSUMIDA';main.reason='Entrada já liberada; esta oportunidade está encerrada.';}
     if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
     const candidates=entryOpportunities({analysis,snap,now,minPoints,durationMs});
