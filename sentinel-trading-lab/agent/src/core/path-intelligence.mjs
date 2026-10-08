@@ -80,7 +80,7 @@ export class PathResearch {
     const side=candidateSide||evidence.side;
     if(!['CALL','PUT'].includes(side))return;
     const bucket=Math.floor(now/Math.max(durationMs,30000));
-    const key=[provider,asset,durationMs,side,evidence.phase].join('|'),id=key+'|'+bucket;
+    const key=[provider,asset,durationMs,side,evidence.phase,candidateSide?'candidate':'watch'].join('|'),id=key+'|'+bucket;
     if(this.pending.some(x=>x.id===id)||this.outcomes.some(x=>x.id===id))return;
     const block=evidence.guardedSide===side;
     this.pending.push({id,key,provider,asset,side,durationMs,phase:evidence.phase,blocked:!!block,
