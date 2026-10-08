@@ -1537,10 +1537,16 @@ export class LocalPlaywrightDriver{
         const entrySeconds=operationalNow?Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000)):null;
         const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO';
         const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide):'AGUARDE UM CENÁRIO';
-        const entryActionLabel=operationalNow?('ENTRAR AGORA · '+operationalHeroSide):timingClosed?operationalTimingState:'SUBANALISTA · OBSERVANDO ENTRADA';
+        const pathWatch=operational?.entryAnalyst?.pathEvidence||{};
+        const pathWatching=analysisFresh&&liveNow&&!timingClosed&&!operationalNow&&
+          pathWatch.ready===true&&['CALL','PUT'].includes(pathWatch.watchSide);
+        const entryActionLabel=operationalNow?('ENTRAR AGORA · '+operationalHeroSide):
+          timingClosed?operationalTimingState:
+          pathWatching?('SUBANALISTA · POSSÍVEL '+pathWatch.watchSide+' (EM ANÁLISE)'):
+          'SUBANALISTA · OBSERVANDO ENTRADA';
         const futureDecisionStatus=!plannerReadable?'SEM LEITURA':futureDecision?('FECHA EM '+windowSeconds+'s'):timingClosed?operationalTimingState:'EM ANÁLISE';
         const entryAnalysisScope=entryDecisionHorizon!==Number(plannerHorizon)?'ANÁLISE DA ENTRADA '+Math.round(entryDecisionHorizon)+'s · ':'';
-        const futurePhase=entryAnalysisScope+(!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':operationalNow?('ENTRADA DISPONÍVEL POR '+entrySeconds+'s · EXPIRAÇÃO '+durationText):trackingSameSide?'ACOMPANHANDO · ENTRADA ENCERRADA':timingClosed?'AGUARDE UM NOVO CENÁRIO':formingSide?'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA':'ANALISANDO · AGUARDANDO CONFIRMAÇÃO');
+        const futurePhase=entryAnalysisScope+(!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':operationalNow?('ENTRADA DISPONÍVEL POR '+entrySeconds+'s · EXPIRAÇÃO '+durationText):trackingSameSide?'ACOMPANHANDO · ENTRADA ENCERRADA':timingClosed?'AGUARDE UM NOVO CENÁRIO':pathWatching?(pathWatch.phase==='REJECTION_CONFIRMED'?'REJEIÇÃO E RETRAÇÃO DETECTADAS · SEM ENTRADA AUTOMÁTICA':'OBSERVANDO BARREIRA E ESPAÇO RESTANTE · SEM SINAL DE ENTRADA'):formingSide?'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA':'ANALISANDO · AGUARDANDO CONFIRMAÇÃO');
         const currentAnalysisReason=String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
         const futureDecisionConfidence=futureConfidence;
         const measuredHistory=operational?.entryAnalyst?.research||{},measuredSamples=Math.max(0,Number(measuredHistory.samples||0));
