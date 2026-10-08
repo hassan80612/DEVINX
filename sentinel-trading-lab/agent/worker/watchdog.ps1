@@ -24,7 +24,7 @@ $ok=$false
 $reason='health_fail'
 try {
   $h=Invoke-RestMethod -UseBasicParsing $health -TimeoutSec 2
-  $ok=($h.ok -eq $true -and $h.version -eq '13.4.15' -and $h.build -eq '13.4.15-accuracy-lab-1008' -and ($h.workerHealthy -eq $true -or $h.workerEnabled -eq $false))
+  $ok=($h.ok -eq $true -and $h.version -eq '13.4.16' -and $h.build -eq '13.4.16-independent-1008' -and ($h.workerHealthy -eq $true -or $h.workerEnabled -eq $false))
   if ($ok -and $h.workerEnabled -eq $false) { exit 0 }
   if ($ok) {
     try {
