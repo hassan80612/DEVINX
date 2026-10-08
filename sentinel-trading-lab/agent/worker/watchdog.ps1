@@ -20,11 +20,13 @@ function Log([string]$m) {
 if (Test-Path $exitMarker) { exit 0 }
 if (-not (Test-Path $node) -or -not (Test-Path $manager)) { Log 'arquivos_do_agent_ausentes'; exit 0 }
 
+try { $release=Get-Content (Join-Path $root 'release.json') -Raw | ConvertFrom-Json; if(-not $release.version -or -not $release.build){throw 'release_incomplete'} } catch { Log 'release_metadata_missing'; exit 1 }
+
 $ok=$false
 $reason='health_fail'
 try {
   $h=Invoke-RestMethod -UseBasicParsing $health -TimeoutSec 2
-  $ok=($h.ok -eq $true -and $h.version -eq '13.4.17' -and $h.build -eq '13.4.17-compact-subanalyst-1008' -and ($h.workerHealthy -eq $true -or $h.workerEnabled -eq $false))
+  $ok=($h.ok -eq $true -and $h.version -eq $release.version -and $h.build -eq $release.build -and ($h.workerHealthy -eq $true -or $h.workerEnabled -eq $false))
   if ($ok -and $h.workerEnabled -eq $false) { exit 0 }
   if ($ok) {
     try {
@@ -60,3 +62,4 @@ try {
 } catch {
   Log ('falha_iniciar_manager '+$_.Exception.Message)
 }
+

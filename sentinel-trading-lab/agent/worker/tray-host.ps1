@@ -1,6 +1,4 @@
-$ErrorActionPreference = 'SilentlyContinue'
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+$ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $node = Join-Path $root '.sentinel-runtime\node.exe'
@@ -9,12 +7,29 @@ $iconPath = Join-Path $root 'worker\sentinel.ico'
 $exitMarker = Join-Path $root 'worker\data\agent.exit'
 $site = 'https://sentinel-trading-lab.vercel.app'
 $managerHealth = 'http://127.0.0.1:8788/health'
-$agentEnabled = $true
+$agentEnabled = -not (Test-Path $exitMarker)
+$logDir = Join-Path $root 'worker\data'
+$trayHealth = Join-Path $logDir 'tray-health.json'
+New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+trap {
+  Add-Content -LiteralPath (Join-Path $logDir 'tray.log') -Value ("{0:o} startup_error {1}" -f (Get-Date), $_.Exception.Message)
+  exit 1
+}
+$release = Get-Content (Join-Path $root 'release.json') -Raw | ConvertFrom-Json
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') { throw 'A bandeja requer PowerShell -STA.' }
+function Write-TrayHealth {
+  try {
+    @{pid=$PID;version=$release.version;build=$release.build;iconVisible=$notify.Visible;updatedAt=[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()} | ConvertTo-Json -Compress | Set-Content -LiteralPath ($trayHealth + '.tmp') -Encoding UTF8
+    Move-Item -LiteralPath ($trayHealth + '.tmp') -Destination $trayHealth -Force
+  } catch {}
+}
 
 # Mantém o controlador/ícone disponível após novo login do Windows.
 try {
   $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-  $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$($MyInvocation.MyCommand.Path)`""
+  $runCmd = "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$($MyInvocation.MyCommand.Path)`""
   New-Item -Path $runKey -Force | Out-Null
   Set-ItemProperty -Path $runKey -Name 'SentinelTradingLab' -Value $runCmd -Force
 } catch {}
@@ -22,7 +37,6 @@ try {
 $created = $false
 $mutex = New-Object System.Threading.Mutex($true, 'Local\SentinelTradingLabTrayV880', [ref]$created)
 if (-not $created) { exit 0 }
-if (Test-Path $exitMarker) { Remove-Item $exitMarker -Force -ErrorAction SilentlyContinue }
 
 function Start-Manager {
   try {
@@ -39,11 +53,11 @@ function Stop-Agent { try { Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1
 function Restart-Worker { try { return Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/restart' -Method Post -TimeoutSec 8 } catch { return $null } }
 function Start-Worker { try { return Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/start' -Method Post -TimeoutSec 8 } catch { return $null } }
 
-if (-not (Get-Health)) { Start-Manager }
+if ($agentEnabled -and -not (Get-Health)) { Start-Manager }
 
 $notify = New-Object System.Windows.Forms.NotifyIcon
 try { $notify.Icon = New-Object System.Drawing.Icon($iconPath) } catch { $notify.Icon = [System.Drawing.SystemIcons]::Application }
-$notify.Text = 'Sentinel Agent V13.4.17'
+$notify.Text = 'Sentinel Agent V' + $release.version
 $notify.Visible = $true
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
@@ -157,7 +171,8 @@ $failCount = 0
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 2500
 $timer.Add_Tick({
-  if (Test-Path $exitMarker) { Remove-Item $exitMarker -Force -ErrorAction SilentlyContinue; $script:agentEnabled = $false }
+  Write-TrayHealth
+  if (Test-Path $exitMarker) { $script:agentEnabled = $false }
   $h = Get-Health
   try {
     $ri = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8787/remote-info' -TimeoutSec 1
@@ -175,12 +190,12 @@ $timer.Add_Tick({
       $accessItem.Text = 'Acesso: aguardando vínculo'
     }
   } catch {}
-  if ($h -and $h.ok -and $h.version -eq '13.4.17' -and $h.build -eq '13.4.17-compact-subanalyst-1008') {
+  if ($h -and $h.ok -and $h.version -eq $release.version -and $h.build -eq $release.build) {
     $failCount = 0
     $script:agentEnabled = $true
     if ($h.workerHealthy) {
-      $statusItem.Text = 'Status: Agent 13.4.17 + Worker ONLINE'
-      $notify.Text = 'Sentinel Agent 13.4.17 - ONLINE'
+      $statusItem.Text = 'Status: Agent ' + $release.version + ' + Worker ONLINE'
+      $notify.Text = 'Sentinel Agent ' + $release.version + ' - ONLINE'
     } elseif ($h.workerEnabled -eq $false) {
       $statusItem.Text = 'Status: Agent ligado / Worker pausado'
       $notify.Text = 'Sentinel Agent - Worker pausado'
@@ -201,13 +216,17 @@ $timer.Add_Tick({
   }
 })
 $timer.Start()
+Write-TrayHealth
 
 $notify.BalloonTipTitle = 'Sentinel Agent'
-$notify.BalloonTipText = 'Controlador ativo na bandeja. Botão direito: ligar, desligar, reiniciar ou abrir o Sentinel.'
+$notify.BalloonTipText = 'Ícone ativo ao lado do relógio ou na seta de ícones ocultos. Botão direito: ligar, desligar, reiniciar ou abrir o Sentinel.'
 $notify.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info
 $notify.ShowBalloonTip(4500)
 
-[System.Windows.Forms.Application]::Run()
-$timer.Stop(); $notify.Visible = $false; $notify.Dispose()
-try { $mutex.ReleaseMutex() } catch {}
-$mutex.Dispose()
+try { [System.Windows.Forms.Application]::Run() } finally {
+  $timer.Stop(); $notify.Visible = $false; $notify.Dispose()
+  Remove-Item -LiteralPath $trayHealth -Force -ErrorAction SilentlyContinue
+  try { $mutex.ReleaseMutex() } catch {}
+  $mutex.Dispose()
+}
+

@@ -1,3 +1,4 @@
+import {FORECAST_MODEL,fuseForecastEvidence,attenuateForecast,predictionInput,EVIDENCE_GROUPS} from './forecast-evidence.mjs';
 import {ema,rsi,atr,bollinger,momentum,supportResistance,macd,stochastic,marketStructure,trendLines,fibonacci,candlePatterns,breakoutRetest,aggregateCandles,aggregateTimedCandles,supportResistanceZones,trendLineQuality,swingFibonacci,volatilityState} from './indicators.mjs';
 import {SignalSide} from './types.mjs';
 import {repeatedReaction} from './repeated-reaction.mjs';
@@ -197,11 +198,11 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  }
 }
 
-export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,forecastHorizonSeconds=null,freshnessMs=5000,quoteTs=Date.now(),now=Date.now(),candidateModel=false}){
+export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluence',minConfidence=74,durationMs=60000,forecastHorizonSeconds=null,freshnessMs=5000,quoteTs=Date.now(),now=Date.now(),candidateModel=false,predictionModel=false,predictionStrategies=[]}){
  if(!Array.isArray(candles)||candles.length<35)return{side:SignalSide.WAIT,confidence:0,reasons:['dados insuficientes: mínimo 35 candles'],metrics:{sourceCandles:candles?.length||0}};
  if(now-quoteTs>freshnessMs)return{side:SignalSide.WAIT,confidence:0,reasons:['feed atrasado'],metrics:{sourceCandles:candles.length}};
 
- const closes=candles.map(c=>Number(c.close)),prior=candles.slice(0,-1),candleLast=closes.at(-1),vol=atr(candles,14)||Math.abs(candleLast)*.001;
+ const closes=candles.map(c=>Number(c.close)),prior=predictionModel?candles.filter(c=>Number(c.to)*1000<=now):candles.slice(0,-1),candleLast=closes.at(-1),vol=atr(candles,14)||Math.abs(candleLast)*.001;
  const baseSeconds=candleSeconds(candles),micro=liveMicro(quoteHistory,candleLast,vol,baseSeconds,now),last=Number(micro.last||candleLast);
  const mergeTf=(a=[],b=[])=>{
    const map=new Map();
@@ -550,7 +551,11 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const w=weightsFor(seconds);
    // Specialists contribute different evidence, rather than voting on one common projection.
    const specializations={trend:{trend:2,history:1.7,persistence:1.6,reversal:.4,location:.6},price_action:{setup:2,reversal:1.3,location:1.3,momentum:.6,mtf:.6},support_resistance:{location:2.2,setup:1.4,reversal:1.5,micro:.7,momentum:.5},mean_reversion:{reversal:2,location:1.8,trend:.4,history:.7,momentum:.5},breakout:{setup:2,persistence:1.8,acceleration:1.4,location:1.2,reversal:.5},trendline_breakout:{setup:2,trend:1.6,acceleration:1.3,reversal:.5},fibonacci_retest:{location:2,setup:2,history:1.3,micro:.6}};
-   if(candidateModel)for(const [key,multiplier] of Object.entries(specializations[strategy]||{}))w[key]*=multiplier;
+   if(candidateModel&&!predictionModel)for(const [key,multiplier] of Object.entries(specializations[strategy]||{}))w[key]*=multiplier;
+   if(predictionModel){
+     const profiles=[...new Set(predictionStrategies.length?predictionStrategies:[strategy])];
+     for(const key of Object.keys(w))w[key]*=profiles.reduce((v,id)=>v+Number(specializations[id]?.[key]??1),0)/profiles.length;
+   }
    const declaredWeight=Object.values(w).reduce((a,b)=>a+Number(b||0),0)||1;
    const features=[
      {name:'microfluxo',key:'micro',value:microSignal,weight:w.micro,available:w.micro>0&&micro.ready},
@@ -571,10 +576,14 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const groups={flow:['micro','acceleration'],momentum:['momentum','persistence'],structure:['trend','history','regime','mtf'],setup:['location','setup','reversal'],strategy:['strategy']};
    const grouped=Object.values(groups).map(keys=>{const rows=available.filter(f=>keys.includes(f.key)),weight=rows.reduce((v,f)=>v+f.weight,0);return{value:weight?rows.reduce((v,f)=>v+f.value*f.weight,0)/weight:0,weight:Math.min(weight,.28)}});
    const groupedWeight=grouped.reduce((v,f)=>v+f.weight,0);
-   let signal=candidateModel?(groupedWeight?grouped.reduce((v,f)=>v+f.value*f.weight,0)/groupedWeight:0):available.reduce((v,f)=>v+f.value*f.weight,0)/weightTotal;
+   const fusion=predictionModel?fuseForecastEvidence(features):null;
+   let signal=predictionModel?fusion.signal:candidateModel?(groupedWeight?grouped.reduce((v,f)=>v+f.value*f.weight,0)/groupedWeight:0):available.reduce((v,f)=>v+f.value*f.weight,0)/weightTotal;
 
    // Anti-atraso: se o movimento atual já esticou e começa a perder aceleração,
    // a previsão deixa de perseguir a vela atual e antecipa a possibilidade de virada.
+   if(predictionModel){
+     signal=attenuateForecast(signal,{overextended:signal>0?short.callOverextended:short.putOverextended,turning:signal>0?short.turnDown:short.turnUp,flowConflict:seconds<=60&&(signal>0?microSignal<-.25:microSignal>.25),accelerationConflict:signal>0?accelerationSignal<-.35:accelerationSignal>.35,seconds});
+   }else{
    if(short.callOverextended&&signal>0)signal-=Math.min(.30,Math.abs(signal)*.48+.07);
    if(short.putOverextended&&signal<0)signal+=Math.min(.30,Math.abs(signal)*.48+.07);
    if(short.turnDown&&signal>0)signal-=seconds<=60?.18:.10;
@@ -590,6 +599,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      const magnitude=clamp(.38+Math.max(0,score-62)/95,.38,.72),authoritySignal=reversalAuthoritySide==='CALL'?magnitude:-magnitude;
      signal=clamp(signal*.38+authoritySignal*.62,-1,1)
    }
+   }
    const historyConflict=historyDirection!==0&&Math.sign(signal)!==0&&Math.sign(signal)!==historyDirection&&Math.abs(historySignal)>=.32;
    if(historyConflict&&!reversalConfirmed)signal*=seconds<=60?.62:seconds<=300?.74:.84;
    if(regimeLabel==='chaotic')signal*=.72;
@@ -598,7 +608,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const directional=available.filter(x=>Math.abs(x.value)>=.08),directionalWeight=directional.reduce((a,x)=>a+x.weight,0);
    const alignedWeight=directional.filter(x=>signal===0||Math.sign(x.value)===Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
    const opposedWeight=directional.filter(x=>signal!==0&&Math.sign(x.value)!==Math.sign(signal)).reduce((a,x)=>a+x.weight,0);
-   const agreement=directionalWeight>0?alignedWeight/directionalWeight:.5,conflict=directionalWeight>0?opposedWeight/directionalWeight:0;
+   const agreement=predictionModel?fusion.agreement:directionalWeight>0?alignedWeight/directionalWeight:.5,conflict=predictionModel?fusion.conflict:directionalWeight>0?opposedWeight/directionalWeight:0;
    // V13.1: confiança não pode tratar indicadores correlacionados como evidências totalmente independentes.
    // As famílias abaixo preservam o sinal/direção do V4 e só tornam a confiança mais conservadora quando
    // várias leituras estão repetindo essencialmente o mesmo movimento.
@@ -609,7 +619,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      context:['location','setup','reversal'],
      strategy:['strategy']
    };
-   const familyRows=Object.entries(familyDefs).map(([family,keys])=>{
+   const familyRows=predictionModel?fusion.rows.filter(x=>Math.abs(x.value)>=.08):Object.entries(familyDefs).map(([family,keys])=>{
      const rows=available.filter(x=>keys.includes(x.key)&&x.weight>0);
      const weight=rows.reduce((a,x)=>a+x.weight,0);
      const value=weight>0?rows.reduce((a,x)=>a+x.value*x.weight,0)/weight:0;
@@ -640,7 +650,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const directionReady=outlookReady&&modelConfidence>=readyConfidence&&Math.abs(signal)>=readySignal&&agreement>=readyAgreement&&regimeLabel!=='chaotic'&&!safetyBlocked;
    const bias=outlookReady&&Math.abs(signal)>=.025?(signal>0?'CALL':'PUT'):'NEUTRO';
    const projectedMove=expectedMove*signal*(.55+modelConfidence/240),projectedPrice=last+projectedMove;
-   const reversalMode=(reversalAuthoritySide!=='NEUTRO')||(regimeLabel==='range'&&((srNearSupport&&bullishReject&&micro.delta5>0)||(srNearResistance&&bearishReject&&micro.delta5<0)));
+   const reversalMode=(predictionModel?(reversalConfirmed&&reversalAuthoritySide===signalSide):(reversalAuthoritySide!=='NEUTRO'))||(regimeLabel==='range'&&((srNearSupport&&bullishReject&&micro.delta5>0)||(srNearResistance&&bearishReject&&micro.delta5<0)));
    const directionalFlow=micro.ready&&((signal>0&&micro.delta5>0&&micro.delta15>0)||(signal<0&&micro.delta5<0&&micro.delta15<0));
    const continuationReady=directionalFlow&&!safetyBlocked&&((signal>0&&!short.callOverextended&&!short.turnDown)||(signal<0&&!short.putOverextended&&!short.turnUp))&&(Math.abs(historySignal)>=.15&&Math.sign(historySignal)===Math.sign(signal)||breakoutDirection===Math.sign(signal));
    const kind=reversalMode?'reversal':breakoutDirection===Math.sign(signal)?'breakout':continuationReady?'continuation':'forming';
@@ -675,7 +685,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      safety:{blocked:safetyBlocked,chaseBlocked,barrierBlocked,mtfConflict,blockedSide:safetyBlocked?signalSide:null},
      reliability:{evidenceFamilyCount,familyAgreement:Math.round(familyAgreement*100),featureAgreement:Math.round(agreement*100),correlationPenalty,baseModelConfidence,leadAligned,microLead:Math.round(microLeadSignal*100)},
      basis:'previsão futura V5.0 independente do consenso atual por horizonte + multi-timeframe 1m/2m/5m/10m/15m + reversão estrutural + S/R + candles fechados + regime; entrada atual é separada',drivers:strongest,
-     automaticExecution:false,modelVersion:'future-v5.0'
+     automaticExecution:false,modelVersion:predictionModel?FORECAST_MODEL:'future-v5.0',...(predictionModel?{familyEvidence:fusion.rows}: {})
    }
  };
  const planner=Object.fromEntries(plannerHorizons.map(seconds=>[String(seconds),forecastFor(seconds)]));
@@ -704,4 +714,16 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    entryPlanner:{defaultHorizonSeconds:30,modelVersion:'future-v5.0',horizons:planner},
    metrics:{...m,rawBuyScore:rawBuy,rawSellScore:rawSell,buyScore:buyEffective,sellScore:sellEffective,buyEffective,sellEffective,projectedBuy,projectedSell,edge,microPulse:micro.pulse,strategy,futureModelVersion:'future-v5.0',selectedForecast}
  }
+}
+
+
+// The current-market readings and three totals keep their original inputs.
+// Only the future/entry analyst receives one interval, unique time points and
+// a family budget. Selected strategies specialize this budget once.
+export function analyzePrediction(input={}){
+  const normalized=predictionInput(input);
+  const analysis=analyzeMarket({...input,...normalized,candidateModel:true,predictionModel:true});
+  analysis.predictionInputQuality=normalized.inputQuality;
+  if(analysis.entryPlanner)analysis.entryPlanner.modelVersion=FORECAST_MODEL;
+  return analysis;
 }

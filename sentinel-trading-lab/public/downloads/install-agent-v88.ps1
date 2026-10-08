@@ -18,10 +18,11 @@ try {
   if (-not $locked) { throw 'Outra instalacao do Sentinel esta em andamento. Aguarde ela terminar.' }
   New-Item -ItemType Directory -Force -Path $stage | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.18-entry-lifecycle-1008" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.19-evidence-tray-1008" -OutFile $payloadZip }
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
   $manifest = Get-Content (Join-Path $payloadTmp 'package.json') -Raw | ConvertFrom-Json
-  if ($manifest.version -ne '13.4.18' -or -not (Select-String -LiteralPath (Join-Path $payloadTmp 'worker\index.mjs') -SimpleMatch "13.4.18-entry-lifecycle-1008" -Quiet)) { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.18.' }
+  $agentRelease = Get-Content (Join-Path $payloadTmp 'release.json') -Raw | ConvertFrom-Json
+  if ($manifest.version -ne $agentRelease.version -or $agentRelease.version -ne '13.4.19' -or $agentRelease.build -ne '13.4.19-evidence-tray-1008') { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.19.' }
   try { Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 3 | Out-Null } catch {}
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
   Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
@@ -52,7 +53,7 @@ try {
     }
   }
   Write-Host '========================================' -ForegroundColor DarkCyan
-  Write-Host '       SENTINEL WINDOWS AGENT V13.4.18' -ForegroundColor White
+  Write-Host '       SENTINEL WINDOWS AGENT V13.4.19' -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
   Write-Host '========================================' -ForegroundColor DarkCyan
 
@@ -72,7 +73,7 @@ try {
   Remove-Item (Join-Path $payloadTmp 'worker\data') -Recurse -Force -ErrorAction SilentlyContinue
   Copy-Item (Join-Path $payloadTmp '*') $root -Recurse -Force
   # Estado transitório nunca deve sobreviver a uma reinstalação.
-  foreach ($transient in @('agent.exit','manager.pid','worker.pid')) {
+  foreach ($transient in @('agent.exit','manager.pid','worker.pid','tray-health.json','tray-health.json.tmp')) {
     Remove-Item -LiteralPath (Join-Path $dataDir $transient) -Force -ErrorAction SilentlyContinue
   }
 
@@ -120,27 +121,39 @@ try {
     Start-Process -FilePath $node -ArgumentList @("`"$manager`"") -WorkingDirectory $root -WindowStyle Hidden | Out-Null
   } else {
     $watchdogHost = Join-Path $root 'worker\watchdog-host.ps1'
-    $runCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
+    $runCmd = "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
     $watchdogCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$watchdogHost`""
     New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
     Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -Value $runCmd -Force
     Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLabWatchdog' -Value $watchdogCmd -Force
 
     Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$watchdogHost`"") -WindowStyle Hidden | Out-Null
-    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$tray`"") -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-STA','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$tray`"") -WindowStyle Hidden | Out-Null
   }
 
   $ready = $false
   for ($i=0; $i -lt 120; $i++) {
     try {
       $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.18' -and $h.build -eq '13.4.18-entry-lifecycle-1008') { $ready = $true; break }
+      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.19' -and $h.build -eq '13.4.19-evidence-tray-1008') { $ready = $true; break }
     } catch {}
     Start-Sleep -Milliseconds 500
   }
-  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Execute novamente o Agent V13.4.18.' }
+  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Execute novamente o Agent V13.4.19.' }
 
-  Write-Host "`nAgent V13.4.18 pronto." -ForegroundColor Green
+  if ($env:SENTINEL_INSTALL_TEST -ne '1') {
+    $trayReady = $false
+    for ($i=0; $i -lt 30; $i++) {
+      try {
+        $th = Get-Content (Join-Path $dataDir 'tray-health.json') -Raw | ConvertFrom-Json
+        $trayReady = $th.iconVisible -and $th.version -eq $agentRelease.version -and $th.build -eq $agentRelease.build -and ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - [int64]$th.updatedAt) -lt 10000 -and (Get-Process -Id $th.pid -ErrorAction Stop)
+        if ($trayReady) { break }
+      } catch {}
+      Start-Sleep -Milliseconds 500
+    }
+    if (-not $trayReady) { throw 'Agent ativo, mas a bandeja nao iniciou. Consulte worker\data\tray.log.' }
+  }
+  Write-Host "`nAgent V13.4.19 pronto." -ForegroundColor Green
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan

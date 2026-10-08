@@ -15,9 +15,9 @@ export function wilson(wins,total){
 }
 export class ForecastResearch{
   constructor(saved={}){this.models=saved.version===1?saved.models||{}:{};this.pending=saved.version===1?saved.pending||[]:[];this.lastQueued=saved.version===1?saved.lastQueued||{}:{};this.outcomes=saved.version===1?saved.outcomes||[]:[];this.events=[];this.unresolved=Number(saved.unresolved||0)}
-  key(asset,seconds,provider=''){return (provider?String(provider).toLowerCase()+'|':'')+String(asset).toUpperCase()+'|'+seconds}
+  key(asset,seconds,provider='',context=''){return (provider?String(provider).toLowerCase()+'|':'')+String(asset).toUpperCase()+'|'+seconds+(context?'|'+context:'')}
   forecast(asset,plan,provider=''){
-    const key=this.key(asset,plan.horizonSeconds,provider),x=forecastFeatures(plan),m=this.models[key];
+    const key=this.key(asset,plan.horizonSeconds,provider,plan.researchContext||''),x=forecastFeatures(plan),m=this.models[key];
     const callProbability=Math.round(sigmoid((m?.bias||0)+x.reduce((v,a,i)=>v+a*Number(m?.weights?.[i]||0),0))*100);
     const rows=this.outcomes.filter(r=>r.key===key&&r.draw!==true).slice(-240),samples=rows.length;
     const differences=rows.map(r=>r.baselineLoss-r.modelLoss),mean=samples?differences.reduce((a,b)=>a+b,0)/samples:0;
@@ -51,7 +51,7 @@ export class ForecastResearch{
     if(!Number.isFinite(price)||price<=0)return;
     for(const plan of Object.values(analysis?.entryPlanner?.horizons||{})){
       if(!plan?.outlookReady)continue;
-      const seconds=Number(plan.horizonSeconds),key=this.key(asset,seconds,provider);
+      const seconds=Number(plan.horizonSeconds),key=this.key(asset,seconds,provider,plan.researchContext||'');
       if(now-Number(this.lastQueued[key]||0)<seconds*1000)continue;
       this.lastQueued[key]=now;
       const shadow=this.forecast(asset,plan,provider),op=analysis.operationalSignal||{};
@@ -64,3 +64,4 @@ export class ForecastResearch{
   drain(){const rows=this.events;this.events=[];return rows}
   snapshot(){return{version:1,models:this.models,pending:this.pending,lastQueued:this.lastQueued,outcomes:this.outcomes,unresolved:this.unresolved}}
 }
+

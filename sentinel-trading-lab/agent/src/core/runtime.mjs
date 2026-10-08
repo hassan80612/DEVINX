@@ -3,7 +3,7 @@ import {SimulatedFeed} from './simulated-feed.mjs';
 import {engineCycle} from './engine.mjs';
 import {AuditLog} from './audit.mjs';
 import {nextEvaluation} from './scheduler.mjs';
-import {analyzeMarket} from './strategy.mjs';
+import {analyzeMarket,analyzePrediction} from './strategy.mjs';
 import {ForecastResearch} from './forecast-research.mjs';
 import {EntryResearch} from './entry-research.mjs';
 import {entryOpportunities} from './entry-opportunities.mjs';
@@ -43,7 +43,8 @@ function signalPlan({analysis,settings,price,now=Date.now()}={}){
 }
 
 export class DemoTradingRuntime{
-  constructor({seed=20261002,balance=10000,payout=.82}={}){
+  constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6'}={}){
+    this.predictionModel=predictionModel;
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
     this.broker=new DemoBrokerAdapter({balance,payout});
     this.audit=new AuditLog();
@@ -183,16 +184,23 @@ export class DemoTradingRuntime{
     analysis.scenarioProcessedAt=now;analysis.scenarioContext=scenarioContext;
     const general=analysis?.generalConsensus||{},presentSide=['CALL','PUT'].includes(String(general?.rapid?.side||'').toUpperCase())?String(general.rapid.side).toUpperCase():'AGUARDAR';
     const asset=String(this.settings.asset||'—').toUpperCase(),combo=this._strategyComboKey();
-    const candidateAnalysis=snap?.candles?.length>=35?analyzeMarket({candidateModel:true,candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:this.settings.strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,quoteTs:snap.quoteTs,now}):null;
+    const predictionStrategies=[this.settings.strategy,this.settings.strategy2,this.settings.strategy3].filter((id,i)=>id&&id!=='none'&&this.settings.pausedReadings?.['strategy_'+(i+1)]!==true);
+    const qualityAnalysis=this.predictionModel==='family-v6'&&snap?.candles?.length>=35?analyzePrediction({candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:this.settings.strategy,predictionStrategies,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,freshnessMs:this.settings.risk.maxFeedLatencyMs,quoteTs:snap.quoteTs,now}):null;
+    if(qualityAnalysis){analysis.entryPlanner.modelVersion='future-v6.0';analysis.predictionMetrics=qualityAnalysis.metrics;analysis.predictionInputQuality=qualityAnalysis.predictionInputQuality;}
+    const candidateAnalysis=!qualityAnalysis&&snap?.candles?.length>=35?analyzeMarket({candidateModel:true,candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:this.settings.strategy,minConfidence:this.settings.risk.minConfidence,durationMs:this.settings.orderDurationMs,quoteTs:snap.quoteTs,now}):null;
     const candidatePanel=candidateAnalysis?.entryPlanner?this._strategyPanel(snap,now,{candidateModel:true}):null;
-    for(const [secondsKey,plan] of Object.entries(planner)){
+    for(const [secondsKey,originalPlan] of Object.entries(planner)){
+      let plan=originalPlan;
       if(!plan||typeof plan!=='object')continue;
-      const controlPlan={...plan},controlStrategy=strategyPanel?.confluence?.horizons?.[String(secondsKey)]||null;
+      const qualityPlan=qualityAnalysis?.entryPlanner?.horizons?.[secondsKey];
+      if(qualityAnalysis&&!qualityPlan){plan.outlookReady=false;plan.directionReady=false;plan.inputQuality=qualityAnalysis.predictionInputQuality;continue}
+      if(qualityPlan){plan=planner[secondsKey]={...originalPlan,...qualityPlan};plan.researchContext=qualityPlan.modelVersion+':'+[...new Set(predictionStrategies)].sort().join('+')+':'+qualityAnalysis.predictionInputQuality.periodSeconds;}
+      const controlPlan={...plan},controlStrategy=qualityPlan?null:strategyPanel?.confluence?.horizons?.[String(secondsKey)]||null;
       const candidatePlan=candidateAnalysis?.entryPlanner?.horizons?.[secondsKey],candidateStrategy=candidatePanel?.confluence?.horizons?.[secondsKey];
       const mix=(p,row)=>{const base=Number(p?.rawCallProbability??p?.callProbability??50),weight=row?.activeCount?Math.min(row.activeCount>=2?.30:.16,.10+Number(row.evidence||0)/500):0;return Math.round(base*(1-weight)+Number(row?.callPct??50)*weight)};
       const controlCall=mix(controlPlan,controlStrategy),candidateCall=candidatePlan?mix(candidatePlan,candidateStrategy):controlCall;
       const research=this.forecastResearch.forecast(asset,controlPlan,snap?.provider);
-      const useCandidate=research.candidateQualified&&candidatePlan?.outlookReady===true;
+      const useCandidate=!qualityPlan&&research.candidateQualified&&candidatePlan?.outlookReady===true;
       if(useCandidate)Object.assign(plan,candidatePlan);
       plan.candidate={callProbability:candidateCall,directionReady:candidatePlan?.directionReady===true,scenario:candidatePlan?.scenario||null};
       const durationMs=Math.max(10000,Number(secondsKey||plan.horizonSeconds||30)*1000),strategyFuture=(useCandidate?candidateStrategy:controlStrategy)||null;
@@ -202,7 +210,7 @@ export class DemoTradingRuntime{
       plan.unlearnedCallProbability=controlCall;plan.research={...research,features:undefined};
       const combinedCall=research.qualified?Math.round(unlearnedCallProbability*.8+research.callProbability*.2):unlearnedCallProbability,combinedPut=100-combinedCall,originalBias=['CALL','PUT'].includes(String(plan.bias||'').toUpperCase())?String(plan.bias).toUpperCase():'NEUTRO',rawBias=combinedCall>=52?'CALL':combinedPut>=52?'PUT':originalBias;
       const strategySide=['CALL','PUT'].includes(String(strategyFuture?.side||'').toUpperCase())?String(strategyFuture.side).toUpperCase():'AGUARDAR',strategyAligned=strategySide!=='AGUARDAR'&&rawBias!=='NEUTRO'&&strategySide===rawBias,strategyConflict=strategySide!=='AGUARDAR'&&rawBias!=='NEUTRO'&&strategySide!==rawBias&&strategyEvidence>=45;
-      const regime=String(plan?.regime?.label||analysis?.metrics?.regime?.label||'unknown'),modelKey='future-v5.0:'+combo+':'+regime,baseModelConfidence=Math.max(0,Number(plan.scenarioBaseModelConfidence??plan.modelConfidence??plan.confidence??0)),confidenceAdjustment=strategyAligned?Math.min(6,2+strategyEvidence*.04):strategyConflict?-Math.min(12,4+strategyEvidence*.08):0;
+      const regime=String(plan?.regime?.label||analysis?.metrics?.regime?.label||'unknown'),modelKey=(qualityPlan?plan.researchContext:'future-v5.0:'+combo)+':'+regime,baseModelConfidence=Math.max(0,Number(plan.scenarioBaseModelConfidence??plan.modelConfidence??plan.confidence??0)),confidenceAdjustment=strategyAligned?Math.min(6,2+strategyEvidence*.04):strategyConflict?-Math.min(12,4+strategyEvidence*.08):0;
       plan.scenarioBaseModelConfidence=baseModelConfidence;
       plan.modelConfidence=Math.max(0,Math.min(100,Math.round(baseModelConfidence+confidenceAdjustment)));
       plan.rawBias=rawBias;plan.asset=asset;plan.generatedAt=now;plan.presentBias=presentSide;plan.generalBias=presentSide;plan.strategyFutureBias=strategySide;plan.strategyFutureAligned=strategyAligned;plan.strategyFutureConflict=strategyConflict;plan.strategyFuture={...(strategyFuture||{}),blend:Math.round(strategyBlend*100),baseCall,combinedCall};plan.consensusAligned=presentSide!=='AGUARDAR'&&rawBias!=='NEUTRO'&&presentSide===rawBias;plan.entryAligned=plan.consensusAligned;if(strategyConflict)plan.directionReady=false;
@@ -214,14 +222,14 @@ export class DemoTradingRuntime{
       const stable=this._stabilizeForecast({asset,seconds:Number(secondsKey||plan.horizonSeconds||30),callPct:plan.callProbability,putPct:plan.putProbability,bias:rawBias,now});
       plan.displayCallProbability=stable.callPct;plan.displayPutProbability=stable.putPct;plan.displayBias=stable.side;plan.executionBias=rawBias;plan.stability={alpha:stable.alpha,candidate:stable.candidate,cycles:stable.cycles};plan.confidence=plan.modelConfidence;
       const historyWeak=validation.samples>=60&&validation.smoothedWinRate<50,fast30Validation=Number(secondsKey)===30?this._validationStats(this._validationKey('forecast30_v2',asset,30000,this.settings.strategy)):null,fast30HistoryWeak=!!fast30Validation&&fast30Validation.samples>=30&&fast30Validation.smoothedWinRate<50,displayLead=stable.side==='CALL'?stable.callPct:stable.side==='PUT'?stable.putPct:0;
-      const configuredFutureThreshold=Math.max(50,Math.min(95,Number(this.settings.futureDisplayThreshold||70))),decisionEligible=plan.outlookReady===true&&plan.directionReady===true&&!strategyConflict&&['CALL','PUT'].includes(stable.side)&&stable.side===rawBias&&displayLead>=configuredFutureThreshold,decisionModelKey='decision-v13.3:'+combo+':'+regime;
+      const configuredFutureThreshold=Math.max(50,Math.min(95,Number(this.settings.futureDisplayThreshold||70))),decisionEligible=plan.outlookReady===true&&plan.directionReady===true&&!strategyConflict&&['CALL','PUT'].includes(stable.side)&&stable.side===rawBias&&displayLead>=configuredFutureThreshold,decisionModelKey=(qualityPlan?'decision:'+plan.researchContext:'decision-v13.3:'+combo)+':'+regime;
       if(decisionEligible&&Number.isFinite(Number(snap?.price))&&Number(snap.price)>0)this._queueSignalCandidate({kind:'horizon_decision_v13_3',side:stable.side==='CALL'?'BUY':'SELL',confidence:plan.confidence,probability:displayLead,regime,referencePrice:Number(snap.price),asset,durationMs,strategy:decisionModelKey,now});
       const decisionValidation=this._validationStats(this._validationKey('horizon_decision_v13_3',asset,durationMs,decisionModelKey)),payout=Number(snap?.payout),economicBreakEven=Number.isFinite(payout)&&payout>0?100/(1+payout):null,configuredWinFloor=Math.max(60,Number(this.settings.risk.signalValidationMinWinRate||60)),economicFloor=economicBreakEven==null?configuredWinFloor:Math.max(configuredWinFloor,economicBreakEven+3),decisionHistoryWeak=decisionValidation.samples>=decisionValidation.minSamples&&decisionValidation.smoothedWinRate<economicFloor;
       if(decisionHistoryWeak)plan.directionReady=false;
       plan.validation={samples:validation.samples,wins:validation.wins,losses:validation.losses,draws:validation.draws,winRate:validation.winRate,smoothedWinRate:validation.smoothedWinRate,avgPredicted:validation.avgPredicted,brierScore:validation.brierScore,calibrationError:validation.calibrationError,historyWeight:Math.round(historyWeight*100),calibrated:historyWeight>0,historyWeak,regime,bucket,bucketSamples:bucketValidation.samples,bucketWinRate:bucketValidation.winRate,bucketSmoothedWinRate:bucketValidation.smoothedWinRate,legacyPriorWeight:0,decisionSamples:decisionValidation.samples,decisionWins:decisionValidation.wins,decisionLosses:decisionValidation.losses,decisionDraws:decisionValidation.draws,decisionWinRate:decisionValidation.winRate,decisionSmoothedWinRate:decisionValidation.smoothedWinRate,decisionBrierScore:decisionValidation.brierScore,decisionHistoryWeak,economicBreakEven:economicBreakEven==null?null:Math.round(economicBreakEven*10)/10,confidenceSource:'model',probabilitySource:historyWeight>0?'model+empirical':'model',calibrationEpoch:CALIBRATION_EPOCH,fast30Samples:fast30Validation?.samples??null,fast30WinRate:fast30Validation?.winRate??null,fast30SmoothedWinRate:fast30Validation?.smoothedWinRate??null,fast30HistoryWeak};
-      plan.modelVersion='future-v5.0';plan.basis='previsão futura V5.0 · motor estrutural + projeções independentes das estratégias por prazo · calibração histórica separada da confiança do modelo';plan.consensusSources=['motor futuro '+rawBias+' '+Math.round(rawLeadProbability)+'%','estratégias futuras '+strategySide+(strategyActive?' · '+strategyActive+' ativa(s)':''),'presente '+presentSide]
+      if(qualityPlan)plan.modelVersion='future-v6.0';else plan.modelVersion='future-v5.0';plan.basis=qualityPlan?'previsão futura V6.0 · evidências por família · estratégias com peso único · calibração por versão e prazo':'previsão futura V5.0 · motor estrutural + projeções independentes das estratégias por prazo · calibração histórica separada da confiança do modelo';plan.consensusSources=['motor futuro '+rawBias+' '+Math.round(rawLeadProbability)+'%','estratégias futuras '+strategySide+(strategyActive?' · '+strategyActive+' ativa(s)':''),'presente '+presentSide]
     }
-    const executionSeconds=String(Math.round(Number(this.settings.orderDurationMs||60000)/1000)),executionPlan=planner[executionSeconds],reaction=analysis?.metrics?.shortModel?.repeatedReaction;
+    const executionSeconds=String(Math.round(Number(this.settings.orderDurationMs||60000)/1000)),executionPlan=planner[executionSeconds],reaction=(analysis.predictionMetrics||analysis.metrics)?.shortModel?.repeatedReaction;
     if(reaction?.qualified===true&&reaction.expiresAt>now&&executionPlan?.outlookReady===true&&executionPlan.directionReady===true&&executionPlan.rawBias===reaction.side&&executionPlan.strategyFutureConflict!==true&&executionPlan.safety?.blocked!==true){
       const call=reaction.side==='CALL';
       executionPlan.reaction={...reaction};
@@ -350,6 +358,7 @@ export class DemoTradingRuntime{
     return{reversal,triggerMet,sustained,invalidated,pointPassed,distance};
   }
   _operationalSignalState(analysis,snap,now=Date.now()){
+    if(analysis.predictionMetrics)analysis={...analysis,metrics:analysis.predictionMetrics};
     const asset=String(this.settings.asset||'—').toUpperCase(),provider=String(snap.provider||this.externalMarket?.provider||'unknown'),horizon=Number(this.settings.forecastHorizonSeconds||60),durationMs=Number(this.settings.orderDurationMs||60000),combo=this._strategyComboKey();
     this.validationProvider=provider;this.entryResearch.settle({...snap,provider,asset},now);
     // Experimental 13.4.15 evaluation: baseline 13.4.11 is untouched unless
@@ -446,7 +455,7 @@ export class DemoTradingRuntime{
       return decorate({...empty,side:this.operationalSetup?.side||main.side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',reason:this.entryQualification.reason});
     }
     const {side,kind,plan:localPlan}=candidate,call=side==='CALL';
-    const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
+    const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
     const prediction=this.entryResearch.predict(researchContext,features,Number.isFinite(baseline)?baseline:.5);
     const learnedWeak=prediction.qualified&&prediction.probability<10/12;
     this.entryQualification={allowed:!learnedWeak,flow:candidate.flow,structure:candidate.structure,fresh:candidate.fresh,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,blockedBy:learnedWeak?'entry-model':null,reason:learnedWeak?'Modelo qualificado não confirma este ponto.':candidate.reason};
