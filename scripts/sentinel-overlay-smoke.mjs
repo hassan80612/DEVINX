@@ -109,7 +109,27 @@ try{
   }
 
 
+  // Regression: the independent entry has ended but the main PUT
+  // scenario still has seconds left. Never show generic "ANÁLISE EM ANDAMENTO"
+  // or a white, low-priority reason for a terminal entry.
+  const finishedAt=Date.now();
+  const finishedPut={...operational,side:'PUT',state:'OPORTUNIDADE CONSUMIDA',
+    createdAt:finishedAt-5000,entryAt:finishedAt-4000,activeUntil:finishedAt-500,
+    scenario:{side:'PUT',createdAt:finishedAt-5000,deadline:finishedAt+8500,closed:false,status:'OPEN'},
+    entryAnalyst:{independent:true,qualification:{allowed:false},signal:{side:'PUT',state:'OPORTUNIDADE CONSUMIDA',actionable:false,activeUntil:finishedAt-500}},
+    reason:'Esta oportunidade terminou; aguardando outro ponto estrutural confirmado.'};
+  await update({...data,operationalSignal:finishedPut});
+  assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO PUT');
+  assert.match(await card.locator('[data-sentinel-scenario-status]').innerText(),/CENÁRIO · [1-9]\\d*s/);
+  assert.match(await card.locator('[data-sentinel-scenario-phase]').innerText(),/ENTRADA ENCERRADA · NÃO ENTRAR/);
+  assert.doesNotMatch(await card.locator('[data-sentinel-scenario-phase]').innerText(),/ANÁLISE EM ANDAMENTO/);
+  const closingAlert=card.locator('[data-sentinel-entry-closure="ended"]');
+  assert.match(await closingAlert.innerText(),/ESTA OPORTUNIDADE TERMINOU · NÃO ENTRAR/);
+  assert.equal(await closingAlert.evaluate(el=>getComputedStyle(el).borderTopWidth),'2px');
+  await mkdir('sentinel-test-output',{recursive:true});
+  await card.screenshot({path:'sentinel-test-output/entry-closed-scenario-still-open.png'});
   await update(data);
+  assert.equal(await card.locator('[data-sentinel-entry-closure="ended"]').count(),0);
   assert.match(await card.innerText(),/FECHA EM/);
   assert.match(await card.innerText(),/MODELO 80 pts/);
   assert.match(await card.innerText(),/ainda sem resultados medidos/);
