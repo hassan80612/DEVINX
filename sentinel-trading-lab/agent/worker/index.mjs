@@ -1,3 +1,4 @@
+import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
 import http from 'node:http';
 import {readFile,writeFile,mkdir,rename,chmod} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
@@ -11,8 +12,8 @@ import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
-const VERSION='13.4.8';
-const BUILD='13.4.8-rebuild-1007';
+const VERSION='13.4.9';
+const BUILD='13.4.9-subanalyst-1008';
 const HOST=process.env.SENTINEL_WORKER_HOST||'127.0.0.1';
 const PORT=Number(process.env.SENTINEL_WORKER_PORT||8787);
 const TOKEN=process.env.SENTINEL_WORKER_TOKEN||'';
@@ -51,28 +52,14 @@ const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FIL
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
-let realtimeKick=null,lastRealtimeEvalAt=0,lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastPersistAt=0,lastMarketSyncAt=0;
+let lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastPersistAt=0,lastMarketSyncAt=0;
+const realtimeQuotes=new LatestQuoteScheduler({isBusy:()=>busy,isRunning:()=>runtime.stateName==='running',evaluate:async()=>{
+  syncRuntimeMarket();lastMarketSyncAt=Date.now();runtime.requestImmediateEvaluation?.();await loop();
+}});
 driver.setMarketUpdateHandler?.((provider,event={})=>{
   if(provider!==activeProvider)return;
-  // Troca de ativo é uma barreira forte: sincronize o runtime imediatamente para
-  // invalidar níveis/percentuais do ativo anterior antes de qualquer nova análise.
-  if(event?.assetChanged===true){
-    syncRuntimeMarket();
-    lastRealtimeEvalAt=0;
-    runtime.requestImmediateEvaluation?.();
-    if(runtime.stateName!=='running')return;
-  }else if(runtime.stateName!=='running')return;
-  const now=Date.now();
-  if(now-lastRealtimeEvalAt<500)return;
-  lastRealtimeEvalAt=now;
-  runtime.requestImmediateEvaluation?.();
-  if(realtimeKick)return;
-  realtimeKick=setTimeout(()=>{
-    realtimeKick=null;
-    // Evaluate the quote that caused this event, not the previous 700ms snapshot.
-    syncRuntimeMarket();lastMarketSyncAt=Date.now();
-    loop().catch(()=>{});
-  },100);
+  if(event.assetChanged===true){syncRuntimeMarket();runtime.requestImmediateEvaluation?.();}
+  if(runtime.stateName==='running')realtimeQuotes.request();
 });
 async function ensureLocalCockpitBroker(provider){
   assertLicensedAccess();
@@ -297,7 +284,7 @@ function ensureAccess(path,{local=false}={}){
   if(!requiresAccess(path))return;
   assertLicensedAccess();
 }
-async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
+async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST')return runtime.setMode(payload.mode,payload.actor||'user');if(path==='/settings'&&method==='PATCH')return runtime.patchSettings(payload,payload.actor||'user');if(path==='/tick'&&method==='POST'){await runtime.tick(Number(payload.now||Date.now()));return status()}if(path==='/brokers'&&method==='GET')return status();
   const p=providerFromPath(path);if(p){const adapter=brokers[p.name];if(p.action==='status'&&method==='GET')return{broker:{...adapter.status(),marketData:driver.liveStatus?.(p.name)||null},login:driver.peek?.(p.name)||loginStates[p.name]};if(p.action==='login'&&method==='POST'){
     loginStates[p.name]={provider:p.name,open:true,phase:'opening',updatedAt:new Date().toISOString()};
     try{
@@ -358,7 +345,7 @@ async function withTimeout(promise,ms,label='operation_timeout'){
 let remoteBusy=false;
 async function remoteState(){
   const x=await status();
-  return {agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,research:x.research,marketJournal:x.marketJournal,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
+  return {agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,research:x.research,entryResearch:x.entryResearch,marketJournal:x.marketJournal,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
 }
 async function remoteLoop(){
   if(remoteBusy)return;remoteBusy=true;

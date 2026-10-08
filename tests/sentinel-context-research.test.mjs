@@ -17,29 +17,29 @@ function fixture(side='CALL'){
 }
 test('a first touch is insufficient, independent quotes can confirm without a fixed delay',()=>{
   for(const side of ['CALL','PUT']){const{r,a}=fixture(side),price=side==='CALL'?100.01:99.99;
-    const first=r._operationalSignalState(a,{price,quoteTs:t,quoteHistory:[{ts:t,price}]},t);assert.equal(first.actionable,false);
-    const duplicate=r._operationalSignalState(a,{price,quoteTs:t,quoteHistory:[{ts:t,price}]},t+100);assert.equal(duplicate.actionable,false);
-    const second=r._operationalSignalState(a,{price,quoteTs:t+200,quoteHistory:[{ts:t,price},{ts:t+200,price}]},t+200);assert.equal(second.actionable,true);assert.equal(second.createdAt,t);
+    const first=r._entryTimingState(a,{price,quoteTs:t,quoteHistory:[{ts:t,price}]},t);assert.equal(first.actionable,false);
+    const duplicate=r._entryTimingState(a,{price,quoteTs:t,quoteHistory:[{ts:t,price}]},t+100);assert.equal(duplicate.actionable,false);
+    const second=r._entryTimingState(a,{price,quoteTs:t+200,quoteHistory:[{ts:t,price},{ts:t+200,price}]},t+200);assert.equal(second.actionable,true);assert.equal(second.createdAt,t);
   }
 });
 test('touch, failed hold, retouch must not reuse the previous confirmation',()=>{
-  const{r,a}=fixture();r._operationalSignalState(a,{price:100.1,quoteTs:t},t);r._operationalSignalState(a,{price:99.9,quoteTs:t+100},t+100);
-  const retry=r._operationalSignalState(a,{price:100.1,quoteTs:t+200},t+200);assert.equal(retry.actionable,false);
+  const{r,a}=fixture();r._entryTimingState(a,{price:100.1,quoteTs:t},t);r._entryTimingState(a,{price:99.9,quoteTs:t+100},t+100);
+  const retry=r._entryTimingState(a,{price:100.1,quoteTs:t+200},t+200);assert.equal(retry.actionable,false);
 });
 test('unconfirmed reversal candidates cannot bypass violent opposite flow',()=>{
   for(const side of ['CALL','PUT']){const{r,a}=fixture(side),call=side==='CALL',sign=call?-1:1,price=call?100.1:99.9;
     a.metrics.shortModel={ready:true,reversalCallCandidate:call,reversalPutCandidate:!call,turnUp:false,turnDown:false};a.metrics.micro={delta5:sign*.01,delta15:sign*.02,p5:sign*2.1,pulse:sign*14};
-    const op=r._operationalSignalState(a,{price,quoteTs:t,quoteHistory:[{ts:t-200,price},{ts:t,price}]},t);assert.equal(op.actionable,false);assert.equal(op.state,'AGUARDAR FORÇA');
+    const op=r._entryTimingState(a,{price,quoteTs:t,quoteHistory:[{ts:t-200,price},{ts:t,price}]},t);assert.equal(op.actionable,false);assert.equal(op.state,'AGUARDAR FORÇA');
   }
 });
 test('opposition evaluations require different quotes and stretched state alone does not cancel',()=>{
-  const{r,a}=fixture();r._operationalSignalState(a,{price:99.9,quoteTs:t},t);
+  const{r,a}=fixture();r._entryTimingState(a,{price:99.9,quoteTs:t},t);
   a.entryPlanner.horizons['60'].safety={blocked:true,chaseBlocked:true,blockedSide:'CALL'};
-  for(const ms of [100,200,300])assert.notEqual(r._operationalSignalState(a,{price:99.9,quoteTs:t},t+ms).state,'INVALIDADO');
+  for(const ms of [100,200,300])assert.notEqual(r._entryTimingState(a,{price:99.9,quoteTs:t},t+ms).state,'INVALIDADO');
   a.metrics.shortModel={ready:true};a.metrics.micro={delta5:-.01,delta15:-.02,p5:-2.1,pulse:-14};
-  const one=r._operationalSignalState(a,{price:99.9,quoteTs:t+500},t+500);assert.notEqual(one.state,'INVALIDADO');
-  assert.notEqual(r._operationalSignalState(a,{price:99.9,quoteTs:t+500},t+600).state,'INVALIDADO');
-  assert.equal(r._operationalSignalState(a,{price:99.9,quoteTs:t+700},t+700).state,'INVALIDADO');
+  const one=r._entryTimingState(a,{price:99.9,quoteTs:t+500},t+500);assert.notEqual(one.state,'INVALIDADO');
+  assert.notEqual(r._entryTimingState(a,{price:99.9,quoteTs:t+500},t+600).state,'INVALIDADO');
+  assert.equal(r._entryTimingState(a,{price:99.9,quoteTs:t+700},t+700).state,'INVALIDADO');
 });
 test('timeframe buckets stay on clock boundaries when new candles arrive',()=>{
   const bars=Array.from({length:10},(_,i)=>({from:i*60,to:(i+1)*60,open:i,high:i+1,low:i,close:i+.5}));

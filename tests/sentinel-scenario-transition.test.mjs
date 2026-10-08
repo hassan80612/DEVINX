@@ -20,47 +20,47 @@ test('actual planner metadata never makes continuation or breakout wait for a re
   assert.match(generated.basis,/reversão/);
   for(const side of ['CALL','PUT'])for(const kind of ['continuation','breakout','forming']){
     const r=runtime(),a=analysis(side,{kind});for(const p of Object.values(a.entryPlanner.horizons))p.basis=generated.basis;
-    const price=side==='CALL'?100.01:99.99,o=r._operationalSignalState(a,snap([price,price],t),t);
+    const price=side==='CALL'?100.01:99.99,o=r._entryTimingState(a,snap([price,price],t),t);
     assert.equal(o.actionable,true,side+' '+kind);assert.equal(r.operationalSetup.kind,kind);assert.equal(o.confirmation.kind,'continuation');
   }
 });
 test('real reversal still requires a region touch and a confirmed reaction',()=>{
   for(const side of ['CALL','PUT']){
     const r=runtime(),a=analysis(side,{kind:'reversal',confirmed:true}),price=side==='CALL'?100.01:99.99;
-    assert.equal(r._operationalSignalState(a,snap([price,price],t),t).actionable,false);
-    const touch=side==='CALL'?99.99:100.01;const o=r._operationalSignalState(a,snap([touch,price,price],t+600),t+600);
+    assert.equal(r._entryTimingState(a,snap([price,price],t),t).actionable,false);
+    const touch=side==='CALL'?99.99:100.01;const o=r._entryTimingState(a,snap([touch,price,price],t+600),t+600);
     assert.equal(o.actionable,true);assert.equal(o.confirmation.kind,'reversal');
   }
 });
 test('a confirmed opposite reaction can enter immediately and preserves the original outcome',()=>{
   for(const oldSide of ['CALL','PUT']){
     const r=runtime(),oldPrice=oldSide==='CALL'?100.01:99.99;
-    const original=r._operationalSignalState(analysis(oldSide),snap([oldPrice,oldPrice],t),t);
+    const original=r._entryTimingState(analysis(oldSide),snap([oldPrice,oldPrice],t),t);
     assert.equal(original.actionable,true);const firstPending=structuredClone(r.signalValidation.pending[0]);
     const newSide=oldSide==='CALL'?'PUT':'CALL',touch=newSide==='CALL'?99.99:100.01,price=newSide==='CALL'?100.02:99.98;
-    const o=r._operationalSignalState(analysis(newSide,{kind:'reversal',confirmed:true}),snap([touch,price,price],t+1000),t+1000);
+    const o=r._entryTimingState(analysis(newSide,{kind:'reversal',confirmed:true}),snap([touch,price,price],t+1000),t+1000);
     assert.equal(o.side,newSide);assert.equal(o.actionable,true);assert.equal(o.entryAt,t+1000);assert.equal(o.transition.fromCreatedAt,original.createdAt);assert.equal(o.transition.fromSide,oldSide);
     assert.deepEqual(r.signalValidation.pending[0],firstPending);assert.equal(r.signalValidation.pending.length,2);
-    const later=r._operationalSignalState(analysis(newSide,{kind:'reversal',confirmed:true}),snap([price,price],t+5000),t+5000);
+    const later=r._entryTimingState(analysis(newSide,{kind:'reversal',confirmed:true}),snap([price,price],t+5000),t+5000);
     assert.equal(later.state,'ACOMPANHANDO');assert.equal(later.actionable,false);assert.equal(r.signalValidation.pending.length,2);
   }
 });
 test('opposite forecasts and repeated quotes alone cannot authorize a reversal',()=>{
   for(const confirmed of [false,true]){
-    const r=runtime();r._operationalSignalState(analysis('PUT',{trigger:99}),snap([99.5,99.5],t),t);
+    const r=runtime();r._entryTimingState(analysis('PUT',{trigger:99}),snap([99.5,99.5],t),t);
     const a=analysis('CALL',{kind:'reversal',confirmed}),one=snap([99.99,100.01],t+1000);
-    const o=r._operationalSignalState(a,one,t+1000);assert.equal(o.actionable,false);assert.equal(o.side,'PUT');
-    assert.equal(r._operationalSignalState(a,one,t+1100).actionable,false);assert.equal(r.signalValidation.pending.length,0);
+    const o=r._entryTimingState(a,one,t+1000);assert.equal(o.actionable,false);assert.equal(o.side,'PUT');
+    assert.equal(r._entryTimingState(a,one,t+1100).actionable,false);assert.equal(r.signalValidation.pending.length,0);
   }
 });
 test('opposite candidates respect expiration, barriers, reset and no future quotes',()=>{
   for(const block of ['expiration','barrier','future-touch']){
-    const r=runtime();r._operationalSignalState(analysis('PUT',{trigger:99}),snap([99.5,99.5],t),t);
+    const r=runtime();r._entryTimingState(analysis('PUT',{trigger:99}),snap([99.5,99.5],t),t);
     const a=analysis('CALL',{kind:'reversal',confirmed:true});
     if(block==='expiration')a.entryPlanner.horizons['30'].rawBias='PUT';
     if(block==='barrier')a.entryPlanner.horizons['30'].safety={blocked:true};
     const q=snap([99.99,100.01,100.01],t+1000);if(block==='future-touch')q.quoteHistory[0].ts=t+5000;
-    assert.equal(r._operationalSignalState(a,q,t+1000).actionable,false,block);
+    assert.equal(r._entryTimingState(a,q,t+1000).actionable,false,block);
     r.patchSettings({asset:'OTHER'});assert.equal(r.oppositeOperationalSetup,null);assert.equal(r.operationalSetup,null);
   }
 });
@@ -71,7 +71,7 @@ test('continuation cannot authorize the old direction during a confirmed short t
     // The 15s trend still favors the forecast, while the 5s reaction has turned.
     a.metrics.micro={delta5:call?-.01:.01,delta15:call?.10:-.10};
     a.metrics.shortModel={ready:true,turnDown:call,turnUp:!call};
-    const o=r._operationalSignalState(a,snap([price,price],t),t);
+    const o=r._entryTimingState(a,snap([price,price],t),t);
     assert.equal(o.actionable,false);assert.equal(o.state,'AGUARDAR FORÇA');assert.match(o.reason,/virada curta/);assert.equal(r.signalValidation.pending.length,0);
   }
 });
@@ -80,7 +80,7 @@ test('a forecast cannot enter as its movement weakens and begins to retrace',()=
     const r=runtime(),a=analysis(side),call=side==='CALL',price=call?100.01:99.99;
     a.metrics.micro={delta2:call?-.01:.01,delta5:call?.02:-.02,delta15:call?.10:-.10};
     a.metrics.shortModel={ready:true,weakeningUp:call,weakeningDown:!call};
-    const o=r._operationalSignalState(a,snap([price,price],t),t);
+    const o=r._entryTimingState(a,snap([price,price],t),t);
     assert.equal(o.actionable,false);assert.match(o.reason,/perdeu força/);
   }
 });
@@ -88,23 +88,23 @@ test('a point already exceeded does not become a late fresh entry',()=>{
   for(const side of ['CALL','PUT']){
     const r=runtime(),a=analysis(side),call=side==='CALL';
     for(const p of Object.values(a.entryPlanner.horizons))p.entryTiming={maxDistance:.05};
-    const price=call?100.1:99.9,o=r._operationalSignalState(a,snap([price,price],t),t);
+    const price=call?100.1:99.9,o=r._entryTimingState(a,snap([price,price],t),t);
     assert.equal(o.actionable,false);assert.equal(o.state,'AGUARDAR PONTO');assert.equal(r.signalValidation.pending.length,0);
     const recovered=call?100.02:99.98;
-    const next=r._operationalSignalState(a,snap([recovered,recovered],t+1000),t+1000);
+    const next=r._entryTimingState(a,snap([recovered,recovered],t+1000),t+1000);
     assert.equal(next.actionable,true);assert.equal(next.targetAt,o.targetAt);
   }
 });
 test('forming setup adopts a qualified closer continuation once without resetting the window',()=>{
   for(const side of ['CALL','PUT']){
     const r=runtime(),call=side==='CALL',initial=analysis(side,{kind:'forming',trigger:call?101:99});
-    const first=r._operationalSignalState(initial,snap([100,100],t),t);assert.equal(first.actionable,false);
+    const first=r._entryTimingState(initial,snap([100,100],t),t);assert.equal(first.actionable,false);
     const a=analysis(side,{kind:'continuation',trigger:100});
     for(const p of Object.values(a.entryPlanner.horizons)){p.scenario.triggerBasis='previous-short-bar';p.entryTiming={maxDistance:.05}}
-    const price=call?100.02:99.98,next=r._operationalSignalState(a,snap([price,price],t+1000),t+1000);
+    const price=call?100.02:99.98,next=r._entryTimingState(a,snap([price,price],t+1000),t+1000);
     assert.equal(next.actionable,true);assert.equal(next.createdAt,first.createdAt);assert.equal(next.targetAt,first.targetAt);assert.equal(next.trigger,100);
     const moved=analysis(side,{kind:'continuation',trigger:call?100.5:99.5});
-    const later=r._operationalSignalState(moved,snap([price,price],t+1500),t+1500);assert.equal(later.trigger,100);
+    const later=r._entryTimingState(moved,snap([price,price],t+1500),t+1500);assert.equal(later.trigger,100);
   }
 });
 
@@ -122,64 +122,64 @@ test('unvalidated earlier local timing stays in research on a chronological real
 test('lost strength withdraws an active burst and recovery needs a new independently confirmed point',()=>{
   for(const side of ['CALL','PUT']){
     const r=runtime(),call=side==='CALL',price=call?100.01:99.99,a=analysis(side);
-    const first=r._operationalSignalState(a,snap([price,price],t),t);assert.equal(first.actionable,true);
+    const first=r._entryTimingState(a,snap([price,price],t),t);assert.equal(first.actionable,true);
     const original=structuredClone(r.signalValidation.pending[0]);
     a.metrics.shortModel={ready:true,weakeningUp:call,weakeningDown:!call};a.metrics.micro.delta2=call?-.01:.01;
-    const wait=r._operationalSignalState(a,snap([price,price],t+500),t+500);assert.equal(wait.actionable,false);assert.equal(wait.state,'AGUARDAR FORÇA');
+    const wait=r._entryTimingState(a,snap([price,price],t+500),t+500);assert.equal(wait.actionable,false);assert.equal(wait.state,'AGUARDAR FORÇA');
     a.metrics.shortModel={ready:true};a.metrics.micro.delta2=call?.01:-.01;
     for(const p of Object.values(a.entryPlanner.horizons)){p.scenario.triggerBasis='previous-short-bar';p.entryTiming={maxDistance:.05,sourceBarAt:t}}
-    const old=r._operationalSignalState(a,snap([price,price],t+4000),t+4000);assert.equal(old.actionable,false);assert.equal(r.signalValidation.pending.length,1);
+    const old=r._entryTimingState(a,snap([price,price],t+4000),t+4000);assert.equal(old.actionable,false);assert.equal(r.signalValidation.pending.length,1);
     for(const p of Object.values(a.entryPlanner.horizons))p.entryTiming.sourceBarAt=t+5000;
     const single={price,quoteTs:t+10000,quoteHistory:[{ts:t+10000,price}]};
-    assert.equal(r._operationalSignalState(a,single,t+10000).actionable,false);
-    const next=r._operationalSignalState(a,snap([price,price],t+10200),t+10200);
+    assert.equal(r._entryTimingState(a,single,t+10000).actionable,false);
+    const next=r._entryTimingState(a,snap([price,price],t+10200),t+10200);
     assert.equal(next.actionable,true);assert.equal(next.targetAt,first.targetAt);assert.notEqual(next.createdAt,first.createdAt);
     assert.equal(next.activeUntil,t+13700);assert.equal(r.signalValidation.pending.length,2);assert.deepEqual(r.signalValidation.pending[0],original);
-    assert.equal(r._operationalSignalState(a,snap([price,price],t+14000),t+14000).actionable,false);
+    assert.equal(r._entryTimingState(a,snap([price,price],t+14000),t+14000).actionable,false);
   }
 });
 
 test('withdrawn entry cannot reuse prices from before its loss of strength',()=>{
   const r=runtime(),a=analysis('CALL'),price=100.01;
-  r._operationalSignalState(a,snap([price,price],t),t);
+  r._entryTimingState(a,snap([price,price],t),t);
   a.metrics.shortModel={ready:true,weakeningUp:true};a.metrics.micro.delta2=-.01;
-  r._operationalSignalState(a,snap([price,price],t+500),t+500);
+  r._entryTimingState(a,snap([price,price],t+500),t+500);
   a.metrics.shortModel={ready:true};a.metrics.micro.delta2=.01;
   const old={price,quoteTs:t+600,quoteHistory:[{ts:t,price},{ts:t+600,price}]};
-  assert.equal(r._operationalSignalState(a,old,t+600).actionable,false);
-  assert.equal(r._operationalSignalState(a,snap([price,price],t+800),t+800).actionable,true);
+  assert.equal(r._entryTimingState(a,old,t+600).actionable,false);
+  assert.equal(r._entryTimingState(a,snap([price,price],t+800),t+800).actionable,true);
 });
 
 test('quotes remaining beyond a level cannot confirm entry while moving the wrong way',()=>{
   for(const side of ['CALL','PUT']){
     const r=runtime(),call=side==='CALL',a=analysis(side),falling=call?[100.03,100.02]:[99.97,99.98];
-    const o=r._operationalSignalState(a,snap(falling,t),t);assert.equal(o.actionable,false);assert.equal(r.signalValidation.pending.length,0);
+    const o=r._entryTimingState(a,snap(falling,t),t);assert.equal(o.actionable,false);assert.equal(r.signalValidation.pending.length,0);
     const restored=call?[100.02,100.03]:[99.98,99.97];
-    assert.equal(r._operationalSignalState(a,snap(restored,t+500),t+500).actionable,true);
+    assert.equal(r._entryTimingState(a,snap(restored,t+500),t+500).actionable,true);
   }
 });
 
 test('independently confirmed opposite continuation can replace an active side without a reversal label',()=>{
   for(const oldSide of ['CALL','PUT']){
     const r=runtime(),oldPrice=oldSide==='CALL'?100.01:99.99;
-    const first=r._operationalSignalState(analysis(oldSide),snap([oldPrice,oldPrice],t),t);assert.equal(first.actionable,true);
+    const first=r._entryTimingState(analysis(oldSide),snap([oldPrice,oldPrice],t),t);assert.equal(first.actionable,true);
     const original=structuredClone(r.signalValidation.pending[0]),side=oldSide==='CALL'?'PUT':'CALL',price=side==='CALL'?100.02:99.98;
     const a=analysis(side);for(const p of Object.values(a.entryPlanner.horizons)){p.scenario.continuationReady=true;p.displayCallProbability=oldSide==='CALL'?80:20;p.displayPutProbability=100-p.displayCallProbability}
-    const o=r._operationalSignalState(a,snap([price,price],t+1000),t+1000);
+    const o=r._entryTimingState(a,snap([price,price],t+1000),t+1000);
     assert.equal(o.side,side);assert.equal(o.actionable,true);assert.equal(o.transition.fromSide,oldSide);assert.match(o.transition.reason,/Continuação/);
     assert.equal(r.signalValidation.pending.length,2);assert.deepEqual(r.signalValidation.pending[0],original);
-    assert.equal(r._operationalSignalState(a,snap([price,price],t+5000),t+5000).actionable,false);
+    assert.equal(r._entryTimingState(a,snap([price,price],t+5000),t+5000).actionable,false);
   }
 });
 test('opposite continuation still needs both horizons, aligned flow and independent prices',()=>{
   for(const block of ['unqualified-kind','flow','weakening','horizon','one-quote']){
-    const r=runtime();r._operationalSignalState(analysis('CALL'),snap([100.01,100.01],t),t);
+    const r=runtime();r._entryTimingState(analysis('CALL'),snap([100.01,100.01],t),t);
     const a=analysis('PUT');for(const p of Object.values(a.entryPlanner.horizons))p.scenario.continuationReady=true;
     if(block==='unqualified-kind')a.entryPlanner.horizons['30'].scenario.kind='forming';
     if(block==='flow')a.metrics.micro.delta15=.01;
     if(block==='weakening')a.metrics.shortModel.weakeningDown=true;
     if(block==='horizon')a.entryPlanner.horizons['30'].directionReady=false;
     const q=block==='one-quote'?{price:99.98,quoteTs:t+1000,quoteHistory:[{ts:t+1000,price:99.98}]}:snap([99.98,99.98],t+1000);
-    const o=r._operationalSignalState(a,q,t+1000);assert.equal(o.actionable,false,block);assert.equal(o.side,'CALL',block);assert.equal(r.signalValidation.pending.length,1,block);
+    const o=r._entryTimingState(a,q,t+1000);assert.equal(o.actionable,false,block);assert.equal(o.side,'CALL',block);assert.equal(r.signalValidation.pending.length,1,block);
   }
 });

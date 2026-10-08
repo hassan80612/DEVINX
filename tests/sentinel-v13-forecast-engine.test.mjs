@@ -208,7 +208,7 @@ test('1m forecast plus 30s expiration opens the forecast window immediately',()=
   const rt=new DemoTradingRuntime({seed:44,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
   const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,quoteHistory:[{ts:t-200,price:1.10},{ts:t,price:1.10}]};
-  const state=rt._operationalSignalState(analysis,snap,t);
+  const state=rt._entryTimingState(analysis,snap,t);
   assert.notEqual(state.state,'AGUARDAR JANELA');
   assert.equal(state.timeToEntryMs,0);
   assert.equal(state.entryWindowStartAt,t);
@@ -220,10 +220,10 @@ test('30s forecast plus 30s expiration opens immediately and only closes the con
   const rt=new DemoTradingRuntime({seed:45,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
   const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10,quoteHistory:[{ts:t-200,price:1.10},{ts:t,price:1.10}]};
-  const now=rt._operationalSignalState(analysis,snap,t);
+  const now=rt._entryTimingState(analysis,snap,t);
   assert.equal(now.state,'ENTRADA');
   assert.equal(now.actionable,true);
-  const late=rt._operationalSignalState(analysis,snap,t+6000);
+  const late=rt._entryTimingState(analysis,snap,t+6000);
   assert.equal(late.actionable,false);
   assert.equal(late.state,'ACOMPANHANDO');
 });
@@ -234,7 +234,7 @@ test('a future CALL stays blocked while live force is burning strongly down',()=
   const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
   analysis.metrics.shortModel={...analysis.metrics.shortModel,ready:true,accelDown:true,turnUp:false,reversalCallCandidate:false,failedBreakDown:false};
   analysis.metrics.micro={delta5:-0.001,delta15:-0.002,p5:-1.7,pulse:-11};
-  const blocked=rt._operationalSignalState(analysis,snap,t);
+  const blocked=rt._entryTimingState(analysis,snap,t);
   assert.equal(blocked.side,'CALL');
   assert.equal(blocked.state,'AGUARDAR FORÇA');
   assert.equal(blocked.actionable,false);
@@ -245,16 +245,16 @@ test('violent opposite micro impulse invalidates a locked future side without ad
   const rt=new DemoTradingRuntime({seed:461,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
   const t=Date.now(),analysis=timedAnalysis('CALL'),snap={price:1.10};
-  const first=rt._operationalSignalState(analysis,snap,t);
+  const first=rt._entryTimingState(analysis,snap,t);
   assert.notEqual(first.state,'AGUARDAR JANELA');
   const originalTarget=first.targetAt;
   analysis.metrics.shortModel={...analysis.metrics.shortModel,ready:true,accelDown:true,turnUp:false,reversalCallCandidate:false,failedBreakDown:false};
   analysis.metrics.micro={delta5:-0.002,delta15:-0.004,p5:-2.1,pulse:-14};
-  const one=rt._operationalSignalState(analysis,snap,t+1000);
+  const one=rt._entryTimingState(analysis,snap,t+1000);
   assert.equal(one.side,'CALL');
   assert.equal(rt.operationalSetup.oppositionCycles,1);
   assert.equal(one.targetAt,originalTarget);
-  const two=rt._operationalSignalState(analysis,snap,t+2000);
+  const two=rt._entryTimingState(analysis,snap,t+2000);
   assert.equal(two.state,'INVALIDADO');
   assert.equal(two.side,'CALL');
 });
@@ -264,7 +264,7 @@ test('directionReady is mandatory before a future forecast becomes operational',
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=30000;
   const analysis=timedAnalysis('CALL');
   analysis.entryPlanner.horizons['30'].directionReady=false;
-  const state=rt._operationalSignalState(analysis,{price:1.10},Date.now());
+  const state=rt._entryTimingState(analysis,{price:1.10},Date.now());
   assert.equal(state.actionable,false);
   assert.equal(state.side,'AGUARDAR');
 });
@@ -281,7 +281,7 @@ test('expiration is advisory only: a longer expiration never delays or blocks th
   const rt=new DemoTradingRuntime({seed:48,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=30;rt.settings.orderDurationMs=60000;
   const t=Date.now(),analysis=timedAnalysis('CALL');
-  const state=rt._operationalSignalState(analysis,{price:1.10,brokerExpirationDurationMs:120000},t);
+  const state=rt._entryTimingState(analysis,{price:1.10,brokerExpirationDurationMs:120000},t);
   assert.notEqual(state.state,'AJUSTAR TEMPO');
   assert.notEqual(state.state,'AGUARDAR JANELA');
   assert.equal(state.timeToEntryMs,0);
@@ -318,22 +318,22 @@ test('locked forecast side does not chatter and a confirmed opposite scenario ge
   const rt=new DemoTradingRuntime({seed:49,balance:10000});
   rt.settings.asset='EUR/USD OTC';rt.settings.forecastHorizonSeconds=60;rt.settings.orderDurationMs=30000;
   const t=Date.now(),snap={price:1.10};
-  const first=rt._operationalSignalState(timedAnalysis('CALL'),snap,t);
+  const first=rt._entryTimingState(timedAnalysis('CALL'),snap,t);
   assert.equal(first.side,'CALL');
   assert.notEqual(first.state,'AGUARDAR JANELA');
   const firstTarget=first.targetAt;
 
-  const oppositeOnce=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+1000);
+  const oppositeOnce=rt._entryTimingState(timedAnalysis('PUT'),snap,t+1000);
   assert.equal(oppositeOnce.side,'CALL',JSON.stringify(oppositeOnce));
   assert.equal(oppositeOnce.targetAt,firstTarget);
   assert.equal(rt.operationalSetup.side,'CALL');
   assert.equal(rt.operationalSetup.oppositionCycles,1);
 
-  const oppositeTwice=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2000);
+  const oppositeTwice=rt._entryTimingState(timedAnalysis('PUT'),snap,t+2000);
   assert.equal(oppositeTwice.side,'CALL');
   assert.equal(oppositeTwice.state,'INVALIDADO');
 
-  const newPut=rt._operationalSignalState(timedAnalysis('PUT'),snap,t+2500);
+  const newPut=rt._entryTimingState(timedAnalysis('PUT'),snap,t+2500);
   assert.equal(newPut.side,'PUT');
   assert.notEqual(newPut.state,'AGUARDAR JANELA');
   assert.equal(newPut.targetAt,t+2500+60000);

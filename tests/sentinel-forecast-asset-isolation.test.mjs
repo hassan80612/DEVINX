@@ -39,7 +39,7 @@ test('Sentinel rejects a planner from another asset in the operational signal', 
   const runtime = new DemoTradingRuntime({ seed: 8, balance: 10000 });
   runtime.settings.asset = 'GOLD';
 
-  const result = runtime._operationalSignalState({
+  const result = runtime._entryTimingState({
     generalConsensus: { side: 'CALL', state: 'ALINHADO', strength: 70, edge: 20 },
     quality: {},
     entryPlanner: {
@@ -299,9 +299,9 @@ test('Future UI reserves directional entry instructions for operational timing g
 test('Asset-change events force immediate runtime synchronization before new analysis', async () => {
   const worker = await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs', import.meta.url), 'utf8');
   assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
-  assert.ok(worker.includes('if(event?.assetChanged===true){'));
+  assert.ok(worker.includes('if(event.assetChanged===true){'));
   assert.ok(worker.includes('syncRuntimeMarket();'));
-  assert.ok(worker.includes("const VERSION='13.4.8'"));
+  assert.ok(worker.includes("const VERSION='13.4.9'"));
 });
 
 test('Protocol active_id changes are surfaced as assetChanged events', () => {
