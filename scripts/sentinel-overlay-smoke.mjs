@@ -190,8 +190,9 @@ try{
   assert.match(await analyst.innerText(),/sinal anterior/,'expired signal is labeled prior, not actionable');
   await page.clock.runFor(600);
   assert.match(await analyst.innerText(),new RegExp('Subanalista:\\s*OBSERVANDO ENTRADA'),'hold expires after 6 seconds without a new trade');
-  const heldHeight=await card.evaluate(el=>el.getBoundingClientRect().height);
-  assert.ok(Math.abs(heldHeight-stableAnalystHeight)<2,'longer hold cannot increase card height');
+  const heldBar=await analyst.evaluate(el=>({height:el.getBoundingClientRect().height,scrollWidth:el.scrollWidth,clientWidth:el.clientWidth}));
+  assert.ok(Math.abs(heldBar.height-36)<1,'the existing subanalyst bar must stay 36px tall');
+  assert.ok(heldBar.scrollWidth<=heldBar.clientWidth,'the longer hold must not overflow its existing bar');
   // The test harness resets virtual browser time on the next payload (backwards).
   // Isolate subsequent scenarios from the completed six-second hold.
   await page.evaluate(()=>{window.__sentinelSubanalystHold=null;clearTimeout(window.__sentinelSubanalystClearTimer);window.__sentinelSubanalystClearTimer=null});
