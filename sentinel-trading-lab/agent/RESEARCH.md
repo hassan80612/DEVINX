@@ -90,3 +90,12 @@ Price timing uses the previous closed 5s bar for continuation/breakout and the f
 Entry validation keys isolate the new local policy. Frozen baseline probabilities still come from the original expiry forecast, not the technical entry score. UI permission follows the independent operational signal, including when that old forecast still points the other way. Existing provider, asset, expiry, consumption and installer isolation remain covered. This release does not establish the requested trading win rate.
 
 The independent analyst does not inherit the generic 60-sample history veto. Its per-context forward entry model is evaluated separately; an unqualified history cannot prevent that model from collecting the 120 outcomes required for validation. This change addresses operation and timing, not evidence of profitable signals.
+
+
+## 13.4.11 — pre-mapped structural reaction and independent entry
+
+The subanalyst can evaluate a candidate without an open main forecast. A neutral internal coordinator is not displayed as a fabricated directional scenario. Entry opportunities remain distinct from longer scenario direction and preserve one release per consumed opportunity.
+
+Prior closed 5-second bars provide mapped support/resistance before the current touch. A first valid recovery from support (CALL) or rejection of resistance (PUT) requires the local extreme, two advancing post-touch price quotes, a still-intact level, room from the opposite barrier and current feed. This reaction can qualify before lagging 5s/15s momentum flips; mere proximity or a single tick cannot trigger an entry. The independent-entry effective point gate is the maximum of the visible configured percentage and separate technical-points setting, and the blocking reason reveals both. These are heuristic technical scores, **not** calibrated probabilities of winning.
+
+Software regression checks include two-sided first reactions, stale feed, single touch, threshold enforcement, no-main-scenario operation, consumption preservation and the original subanalyst scenarios. The suite passing does not establish 10 wins per 2 losses or any real-money profitability; a forward replay and broker-window verification remain necessary before claiming predictive improvement.
