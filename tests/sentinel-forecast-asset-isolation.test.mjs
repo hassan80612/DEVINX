@@ -301,7 +301,7 @@ test('Asset-change events force immediate runtime synchronization before new ana
   assert.ok(worker.includes('driver.setMarketUpdateHandler?.((provider,event={})=>'));
   assert.ok(worker.includes('if(event.assetChanged===true){'));
   assert.ok(worker.includes('syncRuntimeMarket();'));
-  assert.ok(worker.includes("const VERSION='13.4.11'"));
+  assert.ok(worker.includes("const VERSION='13.4.15'"));
 });
 
 test('Protocol active_id changes are surfaced as assetChanged events', () => {
