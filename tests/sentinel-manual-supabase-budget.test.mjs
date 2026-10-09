@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {resolve,existsSync} from 'node:path';
+import {readFileSync,existsSync} from 'node:fs';
+import {resolve} from 'node:path';
 import {compactRemoteState} from '../sentinel-trading-lab/agent/worker/remote-status.mjs';
 
 const root=resolve(import.meta.dirname,'..');
