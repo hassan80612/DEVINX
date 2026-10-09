@@ -5,9 +5,11 @@ type Direction='CALL'|'PUT';
 const n=(v:unknown)=>String(v??'').trim();
 const numeric=(v:string)=>Number(v.replace(',','.'));
 
-export default function ManualOrderMobile({s}:{s:any}){
+export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:any)=>Promise<any>}){
   const [amount,setAmount]=useState('2');
   const [sending,setSending]=useState(false);
+  const [switching,setSwitching]=useState(false);
+  const [switchMessage,setSwitchMessage]=useState('');
   const [message,setMessage]=useState('');
   const live=s?.liveBroker||{};
   const remote=s?.remote||{};
@@ -32,13 +34,26 @@ export default function ManualOrderMobile({s}:{s:any}){
     ?brokerBalance-balanceBase.value:null;
   const moneyText=(v:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
   const freshness=remote.heartbeatAt?Date.now()-new Date(remote.heartbeatAt).getTime():Infinity;
-  const ready=remote.online===true&&freshness<15000&&
+  const ready=!switching&&remote.online===true&&freshness<15000&&
     ['iq_option','exnova'].includes(provider)&&['demo','real'].includes(mode)&&
     !!remote.deviceId&&!!live.accountId&&live.activeId!=null&&!!asset&&
     !!expiry&&!!live.assetValidated&&!!live.candleAssetMatch&&
     !!live.executionUi?.buy&&!!live.executionUi?.sell&&!!live.executionUi?.amount&&
     live.executionUi?.assetMatch===true&&
     Number.isFinite(money)&&money>0&&money<=1000000&&Math.abs(Math.round(money*100)-money*100)<1e-7;
+  async function switchAccount(target:'demo'|'real'){
+    if(switching||sending||!remote.online||!['iq_option','exnova'].includes(provider)||mode===target)return;
+    const question=target==='real'
+      ?'Trocar para CONTA REAL na corretora do PC? Operações nessa conta usam dinheiro real. O Sentinel não fará operações automaticamente.'
+      :'Trocar para CONTA DEMO na corretora do PC?';
+    if(!window.confirm(question))return;
+    setSwitching(true);setSwitchMessage('Solicitando troca na corretora. Aguarde confirmação da conta.');
+    try{
+      const ok=await act('mode',{mode:target,provider,brokerSwitch:true});
+      setSwitchMessage(ok?'Conta alterada no PC. Confira o saldo e o tipo de conta antes de operar.':'Troca não confirmada: confira o seletor de contas na corretora do PC.');
+    }catch{setSwitchMessage('Troca não confirmada no PC. Não opere até verificar a conta.')}
+    finally{setSwitching(false)}
+  }
   async function order(side:Direction){
     if(sending||!ready)return;
     const context={provider,mode,accountId:n(live.accountId),activeId:n(live.activeId),asset,expirationRaw:expiry};
@@ -81,6 +96,12 @@ export default function ManualOrderMobile({s}:{s:any}){
       <div><small>OPERAÇÃO MANUAL</small><h3>CALL / PUT</h3></div>
       <strong className={mode==='real'?'manualModeReal':'manualModeDemo'}>{mode==='real'?'CONTA REAL':mode==='demo'?'CONTA DEMO':'CONTA NÃO VALIDADA'}</strong>
     </div>
+    <div className="manualAccountSwitch" aria-label="Selecionar conta na corretora">
+      <button type="button" className={mode==='demo'?'selected':''} disabled={switching||sending||!remote.online||mode==='demo'} onClick={()=>switchAccount('demo')}>DEMO</button>
+      <button type="button" className={mode==='real'?'selected real':''} disabled={switching||sending||!remote.online||mode==='real'} onClick={()=>switchAccount('real')}>REAL</button>
+      <small>Conta confirmada pela corretora: {mode==='real'?'REAL':mode==='demo'?'DEMO':'não verificada'}</small>
+    </div>
+    {switchMessage&&<p className="manualBlockReason" role="status">{switchMessage}</p>}
     <div className="manualRemoteMeta">
       <span><small>Ativo</small><b>{asset||'—'}</b></span>
       <span><small>Expiração</small><b>{expiry||'Não detectada'}</b></span>
