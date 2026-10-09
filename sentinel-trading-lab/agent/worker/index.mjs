@@ -405,7 +405,7 @@ async function remoteLoop(){
         // Publish new status immediately after a remote control action.
         lastRemoteHeartbeatAttemptAt=Date.now();
         await remoteRelay.heartbeat(await remoteState());
-        await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
+        await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null,manualOrder:data?.manualOrder?.status||null})
       }catch(e){
         await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)}).catch(()=>{})
       }
