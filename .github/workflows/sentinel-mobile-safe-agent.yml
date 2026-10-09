@@ -3,11 +3,13 @@ name: Sentinel Mobile Safe Agent Build
 on:
   push:
     branches:
-      - sentinel-mobile-mode-horizon-20261009
+      - sentinel-mobile-expiry-field-safe-20261009
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/src/components/ManualOrderMobile.tsx'
+      - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
+      - 'sentinel-trading-lab/src/app/globals.css'
       - 'sentinel-trading-lab/src/app/page.tsx'
       - 'sentinel-trading-lab/src/app/api/runtime/**'
       - 'tests/sentinel-manual-supabase-budget.test.mjs'
@@ -59,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch=sentinel-mobile-mode-horizon-20261009
+          branch=sentinel-mobile-expiry-field-safe-20261009
           current="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
           if [[ "$current" != "$GITHUB_SHA" ]]; then
             echo "Branch changed during build; abort stale installer publication"
