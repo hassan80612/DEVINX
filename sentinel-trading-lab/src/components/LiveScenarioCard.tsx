@@ -9,14 +9,16 @@ export function LiveScenarioCard({s,busy,act}:Props){
   const[averageThreshold,setAverageThreshold]=useState(60);
   const[averageInput,setAverageInput]=useState('60');
   const thresholdEditing=useRef(false);
+  const settingsEditing=useRef(false);
   const[horizon,setHorizon]=useState(String(s?.settings?.forecastHorizonSeconds||60));
+  const[expirySeconds,setExpirySeconds]=useState(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
   const[threshold,setThreshold]=useState(String(s?.settings?.futureDisplayThreshold||70));
   useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);
   useEffect(()=>{
-    setHorizon(String(s?.settings?.forecastHorizonSeconds||60));
+    if(!settingsEditing.current){setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));}
     // Remote status refreshes must not overwrite a value the user is typing.
     if(!thresholdEditing.current)setThreshold(String(s?.settings?.futureDisplayThreshold||70));
-  },[s?.settings?.forecastHorizonSeconds,s?.settings?.futureDisplayThreshold]);
+  },[s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold]);
   const onAverageChange=(raw:string)=>{
     const draft=raw.replace(/\D/g,'').slice(0,2);
     setAverageInput(draft);
@@ -41,6 +43,7 @@ export function LiveScenarioCard({s,busy,act}:Props){
   const m=liveCardModel(s,now,averageThreshold);
   const disabled=busy||!m.online;
   const start=async()=>{if(await act('settings',{demoAutopilot:false})!==false)await act('control/start')};
+  const applyScenario=async()=>{const ok=await act('settings',{forecastHorizonSeconds:Number(horizon),orderDurationMs:Number(expirySeconds)*1000,futureDisplayThreshold:Number(threshold)});if(ok)settingsEditing.current=false};
   return <section className={`liveScenario ${m.tone}`} aria-label="Cenário ao vivo" data-testid="live-scenario">
     <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.side?'CENÁRIO '+m.side:'CENÁRIO'}</h2><b>{m.state}</b></div><strong>{m.remaining!==null?'FECHA EM '+m.remaining+'s':'—'}</strong></header>
     <div className="liveScenarioMeta"><span>Cotação {price(m.fresh?s?.feed?.price:null)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
@@ -51,7 +54,7 @@ export function LiveScenarioCard({s,busy,act}:Props){
     <div className="liveTotals">{[['Total Mercado',m.market],['Total Estratégias',m.strategies],['Presente + Futuro',m.combined]].map(([label,value])=><div key={String(label)}><small>{label}</small><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}</div>
     <div className="liveAverage"><div><small>MÉDIA DOS 3 TOTAIS</small><h3>{m.averageSide}</h3><span>{m.average===null?'—':`CALL ${m.average}% · PUT ${100-m.average}%`}</span></div><label>Limite visual %<input aria-label="Limite visual da média" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
     <div className="liveControls"><button className="primary" disabled={disabled||s?.state==='running'||s?.killSwitch||s?.masterFrozen||!!s?.startBlockedReason} onClick={start}>{s?.state==='paused'?'Retomar análise':'Iniciar análise'}</button><button className="secondary" disabled={disabled||s?.state!=='running'} onClick={()=>act('control/pause')}>Pausar análise</button><button className="secondary" disabled={disabled||s?.state==='stopped'} onClick={()=>act('control/stop')}>Parar análise</button></div>
-    <details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>setHorizon(e.target.value)}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={()=>act('settings',{forecastHorizonSeconds:Number(horizon),futureDisplayThreshold:Number(threshold)})}>Aplicar no PC</button></div></details>
-    <footer>O PC precisa ficar ligado com o Agent e a corretora abertos. A média é apenas observação; seu limite visual vale nesta tela. Confiança em pontos não é taxa de acerto.</footer>
+    <details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Expiração (manual)<select aria-label="Expiração escolhida manualmente" value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>Aplicar no PC</button></div></details>
+    <footer>Previsão e expiração são prazos independentes. “Aplicar no PC” atualiza o Sentinel no computador; confira o mesmo vencimento na própria corretora. O limite visual afeta apenas esta tela.</footer>
   </section>
 }
