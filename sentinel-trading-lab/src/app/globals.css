@@ -858,3 +858,19 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .manualAccountSwitch button:disabled:not(.selected){opacity:.5}
 .manualAccountSwitch small{opacity:.8;font-size:11px;line-height:1.25}
 @media(max-width:600px){.manualAccountSwitch{gap:5px}.manualAccountSwitch button{min-height:32px;padding:4px 10px}.manualAccountSwitch small{font-size:10px}}
+
+/* Existing remote quote snapshot: no extra Supabase queries, subscriptions or timers. */
+.manualPricePanel{display:grid;gap:7px;padding:10px 11px;margin:6px 0 10px;border:1px solid rgba(215,183,99,.25);background:rgba(0,0,0,.14);border-radius:12px;min-width:0}
+.manualPricePanel small{font-size:10px;opacity:.8;line-height:1.35}
+.manualPriceValue{display:flex;justify-content:space-between;align-items:baseline;gap:7px;flex-wrap:wrap}
+.manualPriceValue>b{font-size:clamp(19px,4.8vw,27px);font-weight:900;line-height:1.15;font-variant-numeric:tabular-nums}
+.manualPriceValue>strong{font-size:11px;white-space:nowrap}
+.manualPriceUp{color:#89e3b5}.manualPriceDown{color:#ff9ca8}
+.manualPriceMarkers{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.manualPriceMarkers>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.manualPriceMarkers b{font-size:14px;font-weight:850;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.manualEntryReference{display:flex;flex-wrap:wrap;gap:3px 9px;align-items:baseline;border-top:1px solid rgba(180,180,180,.19);padding-top:7px}
+.manualEntryReference b{font-size:15px;font-variant-numeric:tabular-nums}
+.manualEntryReference small:last-child{flex-basis:100%}
+.manualSignalTime{opacity:.75}
+@media(max-width:600px){.manualPricePanel{padding:8px 9px}.manualPriceMarkers b{font-size:13px}}
