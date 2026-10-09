@@ -843,7 +843,7 @@ export class LocalPlaywrightDriver{
       const targetId=String(side).toUpperCase()==='BUY'?ax.ax?.buyBackendId:ax.ax?.sellBackendId;
       const buttonOk=await this._axClickBackend(cdp,sess.page,targetId);
       if(!buttonOk)return{ok:false,error:'ax_trade_button_click_failed'};
-      return{ok:true,button:String(side).toUpperCase()==='BUY'?ax.buyText:ax.sellText,amountControl:ax.amountText,source:ax.source||'accessibility-tree'}
+      return{ok:true,verifiedAmount:Number(normalizedAmount),button:String(side).toUpperCase()==='BUY'?ax.buyText:ax.sellText,amountControl:ax.amountText,source:ax.source||'accessibility-tree'}
     }catch(e){return{ok:false,error:'ax_execution_failed',detail:String(e?.message||e)}}
     finally{try{await cdp?.detach()}catch{}}
   }
@@ -1197,7 +1197,7 @@ export class LocalPlaywrightDriver{
     const result=await this._axDemoOrder(provider,{amount,side,beforeClick:same});
     if(!result?.ok)throw new Error(result?.error||'manual_execution_unverified');
     this.state(provider).lastRequestAt=Date.now();
-    return{ok:true,status:'click_dispatched_broker_confirmation_pending',provider,side:order.side,amount,asset:context.asset,accountMode:context.mode,expirationMode:'manual-confirmed',expirationSeconds:Number(context.expirationSeconds),button:result.button};
+    return{ok:true,status:'click_dispatched_broker_confirmation_pending',provider,side:order.side,amount,asset:context.asset,accountMode:context.mode,expirationMode:'manual-confirmed',expirationSeconds:Number(context.expirationSeconds),verifiedAmount:result.verifiedAmount,button:result.button};
   }
   async placeDemoOrder(provider,order={}){
     const st=this.state(provider);await this.domSnapshot(provider).catch(()=>{});await this.scanExecutionUi(provider);
