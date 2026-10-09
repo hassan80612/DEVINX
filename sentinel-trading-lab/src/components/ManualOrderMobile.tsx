@@ -126,7 +126,9 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
         :'Ordem não confirmada ('+e+'). Confira a corretora antes de repetir.');
     }finally{setSending(false)}
   }
-  const reason=!remote.online||freshness>=15000?'Agent offline ou comunicação desatualizada':!['demo','real'].includes(mode)?'Conta da corretora não confirmada':!asset||!live.assetValidated||!live.candleAssetMatch?'Ativo ainda não validado':!expiryAllowed?'Escolha uma expiração válida em Ajustar cenário':!live.executionUi?.buy||!live.executionUi?.sell||!live.executionUi?.amount||live.executionUi?.assetMatch!==true?'Controles da corretora ainda não reconhecidos':!Number.isFinite(money)||money<=0||money>1000000?'Informe um valor válido':'Aguardando confirmação do PC';
+  const controls=live.executionUi||{};
+  const missingControls=[!controls.buy&&'CALL',!controls.sell&&'PUT',!controls.amount&&'Valor',controls.assetMatch!==true&&'Ativo'].filter(Boolean);
+  const reason=!remote.online||freshness>=15000?'Agent offline ou comunicação desatualizada':!['demo','real'].includes(mode)?'Conta da corretora não confirmada':!asset||!live.assetValidated||!live.candleAssetMatch?'Ativo ainda não validado':!expiryAllowed?'Escolha uma expiração válida em Ajustar cenário':missingControls.length?'O Agent não reconheceu: '+missingControls.join(', '):!Number.isFinite(money)||money<=0||money>1000000?'Informe um valor válido':'Aguardando confirmação do PC';
   return <section className="card span12 manualRemoteCard" aria-label="Operação manual pelo celular">
     <div className="manualRemoteHead">
       <div><small>OPERAÇÃO MANUAL</small><h3>CALL / PUT</h3></div>
@@ -174,7 +176,8 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
       <button type="button" className="manualCall" disabled={!ready||sending} onClick={()=>order('CALL')}>CALL <span>↑</span></button>
       <button type="button" className="manualPut" disabled={!ready||sending} onClick={()=>order('PUT')}>PUT <span>↓</span></button>
     </div>
-    {!ready&&<p className="manualBlockReason" role="status">{reason}. Os botões ficam bloqueados até a confirmação do Agent.</p>}
+    {!ready&&<p className="manualBlockReason" role="status">{reason}. Verifique a tela de operação da corretora no PC.</p>}
+    {!ready&&remote.online&&<p className="manualControlStatus" aria-label="Diagnóstico dos controles">CALL: {controls.buy?'detectado':'não detectado'} · PUT: {controls.sell?'detectado':'não detectado'} · Valor: {controls.amount?'detectado':'não detectado'}</p>}
     {message&&<p className="manualBlockReason" role="status">{message}</p>}
   </section>;
 }
