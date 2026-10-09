@@ -943,13 +943,13 @@ export class LocalPlaywrightDriver{
             }
           }
         }
-        const expiryEls=[...document.querySelectorAll('input,button,[role=button],[role=spinbutton],[data-test],[data-testid],[class*="expir" i],[class*="duration" i],[class*="time" i],[class*="tempo" i],[class*="prazo" i]')].filter(visible).filter(el=>!sentinelNode(el));
+        const expiryEls=[...document.querySelectorAll('input,button,[role=button],[role=spinbutton],[data-test],[data-testid],[class*="expir" i],[class*="duration" i],[class*="time" i],[class*="tempo" i],[class*="prazo" i],[aria-label*="expir" i],[aria-label*="tempo" i],[aria-label*="time" i],[title*="expir" i],[title*="tempo" i],[title*="time" i]')].filter(visible).filter(el=>!sentinelNode(el));
         const expiryHint=el=>{let out='',node=el;for(let i=0;i<3&&node;i++,node=node.parentElement)out+=' '+desc(node);return out.slice(0,900)};
         const rawValue=el=>[el?.value,el?.getAttribute?.('aria-valuenow'),el?.getAttribute?.('data-value'),el?.textContent].map(v=>String(v??'').trim()).find(Boolean)||'';
         const parseClock=(h,m,s=0)=>{const now=new Date(),target=new Date(now);target.setHours(h,m,s,0);if(target.getTime()<=now.getTime()-1500)target.setDate(target.getDate()+1);const delta=target.getTime()-now.getTime();return delta>=10000&&delta<=3600000?delta:null};
         const parseExpiry=(raw,hint='')=>{
           const t=String(raw||'').trim().toLowerCase().replace(/\s+/g,' ');if(!t)return null;
-          const strongDuration=/duration|duraç|duracao|prazo|tempo de opera|trade time|\\btime\\b|\\btempo\\b/.test(hint);
+          const strongDuration=/duration|duraç|duracao|prazo|tempo de opera|trade time|\btime\b|\btempo\b/.test(hint);
           const strongExpiry=/expiration|expiry|expiraç|expiracao|expira|vencimento/.test(hint);
           let total=0,unit=false,m;
           const hr=t.match(/(\d+(?:[.,]\d+)?)\s*(?:h|hr|hrs|hora|horas)\b/);if(hr){total+=Number(hr[1].replace(',','.'))*3600000;unit=true}
@@ -973,10 +973,10 @@ export class LocalPlaywrightDriver{
         };
         const expiryCandidates=expiryEls.map(el=>{
           const hint=expiryHint(el),raw=rawValue(el);
-          if(!/expiration|expiry|expiraç|expiracao|expira|vencimento|duration|duraç|duracao|prazo|tempo de opera|trade time|\\btime\\b|\\btempo\\b/.test(hint))return null;
+          if(!/expiration|expiry|expiraç|expiracao|expira|vencimento|duration|duraç|duracao|prazo|tempo de opera|trade time|\btime\b|\btempo\b/.test(hint))return null;
           if(/chart|candle|interval|timeframe|gráfico|grafico/.test(hint)&&!/expiration|expiry|expiraç|expiracao|vencimento/.test(hint))return null;
           const parsed=parseExpiry(raw,hint);if(!parsed)return null;
-          let score=0;if(/expiration|expiry|expiraç|expiracao|vencimento/.test(hint))score+=40;if(/duration|duraç|duracao|prazo|tempo de opera|trade time|\\btime\\b|\\btempo\\b/.test(hint))score+=32;
+          let score=0;if(/expiration|expiry|expiraç|expiracao|vencimento/.test(hint))score+=40;if(/duration|duraç|duracao|prazo|tempo de opera|trade time|\btime\b|\btempo\b/.test(hint))score+=32;
           if(/data-test|data-testid/.test(hint))score+=5;if(el.tagName==='INPUT'||el.getAttribute?.('role')==='spinbutton')score+=4;
           return{ms:parsed.ms,kind:parsed.kind,raw:raw.slice(0,80),hint:hint.slice(0,180),score}
         }).filter(Boolean).sort((a,b)=>b.score-a.score);
