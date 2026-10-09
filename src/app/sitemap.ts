@@ -48,14 +48,7 @@ export default async function sitemap():Promise<MetadataRoute.Sitemap>{
     );
   }
 
-  if(visibility.laser){
-    pages.push({
-      url:'https://devinx.com.br/laser-control/conhecer',
-      lastModified,
-      changeFrequency:'weekly',
-      priority:0.9
-    });
-  }
+
 
   return pages;
 }

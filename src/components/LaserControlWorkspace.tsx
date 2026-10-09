@@ -289,6 +289,15 @@ export function LaserControlWorkspace(){
     return major>1||(major===1&&minor>=1);
   })());
 
+  // Legacy agents (<= 1.2.0) send desktop JPEGs over Supabase Realtime.
+  // Refuse to open that expensive session until the efficient Agent is installed.
+  const safeVideoAgentReady=Boolean(selectedDevice&&(()=>{
+    const parts=/^(\d+)\.(\d+)\.(\d+)/.exec(selectedDevice.agent_version||'');
+    if(!parts)return false;
+    const [major,minor,patch]=parts.slice(1).map(Number);
+    return major>1||(major===1&&(minor>2||(minor===2&&patch>=1)));
+  })());
+
   const desktopAgentReady=Boolean(selectedDevice&&(()=>{
     const match=/^(\d+)\.(\d+)\.(\d+)/.exec(selectedDevice.agent_version||'');
     if(!match)return false;
@@ -311,7 +320,12 @@ export function LaserControlWorkspace(){
   },[]);
 
   useEffect(()=>{
-    if(!selectedDeviceId)return;
+    if(!selectedDeviceId||!selectedDevice)return;
+    if(!safeVideoAgentReady){
+      setRealtimeStatus('error');
+      setNotice(t('laser.videoUpdateRequired'));
+      return;
+    }
     let active=true;
     let renewTimer:number|undefined;
     let opening=false;
@@ -396,13 +410,14 @@ export function LaserControlWorkspace(){
       setInputReady(false);
       setRealtimeStatus('idle');
     };
-  },[selectedDeviceId,postSession]);
+  },[selectedDeviceId,safeVideoAgentReady,postSession,t]);
 
   useEffect(()=>{
     if(!session?.topic)return;
     const currentSession=session;
     const supabase=createClient();
     lastFrameSeqRef.current=0;
+    setFrameSrc('');
     setRealtimeStatus('connecting');
     setWebRtcActive(false);
     setWebRtcStream(null);
@@ -416,6 +431,7 @@ export function LaserControlWorkspace(){
     let remoteDescriptionReady=false;
     let agentReadyForWebRtc=false;
     let webRtcAttempted=false;
+    let webRtcAttempts=0;
     const pendingAgentIce:RTCIceCandidateInit[]=[];
 
     const sendWebRtcSignal=(event:string,payload:Record<string,unknown>)=>
@@ -438,8 +454,9 @@ export function LaserControlWorkspace(){
     };
 
     async function startWebRtc(){
-      if(!agentReadyForWebRtc||webRtcAttempted||!webRtcAgentReady||typeof RTCPeerConnection==='undefined'||peer)return;
+      if(!agentReadyForWebRtc||webRtcAttempted||webRtcAttempts>=3||!webRtcAgentReady||typeof RTCPeerConnection==='undefined'||peer)return;
       webRtcAttempted=true;
+      webRtcAttempts++;
       try{
         const nextPeer=new RTCPeerConnection({
           iceServers:[{urls:'stun:stun.cloudflare.com:3478'}]
@@ -495,8 +512,11 @@ export function LaserControlWorkspace(){
             return;
           }
           if(nextPeer.connectionState==='failed'||nextPeer.connectionState==='closed'){
-            setWebRtcActive(false);
-            setWebRtcStream(null);
+            if(peer===nextPeer){
+              closePeer(true);
+              webRtcAttempted=false;
+              setRealtimeStatus('error');
+            }
           }
         };
 
@@ -514,14 +534,21 @@ export function LaserControlWorkspace(){
           if(peer!==nextPeer||nextPeer.connectionState==='connected')return;
           void sendWebRtcSignal('webrtc_stop',{}).catch(()=>undefined);
           closePeer(true);
+          webRtcAttempted=false;
+          setRealtimeStatus('error');
         },8_000);
-      }catch{closePeer(true);}
+      }catch{
+        closePeer(true);
+        webRtcAttempted=false;
+        setRealtimeStatus('error');
+      }
     }
 
     const markAgentReadyForWebRtc=()=>{
-      if(agentReadyForWebRtc)return;
       agentReadyForWebRtc=true;
-      void startWebRtc();
+      // The Agent sends a small presence notice every 10s when WebRTC is down.
+      // Retry a bounded number of ICE handshakes, never falling back to JPEG.
+      if(!peer&&!webRtcAttempted&&webRtcAttempts<3)void startWebRtc();
     };
 
     channel
@@ -569,7 +596,10 @@ export function LaserControlWorkspace(){
       .on('broadcast',{event:'webrtc_state'},({payload}:any)=>{
         if(payload?.token!==currentSession.frameToken||payload?.from!=='agent')return;
         if(payload?.state==='connected')setRealtimeStatus('live');
-        else if(payload?.state==='fallback')setWebRtcActive(false);
+        else if(payload?.state==='fallback'){
+          setWebRtcActive(false);
+          setRealtimeStatus('error');
+        }
       })
       .on('broadcast',{event:'agent_state'},({payload}:any)=>{
         if(payload?.token!==currentSession.frameToken)return;
@@ -1780,8 +1810,8 @@ export function LaserControlWorkspace(){
             onWheel={handleWheel}
             draggable={false}
           />:<div className={styles.previewEmpty}>
-            <b>{selectedDevice.lightburn_online===false?t('laser.previewOpen'):t('laser.previewWaiting')}</b>
-            <span>{t('laser.previewHelp')}</span>
+            <b>{!safeVideoAgentReady?t('laser.videoUpdateRequired'):realtimeStatus==='error'?t('laser.videoDirectFailed'):selectedDevice.lightburn_online===false?t('laser.previewOpen'):t('laser.previewWaiting')}</b>
+            <span>{!safeVideoAgentReady?t('laser.videoUpdateGuide'):realtimeStatus==='error'?t('laser.videoDirectHelp'):t('laser.previewHelp')}</span>
           </div>}
         </div>
 

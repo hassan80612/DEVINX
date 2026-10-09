@@ -173,6 +173,11 @@ export function FinanceMasterOpsPanel({
       </div>
     </div>
 
+    <div style={{margin:'14px 0 20px',border:'1px solid rgba(220,185,106,.45)',borderRadius:14,padding:'16px 18px',display:'flex',gap:14,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap'}}>
+      <div><strong>Laser Control privado</strong><div style={{fontSize:13,opacity:.8,marginTop:4}}>Acesso restrito à conta Master. Nenhum link público.</div></div>
+      <a href="/laser-control" style={{display:'inline-block',borderRadius:9,padding:'10px 18px',background:'#ad8549',color:'#111',fontWeight:700,textDecoration:'none'}}>Abrir Laser Control →</a>
+    </div>
+
     <div className={styles.grid}>
       <button type="button" onClick={()=>show('active')}>
         <small>ACESSOS ATIVOS</small>

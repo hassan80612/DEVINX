@@ -1,5 +1,5 @@
 import type {Metadata} from 'next';
-import {redirect} from 'next/navigation';
+import {notFound} from 'next/navigation';
 import {LaserControlWorkspace} from '@/components/LaserControlWorkspace';
 import {LaserAdminPanel} from '@/components/LaserAdminPanel';
 import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
@@ -15,8 +15,7 @@ export const metadata:Metadata={
 
 export default async function LaserControlPage(){
   const access=await getLaserControlAccess();
-  if(!access.authenticated)redirect('/laser-control/conhecer');
-  if(!access.allowed)redirect('/laser-control/conhecer?acesso=necessario#planos');
+  if(!access.authenticated||!access.isAdmin)notFound();
 
   return <main style={{
     minHeight:'100vh',
