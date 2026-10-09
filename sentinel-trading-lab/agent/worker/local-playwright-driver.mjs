@@ -1106,6 +1106,63 @@ export class LocalPlaywrightDriver{
       st.executionReady=false;return false
     }
   }
+  async switchBrokerAccount(provider,requestedMode){
+    // Explicit remote account selection. Never change only the Sentinel label:
+    // verify the broker's visible account after a real browser interaction.
+    const target=String(requestedMode||'').toLowerCase();
+    if(!['demo','real'].includes(target))throw new Error('broker_account_mode_invalid');
+    const sess=await this.session(provider);
+    if(!sess?.page)throw new Error('broker_browser_not_attached');
+    await this.domSnapshot(provider).catch(()=>{});
+    const before=this.liveStatus(provider);
+    if(before.mode===target&&before.accountId)return {mode:target,accountId:before.accountId,alreadySelected:true};
+    const excludes=async el=>el.evaluate(node=>!!node.closest?.('#sentinel-trading-overlay-host')||!!node.getRootNode?.()?.host?.closest?.('#sentinel-trading-overlay-host')).catch(()=>true);
+    const text=async loc=>String(await loc.innerText({timeout:180}).catch(()=>'')||'').trim();
+    let menuOpened=false;
+    for(const frame of sess.page.frames()){
+      if(menuOpened)break;
+      const loc=frame.locator('button,[role="button"],[data-test*="account" i],[data-testid*="account" i],[class*="account-switch" i],[class*="balance" i]');
+      const count=Math.min(await loc.count().catch(()=>0),100);
+      for(let i=0;i<count;i++){
+        const x=loc.nth(i);
+        if(!await x.isVisible({timeout:70}).catch(()=>false)||await excludes(x))continue;
+        const d=(await text(x)+' '+String(await x.getAttribute('aria-label').catch(()=>'')||'')+' '+String(await x.getAttribute('title').catch(()=>'')||'')+' '+String(await x.getAttribute('data-testid').catch(()=>'')||'')).toLowerCase();
+        if(!/(account|conta|balance|saldo|practice|prática|demo|real)/.test(d)||/(deposit|depósito|withdraw|retirar|cashier|comprar|vender|above|below|acima|abaixo)/.test(d))continue;
+        const box=await x.boundingBox().catch(()=>null);
+        if(!box||box.y>260||box.width<15||box.height<10)continue;
+        await x.click({timeout:450}).catch(()=>{});
+        menuOpened=true;break;
+      }
+    }
+    if(!menuOpened)throw new Error('broker_account_menu_not_detected');
+    const rx=target==='real'?/^\s*(?:conta\s+real|real\s+account|live\s+account|conta\s+de\s+dinheiro\s+real)\s*$/i:/^\s*(?:conta\s+de\s+pr[aá]tica|conta\s+demo|practice\s+account|demo\s+account|practice\s+balance)\s*$/i;
+    let selected=false;
+    for(const frame of sess.page.frames()){
+      if(selected)break;
+      const opts=frame.getByText(rx);
+      const count=Math.min(await opts.count().catch(()=>0),30);
+      for(let i=0;i<count;i++){
+        const x=opts.nth(i);
+        if(!await x.isVisible({timeout:100}).catch(()=>false)||await excludes(x))continue;
+        const box=await x.boundingBox().catch(()=>null);
+        if(!box||box.width<25||box.height<10)continue;
+        await x.click({timeout:650}).catch(()=>{});
+        selected=true;break;
+      }
+    }
+    if(!selected)throw new Error('broker_account_target_not_detected');
+    for(let i=0;i<6;i++){
+      await sleep(450);
+      await this.domSnapshot(provider).catch(()=>{});
+      await this.requestBaseData(provider).catch(()=>{});
+      const current=this.liveStatus(provider);
+      if(current.mode===target&&current.accountId&&
+        (before.mode!==target||String(before.accountId)!==String(current.accountId))){
+        return{mode:target,accountId:current.accountId,confirmedByBroker:true};
+      }
+    }
+    throw new Error('broker_account_switch_not_confirmed');
+  }
   async placeManualOrder(provider,order={}){
     // No automatic trading is enabled by this method: it is invoked only
     // after an explicit, individually confirmed manual command.
