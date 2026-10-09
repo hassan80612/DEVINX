@@ -812,3 +812,32 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 @media(max-width:600px){.liveScenario{padding:15px;margin-bottom:14px}.liveScenario h2{font-size:21px}.liveScenario header>strong{font-size:12px}.liveControls{grid-template-columns:1fr 1fr}.liveControls button:first-child{grid-column:1/-1}.liveTotals{grid-template-columns:1fr}.liveTotals>div{display:flex;justify-content:space-between;gap:8px;align-items:center}.liveTotals b{margin:0;text-align:right;font-size:12px}.liveSettings>div{grid-template-columns:1fr 1fr}.liveSettings button{grid-column:1/-1;min-height:44px}.liveLevels{grid-template-columns:1fr 1fr}.liveReversal{padding:12px}}
 
 @media(max-width:900px){.topbar{position:static}.runtimeBadges{flex-wrap:nowrap}.runtimeBadges .pill{width:auto!important;white-space:nowrap}}
+
+/* Manual-only phone controls: visible without scrolling past the analysis card. */
+.manualRemoteCard{padding:14px 16px!important;margin:0 0 10px!important}
+.manualRemoteHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.manualRemoteHead h3{font-size:18px!important;margin:2px 0!important;line-height:1.1!important}
+.manualRemoteHead small{font-size:10px;font-weight:800;letter-spacing:1.3px}
+.manualRemoteHead>strong{font-size:11px;white-space:nowrap}
+.manualModeReal{color:#ffb6af}.manualModeDemo{color:#b3e8d0}
+.manualRemoteMeta{display:flex;gap:20px;flex-wrap:wrap;margin:7px 0 10px}
+.manualRemoteMeta>span{display:flex;flex-direction:column;min-width:0}
+.manualRemoteMeta small{font-size:10px;opacity:.8}
+.manualRemoteMeta b{font-size:13px;line-height:1.25;overflow-wrap:anywhere}
+.manualTradeRow{display:grid;grid-template-columns:minmax(82px,.9fr) repeat(2,minmax(75px,1fr));gap:7px;align-items:end}
+.manualStake{display:flex;flex-direction:column;min-width:0;gap:4px}
+.manualStake small{font-size:11px;font-weight:800}
+.manualStake input{box-sizing:border-box;width:100%;min-width:0;min-height:46px;padding:8px!important;font-size:16px!important;border-radius:10px!important}
+.manualTradeRow button{min-width:0;min-height:46px;font-weight:900!important;padding:8px 3px!important;border-radius:10px!important}
+.manualTradeRow button span{font-size:17px}
+.manualCall{background:#c7deca!important;color:#123d27!important}
+.manualPut{background:#c4d2d1!important;color:#183d3a!important}
+.manualTradeRow button:disabled{opacity:.42;cursor:not-allowed}
+.manualBlockReason{font-size:12px;line-height:1.45;margin:8px 0 0}
+@media(max-width:600px){
+  .manualRemoteCard{padding:12px!important}
+  .manualRemoteMeta{gap:12px;margin:6px 0 8px}
+  .manualRemoteMeta>span:first-child{max-width:56%}
+  .manualRemoteMeta b{font-size:12px}
+  .manualTradeRow{gap:6px}
+}
