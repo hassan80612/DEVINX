@@ -41,7 +41,7 @@ export async function getLaserControlAccess(){
   const mentorAccess=Boolean(row.mentor_access);
   return {
     authenticated:true,
-    allowed:isAdmin||ownerAccess||mentorAccess,
+    allowed:isAdmin,
     isAdmin,
     ownerAccess,
     mentorAccess,
