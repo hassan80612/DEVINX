@@ -10,7 +10,7 @@ export class BrowserBrokerAdapter extends BrokerAdapterContract{
   attachSessionRef(ref){this.sessionRef=ref||null;this.connected=false;this.validated=false;this.lastError=null;this.checklist=initialChecklist();if(ref)this._step('session',true,'sessão local pronta');return this.status()}
   _recalc(){this.validated=READ_STEPS.every(k=>this.checklist[k]?.ok===true)}
   _step(name,ok,message){this.checklist[name]={ok:!!ok,checkedAt:new Date().toISOString(),message:String(message||'')};this.lastCheckedAt=new Date().toISOString();this._recalc();return this.checklist[name]}
-  status(){const md=this.driver?.liveStatus?.(this.provider)||null;return{provider:this.provider,connected:this.connected,validated:this.validated,readOnlyValidated:this.validated,accountMode:this.accountMode,hasSession:!!this.sessionRef,driverAttached:!!this.driver?.available,lastCheckedAt:this.lastCheckedAt,lastError:this.lastError,checklist:this.checklist,executionReady:!!md?.executionReady}}
+  status(){const md=this.driver?.liveStatus?.(this.provider)||null;return{provider:this.provider,connected:this.connected,validated:this.validated,readOnlyValidated:this.validated,accountMode:this.accountMode,hasSession:!!this.sessionRef,driverAttached:!!this.driver?.available,lastCheckedAt:this.lastCheckedAt,lastError:this.lastError,checklist:this.checklist}}
   refreshFromLive(){const md=this.driver?.liveStatus?.(this.provider)||{};if(!this.connected)return this.status();const mode=String(md.mode||'').toLowerCase();if(['demo','real'].includes(mode)){this.accountMode=mode;this._step('account_mode',true,`conta ${mode.toUpperCase()} ativa`)}else this._step('account_mode',false,'modo da conta ainda não detectado');this._step('balance',md.balance!=null,md.balance!=null?`saldo ${this.accountMode==='real'?'REAL':this.accountMode==='demo'?'DEMO':''} lido`.trim():'saldo ainda não recebido');const assets=Array.isArray(md.assets)?md.assets:[];this._step('assets',assets.length>0,assets.length?`${assets.length} ativos detectados`:'ativos ainda não detectados');const activeOk=!!md.symbol&&md.activeId!=null;this._step('active_id',activeOk,activeOk?`${md.symbol} / ID ${md.activeId}`:'ID do ativo ainda não detectado');this._step('quote',md.quote!=null,md.quote!=null?`cotação recebida para ${md.symbol||'ativo atual'}`:'cotação ainda não recebida');const candleOk=Array.isArray(md.candles)&&md.candles.length>=50&&md.candleFresh!==false;this._step('candles',candleOk,candleOk?`${md.candles.length} candles atuais recebidos`:md.candles?.length>=50?'candles recebidos, aguardando atualização em tempo real':`${md.candles?.length||0} candles recebidos; mínimo 50`);if(this.validated)this.lastError=null;else if(this.lastError==='account_mode_not_detected'&&['demo','real'].includes(mode)){const pending=READ_STEPS.find(k=>this.checklist[k]?.ok!==true);this.lastError=pending?`${pending}_pending`:null}return this.status()}
   async health(){return this.status()}
   async disconnect(){if(this.driver?.available&&this.connected){await this.driver.call(this.provider,'disconnect',{body:{sessionRef:this.sessionRef}}).catch(()=>{})}this.connected=false;this.validated=false;return this.status()}
@@ -41,13 +41,12 @@ export class BrowserBrokerAdapter extends BrokerAdapterContract{
     if(failures.length&&!soft&&!this.validated)throw new Error(failures[0]);
     return this.status()
   }
-  async validateDemoOrder(){const md=this.driver?.liveStatus?.(this.provider)||{};if(this.accountMode!=='demo')throw new Error('demo_account_required');if(!md.executionReady)throw new Error('demo_order_controls_not_detected');return{ok:true,provider:this.provider,mode:this.accountMode}}
   async getAccountMode(){return this.accountMode}
   async getBalance(){const r=await this.driver.call(this.provider,'balance',{method:'GET'});return safeNumber(r?.balance??r)}
   async getQuote(asset){return this.driver.call(this.provider,`quote?symbol=${encodeURIComponent(asset)}`,{method:'GET'})}
   async listAssets(){return this.driver.call(this.provider,'assets',{method:'GET'})}
-  async placeDemoOrder(order){if(!this.connected)throw new Error('broker_not_connected');if(this.accountMode!=='demo')throw new Error('demo_account_required');return this.driver.call(this.provider,'orders/demo',{method:'POST',body:order})}
-  async placeOrder(order){if(this.accountMode==='demo')return this.placeDemoOrder(order);throw new Error('real_execution_requires_human_confirmation')}
+  async placeDemoOrder(){throw new Error('broker_order_execution_retired')}
+  async placeOrder(){throw new Error('broker_order_execution_retired')}
   async prepareRealOrder(order){return{...order,provider:this.provider,status:'prepared',requiresHumanConfirmation:true}}
   async confirmRealOrder(){throw new Error('real_execution_requires_human_confirmation_and_separate_validated_flow')}
 }
