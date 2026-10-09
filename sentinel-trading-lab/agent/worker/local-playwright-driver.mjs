@@ -820,7 +820,12 @@ export class LocalPlaywrightDriver{
   }
   async _axDemoOrder(provider,{amount,side,beforeClick=null}={}){
     const sess=await this.session(provider);if(!sess.page||!sess.context?.newCDPSession)return null;
-    let ax=await this._axExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)ax=await this._domExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)return null;
+    // Prefer verified IQ Option right-rail controls from the visible broker DOM.
+    // AX labels alone can match a non-clickable label or the Sentinel overlay.
+    let ax=provider==='iq_option'?await this._domExecutionUi(provider):await this._axExecutionUi(provider);
+    if(!ax?.buy||!ax?.sell||!ax?.amount)
+      ax=provider==='iq_option'?await this._axExecutionUi(provider):await this._domExecutionUi(provider);
+    if(!ax?.buy||!ax?.sell||!ax?.amount)return null;
     let cdp=null;
     try{
       cdp=await sess.context.newCDPSession(sess.page);
@@ -842,8 +847,11 @@ export class LocalPlaywrightDriver{
       if(typeof beforeClick==='function'&&!(await beforeClick()))return{ok:false,error:'manual_context_changed_before_click'};
       // The broker can re-render CALL/PUT after the investment editor closes.
       // Never click a stale accessibility node from before the stake was edited.
-      const refreshed=await this._axExecutionUi(provider).catch(()=>null);
-      const freshButtons=(refreshed?.buy&&refreshed?.sell)?refreshed:await this._domExecutionUi(provider);
+      const domButtons=provider==='iq_option'?await this._domExecutionUi(provider):null;
+      const refreshed=domButtons?.railPair&&domButtons.buy&&domButtons.sell?null:
+        await this._axExecutionUi(provider).catch(()=>null);
+      const freshButtons=domButtons?.railPair&&domButtons.buy&&domButtons.sell?domButtons:
+        (refreshed?.buy&&refreshed?.sell?refreshed:domButtons||await this._domExecutionUi(provider));
       if(!freshButtons?.buy||!freshButtons?.sell) return{ok:false,error:'ax_trade_buttons_not_recognized'};
       const targetId=String(side).toUpperCase()==='BUY'?freshButtons.ax?.buyBackendId:freshButtons.ax?.sellBackendId;
       if(!targetId||String(freshButtons.ax?.buyBackendId)===String(freshButtons.ax?.sellBackendId))
@@ -1127,7 +1135,7 @@ export class LocalPlaywrightDriver{
 
       if(!ui.buy||!ui.sell||!ui.amount||!ui.expirationDurationMs){
         const native=await this._domExecutionUi(provider).catch(()=>null);
-        if(native){ui={...ui,buy:ui.buy||native.buy,sell:ui.sell||native.sell,amount:ui.amount||native.amount,buyText:ui.buyText||native.buyText,sellText:ui.sellText||native.sellText,amountText:ui.amountText||native.amountText};if(native.buy&&native.sell&&native.amount)ui.ax=native.ax;if(!ui.expirationDurationMs&&native.expirationDurationMs)Object.assign(ui,{expirationDurationMs:native.expirationDurationMs,expirationRaw:native.expirationRaw,expirationKind:native.expirationKind,expirationConfidence:native.expirationConfidence})}
+        if(native){ui={...ui,buy:ui.buy||native.buy,sell:ui.sell||native.sell,amount:ui.amount||native.amount,buyText:ui.buyText||native.buyText,sellText:ui.sellText||native.sellText,amountText:ui.amountText||native.amountText,amountValue:native.amount?native.amountValue||'':ui.amountValue||'',amountEditable:!!native.amountEditable,railPair:!!native.railPair};if(native.buy&&native.sell&&native.amount)ui.ax=native.ax;if(!ui.expirationDurationMs&&native.expirationDurationMs)Object.assign(ui,{expirationDurationMs:native.expirationDurationMs,expirationRaw:native.expirationRaw,expirationKind:native.expirationKind,expirationConfidence:native.expirationConfidence})}
       }
       const assetMatch=!!(st.uiSymbol&&st.symbol&&pairKey(st.uiSymbol)===pairKey(st.symbol));
       if(Number.isFinite(Number(ui.expirationDurationMs))&&Number(ui.expirationDurationMs)>=10000){
