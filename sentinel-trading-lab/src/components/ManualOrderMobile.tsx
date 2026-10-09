@@ -23,7 +23,7 @@ export default function ManualOrderMobile({s}:{s:any}){
     !!expiry&&!!live.assetValidated&&!!live.candleAssetMatch&&
     !!live.executionUi?.buy&&!!live.executionUi?.sell&&!!live.executionUi?.amount&&
     live.executionUi?.assetMatch===true&&
-    Number.isFinite(money)&&money>0&&money<=1000000&&Math.round(money*100)===money*100;
+    Number.isFinite(money)&&money>0&&money<=1000000&&Math.abs(Math.round(money*100)-money*100)<1e-7;
   async function order(side:Direction){
     if(sending||!ready)return;
     const context={provider,mode,accountId:n(live.accountId),activeId:n(live.activeId),asset,expirationRaw:expiry};
