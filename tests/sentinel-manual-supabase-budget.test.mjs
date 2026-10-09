@@ -41,11 +41,13 @@ test('IQ Option 2026 right-rail Invest / ACIMA / ABAIXO is detected without nati
     const key=id++;geo.set(key,{...box,visible:true,editable:false,clickable:false,vw:1280,vh:800,value:''});
     return{nodeType:1,nodeName:name,backendNodeId:key,attributes:attrs,children};
   };
-  const invest=elem('DIV',[label('Invest',{x:1090,y:125,w:55,h:18}),label('$10000',{x:1100,y:154,w:82,h:30})],{x:1072,y:110,w:157,h:100});
+  // Invest and Expiração deliberately share a DOM ancestor: the 13.4.34 parser rejected it.
+  const invest=elem('DIV',[label('Invest',{x:1090,y:125,w:55,h:18}),label('$10000',{x:1100,y:154,w:82,h:30}),label('Expiração',{x:1090,y:220,w:90,h:18}),label('30 seg',{x:1090,y:244,w:90,h:24})],{x:1072,y:110,w:157,h:160});
   const buy=elem('DIV',[label('ACIMA',{x:1103,y:313,w:74,h:24})],{x:1050,y:282,w:185,h:80});
   const sell=elem('DIV',[label('ABAIXO',{x:1100,y:414,w:84,h:24})],{x:1050,y:385,w:185,h:80});
   const overlay=elem('DIV',[label('ACIMA',{x:130,y:120,w:70,h:20})],{x:100,y:85,w:300,h:230},['id','sentinel-trading-overlay-host']);
-  const root={nodeType:9,nodeName:'#document',children:[elem('BODY',[invest,buy,sell,overlay],{x:0,y:0,w:1280,h:800})]};
+  const balance=elem('DIV',[label('$179200',{x:1080,y:54,w:112,h:25})],{x:1000,y:35,w:215,h:48});
+  const root={nodeType:9,nodeName:'#document',children:[elem('BODY',[balance,invest,buy,sell,overlay],{x:0,y:0,w:1280,h:800})]};
   const calls=[];
   const cdp={async send(method,args){calls.push(method);
     if(method==='DOM.getDocument')return{root};
@@ -62,6 +64,8 @@ test('IQ Option 2026 right-rail Invest / ACIMA / ABAIXO is detected without nati
   assert.equal(found.ax.buyBackendId,buy.backendNodeId);
   assert.equal(found.ax.sellBackendId,sell.backendNodeId);
   assert.equal(found.ax.amountBackendId,invest.children[1].backendNodeId);
+  assert.equal(found.amountValue,'$10000');
+  assert.equal(found.amountEditable,false);
   assert.equal(calls.some(x=>/^Input\\.|^Page\\.|^Network\\./.test(x)),false);
 });
 test('right-rail detection cannot authorize a trade with just one direction',async()=>{
@@ -77,4 +81,32 @@ test('right-rail detection cannot authorize a trade with just one direction',asy
   }};
   const actual=await readBrokerDomControls(cdp);
   assert.equal(actual.buy,false);assert.equal(actual.sell,false);assert.equal(actual.amount,false);
+});
+
+test('right-rail value editor overrides static Invest display when exposed',async()=>{
+  let id=1;const state=new Map();
+  const make=(name,text,box,editable=false)=>{
+    const key=id++;state.set(key,{visible:true,x:box.x,y:box.y,w:box.w,h:box.h,vw:1280,vh:800,value:text,editable,clickable:editable});
+    return{nodeType:1,nodeName:name,backendNodeId:key,attributes:editable?['type','text']:[],children:text?[{nodeType:3,nodeValue:text,children:[]}]:[]};
+  };
+  const invest=make('SPAN','Invest',{x:1090,y:120,w:50,h:18});
+  const old=make('SPAN','$10000',{x:1090,y:152,w:75,h:24});
+  const editor=make('INPUT','2',{x:1090,y:154,w:86,h:25},true);
+  const buy=make('DIV','ACIMA',{x:1080,y:320,w:130,h:65});
+  const sell=make('DIV','ABAIXO',{x:1080,y:420,w:130,h:65});
+  const root={nodeType:9,children:[{nodeType:1,nodeName:'BODY',backendNodeId:15,attributes:[],children:[invest,old,editor,buy,sell]}]};
+  state.set(15,{visible:true,x:0,y:0,w:1280,h:800,vw:1280,vh:800,value:'',editable:false,clickable:false});
+  const cdp={async send(method,args){
+    if(method==='DOM.getDocument')return{root};
+    if(method==='DOM.resolveNode')return{object:{objectId:String(args.backendNodeId)}};
+    if(method==='Runtime.callFunctionOn')return{result:{value:state.get(Number(args.objectId))}};
+    if(method==='Runtime.releaseObject')return{};
+    throw Error('unexpected CDP operation: '+method);
+  }};
+  const result=await readBrokerDomControls(cdp);
+  assert.equal(result.buy,true);assert.equal(result.sell,true);
+  assert.equal(result.amount,true);
+  assert.equal(result.amountEditable,true);
+  assert.equal(result.amountValue,'2');
+  assert.equal(result.ax.amountBackendId,editor.backendNodeId);
 });
