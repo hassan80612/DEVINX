@@ -76,6 +76,15 @@ test('selected-asset tracking survives without broker-page market-frame decoding
   assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
   assert.match(worker,/driver\.shutdown\?\.\(\)/);
   assert.match(manager,/for\(let i=0;i<100;i\+\+\)/);
-  assert.match(installer,/13\.4\.41-market-isolation-1009/);
+  assert.match(installer,/13\.4\.42-card-validation-1009/);
   assert.doesNotMatch(installer,/13\.4\.39-broker-passive-1009/);
+});
+
+test('broker account validation never masks a valid market analysis in the floating card',()=>{
+  const worker=read(WORKER+'index.mjs');
+  const driver=read(WORKER+'local-playwright-driver.mjs');
+  assert.match(worker,/analysisStale:[^\n]+analysisFeedValidated/);
+  assert.doesNotMatch(worker,/analysisStale:view\.liveBroker\?\.feedValidated===false/);
+  assert.match(driver,/analysisFeedValidated=!!\(/);
+  assert.match(driver,/feedValidated=!!\(analysisFeedValidated&&st\.balance/);
 });

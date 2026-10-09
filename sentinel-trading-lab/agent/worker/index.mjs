@@ -249,7 +249,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       nextEval:next,
       realtime:true,
       analysisTransient:held.transient,
-      analysisStale:view.liveBroker?.feedValidated===false,
+      analysisStale:!view.liveBroker||view.liveBroker.analysisFeedValidated===false||(view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false),
       liveAgeMs:liveTs>0?Math.max(0,Date.now()-liveTs):null,
       analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
       durationMs:view.settings?.orderDurationMs||60000,
