@@ -69,6 +69,6 @@ test('broker WebSocket and DOM inspection have steady-state safeguards',()=>{
   assert.match(driver,/feed\?\.ready&&feed\.authenticated/);
   assert.match(feed,/this\.onFrame\(data,'direct-in'\)/);
   assert.doesNotMatch(feed,/this\.onFrame\(raw,'direct-in'\)/);
-  assert.match(installer,/13\.4\.37-latency-1009/);
-  assert.doesNotMatch(installer,/13\.4\.37-invest-readback-1009/);
+  assert.match(installer,/13\.4\.38-scenario-renewal-1009/);
+  assert.doesNotMatch(installer,/13\.4\.38-invest-readback-1009/);
 });

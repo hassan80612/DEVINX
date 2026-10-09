@@ -1,4 +1,5 @@
 import {reviewScenario,scenarioAdmission} from './scenario-review.mjs';
+import {canRenewExpiredScenario} from './scenario-renewal.mjs';
 import {scenarioInvalidation} from './scenario-invalidation.mjs';
 import {PersistentReversalMonitor} from './persistent-reversal.mjs';
 import {PredictionInputState} from './forecast-evidence.mjs';
@@ -416,15 +417,10 @@ export class DemoTradingRuntime{
     }
     const freshScenarioPrice=Number.isFinite(Number(snap.quoteTs))&&Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500&&Number(snap.price)>0;
     const mainQualified=(!selfReview||freshScenarioPrice)&&newPriceValid&&admission.allowed&&(!selfReview||mainPlan?.safety?.blocked!==true)&&mainPlan?.outlookReady===true&&mainPlan.directionReady===true&&['CALL','PUT'].includes(mainSide)&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints;
-    if(main?.status==='JANELA ENCERRADA'&&mainQualified){
-      // Require a newer completed forecast source AND a changed price level.
-      const sourceAt=Number(mainPlan?.entryTiming?.sourceBarAt||0);
-      const tolerance=Math.max(Math.abs(Number(snap.price)||0)*.000002,1e-9);
-      const movedTrigger=Number.isFinite(Number(nextTrigger))&&Math.abs(Number(nextTrigger)-Number(main.trigger))>tolerance;
-      const movedInvalidation=nextInvalidation!=null&&main.invalidation!=null&&Math.abs(Number(nextInvalidation)-Number(main.invalidation))>tolerance;
-      if(sourceAt>main.deadline&&sourceAt<=Number(snap.quoteTs||now)&&(movedTrigger||movedInvalidation)){
-        this.scenarioSetup=null;main=null;
-      }
+    if(canRenewExpiredScenario({main,plan:mainPlan,inputQuality:analysis.predictionInputQuality,quoteTs:snap.quoteTs,qualified:mainQualified})){
+      // A verified, completed forecast candle also qualifies as a new source
+      // when there is no recent short-bar setup. Keep the changed-level guard.
+      this.scenarioSetup=null;main=null;
     }
     // An entry analyst may observe/act on a real structural opportunity even
     // when no main forecast qualified. Its neutral coordinator is never shown
