@@ -30,13 +30,11 @@ export async function middleware(request:NextRequest){
   }
 
   const pathname=request.nextUrl.pathname;
-  const publicLaserPage=
-    pathname==='/laser-control/conhecer'||pathname.startsWith('/laser-control/conhecer/')||
-    pathname==='/laser-control/guia'||pathname.startsWith('/laser-control/guia/')||
-    pathname==='/laser-control/mentoria'||pathname.startsWith('/laser-control/mentoria/')||
-    pathname==='/laser-control/obrigado'||pathname.startsWith('/laser-control/obrigado/')||
-    pathname==='/laser-control/thank-you'||pathname.startsWith('/laser-control/thank-you/');
-  const isProtected=!publicLaserPage&&protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+  // Laser Control is a private tool accessed only from Financeiro Master.
+  // A hidden link is not an access control: guard every direct URL and API.
+  const privateLaserPath=pathname==='/laser-control'||pathname.startsWith('/laser-control/')||
+    pathname==='/api/laser-control'||pathname.startsWith('/api/laser-control/');
+  const isProtected=privateLaserPath||protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
 
   // Public pages do not need an Auth round-trip. This keeps marketing/storefront
   // requests independent from Supabase availability and removes middleware latency.
@@ -61,12 +59,20 @@ export async function middleware(request:NextRequest){
   const{data,error}=await supabase.auth.getClaims();
   const claims=error?null:data?.claims;
   if(!claims){
+    if(privateLaserPath)return copySessionCookies(response,new NextResponse(null,{status:404}));
     const url=request.nextUrl.clone();
     url.pathname='/entrar';
     const requestedPath=pathname+request.nextUrl.search;
     url.search='';
     url.searchParams.set('next',requestedPath);
     return copySessionCookies(response,NextResponse.redirect(url));
+  }
+
+  if(privateLaserPath){
+    const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
+    const access=Array.isArray(accessData)?accessData[0]:accessData;
+    if(accessError||access?.is_admin!==true)
+      return copySessionCookies(response,new NextResponse(null,{status:404}));
   }
 
   // The onboarding screen is client-only, so it needs one access check here.
@@ -86,4 +92,4 @@ export async function middleware(request:NextRequest){
   return response;
 }
 
-export const config={matcher:['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js|woff2?|ttf|otf|mp4|webm|pdf|zip|txt|xml|json)$).*)']};
+export const config={matcher:['/api/laser-control/:path*','/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js|woff2?|ttf|otf|mp4|webm|pdf|zip|txt|xml|json)$).*)']};
