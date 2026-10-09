@@ -9,7 +9,7 @@ export function validateManualOrder(payload,{provider,deviceId,live,now=Date.now
   if(!deviceId||String(payload.deviceId)!==String(deviceId))reject('manual_device_mismatch');
   if(!['CALL','PUT'].includes(payload.side))reject('manual_invalid_side');
   const amount=Number(payload.amount);
-  if(typeof payload.amount!=='number'||!Number.isFinite(amount)||amount<=0||amount>1_000_000||Math.round(amount*100)!==amount*100)reject('manual_invalid_amount');
+  if(typeof payload.amount!=='number'||!Number.isFinite(amount)||amount<=0||amount>1_000_000||Math.abs(Math.round(amount*100)-amount*100)>1e-7)reject('manual_invalid_amount');
   const c=payload.context||{};
   if(c.provider!==provider||!['demo','real'].includes(c.mode))reject('manual_broker_context_mismatch');
   if(!live||!['demo','real'].includes(String(live.mode||'')))reject('manual_account_not_verified');
