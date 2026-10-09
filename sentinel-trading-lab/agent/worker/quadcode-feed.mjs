@@ -43,8 +43,10 @@ export class QuadcodeFeed {
     });
   }
   _handleMessage(raw){
-    this.lastMessageAt=Date.now();this.onFrame(raw,'direct-in');
+    this.lastMessageAt=Date.now();
     let data=null;try{data=JSON.parse(String(raw))}catch{return}
+    // Parse each direct market frame just once, including high-frequency quotes.
+    this.onFrame(data,'direct-in');
     const requestId=String(data?.request_id||'');
     if(requestId&&this.pending.has(requestId)){
       const row=this.pending.get(requestId);this.pending.delete(requestId);clearTimeout(row.timer);row.resolve(data);

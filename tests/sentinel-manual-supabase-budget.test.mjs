@@ -8,10 +8,12 @@ const root=resolve(import.meta.dirname,'..');
 const read=p=>readFileSync(resolve(root,p),'utf8');
 const WORKER='sentinel-trading-lab/agent/worker/';
 
-test('remote polling and heartbeat budget stay unchanged',()=>{
+test('remote polling is bounded and heartbeat does not hold up mobile actions',()=>{
   const worker=read(WORKER+'index.mjs');
-  assert.match(worker,/setInterval\(remoteLoop,1500\)/);
-  assert.match(worker,/runtime\.stateName==='running'\?2500:12000/);
+  assert.match(worker,/setInterval\(remoteLoop,2500\)/);
+  assert.match(worker,/runtime\.stateName==='running'\?8000:20000/);
+  assert.match(worker,/void sendRemoteHeartbeat\(\)/);
+  assert.match(worker,/lastRemoteHeartbeatAttemptAt=0/);
   assert.match(worker,/compactRemoteState\(/);
   const remote=read(WORKER+'remote-status.mjs');
   assert.match(remote,/MAX_ANALYSES\s*=\s*6/);
@@ -54,4 +56,19 @@ test('remote broker snapshot is compact without changing full Agent values',()=>
   assert.equal(out.lastResult.analysis.predictionMetrics,undefined);
   assert.equal(JSON.stringify(input),before,'Never mutate input/engine history');
   assert.ok(JSON.stringify(out).length < before.length*.15,'Large duplicated prediction arrays should not reach Supabase');
+});
+
+test('broker WebSocket and DOM inspection have steady-state safeguards',()=>{
+  const driver=read(WORKER+'local-playwright-driver.mjs');
+  const feed=read(WORKER+'quadcode-feed.mjs');
+  const installer=read('sentinel-trading-lab/public/downloads/install-agent-v88.ps1');
+  assert.match(driver,/lastHttpInspectAt<2000/);
+  assert.match(driver,/st\.activeId!=null&&st\.balance!=null&&st\.activeMap\.size>0/);
+  assert.match(driver,/txt\.length>256000/);
+  assert.match(driver,/fullDomEveryMs=st\.activeId!=null&&st\.balance!=null\?90000:30000/);
+  assert.match(driver,/feed\?\.ready&&feed\.authenticated/);
+  assert.match(feed,/this\.onFrame\(data,'direct-in'\)/);
+  assert.doesNotMatch(feed,/this\.onFrame\(raw,'direct-in'\)/);
+  assert.match(installer,/13\.4\.37-latency-1009/);
+  assert.doesNotMatch(installer,/13\.4\.37-invest-readback-1009/);
 });

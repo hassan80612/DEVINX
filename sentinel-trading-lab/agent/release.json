@@ -1,6 +1,6 @@
 {
-  "version": "13.4.36",
-  "build": "13.4.36-analysis-only-1009",
+  "version": "13.4.37",
+  "build": "13.4.37-latency-1009",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

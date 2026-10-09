@@ -525,6 +525,11 @@ export class LocalPlaywrightDriver{
     }
   }
   ingest(provider,payload,direction='in'){
+    // Skip duplicated high-rate page prices when the dedicated feed is healthy.
+    if(direction==='page-in'){
+      const feed=this.feeds.get(provider);
+      if(feed?.ready&&feed.authenticated&&feed.lastMessageAt&&Date.now()-feed.lastMessageAt<10000&&typeof payload==='string'&&/^\s*\{\s*"name"\s*:\s*"(?:candle-generated|quote-generated|instrument-quotes|ticker|candles)"/i.test(payload))return;
+    }
     const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt};st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
     try{protocolScan(data,st,direction)}catch{}
@@ -575,7 +580,20 @@ export class LocalPlaywrightDriver{
   }
   attachNetwork(provider,page){if(page.__sentinelAttached)return;page.__sentinelAttached=true;
     page.on('websocket',ws=>{ws.on('framereceived',e=>this.ingest(provider,e.payload,'page-in'));ws.on('framesent',e=>this.ingest(provider,e.payload,'page-out'))});
-    page.on('response',async resp=>{try{const ct=resp.headers()['content-type']||'';if(!/json|text/.test(ct))return;const url=resp.url();if(!/(iqoption|exnova)/i.test(url))return;const txt=await resp.text();if(txt.length>2_000_000)return;this.ingest(provider,txt,'http-in')}catch{}});
+    // Avoid expensive browser response-body reads after the market is identified.
+    let lastHttpInspectAt=0;
+    page.on('response',async resp=>{try{
+      const st=this.state(provider);
+      if(st.activeId!=null&&st.balance!=null&&st.activeMap.size>0)return;
+      const now=Date.now();if(now-lastHttpInspectAt<2000)return;
+      const headers=resp.headers(),ct=headers['content-type']||'';
+      if(!/json|text/.test(ct))return;
+      const url=resp.url();if(!/(iqoption|exnova)/i.test(url))return;
+      const declaredSize=Number(headers['content-length']||0);if(declaredSize>256000)return;
+      lastHttpInspectAt=now;
+      const txt=await resp.text();if(txt.length>256000)return;
+      this.ingest(provider,txt,'http-in');
+    }catch{}});
   }
   async directFeed(provider){
     const s=await this.session(provider);if(!s.context)return null;const cfg=this.config(provider);let cookies=[];try{cookies=await s.context.cookies()}catch{}
@@ -793,7 +811,8 @@ export class LocalPlaywrightDriver{
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
     }
-    if(!st.lastFullDomAt||now-st.lastFullDomAt>30000){
+    const fullDomEveryMs=st.activeId!=null&&st.balance!=null?90000:30000;
+    if(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }

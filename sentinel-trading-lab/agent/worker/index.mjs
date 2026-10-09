@@ -360,6 +360,16 @@ async function withTimeout(promise,ms,label='operation_timeout'){
   }finally{clearTimeout(timer)}
 }
 let remoteBusy=false;
+let remoteHeartbeatBusy=false;
+async function sendRemoteHeartbeat(){
+  if(remoteHeartbeatBusy)return;
+  remoteHeartbeatBusy=true;
+  try{
+    const hb=await remoteRelay.heartbeat(await remoteState());
+    if(hb&&hb.accessActive===false)await enforceAccessLease();
+  }catch(e){remoteRelay.info.lastError=String(e?.message||e)}
+  finally{remoteHeartbeatBusy=false}
+}
 let lastRemoteHeartbeatAttemptAt=0;
 let lastRemoteRegisterAttemptAt=0;
 async function remoteState(){
@@ -376,11 +386,11 @@ async function remoteLoop(){
     }
     // Preserve sub-2-second remote command polling while avoiding repeated
     // full dashboard snapshots when stopped or disconnected.
-    const heartbeatEveryMs=runtime.stateName==='running'?2500:12000;
+    const heartbeatEveryMs=runtime.stateName==='running'?8000:20000;
     if(now-lastRemoteHeartbeatAttemptAt>=heartbeatEveryMs){
       lastRemoteHeartbeatAttemptAt=now;
-      const hb=await remoteRelay.heartbeat(await remoteState());
-      if(hb&&hb.accessActive===false)await enforceAccessLease();
+      // Cloud heartbeat must not delay a local quote or mobile command.
+      void sendRemoteHeartbeat();
     }
     const polled=await remoteRelay.poll();const cmd=polled?.command;
     if(cmd?.id&&cmd?.type){
@@ -388,10 +398,9 @@ async function remoteLoop(){
         const method=cmd.type==='settings'?'PATCH':'POST';
         const data=await withTimeout(act('/'+cmd.type,method,cmd.payload||{}),28000,'agent_command_timeout');
         await saveState();
-        // Publish new status immediately after a remote control action.
-        lastRemoteHeartbeatAttemptAt=Date.now();
-        await remoteRelay.heartbeat(await remoteState());
+        // ACK the action promptly; publish refreshed state in the next heartbeat.
         await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
+        lastRemoteHeartbeatAttemptAt=0;
       }catch(e){
         await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)}).catch(()=>{})
       }
@@ -408,7 +417,7 @@ async function remoteLoop(){
     }
   }finally{remoteBusy=false}
 }
-setInterval(remoteLoop,1500).unref();setTimeout(remoteLoop,350).unref();
+setInterval(remoteLoop,2500).unref();setTimeout(remoteLoop,350).unref();
 
 const server=http.createServer(async(req,res)=>{try{if(req.method==='OPTIONS'){res.writeHead(204,cors(req));return res.end()}const origin=String(req.headers.origin||'');if(origin&&!allowedOrigin(origin))return json(req,res,403,{ok:false,error:'origin_not_allowed'});const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);if(url.pathname==='/health')return json(req,res,200,{ok:true,service:'sentinel-worker',version:VERSION,build:BUILD,pid:process.pid,runtimeKind:'persistent-worker',driverConfigured:driver.available,vaultConfigured:true,remoteRelay:{...remoteRelay.info},ts:new Date().toISOString()});if(url.pathname==='/remote-info')return json(req,res,200,{ok:true,...remoteRelay.info,version:VERSION});if(!authorized(req))return json(req,res,401,{ok:false,error:'unauthorized'});const payload=['POST','PATCH','PUT','DELETE'].includes(req.method||'')?await body(req):{};const addr=String(req.socket?.remoteAddress||'');const local=addr==='127.0.0.1'||addr==='::1'||addr==='::ffff:127.0.0.1';const data=await act(url.pathname,req.method||'GET',payload,{local});await saveState();return json(req,res,200,{ok:true,data})}catch(e){return json(req,res,Number(e?.status||400),{ok:false,error:String(e?.message||e)})}});
 server.listen(PORT,HOST,()=>console.log(`Sentinel worker v${VERSION} listening on http://${HOST}:${PORT}`));process.on('SIGTERM',async()=>{await saveState();await marketJournal.flush();server.close(()=>process.exit(0))});process.on('SIGINT',async()=>{await saveState();await marketJournal.flush();server.close(()=>process.exit(0))});
