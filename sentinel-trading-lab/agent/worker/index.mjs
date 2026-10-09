@@ -112,7 +112,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
       runtime.requestImmediateEvaluation?.();
     }else if(key==='duration'){
       const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
-      runtime.patchSettings({orderDurationMs:n,forecastHorizonSeconds:n/1000},'overlay');
+      runtime.patchSettings({orderDurationMs:n},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='forecastHorizon'){
       const n=Math.round(Number(value));if(![30,60,120,300,600,900,3600].includes(n))throw new Error('invalid_forecast_horizon');
