@@ -1,10 +1,16 @@
+import {closedPriceBars} from './closed-price-bars.mjs';
 // A wick beyond the frozen structural level is a test, not a confirmed break.
 // Use the existing 5s price bars, only after they close. There is no forecast
 // lock, no side change and no authority over the independent entry analyst.
-export function scenarioInvalidation(main,snap,now){
+export function scenarioInvalidation(main,snap,now,{strict=false}={}){
   const level=Number(main.invalidation),price=Number(snap.price);
   const crossed=p=>main.side==='CALL'?p<=level:p>=level;
   if(main.invalidation==null||!Number.isFinite(level))return{broken:false,testing:false};
+  if(strict){
+    const bars=closedPriceBars(snap,now).filter(b=>b.from>=main.createdAt&&b.to<=main.deadline);
+    const brokenBar=bars.find(b=>crossed(b.close));
+    return{broken:!!brokenBar,testing:crossed(price)&&!brokenBar,evidence:brokenBar?{...brokenBar,level,source:'closed-5s-structure'}:null};
+  }
   const bars=new Map(),seen=new Set();
   for(const q of [...(snap.quoteHistory||[])].sort((a,b)=>Number(a.ts)-Number(b.ts))){
     const ts=Number(q.ts),p=Number(q.price);

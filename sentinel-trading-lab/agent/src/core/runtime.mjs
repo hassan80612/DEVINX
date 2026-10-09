@@ -1,3 +1,4 @@
+import {reviewScenario,scenarioAdmission} from './scenario-review.mjs';
 import {scenarioInvalidation} from './scenario-invalidation.mjs';
 import {PersistentReversalMonitor} from './persistent-reversal.mjs';
 import {PredictionInputState} from './forecast-evidence.mjs';
@@ -47,14 +48,14 @@ function signalPlan({analysis,settings,price,now=Date.now()}={}){
 
 
 function verifiedPredictionUnavailable(analysis,model){return model==='family-v6-verified-input'&&analysis.predictionInputQuality?.ready!==true}
-function newPriceStructure(main,side,snap){
+function newPriceStructure(main,side,snap,strict=false){
  if(!main?.invalidatedAt||main.invalidation==null)return false;
  const reclaimed=side==='CALL'?Number(snap.price)>main.invalidation:Number(snap.price)<main.invalidation;
  if(!reclaimed)return false;
  // Require a completed price bar after the previous structural break which
  // closes back inside the ORIGINAL level; moving a calculated margin is not
  // new evidence. The opposite-side case retains its own qualified forecast.
- const check=scenarioInvalidation({...main,createdAt:main.invalidatedAt,side:side==='CALL'?'PUT':'CALL',deadline:Number(snap.quoteTs)+5000},snap,Number(snap.quoteTs));
+ const check=scenarioInvalidation({...main,createdAt:main.invalidatedAt,side:side==='CALL'?'PUT':'CALL',deadline:Number(snap.quoteTs)+5000},snap,Number(snap.quoteTs),{strict});
  return check.broken;
 }
 
@@ -381,7 +382,7 @@ export class DemoTradingRuntime{
   _operationalSignalState(analysis,snap,now=Date.now()){
     if(analysis.predictionMetrics)analysis={...analysis,metrics:analysis.predictionMetrics};
     const asset=String(this.settings.asset||'—').toUpperCase(),provider=String(snap.provider||this.externalMarket?.provider||'unknown'),horizon=Number(this.settings.forecastHorizonSeconds||60),durationMs=Number(this.settings.orderDurationMs||60000),combo=this._strategyComboKey();
-    const reversalOnly=this.subanalystPolicy==='persistent-reversal-alert-v1';
+    const reversalOnly=this.subanalystPolicy==='persistent-reversal-alert-v1',selfReview=this.scenarioPolicy==='own-review-v1';
     const reversalAlert=reversalOnly?this.reversalMonitor.update({snap,now,asset,provider}):null;
     if(!reversalOnly){
     this.validationProvider=provider;this.entryResearch.settle({...snap,provider,asset},now);
@@ -398,20 +399,22 @@ export class DemoTradingRuntime{
     const previousContext=this.operationalContext||main?.context;
     if(previousContext!==context){main=null;this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;}
     this.operationalContext=context;
+    const admission=selfReview?scenarioAdmission(mainPlan,analysis.metrics):{allowed:true};
+    if(selfReview&&mainPlan)mainPlan.scenarioAdmission=admission;
     const mainSide=String(mainPlan?.rawBias||mainPlan?.bias||'NEUTRO'),mainLead=Number(mainSide==='CALL'?mainPlan?.callProbability:mainPlan?.putProbability),threshold=Number(this.settings.futureDisplayThreshold||70),minPoints=Number(this.settings.risk.minConfidence||74);
     const nextInvalidation=mainSide==='CALL'?mainPlan?.callInvalidation:mainPlan?.putInvalidation,nextTrigger=mainSide==='CALL'?mainPlan?.callTrigger:mainPlan?.putTrigger;
-    const newStructure=this.scenarioPolicy==='closed-structure-v1'
-      ?mainSide!==main?.side||(Number(snap.price)!==Number(main?.invalidatedPrice)&&newPriceStructure(main,mainSide,snap))
+    const newStructure=(selfReview||this.scenarioPolicy==='closed-structure-v1')
+      ?mainSide!==main?.side||(Number(snap.price)!==Number(main?.invalidatedPrice)&&newPriceStructure(main,mainSide,snap,selfReview))
       :mainSide!==main?.side||Number(nextInvalidation)!==main?.invalidation||Number(nextTrigger)!==main?.trigger;
     const newPriceValid=nextInvalidation==null||(mainSide==='CALL'?Number(snap.price)>Number(nextInvalidation):Number(snap.price)<Number(nextInvalidation));
-    if(main?.status==='INVALIDADO'&&newStructure&&newPriceValid&&mainPlan?.outlookReady&&mainPlan.directionReady&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints){this.scenarioSetup=null;main=null;}
-    const empty={asset,side:'AGUARDAR',forecastHorizonSeconds:horizon,durationMs,state:'AGUARDAR',ready:false,actionable:false,entryDecisionHorizonSeconds:durationMs/1000,reason:'Aguardando um cenário confirmado.'};
+    if(main?.status==='INVALIDADO'&&(!selfReview||Number(mainPlan?.entryTiming?.sourceBarAt||0)>Number(main.invalidatedAt||0))&&newStructure&&newPriceValid&&mainPlan?.outlookReady&&mainPlan.directionReady&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints){this.scenarioSetup=null;main=null;}
+    const empty={asset,side:'AGUARDAR',forecastHorizonSeconds:horizon,durationMs,state:'AGUARDAR',ready:false,actionable:false,entryDecisionHorizonSeconds:durationMs/1000,reason:admission.allowed?'Aguardando um cenário confirmado.':admission.reason};
     // Retain the terminal window instead of refreshing its same forecast.
     if(main&&!main.closed&&now>=main.deadline){
       main.closed=true;main.status='JANELA ENCERRADA';main.closedAt=main.deadline;
       main.reason='Prazo do cenário encerrado. Aguardar novo nível estrutural confirmado.';
     }
-    const mainQualified=newPriceValid&&mainPlan?.outlookReady===true&&mainPlan.directionReady===true&&['CALL','PUT'].includes(mainSide)&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints;
+    const mainQualified=newPriceValid&&admission.allowed&&(!selfReview||mainPlan?.safety?.blocked!==true)&&mainPlan?.outlookReady===true&&mainPlan.directionReady===true&&['CALL','PUT'].includes(mainSide)&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints;
     if(main?.status==='JANELA ENCERRADA'&&mainQualified){
       // Require a newer completed forecast source AND a changed price level.
       const sourceAt=Number(mainPlan?.entryTiming?.sourceBarAt||0);
@@ -430,7 +433,7 @@ export class DemoTradingRuntime{
       main=mainQualified?{
         context,id:context+'|'+now,side:mainSide,createdAt:now,deadline:now+horizon*1000,
         invalidation:(mainSide==='CALL'?mainPlan.callInvalidation:mainPlan.putInvalidation)==null?null:Number(mainSide==='CALL'?mainPlan.callInvalidation:mainPlan.putInvalidation),
-        trigger:Number(nextTrigger),confidence:Number(mainPlan.confidence),closed:false,status:'OPEN'
+        trigger:Number(nextTrigger),confidence:Number(mainPlan.confidence),originalCallPct:Number(mainPlan.callProbability),originalPutPct:Number(mainPlan.putProbability),kind:mainPlan?.scenario?.kind||'forecast',closed:false,status:'OPEN'
       }:{
         context,id:context+'|independent|'+now,side:'NEUTRO',createdAt:now,
         deadline:now+durationMs,invalidation:null,closed:false,status:'OBSERVANDO',
@@ -438,14 +441,21 @@ export class DemoTradingRuntime{
       };
       this.scenarioSetup=main;
     }
-    const price=Number(snap.price),confirmation=!main.closed&&this.scenarioPolicy==='closed-structure-v1'?scenarioInvalidation(main,snap,now):null,broken=confirmation?confirmation.broken:main.invalidation!=null&&Number.isFinite(main.invalidation)&&(main.side==='CALL'?price<=main.invalidation:price>=main.invalidation);
+    const price=Number(snap.price),confirmation=!main.closed&&(selfReview||this.scenarioPolicy==='closed-structure-v1')?scenarioInvalidation(main,snap,now,{strict:selfReview}):null,broken=confirmation?confirmation.broken:main.invalidation!=null&&Number.isFinite(main.invalidation)&&(main.side==='CALL'?price<=main.invalidation:price>=main.invalidation);
     if(confirmation)main.invalidationTest=confirmation.testing;
     if(broken&&!main.closed){main.closed=true;main.status='INVALIDADO';main.invalidatedAt=now;main.invalidatedPrice=price;if(confirmation)main.invalidationEvidence=confirmation.evidence;main.reason='Estrutura do cenário '+main.side+' invalidada pelo preço.';}
+    if(selfReview&&!main.closed&&!main.independentOnly){
+      main.review=reviewScenario(main,admission.allowed?mainPlan:{...mainPlan,directionReady:false},snap,now,{threshold,minPoints});
+      main.status=main.review.state;main.reason=main.review.reason||'Previsão em acompanhamento.';
+      if(main.review.state==='INVALIDADO'){
+        main.closed=true;main.invalidatedAt=now;main.invalidatedPrice=price;main.invalidationEvidence=main.review.evidence;
+      }
+    }
     if(reversalOnly)return{...empty,side:main.independentOnly?'AGUARDAR':main.side,
-      state:main.closed?main.status:main.independentOnly?'AGUARDAR':'JANELA ABERTA',
+      state:main.closed?main.status:main.independentOnly?'AGUARDAR':main.status==='REAVALIANDO'?'REAVALIANDO':'JANELA ABERTA',
       createdAt:main.independentOnly?null:main.createdAt,targetAt:main.deadline,
       scenario:main.independentOnly?null:{...main},trigger:main.trigger??null,invalidation:main.invalidation,
-      reason:main.reason||'Cenário em acompanhamento; Subanalista apenas avisa reversões.',
+      reason:main.reason||(main.independentOnly?empty.reason:'Previsão em acompanhamento.'),
       subanalyst:reversalAlert,entryAnalyst:{mode:'reversal-alert',advisoryOnly:true,independent:true,
         qualification:{allowed:false},signal:{side:'AGUARDAR',ready:false,actionable:false},reversalAlert}};
     const decorate=op=>({...op,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,

@@ -1345,15 +1345,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.23'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.4.24'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.23';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.24';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
           reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:none}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.23';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.24';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1560,7 +1560,9 @@ export class LocalPlaywrightDriver{
         const durationText=({30000:'30 s',60000:'1 min',120000:'2 min',300000:'5 min',600000:'10 min',900000:'15 min'})[duration]||Math.round(duration/1000)+' s';
         const entrySeconds=operationalNow?Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000)):null;
         const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO';
-        const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide):'AGUARDE UM CENÁRIO';
+        const scenarioRisk=runtimeView.risk===true&&!timingClosed;
+        const scenarioCardBg=timingClosed?(uiTheme==='light'?'#fff0ef':'linear-gradient(145deg,#55262c,#291318)'):scenarioRisk?(uiTheme==='light'?'#fff7df':'linear-gradient(145deg,#4b3c18,#242211)'):formingSide==='CALL'?(uiTheme==='light'?'#e3f7eb':'linear-gradient(145deg,#12583c,#083526)'):heroPanelBg;
+        const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide+(scenarioRisk?' · REAVALIANDO':'')):'AGUARDE UM CENÁRIO';
 
         // Subanalyst remains independently executable even when the scenario
         // is closed or opposite; only its own verified signal is presented.
@@ -1604,11 +1606,11 @@ export class LocalPlaywrightDriver{
         const subanalystHtml=advisoryMode?'<div data-sentinel-subanalyst-status style="min-height:70px;padding:7px 8px;margin-bottom:7px;border:1px solid '+panelBorder+';border-radius:8px;background:'+panelBg+'">'+
           '<div style="font-size:12px;font-weight:800;color:'+goldSoft+'">Subanalista · aviso de reversão</div>'+
           '<b data-sentinel-subanalyst-value style="display:block;font-size:13px;color:'+reversalTone+'">'+reversalLabel+'</b>'+
-          '<div data-sentinel-reversal-level style="font-size:11px;line-height:1.4;color:'+ink+'">'+(reversalInfo?'Ponto '+price(reversalInfo.level)+' · gatilho '+price(reversalInfo.trigger)+' · invalida '+price(reversalInfo.invalidation):'Aguardando quebra e continuidade confirmadas.')+'</div>'+
-          '<div style="font-size:10px;color:'+muted+'">'+(reversalInfo?(reversalInfo.testing?'Estrutura em teste · aguarde fechamento.':'Persistência confirmada até esta leitura · apenas aviso.'):'Somente reversões com estrutura própria.')+'</div></div>':legacySubanalystHtml;
+          '<div data-sentinel-reversal-level style="font-size:11px;line-height:1.4;color:'+ink+'">'+(reversalInfo?'Ponto '+price(reversalInfo.level)+' · gatilho '+price(reversalInfo.trigger)+' · invalida '+price(reversalInfo.invalidation):'Aguardando uma reversão.')+'</div>'+
+          '<div style="font-size:10px;color:'+muted+'">'+(reversalInfo&&reversalInfo.testing?'Reversão em teste.':'')+'</div></div>':legacySubanalystHtml;
         const entryActionLabel=futureActionLabel;
         // No second subanalyst headline: one compact status, above model/Call/Put.
-        const futurePhase=(entryDecisionHorizon!==Number(plannerHorizon)?
+        const legacyFuturePhase=(entryDecisionHorizon!==Number(plannerHorizon)?
           'ANÁLISE DA ENTRADA '+Math.round(entryDecisionHorizon)+'s · ':'')+
           (!plannerReadable?'AGUARDE · ENTRADA SUSPENSA':
             operationalNow?'ENTRADA DISPONÍVEL POR '+Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000))+'s · EXPIRAÇÃO '+durationText:
@@ -1616,16 +1618,17 @@ export class LocalPlaywrightDriver{
             timingClosed?'PRAZO ENCERRADO · ESPERE NOVA ESTRUTURA':
             formingSide?(advisoryMode?'CENÁRIO EM ACOMPANHAMENTO · SUBANALISTA SOMENTE AVISA':'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA'):
             'ANALISANDO · AGUARDANDO CONFIRMAÇÃO');
+        const futurePhase=advisoryMode?(timingClosed?'PRAZO ENCERRADO':scenarioRisk?'PREVISÃO EM REAVALIAÇÃO':futureDecision?'PREVISÃO EM ACOMPANHAMENTO':'AGUARDANDO UM CENÁRIO'):legacyFuturePhase;
         const futureDecisionStatus=timingClosed?'00:00 · ENCERRADO':!plannerReadable?'SEM LEITURA':futureDecision?('FECHA EM '+windowSeconds+'s'):'EM ANÁLISE';
         const currentAnalysisReason=String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
-        const futureDecisionConfidence=futureConfidence;
+        const futureDecisionConfidence=advisoryMode&&operational.scenario?Number(operational.scenario.confidence||0):futureConfidence;
         const measuredHistory=operational?.entryAnalyst?.research||{},measuredSamples=Math.max(0,Number(measuredHistory.samples||0));
-        const measuredHistoryLabel=advisoryMode?'Alertas estruturais de reversão · sem autorização de entrada':measuredSamples?('Entradas liberadas neste contexto: '+n(measuredHistory.winRate,1)+'% · '+measuredSamples+' resultados · '+(measuredHistory.qualified?'modelo qualificado':'em validação')):'Entradas deste contexto: ainda sem resultados medidos';
+        const measuredHistoryLabel=advisoryMode?'Aviso de reversão':measuredSamples?('Entradas liberadas neste contexto: '+n(measuredHistory.winRate,1)+'% · '+measuredSamples+' resultados · '+(measuredHistory.qualified?'modelo qualificado':'em validação')):'Entradas deste contexto: ainda sem resultados medidos';
         const displayedCallTrigger=operationalHeroSide==='CALL'&&operational?.trigger!=null?operational.trigger:plannerPlan?.callTrigger,displayedPutTrigger=operationalHeroSide==='PUT'&&operational?.trigger!=null?operational.trigger:plannerPlan?.putTrigger;
         const displayedCallInvalidation=operationalHeroSide==='CALL'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.callInvalidation,displayedPutInvalidation=operationalHeroSide==='PUT'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.putInvalidation;
         const planHtml=subanalystHtml+(plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:5px">'+
-            '<div style="padding:5px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:9.5px;color:'+subtle+';font-weight:700">CONFIANÇA DO MODELO</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+' pts</b></div>'+
+            '<div style="padding:5px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:9.5px;color:'+subtle+';font-weight:700">'+(advisoryMode?'LEITURA ATUAL':'CONFIANÇA DO MODELO')+'</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+' pts</b></div>'+
             '<div style="padding:5px;border-radius:8px;background:rgba(114,230,185,.05);border:1px solid rgba(105,225,181,.11);text-align:center"><span style="display:block;font-size:9.5px;color:'+callTone+';font-weight:700">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(futureCallPct,0)+'%</b></div>'+
             '<div style="padding:5px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,156,.11);text-align:center"><span style="display:block;font-size:9.5px;color:'+putTone+';font-weight:700">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(futurePutPct,0)+'%</b></div>'+
           '</div>'+
@@ -1634,7 +1637,7 @@ export class LocalPlaywrightDriver{
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(105,225,181,.05);border:1px solid rgba(105,225,181,.11)"><div style="font-size:9.5px;color:'+callTone+';font-weight:700">CALL — confirmação</div><div style="font-size:14px;font-weight:700;color:#69e1b5;margin-top:2px">'+price(displayedCallTrigger)+'</div><div style="font-size:9.5px;color:'+muted+';margin-top:2px">invalida &lt; '+price(displayedCallInvalidation)+'</div></div>'+
             '<div style="padding:6px 7px;border-radius:8px;background:rgba(255,143,156,.05);border:1px solid rgba(255,143,156,.11)"><div style="font-size:9.5px;color:'+putTone+';font-weight:700">PUT — confirmação</div><div style="font-size:14px;font-weight:700;color:#ff8f9c;margin-top:2px">'+price(displayedPutTrigger)+'</div><div style="font-size:9.5px;color:'+muted+';margin-top:2px">invalida &gt; '+price(displayedPutInvalidation)+'</div></div>'+
           '</div>'+
-          '<div style="margin-top:5px;height:25px;min-height:25px;max-height:25px;overflow:hidden;font-size:9.5px;line-height:1.34;color:'+ink+';font-weight:760">Percentuais do Cenário · Subanalista de reversão independente.</div>'+
+          '<div style="margin-top:5px;height:25px;min-height:25px;max-height:25px;overflow:hidden;font-size:9.5px;line-height:1.34;color:'+ink+';font-weight:760">Leitura atual do Cenário.</div>'+
           '<div style="margin-top:5px;height:28px;min-height:28px;max-height:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:9.5px;line-height:1.35;color:'+muted+'">'+esc(measuredHistoryLabel)+' · confiança em pontos não é taxa de acerto.</div>'
         ):'<div style="height:159px;box-sizing:border-box;font-size:10.5px;color:'+muted+'">Aguardando leitura atual deste prazo.</div>');
         const strategyCardsHtml=[1,2,3].map(slot=>{
@@ -1813,7 +1816,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.23')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.24')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">painel premium de análise</div>
               </div>
             </div>
@@ -1839,7 +1842,7 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div data-sentinel-pilot-status style="margin-top:7px;font-size:9.5px;font-weight:700;color:${goldSoft};line-height:1.4">${esc(pilotLabel)}</div>
-          <div class="sentinel-shine" data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="position:relative;margin-top:10px;padding:10px 11px;min-height:230px;height:auto;overflow:visible;border:1px solid ${uiTheme==='light'?'rgba(145,105,34,.42)':'rgba(226,194,105,.66)'};border-left:4px solid ${outlookTone};background:${heroPanelBg};border-radius:15px;box-sizing:border-box;box-shadow:${heroShadow}">
+          <div class="sentinel-shine" data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="position:relative;margin-top:10px;padding:10px 11px;min-height:230px;height:auto;overflow:visible;border:1px solid ${uiTheme==='light'?'rgba(145,105,34,.42)':'rgba(226,194,105,.66)'};border-left:4px solid ${timingClosed?putTone:scenarioRisk?warnTone:outlookTone};background:${scenarioCardBg};border-radius:15px;box-sizing:border-box;box-shadow:${heroShadow}">
             <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:24px;overflow:visible">
               <span class="sentinel-metal-gold" style="font-size:12.5px;font-weight:750;letter-spacing:.055em">CENÁRIO FUTURO POR PRAZO</span><span style="font-size:9.5px;font-weight:750;color:${ink};letter-spacing:.06em">PRÓXIMO PASSO</span>
             </div>

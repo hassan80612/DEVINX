@@ -4,8 +4,11 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
     const scenario=operational.scenario,contextMatches=String(operational.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(operational.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(operational.durationMs)===Number(durationMs);
     const side=contextMatches&&['CALL','PUT'].includes(scenario?.side)?scenario.side:null;
     const closed=!!side&&(scenario.closed===true||Number(scenario.deadline)<=now),hasSetup=!!side&&!closed;
-    return{contextMatches,side,displaySide:side,analysisSide:side,entrySide:null,
-      state:!side?'AGUARDAR':scenario.status==='INVALIDADO'?'INVALIDADO':closed?'JANELA ENCERRADA':'JANELA ABERTA',
+    const liveSide=String(forecast?.rawBias||forecast?.bias||'NEUTRO');
+    const forecastMatches=contextMatches&&String(forecast?.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(forecast?.horizonSeconds)===Number(horizonSeconds);
+    const analysisSide=forecastMatches&&forecast.outlookReady===true&&forecast.directionReady===true&&['CALL','PUT'].includes(liveSide)?liveSide:null;
+    return{contextMatches,side,displaySide:side,analysisSide,oppositeAnalysis:!!analysisSide&&analysisSide!==side,risk:scenario?.status==='REAVALIANDO',entrySide:null,
+      state:!side?'AGUARDAR':scenario.status==='INVALIDADO'?'INVALIDADO':closed?'JANELA ENCERRADA':scenario.status==='REAVALIANDO'?'REAVALIANDO':'JANELA ABERTA',
       closed,hasSetup,canEnter:false,entryWindowOpen:false,entryDeadline:null,entryState:'SEM ENTRADA',
       deadline:hasSetup?Number(scenario.deadline):null,remainingSeconds:hasSetup?Math.max(0,Math.ceil((Number(scenario.deadline)-now)/1000)):null,
       signalHorizonSeconds:Number(horizonSeconds),confidence:Number(scenario?.confidence||0)};

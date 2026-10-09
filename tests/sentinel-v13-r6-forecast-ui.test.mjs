@@ -62,7 +62,7 @@ test('Future overlay uses runtime windows and confirms the order horizon',async(
   assert.ok(ui.includes('data-sentinel-op-threshold'));
   assert.ok(!ui.includes('Motores: '));
   assert.ok(!ui.includes('Cenário em formação:'));
-  assert.ok(ui.includes('Percentuais do Cenário · Subanalista de reversão independente.'));
+  assert.ok(ui.includes('Leitura atual do Cenário.'));
   assert.ok(ui.includes('sentinelMetalSweep'));
   assert.ok(ui.includes('sentinel-metal-gold'));
   assert.ok(ui.includes("ev.key==='ArrowDown'"));

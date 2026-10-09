@@ -6,9 +6,9 @@ import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime
 import {analyzeReplayFrame} from '../sentinel-trading-lab/agent/worker/replay.mjs';
 
 test('installed release activates the exact tested prediction and reversal policy',async()=>{
- assert.equal(VERSION,'13.4.23');assert.equal(BUILD,'13.4.23-persistent-reversal-1008');
+ assert.equal(VERSION,'13.4.24');assert.equal(BUILD,'13.4.24-own-scenario-review-1008');
  const x=JSON.parse(await readFile('tests/fixtures/sentinel-continuation-prices.json','utf8'));
- const released=new DemoTradingRuntime(RUNTIME_OPTIONS),tested=new DemoTradingRuntime({predictionModel:'family-v6-verified-input',entryPolicy:'structural-reversals-v1',scenarioPolicy:'closed-structure-v1',subanalystPolicy:'persistent-reversal-alert-v1'});
+ const released=new DemoTradingRuntime(RUNTIME_OPTIONS),tested=new DemoTradingRuntime({predictionModel:'family-v6-verified-input',entryPolicy:'structural-reversals-v1',scenarioPolicy:'own-review-v1',subanalystPolicy:'persistent-reversal-alert-v1'});
  const original=new DemoTradingRuntime({predictionModel:'family-v6-stable',entryPolicy:'structural-reversals-v1'});
  for(const r of [released,tested,original]){Object.assign(r.settings,{asset:'TEST',strategy:'trend',forecastHorizonSeconds:30,orderDurationMs:30000,futureDisplayThreshold:50});r.settings.risk.minConfidence=55;}
  // Chronological frames include backfill growth and every operational decision.

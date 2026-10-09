@@ -1,10 +1,10 @@
 {
-  "version": "13.4.23",
-  "build": "13.4.23-persistent-reversal-1008",
+  "version": "13.4.24",
+  "build": "13.4.24-own-scenario-review-1008",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
-    "scenarioPolicy": "closed-structure-v1",
+    "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1"
   }
 }
