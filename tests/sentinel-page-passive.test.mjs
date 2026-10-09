@@ -7,7 +7,7 @@ import {LatestOverlayScheduler} from '../sentinel-trading-lab/agent/worker/lates
 import {readFileSync} from 'node:fs';
 
 
-test('the broker page observes only outbound asset selections and never price frames',()=>{
+test('broker market frames are read passively and update live prices without broker interference',()=>{
   const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
   const pageEvents=[],wsEvents={};
   const page={on(name,fn){pageEvents.push({name,fn});}};
@@ -15,17 +15,39 @@ test('the broker page observes only outbound asset selections and never price fr
   driver.attachNetwork('iq_option',page);
   assert.deepEqual(pageEvents.map(e=>e.name),['websocket']);
   pageEvents[0].fn({on(name,fn){wsEvents[name]=fn;}});
-  assert.deepEqual(Object.keys(wsEvents),['framesent']);
-  assert.equal(driver.state('iq_option').pageNetworkTap,'outbound-asset-only');
+  assert.deepEqual(Object.keys(wsEvents).sort(),['framereceived','framesent']);
+  assert.equal(driver.state('iq_option').pageNetworkTap,'read-only-quote-observer');
   const st=driver.state('iq_option');
   st.symbol='EUR/USD OTC';st.uiSymbol='EUR/USD OTC';st.activeId=76;
   st.activeMap.set('EURUSDOTC',76);st.activeMap.set('GBPUSDOTC',77);st.assets.add('GBP/USD OTC');
   wsEvents.framesent({payload:JSON.stringify({name:'sendMessage',msg:{name:'get-candles',version:'2.0',body:{active_id:77,size:60}}})});
-  assert.equal(st.pageActiveId,77,'visible broker tab selection must still be tracked');
   assert.equal(st.activeId,77);
   assert.equal(st.symbol,'GBP/USD OTC');
+  // Previously, a healthy but unrelated direct feed heartbeat suppressed
+  // the broker's own live quotes. They must now always be considered.
+  driver.feeds.set('iq_option',{ready:true,authenticated:true,lastMessageAt:Date.now()});
+  st.quote=1.12345;st.lastQuoteAt=Date.now()-9500;
+  const now=Date.now();
+  wsEvents.framereceived({payload:JSON.stringify({name:'quote-generated',msg:[{active_id:77,price:1.1255,time:Math.floor(now/1000)}]})});
+  assert.equal(st.quote,1.1255);
+  assert.ok(now-st.lastQuoteAt<1000,'live quote must update from the broker page');
+  assert.equal(st.quoteHistory.at(-1).price,1.1255);
+  const oldTimestamp=st.lastQuoteAt;
+  wsEvents.framereceived({payload:JSON.stringify({name:'quote-generated',msg:[{active_id:76,price:9.999,time:Math.floor(now/1000)}]})});
+  assert.equal(st.lastQuoteAt,oldTimestamp,'another active_id must never change the quote');
 });
 
+test('historical responses do not fake a recent quote for the trading signal',()=>{
+  const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
+  const st=driver.state('iq_option');
+  st.activeId=76;st.candleActiveId=76;st.symbol='EUR/USD OTC';
+  st.quote=1.12345;st.lastQuoteAt=Date.now()-9500;
+  const oldTs=st.lastQuoteAt,now=Math.floor(Date.now()/1000);
+  const candles=Array.from({length:60},(_,i)=>({from:now-(60-i)*60,to:now-(59-i)*60,open:1.12345,close:1.12345,low:1.12345,high:1.12345}));
+  driver.ingest('iq_option',{name:'candles',msg:{active_id:76,candles}},'direct-in');
+  assert.equal(st.candles.length,60);
+  assert.equal(st.lastQuoteAt,oldTs,'historical get-candles must not refresh the live quote timestamp');
+});
 test('an independent direct feed still updates the correct market quote',()=>{
   const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
   const st=driver.state('iq_option');
@@ -144,30 +166,17 @@ test('1s IQ Option candle stream keeps the market fresh without altering strateg
   assert.equal(st.quote,1.12348);
 });
 
-test('live 1s subscription is unique, refreshes if stale, and unsubscribes on instrument change',async()=>{
+test('discard unsuccessful one-second feed subscriptions and preserve strategy history',async()=>{
   const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
-  const provider='iq_option',st=driver.state(provider),messages=[];
+  const st=driver.state('iq_option'),outbound=[];
   st.symbol='EUR/USD OTC';st.uiSymbol=st.symbol;st.activeId=76;st.candleActiveId=76;st.candleSize=60;
-  st.activeMap.set('EURUSDOTC',76);st.activeMap.set('EURUSD',77);
-  st.quote=1.12345;st.lastQuoteAt=Date.now()-10000;
+  st.activeMap.set('EURUSDOTC',76);
   const now=Math.floor(Date.now()/1000);
-  st.candles=Array.from({length:60},(_,i)=>({from:now-(60-i)*60,to:now-(59-i)*60,open:1.12345,close:1.12345,high:1.12345,low:1.12345}));
+  st.candles=Array.from({length:60},(_,i)=>({from:now-(60-i)*60,to:now-(59-i)*60,open:1.12345,close:1.12345,low:1.12345,high:1.12345}));
+  st.quote=1.12345;st.lastQuoteAt=Date.now()-9000;
   driver.directFeed=async()=>null;
-  driver.wsSend=async(_provider,message)=>{messages.push(message);return{ok:true}};
-  await driver._requestCandles(provider,{symbol:st.symbol,activeId:76,force:true});
-  const select=m=>m.msg?.params?.routingFilters||{};
-  const subscribeTicks=()=>messages.filter(m=>m.name==='subscribeMessage'&&select(m).size===1);
-  assert.equal(subscribeTicks().length,1);
-  assert.equal(subscribeTicks()[0].msg.params.routingFilters.active_id,76);
-  assert.equal(st.tickSubscribedActiveId,76);
-  driver.ingest(provider,{name:'candle-generated',msg:{active_id:76,size:1,from:now-1,to:now,open:1.12345,close:1.12347,high:1.12347,low:1.12345}},'direct-in');
-  await driver._requestCandles(provider,{symbol:st.symbol,activeId:76,force:true});
-  assert.equal(subscribeTicks().length,1,'healthy 1s stream must not be subscribed repeatedly');
-  st.lastQuoteAt=Date.now()-10000;
-  await driver._requestCandles(provider,{symbol:st.symbol,activeId:76,force:true});
-  assert.equal(subscribeTicks().length,2,'stalled 1s stream must be recovered');
-  assert.ok(messages.some(m=>m.name==='unsubscribeMessage'&&select(m).size===1&&select(m).active_id===76));
-  await driver._requestCandles(provider,{symbol:'EUR/USD',activeId:77,force:true});
-  assert.equal(subscribeTicks().at(-1).msg.params.routingFilters.active_id,77);
-  assert.equal(st.tickSubscribedActiveId,77);
+  driver.wsSend=async(_p,msg)=>{outbound.push(msg);return{ok:true}};
+  await driver._requestCandles('iq_option',{symbol:st.symbol,activeId:76,force:true});
+  assert.equal(outbound.filter(x=>x.name==='subscribeMessage'&&x.msg?.params?.routingFilters?.size===1).length,0);
+  assert.ok(outbound.some(x=>x.name==='subscribeMessage'&&x.msg?.params?.routingFilters?.size===60));
 });

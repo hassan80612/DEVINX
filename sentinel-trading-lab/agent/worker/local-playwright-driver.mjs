@@ -262,7 +262,15 @@ function protocolScan(data,st,direction='in'){
       st.activeId=Number(aid);st.candleActiveId=Number(aid);st.candles=mergeCandles(st.candles,arr);st.predictionCandles=mergeForecastCandles(st.predictionCandles,arr);st.lastCandleAt=Date.now();
       const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
       if(!integrity.ok){st.lastIntegrityError={...integrity,at:Date.now(),activeId:Number(aid),symbol:st.symbol};st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;st.candles=[];st.quote=null;st.quoteHistory=[];st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleActiveId=null;st.marketStatus='recovering';st.marketReason='Histórico rejeitado por mistura/inconsistência de ativo'}
-      else{const last=st.candles.at(-1);if(last?.close!=null){st.quote=Number(last.close);st.lastQuoteAt=Date.now();appendQuoteSample(st,Date.now(),st.quote)}}
+      else{
+        const last=st.candles.at(-1);
+        // Snapshot history can backfill a missing price, but its response
+        // timestamp is NOT the timestamp of a new market tick.
+        if(st.quote==null&&last?.close!=null){
+          st.quote=Number(last.close);
+          st.lastQuoteAt=epochMs(last.to??last.from)||null;
+        }
+      }
     }else if(arr.length){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
     if(rid)st.marketRequests?.delete?.(rid)
   }
@@ -284,7 +292,14 @@ function protocolScan(data,st,direction='in'){
       }
       st.activeId=Number(aid);st.candleActiveId=Number(aid);const candidate=mergeCandles(st.candles,[candle]);const integrity=candleSeriesIntegrity(candidate,candle.close);st.candleIntegrity=integrity;
       if(!integrity.ok){st.lastIntegrityError={...integrity,at:Date.now(),activeId:Number(aid),symbol:st.symbol};st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;st.candles=[];st.quote=null;st.quoteHistory=[];st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleActiveId=null;st.marketStatus='recovering';st.marketReason='Candle rejeitada por inconsistência de ativo'}
-      else{st.predictionCandles=mergeForecastCandles(st.predictionCandles,[candle]);st.candles=candidate;st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();appendQuoteSample(st,Date.now(),st.quote);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
+      else{
+        st.predictionCandles=mergeForecastCandles(st.predictionCandles,[candle]);st.candles=candidate;st.lastCandleAt=Date.now();
+        // An old candle event must not override a fresher broker-page quote.
+        if(direction==='page-in'||Date.now()-Number(st.lastQuoteAt||0)>1500){
+          st.quote=Number(candle.close);st.lastQuoteAt=Date.now();
+          appendQuoteSample(st,st.lastQuoteAt,st.quote);
+        }
+        const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
     }else if(candle){st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1}
   }
   if(/quote|ticker/i.test(outer)||/quote|ticker/i.test(inner)){
@@ -297,6 +312,8 @@ function protocolScan(data,st,direction='in'){
       const bid=n(row.bid),ask=n(row.ask),q=n(row.price??row.value??row.close??row.current_price??row.spot_price)??(bid!=null&&ask!=null?(bid+ask)/2:bid??ask);
       if(q==null)continue;
       const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at),ts=rawTs==null?Date.now():(rawTs<1e12?rawTs*1000:rawTs);
+      // Do not roll the live price backward on a delayed feed frame.
+      if(ts<Number(st.lastQuoteAt||0)-500||ts>Date.now()+5000)continue;
       st.quote=Number(q);st.lastQuoteAt=ts;appendQuoteSample(st,ts,st.quote)
     }
   }
@@ -539,11 +556,9 @@ export class LocalPlaywrightDriver{
     }
   }
   ingest(provider,payload,direction='in'){
-    // Skip duplicated high-rate page prices when the dedicated feed is healthy.
-    if(direction==='page-in'){
-      const feed=this.feeds.get(provider);
-      if(feed?.ready&&feed.authenticated&&feed.lastMessageAt&&Date.now()-feed.lastMessageAt<10000&&typeof payload==='string'&&/^\s*\{\s*"name"\s*:\s*"(?:candle-generated|quote-generated|instrument-quotes|ticker|candles)"/i.test(payload))return;
-    }
+    // Do not infer quote freshness from the separate socket's heartbeat.
+    // Receive validated live prices from the broker page even when the
+    // independent socket is authenticated but provides only history.
     const st=this.state(provider);const before={quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,lastClose:st.candles.at(-1)?.close,lastPageActiveAt:st.lastPageActiveAt};st.lastFrameAt=Date.now();let data=payload;
     try{if(Buffer.isBuffer(data))data=data.toString('utf8');if(typeof data==='string'){let t=data.trim();if(!(t.startsWith('{')||t.startsWith('['))){const a=t.indexOf('{'),b=t.indexOf('[');const xs=[a,b].filter(x=>x>=0);if(!xs.length)return;t=t.slice(Math.min(...xs))}data=JSON.parse(t)}}catch{return}
     try{protocolScan(data,st,direction)}catch{}
@@ -603,8 +618,19 @@ export class LocalPlaywrightDriver{
         if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
         this.ingest(provider,payload,'page-out');
       });
+      // Passive observation of the broker's actual market data (13.4.27).
+      // Never send, block, mutate or proxy broker traffic.
+      ws.on('framereceived',event=>{
+        const raw=event?.payload;
+        const payload=typeof raw==='string'?raw:(Buffer.isBuffer(raw)&&raw.length<=120000?raw.toString('utf8'):null);
+        if(!payload||payload.length>120000||!/candle-generated|quote-generated|instrument-quotes|ticker/i.test(payload))return;
+        const st=this.state(provider),now=Date.now();
+        if(now-Number(st.lastPassiveFrameAt||0)<200)return;
+        st.lastPassiveFrameAt=now;
+        this.ingest(provider,payload,'page-in');
+      });
     });
-    this.state(provider).pageNetworkTap='outbound-asset-only';
+    this.state(provider).pageNetworkTap='read-only-quote-observer';
   }
   async directFeed(provider){
     const s=await this.session(provider);if(!s.context)return null;const cfg=this.config(provider);let cookies=[];try{cookies=await s.context.cookies()}catch{}
@@ -634,28 +660,13 @@ export class LocalPlaywrightDriver{
     const quoteAgeMs=st.lastQuoteAt==null?Infinity:Math.max(0,Date.now()-Number(st.lastQuoteAt));
     const refreshSubscription=force&&!changed&&st.subscribedActiveId!=null&&quoteAgeMs>5000;
     const needsSubscribe=changed||st.subscribedActiveId==null||refreshSubscription;
-    // Independently track the live 1s stream to avoid subscription duplicates.
-    const oldTickId=st.tickSubscribedActiveId;
-    const refreshTick=force&&quoteAgeMs>5000&&oldTickId!=null;
-    const needsTickSubscribe=Number(oldTickId)!==Number(targetId)||refreshTick;
     if((changed||refreshSubscription)&&st.subscribedActiveId!=null){
       await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(st.subscribedActiveId),size}}},request_id:reqId('unsub')}).catch(()=>{});
       if(refreshSubscription){st.subscribedSymbol=null;st.subscribedActiveId=null}
     }
-    if(oldTickId!=null&&(Number(oldTickId)!==Number(targetId)||refreshTick)){
-      await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(oldTickId),size:1}}},request_id:reqId('tick-unsub')}).catch(()=>{});
-      st.tickSubscribedActiveId=null;
-    }
     if(changed){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastTickQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'}}
     st.symbol=targetSymbol;st.activeId=Number(targetId);
     if(changed||force||st.candles.length<50){
-      // Subscribe to live ticks BEFORE potentially slow history requests.
-      // Size 1 is a documented IQ Option candle-generated stream and remains
-      // independent of the configured strategy candle size.
-      if(size!==1&&needsTickSubscribe){
-        const tickSubscription=await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size:1}}},request_id:reqId('tick-sub')}).catch(()=>null);
-        if(tickSubscription?.ok){st.tickSubscribedActiveId=Number(targetId);st.lastTickSubscribeAt=Date.now()}
-      }
       const feed=await this.directFeed(provider).catch(()=>null);
       const now=feed?.serverTimeSeconds?.()||Math.floor(Date.now()/1000);
       const rid=reqId('candles');
@@ -950,7 +961,7 @@ export class LocalPlaywrightDriver{
     const marketReason=st.screenCandidateSymbol?'Ativo clicado aguardando confirmação':analysisFeedValidated?`${st.symbol||'Ativo'} com dados de mercado validados`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
     const selectedAccount=(st.lastBalances||[]).find(v=>st.balanceId!=null&&n(v?.id)===n(st.balanceId))||null;
     const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
-    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastTickSubscribeAt:st.lastTickSubscribeAt||null,tickSubscribedActiveId:st.tickSubscribedActiveId??null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;

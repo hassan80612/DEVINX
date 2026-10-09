@@ -58,15 +58,15 @@ test('remote broker snapshot is compact without changing full Agent values',()=>
   assert.ok(JSON.stringify(out).length < before.length*.15,'Large duplicated prediction arrays should not reach Supabase');
 });
 
-test('selected-asset tracking survives without broker-page market-frame decoding',()=>{
+test('selected-asset tracking and passive quotes survive without broker-page automation',()=>{
   const driver=read(WORKER+'local-playwright-driver.mjs');
   const worker=read(WORKER+'index.mjs');
   const manager=read(WORKER+'agent-manager.mjs');
   const installer=read('sentinel-trading-lab/public/downloads/install-agent-v88.ps1');
-  assert.match(driver,/pageNetworkTap='outbound-asset-only'/);
+  assert.match(driver,/pageNetworkTap='read-only-quote-observer'/);
   assert.match(driver,/page\.on\('websocket'/);
   assert.match(driver,/ws\.on\('framesent'/);
-  assert.doesNotMatch(driver,/on\('framereceived'/);
+  assert.match(driver,/ws\.on\('framereceived'/);
   assert.doesNotMatch(driver,/page\.on\('response'/);
   assert.doesNotMatch(driver,/WebSocket\.prototype\.send\s*=/);
   assert.doesNotMatch(driver,/document\.elementsFromPoint/);
@@ -76,7 +76,7 @@ test('selected-asset tracking survives without broker-page market-frame decoding
   assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
   assert.match(worker,/driver\.shutdown\?\.\(\)/);
   assert.match(manager,/for\(let i=0;i<100;i\+\+\)/);
-  assert.match(installer,/13\.4\.43-tick-stream-1009/);
+  assert.match(installer,/13\.4\.44-passive-quote-1009/);
   assert.doesNotMatch(installer,/13\.4\.39-broker-passive-1009/);
 });
 
