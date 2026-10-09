@@ -811,7 +811,7 @@ export class LocalPlaywrightDriver{
       await page.mouse.click(x,y);return true
     }catch{return false}
   }
-  async _axDemoOrder(provider,{amount,side}={}){
+  async _axDemoOrder(provider,{amount,side,beforeClick=null}={}){
     const sess=await this.session(provider);if(!sess.page||!sess.context?.newCDPSession)return null;
     let ax=await this._axExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)ax=await this._domExecutionUi(provider);if(!ax?.buy||!ax?.sell||!ax?.amount)return null;
     let cdp=null;
@@ -832,6 +832,7 @@ export class LocalPlaywrightDriver{
       const rawAmount=String(amountUi?.amountValue||'').replace(/[^\d.,]/g,'');
       const normalizedAmount=/[.,]\d{1,2}$/.test(rawAmount)?rawAmount.replace(/[.,](?=.*[.,])/g,'').replace(',','.'):rawAmount.replace(/[.,]/g,'');
       if(!amountUi?.amount||Math.abs(Number(normalizedAmount)-Number(amount))>.001||!normalizedAmount)return{ok:false,error:'ax_amount_not_confirmed'};
+      if(typeof beforeClick==='function'&&!(await beforeClick()))return{ok:false,error:'manual_context_changed_before_click'};
       const targetId=String(side).toUpperCase()==='BUY'?ax.ax?.buyBackendId:ax.ax?.sellBackendId;
       const buttonOk=await this._axClickBackend(cdp,sess.page,targetId);
       if(!buttonOk)return{ok:false,error:'ax_trade_button_click_failed'};
@@ -1105,6 +1106,35 @@ export class LocalPlaywrightDriver{
       st.executionReady=false;return false
     }
   }
+  async placeManualOrder(provider,order={}){
+    // No automatic trading is enabled by this method: it is invoked only
+    // after an explicit, individually confirmed manual command.
+    await this.domSnapshot(provider).catch(()=>{});
+    await this.scanExecutionUi(provider);
+    const live=this.liveStatus(provider);
+    const now=Date.now();
+    const context=order.context||{};
+    const same=()=> {
+      const current=this.liveStatus(provider);
+      return Date.now()<Number(order.expiresAt||0)&&
+        current.mode===context.mode&&String(current.accountId||'')===String(context.accountId||'')&&
+        String(current.activeId)===String(context.activeId)&&
+        String(current.symbol||'')===String(context.asset||'')&&
+        String(current.uiSymbol||'')===String(context.asset||'')&&
+        String(current.expirationRaw||'')===String(context.expirationRaw||'')&&
+        Date.now()-Number(current.expirationUpdatedAt||0)<=15000;
+    };
+    if(!same()||now>Number(order.expiresAt||0))throw new Error('manual_context_changed');
+    if(!live.executionUi?.buy||!live.executionUi?.sell||!live.executionUi?.amount||live.executionUi?.assetMatch!==true)throw new Error('manual_controls_unverified');
+    const amount=Number(order.amount),side=order.side==='CALL'?'BUY':order.side==='PUT'?'SELL':'';
+    if(!Number.isFinite(amount)||amount<=0||!side)throw new Error('manual_invalid_order');
+    // Accessibility execution verifies the displayed stake BEFORE clicking.
+    // Unlike the legacy DEMO path, no unverified DOM fallback is allowed.
+    const result=await this._axDemoOrder(provider,{amount,side,beforeClick:same});
+    if(!result?.ok)throw new Error(result?.error||'manual_execution_unverified');
+    this.state(provider).lastRequestAt=Date.now();
+    return{ok:true,status:'click_dispatched_broker_confirmation_pending',provider,side:order.side,amount,asset:context.asset,accountMode:context.mode,expirationRaw:context.expirationRaw,button:result.button};
+  }
   async placeDemoOrder(provider,order={}){
     const st=this.state(provider);await this.domSnapshot(provider).catch(()=>{});await this.scanExecutionUi(provider);
     if(st.mode!=='demo')throw new Error('demo_order_blocked_account_not_demo');
@@ -1331,7 +1361,7 @@ export class LocalPlaywrightDriver{
     const assetValidated=!!(st.symbol&&st.activeId!=null&&!st.screenCandidateSymbol),feedValidated=feedCoreReady&&assetValidated;
     const marketStatus=st.screenCandidateSymbol?'unvalidated':feedValidated?'open':(st.marketStatus||'stale');
     const marketReason=st.screenCandidateSymbol?'Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.':feedValidated?`${st.symbol||'Ativo'} validado e isolado por active_id`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
-    return{balance:st.balance,balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:st.balance,accountId:st.balanceId==null?null:String(st.balanceId),balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
