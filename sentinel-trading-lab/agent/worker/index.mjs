@@ -328,6 +328,14 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path===
       throw new Error(err)
     }
   }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder();
+    // On-demand inspection only: no new polling loops or Supabase heartbeat traffic.
+    if(p.action==='scan-controls'&&method==='POST'){
+      if(!adapter.connected||!driver.peek?.(p.name)?.open)throw new Error('broker_not_connected');
+      await driver.scanExecutionUi(p.name);
+      adapter.refreshFromLive?.();
+      syncRuntimeMarket();
+      return status();
+    }
     if(p.action==='manual-order'&&method==='POST'){
       if(manualOrderBusy)throw new Error('manual_order_in_progress');
       if(typeof driver.placeManualOrder!=='function')throw new Error('manual_requires_local_broker');
