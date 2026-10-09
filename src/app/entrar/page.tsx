@@ -1,7 +1,7 @@
 import '../hub.css';
 import '../theme.css';
 import type {Metadata} from 'next';
-import {redirect} from 'next/navigation';
+import {notFound,redirect} from 'next/navigation';
 import {createServerSupabaseClient} from '@/lib/supabase/server';
 import {AuthForm} from './AuthForm';
 import {TrialActivation} from '@/components/TrialActivation';
@@ -32,6 +32,8 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
   const params=await searchParams;
   const trial=first(params.trial);
   const nextPath=safePath(params.next);
+  // Laser Control has no public login or sign-up flow; only Financeiro Master links to it.
+  if(nextPath.startsWith('/laser-control'))notFound();
   const supabase=await createServerSupabaseClient();
   const{data}=await supabase.auth.getClaims();
 
