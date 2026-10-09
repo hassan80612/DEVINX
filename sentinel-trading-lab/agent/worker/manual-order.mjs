@@ -15,7 +15,9 @@ export function validateManualOrder(payload,{provider,deviceId,live,now=Date.now
   if(!live||!['demo','real'].includes(String(live.mode||'')))reject('manual_account_not_verified');
   if(live.mode!==c.mode||!live.accountId||String(live.accountId)!==String(c.accountId))reject('manual_account_changed');
   if(live.activeId==null||String(live.activeId)!==String(c.activeId)||!c.asset||key(live.symbol)!==key(c.asset)||key(live.uiSymbol)!==key(c.asset))reject('manual_asset_changed');
-  if(!c.expirationRaw||String(live.expirationRaw)!==String(c.expirationRaw)||!live.expirationUpdatedAt||now-Number(live.expirationUpdatedAt)>15000)reject('manual_expiration_changed');
+  // Vencimento é configurado pelo usuário na corretora. Não inferir nem exigir leitura DOM.
+  // Mantemos um marcador explícito para distinguir clientes novos dos antigos e atender ao relay remoto.
+  if(c.expirationRaw!=='USER_CONFIGURED_ON_BROKER')reject('manual_broker_expiry_user_confirmation_required');
   const ui=live.executionUi||{};
   if(!ui.buy||!ui.sell||!ui.amount||ui.assetMatch!==true)reject('manual_controls_unverified');
   if(!live.assetValidated||!live.candleAssetMatch)reject('manual_asset_unverified');
