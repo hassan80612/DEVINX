@@ -122,3 +122,52 @@ test('card updates coalesce rather than hammering a slow broker renderer',async(
   const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
   assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
 });
+
+test('1s IQ Option candle stream keeps the market fresh without altering strategy candle history',()=>{
+  const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
+  const st=driver.state('iq_option');
+  st.symbol='EUR/USD OTC';st.uiSymbol=st.symbol;st.activeId=76;st.candleActiveId=76;st.candleSize=60;
+  const now=Math.floor(Date.now()/1000);
+  st.candles=Array.from({length:60},(_,i)=>({from:now-(60-i)*60,to:now-(59-i)*60,open:1.12345,close:1.12345,high:1.12345,low:1.12345}));
+  st.quote=1.12345;st.lastQuoteAt=Date.now()-10000;
+  const oldCandles=JSON.stringify(st.candles);
+  const tick={name:'candle-generated',msg:{active_id:76,size:1,from:now-1,to:now,open:1.12345,close:1.12348,high:1.12348,low:1.12345}};
+  driver.ingest('iq_option',tick,'direct-in');
+  assert.equal(st.quote,1.12348);
+  assert.ok(Date.now()-st.lastQuoteAt<1500);
+  assert.equal(st.lastTickQuoteAt,st.lastQuoteAt);
+  assert.equal(JSON.stringify(st.candles),oldCandles,'1s candles must never pollute the 60s history');
+  assert.equal(driver.liveStatus('iq_option').analysisFeedValidated,true);
+  const lastTickAt=st.lastQuoteAt;
+  driver.ingest('iq_option',{...tick,msg:{...tick.msg,active_id:77,close:4.56}},'direct-in');
+  assert.equal(st.lastQuoteAt,lastTickAt,'ticks from other instruments must not update the active quote');
+  assert.equal(st.quote,1.12348);
+});
+
+test('live 1s subscription is unique, refreshes if stale, and unsubscribes on instrument change',async()=>{
+  const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
+  const provider='iq_option',st=driver.state(provider),messages=[];
+  st.symbol='EUR/USD OTC';st.uiSymbol=st.symbol;st.activeId=76;st.candleActiveId=76;st.candleSize=60;
+  st.activeMap.set('EURUSDOTC',76);st.activeMap.set('EURUSD',77);
+  st.quote=1.12345;st.lastQuoteAt=Date.now()-10000;
+  const now=Math.floor(Date.now()/1000);
+  st.candles=Array.from({length:60},(_,i)=>({from:now-(60-i)*60,to:now-(59-i)*60,open:1.12345,close:1.12345,high:1.12345,low:1.12345}));
+  driver.directFeed=async()=>null;
+  driver.wsSend=async(_provider,message)=>{messages.push(message);return{ok:true}};
+  await driver._requestCandles(provider,{symbol:st.symbol,activeId:76,force:true});
+  const select=m=>m.msg?.params?.routingFilters||{};
+  const subscribeTicks=()=>messages.filter(m=>m.name==='subscribeMessage'&&select(m).size===1);
+  assert.equal(subscribeTicks().length,1);
+  assert.equal(subscribeTicks()[0].msg.params.routingFilters.active_id,76);
+  assert.equal(st.tickSubscribedActiveId,76);
+  driver.ingest(provider,{name:'candle-generated',msg:{active_id:76,size:1,from:now-1,to:now,open:1.12345,close:1.12347,high:1.12347,low:1.12345}},'direct-in');
+  await driver._requestCandles(provider,{symbol:st.symbol,activeId:76,force:true});
+  assert.equal(subscribeTicks().length,1,'healthy 1s stream must not be subscribed repeatedly');
+  st.lastQuoteAt=Date.now()-10000;
+  await driver._requestCandles(provider,{symbol:st.symbol,activeId:76,force:true});
+  assert.equal(subscribeTicks().length,2,'stalled 1s stream must be recovered');
+  assert.ok(messages.some(m=>m.name==='unsubscribeMessage'&&select(m).size===1&&select(m).active_id===76));
+  await driver._requestCandles(provider,{symbol:'EUR/USD',activeId:77,force:true});
+  assert.equal(subscribeTicks().at(-1).msg.params.routingFilters.active_id,77);
+  assert.equal(st.tickSubscribedActiveId,77);
+});

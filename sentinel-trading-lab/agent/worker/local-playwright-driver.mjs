@@ -271,6 +271,17 @@ function protocolScan(data,st,direction='in'){
     const matches=st.activeId!=null&&aid!=null&&Number(aid)===Number(st.activeId);
     const candle=candleOf(data.msg);
     if(matches&&candle){
+      // 1-second candles are a live price stream, never part of the strategy's
+      // 60-second OHLC history. Do not substitute synthetic ticks or loosen
+      // the strategy's 1.5-second freshness threshold.
+      if(Number(data?.msg?.size)===1&&Number(st.candleSize||60)!==1){
+        const tickPrice=Number(candle.close);
+        if(Number.isFinite(tickPrice)&&tickPrice>0&&(!st.candles.length||candleSeriesIntegrity(st.candles,tickPrice).ok)){
+          st.quote=tickPrice;st.lastQuoteAt=Date.now();st.lastTickQuoteAt=st.lastQuoteAt;
+          appendQuoteSample(st,st.lastQuoteAt,tickPrice);
+        }
+        return;
+      }
       st.activeId=Number(aid);st.candleActiveId=Number(aid);const candidate=mergeCandles(st.candles,[candle]);const integrity=candleSeriesIntegrity(candidate,candle.close);st.candleIntegrity=integrity;
       if(!integrity.ok){st.lastIntegrityError={...integrity,at:Date.now(),activeId:Number(aid),symbol:st.symbol};st.rejectedMarketFrames=Number(st.rejectedMarketFrames||0)+1;st.candles=[];st.quote=null;st.quoteHistory=[];st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleActiveId=null;st.marketStatus='recovering';st.marketReason='Candle rejeitada por inconsistência de ativo'}
       else{st.predictionCandles=mergeForecastCandles(st.predictionCandles,[candle]);st.candles=candidate;st.lastCandleAt=Date.now();st.quote=Number(candle.close);st.lastQuoteAt=Date.now();appendQuoteSample(st,Date.now(),st.quote);const sz=n(data?.msg?.size);if(sz!=null&&[5,10,15,30,60,300,900,1800,3600].includes(Number(sz)))st.candleSize=Number(sz)}
@@ -623,13 +634,28 @@ export class LocalPlaywrightDriver{
     const quoteAgeMs=st.lastQuoteAt==null?Infinity:Math.max(0,Date.now()-Number(st.lastQuoteAt));
     const refreshSubscription=force&&!changed&&st.subscribedActiveId!=null&&quoteAgeMs>5000;
     const needsSubscribe=changed||st.subscribedActiveId==null||refreshSubscription;
+    // Independently track the live 1s stream to avoid subscription duplicates.
+    const oldTickId=st.tickSubscribedActiveId;
+    const refreshTick=force&&quoteAgeMs>5000&&oldTickId!=null;
+    const needsTickSubscribe=Number(oldTickId)!==Number(targetId)||refreshTick;
     if((changed||refreshSubscription)&&st.subscribedActiveId!=null){
       await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(st.subscribedActiveId),size}}},request_id:reqId('unsub')}).catch(()=>{});
       if(refreshSubscription){st.subscribedSymbol=null;st.subscribedActiveId=null}
     }
-    if(changed){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'}}
+    if(oldTickId!=null&&(Number(oldTickId)!==Number(targetId)||refreshTick)){
+      await this.wsSend(provider,{name:'unsubscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(oldTickId),size:1}}},request_id:reqId('tick-unsub')}).catch(()=>{});
+      st.tickSubscribedActiveId=null;
+    }
+    if(changed){st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastTickQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'}}
     st.symbol=targetSymbol;st.activeId=Number(targetId);
     if(changed||force||st.candles.length<50){
+      // Subscribe to live ticks BEFORE potentially slow history requests.
+      // Size 1 is a documented IQ Option candle-generated stream and remains
+      // independent of the configured strategy candle size.
+      if(size!==1&&needsTickSubscribe){
+        const tickSubscription=await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size:1}}},request_id:reqId('tick-sub')}).catch(()=>null);
+        if(tickSubscription?.ok){st.tickSubscribedActiveId=Number(targetId);st.lastTickSubscribeAt=Date.now()}
+      }
       const feed=await this.directFeed(provider).catch(()=>null);
       const now=feed?.serverTimeSeconds?.()||Math.floor(Date.now()/1000);
       const rid=reqId('candles');
@@ -659,8 +685,8 @@ export class LocalPlaywrightDriver{
         }else await this.wsSend(provider,legacy).catch(()=>{});
       }
       if(needsSubscribe){
-        await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size}}},request_id:`${rid}-sub`}).catch(()=>{});
-        st.subscribedSymbol=targetSymbol;st.subscribedActiveId=Number(targetId);
+        const subscription=await this.wsSend(provider,{name:'subscribeMessage',msg:{name:'candle-generated',version:'2.0',params:{routingFilters:{active_id:Number(targetId),size}}},request_id:`${rid}-sub`}).catch(()=>null);
+        if(subscription?.ok){st.subscribedSymbol=targetSymbol;st.subscribedActiveId=Number(targetId)}
       }
       st.lastRequestAt=Date.now();if(st.protocol==='passive')st.protocol='active-websocket';
     }
@@ -924,7 +950,7 @@ export class LocalPlaywrightDriver{
     const marketReason=st.screenCandidateSymbol?'Ativo clicado aguardando confirmação':analysisFeedValidated?`${st.symbol||'Ativo'} com dados de mercado validados`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
     const selectedAccount=(st.lastBalances||[]).find(v=>st.balanceId!=null&&n(v?.id)===n(st.balanceId))||null;
     const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
-    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastTickSubscribeAt:st.lastTickSubscribeAt||null,tickSubscribedActiveId:st.tickSubscribedActiveId??null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;

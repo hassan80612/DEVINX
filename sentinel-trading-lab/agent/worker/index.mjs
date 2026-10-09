@@ -211,7 +211,13 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const currentAsset=brokerSwitching?'SINCRONIZANDO':(view.liveBroker?.uiSymbol||view.liveBroker?.symbol||view.settings?.asset||'—');
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
     const next=view.nextEvalMs?new Date(view.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-    const liveTs=Math.max(Number(view.liveBroker?.lastQuoteAt||0),Number(view.liveBroker?.lastCandleAt||0),Number(view.feed?.quoteTs||0));
+    // Match the strategy's quote-freshness gate. A new historical candle must
+    // never make an old live quote appear current to the trader.
+    const liveTs=Number(view.liveBroker?.lastQuoteAt||view.feed?.quoteTs||view.liveBroker?.lastCandleAt||0);
+    const forecastSeconds=Math.max(30,Number(view.settings?.forecastHorizonSeconds||Math.round(Number(view.settings?.orderDurationMs||60000)/1000)));
+    const configuredFreshnessMs=Math.max(500,Number(view.settings?.risk?.maxFeedLatencyMs||2500));
+    const effectiveQuoteFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshnessMs,1500):forecastSeconds<=60?Math.min(configuredFreshnessMs,2000):configuredFreshnessMs;
+    const quoteStale=!(liveTs>0)||Date.now()-liveTs>effectiveQuoteFreshnessMs;
     const op=a.operationalSignal||{},overlayTimingKey=[currentAsset,op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil].join('|');
     if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayTimingKey=overlayTimingKey;
@@ -249,7 +255,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       nextEval:next,
       realtime:true,
       analysisTransient:held.transient,
-      analysisStale:!view.liveBroker||view.liveBroker.analysisFeedValidated===false||(view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false),
+      analysisStale:!view.liveBroker||view.liveBroker.analysisFeedValidated===false||(view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false)||quoteStale,
       liveAgeMs:liveTs>0?Math.max(0,Date.now()-liveTs):null,
       analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
       durationMs:view.settings?.orderDurationMs||60000,

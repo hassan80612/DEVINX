@@ -75,5 +75,5 @@ jobs:
             echo 'Installer unchanged'
             exit 0
           fi
-          git commit -m 'build(sentinel): validated analysis-only Windows Agent 13.4.42'
+          git commit -m 'build(sentinel): validated analysis-only Windows Agent 13.4.43'
           git push origin "HEAD:$branch"
