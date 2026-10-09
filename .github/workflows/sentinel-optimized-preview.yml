@@ -1,0 +1,66 @@
+name: Sentinel optimized Agent (isolated preview)
+
+on:
+  push:
+    branches: [sentinel-cost-isolation-20261008]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - 'tests/sentinel-remote-status.test.mjs'
+      - '.github/workflows/sentinel-optimized-preview.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sentinel-optimized-agent-preview
+  cancel-in-progress: false
+
+jobs:
+  build-preview-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+
+      - name: Check syntax and optimized remote protocol
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test tests/sentinel-remote-status.test.mjs
+
+      - name: Build bundled payload
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          test -f agent/worker/sentinel.ico
+
+      - name: Build Windows executable with embedded payload
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          sha256sum public/downloads/Sentinel-Agent-Windows.exe
+
+      - name: Commit preview installer to isolation branch only
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'build(sentinel): isolated optimized Agent preview'
+          git push origin "HEAD:sentinel-cost-isolation-20261008"
