@@ -880,3 +880,9 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .manualExpiryConfirm input{width:19px;height:19px;flex:none;accent-color:#a5d7a8}
 .manualExpiryConfirm span{min-width:0}
 @media(max-width:600px){.manualExpiryConfirm{padding:7px 8px;font-size:11px}}
+
+/* PC controls diagnostics reuses the existing remote snapshot. */
+.manualControlDiagnostics{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin-top:8px}
+.manualControlDiagnostics .manualControlStatus{font-size:11px;margin:0;opacity:.9;line-height:1.45}
+.manualControlDiagnostics button{min-height:34px;padding:6px 12px;font-size:11px;border-radius:8px}
+@media(max-width:600px){.manualControlDiagnostics{align-items:stretch}.manualControlDiagnostics button{width:100%}}
