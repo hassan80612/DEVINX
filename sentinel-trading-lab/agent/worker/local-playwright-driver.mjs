@@ -101,9 +101,11 @@ function killProc(proc){try{if(proc&&!proc.killed)proc.kill()}catch{}}
 
 function detectMode(text=''){
   const t=String(text).toLowerCase();
-  if(/real account|conta real|saldo real|real balance|live account|actual account/.test(t))return 'real';
-  if(/practice account|conta de prática|conta pratica|practice balance|saldo de prática|saldo pratica|demo account|conta demo|\bdemo\b|\bpractice\b|\bprática\b/.test(t))return 'demo';
-  return null;
+  const real=/real account|conta real|saldo real|real balance|live account|actual account/.test(t);
+  const demo=/practice account|conta de prática|conta pratica|practice balance|saldo de prática|saldo pratica|demo account|conta demo|\bdemo\b|\bpractice\b|\bprática\b/.test(t);
+  // Broker account menus often list both. Never assume the first one is selected.
+  if(real===demo)return null;
+  return real?'real':'demo';
 }
 function bestBalanceFromText(text='',modeHint=null){
   const lines=String(text).split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,7000);
@@ -1428,7 +1430,9 @@ export class LocalPlaywrightDriver{
     const assetValidated=!!(st.symbol&&st.activeId!=null&&!st.screenCandidateSymbol),feedValidated=feedCoreReady&&assetValidated;
     const marketStatus=st.screenCandidateSymbol?'unvalidated':feedValidated?'open':(st.marketStatus||'stale');
     const marketReason=st.screenCandidateSymbol?'Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.':feedValidated?`${st.symbol||'Ativo'} validado e isolado por active_id`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
-    return{balance:st.balance,accountId:st.balanceId==null?null:String(st.balanceId),balanceSource:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    const selectedAccount=(st.lastBalances||[]).find(v=>st.balanceId!=null&&n(v?.id)===n(st.balanceId))||null;
+    const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
+    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,executionReady:st.executionReady,executionUi:st.executionUi,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
