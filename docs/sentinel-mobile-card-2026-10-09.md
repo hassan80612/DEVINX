@@ -17,3 +17,9 @@ A revisão do código mostra que o monitor é chamado pela análise independente
 - Comandos percorreram UI → API original → RPC/Agent simulados → confirmação → UI. Settings rejeitado impede início; nenhuma ordem ou armação de piloto. Login exigido e API sem sessão retorna 401. No celular, nenhuma tentativa de acessar 127.0.0.1:8787/8788.
 
 O teste utiliza dados sintéticos e um RPC local isolado. Não mede taxa de acerto de previsões, execução na corretora real ou latência na conexão móvel de Hassan. O EXE 13.4.24 e os motores permanecem os mesmos.
+
+## Reprodução após o relato de reavaliação excessiva
+
+Foi reproduzido `REAVALIANDO / weak` com CALL, preço de 100 para 100,6, leitura direcional CALL 75% e confiança de 73 pontos perante mínimo configurado de 74. Não houve inversão de direção nem quebra estrutural no exemplo. `reviewScenario` exige os limites de abertura para manter o estado OPEN; ultrapassar para baixo um limite numérico já provoca perda de força. A revisão deve separar admissão inicial e manutenção da validade, preservando as proteções de input e de reversão. Esta falha foi identificada, não corrigida no EXE 13.4.24 desta entrega.
+
+Quanto a topo/fundo: há proteção de movimento estendido no modelo e na admissão, mas a abertura do Cenário em `_operationalSignalState` não aplica a distância máxima ao gatilho utilizada em outras rotinas de entrada. Isso é uma fronteira a testar; não prova que causou as perdas relatadas. O histórico arquivado é de uma versão anterior e não mede a taxa de acerto da sessão atual. Nenhuma taxa nova foi atribuída à atualização do card.
