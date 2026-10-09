@@ -1185,8 +1185,8 @@ export class LocalPlaywrightDriver{
         String(current.activeId)===String(context.activeId)&&
         String(current.symbol||'')===String(context.asset||'')&&
         String(current.uiSymbol||'')===String(context.asset||'')&&
-        String(current.expirationRaw||'')===String(context.expirationRaw||'')&&
-        Date.now()-Number(current.expirationUpdatedAt||0)<=15000;
+        context.expirationMode==='manual-confirmed'&&context.manualBrokerExpiryConfirmed===true&&
+        [30,60,120,300,600,900].includes(Number(context.expirationSeconds));
     };
     if(!same()||now>Number(order.expiresAt||0))throw new Error('manual_context_changed');
     if(!live.executionUi?.buy||!live.executionUi?.sell||!live.executionUi?.amount||live.executionUi?.assetMatch!==true)throw new Error('manual_controls_unverified');
@@ -1197,7 +1197,7 @@ export class LocalPlaywrightDriver{
     const result=await this._axDemoOrder(provider,{amount,side,beforeClick:same});
     if(!result?.ok)throw new Error(result?.error||'manual_execution_unverified');
     this.state(provider).lastRequestAt=Date.now();
-    return{ok:true,status:'click_dispatched_broker_confirmation_pending',provider,side:order.side,amount,asset:context.asset,accountMode:context.mode,expirationRaw:context.expirationRaw,button:result.button};
+    return{ok:true,status:'click_dispatched_broker_confirmation_pending',provider,side:order.side,amount,asset:context.asset,accountMode:context.mode,expirationMode:'manual-confirmed',expirationSeconds:Number(context.expirationSeconds),button:result.button};
   }
   async placeDemoOrder(provider,order={}){
     const st=this.state(provider);await this.domSnapshot(provider).catch(()=>{});await this.scanExecutionUi(provider);
