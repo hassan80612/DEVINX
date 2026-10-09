@@ -13,6 +13,7 @@ on:
       - 'sentinel-trading-lab/src/app/api/runtime/**'
       - 'tests/sentinel-manual-supabase-budget.test.mjs'
       - 'tests/sentinel-scenario-renewal.test.mjs'
+      - 'tests/sentinel-page-passive.test.mjs'
       - '.github/workflows/sentinel-mobile-safe-agent.yml'
 
 permissions:
@@ -37,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
-          node --test tests/sentinel-manual-supabase-budget.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-scenario-renewal.test.mjs
+          node --test tests/sentinel-manual-supabase-budget.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-scenario-renewal.test.mjs tests/sentinel-page-passive.test.mjs
       - name: Build self contained Windows Agent
         shell: bash
         run: |
@@ -74,5 +75,5 @@ jobs:
             echo 'Installer unchanged'
             exit 0
           fi
-          git commit -m 'build(sentinel): validated analysis-only Windows Agent 13.4.38'
+          git commit -m 'build(sentinel): validated analysis-only Windows Agent 13.4.39'
           git push origin "HEAD:$branch"

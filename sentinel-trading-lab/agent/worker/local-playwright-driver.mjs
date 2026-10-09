@@ -471,10 +471,8 @@ export class LocalPlaywrightDriver{
           const marker=document.createElement('span');marker.id='__sentinel-input-bridge-marker';marker.style.display='none';(document.documentElement||document.body)?.appendChild(marker);
         }
         if(!window.__sentinelBridgeReady){
-          window.__sentinelBridgeReady=true;window.__sentinelSockets=[];
-          const nativeSend=WebSocket.prototype.send;
-          WebSocket.prototype.send=function(data){try{if(!window.__sentinelSockets.includes(this))window.__sentinelSockets.push(this)}catch{}return nativeSend.call(this,data)};
-          window.__sentinelSend=(payload,domain)=>{const text=typeof payload==='string'?payload:JSON.stringify(payload);const sockets=(window.__sentinelSockets||[]).filter(ws=>ws&&ws.readyState===1);const preferred=sockets.find(ws=>String(ws.url||'').includes(domain))||sockets.find(ws=>/iqoption|exnova|websocket|socket/i.test(String(ws.url||'')))||sockets[0];if(!preferred)return{ok:false,count:sockets.length,error:'no_open_websocket'};preferred.send(text);return{ok:true,count:sockets.length,url:String(preferred.url||'')}};
+          // Do not intercept native trading-platform WebSockets.
+          window.__sentinelBridgeReady=true;
         }
         if(!document.getElementById('__sentinel-asset-listener-marker')){
           const marker=document.createElement('span');marker.id='__sentinel-asset-listener-marker';marker.style.display='none';(document.documentElement||document.body)?.appendChild(marker);
@@ -497,11 +495,17 @@ export class LocalPlaywrightDriver{
           };
           document.addEventListener('click',ev=>{
             try{
-              if(ev.target?.closest?.('#sentinel-trading-overlay'))return;
-              const nodes=[];let node=ev.target;
-              for(let i=0;i<8&&node;i++,node=node.parentElement)nodes.push(node);
-              if(Number.isFinite(ev.clientX)&&Number.isFinite(ev.clientY))for(const x of document.elementsFromPoint(ev.clientX,ev.clientY).slice(0,12))if(!nodes.includes(x))nodes.push(x);
-              for(const x of nodes){const p=pairsFrom(x?.textContent||'');if(p.length===1){publishHint(p[0]);break}}
+              const target=ev.target;
+              if(!target||!target.closest||target.closest('#sentinel-trading-overlay-host,input,textarea,[contenteditable="true"]'))return;
+              // Only read a short asset tab label. A trade click must not
+              // trigger deep page-text scans or layout hit testing.
+              let node=target;
+              for(let i=0;node&&i<4&&node!==document.body&&node!==document.documentElement;i++,node=node.parentElement){
+                const label=String(node.textContent||'').trim();
+                if(label.length>100)break;
+                const matches=pairsFrom(label);
+                if(matches.length===1){publishHint(matches[0]);break}
+              }
             }catch{}
           },true);
         }
@@ -578,22 +582,13 @@ export class LocalPlaywrightDriver{
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol,assetChanged,marketStatus:st.marketStatus})).catch(()=>{})}catch{}}
   }
-  attachNetwork(provider,page){if(page.__sentinelAttached)return;page.__sentinelAttached=true;
-    page.on('websocket',ws=>{ws.on('framereceived',e=>this.ingest(provider,e.payload,'page-in'));ws.on('framesent',e=>this.ingest(provider,e.payload,'page-out'))});
-    // Avoid expensive browser response-body reads after the market is identified.
-    let lastHttpInspectAt=0;
-    page.on('response',async resp=>{try{
-      const st=this.state(provider);
-      if(st.activeId!=null&&st.balance!=null&&st.activeMap.size>0)return;
-      const now=Date.now();if(now-lastHttpInspectAt<2000)return;
-      const headers=resp.headers(),ct=headers['content-type']||'';
-      if(!/json|text/.test(ct))return;
-      const url=resp.url();if(!/(iqoption|exnova)/i.test(url))return;
-      const declaredSize=Number(headers['content-length']||0);if(declaredSize>256000)return;
-      lastHttpInspectAt=now;
-      const txt=await resp.text();if(txt.length>256000)return;
-      this.ingest(provider,txt,'http-in');
-    }catch{}});
+  attachNetwork(provider,page){
+    // Keep CDP WebSocket frame observers and HTTP response observers OFF.
+    // The Agent receives candles/quotes from its independent direct socket.
+    // Browser inspection previously competed with order/result rendering.
+    if(page.__sentinelAttached)return;
+    page.__sentinelAttached=true;
+    this.state(provider).pageNetworkTap='disabled';
   }
   async directFeed(provider){
     const s=await this.session(provider);if(!s.context)return null;const cfg=this.config(provider);let cookies=[];try{cookies=await s.context.cookies()}catch{}
@@ -602,7 +597,12 @@ export class LocalPlaywrightDriver{
     let feed=this.feeds.get(provider);if(!feed){feed=new QuadcodeFeed({domain:cfg.wsDomain||cfg.domain,onFrame:(raw,dir)=>this.ingest(provider,raw,dir)});this.feeds.set(provider,feed)}
     try{const status=await feed.connect(cookie.value);const st=this.state(provider);st.directStatus=status;st.lastDirectError=null;if(status.ready)st.protocol='direct-websocket';return feed}catch(e){const st=this.state(provider);st.lastDirectError=String(e?.message||e);st.directStatus=feed.status();return null}
   }
-  async wsSend(provider,payload){const feed=await this.directFeed(provider).catch(()=>null);if(feed?.ready&&feed.send(payload))return{ok:true,transport:'direct-websocket'};const s=await this.session(provider);if(!s.page)return{ok:false,error:'page_missing'};const cfg=this.config(provider);try{const r=await s.page.evaluate(({payload,domain})=>window.__sentinelSend?window.__sentinelSend(payload,domain):{ok:false,error:'bridge_missing'},{payload,domain:cfg.domain});return{...r,transport:r?.ok?'page-websocket':undefined}}catch(e){return{ok:false,error:String(e?.message||e)}}}
+  async wsSend(provider,payload){
+    const feed=await this.directFeed(provider).catch(()=>null);
+    if(feed?.ready&&feed.send(payload))return{ok:true,transport:'direct-websocket'};
+    // Fail closed rather than injecting into the broker page's WebSocket.
+    return{ok:false,error:'direct_market_feed_unavailable'};
+  }
   async requestBaseData(provider){const st=this.state(provider),rid=reqId(provider);const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
     {name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}
@@ -812,7 +812,7 @@ export class LocalPlaywrightDriver{
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
     }
     const fullDomEveryMs=st.activeId!=null&&st.balance!=null?90000:30000;
-    if(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs){
+    if((st.activeId==null||st.balance==null)&&(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs)){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }

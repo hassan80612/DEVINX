@@ -58,17 +58,19 @@ test('remote broker snapshot is compact without changing full Agent values',()=>
   assert.ok(JSON.stringify(out).length < before.length*.15,'Large duplicated prediction arrays should not reach Supabase');
 });
 
-test('broker WebSocket and DOM inspection have steady-state safeguards',()=>{
+test('broker market data uses direct feed without heavy page surveillance',()=>{
   const driver=read(WORKER+'local-playwright-driver.mjs');
   const feed=read(WORKER+'quadcode-feed.mjs');
   const installer=read('sentinel-trading-lab/public/downloads/install-agent-v88.ps1');
-  assert.match(driver,/lastHttpInspectAt<2000/);
-  assert.match(driver,/st\.activeId!=null&&st\.balance!=null&&st\.activeMap\.size>0/);
-  assert.match(driver,/txt\.length>256000/);
-  assert.match(driver,/fullDomEveryMs=st\.activeId!=null&&st\.balance!=null\?90000:30000/);
-  assert.match(driver,/feed\?\.ready&&feed\.authenticated/);
+  assert.match(driver,/pageNetworkTap='disabled'/);
+  assert.doesNotMatch(driver,/page\.on\('websocket'/);
+  assert.doesNotMatch(driver,/page\.on\('response'/);
+  assert.doesNotMatch(driver,/WebSocket\.prototype\.send\s*=/);
+  assert.doesNotMatch(driver,/document\.elementsFromPoint/);
+  assert.match(driver,/direct_market_feed_unavailable/);
+  assert.match(driver,/st\.activeId==null\|\|st\.balance==null/);
   assert.match(feed,/this\.onFrame\(data,'direct-in'\)/);
   assert.doesNotMatch(feed,/this\.onFrame\(raw,'direct-in'\)/);
-  assert.match(installer,/13\.4\.38-scenario-renewal-1009/);
-  assert.doesNotMatch(installer,/13\.4\.38-invest-readback-1009/);
+  assert.match(installer,/13\.4\.39-broker-passive-1009/);
+  assert.doesNotMatch(installer,/13\.4\.39-invest-readback-1009/);
 });
