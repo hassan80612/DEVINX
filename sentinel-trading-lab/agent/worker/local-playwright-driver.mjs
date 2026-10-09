@@ -840,7 +840,14 @@ export class LocalPlaywrightDriver{
       const normalizedAmount=/[.,]\d{1,2}$/.test(rawAmount)?rawAmount.replace(/[.,](?=.*[.,])/g,'').replace(',','.'):rawAmount.replace(/[.,]/g,'');
       if(!amountUi?.amount||Math.abs(Number(normalizedAmount)-Number(amount))>.001||!normalizedAmount)return{ok:false,error:'ax_amount_not_confirmed'};
       if(typeof beforeClick==='function'&&!(await beforeClick()))return{ok:false,error:'manual_context_changed_before_click'};
-      const targetId=String(side).toUpperCase()==='BUY'?ax.ax?.buyBackendId:ax.ax?.sellBackendId;
+      // The broker can re-render CALL/PUT after the investment editor closes.
+      // Never click a stale accessibility node from before the stake was edited.
+      const refreshed=await this._axExecutionUi(provider).catch(()=>null);
+      const freshButtons=(refreshed?.buy&&refreshed?.sell)?refreshed:await this._domExecutionUi(provider);
+      if(!freshButtons?.buy||!freshButtons?.sell) return{ok:false,error:'ax_trade_buttons_not_recognized'};
+      const targetId=String(side).toUpperCase()==='BUY'?freshButtons.ax?.buyBackendId:freshButtons.ax?.sellBackendId;
+      if(!targetId||String(freshButtons.ax?.buyBackendId)===String(freshButtons.ax?.sellBackendId))
+        return{ok:false,error:'ax_trade_buttons_ambiguous'};
       const buttonOk=await this._axClickBackend(cdp,sess.page,targetId);
       if(!buttonOk)return{ok:false,error:'ax_trade_button_click_failed'};
       return{ok:true,verifiedAmount:Number(normalizedAmount),button:String(side).toUpperCase()==='BUY'?ax.buyText:ax.sellText,amountControl:ax.amountText,source:ax.source||'accessibility-tree'}
