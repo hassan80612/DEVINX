@@ -3,7 +3,6 @@
 import {type MouseEvent,useEffect,useState} from "react";
 import {BrandLogo} from "@/components/BrandLogo";
 import {LanguageMenu} from "@/components/LanguageMenu";
-import {LaserHomeCard} from "@/components/LaserHomeCard";
 import {useI18n} from "@/i18n/provider";
 import {createClient} from "@/lib/supabase/client";
 import styles from "./HomeHub.module.css";
@@ -310,7 +309,7 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
     return()=>{active=false};
   },[]);
 
-  const laserVisible=true;
+  const laserVisible=false;
   const financeVisible=visibility.finance;
   const activeLocale=(locale in COPY?locale:"pt-BR") as keyof typeof COPY;
   const c=COPY[activeLocale];
@@ -338,7 +337,7 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
     <nav className={styles.productJumpNav} aria-label={intl?"Product shortcuts":"Atalhos dos produtos"}>
       {financeVisible&&<a className={`${styles.productJump} ${styles.financeJump}`} href="#financeiro" onClick={jumpTo("financeiro")}>{c.financeJump}</a>}
       {showStore&&<a className={`${styles.productJump} ${styles.storeJump}`} href="#loja" onClick={jumpTo("loja")}>{c.storeJump}</a>}
-      <a className={`${styles.productJump} ${styles.laserJump}`} href="#laser-control" onClick={jumpTo("laser-control")}>{c.laserJump}</a>
+      {laserVisible&&<a className={`${styles.productJump} ${styles.laserJump}`} href="#laser-control" onClick={jumpTo("laser-control")}>{c.laserJump}</a>}
     </nav>
 
     <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
@@ -386,7 +385,7 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       </>}
     </section>
 
-    {laserVisible&&<LaserHomeCard/>}
+
 
     <footer className={styles.footer}>{c.control}</footer>
   </main>;
