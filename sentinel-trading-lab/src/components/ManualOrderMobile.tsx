@@ -2,7 +2,7 @@
 import {useEffect,useState} from 'react';
 
 type Direction='CALL'|'PUT';
-type EntryReference={asset:string;mode:string;side:Direction;price:number;at:number;result:'aguardando'|'enviado'|'incerto'};
+type EntryReference={asset:string;mode:string;side:Direction;price:number;at:number;clickedAt:number;result:'aguardando'|'enviado'|'incerto'};
 const finite=(v:unknown):number|null=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v):null;
 const formatPrice=(value:number|null)=>value===null?'—':value.toLocaleString('en-US',{minimumFractionDigits:value>=100?2:value>=10?4:value>=1?5:6,maximumFractionDigits:value>=100?3:value>=10?5:value>=1?6:7});
 const n=(v:unknown)=>String(v??'').trim();
@@ -49,6 +49,9 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
   const reversalTrigger=signalFresh&&alert?.active!==false?finite(alert?.trigger):null;
   const entryAt=signalFresh?finite(operational.entryAt):null;
   const displayEntry=entryReference?.asset===asset&&entryReference?.mode===mode?entryReference:null;
+  const priceMovement=displayEntry&&quote!==null?quote-displayEntry.price:null;
+  const priceDelta=priceMovement===null?'—':(priceMovement>0?'+':priceMovement<0?'−':'')+formatPrice(Math.abs(priceMovement));
+  const priceMoveDirection=priceMovement===null?'':priceMovement>0?'up':priceMovement<0?'down':'flat';
   // This is a local on-screen comparison, not trade accounting. It never
   // triggers additional requests to Supabase or the broker.
   const brokerBalance=live.balance!=null&&Number.isFinite(Number(live.balance))
@@ -87,6 +90,9 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
   }
   async function order(side:Direction){
     if(sending||!ready)return;
+    // Freeze the last verified PC quote at the instant of the user's tap.
+    const pressedAt=Date.now();
+    const observedQuote=quote!==null&&pressedAt-quoteAt>=-2000&&pressedAt-quoteAt<=8000?quote:null;
     const context={provider,mode,accountId:n(live.accountId),activeId:n(live.activeId),asset,expirationMode:'manual-confirmed',expirationSeconds:expirySeconds,manualBrokerExpiryConfirmed:true};
     const brokerName=provider==='iq_option'?'IQ Option':'Exnova';
     const confirmed=window.confirm(
@@ -97,7 +103,7 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
       '\n\nEssa confirmação autoriza UM ÚNICO clique na corretora aberta no PC. Continuar?'
     );
     if(!confirmed)return;
-    const reference=quote===null||Date.now()-quoteAt>8000?null:{asset,mode,side,price:quote,at:quoteAt,result:'aguardando' as const};
+    const reference=observedQuote===null?null:{asset,mode,side,price:observedQuote,at:quoteAt,clickedAt:pressedAt,result:'aguardando' as const};
     if(reference)setEntryReference(reference);
     const issuedAt=Date.now();
     const payload={
@@ -168,9 +174,14 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
         <span><small>Gatilho reversão</small><b>{formatPrice(reversalTrigger)}</b></span>
       </div>
       {displayEntry&&<div className="manualEntryReference">
-        <small>Cotação de referência na solicitação {displayEntry.side} · {new Date(displayEntry.at).toLocaleTimeString('pt-BR')}</small>
+        <small>PREÇO CONGELADO · {displayEntry.side} · toque às {new Date(displayEntry.clickedAt).toLocaleTimeString('pt-BR')}</small>
         <b>{formatPrice(displayEntry.price)}</b>
-        <small>{displayEntry.result==='enviado'?'Envio confirmado pelo Agent; preço executado deve ser conferido na corretora.':displayEntry.result==='incerto'?'Envio incerto: confira a corretora antes de repetir.':'Aguardando confirmação do Agent. Não é preço de execução confirmado.'}</small>
+        <div className="manualEntryDelta">
+          <span><small>Agora</small><b>{formatPrice(quote)}</b></span>
+          <span><small>Variação desde o toque</small><b className={priceMoveDirection==='up'?'manualPriceUp':priceMoveDirection==='down'?'manualPriceDown':''}>{priceMoveDirection==='up'?'▲ ':priceMoveDirection==='down'?'▼ ':''}{priceDelta}</b></span>
+        </div>
+        <small>Referência: última cotação recebida do PC às {new Date(displayEntry.at).toLocaleTimeString('pt-BR')}. Não é preço executado confirmado.</small>
+        <small>{displayEntry.result==='enviado'?'Clique enviado pelo Agent; confira o registro da ordem na corretora.':displayEntry.result==='incerto'?'Resultado incerto: confira a corretora antes de repetir.':'Aguardando resposta do Agent.'}</small>
       </div>}
       {entryAt!==null&&<small className="manualSignalTime">Gatilho temporal do cenário: {new Date(entryAt).toLocaleTimeString('pt-BR')}</small>}
     </div>
