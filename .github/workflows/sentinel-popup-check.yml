@@ -1,0 +1,45 @@
+name: Sentinel Popup UI Checks
+
+on:
+  push:
+    branches:
+      - sentinel-compact-popup-20261009
+    paths:
+      - 'sentinel-trading-lab/src/app/page.tsx'
+      - 'sentinel-trading-lab/src/app/globals.css'
+      - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
+      - 'sentinel-trading-lab/src/lib/live-card-model.ts'
+      - 'tests/sentinel-mobile-card.test.mjs'
+      - '.github/workflows/sentinel-popup-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  analyst-card-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check analyst and transport regression tests
+        run: |
+          node --test tests/sentinel-mobile-card.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-manual-supabase-budget.test.mjs
+      - name: Check mode does not add network polling or change the Agent
+        run: |
+          node --input-type=module -e "
+            import assert from 'node:assert/strict';
+            import fs from 'node:fs';
+            const page=fs.readFileSync('sentinel-trading-lab/src/app/page.tsx','utf8');
+            const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
+            const worker=fs.readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');
+            assert.match(page,/setInterval\(refresh,2500\)/);
+            assert.match(worker,/setInterval\(remoteLoop,1500\)/);
+            assert.match(worker,/runtime\.stateName==='running'\?2500:12000/);
+            assert.match(card,/data-testid=\"live-scenario-compact\"/);
+            assert.match(card,/PRAZO DO CENÁRIO/);
+            assert.match(card,/COTAÇÃO DO PC/);
+            assert.doesNotMatch(card,/manual-order|scan-controls/);
+            console.log('PASS: same polling/heartbeat, no manual orders, compact read-only card');
+          "
