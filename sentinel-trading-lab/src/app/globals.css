@@ -841,3 +841,11 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
   .manualRemoteMeta b{font-size:12px}
   .manualTradeRow{gap:6px}
 }
+
+/* Mobile broker-balance display reuses the existing remote heartbeat. */
+.manualBalanceRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:5px 0 10px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.16)}
+.manualBalanceRow>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.manualBalanceRow small{font-size:10px;line-height:1.2;opacity:.82}
+.manualBalanceRow b{font-size:16px;line-height:1.35;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.manualBalanceUp{color:#a8e9c3}.manualBalanceDown{color:#ffb4ac}
+@media(max-width:600px){.manualBalanceRow{padding:7px 8px;gap:6px}.manualBalanceRow b{font-size:15px}}
