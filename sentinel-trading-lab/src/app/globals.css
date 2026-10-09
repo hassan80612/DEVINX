@@ -874,3 +874,9 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .manualEntryReference small:last-child{flex-basis:100%}
 .manualSignalTime{opacity:.75}
 @media(max-width:600px){.manualPricePanel{padding:8px 9px}.manualPriceMarkers b{font-size:13px}}
+
+/* Manual expiry authorization: explicit confirmation per order, no automated broker-expiry reading. */
+.manualExpiryConfirm{display:flex;align-items:center;gap:9px;margin:7px 0 10px;font-size:12px;line-height:1.35;padding:8px 10px;border:1px solid rgba(218,182,101,.3);border-radius:10px}
+.manualExpiryConfirm input{width:19px;height:19px;flex:none;accent-color:#a5d7a8}
+.manualExpiryConfirm span{min-width:0}
+@media(max-width:600px){.manualExpiryConfirm{padding:7px 8px;font-size:11px}}
