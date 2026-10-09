@@ -1177,9 +1177,9 @@ export class LocalPlaywrightDriver{
         current.mode===context.mode&&String(current.accountId||'')===String(context.accountId||'')&&
         String(current.activeId)===String(context.activeId)&&
         String(current.symbol||'')===String(context.asset||'')&&
-        String(current.uiSymbol||'')===String(context.asset||'')&&
-        String(current.expirationRaw||'')===String(context.expirationRaw||'')&&
-        Date.now()-Number(current.expirationUpdatedAt||0)<=15000;
+        String(current.uiSymbol||'')===String(context.asset||'');
+    // Vencimento mantido manualmente na corretora; nenhuma leitura de expiração
+    // interfere na autorização, mas conta/ativo são revalidados antes do clique.
     };
     if(!same()||now>Number(order.expiresAt||0))throw new Error('manual_context_changed');
     if(!live.executionUi?.buy||!live.executionUi?.sell||!live.executionUi?.amount||live.executionUi?.assetMatch!==true)throw new Error('manual_controls_unverified');
