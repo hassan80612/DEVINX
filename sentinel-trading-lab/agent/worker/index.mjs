@@ -327,19 +327,27 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path===
       loginStates[p.name]={provider:p.name,open:false,phase:'open-error',error:err,updatedAt:new Date().toISOString()};
       throw new Error(err)
     }
-  }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);await driver.call(p.name,'background',{method:'POST'}).catch(()=>{});await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder();
+  }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);// Keep the already authenticated VISIBLE traderoom. Spawning a new headless browser here left CALL/PUT/Valor unreachable in the user's PC window.
+    await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder();
     // On-demand inspection only: no new polling loops or Supabase heartbeat traffic.
     if(p.action==='scan-controls'&&method==='POST'){
-      if(!adapter.connected||!driver.peek?.(p.name)?.open)throw new Error('broker_not_connected');
-      await driver.scanExecutionUi(p.name);
+      // A previous release switched the attached visible broker to headless.
+      // A deliberate user-requested rescan restores the visible page before DOM inspection.
+      const session=await driver.ensureVisibleTradingPage(p.name,{restore:true});
+      if(!session.ok)throw new Error(session.reason);
+      const found=await driver.scanExecutionUi(p.name);
       adapter.refreshFromLive?.();
       syncRuntimeMarket();
-      return status();
+      const current=driver.liveStatus(p.name);
+      return {...await status(),controlsCheck:{ok:found,phase:session.phase,reason:current.executionUi?.error||null,
+        buy:!!current.executionUi?.buy,sell:!!current.executionUi?.sell,amount:!!current.executionUi?.amount,
+        inspectedAt:Date.now()} };
     }
     if(p.action==='manual-order'&&method==='POST'){
       if(manualOrderBusy)throw new Error('manual_order_in_progress');
       if(typeof driver.placeManualOrder!=='function')throw new Error('manual_requires_local_broker');
       if(!adapter.connected||!driver.peek?.(p.name)?.open)throw new Error('manual_broker_offline');
+      if(!(await driver.ensureVisibleTradingPage(p.name,{restore:false})).ok)throw new Error('manual_visible_broker_required');
       const order=validateManualOrder(payload,{provider:p.name,deviceId:remoteRelay.info.deviceId,live:driver.liveStatus(p.name),expectedExpirySeconds:Math.round(Number(runtime.settings.orderDurationMs||60000)/1000)});
       manualOrderBusy=true;
       try{
