@@ -93,7 +93,7 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
       '\n\nEssa confirmação autoriza UM ÚNICO clique na corretora aberta no PC. Continuar?'
     );
     if(!confirmed)return;
-    const reference=quote===null?null:{asset,mode,side,price:quote,at:Date.now(),result:'aguardando' as const};
+    const reference=quote===null||Date.now()-quoteAt>8000?null:{asset,mode,side,price:quote,at:quoteAt,result:'aguardando' as const};
     if(reference)setEntryReference(reference);
     const issuedAt=Date.now();
     const payload={
@@ -150,7 +150,7 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
         <span><small>Gatilho reversão</small><b>{formatPrice(reversalTrigger)}</b></span>
       </div>
       {displayEntry&&<div className="manualEntryReference">
-        <small>Referência no envio de {displayEntry.side} · {new Date(displayEntry.at).toLocaleTimeString('pt-BR')}</small>
+        <small>Cotação de referência na solicitação {displayEntry.side} · {new Date(displayEntry.at).toLocaleTimeString('pt-BR')}</small>
         <b>{formatPrice(displayEntry.price)}</b>
         <small>{displayEntry.result==='enviado'?'Envio confirmado pelo Agent; preço executado deve ser conferido na corretora.':displayEntry.result==='incerto'?'Envio incerto: confira a corretora antes de repetir.':'Aguardando confirmação do Agent. Não é preço de execução confirmado.'}</small>
       </div>}
