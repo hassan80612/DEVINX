@@ -38,6 +38,10 @@ async function handle(req:NextRequest,ctx:{params:Promise<{path:string[]}>}){
 
     const payload=req.method==='GET'?{}:await req.json().catch(()=>({}));
     const type=rel==='settings'?'settings':rel;
+    // Deny legacy mobile clients trying to re-enable automated broker execution.
+    if((type==='settings'&&payload?.demoAutopilot===true)||/^(?:pilot|autopilot)(?:\/|$)/i.test(type))
+      return NextResponse.json({ok:false,error:'autopilot_disabled_manual_only'},{status:403});
+
     const manual=/^brokers\/(iq_option|exnova)\/manual-order$/.test(type);
     const explicitDevice=String(payload?.deviceId||'');
     if(manual&&(!/^[0-9a-f-]{36}$/i.test(explicitDevice)||req.method!=='POST'))
