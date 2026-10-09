@@ -2,7 +2,7 @@
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const key=value=>String(value??'').trim().toUpperCase().replace(/\s+/g,'');
 function reject(code){const error=new Error(code);error.status=409;throw error}
-export function validateManualOrder(payload,{provider,deviceId,live,now=Date.now()}={}){
+export function validateManualOrder(payload,{provider,deviceId,live,expectedExpirySeconds=null,now=Date.now()}={}){
   if(!payload||payload.confirmed!==true||!UUID.test(String(payload.requestId||'')))reject('manual_confirmation_required');
   const issued=Number(payload.issuedAt),expires=Number(payload.expiresAt);
   if(!Number.isFinite(issued)||!Number.isFinite(expires)||issued>now+1000||issued<now-10000||expires<=now||expires>issued+10000)reject('manual_command_expired');
@@ -21,6 +21,7 @@ export function validateManualOrder(payload,{provider,deviceId,live,now=Date.now
   if(c.expirationMode!=='manual-confirmed'||c.manualBrokerExpiryConfirmed!==true||
      ![30,60,120,300,600,900].includes(expirySeconds))
     reject('manual_broker_expiration_confirmation_required');
+  if(expectedExpirySeconds!==null&&expirySeconds!==Number(expectedExpirySeconds))reject('manual_expiration_settings_changed');
   const ui=live.executionUi||{};
   if(!ui.buy||!ui.sell||!ui.amount||ui.assetMatch!==true)reject('manual_controls_unverified');
   if(!live.assetValidated||!live.candleAssetMatch)reject('manual_asset_unverified');
