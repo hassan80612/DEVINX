@@ -115,9 +115,11 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
       const json=await response.json().catch(()=>({}));
       if(!response.ok||json.ok!==true)throw new Error(String(json.error||'manual_order_failed'));
       const status=String(json.command?.result?.manualOrder||'');
+      const verifiedAmount=finite(json.command?.result?.verifiedAmount);
+      const amountNote=verifiedAmount===null?'':' Valor conferido no campo da corretora: '+verifiedAmount.toFixed(2)+'.';
       if(reference)setEntryReference({...reference,result:'enviado'});
       setMessage(status==='click_dispatched_broker_confirmation_pending'
-        ?'Clique '+side+' enviado uma vez. Confira na própria corretora se a ordem foi aceita.'
+        ?'Clique '+side+' enviado uma vez.'+amountNote+' Confira na própria corretora se a ordem foi aceita.'
         :'Comando confirmado pelo Agent. Verifique a corretora antes de qualquer nova ordem.');
     }catch(error){
       if(reference)setEntryReference({...reference,result:'incerto'});
