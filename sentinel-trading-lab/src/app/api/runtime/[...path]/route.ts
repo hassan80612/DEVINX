@@ -13,10 +13,10 @@ async function rpc(name:string,body:any){
 }
 const sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
 
-async function waitForCommand(token:string,commandId:string,manual=false){
+async function waitForCommand(token:string,commandId:string){
   let last:any=null;
-  for(let i=0;i<(manual?23:60);i++){
-    await sleep(manual?(i===0?250:600):(i===0?180:500));
+  for(let i=0;i<60;i++){
+    await sleep(i===0?180:500);
     last=await rpc('sentinel_command_status',{p_session_token:token,p_command_id:commandId});
     if(['acked','rejected','expired','canceled'].includes(String(last.status)))break;
   }
@@ -50,7 +50,7 @@ async function handle(req:NextRequest,ctx:{params:Promise<{path:string[]}>}){
 
     const queued=await rpc('sentinel_enqueue_command',{
       p_session_token:token,
-      p_device_id:manual?explicitDevice:null,
+      p_device_id:null,
       p_command_type:type,
       p_payload:payload||{}
     });
@@ -58,9 +58,9 @@ async function handle(req:NextRequest,ctx:{params:Promise<{path:string[]}>}){
     const commandId=String(queued.commandId||'');
     if(!commandId)throw new Error('command_not_created');
 
-    const ack=await waitForCommand(token,commandId,manual);
+    const ack=await waitForCommand(token,commandId);
     if(!ack||!['acked','rejected','expired','canceled'].includes(String(ack.status))){
-      throw new Error(manual?'manual_result_unknown_verify_broker':'agent_command_timeout');
+      throw new Error('agent_command_timeout');
     }
     if(ack.status!=='acked'){
       throw new Error(String(ack?.result?.error||ack.status||'agent_command_failed'));
