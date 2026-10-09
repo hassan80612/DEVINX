@@ -92,11 +92,11 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     await ensureLocalCockpitBroker(provider);
     const live=syncRuntimeMarket(),mode=String(live?.m?.mode||live?.mode||driver.liveStatus?.(provider)?.mode||'').toLowerCase();
-    runtime.patchSettings({demoAutopilot:true},'overlay');
+    runtime.patchSettings({demoAutopilot:false},'overlay');
     await runtime.start('overlay');
     runtime.requestImmediateEvaluation?.();
     await saveState();
-    return{ok:true,message:'Sentinel iniciado · piloto armado'}
+    return{ok:true,message:'Análise iniciada · operação manual somente'}
   }
   if(action==='refresh'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];await driver.maintain?.(provider).catch(()=>{});await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});adapter?.refreshFromLive?.();syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Leitura atualizada'}}
   if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
