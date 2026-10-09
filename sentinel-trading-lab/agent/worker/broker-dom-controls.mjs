@@ -76,7 +76,7 @@ x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight}}`});
   const pickRailAmount=async()=>{
     if(!paired)return null;
     const buyTop=Math.min(railBuy.y,railSell.y);
-    const investNames=/^(invest|investment|investimento|amount|valor|stake|aposta)\\s*:?$/i;
+    const investNames=/^(invest|investment|investimento|amount|valor|stake|aposta)\s*:?$/i;
     const labels=entries.filter(e=>e.label.length<50&&investNames.test(normalized(e))).slice(0,80);
     const captions=[];
     for(const e of labels){
