@@ -110,51 +110,8 @@ internal sealed class DevinXRealtimeSession : IAsyncDisposable
         }
     }
 
-    public async Task<bool> SendFrameAsync(CapturedPreview frame,long sequence,CancellationToken cancellationToken)
-    {
-        if(!IsConnected)return false;
-
-        return await TrySendFrameBroadcastAsync(new
-        {
-            token=_config.FrameToken,
-            seq=sequence,
-            capturedAt=frame.CapturedAtUtc.ToUnixTimeMilliseconds(),
-            width=frame.Width,
-            height=frame.Height,
-            jpeg=Convert.ToBase64String(frame.Jpeg)
-        },cancellationToken);
-    }
-
-    // Live images are disposable: if the socket is already sending a control
-    // response/heartbeat, skip this frame instead of building a stale queue.
-    private async Task<bool> TrySendFrameBroadcastAsync(object payload,CancellationToken cancellationToken)
-    {
-        if(_socket.State!=WebSocketState.Open)return false;
-        if(!await _sendLock.WaitAsync(0,cancellationToken))return false;
-
-        try
-        {
-            var message=JsonSerializer.Serialize(new object?[]
-            {
-                "1",
-                Interlocked.Increment(ref _ref).ToString(),
-                "realtime:"+_config.Topic,
-                "broadcast",
-                new{type="broadcast",@event="frame",payload}
-            });
-            var bytes=Encoding.UTF8.GetBytes(message);
-            await _socket.SendAsync(
-                new ArraySegment<byte>(bytes),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
-            return true;
-        }
-        finally
-        {
-            _sendLock.Release();
-        }
-    }
+    // Realtime carries small signaling and control messages only.
+    // Screen pixels are sent directly over WebRTC, never as Base64 broadcasts.
 
     public Task SendWebRtcAnswerAsync(string sdp,CancellationToken cancellationToken)=>
         SendBroadcastAsync("webrtc_answer",new
