@@ -39,7 +39,7 @@ value:String(this.value||this.getAttribute('aria-valuenow')||this.textContent||'
 editable:!this.readOnly&&(this.tagName==='INPUT'||this.isContentEditable||this.getAttribute('role')==='spinbutton'),
 clickable:s.cursor==='pointer'||this.tabIndex>=0||this.getAttribute('role')==='button'||!!this.onclick||/input|edit|amount|invest/i.test(this.className||''),
 x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight}}`});
-      return result.result?.value?.visible?{...entry,value:result.result.value.value,editable:result.result.value.editable,clickable:result.result.value.clickable}:null;
+      return result.result?.value?.visible?{...entry,...result.result.value}:null;
     }catch{return null}finally{if(objectId)await cdp.send('Runtime.releaseObject',{objectId}).catch(()=>{})}
   };
   const first=async(list,predicate=()=>true)=>{for(const {e} of list){const found=await inspect(e);if(found&&predicate(found))return found}return null};
@@ -50,7 +50,7 @@ x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight}}`});
   // This never clicks, types, requests a trade or accesses Supabase.
   const rail=e=>e&&Number.isFinite(e.x)&&e.x>=e.vw*.69&&e.x<e.vw&&e.y>=45&&e.y<e.vh-12&&e.w>=9&&e.h>=10;
   const smallBox=e=>e.w<Math.max(300,e.vw*.27)&&e.h<125;
-  const normalized=e=>String(e?.label||'').replace(/\\s+/g,' ').trim();
+  const normalized=e=>String(e?.label||'').replace(/\s+/g,' ').trim();
   const exactBuy=/^(acima|higher|call|buy|comprar|up)$/i;
   const exactSell=/^(abaixo|lower|put|sell|vender|down)$/i;
   const pickRail=async rx=>{
@@ -83,8 +83,8 @@ x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight}}`});
   const semanticBuy=await first(ranked('buy')),semanticSell=await first(ranked('sell'));
   // Prefer semantic elements when their identity is explicit; right-rail
   // fallback is accepted only if BOTH direction labels form a coherent pair.
-  const buy=semanticBuy||paired?semanticBuy||railBuy:null;
-  const sell=semanticSell||paired?semanticSell||railSell:null;
+  const buy=semanticBuy||(paired?railBuy:null);
+  const sell=semanticSell||(paired?railSell:null);
   const semanticAmount=await first(amounts,x=>x.editable||x.clickable);
   const amount=semanticAmount||(paired?await pickRailAmount():null);
   const expiries=entries.filter(e=>/expiration|expiry|expiraç|expiracao|vencimento|duration/.test(desc(e))).slice(0,20);
