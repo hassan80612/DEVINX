@@ -68,25 +68,63 @@ x:r.x,y:r.y,w:r.width,h:r.height,vw:innerWidth,vh:innerHeight}}`});
   const paired=!!railBuy&&!!railSell&&railBuy.node.backendNodeId!==railSell.node.backendNodeId&&
     Math.abs((railBuy.x+railBuy.w/2)-(railSell.x+railSell.w/2))<Math.max(105,railBuy.vw*.09)&&
     Math.abs((railBuy.y+railBuy.h/2)-(railSell.y+railSell.h/2))<Math.max(360,railBuy.vh*.45);
+  // In the actual IQ Option sidebar, "Invest" and "Expiração" can share
+  // an ancestor. The old amountContext filter rejected that entire parent,
+  // so CALL/PUT were found but "Valor" was never recognized.
+  // Match an exact visible Invest caption to a unique numeric/editor field
+  // by GEOMETRY, not parent text (which also includes expiration/profit).
   const pickRailAmount=async()=>{
     if(!paired)return null;
-    const eligible=entries.filter(e=>e.label.length<50&&numberText(e)&&amountContext(e)).slice(0,130);
-    const found=[];
-    for(const e of eligible){const x=await inspect(e);if(x&&rail(x)&&smallBox(x)&&x.y<Math.min(railBuy.y,railSell.y))found.push(x)}
-    if(!found.length)return null;
-    found.sort((a,b)=>b.y-a.y);
-    const near=found.filter(x=>Math.min(railBuy.y,railSell.y)-x.y<Math.max(300,x.vh*.47));
-    if(!near.length)return null;
-    const target=near[0],duplicates=near.filter(x=>Math.abs(x.y-target.y)>45);
-    return duplicates.length?null:target;
+    const buyTop=Math.min(railBuy.y,railSell.y);
+    const investNames=/^(invest|investment|investimento|amount|valor|stake|aposta)\\s*:?$/i;
+    const labels=entries.filter(e=>e.label.length<50&&investNames.test(normalized(e))).slice(0,80);
+    const captions=[];
+    for(const e of labels){
+      const x=await inspect(e);
+      if(x&&rail(x)&&smallBox(x)&&x.y<buyTop-10&&x.y>buyTop-320)captions.push(x);
+    }
+    if(!captions.length)return null;
+    captions.sort((a,b)=>b.y-a.y);
+    const caption=captions[0];
+    // Reject disjoint Invest labels. Duplicate nested captions at the same
+    // on-screen location are harmless; multiple panels are not.
+    if(captions.some(x=>Math.abs(x.y-caption.y)>45||Math.abs(x.x-caption.x)>120))return null;
+    const numericCandidates=entries.filter(e=>{
+      if(e.node.nodeName==='INPUT'||e.node.nodeName==='TEXTAREA'||e.attrs.role==='spinbutton'||e.attrs.contenteditable==='true')return !/password|email|hidden/i.test(e.attrs.type||'');
+      return e.label.length<70&&numberText(e);
+    }).slice(0,250);
+    const numeric=[];
+    for(const e of numericCandidates){
+      const x=await inspect(e);
+      if(!x||!rail(x)||!smallBox(x))continue;
+      const amountIsNumeric=numberText({label:String(x.value||e.label).trim()});
+      if(!amountIsNumeric&&!x.editable)continue;
+      const gap=x.y-caption.y,centerX=x.x+x.w/2,captionCenterX=caption.x+caption.w/2;
+      if(gap<0||gap>115||x.y>=buyTop-12||Math.abs(centerX-captionCenterX)>145)continue;
+      numeric.push({...x,amountGap:gap,amountIsNumeric});
+    }
+    if(!numeric.length)return null;
+    // An editor after clicking Invest should outrank its old numeric display.
+    // Otherwise select the closest number below the Invest heading.
+    numeric.sort((a,b)=>(Number(b.editable)-Number(a.editable))*100||
+      (Number(b.amountIsNumeric)-Number(a.amountIsNumeric))*20||
+      Math.abs(a.amountGap-26)-Math.abs(b.amountGap-26)||
+      (a.w*a.h)-(b.w*b.h));
+    const chosen=numeric[0];
+    // Do not confuse a second field (e.g. expiry) with the investment.
+    if(numeric.some(x=>x.amountIsNumeric&&chosen.amountIsNumeric&&
+      Math.abs(x.y-chosen.y)>42&&x.amountGap<100&&
+      Math.abs(x.amountGap-26)<=Math.abs(chosen.amountGap-26)+9))return null;
+    return chosen;
   };
   const semanticBuy=await first(ranked('buy')),semanticSell=await first(ranked('sell'));
   // Prefer semantic elements when their identity is explicit; right-rail
   // fallback is accepted only if BOTH direction labels form a coherent pair.
   const buy=semanticBuy||(paired?railBuy:null);
   const sell=semanticSell||(paired?railSell:null);
-  const semanticAmount=await first(amounts,x=>x.editable||x.clickable);
-  const amount=semanticAmount||(paired?await pickRailAmount():null);
+  const railAmount=paired?await pickRailAmount():null;
+  const semanticAmount=railAmount?null:await first(amounts,x=>x.editable||x.clickable);
+  const amount=railAmount||semanticAmount;
   const expiries=entries.filter(e=>/expiration|expiry|expiraç|expiracao|vencimento|duration/.test(desc(e))).slice(0,20);
   let expiry=null;
   for(const e of expiries){const x=await inspect(e);if(!x)continue;const m=x.value.toLowerCase().match(/^\s*(\d+(?:[.,]\d+)?)\s*(s|seg|segundos?|min|minutos?)\s*$/);if(m){const ms=Number(m[1].replace(',','.'))*(m[2].startsWith('min')?60000:1000);if(ms>=10000&&ms<=3600000){expiry={ms,raw:x.value};break}}}
