@@ -7,6 +7,7 @@ export default function robots():MetadataRoute.Robots{
       allow:'/',
       disallow:[
         '/api/',
+        '/laser-control',
         '/painel',
         '/entrar',
         '/onboarding',
