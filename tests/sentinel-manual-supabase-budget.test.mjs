@@ -58,19 +58,22 @@ test('remote broker snapshot is compact without changing full Agent values',()=>
   assert.ok(JSON.stringify(out).length < before.length*.15,'Large duplicated prediction arrays should not reach Supabase');
 });
 
-test('broker market data uses direct feed without heavy page surveillance',()=>{
+test('selected-asset tracking survives without broker-page market-frame decoding',()=>{
   const driver=read(WORKER+'local-playwright-driver.mjs');
-  const feed=read(WORKER+'quadcode-feed.mjs');
+  const worker=read(WORKER+'index.mjs');
+  const manager=read(WORKER+'agent-manager.mjs');
   const installer=read('sentinel-trading-lab/public/downloads/install-agent-v88.ps1');
-  assert.match(driver,/pageNetworkTap='disabled'/);
-  assert.doesNotMatch(driver,/page\.on\('websocket'/);
+  assert.match(driver,/pageNetworkTap='outbound-asset-only'/);
+  assert.match(driver,/page\.on\('websocket'/);
+  assert.match(driver,/ws\.on\('framesent'/);
+  assert.doesNotMatch(driver,/on\('framereceived'/);
   assert.doesNotMatch(driver,/page\.on\('response'/);
   assert.doesNotMatch(driver,/WebSocket\.prototype\.send\s*=/);
   assert.doesNotMatch(driver,/document\.elementsFromPoint/);
   assert.match(driver,/direct_market_feed_unavailable/);
-  assert.match(driver,/st\.activeId==null\|\|st\.balance==null/);
-  assert.match(feed,/this\.onFrame\(data,'direct-in'\)/);
-  assert.doesNotMatch(feed,/this\.onFrame\(raw,'direct-in'\)/);
-  assert.match(installer,/13\.4\.39-broker-passive-1009/);
-  assert.doesNotMatch(installer,/13\.4\.39-invest-readback-1009/);
+  assert.match(driver,/async shutdown\(\)/);
+  assert.match(worker,/driver\.shutdown\?\.\(\)/);
+  assert.match(manager,/for\(let i=0;i<100;i\+\+\)/);
+  assert.match(installer,/13\.4\.40-stable-broker-1009/);
+  assert.doesNotMatch(installer,/13\.4\.39-broker-passive-1009/);
 });

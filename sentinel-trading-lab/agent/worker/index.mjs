@@ -99,7 +99,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   }
   if(action==='refresh'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;const adapter=brokers[provider];await driver.maintain?.(provider).catch(()=>{});await driver.requestBaseData?.(provider).catch(()=>{});await driver.requestMarketData?.(provider,{force:true}).catch(()=>{});adapter?.refreshFromLive?.();syncRuntimeMarket();runtime.requestImmediateEvaluation?.();await runtime.tick(Date.now()).catch(()=>{});return{ok:true,message:'Leitura atualizada'}}
   if(action==='pause'){localCockpitLeaseUntil=Date.now()+12*60*60*1000;activeProvider=provider;await runtime.pause('overlay');await saveState();return{ok:true,message:'Bot pausado'}}
-  if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;runtime.patchSettings({demoAutopilot:false},'overlay');await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Bot parado e piloto desarmado'}}
+  if(action==='stop'){localCockpitLeaseUntil=0;activeProvider=provider;runtime.patchSettings({demoAutopilot:false},'overlay');await runtime.stop('overlay','manual');await saveState();return{ok:true,message:'Analista parado · execução automática desativada'}}
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
@@ -190,7 +190,8 @@ function overlayAnalysis(view,asset,now=Date.now()){
 }
 const brokerMaintenancePending=new Set();
 function scheduleBrokerMaintenance(provider){if(brokerMaintenancePending.has(provider))return;brokerMaintenancePending.add(provider);Promise.resolve(driver.maintain?.(provider)).then(()=>brokers[provider]?.refreshFromLive?.()).catch(()=>{}).finally(()=>brokerMaintenancePending.delete(provider))}
-let busy=false;async function loop(){if(busy)return;busy=true;try{
+let shuttingDown=false;
+let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   const licensed=await enforceAccessLease();
   if(!licensed){if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}return}
   if(activeProvider){
@@ -319,7 +320,7 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path===
 
 let autoBrokerBusy=false;
 async function autoConnectVisibleBrokers(){
-  if(autoBrokerBusy||!accessLeaseValid())return;autoBrokerBusy=true;
+  if(shuttingDown||autoBrokerBusy||!accessLeaseValid())return;autoBrokerBusy=true;
   try{
     for(const [name,adapter] of Object.entries(brokers)){
       const peek=driver.peek?.(name);
@@ -377,7 +378,7 @@ async function remoteState(){
   return compactRemoteState({agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,research:x.research,entryResearch:x.entryResearch,marketJournal:x.marketJournal,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule});
 }
 async function remoteLoop(){
-  if(remoteBusy)return;remoteBusy=true;
+  if(shuttingDown||remoteBusy)return;remoteBusy=true;
   try{
     const now=Date.now();
     if(!remoteRelay.info.deviceId&&now-lastRemoteRegisterAttemptAt>=30000){
@@ -420,5 +421,19 @@ async function remoteLoop(){
 setInterval(remoteLoop,2500).unref();setTimeout(remoteLoop,350).unref();
 
 const server=http.createServer(async(req,res)=>{try{if(req.method==='OPTIONS'){res.writeHead(204,cors(req));return res.end()}const origin=String(req.headers.origin||'');if(origin&&!allowedOrigin(origin))return json(req,res,403,{ok:false,error:'origin_not_allowed'});const url=new URL(req.url||'/',`http://${req.headers.host||'localhost'}`);if(url.pathname==='/health')return json(req,res,200,{ok:true,service:'sentinel-worker',version:VERSION,build:BUILD,pid:process.pid,runtimeKind:'persistent-worker',driverConfigured:driver.available,vaultConfigured:true,remoteRelay:{...remoteRelay.info},ts:new Date().toISOString()});if(url.pathname==='/remote-info')return json(req,res,200,{ok:true,...remoteRelay.info,version:VERSION});if(!authorized(req))return json(req,res,401,{ok:false,error:'unauthorized'});const payload=['POST','PATCH','PUT','DELETE'].includes(req.method||'')?await body(req):{};const addr=String(req.socket?.remoteAddress||'');const local=addr==='127.0.0.1'||addr==='::1'||addr==='::ffff:127.0.0.1';const data=await act(url.pathname,req.method||'GET',payload,{local});await saveState();return json(req,res,200,{ok:true,data})}catch(e){return json(req,res,Number(e?.status||400),{ok:false,error:String(e?.message||e)})}});
-server.listen(PORT,HOST,()=>console.log(`Sentinel worker v${VERSION} listening on http://${HOST}:${PORT}`));process.on('SIGTERM',async()=>{await saveState();await marketJournal.flush();server.close(()=>process.exit(0))});process.on('SIGINT',async()=>{await saveState();await marketJournal.flush();server.close(()=>process.exit(0))});
+server.listen(PORT,HOST,()=>console.log(`Sentinel worker v${VERSION} listening on http://${HOST}:${PORT}`));
+let shutdownPromise=null;
+function shutdownWorker(){
+  if(shutdownPromise)return shutdownPromise;
+  shuttingDown=true;
+  shutdownPromise=(async()=>{
+    // Stop all Agent loops before disposing browser contexts opened by it.
+    await Promise.allSettled([saveState(),marketJournal.flush(),Promise.resolve().then(()=>driver.shutdown?.())]);
+    server.close(()=>process.exit(0));
+    setTimeout(()=>process.exit(0),1000).unref();
+  })();
+  return shutdownPromise;
+}
+process.once('SIGTERM',()=>{void shutdownWorker()});
+process.once('SIGINT',()=>{void shutdownWorker()});
 

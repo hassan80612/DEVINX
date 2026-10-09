@@ -1,6 +1,6 @@
 {
-  "version": "13.4.39",
-  "build": "13.4.39-broker-passive-1009",
+  "version": "13.4.40",
+  "build": "13.4.40-stable-broker-1009",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

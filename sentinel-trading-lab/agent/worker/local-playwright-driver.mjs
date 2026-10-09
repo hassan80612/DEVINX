@@ -471,7 +471,7 @@ export class LocalPlaywrightDriver{
           const marker=document.createElement('span');marker.id='__sentinel-input-bridge-marker';marker.style.display='none';(document.documentElement||document.body)?.appendChild(marker);
         }
         if(!window.__sentinelBridgeReady){
-          // Do not intercept native trading-platform WebSockets.
+          // The broker's native WebSocket must never be monkey-patched.
           window.__sentinelBridgeReady=true;
         }
         if(!document.getElementById('__sentinel-asset-listener-marker')){
@@ -497,14 +497,13 @@ export class LocalPlaywrightDriver{
             try{
               const target=ev.target;
               if(!target||!target.closest||target.closest('#sentinel-trading-overlay-host,input,textarea,[contenteditable="true"]'))return;
-              // Only read a short asset tab label. A trade click must not
-              // trigger deep page-text scans or layout hit testing.
-              let node=target;
-              for(let i=0;node&&i<4&&node!==document.body&&node!==document.documentElement;i++,node=node.parentElement){
+              // Only read short asset-tab text; never scan layout/chart/trade panel.
+              for(let node=target,depth=0;node&&depth<4&&node!==document.body&&node!==document.documentElement;node=node.parentElement,depth++){
+                if(node.childElementCount>12)break;
                 const label=String(node.textContent||'').trim();
-                if(label.length>100)break;
-                const matches=pairsFrom(label);
-                if(matches.length===1){publishHint(matches[0]);break}
+                if(label.length>110)break;
+                const found=pairsFrom(label);
+                if(found.length===1){publishHint(found[0]);break}
               }
             }catch{}
           },true);
@@ -583,12 +582,18 @@ export class LocalPlaywrightDriver{
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol,assetChanged,marketStatus:st.marketStatus})).catch(()=>{})}catch{}}
   }
   attachNetwork(provider,page){
-    // Keep CDP WebSocket frame observers and HTTP response observers OFF.
-    // The Agent receives candles/quotes from its independent direct socket.
-    // Browser inspection previously competed with order/result rendering.
     if(page.__sentinelAttached)return;
     page.__sentinelAttached=true;
-    this.state(provider).pageNetworkTap='disabled';
+    // Preserve outbound active-tab selection without decoding inbound
+    // high-frequency market traffic or costly broker HTTP response bodies.
+    page.on('websocket',ws=>{
+      ws.on('framesent',event=>{
+        const payload=event?.payload;
+        if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
+        this.ingest(provider,payload,'page-out');
+      });
+    });
+    this.state(provider).pageNetworkTap='outbound-asset-only';
   }
   async directFeed(provider){
     const s=await this.session(provider);if(!s.context)return null;const cfg=this.config(provider);let cookies=[];try{cookies=await s.context.cookies()}catch{}
@@ -600,7 +605,7 @@ export class LocalPlaywrightDriver{
   async wsSend(provider,payload){
     const feed=await this.directFeed(provider).catch(()=>null);
     if(feed?.ready&&feed.send(payload))return{ok:true,transport:'direct-websocket'};
-    // Fail closed rather than injecting into the broker page's WebSocket.
+    // Never inject commands into the trading page's own WebSocket.
     return{ok:false,error:'direct_market_feed_unavailable'};
   }
   async requestBaseData(provider){const st=this.state(provider),rid=reqId(provider);const requests=[
@@ -812,7 +817,7 @@ export class LocalPlaywrightDriver{
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
     }
     const fullDomEveryMs=st.activeId!=null&&st.balance!=null?90000:30000;
-    if((st.activeId==null||st.balance==null)&&(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs)){
+    if(!st.lastFullDomAt||now-st.lastFullDomAt>fullDomEveryMs){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }
@@ -1106,7 +1111,7 @@ export class LocalPlaywrightDriver{
         const futureDecision=plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup&&!timingClosed&&runtimeDeadline>decisionNow?{side:runtimeOperationalSide,targetAt:runtimeDeadline}:null;
         const futureDecisionPaused=!plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup;
         const feedPauseSeconds=Math.max(0,Math.ceil((Number(d.liveAgeMs||0)+elapsedSincePayload)/1000));
-        const pilotLabel=operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'PILOTO PAUSADO':d.demoAutopilot!==true?'PILOTO DEMO DESLIGADO':String(d.brokerMode||d.mode)!=='demo'?'PILOTO · CONTA DEMO NÃO DETECTADA':d.executionReady!==true?'PILOTO LIGADO · AGUARDANDO BOTÕES E VALOR DA CORRETORA':'PILOTO DEMO LIGADO · AGUARDANDO SINAL';
+        const pilotLabel=operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'ANALISTA PAUSADO':'ANALISTA ATIVO · EXECUÇÃO AUTOMÁTICA DESLIGADA';
         const displayCandidate=candidateOutlook;
         const formingSide=plannerReadable&&String(operational?.asset||visibleAsset).toUpperCase()===visibleAsset&&['CALL','PUT'].includes(runtimeView.displaySide)?runtimeView.displaySide:null;
         const outlook=formingSide||((runtimeView.hasSetup||timingClosed)?runtimeOperationalSide:null)||'AGUARDAR';
@@ -1604,5 +1609,26 @@ export class LocalPlaywrightDriver{
     if(action.startsWith('orders/'))throw new Error('broker_order_execution_retired');
     throw new Error(`unsupported_driver_action:${provider}:${method}:${action}`);
   }
+  async shutdown(){
+    // Dispose only Agent-owned sessions. Never close the user's regular
+    // Chrome/Edge processes or browser profile.
+    if(this.shutdownPromise)return this.shutdownPromise;
+    this.shutdownPromise=(async()=>{
+      const sessions=[...this.sessions.values()];
+      this.sessions.clear();
+      await Promise.allSettled([...this.feeds.values()].map(feed=>feed?.close?.()));
+      this.feeds.clear();
+      await Promise.allSettled(sessions.map(async session=>{
+        // Close Agent-owned browser contexts in parallel on Worker shutdown.
+        // The manager gives shutdown time to finish before forcing termination.
+        try{await session.context?.close?.()}catch{}
+        try{await session.browser?.close?.()}catch{}
+        killProc(session.normal);killProc(session.cdp);
+        if(session.profileDir)await killSentinelProfileBrowsers(session.profileDir).catch(()=>{});
+      }));
+    })();
+    return this.shutdownPromise;
+  }
+
 }
 

@@ -64,7 +64,7 @@ function spawnWorker(){
 async function stopWorker(){
   clearTimeout(restartTimer);
   const p=worker;worker=null;
-  if(p&&!p.killed){try{p.kill('SIGTERM')}catch{};for(let i=0;i<20;i++){if(p.exitCode!=null)break;await sleep(100)};if(p.exitCode==null){try{p.kill('SIGKILL')}catch{}}}
+  if(p&&!p.killed){try{p.kill('SIGTERM')}catch{};for(let i=0;i<100;i++){if(p.exitCode!=null||p.signalCode!=null)break;await sleep(100)};if(p.exitCode==null){try{p.kill('SIGKILL')}catch{}}}
   await removePid(WORKER_PID);
 }
 async function restartWorker(){workerEnabled=true;await stopWorker();await sleep(250);spawnWorker();for(let i=0;i<30;i++){if(await healthWorker())return true;await sleep(250)}return false}
