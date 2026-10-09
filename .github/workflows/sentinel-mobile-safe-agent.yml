@@ -8,6 +8,7 @@ on:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/src/components/ManualOrderMobile.tsx'
+      - 'sentinel-trading-lab/src/app/page.tsx'
       - 'sentinel-trading-lab/src/app/api/runtime/**'
       - 'tests/sentinel-manual-supabase-budget.test.mjs'
       - '.github/workflows/sentinel-mobile-safe-agent.yml'
