@@ -1559,7 +1559,7 @@ export class LocalPlaywrightDriver{
         const marketActiveCount=Math.max(0,Number(marketSummary.activeCount||0));
         const gateReason=analysisStale||!liveNow?'SINCRONIZANDO':shortWindow&&!shortReady?'COLETANDO MICROESTRUTURA':analysisTransient||!analysisFresh?'ATUALIZANDO':entryGateReady?'PRONTO':String(q.blockLabel||q.status||'AGUARDAR');
         const gateDetail=analysisStale?'Feed temporariamente fora de sincronia; aguardando leitura atual.':shortWindow&&!shortReady?`Microestrutura curta em formação · ${Number(short.bars||0)}/5 barras mínimas.`:analysisTransient?'Atualizando a análise sem zerar a última leitura válida.':String(q.blockDetail||'Aguardando confirmação completa da estratégia.');
-        let plannerHorizon=el.dataset.plannerHorizon||String(forecastHorizonSeconds),detailsOpen=false,uiTheme=el.dataset.themePreference==='light'?'light':el.dataset.themePreference==='dark'?'dark':'dark';
+        let plannerHorizon=el.dataset.selectLock==='1'?(el.dataset.plannerHorizon||String(forecastHorizonSeconds)):String(forecastHorizonSeconds);el.dataset.plannerHorizon=plannerHorizon;let detailsOpen=false,uiTheme=el.dataset.themePreference==='light'?'light':el.dataset.themePreference==='dark'?'dark':'dark';
         try{
           detailsOpen=localStorage.getItem('sentinel-v101-details')==='1';
           if(!el.dataset.themePreference)uiTheme=localStorage.getItem('sentinel-overlay-theme-v1')==='light'?'light':'dark'
