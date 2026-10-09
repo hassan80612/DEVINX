@@ -1858,12 +1858,7 @@ export class LocalPlaywrightDriver{
               setTimeout(()=>{el.dataset.selectLock='0';ph.blur?.()},120);return
             }
             const x=ev.target?.closest?.('[data-sentinel-setting]');if(!x)return;
-            if(x.getAttribute('data-sentinel-setting')==='duration'){
-               const seconds=Math.round(Number(x.value)/1000);
-               el.dataset.plannerHorizon=String(seconds);
-               const select=el.querySelector('[data-sentinel-plan-horizon]');
-               if(select)select.value=String(seconds);
-             }
+            // Operation expiration and prediction horizon are independent.
              run({action:'setting',key:x.getAttribute('data-sentinel-setting'),value:x.value});
             setTimeout(()=>{el.dataset.selectLock='0';x.blur?.()},160)
           });
