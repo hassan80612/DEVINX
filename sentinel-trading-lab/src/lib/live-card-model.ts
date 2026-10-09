@@ -25,9 +25,18 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const unavailable=!online?'PC OFFLINE':!running?s?.state==='paused'?'ANÁLISE PAUSADA':'ANÁLISE PARADA':!matches?'SINCRONIZANDO ATIVO':'AGUARDANDO DADOS ATUAIS';
   const state=fresh?view.state:unavailable;
   const side=fresh&&view.contextMatches?view.side:null;
-  const tone=!fresh?'neutral':view.closed?'closed':view.risk?'review':side==='CALL'?'call':side==='PUT'?'put':'neutral';
-  return{asset,online,running,fresh,quoteAt,evaluationAt,quoteAge:quoteAt?Math.max(0,Math.floor((now-quoteAt)/1000)):null,state,side,tone,
-    remaining:fresh?view.remainingSeconds:null,confidence:fresh&&side?view.confidence:null,
+  const terminalStates=['INVALIDADO','JANELA ENCERRADA','JANELA PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA','OPORTUNIDADE PERDIDA'];
+  // UI-only classification: never present an expired/invalidated direction as an active setup.
+  const scenarioInactive=fresh&&(view.closed===true||terminalStates.includes(String(view.state||'')));
+  const tone=!fresh?'neutral':scenarioInactive?'closed':view.risk?'review':side==='CALL'?'call':side==='PUT'?'put':'neutral';
+  const quoteAge=quoteAt>0?Math.max(0,Math.floor((now-quoteAt)/1000)):null;
+  const analysisAge=evaluationAt>0?Math.max(0,Math.floor((now-evaluationAt)/1000)):null;
+  const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
+  const reversalCheckedAt=Number(sub.checkedAt||0);
+  return{asset,online,running,fresh,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioInactive,
+    scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
+    signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
+    remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,
     subStatus:!fresh?unavailable:sub.mode!=='reversal-alert'?'ATUALIZE O AGENT':sub.status==='SEM LEITURA'?'AGUARDANDO COTAÇÕES':alert?'POSSÍVEL REVERSÃO '+alert.side:'OBSERVANDO REVERSÃO',
     alert,market:hasTotals?market:null,strategies:hasTotals?strategies:null,combined:hasTotals?combined:null,average,averageSide};
 }
