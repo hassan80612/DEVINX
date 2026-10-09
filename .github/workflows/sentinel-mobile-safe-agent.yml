@@ -1,13 +1,12 @@
-name: Sentinel Mobile Safe Agent Build
+name: Sentinel Analysis Only Agent Build
 
 on:
   push:
     branches:
-      - sentinel-invest-readback-20261009
+      - sentinel-remove-manual-trading-20261009
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
-      - 'sentinel-trading-lab/src/components/ManualOrderMobile.tsx'
       - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
       - 'sentinel-trading-lab/src/app/globals.css'
       - 'sentinel-trading-lab/src/app/page.tsx'
@@ -19,7 +18,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sentinel-mobile-safe-installer
+  group: sentinel-analysis-only-installer
   cancel-in-progress: true
 
 jobs:
@@ -32,7 +31,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'
-      - name: Validate source and remote cost budget
+      - name: Validate analysis-only source and remote cost budget
         shell: bash
         run: |
           set -euo pipefail
@@ -61,7 +60,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch=sentinel-invest-readback-20261009
+          branch=sentinel-remove-manual-trading-20261009
           current="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
           if [[ "$current" != "$GITHUB_SHA" ]]; then
             echo "Branch changed during build; abort stale installer publication"
@@ -74,5 +73,5 @@ jobs:
             echo 'Installer unchanged'
             exit 0
           fi
-          git commit -m 'build(sentinel): validated mobile-safe Windows Agent preview'
+          git commit -m 'build(sentinel): validated analysis-only Windows Agent 13.4.36'
           git push origin "HEAD:$branch"
