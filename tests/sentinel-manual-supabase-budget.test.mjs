@@ -28,3 +28,53 @@ test('manual order requires exact broker context',()=>{
   assert.throws(()=>validateManualOrder({...make(),amount:1.111},{provider:'iq_option',deviceId,live,now}),/manual_invalid_amount/);
   assert.throws(()=>validateManualOrder({...make(),confirmed:false},{provider:'iq_option',deviceId,live,now}),/manual_confirmation_required/);
 });
+
+import {readBrokerDomControls} from '../sentinel-trading-lab/agent/worker/broker-dom-controls.mjs';
+test('IQ Option 2026 right-rail Invest / ACIMA / ABAIXO is detected without native buttons',async()=>{
+  let id=1;const geo=new Map();
+  const label=(value,box={x:0,y:0,w:1,h:1})=>{
+    const key=id++;
+    geo.set(key,{...box,visible:true,editable:false,clickable:false,vw:1280,vh:800,value});
+    return{nodeType:1,nodeName:'SPAN',backendNodeId:key,attributes:[],children:[{nodeType:3,nodeName:'#text',nodeValue:value,children:[]}]};
+  };
+  const elem=(name,children,box,attrs=[])=>{
+    const key=id++;geo.set(key,{...box,visible:true,editable:false,clickable:false,vw:1280,vh:800,value:''});
+    return{nodeType:1,nodeName:name,backendNodeId:key,attributes:attrs,children};
+  };
+  const invest=elem('DIV',[label('Invest',{x:1090,y:125,w:55,h:18}),label('$10000',{x:1100,y:154,w:82,h:30})],{x:1072,y:110,w:157,h:100});
+  const buy=elem('DIV',[label('ACIMA',{x:1103,y:313,w:74,h:24})],{x:1050,y:282,w:185,h:80});
+  const sell=elem('DIV',[label('ABAIXO',{x:1100,y:414,w:84,h:24})],{x:1050,y:385,w:185,h:80});
+  const overlay=elem('DIV',[label('ACIMA',{x:130,y:120,w:70,h:20})],{x:100,y:85,w:300,h:230},['id','sentinel-trading-overlay-host']);
+  const root={nodeType:9,nodeName:'#document',children:[elem('BODY',[invest,buy,sell,overlay],{x:0,y:0,w:1280,h:800})]};
+  const calls=[];
+  const cdp={async send(method,args){calls.push(method);
+    if(method==='DOM.getDocument')return{root};
+    if(method==='DOM.resolveNode')return{object:{objectId:String(args.backendNodeId)}};
+    if(method==='Runtime.callFunctionOn')return{result:{value:geo.get(Number(args.objectId))}};
+    if(method==='Runtime.releaseObject')return{};
+    throw Error('unexpected CDP method '+method);
+  }};
+  const found=await readBrokerDomControls(cdp);
+  assert.equal(found.buy,true);
+  assert.equal(found.sell,true);
+  assert.equal(found.amount,true);
+  assert.equal(found.railPair,true);
+  assert.equal(found.ax.buyBackendId,buy.backendNodeId);
+  assert.equal(found.ax.sellBackendId,sell.backendNodeId);
+  assert.equal(found.ax.amountBackendId,invest.children[1].backendNodeId);
+  assert.equal(calls.some(x=>/^Input\\.|^Page\\.|^Network\\./.test(x)),false);
+});
+test('right-rail detection cannot authorize a trade with just one direction',async()=>{
+  const root={nodeType:9,children:[{nodeType:1,nodeName:'BODY',backendNodeId:1,attributes:[],children:[
+    {nodeType:1,nodeName:'SPAN',backendNodeId:2,attributes:[],children:[{nodeType:3,nodeValue:'ACIMA',children:[]}]}
+  ]}]};
+  const cdp={async send(method,args){
+    if(method==='DOM.getDocument')return{root};
+    if(method==='DOM.resolveNode')return{object:{objectId:String(args.backendNodeId)}};
+    if(method==='Runtime.callFunctionOn')return{result:{value:{visible:true,x:1180,y:400,w:60,h:26,vw:1280,vh:800,value:'ACIMA',editable:false,clickable:false}}};
+    if(method==='Runtime.releaseObject')return{};
+    throw Error('unexpected call');
+  }};
+  const actual=await readBrokerDomControls(cdp);
+  assert.equal(actual.buy,false);assert.equal(actual.sell,false);assert.equal(actual.amount,false);
+});
