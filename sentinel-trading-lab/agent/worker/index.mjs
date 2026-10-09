@@ -393,7 +393,7 @@ async function remoteLoop(){
     }
     // Preserve sub-2-second remote command polling while avoiding repeated
     // full dashboard snapshots when stopped or disconnected.
-    const heartbeatEveryMs=runtime.stateName==='running'?8000:20000;
+    const heartbeatEveryMs=runtime.stateName==='running'?5000:20000;
     if(now-lastRemoteHeartbeatAttemptAt>=heartbeatEveryMs){
       lastRemoteHeartbeatAttemptAt=now;
       // Cloud heartbeat must not delay a local quote or mobile command.

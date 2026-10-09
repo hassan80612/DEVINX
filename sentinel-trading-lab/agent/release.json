@@ -1,6 +1,6 @@
 {
-  "version": "13.4.44",
-  "build": "13.4.44-passive-quote-1009",
+  "version": "13.4.45",
+  "build": "13.4.45-mobile-bridge-1009",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

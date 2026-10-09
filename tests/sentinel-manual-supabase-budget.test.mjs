@@ -11,7 +11,7 @@ const WORKER='sentinel-trading-lab/agent/worker/';
 test('remote polling is bounded and heartbeat does not hold up mobile actions',()=>{
   const worker=read(WORKER+'index.mjs');
   assert.match(worker,/setInterval\(remoteLoop,2500\)/);
-  assert.match(worker,/runtime\.stateName==='running'\?8000:20000/);
+  assert.match(worker,/runtime\.stateName==='running'\?5000:20000/);
   assert.match(worker,/void sendRemoteHeartbeat\(\)/);
   assert.match(worker,/lastRemoteHeartbeatAttemptAt=0/);
   assert.match(worker,/compactRemoteState\(/);
@@ -76,7 +76,7 @@ test('selected-asset tracking and passive quotes survive without broker-page aut
   assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
   assert.match(worker,/driver\.shutdown\?\.\(\)/);
   assert.match(manager,/for\(let i=0;i<100;i\+\+\)/);
-  assert.match(installer,/13\.4\.44-passive-quote-1009/);
+  assert.match(installer,/13\.4\.45-mobile-bridge-1009/);
   assert.doesNotMatch(installer,/13\.4\.39-broker-passive-1009/);
 });
 
