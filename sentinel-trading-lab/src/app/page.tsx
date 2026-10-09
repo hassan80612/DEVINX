@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
 import {LiveScenarioCard} from '../components/LiveScenarioCard';
+import ManualOrderMobile from '../components/ManualOrderMobile';
 
 type Status=any;
 const tabDefs=[
@@ -143,7 +144,7 @@ export default function Page(){
       </div></header>
       {!agent.process&&<div className="agentbanner"><div className="agentIcon">!</div><div className="agentText"><b>Vincule o PC à sua conta Sentinel</b><span>Instale o Agent no PC que ficará ligado com IQ Option/Exnova. No ícone S ao lado do relógio aparecerá um código SNTL. Digite aqui uma vez.</span><div className="pairInline"><input value={pairCode} onChange={e=>setPairCode(e.target.value.toUpperCase())} placeholder="SNTL-XXXX-XXXX"/><button className="primary" disabled={busy||!pairCode} onClick={claimPair}>Vincular PC</button></div></div><div className="agentActions">{agentAccess?<a className="secondary linkbtn" href="/downloads/sentinel-agent-windows.exe?v=13.4.25-stability-reversal-1009" download="sentinel-agent-windows.exe">Baixar Agent V13.4.25</a>:<button className="secondary" disabled title="O Agent é liberado após a compra ser confirmada nesta conta.">Agent V13.4.25 · compra necessária</button>}<button className="primary" onClick={()=>setTab('Settings')}>Minha conta</button></div></div>}
       {agent.process&&!agent.worker&&source==='local'&&<div className="alert"><b>Agent aberto, worker parado.</b> <button className="secondary" disabled={busy} onClick={()=>agentCommand('restart')}>Reiniciar Agent</button></div>}
-      {notice&&<div className="notice"><span className="noticeDot"/><b>{notice}</b></div>}{err&&<div className="alert"><b>Sentinel:</b> {err}</div>}{(tab==='Dashboard'||tab==='Market Analysis')&&<LiveScenarioCard s={s} busy={busy} act={act}/>}{content}</main>
+      {notice&&<div className="notice"><span className="noticeDot"/><b>{notice}</b></div>}{err&&<div className="alert"><b>Sentinel:</b> {err}</div>}{(tab==='Dashboard'||tab==='Market Analysis')&&<LiveScenarioCard s={s} busy={busy} act={act}/>}{(tab==='Dashboard'||tab==='Bot Control')&&<ManualOrderMobile s={s}/>} {content}</main>
       <nav className="mobileDock">{mobileMain.map(([k,l,i])=><button key={k} className={tab===k?'active':''} onClick={()=>{setTab(k);setMobileMore(false)}}><i>{i}</i><span>{l}</span></button>)}<button className={mobileMore?'active':''} onClick={()=>setMobileMore(v=>!v)}><i>•••</i><span>Mais</span></button></nav>{mobileMore&&<div className="mobileMorePanel">{visibleTabs.filter(x=>!mobileMain.some(([k])=>k===x.key)).map(x=><button key={x.key} onClick={()=>{setTab(x.key);setMobileMore(false)}}><i>{x.icon}</i><span>{x.label}</span></button>)}</div>}
     </div>}
 
