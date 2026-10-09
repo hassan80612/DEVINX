@@ -17,9 +17,11 @@ test('remote polling and heartbeat budget are preserved',()=>{
 });
 const now=Date.now(),deviceId=randomUUID(),requestId=randomUUID();
 const live={mode:'demo',accountId:'900',activeId:12,assetValidated:true,candleAssetMatch:true,symbol:'EUR/USD OTC',uiSymbol:'EUR/USD OTC',expirationRaw:'01:00',expirationUpdatedAt:now,executionUi:{buy:true,sell:true,amount:true,assetMatch:true}};
-const make=()=>({confirmed:true,requestId,deviceId,side:'CALL',amount:2,issuedAt:now,expiresAt:now+9000,context:{provider:'iq_option',mode:'demo',accountId:'900',activeId:'12',asset:'EUR/USD OTC',expirationRaw:'01:00'}});
+const make=()=>({confirmed:true,requestId,deviceId,side:'CALL',amount:2,issuedAt:now,expiresAt:now+9000,context:{provider:'iq_option',mode:'demo',accountId:'900',activeId:'12',asset:'EUR/USD OTC',expirationMode:'manual-confirmed',expirationSeconds:60,manualBrokerExpiryConfirmed:true}});
 test('manual order requires exact broker context',()=>{
-  assert.equal(validateManualOrder(make(),{provider:'iq_option',deviceId,live,now}).side,'CALL');
+  assert.equal(validateManualOrder(make(),{provider:'iq_option',deviceId,live,expectedExpirySeconds:60,now}).side,'CALL');
+  assert.throws(()=>validateManualOrder({...make(),context:{...make().context,expirationSeconds:120}},{provider:'iq_option',deviceId,live,expectedExpirySeconds:60,now}),/manual_expiration_settings_changed/);
+  assert.throws(()=>validateManualOrder({...make(),context:{...make().context,manualBrokerExpiryConfirmed:false}},{provider:'iq_option',deviceId,live,expectedExpirySeconds:60,now}),/manual_broker_expiration_confirmation_required/);
   assert.throws(()=>validateManualOrder({...make(),context:{...make().context,mode:'real'}},{provider:'iq_option',deviceId,live,now}),/manual_account_changed/);
   assert.throws(()=>validateManualOrder({...make(),context:{...make().context,activeId:'13'}},{provider:'iq_option',deviceId,live,now}),/manual_asset_changed/);
   assert.throws(()=>validateManualOrder({...make(),expiresAt:now-1},{provider:'iq_option',deviceId,live,now}),/manual_command_expired/);
