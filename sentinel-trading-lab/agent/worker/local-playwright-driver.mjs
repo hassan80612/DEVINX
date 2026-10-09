@@ -910,8 +910,31 @@ export class LocalPlaywrightDriver{
     }
     return null
   }
+  async ensureVisibleTradingPage(provider,{restore=false}={}){
+    const s=await this.session(provider),cfg=this.config(provider);
+    // Read-only session inspection except for user-requested restoration from
+    // an older headless trading session. Never click trade controls here.
+    if(s.background){
+      if(!restore)return{ok:false,reason:'broker_headless_session_not_visible'};
+      try{await this.launchNormal(provider,{manual:true})}
+      catch{return{ok:false,reason:'broker_visible_reopen_failed'}}
+    }
+    if(!s.context||!s.page||s.background)return{ok:false,reason:'broker_visible_window_not_connected'};
+    const pages=(s.context.pages?.()||[]).filter(p=>!p.isClosed?.());
+    const match=pages.filter(p=>{try{return new URL(p.url()).hostname.endsWith(cfg.domain)}catch{return false}});
+    const trading=match.find(p=>/traderoom|platform|trade/i.test(p.url()))||match[0];
+    if(!trading)return{ok:false,reason:'broker_visible_traderoom_not_found'};
+    if(trading!==s.page){
+      s.page=trading;
+      await this.installBridge(s.page,provider).catch(()=>{});
+      this.attachNetwork(provider,s.page);
+      this.state(provider).executionUi=null;
+      this.state(provider).executionReady=false;
+    }
+    return{ok:true,phase:'visible-traderoom',url:String(s.page.url()).slice(0,180)}
+  }
   async scanExecutionUi(provider){
-    const s=await this.session(provider),st=this.state(provider);if(!s.page)return false;
+    const s=await this.session(provider),st=this.state(provider);if(!s.page){st.executionUi={buy:false,sell:false,amount:false,assetMatch:false,error:'broker_page_not_attached'};st.executionReady=false;return false}
     try{
       let ui=null,uiScore=-1;
       for(const frame of s.page.frames()){
@@ -1112,7 +1135,11 @@ export class LocalPlaywrightDriver{
       }else if(st.expirationUpdatedAt&&Date.now()-Number(st.expirationUpdatedAt)>15000){
         st.expirationDurationMs=null;st.expirationRaw=null;st.expirationKind=null;st.expirationConfidence=0;
       }
-      st.executionUi={...ui,assetMatch,uiSymbol:st.uiSymbol,marketSymbol:st.symbol,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence};
+      const missing=[!ui.buy&&'CALL',!ui.sell&&'PUT',!ui.amount&&'Valor',!assetMatch&&'Ativo'].filter(Boolean);
+      st.executionUi={...ui,assetMatch,error:missing.length?'controles_ausentes:'+missing.join(','):null,
+        sessionKind:s.background?'headless':'visible',uiSymbol:st.uiSymbol,marketSymbol:st.symbol,
+        expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,
+        expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence};
       st.executionReady=!!(ui.buy&&ui.sell&&ui.amount&&st.mode==='demo'&&assetMatch);
       return st.executionReady
     }catch(e){
