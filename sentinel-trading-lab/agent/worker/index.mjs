@@ -13,7 +13,6 @@ import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {compactRemoteState} from './remote-status.mjs';
-import {validateManualOrder} from './manual-order.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
 import {VERSION,BUILD} from './release.mjs';
@@ -280,20 +279,6 @@ function cors(req){const origin=String(req.headers.origin||'');const h={'access-
 function json(req,res,statusCode,data){res.writeHead(statusCode,{'content-type':'application/json; charset=utf-8',...cors(req)});res.end(JSON.stringify(data))}
 async function body(req){let raw='';for await(const chunk of req){raw+=chunk;if(raw.length>65536)throw new Error('body_too_large')}return raw?JSON.parse(raw):{}}
 function authorized(req){if(!TOKEN)return true;return(req.headers.authorization||'')===`Bearer ${TOKEN}`}
-let manualOrderBusy=false;
-const MANUAL_LEDGER=resolve(dirname(STATE_FILE),'manual-order-ledger.json');
-async function reserveManualOrder(order){
-  let rows=[];
-  try{rows=JSON.parse(await readFile(MANUAL_LEDGER,'utf8'));if(!Array.isArray(rows))rows=[]}
-  catch(e){if(e?.code!=='ENOENT')throw e}
-  if(rows.some(x=>x.requestId===order.requestId))throw new Error('manual_request_already_handled_verify_broker');
-  rows=rows.filter(x=>Number(x.at)>Date.now()-7*86400000).slice(-498);
-  rows.push({requestId:order.requestId,at:Date.now(),provider:order.provider,side:order.side,amount:order.amount,mode:order.mode,status:'reserved_before_click'});
-  await mkdir(dirname(MANUAL_LEDGER),{recursive:true});
-  const tmp=MANUAL_LEDGER+'.tmp';
-  await writeFile(tmp,JSON.stringify(rows));
-  await rename(tmp,MANUAL_LEDGER);
-}
 function providerFromPath(path){const m=path.match(/^\/brokers\/(iq_option|exnova)(?:\/(.+))?$/);return m?{name:m[1],action:m[2]||''}:null}
 function requiresAccess(path){
   if(path==='/status'||path==='/control/stop'||path==='/control/kill')return false;
@@ -328,34 +313,8 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path===
       throw new Error(err)
     }
   }if(p.action==='session-check'&&method==='POST'){const info=await driver.call(p.name,'session',{method:'GET'});loginStates[p.name]=info;if(!info.sessionPresent)throw new Error('session_not_detected_yet');const sessionRef=`local-profile:${p.name}`;await vault.put(p.name,sessionRef);adapter.attachSessionRef(sessionRef);// Keep the already authenticated VISIBLE traderoom. Spawning a new headless browser here left CALL/PUT/Valor unreachable in the user's PC window.
-    await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')return adapter.validateDemoOrder();
-    // On-demand inspection only: no new polling loops or Supabase heartbeat traffic.
-    if(p.action==='scan-controls'&&method==='POST'){
-      // A previous release switched the attached visible broker to headless.
-      // A deliberate user-requested rescan restores the visible page before DOM inspection.
-      const session=await driver.ensureVisibleTradingPage(p.name,{restore:true});
-      if(!session.ok)throw new Error(session.reason);
-      await driver.scanExecutionUi(p.name);
-      adapter.refreshFromLive?.();
-      syncRuntimeMarket();
-      const current=driver.liveStatus(p.name);
-      return {...await status(),controlsCheck:{ok:!!(current.executionUi?.buy&&current.executionUi?.sell&&current.executionUi?.amount&&current.executionUi?.assetMatch),phase:session.phase,reason:current.executionUi?.error||null,
-        buy:!!current.executionUi?.buy,sell:!!current.executionUi?.sell,amount:!!current.executionUi?.amount,
-        inspectedAt:Date.now()} };
-    }
-    if(p.action==='manual-order'&&method==='POST'){
-      if(manualOrderBusy)throw new Error('manual_order_in_progress');
-      if(typeof driver.placeManualOrder!=='function')throw new Error('manual_requires_local_broker');
-      if(!adapter.connected||!driver.peek?.(p.name)?.open)throw new Error('manual_broker_offline');
-      if(!(await driver.ensureVisibleTradingPage(p.name,{restore:false})).ok)throw new Error('manual_visible_broker_required');
-      const order=validateManualOrder(payload,{provider:p.name,deviceId:remoteRelay.info.deviceId,live:driver.liveStatus(p.name),expectedExpirySeconds:Math.round(Number(runtime.settings.orderDurationMs||60000)/1000)});
-      manualOrderBusy=true;
-      try{
-        await reserveManualOrder(order);
-        const result=await withTimeout(driver.placeManualOrder(p.name,{...order,context:payload.context}),11000,'manual_click_uncertain_verify_broker');
-        return{manualOrder:result,agentVersion:VERSION,activeProvider:p.name};
-      }finally{manualOrderBusy=false}
-    }}
+    await adapter.connect();if(adapter.connected)activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='connect'&&method==='POST'){await adapter.connect();activeProvider=p.name;syncRuntimeMarket();return status()}if(p.action==='validate-market'&&method==='POST'){try{await adapter.validateReadOnly()}catch(e){adapter.lastError=String(e?.message||e)}return status()}if(p.action==='disconnect'&&method==='POST'){await adapter.disconnect();loginStates[p.name]=null;if(activeProvider===p.name)activeProvider=null;syncRuntimeMarket();return status()}if(p.action==='session-ref'&&method==='POST'){await vault.put(p.name,payload.sessionRef);adapter.attachSessionRef(vault.get(p.name));return status()}if(p.action==='session-ref'&&method==='DELETE'){await vault.remove(p.name);adapter.attachSessionRef(null);return status()}if(p.action==='validate-demo-order'&&method==='POST')throw new Error('broker_order_execution_retired');
+  }
   const err=new Error('not_found');err.status=404;throw err}
 
 let autoBrokerBusy=false;
@@ -432,7 +391,7 @@ async function remoteLoop(){
         // Publish new status immediately after a remote control action.
         lastRemoteHeartbeatAttemptAt=Date.now();
         await remoteRelay.heartbeat(await remoteState());
-        await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null,manualOrder:data?.manualOrder?.status||null,verifiedAmount:data?.manualOrder?.verifiedAmount??null,controlsCheck:data?.controlsCheck||null})
+        await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
       }catch(e){
         await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)}).catch(()=>{})
       }
