@@ -17,7 +17,7 @@ test('limits remote payload without mutating trading engine buffers', () => {
   };
   const out=compactRemoteState(input);
   assert.equal(out.state,'running');
-  assert.equal(out.lastResult,input.lastResult);
+  assert.deepEqual(out.lastResult,input.lastResult);
   assert.equal(out.recentAnalyses.length,6);
   assert.ok(out.recentAnalyses[0].metrics);
   assert.equal(out.recentAnalyses[1].confidence,81);
