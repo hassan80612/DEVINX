@@ -60,28 +60,23 @@ export default function ManualOrderMobile({s}:{s:any}){
         :'Ordem não confirmada ('+e+'). Confira a corretora antes de repetir.');
     }finally{setSending(false)}
   }
-  return <section className="card span12 manualRemoteCard" style={{padding:18,marginBottom:14}}>
-    <div className="split">
-      <div><div className="eyebrow">OPERAÇÃO MANUAL PELO CELULAR</div><h3>CALL / PUT com confirmação</h3>
-        <p className="muted">Seu PC executa apenas o clique que você confirmar. A expiração é a da própria corretora, nunca o prazo de previsão do Sentinel.</p>
-      </div>
-      <strong>{mode==='real'?'CONTA REAL':mode==='demo'?'CONTA DEMO':'CONTA NÃO VALIDADA'}</strong>
+  const reason=!remote.online||freshness>=15000?'Agent offline ou comunicação desatualizada':!['demo','real'].includes(mode)?'Conta da corretora não confirmada':!asset||!live.assetValidated||!live.candleAssetMatch?'Ativo ainda não validado':!expiry?'Vencimento da corretora não detectado no PC':!live.executionUi?.buy||!live.executionUi?.sell||!live.executionUi?.amount||live.executionUi?.assetMatch!==true?'Controles da corretora ainda não reconhecidos':!Number.isFinite(money)||money<=0||money>1000000?'Informe um valor válido':'Aguardando confirmação do PC';
+  return <section className="card span12 manualRemoteCard" aria-label="Operação manual pelo celular">
+    <div className="manualRemoteHead">
+      <div><small>OPERAÇÃO MANUAL</small><h3>CALL / PUT</h3></div>
+      <strong className={mode==='real'?'manualModeReal':'manualModeDemo'}>{mode==='real'?'CONTA REAL':mode==='demo'?'CONTA DEMO':'CONTA NÃO VALIDADA'}</strong>
     </div>
-    <div style={{display:'flex',gap:12,flexWrap:'wrap',margin:'12px 0'}}>
-      <div><small>Corretora / ativo</small><div><b>{provider||'—'} · {asset||'—'}</b></div></div>
-      <div><small>Vencimento da corretora</small><div><b>{expiry||'Não detectado'}</b></div></div>
+    <div className="manualRemoteMeta">
+      <span><small>Ativo</small><b>{asset||'—'}</b></span>
+      <span><small>Expiração</small><b>{expiry||'Não detectada'}</b></span>
     </div>
-    <label style={{display:'block',maxWidth:200,marginBottom:12}}>
-      <span>Valor da operação</span>
-      <input aria-label="Valor da ordem manual" type="text" inputMode="decimal"
-        value={amount} onChange={e=>setAmount(e.target.value)} disabled={sending}
-        style={{width:'100%',padding:10}}/>
-    </label>
-    <div className="actions" style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-      <button type="button" className="primary" disabled={!ready||sending} onClick={()=>order('CALL')}>CALL / ACIMA</button>
-      <button type="button" className="secondary" disabled={!ready||sending} onClick={()=>order('PUT')}>PUT / ABAIXO</button>
+    <div className="manualTradeRow">
+      <label className="manualStake"><small>Valor</small><input aria-label="Valor da ordem manual" type="text" inputMode="decimal" value={amount}
+        onChange={e=>setAmount(e.target.value)} disabled={sending}/></label>
+      <button type="button" className="manualCall" disabled={!ready||sending} onClick={()=>order('CALL')}>CALL <span>↑</span></button>
+      <button type="button" className="manualPut" disabled={!ready||sending} onClick={()=>order('PUT')}>PUT <span>↓</span></button>
     </div>
-    {!ready&&<p className="muted">Os botões ficam bloqueados até o Agent confirmar o PC online, a conta, o ativo, o vencimento e os controles da corretora.</p>}
-    {message&&<p role="status" style={{fontWeight:700,marginTop:12}}>{message}</p>}
+    {!ready&&<p className="manualBlockReason" role="status">{reason}. Os botões ficam bloqueados até a confirmação do Agent.</p>}
+    {message&&<p className="manualBlockReason" role="status">{message}</p>}
   </section>;
 }
