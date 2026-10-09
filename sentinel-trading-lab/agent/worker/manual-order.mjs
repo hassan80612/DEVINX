@@ -15,7 +15,12 @@ export function validateManualOrder(payload,{provider,deviceId,live,now=Date.now
   if(!live||!['demo','real'].includes(String(live.mode||'')))reject('manual_account_not_verified');
   if(live.mode!==c.mode||!live.accountId||String(live.accountId)!==String(c.accountId))reject('manual_account_changed');
   if(live.activeId==null||String(live.activeId)!==String(c.activeId)||!c.asset||key(live.symbol)!==key(c.asset)||key(live.uiSymbol)!==key(c.asset))reject('manual_asset_changed');
-  if(!c.expirationRaw||String(live.expirationRaw)!==String(c.expirationRaw)||!live.expirationUpdatedAt||now-Number(live.expirationUpdatedAt)>15000)reject('manual_expiration_changed');
+  // Broker expiration is manually configured by the user, not inferred from the DOM.
+  // Each order must explicitly confirm one of the supported expiration durations.
+  const expirySeconds=Number(c.expirationSeconds);
+  if(c.expirationMode!=='manual-confirmed'||c.manualBrokerExpiryConfirmed!==true||
+     ![30,60,120,300,600,900].includes(expirySeconds))
+    reject('manual_broker_expiration_confirmation_required');
   const ui=live.executionUi||{};
   if(!ui.buy||!ui.sell||!ui.amount||ui.assetMatch!==true)reject('manual_controls_unverified');
   if(!live.assetValidated||!live.candleAssetMatch)reject('manual_asset_unverified');
