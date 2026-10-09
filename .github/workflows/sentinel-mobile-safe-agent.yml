@@ -3,7 +3,7 @@ name: Sentinel Mobile Safe Agent Build
 on:
   push:
     branches:
-      - sentinel-visible-broker-fix-20261009
+      - sentinel-iq-visible-right-rail-20261009
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch=sentinel-visible-broker-fix-20261009
+          branch=sentinel-iq-visible-right-rail-20261009
           current="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
           if [[ "$current" != "$GITHUB_SHA" ]]; then
             echo "Branch changed during build; abort stale installer publication"
