@@ -332,7 +332,7 @@ async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path===
       if(manualOrderBusy)throw new Error('manual_order_in_progress');
       if(typeof driver.placeManualOrder!=='function')throw new Error('manual_requires_local_broker');
       if(!adapter.connected||!driver.peek?.(p.name)?.open)throw new Error('manual_broker_offline');
-      const order=validateManualOrder(payload,{provider:p.name,deviceId:remoteRelay.info.deviceId,live:driver.liveStatus(p.name)});
+      const order=validateManualOrder(payload,{provider:p.name,deviceId:remoteRelay.info.deviceId,live:driver.liveStatus(p.name),expectedExpirySeconds:Math.round(Number(runtime.settings.orderDurationMs||60000)/1000)});
       manualOrderBusy=true;
       try{
         await reserveManualOrder(order);
