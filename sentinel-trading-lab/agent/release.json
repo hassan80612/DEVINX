@@ -1,6 +1,6 @@
 {
-  "version": "13.4.30",
-  "build": "13.4.30-mobile-strategies-quotes-1009",
+  "version": "13.4.31",
+  "build": "13.4.31-manual-expiration-1009",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
