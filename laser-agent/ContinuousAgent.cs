@@ -463,49 +463,41 @@ internal sealed class ContinuousAgent
         Func<DevinXWebRtcVideoTransport?> getWebRtc,
         CancellationToken cancellationToken)
     {
-        string? lastHash=null;
-        var lastSent=DateTimeOffset.MinValue;
-        long sequence=0;
+        // The Supabase Realtime channel is signaling/controls ONLY. Never
+        // serialize desktop images on this connection: 8 JPEG frames/sec
+        // exhausted the organization's monthly egress quota in hours.
+        var nextPresence = DateTimeOffset.MinValue;
 
         while(!cancellationToken.IsCancellationRequested&&realtime.IsConnected)
         {
             try
             {
-                var activeWebRtc=getWebRtc();
-                if(activeWebRtc?.IsConnected==true)
+                var directVideo=getWebRtc();
+                if(directVideo?.IsConnected==true)
                 {
-                    var rawFrame=DesktopWebRtcCapture.TryCapture();
-                    if(rawFrame is not null)activeWebRtc.TrySendFrame(rawFrame);
+                    var frame=DesktopWebRtcCapture.TryCapture();
+                    if(frame is not null)directVideo.TrySendFrame(frame);
                     await DelaySafe(WebRtcFrameInterval,cancellationToken);
                     continue;
                 }
 
-                var frame=DesktopCapture.TryCapture();
-                if(frame is not null)
+                // Keep the peer negotiation alive with a tiny state notice
+                // instead of streaming Base64 JPEG snapshots through Supabase.
+                // This also wakes up a browser that missed the initial event.
+                var now=DateTimeOffset.UtcNow;
+                if(now>=nextPresence)
                 {
-                    var hash=Convert.ToHexString(SHA256.HashData(frame.Jpeg));
-                    var changed=!string.Equals(lastHash,hash,StringComparison.Ordinal);
-                    var keepAlive=DateTimeOffset.UtcNow-lastSent>=UnchangedFrameKeepAlive;
-
-                    if(changed||keepAlive)
-                    {
-                        var sent=await realtime.SendFrameAsync(
-                            frame,Interlocked.Increment(ref sequence),cancellationToken);
-                        if(sent)
-                        {
-                            lastHash=hash;
-                            lastSent=DateTimeOffset.UtcNow;
-                        }
-                    }
+                    nextPresence=now+TimeSpan.FromSeconds(10);
+                    await realtime.SendAgentStateAsync("online",cancellationToken);
                 }
             }
             catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){break;}
             catch
             {
-                // Realtime reconnect is handled by the session loop.
+                // Connection/negotiation state is handled by the session loop.
             }
 
-            await DelaySafe(FrameInterval,cancellationToken);
+            await DelaySafe(TimeSpan.FromMilliseconds(500),cancellationToken);
         }
     }
 
