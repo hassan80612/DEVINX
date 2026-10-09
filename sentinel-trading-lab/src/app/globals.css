@@ -849,3 +849,12 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .manualBalanceRow b{font-size:16px;line-height:1.35;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .manualBalanceUp{color:#a8e9c3}.manualBalanceDown{color:#ffb4ac}
 @media(max-width:600px){.manualBalanceRow{padding:7px 8px;gap:6px}.manualBalanceRow b{font-size:15px}}
+
+/* Broker account selector for manual-only mobile cockpit */
+.manualAccountSwitch{display:flex;align-items:center;gap:7px;margin:6px 0 8px;flex-wrap:wrap}
+.manualAccountSwitch button{border:1px solid rgba(140,165,172,.55);background:transparent;color:inherit;border-radius:8px;min-height:33px;padding:5px 13px;font-size:12px;font-weight:900}
+.manualAccountSwitch button.selected{border-color:#89d6ba;background:rgba(104,207,164,.16);color:#abefd2}
+.manualAccountSwitch button.selected.real{border-color:#f3b08b;background:rgba(224,135,93,.18);color:#ffd0b7}
+.manualAccountSwitch button:disabled:not(.selected){opacity:.5}
+.manualAccountSwitch small{opacity:.8;font-size:11px;line-height:1.25}
+@media(max-width:600px){.manualAccountSwitch{gap:5px}.manualAccountSwitch button{min-height:32px;padding:4px 10px}.manualAccountSwitch small{font-size:10px}}
