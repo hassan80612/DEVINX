@@ -210,6 +210,10 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
           {balanceChange===null?'—':(balanceChange>0?'+':'')+moneyText(balanceChange)}
         </b></div>
     </div>
+    {remote.online===true&&controls.amount&&String(controls.amountValue||'').trim()&&
+      <p className="manualControlStatus" aria-label="Valor atual da corretora">
+        Invest mostrado no PC: <b>{String(controls.amountValue).slice(0,32)}</b> · O valor do celular só é enviado quando você confirma a ordem.
+      </p>}
     <div className="manualTradeRow">
       <label className="manualStake"><small>Valor</small><input aria-label="Valor da ordem manual" type="text" inputMode="decimal" value={amount}
         onChange={e=>setAmount(e.target.value)} disabled={sending}/></label>
