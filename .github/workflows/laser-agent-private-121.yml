@@ -1,0 +1,60 @@
+name: Build private Laser Agent 1.2.1
+
+on:
+  push:
+    branches: [fix/devinx-webrtc-egress-20261009]
+    paths:
+      - 'laser-agent/**'
+      - '.github/workflows/laser-agent-private-121.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: private-laser-agent-121
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Assert JPEG broadcasts disabled and WebRTC kept
+        shell: pwsh
+        run: |
+          $agent = Get-Content laser-agent/ContinuousAgent.cs -Raw
+          $realtime = Get-Content laser-agent/DevinXRealtimeSession.cs -Raw
+          if ($agent.Contains('realtime.SendFrameAsync(') -or $realtime.Contains('TrySendFrameBroadcastAsync(')) { throw 'Supabase video relay still present' }
+          if (-not $agent.Contains('directVideo.TrySendFrame(')) { throw 'WebRTC sender missing' }
+          if (-not (Get-Content laser-agent/PairingProofFactory.cs -Raw).Contains('"1.2.1"')) { throw 'Incorrect release version' }
+      - name: Build Windows binaries
+        shell: pwsh
+        run: |
+          dotnet restore .\laser-agent\DevinXLaserAgent.csproj
+          dotnet build .\laser-agent\DevinXLaserAgent.csproj -c Release --no-restore
+          dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\laser-agent\publish-agent
+          dotnet publish .\laser-agent\DevinXLaserAgent.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DefineConstants=DEVINX_MENTOR_ONLY -o .\laser-agent\publish-mentor
+          Copy-Item .\laser-agent\publish-agent\DevinXLaserAgent.exe .\laser-agent\DevinX-Laser-Agent-1.2.1.exe
+          Copy-Item .\laser-agent\publish-mentor\DevinXLaserAgent.exe .\laser-agent\DevinX-Mentoria-1.2.1.exe
+          if ((Get-FileHash .\laser-agent\DevinX-Laser-Agent-1.2.1.exe).Hash -eq (Get-FileHash .\laser-agent\DevinX-Mentoria-1.2.1.exe).Hash) { throw 'Agent and Mentoria builds must differ' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: private-laser-agent-1.2.1
+          path: |
+            laser-agent/DevinX-Laser-Agent-1.2.1.exe
+            laser-agent/DevinX-Mentoria-1.2.1.exe
+          retention-days: 14
+      - name: Publish immutable 1.2.1 release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view laser-agent-v1.2.1 *> $null
+          if ($LASTEXITCODE -eq 0) { Write-Host 'Release already exists'; exit 0 }
+          gh release create laser-agent-v1.2.1 --target ${{ github.sha }} --title "DevinX Laser Agent 1.2.1 — WebRTC-only" --notes "Reduz o tráfego do Supabase removendo a transmissão de imagens pelo Realtime. Os comandos de controle permanecem. Sem fallback de JPEG quando WebRTC falha."
+          gh release upload laser-agent-v1.2.1 .\laser-agent\DevinX-Laser-Agent-1.2.1.exe .\laser-agent\DevinX-Mentoria-1.2.1.exe
