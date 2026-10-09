@@ -181,8 +181,14 @@ function candleSeriesIntegrity(candles=[],quote=null){
 
 function applyKnownBalance(st){
   const arr=Array.isArray(st.lastBalances)?st.lastBalances:[];if(!arr.length)return false;
+  // Keep the selected account's TYPE aligned with the account actually
+  // highlighted in the broker. A remembered DEMO balance id is not proof
+  // that DEMO is still active after a manual switch on the PC.
+  const freshUi=st.accountUiMode&&Date.now()-Number(st.accountUiAt||0)<30000;
+  const wanted=freshUi?st.accountUiMode:st.mode;
   let selected=st.balanceId!=null?arr.find(x=>n(x?.id)===n(st.balanceId)):null;
-  if(!selected&&st.mode)selected=arr.find(x=>(st.mode==='real'&&Number(x?.type)===1)||(st.mode==='demo'&&Number(x?.type)===4));
+  if(freshUi&&selected&&Number(selected.type)!==(wanted==='real'?1:4))selected=null;
+  if(!selected&&wanted)selected=arr.find(x=>(wanted==='real'&&Number(x?.type)===1)||(wanted==='demo'&&Number(x?.type)===4));
   const eligible=arr.filter(x=>[1,4].includes(Number(x?.type)));if(!selected&&eligible.length===1)selected=eligible[0];
   if(!selected)return false;const typ=Number(selected.type);if(typ===1)st.mode='real';if(typ===4)st.mode='demo';const id=n(selected.id);if(id!=null)st.balanceId=id;const val=n(selected.amount??selected.balance);if(val!=null){st.balance=val;st.balanceSource='protocol:balances';return true}return false
 }
@@ -1340,7 +1346,7 @@ export class LocalPlaywrightDriver{
     if(directStatus&&directStatus.messageAgeMs!=null&&directStatus.messageAgeMs>30000){
       await direct.close().catch(()=>{});this.feeds.delete(provider);st.directStatus=null;st.lastDirectError='websocket_stale_reconnecting';st.protocol='reconnecting';
     }
-    if(!st.lastFullDomAt||now-st.lastFullDomAt>30000){
+    if(!st.lastFullDomAt||now-st.lastFullDomAt>12000){
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }
@@ -1365,11 +1371,33 @@ export class LocalPlaywrightDriver{
     return this.liveStatus(provider)
   }
   async domSnapshot(provider,{allowAttach=false,fast=false}={}){const s=await this.session(provider);if(!s.page){if(allowAttach)await this.attachAutomation(provider,{manual:true});else throw new Error('broker_browser_not_attached')}const page=s.page;await this.installBridge(page,provider).catch(()=>{});const st=this.state(provider);let text='',title='',url='';try{url=page.url();title=await page.title();if(!fast)text=(await page.locator('body').innerText({timeout:1800})).slice(0,70000)}catch{}
-    let accountText='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;
+    let accountText='',selectedAccountMode='',instrumentText='',activeSymbol='',clickedSymbol='',clickedAt=0;
     if(fast){
       try{const hint=await page.evaluate(()=>({clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}));clickedSymbol=hint.clickedSymbol||'';clickedAt=Number(hint.clickedAt||0)}catch{}
-    }else try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const raw=String(t||'').toUpperCase();let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;for(const [needle,label] of [['GOLD','Gold'],['SILVER','Silver'],['BITCOIN','Bitcoin'],['ETHEREUM','Ethereum'],['CRUDE OIL','Crude Oil'],['NATURAL GAS','Natural Gas']])if(raw.includes(needle))return label+(raw.includes('OTC')?' OTC':'');return''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
-    st.lastDomAt=Date.now();if(!fast){for(const a of assetStrings(text))st.assets.add(a);const mode=detectMode(accountText)||st.mode;if(mode)st.mode=mode;applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
+    }else try{const dom=await page.evaluate(()=>{const visible=(el)=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};const pair=(t)=>{const raw=String(t||'').toUpperCase();let m=raw.match(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;m=raw.match(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/);if(m)return `${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`;for(const [needle,label] of [['GOLD','Gold'],['SILVER','Silver'],['BITCOIN','Bitcoin'],['ETHEREUM','Ethereum'],['CRUDE OIL','Crude Oil'],['NATURAL GAS','Natural Gas']])if(raw.includes(needle))return label+(raw.includes('OTC')?' OTC':'');return''};const els=[...document.querySelectorAll('[aria-selected],[aria-checked],[aria-current],[data-state],[class*="active"],[class*="selected"],[class*="tab"],[data-test*="tab" i],[data-testid*="tab" i],[data-test*="account" i],[data-testid*="account" i],[data-test*="balance" i],[data-testid*="balance" i],[data-test*="asset" i],[data-testid*="asset" i],[data-test*="instrument" i],[data-testid*="instrument" i],[role="tab"]')].filter(visible);const acct=els.map(el=>String(el.textContent||'').trim()).filter(t=>/practice|prática|demo|real account|conta real|conta de prática|saldo real|practice balance/i.test(t)).slice(0,30);const accountCandidates=els.map(el=>{
+ const label=String([el.getAttribute?.('aria-label'),el.getAttribute?.('title'),el.textContent].filter(Boolean).join(' ')).trim();
+ if(!label||label.length>130)return null;
+ const real=/(real account|conta real|saldo real|real balance|live account)/i.test(label);
+ const demo=/(practice account|conta de pr[aá]tica|practice balance|saldo de pr[aá]tica|demo account|conta demo)/i.test(label);
+ if(real===demo)return null;
+ const isSelected=el.getAttribute?.('aria-selected')==='true'||el.getAttribute?.('aria-checked')==='true'||el.getAttribute?.('aria-current')==='true'||/^(active|selected|checked)$/i.test(String(el.getAttribute?.('data-state')||''))||/(?:^|[ _-])(active|selected|current)(?:[ _-]|$)/i.test(String(el.className||''));
+ const y=el.getBoundingClientRect().top;
+ const context=String([el.className,el.getAttribute?.('data-test'),el.getAttribute?.('data-testid'),el.parentElement?.className].join(' '));
+ const scoped=/(account|balance|saldo|conta|wallet|portfolio|practice|demo)/i.test(context);
+ if(!scoped&&!isSelected)return null;
+ return{mode:real?'real':'demo',score:(isSelected?40:0)+(scoped?12:0)+(y<180?5:0),selected:isSelected};
+}).filter(Boolean);
+ const sortedAccounts=accountCandidates.sort((a,b)=>b.score-a.score);
+ const bestAccount=sortedAccounts[0]&&sortedAccounts[0].selected&&(!sortedAccounts[1]||sortedAccounts[0].score>sortedAccounts[1].score)?sortedAccounts[0]:null;
+ const selectedAccountMode=bestAccount?.mode||'';
+ const assetEls=els.filter(el=>pair(el.textContent||''));const score=(el)=>{let n=0,node=el;for(let d=0;d<5&&node;d++,node=node.parentElement){const cls=String(node.className||'').toLowerCase(),state=String(node.getAttribute?.('data-state')||'').toLowerCase(),cur=String(node.getAttribute?.('aria-current')||'').toLowerCase();if(node.getAttribute?.('aria-selected')==='true')n+=120;if(node.getAttribute?.('aria-checked')==='true')n+=110;if(cur&&cur!=='false')n+=100;if(/active|selected|current|checked/.test(state))n+=90;if(/(^|[ _-])(active|selected|current)([ _-]|$)/.test(cls))n+=75;try{const cs=getComputedStyle(node);if(parseFloat(cs.borderBottomWidth||'0')>=2&&cs.borderBottomColor!=='rgba(0, 0, 0, 0)'&&cs.borderBottomColor!=='transparent')n+=18}catch{}}const r=el.getBoundingClientRect();if(r.top<180)n+=5;return n};const ranked=assetEls.map(el=>({p:pair(el.textContent||''),s:score(el)})).filter(x=>x.p).sort((a,b)=>b.s-a.s);const active=ranked[0]&&ranked[0].s>0?ranked[0].p:'';const inst=assetEls.map(el=>String(el.textContent||'').trim()).slice(0,30);return{accountText:acct.join(' | '),selectedAccountMode,instrumentText:inst.join(' | '),activeSymbol:active,clickedSymbol:String(window.__sentinelClickedSymbol||''),clickedAt:Number(window.__sentinelClickedSymbolAt||0)}});accountText=dom.accountText||'';selectedAccountMode=dom.selectedAccountMode||'';instrumentText=dom.instrumentText||'';activeSymbol=dom.activeSymbol||'';clickedSymbol=dom.clickedSymbol||'';clickedAt=Number(dom.clickedAt||0)}catch{}
+    st.lastDomAt=Date.now();if(!fast){for(const a of assetStrings(text))st.assets.add(a);// Do not choose REAL merely because both REAL and DEMO appear in a menu.
+       // Only a uniquely selected broker account can override the remembered mode.
+       if(selectedAccountMode&&selectedAccountMode!==st.mode){
+         st.mode=selectedAccountMode;st.balanceId=null;st.balance=null;st.balanceSource=null;
+       }
+       if(selectedAccountMode){st.accountUiMode=selectedAccountMode;st.accountUiAt=Date.now()}
+       applyKnownBalance(st);const b=bestBalanceFromText(text,st.mode);if(b&&b.value!=null&&b.score>=10&&(!st.mode||!b.mode||b.mode===st.mode)){st.balance=b.value;st.balanceSource=`dom:${b.mode||st.mode||'unknown'}`}};
     const clickedFresh=clickedAt>0&&Date.now()-clickedAt<8000;const clickedPairs=clickedFresh&&clickedSymbol?assetStrings(clickedSymbol):[];const domActive=activeSymbol?assetStrings(activeSymbol):[];const instrumentPairs=assetStrings(instrumentText);
     let nextUi=null,uiSource=null;
     if(clickedPairs.length===1){nextUi=clickedPairs[0];uiSource='click'}
