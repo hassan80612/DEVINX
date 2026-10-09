@@ -2,6 +2,9 @@
 import {useEffect,useState} from 'react';
 
 type Direction='CALL'|'PUT';
+type EntryReference={asset:string;mode:string;side:Direction;price:number;at:number;result:'aguardando'|'enviado'|'incerto'};
+const finite=(v:unknown):number|null=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v):null;
+const formatPrice=(value:number|null)=>value===null?'—':value.toLocaleString('en-US',{minimumFractionDigits:value>=100?2:value>=10?4:value>=1?5:6,maximumFractionDigits:value>=100?3:value>=10?5:value>=1?6:7});
 const n=(v:unknown)=>String(v??'').trim();
 const numeric=(v:string)=>Number(v.replace(',','.'));
 
@@ -11,6 +14,7 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
   const [switching,setSwitching]=useState(false);
   const [switchMessage,setSwitchMessage]=useState('');
   const [message,setMessage]=useState('');
+  const [entryReference,setEntryReference]=useState<EntryReference|null>(null);
   const live=s?.liveBroker||{};
   const remote=s?.remote||{};
   const provider=n(s?.activeProvider);
@@ -18,6 +22,29 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
   const asset=n(live.uiSymbol||live.symbol);
   const expiry=n(live.expirationRaw);
   const money=numeric(amount);
+  // Display existing remote snapshot only. Never subscribe, poll or store ticks.
+  const data=s?.lastResult?.analysis||{};
+  const operational=data.operationalSignal||{};
+  const alert=operational.subanalyst?.alert||null;
+  const quoteAt=Number(live.lastQuoteAt||s?.feed?.quoteTs||0);
+  const quoteAge=quoteAt>0?Date.now()-quoteAt:Infinity;
+  const quoteFresh=remote.online===true&&quoteAge>=-2000&&quoteAge<=8000&&
+    live.assetValidated===true&&live.candleAssetMatch===true;
+  const quote=quoteFresh?finite(live.quote??s?.feed?.price):null;
+  const priceSamples=Array.isArray(live.quoteHistory)?live.quoteHistory:[];
+  const previousSample=priceSamples.slice(0,-1).reverse().find((row:any)=>{
+    const p=finite(row?.price);
+    return quote!==null&&p!==null&&p!==quote&&Number(row?.ts||0)>quoteAt-12000;
+  });
+  const previousQuote=finite(previousSample?.price);
+  const direction=quote===null||previousQuote===null?'':quote>previousQuote?'up':quote<previousQuote?'down':'';
+  const analysisAsset=String(s?.lastResult?.asset||data.asset||'').toUpperCase().replace(/\s+/g,'');
+  const assetMatches=analysisAsset===asset.toUpperCase().replace(/\s+/g,'');
+  const signalFresh=quoteFresh&&assetMatches&&Number(s?.lastEvalMs||0)>Date.now()-10000;
+  const trigger=signalFresh?finite(operational.trigger):null;
+  const reversalTrigger=signalFresh&&alert?.active!==false?finite(alert?.trigger):null;
+  const entryAt=signalFresh?finite(operational.entryAt):null;
+  const displayEntry=entryReference?.asset===asset&&entryReference?.mode===mode?entryReference:null;
   // This is a local on-screen comparison, not trade accounting. It never
   // triggers additional requests to Supabase or the broker.
   const brokerBalance=live.balance!=null&&Number.isFinite(Number(live.balance))
@@ -66,6 +93,8 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
       '\n\nEssa confirmação autoriza UM ÚNICO clique na corretora aberta no PC. Continuar?'
     );
     if(!confirmed)return;
+    const reference=quote===null?null:{asset,mode,side,price:quote,at:Date.now(),result:'aguardando' as const};
+    if(reference)setEntryReference(reference);
     const issuedAt=Date.now();
     const payload={
       confirmed:true,requestId:crypto.randomUUID(),deviceId:String(remote.deviceId),
@@ -80,10 +109,12 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
       const json=await response.json().catch(()=>({}));
       if(!response.ok||json.ok!==true)throw new Error(String(json.error||'manual_order_failed'));
       const status=String(json.command?.result?.manualOrder||'');
+      if(reference)setEntryReference({...reference,result:'enviado'});
       setMessage(status==='click_dispatched_broker_confirmation_pending'
         ?'Clique '+side+' enviado uma vez. Confira na própria corretora se a ordem foi aceita.'
         :'Comando confirmado pelo Agent. Verifique a corretora antes de qualquer nova ordem.');
     }catch(error){
+      if(reference)setEntryReference({...reference,result:'incerto'});
       const e=String((error as Error)?.message||error);
       setMessage(e==='manual_result_unknown_verify_broker'
         ?'RESULTADO INCERTO: confira o histórico da corretora antes de tentar novamente.'
@@ -105,6 +136,25 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
     <div className="manualRemoteMeta">
       <span><small>Ativo</small><b>{asset||'—'}</b></span>
       <span><small>Expiração</small><b>{expiry||'Não detectada'}</b></span>
+    </div>
+    <div className="manualPricePanel" aria-label="Cotação e gatilho em tempo real">
+      <div className="manualPriceCurrent">
+        <small>COTAÇÃO {quote===null?'· AGUARDANDO DADO ATUAL':'· '+Math.max(0,Math.floor(quoteAge/1000))+'s ATRÁS'}</small>
+        <div className="manualPriceValue"><b>{formatPrice(quote)}</b>
+          <strong className={direction==='up'?'manualPriceUp':direction==='down'?'manualPriceDown':''}>
+            {direction==='up'?'▲ SUBINDO':direction==='down'?'▼ DESCENDO':'— SEM MOVIMENTO CONFIRMADO'}
+          </strong></div>
+      </div>
+      <div className="manualPriceMarkers">
+        <span><small>Gatilho cenário</small><b>{formatPrice(trigger)}</b></span>
+        <span><small>Gatilho reversão</small><b>{formatPrice(reversalTrigger)}</b></span>
+      </div>
+      {displayEntry&&<div className="manualEntryReference">
+        <small>Referência no envio de {displayEntry.side} · {new Date(displayEntry.at).toLocaleTimeString('pt-BR')}</small>
+        <b>{formatPrice(displayEntry.price)}</b>
+        <small>{displayEntry.result==='enviado'?'Envio confirmado pelo Agent; preço executado deve ser conferido na corretora.':displayEntry.result==='incerto'?'Envio incerto: confira a corretora antes de repetir.':'Aguardando confirmação do Agent. Não é preço de execução confirmado.'}</small>
+      </div>}
+      {entryAt!==null&&<small className="manualSignalTime">Gatilho temporal do cenário: {new Date(entryAt).toLocaleTimeString('pt-BR')}</small>}
     </div>
     <div className="manualBalanceRow">
       <div><small>Saldo atual da corretora</small><b>{brokerBalance===null?'Aguardando saldo':moneyText(brokerBalance)}</b></div>
