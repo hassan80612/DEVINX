@@ -137,12 +137,30 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
   async function refreshControls(){
     if(checkingControls||!remote.online||!['iq_option','exnova'].includes(provider))return;
     setCheckingControls(true);
-    setMessage('Verificando CALL, PUT e campo de valor na corretora do PC…');
+    setMessage('Verificando a janela visível, CALL, PUT e campo de valor no PC…');
     try{
-      const ok=await act('brokers/'+provider+'/scan-controls');
-      setMessage(ok?'Leitura dos controles atualizada no PC.':'Falha na verificação. Confira a janela da corretora no PC.');
-    }catch{setMessage('Não foi possível verificar os controles no PC.')}
-    finally{setCheckingControls(false)}
+      // One user-initiated command; keep the existing idle/active Supabase polling unchanged.
+      const response=await fetch('/api/runtime/brokers/'+provider+'/scan-controls',{
+        method:'POST',headers:{'content-type':'application/json'},body:'{}',cache:'no-store'
+      });
+      const body=await response.json().catch(()=>({}));
+      if(!response.ok||body.ok!==true)throw new Error(String(body.error||'falha_na_conexao_com_pc'));
+      const check=body.command?.result?.controlsCheck;
+      if(!check)throw new Error('agent_sem_diagnostico_aguarde_atualizacao');
+      const parts=['CALL '+(check.buy?'OK':'NÃO'),'PUT '+(check.sell?'OK':'NÃO'),'Valor '+(check.amount?'OK':'NÃO')];
+      setMessage(parts.join(' · ')+(check.reason?' · '+String(check.reason):'')+(check.ok?' · Controles reconhecidos no PC.':' · Verifique a janela IQ Option aberta pelo Agent.'));
+    }catch(e){
+      const code=String((e as Error)?.message||e);
+      const reasons:Record<string,string>={
+        broker_visible_reopen_failed:'Não consegui reabrir a janela visível da corretora no PC.',
+        broker_visible_window_not_connected:'O Agent não está conectado a uma janela visível.',
+        broker_visible_traderoom_not_found:'Janela conectada, mas não encontrei a tela de negociação.',
+        broker_not_connected:'A corretora não está conectada ao Agent.',
+        agent_sem_diagnostico_aguarde_atualizacao:'O PC ainda não respondeu com o diagnóstico atualizado.',
+        manual_result_unknown_verify_broker:'Resultado incerto: verifique o PC antes de repetir.'
+      };
+      setMessage('Verificação falhou: '+(reasons[code]||code)+'.');
+    }finally{setCheckingControls(false)}
   }
   const missingControls=[!controls.buy&&'CALL',!controls.sell&&'PUT',!controls.amount&&'Valor',controls.assetMatch!==true&&'Ativo'].filter(Boolean);
   const reason=!remote.online||freshness>=15000?'Agent offline ou comunicação desatualizada':!['demo','real'].includes(mode)?'Conta da corretora não confirmada':!asset||!live.assetValidated||!live.candleAssetMatch?'Ativo ainda não validado':!expiryAllowed?'Escolha uma expiração válida em Ajustar cenário':missingControls.length?'O Agent não reconheceu: '+missingControls.join(', '):!Number.isFinite(money)||money<=0||money>1000000?'Informe um valor válido':'Aguardando confirmação do PC';
