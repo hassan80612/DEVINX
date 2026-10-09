@@ -1,5 +1,5 @@
 'use client';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 
 type Direction='CALL'|'PUT';
 const n=(v:unknown)=>String(v??'').trim();
@@ -16,6 +16,21 @@ export default function ManualOrderMobile({s}:{s:any}){
   const asset=n(live.uiSymbol||live.symbol);
   const expiry=n(live.expirationRaw);
   const money=numeric(amount);
+  // This is a local on-screen comparison, not trade accounting. It never
+  // triggers additional requests to Supabase or the broker.
+  const brokerBalance=live.balance!=null&&Number.isFinite(Number(live.balance))
+    ?Number(live.balance)
+    :s?.balanceSource==='broker'&&s?.balance!=null&&Number.isFinite(Number(s.balance))
+      ?Number(s.balance):null;
+  const accountKey=[provider,mode,n(live.accountId)].join(':');
+  const [balanceBase,setBalanceBase]=useState<{key:string,value:number}|null>(null);
+  useEffect(()=>{
+    if(brokerBalance===null||!accountKey||!n(live.accountId))return;
+    setBalanceBase(old=>old?.key===accountKey?old:{key:accountKey,value:brokerBalance});
+  },[accountKey,brokerBalance,live.accountId]);
+  const balanceChange=brokerBalance!==null&&balanceBase?.key===accountKey
+    ?brokerBalance-balanceBase.value:null;
+  const moneyText=(v:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
   const freshness=remote.heartbeatAt?Date.now()-new Date(remote.heartbeatAt).getTime():Infinity;
   const ready=remote.online===true&&freshness<15000&&
     ['iq_option','exnova'].includes(provider)&&['demo','real'].includes(mode)&&
@@ -69,6 +84,13 @@ export default function ManualOrderMobile({s}:{s:any}){
     <div className="manualRemoteMeta">
       <span><small>Ativo</small><b>{asset||'—'}</b></span>
       <span><small>Expiração</small><b>{expiry||'Não detectada'}</b></span>
+    </div>
+    <div className="manualBalanceRow">
+      <div><small>Saldo atual da corretora</small><b>{brokerBalance===null?'Aguardando saldo':moneyText(brokerBalance)}</b></div>
+      <div><small>Variação desde que abriu a tela</small>
+        <b className={balanceChange===null?'':balanceChange>0?'manualBalanceUp':balanceChange<0?'manualBalanceDown':''}>
+          {balanceChange===null?'—':(balanceChange>0?'+':'')+moneyText(balanceChange)}
+        </b></div>
     </div>
     <div className="manualTradeRow">
       <label className="manualStake"><small>Valor</small><input aria-label="Valor da ordem manual" type="text" inputMode="decimal" value={amount}
