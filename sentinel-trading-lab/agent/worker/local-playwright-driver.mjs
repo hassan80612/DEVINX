@@ -772,8 +772,30 @@ export class LocalPlaywrightDriver{
     if(!next)return false;
     const key=pairKey(next),current=pairKey(st.uiSymbol||st.symbol||''),changed=key!==current;
     if(source==='tab-click-hint'&&changed&&current){
-      st.screenCandidateSymbol=next;st.marketStatus='unvalidated';st.marketReason='Ativo clicado ainda não validado. Feche o atual e abra o novo pelo botão + da corretora.';
+      st.screenCandidateSymbol=next;st.marketStatus='unvalidated';
+      st.marketReason='Conferindo o ativo realmente selecionado na corretora';
       try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:st.symbol,uiSymbol:st.uiSymbol,activeId:st.activeId,source,assetChanged:false,visualMismatch:true,screenCandidateSymbol:next,marketStatus:'unvalidated'})).catch(()=>{})}catch{}
+      if(st.assetConfirmTimer)clearTimeout(st.assetConfirmTimer);
+      // One tiny DOM read after the tab has settled. Never inspect prices,
+      // buttons, or the chart and never navigate/click on the user's behalf.
+      st.assetConfirmTimer=setTimeout(async()=>{
+        st.assetConfirmTimer=null;
+        const page=this.sessions.get(provider)?.page;
+        if(!page||st.screenCandidateSymbol!==next)return;
+        const candidates=await page.evaluate(()=>{
+          const selector='[role="tab"][aria-selected="true"],[aria-selected="true"][data-test*="asset" i],[aria-selected="true"][data-testid*="asset" i],[data-state="active"][role="tab"],[class*="tab"][class*="active"],[class*="tab"][class*="selected"]';
+          return [...document.querySelectorAll(selector)].slice(0,32).filter(el=>{
+            const r=el.getBoundingClientRect();
+            return r.width>=30&&r.height>8&&r.top<320;
+          }).map(el=>String(el.textContent||'').trim().slice(0,65));
+        }).catch(()=>[]);
+        const confirmed=candidates.some(label=>assetStrings(label).some(symbol=>pairKey(symbol)===key));
+        if(confirmed&&st.screenCandidateSymbol===next){
+          this.applyActiveSelection(provider,{symbol:next,activeId:st.activeMap.get(key),source:'broker-validated'});
+          if(st.activeId!=null)void this.requestMarketData(provider,{force:true}).catch(()=>{});
+        }
+      },300);
+      st.assetConfirmTimer.unref?.();
       return false
     }
     const authoritativeUi=String(source).startsWith('protocol-page')||source==='broker-validated';
@@ -892,13 +914,17 @@ export class LocalPlaywrightDriver{
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     const candleAssetMatch=st.activeId!=null&&st.candleActiveId!=null&&Number(st.activeId)===Number(st.candleActiveId);
-    const feedCoreReady=!!(st.balance!=null&&['demo','real'].includes(st.mode)&&st.symbol&&st.activeId!=null&&st.quote!=null&&st.candles.length>=50&&candleFresh&&integrity.ok&&candleAssetMatch);
-    const assetValidated=!!(st.symbol&&st.activeId!=null&&!st.screenCandidateSymbol),feedValidated=feedCoreReady&&assetValidated;
-    const marketStatus=st.screenCandidateSymbol?'unvalidated':feedValidated?'open':(st.marketStatus||'stale');
-    const marketReason=st.screenCandidateSymbol?'Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.':feedValidated?`${st.symbol||'Ativo'} validado e isolado por active_id`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
+    const assetValidated=!!(st.symbol&&st.activeId!=null&&!st.screenCandidateSymbol);
+    const quoteAgeMs=st.lastQuoteAt==null?Infinity:Math.max(0,Date.now()-Number(st.lastQuoteAt));
+    // Market analysis only needs the correct instrument and fresh price data.
+    // Broker-account mode and balance are separate safety gates for execution.
+    const analysisFeedValidated=!!(assetValidated&&st.quote!=null&&quoteAgeMs<=15000&&st.candles.length>=50&&candleFresh&&integrity.ok&&candleAssetMatch);
+    const feedValidated=!!(analysisFeedValidated&&st.balance!=null&&['demo','real'].includes(st.mode));
+    const marketStatus=st.screenCandidateSymbol?'unvalidated':analysisFeedValidated?'open':(st.marketStatus||'stale');
+    const marketReason=st.screenCandidateSymbol?'Ativo clicado aguardando confirmação':analysisFeedValidated?`${st.symbol||'Ativo'} com dados de mercado validados`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
     const selectedAccount=(st.lastBalances||[]).find(v=>st.balanceId!=null&&n(v?.id)===n(st.balanceId))||null;
     const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
-    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1575,17 +1601,8 @@ export class LocalPlaywrightDriver{
         })
         };
         window.__sentinelRenderOverlay=render;
-        if(!window.__sentinelOverlayClock)window.__sentinelOverlayClock=setInterval(()=>{
-          const latest=window.__sentinelLastOverlayData;
-          if(!document.getElementById('sentinel-trading-overlay-host')){clearInterval(window.__sentinelOverlayClock);window.__sentinelOverlayClock=null;return}
-          const clockNow=Date.now(),payloadAge=clockNow-Number(latest?.overlayReceivedAt||0);
-          const clockKey=[Math.floor(clockNow/1000),payloadAge+Number(latest?.liveAgeMs||0)>=3500,payloadAge+Number(latest?.analysisAgeMs||0)>=3500,
-            Number(latest?.scenarioView?.deadline||0)>0&&clockNow>=Number(latest.scenarioView.deadline),
-            Number(latest?.scenarioView?.entryDeadline||0)>0&&clockNow>=Number(latest.scenarioView.entryDeadline)].join('|');
-          // Time labels refresh once a second; freshness/expiry transitions
-          // bypass that coalescing so stale signals disappear promptly.
-          if(latest&&payloadAge>=1250&&window.__sentinelLastClockKey!==clockKey){window.__sentinelLastClockKey=clockKey;window.__sentinelRenderOverlay?.(latest)}
-        },500);
+        // The Worker already publishes fresh frames. Never start a second
+        // timer that reconstructs the entire DOM when the broker is slow.
         render(d)
       },payload);
       return true

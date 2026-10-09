@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
+import {runtimeMarketFromLive} from '../sentinel-trading-lab/agent/worker/runtime-market.mjs';
+import {LatestOverlayScheduler} from '../sentinel-trading-lab/agent/worker/latest-overlay-scheduler.mjs';
+import {readFileSync} from 'node:fs';
+
 
 test('the broker page observes only outbound asset selections and never price frames',()=>{
   const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
@@ -51,4 +56,69 @@ test('shutdown disposes only Agent-owned browser context and market feed',async(
   assert.deepEqual(closed.sort(),['browser','context','feed']);
   assert.equal(driver.sessions.size,0);
   assert.equal(driver.feeds.size,0);
+});
+
+test('validated non-OTC market candles unlock ANALYSIS without broker balance or mode',()=>{
+  const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
+  const st=driver.state('iq_option');
+  const now=Math.floor(Date.now()/1000);
+  st.activeId=77;st.candleActiveId=77;st.symbol='EUR/USD';st.uiSymbol='EUR/USD';
+  st.quote=1.12345;st.lastQuoteAt=Date.now();st.balance=null;st.mode=null;
+  st.candles=Array.from({length:60},(_,i)=>({
+    from:now-(60-i)*60,to:now-(59-i)*60,
+    open:1.12345,high:1.12345,low:1.12345,close:1.12345
+  }));
+  const live=driver.liveStatus('iq_option');
+  assert.equal(live.assetValidated,true);
+  assert.equal(live.analysisFeedValidated,true);
+  assert.equal(live.feedValidated,false,'unverified account must remain execution-unsafe');
+  const runtime=new DemoTradingRuntime();
+  runtime.setExternalMarket(runtimeMarketFromLive('iq_option',live,'EUR/USD'));
+  const snap=runtime._marketSnapshot();
+  assert.equal(snap.waitingLive,false,'the analysis must not depend on account balance');
+  assert.equal(snap.feedValidated,true);
+  st.lastQuoteAt=Date.now()-25000;
+  assert.equal(driver.liveStatus('iq_option').analysisFeedValidated,false,'stale quotes must block analysis');
+  st.lastQuoteAt=Date.now();
+  st.screenCandidateSymbol='GBP/USD';
+  assert.equal(driver.liveStatus('iq_option').analysisFeedValidated,false,'unresolved instrument switch must block analysis');
+});
+
+test('digital/non-OTC selected tabs are adopted only after lightweight visual confirmation',async()=>{
+  const driver=new LocalPlaywrightDriver({dataDir:'ignored'});
+  const st=driver.state('iq_option');
+  st.activeId=76;st.symbol='EUR/USD OTC';st.uiSymbol='EUR/USD OTC';
+  st.activeMap.set('EURUSD',77);st.activeMap.set('EURUSDOTC',76);
+  st.assets.add('EUR/USD');
+  let reads=0;
+  driver.sessions.set('iq_option',{page:{evaluate:async()=>{reads++;return ['EUR/USD']}}});
+  driver.requestMarketData=async()=>true;
+  assert.equal(driver.applyActiveSelection('iq_option',{symbol:'EUR/USD',source:'tab-click-hint'}),false);
+  assert.equal(st.symbol,'EUR/USD OTC','do not switch to unverified click hints');
+  await new Promise(resolve=>setTimeout(resolve,360));
+  assert.equal(reads,1);
+  assert.equal(st.symbol,'EUR/USD');
+  assert.equal(st.activeId,77);
+  assert.equal(st.screenCandidateSymbol,null);
+});
+
+test('card updates coalesce rather than hammering a slow broker renderer',async()=>{
+  const calls=[];
+  let release;
+  const blocked=new Promise(resolve=>{release=resolve});
+  const sched=new LatestOverlayScheduler(async(_,data)=>{
+    calls.push(data);
+    if(data==='first')await blocked;
+  },{minIntervalMs:30,slowThresholdMs:500,slowCooldownMs:100});
+  sched.publish('iq_option','first');
+  await new Promise(resolve=>setTimeout(resolve,12));
+  sched.publish('iq_option','obsolete-1');
+  sched.publish('iq_option','obsolete-2');
+  sched.publish('iq_option','newest');
+  assert.deepEqual(calls,['first']);
+  release();
+  await new Promise(resolve=>setTimeout(resolve,85));
+  assert.deepEqual(calls,['first','newest']);
+  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+  assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
 });

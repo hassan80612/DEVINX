@@ -11,7 +11,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const online=s?.runtimeKind==='remote-agent'?s?.remote?.online===true:!!s;
   const running=s?.state==='running'&&!s?.killSwitch&&!s?.masterFrozen;
   // Relay and polling add delay. Report it explicitly and suppress old signals.
-  const fresh=online&&running&&matches&&live.assetValidated===true&&live.feedValidated!==false&&quoteAt>0&&now-quoteAt<=8000&&now-quoteAt>=-2500&&evaluationAt>0&&now-evaluationAt<=10000;
+  const fresh=online&&running&&matches&&live.assetValidated===true&&(live.analysisFeedValidated===true||(live.analysisFeedValidated==null&&live.feedValidated!==false))&&quoteAt>0&&now-quoteAt<=8000&&now-quoteAt>=-2500&&evaluationAt>0&&now-evaluationAt<=10000;
   const horizon=Number(s?.settings?.forecastHorizonSeconds||s?.settings?.orderDurationMs/1000||60);
   const forecast=a.entryPlanner?.horizons?.[String(horizon)];
   const view:any=scenarioViewFromRuntime({operational:op,asset,horizonSeconds:horizon,durationMs:Number(s?.settings?.orderDurationMs||60000),forecast,now} as any);
