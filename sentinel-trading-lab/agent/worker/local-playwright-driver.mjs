@@ -921,7 +921,7 @@ export class LocalPlaywrightDriver{
     }
     if(!s.context||!s.page||s.background)return{ok:false,reason:'broker_visible_window_not_connected'};
     const pages=(s.context.pages?.()||[]).filter(p=>!p.isClosed?.());
-    const match=pages.filter(p=>{try{return new URL(p.url()).hostname.endsWith(cfg.domain)}catch{return false}});
+    const match=pages.filter(p=>{try{const host=new URL(p.url()).hostname;return host===cfg.domain||host.endsWith('.'+cfg.domain)}catch{return false}});
     const trading=match.find(p=>/traderoom|platform|trade/i.test(p.url()))||match[0];
     if(!trading)return{ok:false,reason:'broker_visible_traderoom_not_found'};
     if(trading!==s.page){
