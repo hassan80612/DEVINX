@@ -12,6 +12,7 @@ import {LocalPlaywrightDriver} from './local-playwright-driver.mjs';
 import {IqOptionAdapter} from './adapters/iq-option.mjs';
 import {ExnovaAdapter} from './adapters/exnova.mjs';
 import {SentinelRemoteRelay} from './remote-relay.mjs';
+import {compactRemoteState} from './remote-status.mjs';
 import {MarketJournal} from './market-journal.mjs';
 
 import {VERSION,BUILD} from './release.mjs';
@@ -346,22 +347,37 @@ async function withTimeout(promise,ms,label='operation_timeout'){
   }finally{clearTimeout(timer)}
 }
 let remoteBusy=false;
+let lastRemoteHeartbeatAttemptAt=0;
+let lastRemoteRegisterAttemptAt=0;
 async function remoteState(){
   const x=await status();
-  return {agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,research:x.research,entryResearch:x.entryResearch,marketJournal:x.marketJournal,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule};
+  return compactRemoteState({agentVersion:VERSION,agentAccess:{paired:remoteRelay.info.paired,active:remoteRelay.info.accessActive,reason:remoteRelay.info.accessReason},remoteRelay:{lastContactAt:remoteRelay.info.lastContactAt,lastError:remoteRelay.info.lastError},browserDriver:x.browserDriver,loginStates:x.loginStates,state:x.state,mode:x.mode,balance:x.balance,balanceSource:x.balanceSource,feed:x.feed,analysisSource:x.analysisSource,executionMode:x.executionMode,lastResult:x.lastResult,lastEvalMs:x.lastEvalMs,nextEvalMs:x.nextEvalMs,recentAnalyses:x.recentAnalyses,research:x.research,entryResearch:x.entryResearch,marketJournal:x.marketJournal,incidents:x.incidents,drawdownPct:x.drawdownPct,consecutiveLosses:x.consecutiveLosses,pending:x.pending,wins:x.wins,losses:x.losses,winRate:x.winRate,settings:x.settings,pnl:x.pnl,trades:x.trades,recentTrades:x.recentTrades,liveBroker:x.liveBroker,activeProvider:x.activeProvider,brokers:x.brokers,startBlockedReason:x.startBlockedReason,killSwitch:x.killSwitch,masterFrozen:x.masterFrozen,scheduler:x.scheduler||x.schedule});
 }
 async function remoteLoop(){
   if(remoteBusy)return;remoteBusy=true;
   try{
-    if(!remoteRelay.info.deviceId)await remoteRelay.register();
-    const hb=await remoteRelay.heartbeat(await remoteState());
-    if(hb&&hb.accessActive===false)await enforceAccessLease();
+    const now=Date.now();
+    if(!remoteRelay.info.deviceId&&now-lastRemoteRegisterAttemptAt>=30000){
+      lastRemoteRegisterAttemptAt=now;
+      await remoteRelay.register();
+    }
+    // Preserve sub-2-second remote command polling while avoiding repeated
+    // full dashboard snapshots when stopped or disconnected.
+    const heartbeatEveryMs=runtime.stateName==='running'?2500:12000;
+    if(now-lastRemoteHeartbeatAttemptAt>=heartbeatEveryMs){
+      lastRemoteHeartbeatAttemptAt=now;
+      const hb=await remoteRelay.heartbeat(await remoteState());
+      if(hb&&hb.accessActive===false)await enforceAccessLease();
+    }
     const polled=await remoteRelay.poll();const cmd=polled?.command;
     if(cmd?.id&&cmd?.type){
       try{
         const method=cmd.type==='settings'?'PATCH':'POST';
         const data=await withTimeout(act('/'+cmd.type,method,cmd.payload||{}),28000,'agent_command_timeout');
         await saveState();
+        // Publish new status immediately after a remote control action.
+        lastRemoteHeartbeatAttemptAt=Date.now();
+        await remoteRelay.heartbeat(await remoteState());
         await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
       }catch(e){
         await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)}).catch(()=>{})
