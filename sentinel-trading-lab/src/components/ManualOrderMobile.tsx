@@ -14,12 +14,16 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
   const [switching,setSwitching]=useState(false);
   const [switchMessage,setSwitchMessage]=useState('');
   const [message,setMessage]=useState('');
+  const [expiryConfirmed,setExpiryConfirmed]=useState(false);
   const [entryReference,setEntryReference]=useState<EntryReference|null>(null);
   const live=s?.liveBroker||{};
   const remote=s?.remote||{};
   const provider=n(s?.activeProvider);
   const mode=n(live.mode).toLowerCase();
   const asset=n(live.uiSymbol||live.symbol);
+  const expirySeconds=Math.round(Number(s?.settings?.orderDurationMs||60000)/1000);
+  const expiryAllowed=[30,60,120,300,600,900].includes(expirySeconds);
+  const expiryLabel=expirySeconds<60?expirySeconds+'s':expirySeconds/60+' min';
   const expiry=n(live.expirationRaw);
   const money=numeric(amount);
   // Display existing remote snapshot only. Never subscribe, poll or store ticks.
@@ -61,10 +65,11 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
     ?brokerBalance-balanceBase.value:null;
   const moneyText=(v:number)=>new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v);
   const freshness=remote.heartbeatAt?Date.now()-new Date(remote.heartbeatAt).getTime():Infinity;
+  useEffect(()=>{setExpiryConfirmed(false)},[expirySeconds,provider,mode,asset]);
   const ready=!switching&&remote.online===true&&freshness<15000&&
     ['iq_option','exnova'].includes(provider)&&['demo','real'].includes(mode)&&
     !!remote.deviceId&&!!live.accountId&&live.activeId!=null&&!!asset&&
-    !!expiry&&!!live.assetValidated&&!!live.candleAssetMatch&&
+    expiryAllowed&&expiryConfirmed&&!!live.assetValidated&&!!live.candleAssetMatch&&
     !!live.executionUi?.buy&&!!live.executionUi?.sell&&!!live.executionUi?.amount&&
     live.executionUi?.assetMatch===true&&
     Number.isFinite(money)&&money>0&&money<=1000000&&Math.abs(Math.round(money*100)-money*100)<1e-7;
@@ -83,16 +88,17 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
   }
   async function order(side:Direction){
     if(sending||!ready)return;
-    const context={provider,mode,accountId:n(live.accountId),activeId:n(live.activeId),asset,expirationRaw:expiry};
+    const context={provider,mode,accountId:n(live.accountId),activeId:n(live.activeId),asset,expirationMode:'manual-confirmed',expirationSeconds:expirySeconds,manualBrokerExpiryConfirmed:true};
     const brokerName=provider==='iq_option'?'IQ Option':'Exnova';
     const confirmed=window.confirm(
       'CONFIRMAR OPERAÇÃO MANUAL\n\n'+
       'Corretora: '+brokerName+'\nConta: '+(mode==='real'?'REAL — envolve dinheiro':'DEMO')+
       '\nAtivo: '+asset+'\nDireção: '+side+'\nValor: '+money.toFixed(2)+
-      '\nVencimento mostrado pela corretora: '+expiry+
+      '\nExpiração escolhida manualmente: '+expiryLabel+' (confirme que corresponde à corretora no PC)'+
       '\n\nEssa confirmação autoriza UM ÚNICO clique na corretora aberta no PC. Continuar?'
     );
     if(!confirmed)return;
+    setExpiryConfirmed(false);
     const reference=quote===null||Date.now()-quoteAt>8000?null:{asset,mode,side,price:quote,at:quoteAt,result:'aguardando' as const};
     if(reference)setEntryReference(reference);
     const issuedAt=Date.now();
@@ -121,7 +127,7 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
         :'Ordem não confirmada ('+e+'). Confira a corretora antes de repetir.');
     }finally{setSending(false)}
   }
-  const reason=!remote.online||freshness>=15000?'Agent offline ou comunicação desatualizada':!['demo','real'].includes(mode)?'Conta da corretora não confirmada':!asset||!live.assetValidated||!live.candleAssetMatch?'Ativo ainda não validado':!expiry?'Vencimento da corretora não detectado no PC':!live.executionUi?.buy||!live.executionUi?.sell||!live.executionUi?.amount||live.executionUi?.assetMatch!==true?'Controles da corretora ainda não reconhecidos':!Number.isFinite(money)||money<=0||money>1000000?'Informe um valor válido':'Aguardando confirmação do PC';
+  const reason=!remote.online||freshness>=15000?'Agent offline ou comunicação desatualizada':!['demo','real'].includes(mode)?'Conta da corretora não confirmada':!asset||!live.assetValidated||!live.candleAssetMatch?'Ativo ainda não validado':!expiryAllowed?'Escolha uma expiração válida em Ajustar cenário':!expiryConfirmed?'Confirme que ajustou a expiração na corretora':!live.executionUi?.buy||!live.executionUi?.sell||!live.executionUi?.amount||live.executionUi?.assetMatch!==true?'Controles da corretora ainda não reconhecidos':!Number.isFinite(money)||money<=0||money>1000000?'Informe um valor válido':'Aguardando confirmação do PC';
   return <section className="card span12 manualRemoteCard" aria-label="Operação manual pelo celular">
     <div className="manualRemoteHead">
       <div><small>OPERAÇÃO MANUAL</small><h3>CALL / PUT</h3></div>
@@ -135,7 +141,7 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
     {switchMessage&&<p className="manualBlockReason" role="status">{switchMessage}</p>}
     <div className="manualRemoteMeta">
       <span><small>Ativo</small><b>{asset||'—'}</b></span>
-      <span><small>Expiração</small><b>{expiry||'Não detectada'}</b></span>
+      <span><small>Expiração manual</small><b>{expiryLabel} · não verificada no PC</b></span>
     </div>
     <div className="manualPricePanel" aria-label="Cotação e gatilho em tempo real">
       <div className="manualPriceCurrent">
@@ -163,6 +169,10 @@ export default function ManualOrderMobile({s,act}:{s:any,act:(path:string,body?:
           {balanceChange===null?'—':(balanceChange>0?'+':'')+moneyText(balanceChange)}
         </b></div>
     </div>
+    <label className="manualExpiryConfirm">
+      <input type="checkbox" checked={expiryConfirmed} disabled={sending||switching} onChange={e=>setExpiryConfirmed(e.target.checked)}/>
+      <span>Configurei <b>{expiryLabel}</b> na corretora do PC e conferi o prazo antes de operar.</span>
+    </label>
     <div className="manualTradeRow">
       <label className="manualStake"><small>Valor</small><input aria-label="Valor da ordem manual" type="text" inputMode="decimal" value={amount}
         onChange={e=>setAmount(e.target.value)} disabled={sending}/></label>
