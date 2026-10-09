@@ -31,6 +31,12 @@ async function handle(req:NextRequest,ctx:{params:Promise<{path:string[]}>}){
     const {path}=await ctx.params;
     const rel=path.join('/');
 
+    // The mobile manual-order cockpit was retired. Block stale clients
+    // before enqueueing a trade or triggering diagnostics on the Agent.
+    // Read-only status and analyst commands remain unchanged.
+    if(/^brokers\/(?:iq_option|exnova)\/(?:manual-order|scan-controls)$/.test(rel))
+      return NextResponse.json({ok:false,error:'manual_mobile_controls_retired'},{status:410,headers:{'cache-control':'no-store'}});
+
     if(rel==='status'||rel==='tick'||rel==='brokers'){
       const j=await rpc('sentinel_remote_status',{p_session_token:token,p_device_id:null});
       return NextResponse.json({ok:true,data:j.data},{headers:{'cache-control':'no-store'}});
@@ -42,10 +48,6 @@ async function handle(req:NextRequest,ctx:{params:Promise<{path:string[]}>}){
     if((type==='settings'&&payload?.demoAutopilot===true)||/^(?:pilot|autopilot)(?:\/|$)/i.test(type))
       return NextResponse.json({ok:false,error:'autopilot_disabled_manual_only'},{status:403});
 
-    const manual=/^brokers\/(iq_option|exnova)\/manual-order$/.test(type);
-    const explicitDevice=String(payload?.deviceId||'');
-    if(manual&&(!/^[0-9a-f-]{36}$/i.test(explicitDevice)||req.method!=='POST'))
-      return NextResponse.json({ok:false,error:'manual_device_required'},{status:400});
     const queued=await rpc('sentinel_enqueue_command',{
       p_session_token:token,
       p_device_id:manual?explicitDevice:null,
