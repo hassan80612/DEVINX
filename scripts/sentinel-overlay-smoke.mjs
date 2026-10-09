@@ -251,12 +251,13 @@ try{
   await page.clock.runFor(4000); // No new worker payload: the browser clock must expire freshness itself.
   assert.doesNotMatch(await card.innerText(),/JANELA ABERTA|FECHA EM|ENTRAR AGORA/);
   assert.deepEqual(errors,[]);
-  // The installed 13.4.24 policy has no entry window and no display hold.
+  // The installed reversal advisory policy has no entry window or display hold.
   // Its own trigger may oppose the main forecast without changing it.
-  const advisoryAt=Date.now(),alert={mode:'reversal-alert',advisoryOnly:true,active:true,alert:{id:'test-alert',side:'PUT',level:99,trigger:98.9,invalidation:101,target:95,createdAt:advisoryAt,testing:false}};
-  const advisoryData={...data,agentVersion:'13.4.24',demoAutopilot:false,operationalSignal:{...operational,createdAt:advisoryAt,state:'JANELA ABERTA',ready:false,actionable:false,subanalyst:alert,scenario:{side:'CALL',createdAt:advisoryAt,deadline:advisoryAt+60000,confidence:80,status:'OPEN',closed:false},entryAnalyst:{mode:'reversal-alert',advisoryOnly:true,independent:true,qualification:{allowed:false},signal:{side:'AGUARDAR',ready:false,actionable:false}}}};
+  const advisoryAt=Date.now(),alert={mode:'reversal-alert',advisoryOnly:true,active:true,checkedAt:advisoryAt,alert:{id:'test-alert',side:'PUT',level:99,trigger:98.9,invalidation:101,target:95,createdAt:advisoryAt,testing:false}};
+  const advisoryData={...data,agentVersion:'13.4.25',demoAutopilot:false,operationalSignal:{...operational,createdAt:advisoryAt,state:'JANELA ABERTA',ready:false,actionable:false,subanalyst:alert,scenario:{side:'CALL',createdAt:advisoryAt,deadline:advisoryAt+60000,confidence:80,status:'OPEN',closed:false},entryAnalyst:{mode:'reversal-alert',advisoryOnly:true,independent:true,qualification:{allowed:false},signal:{side:'AGUARDAR',ready:false,actionable:false}}}};
   await update(advisoryData);
   assert.match(await analyst.innerText(),/POSSÍVEL REVERSÃO PUT/);
+  assert.match(await card.locator('[data-sentinel-reversal-activity]').innerText(),/Analisando preços/);
   assert.match(await card.locator('[data-sentinel-reversal-level]').innerText(),/Ponto 99.*gatilho 98\.9.*invalida 101/);
   assert.equal(await card.locator('[data-sentinel-scenario-action]').innerText(),'CENÁRIO CALL');
   assert.doesNotMatch(await card.innerText(),/ENTRADA DISPONÍVEL|ENTRAR AGORA|sinal anterior/);

@@ -414,7 +414,8 @@ export class DemoTradingRuntime{
       main.closed=true;main.status='JANELA ENCERRADA';main.closedAt=main.deadline;
       main.reason='Prazo do cenário encerrado. Aguardar novo nível estrutural confirmado.';
     }
-    const mainQualified=newPriceValid&&admission.allowed&&(!selfReview||mainPlan?.safety?.blocked!==true)&&mainPlan?.outlookReady===true&&mainPlan.directionReady===true&&['CALL','PUT'].includes(mainSide)&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints;
+    const freshScenarioPrice=Number.isFinite(Number(snap.quoteTs))&&Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500&&Number(snap.price)>0;
+    const mainQualified=(!selfReview||freshScenarioPrice)&&newPriceValid&&admission.allowed&&(!selfReview||mainPlan?.safety?.blocked!==true)&&mainPlan?.outlookReady===true&&mainPlan.directionReady===true&&['CALL','PUT'].includes(mainSide)&&mainLead>=threshold&&Number(mainPlan.confidence||0)>=minPoints;
     if(main?.status==='JANELA ENCERRADA'&&mainQualified){
       // Require a newer completed forecast source AND a changed price level.
       const sourceAt=Number(mainPlan?.entryTiming?.sourceBarAt||0);

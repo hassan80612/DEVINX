@@ -28,11 +28,12 @@ test('CALL and PUT alert only after a broken prior trend and a completed hold; o
  }
 });
 
-test('a repique, failed retest, absent room or noncontinuous structure does not issue a reversal alert',()=>{
+test('a repique, failed retest or noncontinuous structure does not issue a reversal alert; missing room does not silence a structural warning',()=>{
  const failed=shape.map(r=>r.slice());failed[5]=[106.5,108.5,103,108];
  const noRoom=shape.map(r=>r.slice());noRoom[0]=[108,108.1,107.8,108];
  const repique=shape.map(r=>r.slice());repique[4]=[103,105,102,104];repique[5]=[104,105,103.5,104.5];
- for(const rows of [failed,noRoom,repique])assert.equal(update(new PersistentReversalMonitor(),fixture('CALL',rows)).active,false);
+ for(const rows of [failed,repique])assert.equal(update(new PersistentReversalMonitor(),fixture('CALL',rows)).active,false);
+ const advisory=update(new PersistentReversalMonitor(),fixture('CALL',noRoom));assert.equal(advisory.active,true);assert.equal(advisory.advisoryOnly,true);
  const gap=fixture();gap.quoteHistory=gap.quoteHistory.filter(q=>q.ts<t+10000||q.ts>=t+15000);
  assert.equal(update(new PersistentReversalMonitor(),gap).active,false);
 });

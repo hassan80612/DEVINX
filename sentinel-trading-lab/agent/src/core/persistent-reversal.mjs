@@ -23,9 +23,10 @@ function findTurn(bars,price){
     const extreme=call?Math.min(approach.at(-1).low,broken.low):Math.max(approach.at(-1).high,broken.high);
     const invalidation=extreme-sign*buffer;
     const prior=bars.slice(0,-5),barriers=prior.map(b=>call?b.high:b.low).filter(n=>(n-price)*sign>buffer*2);
+    // This is an advisory structural warning, not entry authorization. A
+    // missing distant target must not silence an already persistent reversal.
     const target=barriers.length?(call?Math.min(...barriers):Math.max(...barriers)):null;
-    if(target==null||(target-price)*sign<=Math.max(buffer*2,Math.abs(held.close-broken.close)*2))continue;
-    if((price-trigger)*sign<0||(price-target)*sign>=0)continue;
+    if((price-trigger)*sign<0)continue;
     return{side,level,trigger,invalidation,target,buffer,createdAt:held.to,sourceBarAt:broken.to,
       evidence:{approachBars:3,breakClose:broken.close,holdClose:held.close,holdLow:held.low,holdHigh:held.high,source:'closed-5s-break-and-follow-through'}};
   }
@@ -51,15 +52,15 @@ export class PersistentReversalMonitor{
       this.lastBucket=bucket;this.evaluations++;
       const bars=reversalBars(snap,now),closed=bars.filter(b=>b.to>Number(this.alert?.createdAt||0));
       if(this.alert&&closed.some(b=>this.alert.side==='CALL'?b.close<=this.alert.invalidation:b.close>=this.alert.invalidation))this.alert=null;
-      if(this.alert&&closed.some(b=>this.alert.side==='CALL'?b.close>=this.alert.target:b.close<=this.alert.target))this.alert=null;
+      if(this.alert&&this.alert.target!=null&&closed.some(b=>this.alert.side==='CALL'?b.close>=this.alert.target:b.close<=this.alert.target))this.alert=null;
       const turn=bars.at(-1)?.to===bucket*BAR_MS?findTurn(bars,price):null;
       if(turn&&(!this.alert||turn.side!==this.alert.side))this.alert={...turn,id:context+'|'+turn.side+'|'+turn.createdAt};
     }
     const alert=this.alert;
-    const within=alert&&(alert.side==='CALL'?price>alert.invalidation&&price<alert.target:price<alert.invalidation&&price>alert.target);
+    const within=alert&&(alert.side==='CALL'?price>alert.invalidation:price<alert.invalidation);
     // Preserve the diagnosis through a wick; display it as a tested level,
     // rather than inventing a new opposite signal or an execution window.
-    return{mode:'reversal-alert',advisoryOnly:true,active:!!alert,status:alert?'POSSÍVEL REVERSÃO':'OBSERVANDO REVERSÃO',
+    return{mode:'reversal-alert',advisoryOnly:true,active:!!alert,status:alert?'POSSÍVEL REVERSÃO':'OBSERVANDO REVERSÃO',checkedAt:quoteTs,structureCheckedAt:bucket*BAR_MS,
       reason:alert?(within?'Quebra e continuidade confirmadas em barras fechadas.':'Estrutura em teste; aguardar o fechamento.'):'Aguardando quebra estrutural e continuidade.',
       alert:alert?{...alert,testing:!within}:null};
   }

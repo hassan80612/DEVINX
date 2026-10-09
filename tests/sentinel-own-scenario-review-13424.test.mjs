@@ -9,7 +9,7 @@ const t=1800000000000,limits={threshold:70,minPoints:55};
 const p=(side,extra={})=>({asset:'TEST',horizonSeconds:60,rawBias:side,bias:side,confidence:80,callProbability:side==='CALL'?80:20,putProbability:side==='PUT'?80:20,outlookReady:true,directionReady:true,callTrigger:101,putTrigger:99,callInvalidation:80,putInvalidation:120,...extra});
 const main=side=>({side,createdAt:t,deadline:t+60000,invalidation:side==='CALL'?80:120});
 function snap(rows,side='CALL'){
- const flip=n=>side==='CALL'?n:200-n,q=rows.flatMap((r,i)=>r.map((n,j)=>({ts:t+i*5000+[0,1000,2500,4000][j],price:flip(n)})));
+ const flip=n=>side==='CALL'?n:200-n,context=[[100,102,99,101],[101,102,99,101]],q=[...context,...rows].flatMap((r,i)=>r.map((n,j)=>({ts:t+(i-2)*5000+[0,1000,2500,4000][j],price:flip(n)})));
  q.push({ts:t+rows.length*5000,price:flip(rows.at(-1)[3])});return{provider:'test',price:q.at(-1).price,quoteTs:q.at(-1).ts,quoteHistory:q};
 }
 const turn=[[101,102,99,101],[101,101.5,97,97.5],[97.5,98.5,95,95.5]];
@@ -25,7 +25,7 @@ test('an opposite percentage, one unfinished bar or failed follow-through cannot
   assert.notEqual(reviewScenario(main(side),p(opposite),unfinished,t+14999,limits).state,'INVALIDADO');
   const rebound=snap([turn[0],turn[1],[97.5,101,97,100.5]],side);
   assert.equal(reviewScenario(main(side),p(opposite),rebound,rebound.quoteTs,limits).state,'REAVALIANDO');
-  const weak=reviewScenario(main(side),p(opposite,{confidence:50}),snap(turn,side),t+15000,limits);assert.equal(weak.state,'REAVALIANDO');
+  const weak=reviewScenario(main(side),p(opposite,{confidence:50,directionReady:false}),snap(turn,side),t+15000,limits);assert.equal(weak.state,'INVALIDADO');
  }
 });
 test('reassessment preserves original identity and window; qualified recovery clears risk on the next actual closed bar',()=>{
@@ -65,6 +65,7 @@ test('prospective selection rejects exhaustion with weakening and unconfirmed re
   const r=runtime(),analysis=a(p(side));analysis.metrics={shortModel:short};
   const o=r._operationalSignalState(analysis,{provider:'test',price:100,quoteTs:t,quoteHistory:[{ts:t,price:100}]},t);assert.equal(o.scenario,null);assert.match(o.reason,/perdendo força/);
   short[call?'weakeningUp':'weakeningDown']=false;assert.equal(scenarioAdmission(p(side),{shortModel:short}).allowed,true);
+  short[call?'callStretched':'putStretched']=false;assert.equal(scenarioAdmission(p(side),{shortModel:short}).allowed,true);
   assert.equal(scenarioAdmission(p(side,{scenario:{kind:'reversal',reversalConfirmed:false}}),{}).allowed,false);
   assert.equal(scenarioAdmission(p(side,{scenario:{kind:'reversal',reversalConfirmed:true}}),{}).allowed,true);
  }
