@@ -907,11 +907,11 @@ export class DemoTradingRuntime{
         current.engineId===previousAnchor.engineId&&
         current.asset===previousAnchor.asset&&
         current.expirySeconds===previousAnchor.expirySeconds&&
-        current.side===previousAnchor.side&&
         Number(previousAnchor.targetAt)>now&&
         Number(previousAnchor.issuedAt)<=now;
       const targetAnchor=current?(anchorMatches?previousAnchor:current):null;
       this.vnextTargetAnchor=targetAnchor;
+      if(targetAnchor===current)this.vnextTargetProjection=model.projection?{...model.projection}:null;
       // Track only one receipt per selected motor+asset+duration each 1s.
       // A 15-minute prediction cannot be evaluated if a 500-item FIFO
       // overwrites it after only a few minutes of 400ms evaluations.
@@ -924,6 +924,7 @@ export class DemoTradingRuntime{
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
         vnext:{...model,evaluation:undefined,targetAnchor,
+          targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
         entryPlanner:{modelVersion:model.modelVersion,
           defaultHorizonSeconds:model.expirySeconds,
