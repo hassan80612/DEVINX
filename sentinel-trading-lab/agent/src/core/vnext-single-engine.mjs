@@ -35,6 +35,15 @@ export function singleEngineForecast({
    {status:freshQuote?'historical-quote-delayed':'stale-live-quote',receipt:null};
  const receipt=report.receipt||null,side=receipt?.side||null;
  const cards=lightweightReadings({quoteHistory:quotes,receipt,now});
+ // The binary direction indicated AT THE CURRENT QUOTE is separate from the
+ // rolling future-price estimate. It is informational, not an evaluated
+ // entry setup, a qualified win probability or permission to place orders.
+ const nowIndication=receipt&&['CALL','PUT'].includes(side)?{
+   side,engineId:request.engineId,issuedAt:receipt.issuedAt,
+   referencePrice:receipt.referencePrice,projectedPrice:receipt.projectedPrice,
+   expirySeconds:Number(seconds||0),expiresAt:receipt.issuedAt+3000,
+   verified:false,actionable:false
+ }:null;
  const predictedPrice=receipt?.projectedPrice??null;
  const horizon=Number(seconds||0),durationMs=Math.round(horizon*1000);
  const plan=receipt?{
@@ -74,7 +83,7 @@ export function singleEngineForecast({
    expirySeconds:horizon,
    source:'user-selected-expiry',modelVersion:'vnext-single-owner-v1',
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
-   computedStatus:computed?.status||'unavailable',receipt,cards,
+   computedStatus:computed?.status||'unavailable',receipt,cards,nowIndication,
    plan,operational,scenarioProjection,
    evaluation:evaluateForwardForecast,
    calibrationKey:request.calibrationKey,
