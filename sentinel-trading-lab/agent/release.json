@@ -1,6 +1,6 @@
 {
-  "version": "13.4.47",
-  "build": "13.4.47-bandwidth-safe-1010",
+  "version": "13.4.48",
+  "build": "13.4.48-signal-first-1010",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

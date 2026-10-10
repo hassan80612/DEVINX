@@ -61,7 +61,7 @@ export function watchSignedLiveAnalyst(topic:string,signingKey:string,onMessage:
       if(msg?.topic!==topic)return;
       if(msg.event==='phx_reply'&&msg.ref==='1'){
         if(msg.payload?.status!=='ok'){try{sock.close()}catch{};return}
-        joined=true;attempt=0;void announce();viewer=setInterval(()=>{void announce()},7000);return
+        joined=true;attempt=0;void announce();viewer=setInterval(()=>{void announce()},10000);return
       }
       if(joined&&msg.event==='broadcast'&&msg.payload?.event==='analyst')void verifyFrame(msg.payload.payload);
     };

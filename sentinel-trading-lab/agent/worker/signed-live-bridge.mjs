@@ -25,9 +25,28 @@ export class SignedLiveBridge extends LiveBridge{
     });
   }
   hasViewer(){return this.joined&&this.clock()-this.verifiedViewerAt<16000}
+  publish(snapshot){
+    const a=snapshot?.lastResult?.analysis||{},op=a.operationalSignal||{},gc=a.generalConsensus||{};
+    const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
+    // Price timestamps change continuously, but unchanged recommendations do
+    // not require a whole broadcast each second. Scenario/side/percent changes
+    // still publish at the original fast cadence.
+    const signal=JSON.stringify([
+      snapshot?.liveBroker?.symbol,snapshot?.state,
+      gc.rapid?.callPct,gc.strategies?.callPct,gc.displayCallPct,
+      scenario.side,scenario.status,scenario.closed,scenario.deadline,
+      alert.side,alert.trigger,op.subanalyst?.status,op.state,op.side,
+      snapshot?.killSwitch,snapshot?.masterFrozen
+    ]);
+    if(signal===this.lastSignalKey&&this.clock()-this.lastSentAt<4000)return false;
+    const published=super.publish(snapshot);
+    if(published)this.lastSignalKey=signal;
+    return published;
+  }
   send(event,payload,topic=this.topic){
     if(event==='broadcast'&&payload?.event==='analyst'&&payload.payload){
       const frame=payload.payload;
+      delete frame.sig;
       frame.sig=this.mac(JSON.stringify(frame));
     }
     return super.send(event,payload,topic);
