@@ -41,3 +41,30 @@ export function strategySelectionGuidance({ids=[],paused={},cards=[]}={}){
     selected:unique,independentFamilies:new Set(families.filter(f=>f!=='aggregate')).size,
     provenAccuracy:false};
 }
+
+/**
+ * An explicitly selected signal is authoritative about its own direction,
+ * but cannot synthesize an entry. Actual fresh price, structure and user
+ * technical thresholds must still qualify separately.
+ * When multiple ACTIVE chosen strategies disagree, neither side is allowed.
+ * Ignore low-evidence directional noise until the selected strategy qualifies.
+ */
+export function chosenStrategiesPermit({cards=[],side,minimumEvidence=.35}={}){
+  if(!Array.isArray(cards)||cards.length===0)
+    return {allowed:true,status:'not-evaluated',reason:null}; // legacy/offline analysis fixtures
+  const active=cards.filter(c=>c?.active===true&&c.paused!==true);
+  if(!active.length)return {allowed:false,status:'none-active',reason:'Nenhuma estratégia ativa para autorizar direção.'};
+  const seen=new Set();
+  const meaningful=active.filter(c=>{
+    if(seen.has(c.strategy))return false;
+    seen.add(c.strategy);
+    return validSide(c.side)&&Number(c.evidence)>=minimumEvidence;
+  });
+  if(!meaningful.length)return {allowed:false,status:'awaiting-strategy',reason:'Estratégia selecionada sem direção confirmada.'};
+  const calls=meaningful.some(c=>validSide(c.side)==='CALL');
+  const puts=meaningful.some(c=>validSide(c.side)==='PUT');
+  if(calls&&puts)return {allowed:false,status:'conflict',reason:'Estratégias escolhidas divergem em CALL/PUT. Aguarde ou teste separadas.'};
+  const approved=calls?'CALL':'PUT';
+  return {allowed:approved===String(side||'').toUpperCase(),status:approved===String(side||'').toUpperCase()?'aligned':'opposed',
+    approvedSide:approved,reason:approved===String(side||'').toUpperCase()?null:'Sinal '+String(side||'')+' contrário à estratégia escolhida ('+approved+').'};
+}
