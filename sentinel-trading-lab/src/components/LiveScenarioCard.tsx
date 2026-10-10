@@ -178,8 +178,18 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="vnextProjectionBias"><span>CALL projetado <b>{forecastTargetPast||pinnedProjection?.callPct==null?'—':pinnedProjection.callPct+'%'}</b></span><span>PUT projetado <b>{forecastTargetPast||pinnedProjection?.putPct==null?'—':pinnedProjection.putPct+'%'}</b></span></div>
     <small>Faixa: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · {m.vnextFoundation==='historical-forward-outcomes'?'Comparação histórica: '+m.vnextHistorical+' casos completos':'Histórico insuficiente para comparar resultados futuros; projeção baseada no modelo atual'}. Não é taxa de acerto.</small></>:<p>Aguardando cotações suficientes para previsão futura. Sem entrada confirmada.</p>}
   </div>:null;
-  const observationCards=vnext?<details className="vnextMobileReadings" data-testid="mobile-vnext-readings">
-    <summary>Mercado Agora · Estrutura Anterior · Total dos Totais</summary>
+  const instantObservation=vnext&&m.vnextNowObservation?<div
+    className={`vnextInstantObservation ${m.vnextNowObservation.side==='CALL'?'call':'put'}`}
+    data-testid="vnext-immediate-observation" role="status" aria-live="polite">
+    <small>REAÇÃO ESTRUTURAL OBSERVADA · SEM ORDEM AUTOMÁTICA</small>
+    <strong>{m.vnextNowObservation.side==='CALL'?'↑ CALL AGORA':'↓ PUT AGORA'}</strong>
+    <span>{m.vnextNowObservation.kind==='support-reaction'?'Reação no suporte anterior':
+      m.vnextNowObservation.kind==='resistance-reaction'?'Reação na resistência anterior':
+      m.vnextNowObservation.kind==='resistance-break'?'Rompimento da resistência anterior':
+      'Rompimento do suporte anterior'} · Cotação {price(m.vnextNowObservation.price)} · {clock(m.vnextNowObservation.at)}</span>
+  </div>:null;
+  const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings">
+    <strong className="vnextReadingsHeading">Mercado Agora · Estrutura Anterior · Total dos Totais</strong>
     <div className="vnextMobileReadingsGrid">
       {(s?.lastResult?.analysis?.vnext?.cards||[]).slice(0,3).map((c:any,i:number)=>
         <div key={c.id||i}><small>{['MERCADO AGORA','ESTRUTURA ANTERIOR','TOTAL DOS TOTAIS'][i]}</small>
@@ -188,7 +198,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         </div>)}
     </div>
     <small>Mercado Agora + Estrutura Anterior = Total dos Totais. O motor e os percentuais projetados aparecem apenas em Projeção Futura. Índices visuais, não taxas de acerto.</small>
-  </details>:null;
+  </div>:null;
   const applyScenario=async()=>{
     const ok=await act('settings',{
       forecastHorizonSeconds:Number(horizon),
@@ -213,6 +223,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection?(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:'CENÁRIO'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
     </>}
     {forecastReceipt}
+    {instantObservation}
     {opportunityNotice}
     {vnext?<div className="mobileCurrentQuoteOnly" data-testid="mobile-current-quote">
       <div><small>COTAÇÃO DO ATIVO</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
@@ -256,6 +267,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {engineSettings}
     {!vnext&&<div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'JANELA DE ENTRADA '+m.entryRemaining+'s · confirme a expiração na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>}
     {forecastReceipt}
+    {instantObservation}
     {opportunityNotice}
     {observationCards}
     <div className="liveScenarioMeta"><span>Cotação {price(quoteShown)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
