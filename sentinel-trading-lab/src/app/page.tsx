@@ -47,7 +47,7 @@ export default function Home(){
        <article><span>04</span><h3>Abra o Mercado</h3><p>Visualize o card no celular e use os controles de análise. As operações continuam manuais na corretora.</p></article>
      </div>
    </section>
-   <section className={styles.pricing} id="planos"><div><span className={styles.kicker}>ACESSO PROTEGIDO</span><h2>Um único painel.<br/>Seu plano Sentinel.</h2><p>Assinatura mensal de US$ 50. O pagamento será liberado após a conexão do checkout da Kiwify; os detalhes de cobrança serão apresentados antes da contratação.</p></div><div className={styles.pricingAction}><span>ASSINATURA MENSAL · US$ 50</span><Link href="/planos">Ver plano e acesso ↗</Link></div></section>
+   <section className={styles.pricing} id="planos"><div><span className={styles.kicker}>ACESSO PROTEGIDO</span><h2>Um único painel.<br/>Seu plano Sentinel.</h2><p>Acesso por 30 dias: US$ 50. Renove com uma nova compra antes do vencimento; não há cobrança automática. Confira os detalhes no checkout oficial da Kiwify.</p></div><div className={styles.pricingAction}><span>ACESSO DE 30 DIAS · US$ 50</span><Link href="/planos">Ver plano e acesso ↗</Link></div></section>
    <footer className={styles.footer}><div className={styles.footerBrand}>S <b>SENTINEL</b><span>TRADING LAB</span></div><p>Ferramenta de análise experimental. Não há garantia de acerto ou resultado financeiro. O Sentinel não executa operações automaticamente.</p><Link href="/login">Entrar no painel ↗</Link></footer>
  </main>
 }
