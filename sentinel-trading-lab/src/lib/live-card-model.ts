@@ -100,6 +100,12 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const scenarioTone=!fresh||scenarioInactive?'neutral':view.risk?'review':side==='CALL'?'call':side==='PUT'?'put':'neutral';
   const quoteAge=quoteAt>0?Math.max(0,Math.floor((now-quoteAt)/1000)):null;
   const analysisAge=evaluationAt>0?Math.max(0,Math.floor((now-evaluationAt)/1000)):null;
+  // Diagnostics only, sourced from the same existing signed live packet.
+  // Age at PC send uses PC clock for BOTH timestamps (no phone skew).
+  const quoteAgeAtFrame=Number.isFinite(Number(s?.liveQuoteAgeAtFrame))?
+    Math.max(0,Math.floor(Number(s.liveQuoteAgeAtFrame)/1000)):null;
+  const transportAge=s?.liveTransport==='push'&&Number(s?.liveStreamAt)>0?
+    Math.max(0,Math.floor((now-Number(s.liveStreamAt))/1000)):null;
   const entryRemaining=entrySide&&Number.isFinite(Number(view.entryRemainingSeconds))?Math.max(0,Number(view.entryRemainingSeconds)):null;
   // The entry opportunity and the longer scenario have separate lifecycles.
   // A consumed/missed entry is NOT a closed forecast. This classification
@@ -122,7 +128,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     {asset,side:recordedSide,price:recordedPrice,at:recordedAt}:null;
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
-  return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
+  return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,quoteAgeAtFrame,transportAge,state,side,tone,scenarioTone,scenarioInactive,
     selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextNowObservation,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,vnextLastSettled:vnext?.lastSettled||null,
