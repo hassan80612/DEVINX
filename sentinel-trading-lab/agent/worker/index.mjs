@@ -279,6 +279,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       asset:currentAsset,
       validatedAsset:view.liveBroker?.validatedSymbol||view.liveBroker?.symbol||currentAsset,
       assetValidated:view.liveBroker?.assetValidated===true,
+      // Exact live broker quote for the PC overlay; previously omitted, so
+      // PREÇO AGORA rendered as a dash despite a fresh broker feed.
+      price:view.liveBroker?.quote??view.feed?.price??null,
+      quoteAt:liveTs>0?liveTs:null,
       screenCandidateSymbol:view.liveBroker?.screenCandidateSymbol||null,
       marketStatus:view.liveBroker?.marketStatus||null,
       marketReason:view.liveBroker?.marketReason||null,
