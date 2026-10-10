@@ -47,8 +47,11 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     ['CALL','PUT'].includes(String(scenario?.side||''))&&
     scenarioOrigin>0&&scenarioOrigin<=now+2500&&scenarioDeadline>now&&
     scenario?.closed!==true&&!['INVALIDADO','JANELA ENCERRADA'].includes(String(scenario?.status||''))&&
-    quoteAt>0&&now-quoteAt>=-2500&&now-quoteAt<=15000&&
-    evaluationAt>0&&now-evaluationAt<=20000;
+    // The scenario's OWN deadline controls visibility, not the quote age.
+    // Even a long outage leaves a clearly marked non-actionable prior view;
+    // the trade gate above still requires <=2.5s quotes.
+    quoteAt>0&&now-quoteAt>=-2500&&
+    evaluationAt>=scenarioOrigin-2500;
   const displayScenarioSide=side||(scenarioContextOk?String(scenario.side):null);
   const displayScenarioStale=!fresh&&!!displayScenarioSide;
   const displayScenarioRemaining=displayScenarioSide&&scenarioDeadline>now?
