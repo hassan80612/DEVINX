@@ -144,15 +144,17 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       </select>
     </label>
   </div>:null;
-  const forecastReceipt=vnext?<div className="vnextFutureReceipt" data-testid="future-price-projection" role="status" aria-live="off">
-    <div className="vnextReceiptTitle"><b>PREVISÃO FUTURA DO MOTOR</b><small>{forecast?'HORÁRIO E PREÇO FIXADOS':'AGUARDANDO HISTÓRICO'}</small></div>
-    {forecast?<div className="vnextProjectionValues">
+  const forecastReceipt=vnext?<div className={`vnextFutureReceipt ${forecast?.side==='CALL'?'call':forecast?.side==='PUT'?'put':'neutral'}`} data-testid="future-price-projection" role="status" aria-live="off">
+    <div className="vnextReceiptTitle"><b>PROJEÇÃO FUTURA · {chosenEngine.replaceAll('_',' ').toUpperCase()}</b><small>{m.fresh?'● AO VIVO':m.quoteAge!==null?'COTAÇÃO ATRASADA':'SEM COTAÇÃO'}</small></div>
+    <div className="vnextFutureDirection"><strong>{forecast?.side==='CALL'?'↑ CALL PROJETADO':forecast?.side==='PUT'?'↓ PUT PROJETADO':'AGUARDANDO PREVISÃO'}</strong><span>Horizonte {expiryLabel(Number(s?.settings?.orderDurationMs||60000)/1000)}</span></div>
+    {forecast?<><div className="vnextProjectionValues">
       <div><small>PREÇO DE REFERÊNCIA</small><strong>{price(forecast.referencePrice)}</strong></div>
       <div><small>PREÇO PROJETADO</small><strong>{price(forecast.projectedPrice)}</strong></div>
-      <div><small>ALVO NO FUTURO</small><strong>{clock(forecast.targetAt)}</strong></div>
-      <div><small>HORIZONTE</small><strong>{expiryLabel(Number(forecast.expirySeconds))}</strong></div>
-    </div>:<p>O motor está aguardando cotações suficientes para calcular um preço futuro. Nenhum cronômetro substitui uma previsão.</p>}
-    {forecast&&<small>Faixa estimada: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · Projeção experimental, sem taxa de acerto comprovada.</small>}
+      <div><small>EMISSÃO</small><strong>{clock(forecast.issuedAt)}</strong></div>
+      <div><small>ALVO FUTURO</small><strong>{clock(forecast.targetAt)}</strong></div>
+    </div>
+    <div className="vnextProjectionBias"><span>CALL projetado <b>{m.vnextProjection?.callPct==null?'—':m.vnextProjection.callPct+'%'}</b></span><span>PUT projetado <b>{m.vnextProjection?.putPct==null?'—':m.vnextProjection.putPct+'%'}</b></span></div>
+    <small>Faixa: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · Índice de direção, não taxa de acerto.</small></>:<p>Aguardando cotações suficientes para previsão futura. Sem entrada confirmada.</p>}
   </div>:null;
   const applyScenario=async()=>{
     const ok=await act('settings',{
@@ -163,24 +165,15 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     });
     if(ok)settingsEditing.current=false;
   };
-  const nowAdvisory=vnext&&m.vnextNow?<div className={`vnextNowAdvisory ${m.vnextNow.side==='CALL'?'call':'put'}`} data-testid="vnext-now-indication" role="status" aria-live="off">
-    <div><small>INDICAÇÃO DO MOTOR NESTE INSTANTE</small><strong>{m.vnextNow.side} AGORA · EM TESTE</strong></div>
-    <span>Calculada às {clock(m.vnextNow.issuedAt)} · prazo {expiryLabel(Number(m.vnextNow.expirySeconds))}. É a direção hipotética no preço atual, não entrada confirmada.</span>
-  </div>:null;
   const quoteShown=m.fresh?(s?.liveBroker?.quote??s?.feed?.price):null;
   const pushed=m.fresh&&s?.liveTransport==='push'&&now-Number(s?.liveStreamAt||0)<4000;
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">← Início</button></header>
     {engineSettings}
-    <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.displayScenarioStale?'stale-preview':''} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
-      <small>{mobileDecisionLabel}</small><strong><span aria-hidden="true">{mobileArrow}</span> {mobileDecisionText}</strong>
-      <span className="mobileScenarioContext">{mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?m.displayScenarioStale?'COTAÇÃO ATRASADA · SEM ENTRADA':m.displayScenarioPreliminary?'PROJEÇÃO FUTURA · AGUARDE CONFIRMAÇÃO':'ANALISANDO · AGUARDE CONFIRMAÇÃO':'Nenhuma entrada confirmada'}</span>
-      <small className="mobileEntryWindow">{m.entrySide?'Entrada válida por '+m.entryRemaining+'s':m.displayScenarioStale?'Aguardando atualização do preço · não entre':mobileScenarioDirection?'Preparando leitura · aguardando gatilho':m.fresh?'Analisando o preço · aguarde':'Aguardando cotação e análise atuais'}</small>
-    </div>
-    <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection?(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:'CENÁRIO'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
+    {!vnext&&<><div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone}`} data-testid="live-decision"><small>{mobileDecisionLabel}</small><strong>{mobileDecisionText}</strong></div>
+    <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection||'AGUARDAR'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div></>}
     {forecastReceipt}
-    {nowAdvisory}
     {opportunityNotice}
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
@@ -210,15 +203,14 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <div className="compactAverage" data-testid="compact-three-totals-average"><div><small>MÉDIA DOS 3 TOTAIS · LEITURA</small><strong>{totals.average===null?'—':`Alta ${totals.average}% · baixa ${100-totals.average}%`}</strong><span>Não é ordem de entrada.</span></div><label>Limite visual<input aria-label="Limite visual da média" type="text" inputMode="numeric" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
       {historicalNotice}
     </details>}
-    <div className="compactContext">Previsão {Math.round(Number(s?.settings?.forecastHorizonSeconds||60))}s · Expiração manual {Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)}s</div>
-    <footer>Leitura do PC. Cenário e médias não são ordens de entrada.</footer>
+    <div className="compactContext">{vnext?'Motor selecionado · horizonte '+expiryLabel(Number(s?.settings?.orderDurationMs||60000)/1000):'Previsão '+Math.round(Number(s?.settings?.forecastHorizonSeconds||60))+'s'}</div>
+    <footer>Cotação recebida do PC. Projeção não é entrada confirmada.</footer>
   </section>;
   return <section className={`liveScenario ${m.tone}`} aria-label="Cenário ao vivo" data-testid="live-scenario">
     <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.scenarioLabel}</h2><b>{m.state}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>Modo flutuante ↘</button></div></header>
     {engineSettings}
-    <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'JANELA DE ENTRADA '+m.entryRemaining+'s · confirme a expiração na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>
+    {!vnext&&<div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong>{decisionArrow} {decisionText}</strong><span>Somente entrada confirmada pode usar AGORA.</span>{scenarioClock}</div>}
     {forecastReceipt}
-    {nowAdvisory}
     {opportunityNotice}
     <div className="liveScenarioMeta"><span>Cotação {price(quoteShown)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
     {historicalNotice}
