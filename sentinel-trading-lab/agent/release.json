@@ -1,6 +1,6 @@
 {
-  "version": "13.4.59",
-  "build": "13.4.59-independent-future-motors-1010",
+  "version": "13.4.60",
+  "build": "13.4.60-mobile-realtime-cards-1010",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
