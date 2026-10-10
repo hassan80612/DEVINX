@@ -212,7 +212,7 @@ function Panel({name,s,act,busy,agent,agentCommand,account,pairCode,setPairCode,
    if(name==='Strategies')return <Strategies s={s} act={act} busy={busy}/>;
    if(name==='Membership')return <Membership account={account}/>;
    return <Settings s={s} agent={agent} agentCommand={agentCommand} busy={busy} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>;
-
+}
 
 function Dashboard({s,agent,account,onNavigate}:{s:Status,agent:any,account:any,onNavigate:(v:string)=>void}){
  const allowed=account?.profile?.role==='master'||account?.profile?.access_active===true;
