@@ -44,7 +44,7 @@ test('worker propagates compatibility guidance to the broker card and mobile set
  assert.match(ui,/data-sentinel-strategy-advice/);
  assert.match(mobile,/strategy-selection-advice/);
 });
-test('runtime tests user's selection rather than only ranking strategy projections',async()=>{
+test('runtime respects chosen selection rather than only ranking strategy projections',async()=>{
  const root=new URL('../sentinel-trading-lab/',import.meta.url);
  const source=await readFile(new URL('agent/src/core/runtime.mjs',root),'utf8');
  assert.match(source,/chosenStrategiesPermit\(\{cards:analysis\.strategyCards,side:row\.side\}\)/);
