@@ -1,0 +1,143 @@
+name: Sentinel Independent Trading Windows Agent 13.4.54
+
+on:
+  push:
+    branches:
+      - sentinel-independent-strategy-engine-20261010
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
+      - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
+      - 'sentinel-trading-lab/src/app/globals.css'
+      - 'sentinel-trading-lab/src/app/page.tsx'
+      - 'sentinel-trading-lab/src/app/api/runtime/**'
+      - 'tests/sentinel-manual-supabase-budget.test.mjs'
+      - 'tests/sentinel-independent-reversal-coexist.test.mjs'
+      - 'tests/diagnostic-compare-sentinel.mjs'
+      - 'tests/sentinel-scenario-renewal.test.mjs'
+      - 'tests/sentinel-page-passive.test.mjs'
+      - 'tests/sentinel-scenario-reversal-latency.test.mjs'
+      - 'tests/sentinel-installer-release.test.mjs'
+      - 'tests/sentinel-opportunity-visual-only.test.mjs'
+      - 'tests/sentinel-reversal-arbitration-mobile-price.test.mjs'
+      - 'tests/sentinel-main-independent-strategy.test.mjs'
+      - 'tests/sentinel-first-break-timing.test.mjs'
+      - 'tests/sentinel-engine-timing.test.mjs'
+      - 'sentinel-trading-lab/src/lib/live-card-model.ts'
+      - '.github/workflows/sentinel-independent-windows-release.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sentinel-independent-installer
+  cancel-in-progress: true
+
+jobs:
+  validate-and-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate analysis-only source and remote cost budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node tests/diagnostic-compare-sentinel.mjs
+          node --test tests/sentinel-installer-release.test.mjs
+          node --test tests/sentinel-first-break-timing.test.mjs
+          node --test tests/sentinel-main-independent-strategy.test.mjs
+          node --test tests/sentinel-engine-timing.test.mjs
+          node --test tests/sentinel-replay-compare-13415.test.mjs
+          node --test tests/sentinel-opportunity-visual-only.test.mjs
+          node --test tests/sentinel-reversal-arbitration-mobile-price.test.mjs
+          node --test tests/sentinel-manual-supabase-budget.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-bandwidth-budget.test.mjs tests/sentinel-scenario-renewal.test.mjs tests/sentinel-persistent-reversal-13423.test.mjs tests/sentinel-independent-reversal-coexist.test.mjs tests/sentinel-own-scenario-review-13424.test.mjs tests/sentinel-subanalyst.test.mjs tests/sentinel-page-passive.test.mjs tests/sentinel-scenario-reversal-latency.test.mjs
+      - name: Build Next.js mobile and desktop cards
+        shell: bash
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Build self contained Windows Agent
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          # The installed Agent always contains its own trusted updater installer.
+          cp public/downloads/install-agent-v88.ps1 agent/worker/install-agent-update.ps1
+          (
+            cd agent
+            zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store'
+          )
+          export RELEASE_SHA="$(sha256sum public/downloads/agent_payload_v88.zip | cut -d' ' -f1)"
+          python3 -c 'import json,os; r=json.load(open("agent/release.json")); print(json.dumps({"format":"sentinel-agent-update-v1","version":r["version"],"build":r["build"],"zipSha256":os.environ["RELEASE_SHA"]},separators=(",",":")))' > public/downloads/agent-update.json
+          python3 -c 'import json;d=json.load(open("public/downloads/agent-update.json"));assert len(d["zipSha256"])==64'
+          rm agent/worker/install-agent-update.ps1
+          test -f agent/worker/sentinel.ico
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          file public/downloads/Sentinel-Agent-Windows.exe
+          sha256sum public/downloads/Sentinel-Agent-Windows.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+      - name: Upload Windows Agent for real installer smoke test
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-independent-verified-windows-installer
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          if-no-files-found: error
+          retention-days: 1
+      - name: Push validated installer to preview branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=sentinel-independent-strategy-engine-20261010
+          current="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo "Branch changed during build; abort stale installer publication"
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json
+          if git diff --cached --quiet; then
+            echo 'Installer unchanged'
+            exit 0
+          fi
+          git commit -m 'build(sentinel): validated unified Agent v13.4.54 independent strategies and early confirmed break'
+          git push origin "HEAD:$branch"
+
+  smoke-embedded-installer:
+    needs: validate-and-bundle
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-independent-verified-windows-installer
+          path: installer
+      - name: Validate updater PowerShell syntax on Windows
+        shell: pwsh
+        run: |
+          $errors=$null; [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'sentinel-trading-lab/agent/worker/auto-update.ps1'),[ref]$null,[ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw ('Updater PowerShell parser errors: '+($errors|Out-String)) }
+      - name: Confirm bundled package version matches executable on Windows
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $exe = Join-Path $PWD 'installer/Sentinel-Agent-Windows.exe'
+          if (-not (Test-Path $exe)) { throw 'Executable missing from build artifact' }
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw "Embedded installer validation failed: $LASTEXITCODE" }
