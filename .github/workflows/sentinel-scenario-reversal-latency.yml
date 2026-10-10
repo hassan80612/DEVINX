@@ -7,6 +7,7 @@ on:
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
+      - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
       - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
       - 'sentinel-trading-lab/src/app/globals.css'
       - 'sentinel-trading-lab/src/app/page.tsx'
@@ -17,6 +18,7 @@ on:
       - 'tests/sentinel-scenario-renewal.test.mjs'
       - 'tests/sentinel-page-passive.test.mjs'
       - 'tests/sentinel-scenario-reversal-latency.test.mjs'
+      - 'tests/sentinel-installer-release.test.mjs'
       - '.github/workflows/sentinel-scenario-reversal-latency.yml'
 
 permissions:
@@ -42,6 +44,7 @@ jobs:
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
           node tests/diagnostic-compare-sentinel.mjs
+          node --test tests/sentinel-installer-release.test.mjs
           node --test tests/sentinel-manual-supabase-budget.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-bandwidth-budget.test.mjs tests/sentinel-scenario-renewal.test.mjs tests/sentinel-persistent-reversal-13423.test.mjs tests/sentinel-independent-reversal-coexist.test.mjs tests/sentinel-own-scenario-review-13424.test.mjs tests/sentinel-subanalyst.test.mjs tests/sentinel-page-passive.test.mjs tests/sentinel-scenario-reversal-latency.test.mjs
       - name: Build self contained Windows Agent
         shell: bash
@@ -62,6 +65,13 @@ jobs:
           file public/downloads/Sentinel-Agent-Windows.exe
           sha256sum public/downloads/Sentinel-Agent-Windows.exe
           test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+      - name: Upload Windows Agent for real installer smoke test
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-verified-windows-installer
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          if-no-files-found: error
+          retention-days: 1
       - name: Push validated installer to preview branch only
         shell: bash
         run: |
@@ -81,3 +91,23 @@ jobs:
           fi
           git commit -m 'build(sentinel): validated scenario and reversal latency Agent 13.4.50'
           git push origin "HEAD:$branch"
+
+  smoke-embedded-installer:
+    needs: validate-and-bundle
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-verified-windows-installer
+          path: installer
+      - name: Confirm bundled package version matches executable on Windows
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $exe = Join-Path $PWD 'installer/Sentinel-Agent-Windows.exe'
+          if (-not (Test-Path $exe)) { throw 'Executable missing from build artifact' }
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw "Embedded installer validation failed: $LASTEXITCODE" }
