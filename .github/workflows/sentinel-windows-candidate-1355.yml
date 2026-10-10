@@ -107,7 +107,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          src=candidate/sentinel-trading-lab/public/downloads
+          src=candidate
           test -f "$src/Sentinel-Agent-Windows.exe"
           test -f "$src/agent_payload_v88.zip"
           cp "$src/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
