@@ -1340,3 +1340,18 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .vnextMobileReadingsGrid span{font-size:10px;color:#c8d9d2;line-height:1.4}
 .vnextMobileReadings>small{display:block;margin-top:7px;color:#c4dacb;font-size:9px}
 @media(max-width:390px){.vnextMobileReadingsGrid{grid-template-columns:1fr;gap:5px}.vnextMobileReadingsGrid>div{grid-template-columns:1fr auto;align-items:center}.vnextMobileReadingsGrid small{grid-column:1/-1}}
+
+/* A genuine target-time countdown tied to the selected motor's signed receipt.
+   Shared by mobile normal and floating, no extra API calls or broker timers. */
+.vnextTargetCountdown{display:grid;grid-template-columns:minmax(105px,.72fr) minmax(0,1.28fr);gap:10px;padding:12px;margin:3px 0;border:1px solid #cba96891;border-radius:11px;background:linear-gradient(110deg,#09201d,#163b32)}
+.vnextTargetCountdown>div{display:grid;align-content:center;gap:3px;min-width:0}
+.vnextTargetCountdown small{font-size:9px;font-weight:850;letter-spacing:.055em;color:#e5d49f}
+.vnextTargetCountdown strong{font-size:clamp(26px,6.7vw,39px);line-height:1.12;color:#f4e5b2;font-variant-numeric:tabular-nums;letter-spacing:.035em}
+.vnextTargetCountdown b{font-size:clamp(18px,4vw,24px);font-variant-numeric:tabular-nums;color:#f5fbf6}
+.vnextTargetCountdown span{font-size:10px;color:#c5dccf;line-height:1.4}
+.vnextTargetCountdown.ended{border-color:#df8b92}.vnextTargetCountdown.ended strong{color:#f9a2ab;font-size:clamp(16px,4vw,21px)}
+.vnextFutureClock{font-size:10px;line-height:1.45;color:#d7e6cf}
+.liveScenarioCompact .vnextTargetCountdown{grid-template-columns:minmax(102px,.78fr) minmax(0,1.22fr);padding:9px;gap:7px}
+.liveScenarioCompact .vnextTargetCountdown strong{font-size:29px}
+.liveScenarioCompact .vnextTargetCountdown b{font-size:18px}
+@media(max-width:350px){.vnextTargetCountdown{grid-template-columns:1fr 1fr;padding:8px;gap:6px}.vnextTargetCountdown strong{font-size:25px}.vnextTargetCountdown b{font-size:17px}}
