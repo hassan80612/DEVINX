@@ -21,7 +21,8 @@ test('No fabricated signal price: show just current quote if Agent did not repor
  const s=await component();
  assert.match(s,/lastSignal\?<div className="mobilePriceComparison"/);
  assert.match(s,/data-testid="mobile-current-quote"/);
- assert.match(s,/Aguardando preço de uma entrada confirmada/);
+ assert.match(s,/Preço em tempo real/);
+ assert.doesNotMatch(s,/Aguardando preço de uma entrada confirmada/);
 });
 test('Phone labels three-totals as information, not a second CALL or PUT instruction',async()=>{
  const s=await component(),css=await style();
