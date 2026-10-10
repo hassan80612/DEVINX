@@ -3,17 +3,19 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {analystSnapshot} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
 import {SignedLiveBridge} from '../sentinel-trading-lab/agent/worker/signed-live-bridge.mjs';
-import {lightweightReadings} from '../sentinel-trading-lab/agent/src/core/vnext-market-cards.mjs';
+import {lightweightDashboard,lightweightReadings} from '../sentinel-trading-lab/agent/src/core/vnext-market-cards.mjs';
 const t=1800000000000,asset='EUR/USD OTC';
 const quotes=Array.from({length:240},(_,i)=>({ts:t-(239-i)*1000,price:1.1+0.000002*i+Math.sin(i/8)*0.00003}));
 function build(engine='automatic',durationMs=30000,call=true){
- const receipt={engineId:engine,asset,side:call?'CALL':'PUT',referencePrice:1.1000,quoteReceivedAt:t-50,issuedAt:t,
+ const receipt={status:'forecast-created',engineId:engine,asset,side:call?'CALL':'PUT',referencePrice:1.1000,quoteReceivedAt:t-50,issuedAt:t,
    expirySeconds:durationMs/1000,targetAt:t+durationMs,projectedPrice:call?1.1004:1.0996,
    expectedLow:1.0998,expectedHigh:1.1007,evidence:['unused long explanation']};
  return {state:'running',agentVersion:'13.4.60',lastEvalMs:t,settings:{engine,asset,orderDurationMs:durationMs,forecastHorizonSeconds:60},
   lastResult:{asset,analysis:{vnext:{
     engineId:engine,expirySeconds:durationMs/1000,computedStatus:'candidate-forward-prediction',receipt,
-    cards:lightweightReadings({quoteHistory:quotes,receipt,now:t}),outcomesVerified:0,
+    cards:lightweightReadings({quoteHistory:quotes,receipt,now:t}),
+    projection:lightweightDashboard({quoteHistory:quotes,receipt,now:t}).projection,
+    outcomesVerified:0,
     nowIndication:{side:receipt.side,engineId:engine,issuedAt:t,referencePrice:1.1000,
       projectedPrice:receipt.projectedPrice,expirySeconds:durationMs/1000,expiresAt:t+3000,
       verified:false,actionable:false}
