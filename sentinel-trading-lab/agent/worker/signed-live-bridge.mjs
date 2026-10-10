@@ -7,7 +7,7 @@ export class SignedLiveBridge extends LiveBridge{
   constructor(topic,secret,options={}){
     super(topic,options);
     if(!/^[a-f0-9]{64}$/.test(secret))throw new Error('live_signing_key_missing');
-    this.secret=secret;this.verifiedViewerAt=0;
+    this.secret=secret;this.verifiedViewerAt=0;this.lastPublishedQuoteAt=0;
   }
   mac(input){return createHmac('sha256',Buffer.from(this.secret,'hex')).update(input).digest('hex')}
   verifyViewer(payload){
@@ -28,9 +28,11 @@ export class SignedLiveBridge extends LiveBridge{
   publish(snapshot){
     const a=snapshot?.lastResult?.analysis||{},op=a.operationalSignal||{},gc=a.generalConsensus||{};
     const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
-    // Price timestamps change continuously, but unchanged recommendations do
-    // not require a whole broadcast each second. Scenario/side/percent changes
-    // still publish at the original fast cadence.
+    // A NEW broker quote is actionable information on 30s/60s expiries,
+    // even if the forecast is unchanged. Previously the unchanged-decision
+    // throttle held price updates for 4s, making mobile appear 5-6s late.
+    // The base bridge still limits ordinary broadcasts to >=1100ms,
+    // and these broadcasts do not write rows to Postgres.
     const signal=JSON.stringify([
       snapshot?.liveBroker?.symbol,snapshot?.state,
       gc.rapid?.callPct,gc.strategies?.callPct,gc.displayCallPct,
@@ -40,11 +42,13 @@ export class SignedLiveBridge extends LiveBridge{
       snapshot?.killSwitch,snapshot?.masterFrozen
     ]);
     const changed=signal!==this.lastSignalKey;
-    if(!changed&&this.clock()-this.lastSentAt<4000)return false;
+    const quoteAt=Number(snapshot?.liveBroker?.lastQuoteAt||snapshot?.feed?.quoteTs||0);
+    const newQuote=Number.isFinite(quoteAt)&&quoteAt>this.lastPublishedQuoteAt;
+    if(!changed&&!newQuote&&this.clock()-this.lastSentAt<4000)return false;
     // Never delay a fresh CALL/PUT, reversal test, cancellation or scenario
     // review behind the four-second unchanged-quote optimization.
     const published=super.publish(snapshot,{urgent:changed&&!!this.lastSignalKey});
-    if(published)this.lastSignalKey=signal;
+    if(published){this.lastSignalKey=signal;this.lastPublishedQuoteAt=Math.max(this.lastPublishedQuoteAt,quoteAt);}
     return published;
   }
   send(event,payload,topic=this.topic){
