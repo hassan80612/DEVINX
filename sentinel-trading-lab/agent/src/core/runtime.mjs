@@ -327,9 +327,9 @@ export class DemoTradingRuntime{
     const aligned=groupsComparable&&['CALL','PUT'].includes(rapid.side)&&rapid.side===strategies.side;
     const divergent=groupsComparable&&['CALL','PUT'].includes(rapid.side)&&['CALL','PUT'].includes(strategies.side)&&rapid.side!==strategies.side;
     const side=active.length>=2&&strength>=45&&Math.abs(edge)>=10?(edge>0?'CALL':'PUT'):'AGUARDAR';
-    const state=divergent?'DIVERGÊNCIA':side!=='AGUARDAR'?'ALINHADO':'FORMANDO';
+    const state=divergent?'DIVERGÊNCIA':aligned?'ALINHADO':side!=='AGUARDAR'?'VIÉS INDICATIVO':'FORMANDO';
     return{
-      side,leanSide,state,aligned:side!=='AGUARDAR'&&!divergent,divergent,
+      side,leanSide,state,aligned,divergent,
       callScore:all.callScore,putScore:all.putScore,strength,edge,displayCallPct,displayPutPct,displayStrength,
       weights:{mode:'family-balanced-market-vs-strategies'},
       sources:{rapid:rapid.activeCount,strategies:strategies.activeCount,total:active.length,configured:sourceRows.length,paused:sourceRows.filter(x=>x.paused).map(x=>x.key)},
