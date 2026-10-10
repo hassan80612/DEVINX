@@ -19,33 +19,37 @@ test('5-second Blitz never silently uses a 30-second forecast',()=>{
  const x=expiryDrivenForecast({selectedSeconds:5,brokerInstrument:'Blitz',brokerAvailableSeconds:[5,10,15,30],now:t});
  assert.equal(x.forecastHorizonMs,5000);
  assert.equal(x.selectionAvailable,true);
- assert.match(expiryForecastIdentity({engine:'automatic',provider:'iq_option',asset:'EUR/USD OTC',instrument:'Blitz',forecast:x}),/vnext-expiry-driven/);
+ assert.match(expiryForecastIdentity({engine:'automatic',provider:'iq_option',asset:'EUR/USD OTC',instrument:'Blitz',forecast:x}),/vnext-user-expiry-v1/);
  assert.notEqual(expiryForecastIdentity({engine:'automatic',forecast:x}),expiryForecastIdentity({engine:'automatic',forecast:expiryDrivenForecast({selectedSeconds:30,now:t})}));
 });
-test('an eligible broker-verified duration supersedes an out-of-sync manual setting transparently',()=>{
+test('verified broker duration is a diagnostic, never overrides user forecast',()=>{
  const x=expiryDrivenForecast({selectedSeconds:30,brokerVerified:true,brokerDurationMs:10000,brokerInstrument:'blitz',now:t});
- assert.equal(x.forecastHorizonSeconds,10);
+ assert.equal(x.forecastHorizonSeconds,30);
+ assert.equal(x.targetAt,t+30000);
  assert.equal(x.durationMismatch,true);
- assert.equal(x.reason,'broker-expiration-differs-from-selection');
+ assert.equal(x.observedBrokerDurationMs,10000);
+ assert.equal(x.reason,'broker-observation-differs-from-selected-expiration');
 });
-test('when broker gives exact clock deadline, predict remaining time and never pretend nominal minute remains',()=>{
+test('broker deadline never silently replaces the chosen 60s future target',()=>{
  const a=expiryDrivenForecast({selectedSeconds:60,brokerVerified:true,brokerExpiresAt:t+17000,now:t});
  const b=expiryDrivenForecast({selectedSeconds:60,brokerVerified:true,brokerExpiresAt:t+17000,now:t+4000});
- assert.equal(a.forecastHorizonSeconds,17);
- assert.equal(b.forecastHorizonSeconds,13);
- assert.equal(b.expiresAt,t+17000);
- assert.equal(a.source,'broker-deadline');
+ assert.equal(a.forecastHorizonSeconds,60);
+ assert.equal(b.forecastHorizonSeconds,60);
+ assert.equal(a.targetAt,t+60000);
+ assert.equal(b.targetAt,t+64000);
+ assert.equal(a.deadlineMismatch,true);
+ assert.equal(a.source,'user-selection');
 });
-test('past broker expiration cannot spawn a new future prediction',()=>{
+test('past broker deadline does not cancel a requested independent forecast',()=>{
  const x=expiryDrivenForecast({selectedSeconds:30,brokerVerified:true,brokerExpiresAt:t-10,now:t});
- assert.equal(x.forecastHorizonMs,null);
- assert.equal(x.expired,true);
- assert.equal(x.reason,'broker-expiration-passed');
+ assert.equal(x.forecastHorizonMs,30000);
+ assert.equal(x.expired,false);
+ assert.equal(x.reason,'broker-observation-differs-from-selected-expiration');
 });
 test('broker availability varies; do not invent eligibility for 5s',()=>{
  const x=expiryDrivenForecast({selectedSeconds:5,brokerInstrument:'blitz',brokerAvailableSeconds:[30,60],now:t});
  assert.equal(x.selectionAvailable,false);
- assert.equal(x.reason,'selected-expiration-not-offered-by-broker');
+ assert.equal(x.reason,'broker-availability-observation-differs');
  const unknown=expiryDrivenForecast({selectedSeconds:5,brokerAvailableSeconds:null,now:t});
  assert.equal(unknown.selectionAvailable,null);
 });
