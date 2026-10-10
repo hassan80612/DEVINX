@@ -53,8 +53,10 @@ test('spoofed viewers cannot trigger live stream; frames have verifiable HMAC',(
   const sent=w.sent.at(-1).payload.payload;
   const {sig,...unsigned}=sent;
   assert.equal(sig,createHmac('sha256',Buffer.from(key,'hex')).update(JSON.stringify(unsigned)).digest('hex'));
-  now+=1500;
-  assert.equal(bridge.publish({lastEvalMs:now,liveBroker:{lastQuoteAt:now,symbol:'EUR/USD OTC'},state:'running'}),false,'quote-only churn waits for bounded heartbeat');
+  now+=500;
+  assert.equal(bridge.publish({lastEvalMs:now,liveBroker:{lastQuoteAt:now,symbol:'EUR/USD OTC'},state:'running'}),false,'quotes cannot bypass the minimum cadence');
+  now+=1000;
+  assert.equal(bridge.publish({lastEvalMs:now,liveBroker:{lastQuoteAt:now,symbol:'EUR/USD OTC'},state:'running'}),true,'new quote is delivered within 1.5s without four-second hold');
   now+=2700;
   assert.equal(bridge.publish({lastEvalMs:now,liveBroker:{lastQuoteAt:now,symbol:'EUR/USD OTC'},state:'running'}),true,'fresh quote is eventually sent');
   now+=1500;
