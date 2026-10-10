@@ -63,14 +63,24 @@ const liveTopic='realtime:sentinel-'+randomBytes(24).toString('hex');
 const liveSignatureKey=randomBytes(32).toString('hex');
 const liveBridge=new SignedLiveBridge(liveTopic,liveSignatureKey);
 liveBridge.start();
-let livePublishBusy=false;
+let livePublishBusy=false,lastLiveSentDecisionKey='';
 const livePublishTimer=setInterval(async()=>{
-  if(livePublishBusy||!liveBridge.hasViewer()||runtime.stateName!=='running'||Date.now()-liveBridge.lastSentAt<1100)return;
+  if(livePublishBusy||!liveBridge.hasViewer()||runtime.stateName!=='running')return;
+  // Inspect only the already-computed local state. No extra analysis, broker
+  // reads or database queries are needed to prioritize a changed decision.
+  const op=runtime.lastResult?.analysis?.operationalSignal||{};
+  const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
+  const decisionKey=[runtime.settings.asset,scenario.side,scenario.status,
+    scenario.closed,op.side,op.state,op.ready,op.actionable,op.activeUntil,
+    alert.side,alert.trigger,alert.testing,op.subanalyst?.status].join('|');
+  const urgent=decisionKey!==lastLiveSentDecisionKey;
+  if(Date.now()-liveBridge.lastSentAt<(urgent?500:1100))return;
   livePublishBusy=true;
   try{
     const chosen=chooseLive();if(!chosen?.m)return;
     const snapshot=await runtime.status();
-    liveBridge.publish(analystSnapshot({...snapshot,agentVersion:VERSION},chosen.m));
+    if(liveBridge.publish(analystSnapshot({...snapshot,agentVersion:VERSION},chosen.m)))
+      lastLiveSentDecisionKey=decisionKey;
   }catch{}finally{livePublishBusy=false}
 },220);
 livePublishTimer.unref?.();
