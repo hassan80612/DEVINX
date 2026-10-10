@@ -39,11 +39,13 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const tone=!fresh?'neutral':scenarioInactive?'closed':view.risk?'review':side==='CALL'?'call':side==='PUT'?'put':'neutral';
   const quoteAge=quoteAt>0?Math.max(0,Math.floor((now-quoteAt)/1000)):null;
   const analysisAge=evaluationAt>0?Math.max(0,Math.floor((now-evaluationAt)/1000)):null;
+  const entrySide=fresh&&view.canEnter===true&&op.entryAnalyst?.independent===true?view.entrySide:null;
+  const entryRemaining=entrySide&&Number.isFinite(Number(view.entryRemainingSeconds))?Math.max(0,Number(view.entryRemainingSeconds)):null;
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioInactive,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
-    signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
+    entrySide,entryRemaining,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
     remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,
     subStatus:!fresh?unavailable:sub.mode!=='reversal-alert'?'ATUALIZE O AGENT':sub.status==='SEM LEITURA'?'AGUARDANDO COTAÇÕES':alert?'POSSÍVEL REVERSÃO '+alert.side:'OBSERVANDO REVERSÃO',
     alert,market:hasTotals?market:null,strategies:hasTotals?strategies:null,combined:hasTotals?combined:null,average,averageSide};

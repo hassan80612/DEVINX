@@ -87,6 +87,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="compactQuote"><span><small>COTAÇÃO DO PC</small><b>{price(quoteShown)}</b></span><small>{m.fresh?'Dado '+seconds(m.quoteAge)+' atrás':'DADO INDISPONÍVEL'}</small></div>
     {historicalNotice}
     {streamBadge}
+    {m.entrySide&&<div role="status" aria-live="polite" style={{padding:'8px 10px',border:'1px solid currentColor',borderRadius:8,fontWeight:800}}>ANALISTA INDEPENDENTE · {m.entrySide} AGORA · Janela {m.entryRemaining}s</div>}
     <div className="compactReversal"><small>SUBANALISTA · REVERSÃO</small><strong>{m.subStatus}</strong>{m.alert&&<small>Gatilho {price(m.alert.trigger)} · Invalida {price(m.alert.invalidation)}</small>}</div>
     <div className="compactTotals">
       {([['Mercado',totals.market],['Estratégias',totals.strategies],['Presente + futuro',totals.combined]] as const).map(([label,value])=><div key={label}><span>{label}</span><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}
@@ -102,6 +103,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {historicalNotice}
     {streamBadge}
     {m.scenarioInactive&&<p className="liveInactiveNotice">Cenário anterior encerrado ou invalidado. Não é uma nova indicação de entrada.</p>}
+    {m.entrySide&&<div role="status" aria-live="polite" style={{padding:'12px',border:'1px solid currentColor',borderRadius:10,fontWeight:800}}>ANALISTA INDEPENDENTE · {m.entrySide} AGORA · Janela {m.entryRemaining}s <small>Confirme entrada e expiração na corretora. Sem execução automática.</small></div>}
     <div className="liveReversal"><small>SUBANALISTA · AVISO DE REVERSÃO</small><h3>{m.subStatus}</h3>
       {m.alert?<><p>{m.alert.testing?'Reversão em teste':'Reversão com continuidade confirmada'}</p><div className="liveLevels"><span>Gatilho <b>{price(m.alert.trigger)}</b></span><span>Invalida <b>{price(m.alert.invalidation)}</b></span><span>Próximo nível <b>{price(m.alert.target)}</b></span></div></>:<p>{m.fresh?'Acompanhando o preço. Ainda sem reversão confirmada.':'A leitura será retomada quando chegarem dados atuais.'}</p>}
       <small>{m.fresh&&m.evaluationAt?'Última análise '+new Date(s?.lastResult?.analysis?.operationalSignal?.subanalyst?.checkedAt||m.evaluationAt).toLocaleTimeString('pt-BR'):'Sem análise atual'}</small>

@@ -1,6 +1,6 @@
 // Presentation follows the operational engine; it never creates or extends a setup.
 export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,durationMs,forecast,displayThreshold=50,minPoints=55,now=Date.now()}={}){
-  if(operational?.subanalyst?.mode==='reversal-alert'){
+  if(operational?.subanalyst?.mode==='reversal-alert'&&operational?.entryAnalyst?.independent!==true){
     const scenario=operational.scenario,contextMatches=String(operational.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(operational.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(operational.durationMs)===Number(durationMs);
     const side=contextMatches&&['CALL','PUT'].includes(scenario?.side)?scenario.side:null;
     const closed=!!side&&(scenario.closed===true||Number(scenario.deadline)<=now),hasSetup=!!side&&!closed;

@@ -1,0 +1,30 @@
+name: Sentinel Independent Engine Validation
+on:
+  push:
+    branches:
+      - sentinel-independent-safe-20261010
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax validation
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+          node --check sentinel-trading-lab/agent/worker/scenario-view.mjs
+      - name: Existing safeguards and coexistence tests
+        run: |
+          node --test tests/sentinel-independent-reversal-coexist.test.mjs tests/sentinel-independent-13416.test.mjs tests/sentinel-persistent-reversal-13423.test.mjs tests/sentinel-subanalyst.test.mjs tests/sentinel-scenario-transition.test.mjs tests/sentinel-own-scenario-review-13424.test.mjs
+      - name: Offline recorded quote comparison
+        run: node tests/diagnostic-compare-sentinel.mjs
+      - name: Next.js frontend typecheck and build
+        run: |
+          cd sentinel-trading-lab
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run build
