@@ -42,6 +42,7 @@ export function analystSnapshot(runtimeStatus,live){
       'referencePrice','projectedPrice'
     ]):null,
     projection:vnext.projection?take(vnext.projection,['side','callPct','putPct']):null,
+    targetProjection:vnext.targetProjection?take(vnext.targetProjection,['side','callPct','putPct']):null,
     cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
       .map(c=>take(c,['id','side','callPct','putPct'])):[]
   }:null;
