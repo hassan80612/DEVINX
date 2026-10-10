@@ -24,10 +24,13 @@ test('new desktop has restored three light CALL PUT cards but old strategy voter
  const start=s.indexOf('const nextHtml=d.engine?');
  assert.ok(start>=0);
  const view=s.slice(start,start+14000);
- assert.match(view,/LEITURAS CALL \/ PUT · AO VIVO/);
- assert.match(view,/MERCADO AGORA|d\.vnext\?\.cards/);
- assert.match(view,/Pressão técnica, NÃO taxa de acerto/);
- assert.match(view,/Os 3 cards são somente indicadores visuais/);
+ assert.match(view,/TOTAIS · LEITURAS AO VIVO/);
+ assert.match(view,/d\.vnext\?\.cards/);
+ assert.match(view,/TOTAIS · LEITURAS AO VIVO/);
+ assert.match(view,/Mercado Agora \+ Estrutura Anterior = Total dos Totais/);
+ assert.match(view,/Motor e percentuais futuros somente no painel Projeção Futura/);
+ assert.doesNotMatch(view,/TOTAL MOTOR SELECIONADO/);
+ assert.doesNotMatch(view,/TOTAL PRESENTE \+ FUTURO/);
  assert.match(view,/data-sentinel-setting="engine"/);
  assert.match(view,/data-sentinel-setting="duration"/);
  assert.doesNotMatch(view,/Estratégia 1/);
