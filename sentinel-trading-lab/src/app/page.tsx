@@ -290,7 +290,7 @@ function Market({s}:{s:Status}){
       <div className="stack">
         <Row k="Ativo na tela" v={live.uiSymbol||'—'}/>
         <Row k="Ativo analisado" v={live.symbol||s.settings.asset||'—'}/>
-        <Row k="Candles" v={String(m.sourceCandles||live.candlesCount??live.candles?.length??0)}/>
+        <Row k="Candles" v={String(m.sourceCandles||live.candlesCount||live.candles?.length||0)}/>
         <Row k="Feed atual" v={live.candleFresh?'SIM':'NÃO'}/>
         <Row k="Timeframe superior" v={m.higherTF?.structure?.label||m.higherTF?.structure?.bias||'—'}/>
         <Row k="Padrões de vela" v={(m.patterns||[]).map((x:any)=>x.label).join(', ')||'—'}/>
