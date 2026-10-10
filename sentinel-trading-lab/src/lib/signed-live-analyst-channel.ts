@@ -2,7 +2,7 @@ import {SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY} from './supabase-config';
 
 export type SignedAnalystFrame={
   v:number,at:number,seq:number,sig:string,state:string,killSwitch?:boolean,masterFrozen?:boolean,
-  lastEvalMs:number,lastResult:{asset:string,analysis:any},
+  lastEvalMs:number,settings?:{engine?:string|null,orderDurationMs?:number},lastResult:{asset:string,analysis:any},
   feed?:{price:number|null,quoteTs:number},liveBroker:{symbol:string,lastQuoteAt:number}
 };
 
