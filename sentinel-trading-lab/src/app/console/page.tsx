@@ -173,6 +173,10 @@ export default function Page(){
           },
           liveBroker:{...(previous.liveBroker||{}),...payload.liveBroker},
           feed:{...(previous.feed||{}),...payload.feed},
+          // Both values are derived from the signed frame. No extra API or
+          // Supabase writes; distinguish an old PC quote from a delayed socket.
+          liveQuoteAgeAtFrame:Number(payload.liveBroker?.lastQuoteAt)>0?
+            Math.max(0,Number(payload.at)-Number(payload.liveBroker.lastQuoteAt)):null,
           liveStreamAt:Date.now(),liveTransport:'push',
           remote:{...(previous.remote||{}),online:true}
         };
