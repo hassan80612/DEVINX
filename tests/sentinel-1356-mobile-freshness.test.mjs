@@ -10,7 +10,7 @@ function snapshot(ts){
   liveBroker:{symbol:'EUR/GBP OTC',lastQuoteAt:ts,quote:0.85164},
   feed:{price:0.85164,quoteTs:ts},
   lastResult:{asset:'EUR/GBP OTC',analysis:{operationalSignal:{
-   side:'CALL',state:'JANELA ABERTA',scenario:{side:'CALL',status:'OPEN',deadline:ts+50000}}}}};
+   side:'CALL',state:'JANELA ABERTA',scenario:{side:'CALL',status:'OPEN',deadline:start+50000}}}}};
 }
 test('fresh price ticks reach mobile through realtime broadcast without the old 4 second wait',()=>{
  let now=start;const sent=[];const bridge=new SignedLiveBridge('realtime:sentinel-'+'c'.repeat(48),'d'.repeat(64),{clock:()=>now});
