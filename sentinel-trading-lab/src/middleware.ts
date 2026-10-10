@@ -21,7 +21,26 @@ async function authInfo(token:string):Promise<AuthInfo>{
 
 export async function middleware(req:NextRequest){
   const p=req.nextUrl.pathname;
-  if(p==='/'||p==='/planos'||p==='/favicon.ico'||p.startsWith('/_next/'))return NextResponse.next();
+  if(p==='/'||p==='/planos'||p==='/favicon.ico'||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
+  // Authenticated installed Agents can fetch signed release packages to
+  // update themselves without a browser session. Non-paying users cannot.
+  if(p==='/downloads/agent_payload_v88.zip'&&req.headers.has('x-sentinel-agent-install')){
+    try{
+      const encoded=String(req.headers.get('x-sentinel-agent-install')||'');
+      if(encoded.length>1300)throw new Error('identity_size');
+      const proof=JSON.parse(atob(encoded));
+      const installId=String(proof.installId||''),deviceSecret=String(proof.deviceSecret||'');
+      if(installId.length<16||installId.length>128||deviceSecret.length<24||deviceSecret.length>180)throw new Error('identity_invalid');
+      const response=await fetch(SUPABASE_URL+'/rest/v1/rpc/sentinel_agent_register',{
+        method:'POST',headers:{'content-type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY},
+        body:JSON.stringify({p_install_id:installId,p_device_secret:deviceSecret,p_display_name:'Sentinel Agent Update',p_agent_version:'auto-update'}),
+        signal:AbortSignal.timeout(8000),cache:'no-store'
+      });
+      const authorized=await response.json().catch(()=>null);
+      if(response.ok&&authorized?.ok===true&&authorized?.paired===true&&authorized?.accessActive===true)return NextResponse.next();
+    }catch{}
+    return NextResponse.json({ok:false,error:'update_requires_paid_access'},{status:403,headers:{'cache-control':'no-store'}});
+  }
   if(p==='/login'||p.startsWith('/api/auth/')||p==='/api/webhooks/kiwify')return NextResponse.next();
 
   const token=req.cookies.get(SESSION_COOKIE)?.value||'';
