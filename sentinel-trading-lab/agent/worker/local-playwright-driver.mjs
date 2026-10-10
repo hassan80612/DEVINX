@@ -1492,7 +1492,8 @@ export class LocalPlaywrightDriver{
         const pinnedReceipt=anchored&&anchored.engineId===d.engine&&
           anchored.asset===visibleAsset&&
           Number(anchored.expirySeconds)*1000===duration&&
-          Number(anchored.targetAt)>Date.now()?anchored:null;
+          Number(anchored.issuedAt)>0&&Number(anchored.targetAt)>Number(anchored.issuedAt)?anchored:null;
+        const targetFinished=pinnedReceipt&&Number(pinnedReceipt.targetAt)<=Date.now();
         const pinnedProjection=pinnedReceipt?d.vnext?.targetProjection||null:null;
         const liveObservation=d.vnext?.nowIndication||null;
         const observationFresh=liveObservation&&liveNow&&
@@ -1532,7 +1533,7 @@ export class LocalPlaywrightDriver{
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="padding:15px 14px;margin-top:10px;border-radius:13px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${pinnedReceipt?.side==='CALL'?callTone:pinnedReceipt?.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow}">
               <div style="font-size:10px;font-weight:850;letter-spacing:.09em;color:${goldSoft}">PROJEÇÃO FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
-              <div data-sentinel-scenario-action style="margin:7px 0;font-size:clamp(20px,3vw,29px);font-weight:900;color:${pinnedReceipt?.side==='CALL'?callTone:pinnedReceipt?.side==='PUT'?putTone:ink}">${pinnedReceipt?.side==='CALL'?'↑ CALL PREVISTO':pinnedReceipt?.side==='PUT'?'↓ PUT PREVISTO':'AGUARDANDO PREVISÃO'}</div>
+              <div data-sentinel-scenario-action style="margin:7px 0;font-size:clamp(20px,3vw,29px);font-weight:900;color:${pinnedReceipt?.side==='CALL'?callTone:pinnedReceipt?.side==='PUT'?putTone:ink}">${targetFinished?'PREVISÃO ENCERRADA':pinnedReceipt?.side==='CALL'?'↑ CALL PREVISTO':pinnedReceipt?.side==='PUT'?'↓ PUT PREVISTO':'AGUARDANDO PREVISÃO'}</div>
               <div data-sentinel-vnext-clock data-deadline="${Number(pinnedReceipt?.targetAt||0)}" data-issued="${Number(pinnedReceipt?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(90px,.83fr) minmax(0,1.17fr);align-items:center;gap:10px;padding:10px 12px;margin:8px 0;border:1px solid ${panelBorder};border-radius:11px;background:${fieldBg}">
                 <div><small style="display:block;font-size:9px;font-weight:850;color:${goldSoft};letter-spacing:.045em">CONTAGEM ATÉ O ALVO</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:clamp(23px,3vw,35px);font-weight:950;letter-spacing:.05em;font-variant-numeric:tabular-nums;color:${goldSoft};margin-top:4px">—:—</strong></div>
                 <div style="display:grid;gap:4px"><small style="font-size:9px;font-weight:800;color:${muted}">HORÁRIO EXATO DA PREVISÃO</small><b style="font-size:19px;font-variant-numeric:tabular-nums;color:${ink}">${pinnedReceipt?esc(new Date(Number(pinnedReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:10px;color:${muted}">Expiração escolhida: ${duration<60000?duration/1000+'s':duration/60000+'min'}</small></div>
@@ -1542,7 +1543,7 @@ export class LocalPlaywrightDriver{
                 <span style="color:${putTone}">PUT projetado: ${pinnedProjection&&Number.isFinite(Number(pinnedProjection.putPct))&&pinnedReceipt?.engineId===d.engine?Math.round(Number(pinnedProjection.putPct))+'%':'—'}</span>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:13px">
-                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO AGORA</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${price(d.price)}</b></div>
+                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO AGORA</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${Number(d.price)>0?(liveNow?price(d.price):'ÚLTIMA: '+price(d.price)):'AGUARDANDO COTAÇÃO'}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO PROJETADO</small><b style="display:block;margin-top:4px;font-size:16px;color:${goldSoft}">${price(pinnedReceipt?.projectedPrice)}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PRAZO</small><b style="display:block;margin-top:4px;font-size:14px;color:${ink}">${duration<60000?duration/1000+' s':duration/60000+' min'}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">ATUALIZAÇÃO</small><b style="display:block;margin-top:4px;font-size:13px;color:${ink}">${liveNow?'AO VIVO':Number.isFinite(liveAge)?(liveAge/1000).toFixed(1)+' s atrás':'SEM COTAÇÃO'}</b></div>
@@ -1728,13 +1729,19 @@ export class LocalPlaywrightDriver{
         `;
 
         const template=document.createElement('template');template.innerHTML=nextHtml;
+        // Reuse the existing DOM and keep the live countdown's own text;
+        // rewriting its placeholder on every card refresh caused —:— flashes.
+        const priorClockText=el.querySelector('[data-sentinel-vnext-clock-value]')?.textContent||null;
         const reconcile=(parent,nextParent)=>{
           const nextChildren=[...nextParent.childNodes];
           for(let i=0;i<nextChildren.length;i++){
             const next=nextChildren[i],current=parent.childNodes[i];
             if(!current){parent.append(next.cloneNode(true));continue}
             if(current.nodeType!==next.nodeType||current.nodeName!==next.nodeName){current.replaceWith(next.cloneNode(true));continue}
-            if(next.nodeType===Node.TEXT_NODE){if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;continue}
+            if(next.nodeType===Node.TEXT_NODE){
+              if(parent.nodeType===Node.ELEMENT_NODE&&parent.matches?.('[data-sentinel-vnext-clock-value]'))continue;
+              if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;continue
+            }
             if(next.nodeType!==Node.ELEMENT_NODE)continue;
             for(const attr of [...current.attributes])if(!next.hasAttribute(attr.name))current.removeAttribute(attr.name);
             for(const attr of [...next.attributes])if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
@@ -1767,12 +1774,16 @@ export class LocalPlaywrightDriver{
             }
             if(value.textContent!==shown)value.textContent=shown;
           };
+          el.__sentinelTargetClockTick=tickTargetClock;
           const interval=window.setInterval(()=>{
             if(!el.isConnected){window.clearInterval(interval);return}
             tickTargetClock();
           },250);
           tickTargetClock();
         }
+        // Refresh the target immediately on every Agent frame; the tick is
+        // local and does not send any command or re-evaluate the motor.
+        el.__sentinelTargetClockTick?.();
         if(window.__sentinelEntryDeadlineTimer){clearTimeout(window.__sentinelEntryDeadlineTimer);window.__sentinelEntryDeadlineTimer=null}
         if(operationalNow)window.__sentinelEntryDeadlineTimer=setTimeout(()=>{
           window.__sentinelEntryDeadlineTimer=null;
