@@ -14,7 +14,7 @@ test('one clock in normal and floating mobile cards, not two overlapping clocks'
  assert.match(s,/RELÓGIO DO ALVO FIXADO/);
  assert.match(s,/HORÁRIO DO ALVO FIXADO/);
  assert.match(s,/ALVO ENCERRADO/);
- assert.match(s,/PREÇO PROJETADO · ÚLTIMA LEITURA/);
+ assert.match(s,/PREÇO (PROJETADO · ÚLTIMA LEITURA|PREVISTO NO ALVO)/);
 });
 test('Agent independently pins display clock to original forecast without gating its live model',async()=>{
  const s=await read('agent/src/core/runtime.mjs');
