@@ -48,6 +48,12 @@ jobs:
           node --test tests/sentinel-first-break-timing.test.mjs
           node --test tests/sentinel-opportunity-visual-only.test.mjs
           node --test tests/sentinel-manual-supabase-budget.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-bandwidth-budget.test.mjs tests/sentinel-scenario-renewal.test.mjs tests/sentinel-persistent-reversal-13423.test.mjs tests/sentinel-independent-reversal-coexist.test.mjs tests/sentinel-own-scenario-review-13424.test.mjs tests/sentinel-subanalyst.test.mjs tests/sentinel-page-passive.test.mjs tests/sentinel-scenario-reversal-latency.test.mjs
+      - name: Build Next.js mobile and desktop cards
+        shell: bash
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
       - name: Build self contained Windows Agent
         shell: bash
         run: |
