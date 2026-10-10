@@ -65,5 +65,6 @@ test('broker and mobile show confirmed entry distinct from passive CALL/PUT scen
  assert.match(desktop,/ENTRADA '\+confirmedEntrySide\+' AGORA/);
  assert.match(desktop,/VIÉS '\+formingSide\+' · NÃO É ORDEM/);
  assert.match(mobile,/SOMENTE PREVISÃO · SEM ENTRADA/);
- assert.match(mobile,/ENTRADA '\+mobileDirection\+' AGORA/);
+ assert.match(mobile,/mobileDirection\?mobileDirection\+' AGORA'/);
+ assert.match(mobile,/mobileDirection\?'ENTRADA CONFIRMADA'/);
 });
