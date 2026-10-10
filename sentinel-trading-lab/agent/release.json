@@ -1,6 +1,6 @@
 {
-  "version": "13.4.56",
-  "build": "13.4.56-fresh-realtime-overlay-1010",
+  "version": "13.4.57",
+  "build": "13.4.57-stable-mobile-instant-signal-1010",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
