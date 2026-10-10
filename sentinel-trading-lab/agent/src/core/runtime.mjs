@@ -792,7 +792,12 @@ export class DemoTradingRuntime{
       this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_armed',metadata:{maxTradesPerSession:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)}})
     }
     if(wasAutopilot&&patch.demoAutopilot===false)this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_disarmed'});
-    if(resetOperational){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;this.vnextPending=[];this.vnextOutcomes=[];}this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()
+    if(resetOperational){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;
+      // Preserve actual observed outcomes when changing the motor or expiry;
+      // these are in-memory only and never uploaded to Supabase. Asset changes
+      // invalidate both the pending forecast and its evaluation context.
+      if(Object.prototype.hasOwnProperty.call(patch,'asset')){this.vnextPending=[];this.vnextOutcomes=[]}
+    }this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()
   }
   clearExecutionError(actor='master'){if(actor!=='master')throw new Error('master_required');this.state.executionError=false;if(this.stateName==='error')this.stateName='stopped';this.audit.write({actorId:actor,actorRole:'master',action:'execution_error.clear'});return this.status()}
   _riskState(now){
@@ -893,10 +898,14 @@ export class DemoTradingRuntime{
           predictionError:evaluation.predictionError});
       }
       const current=model.receipt;
-      if(current&&!rest.some(x=>x.engineId===current.engineId&&x.quoteReceivedAt===current.quoteReceivedAt&&x.expirySeconds===current.expirySeconds)){
-        rest.push(current);
-      }
-      this.vnextPending=rest.slice(-500);
+      // Track only one receipt per selected motor+asset+duration each 1s.
+      // A 15-minute prediction cannot be evaluated if a 500-item FIFO
+      // overwrites it after only a few minutes of 400ms evaluations.
+      const duplicate=current&&rest.some(x=>x.engineId===current.engineId&&
+        x.asset===current.asset&&x.expirySeconds===current.expirySeconds&&
+        now-Number(x.issuedAt)<1000);
+      if(current&&!duplicate)rest.push(current);
+      this.vnextPending=rest.slice(-1200);
       this.vnextOutcomes=outcomes.slice(-300);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
