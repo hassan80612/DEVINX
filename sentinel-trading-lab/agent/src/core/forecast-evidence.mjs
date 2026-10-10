@@ -1,5 +1,7 @@
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-export const FORECAST_MODEL='future-v6.0';
+// The prediction formula now includes prospective quote-pressure evidence.
+// Never pool calibration samples from the earlier v6.0 model with this one.
+export const FORECAST_MODEL='future-v6.3-early-turn';
 export const EVIDENCE_GROUPS={
   flow:['micro','acceleration'],momentum:['momentum','persistence'],
   structure:['trend','history','regime','mtf'],context:['location','setup','reversal'],strategy:['strategy']
