@@ -1570,7 +1570,7 @@ export class LocalPlaywrightDriver{
                   '<small style="display:block;margin-top:5px;color:'+muted+';line-height:1.35;font-size:9px">'+esc(c.hint||'')+'</small></div>';
               }).join('')}
             </div>
-            <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">Mercado Agora + Estrutura Anterior = Total dos Totais. Motor e percentuais futuros somente no painel Projeção Futura.</small>
+            <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">O terceiro card é a média de Estrutura Anterior + Mercado Agora. Motor e percentuais futuros somente no painel Projeção Futura.</small>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
               <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:linear-gradient(180deg,#d8bb72,#b48d39);font-size:11px;font-weight:900;color:#1c1912;cursor:pointer">▶ Iniciar</button>
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">Ⅱ Pausar</button>
