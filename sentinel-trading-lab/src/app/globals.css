@@ -859,3 +859,32 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenarioCompact .liveTiming{margin-top:7px;padding:5px 8px;font-size:10px}
 .liveScenarioCompact footer{font-size:10px;line-height:1.4;color:#bfd8cb;padding:5px 0 0;margin:7px 0 0;border-top:1px solid #71998b40}
 @media(max-width:600px){.liveHeaderRight>strong{font-size:10px}.liveScenario .compactToggle{font-size:11px}}
+
+
+/* Sentinel unified release: the ENTRY colour always wins over prior scenario.
+   A scenario is a forecast, not an invitation to trade. */
+.liveScenario.closed{background:linear-gradient(145deg,#313a3f,#192429);border-color:#7e96a1}
+.liveScenario .liveDecision{display:grid;gap:7px;margin:13px 0 11px;padding:19px 22px;border-radius:17px;border:2px solid #8b9ba6;background:linear-gradient(135deg,#33424c,#1b2c36);color:#f4f8fa;box-shadow:inset 0 1px 0 #fff2;min-width:0}
+.liveScenario .liveDecision.call{background:linear-gradient(135deg,#11976a 0%,#0c654a 52%,#083b32);border-color:#75ffd0;box-shadow:0 0 0 3px #5ff4ad1d,0 10px 35px #003b223f}
+.liveScenario .liveDecision.put{background:linear-gradient(135deg,#c63960 0%,#9b2448 52%,#571627);border-color:#ff94b1;box-shadow:0 0 0 3px #ff8a9b20,0 10px 35px #440c244f}
+.liveScenario .liveDecision small{color:#f6f3e6;font-size:11px;letter-spacing:.15em;font-weight:950}
+.liveScenario .liveDecision strong{color:#fff;font-size:clamp(33px,5vw,59px);line-height:1.08;letter-spacing:-.035em;display:flex;align-items:center;gap:12px;text-shadow:0 2px 8px #0004}
+.liveScenario .liveDecision strong span{color:#fff;font-size:1.13em}
+.liveScenario .liveDecision>span:last-child{font-size:12px;color:#ecf6f1;font-weight:800;line-height:1.4}
+.liveScenario .liveDecision.actionable{border-width:3px;animation:sentinelSignalGlow 2s ease-in-out infinite}
+@keyframes sentinelSignalGlow{0%,100%{filter:brightness(1);box-shadow:0 0 0 2px #ffffff21,0 8px 35px #0005}50%{filter:brightness(1.14);box-shadow:0 0 0 5px #ffffff30,0 12px 45px #0007}}
+.liveScenario .liveEntryCountdown{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;font-weight:900;letter-spacing:.06em;border:1px solid #eed48e;background:#4c381b;color:#ffe6a0;padding:11px 15px;border-radius:12px}
+.liveScenario .liveEntryCountdown strong{font-size:22px;font-variant-numeric:tabular-nums;color:#fff}
+.liveScenario .liveEntryCountdown small{font-size:11px;flex-basis:100%;color:#ffe8bd}
+.liveScenario .liveReversalState{border-width:2px;border-style:solid;border-color:#688b7d;background:#1d3935;color:#f8fff9}
+.liveScenario .liveReversalState.testing{border-color:#ffe095;background:linear-gradient(125deg,#66501c,#382c1a);box-shadow:0 0 0 2px #f4c26324}
+.liveScenario .liveReversalState.call:not(.testing){border-color:#60e6ae;background:linear-gradient(125deg,#17684c,#114437)}
+.liveScenario .liveReversalState.put:not(.testing){border-color:#fe85a4;background:linear-gradient(125deg,#7d2c46,#461c31)}
+.liveScenario .liveReversalState strong,.liveScenario .liveReversalState h3{font-size:19px;line-height:1.25;font-weight:950;color:#fff;margin:4px 0}
+.liveScenario .liveReversalState strong span,.liveScenario .liveReversalState h3 span{font-size:1.2em}
+.sentinelStart{display:grid;gap:18px}.sentinelStartHero{padding:33px;border-radius:19px;border:1px solid #a48e55;background:radial-gradient(circle at 90% 10%,#c5a65328,transparent 50%),linear-gradient(135deg,#153e38,#092626);color:#eef7f2}.sentinelStartHero h2{color:#f5fbf6;font-size:clamp(29px,4vw,45px);letter-spacing:-.045em;line-height:1.08;margin:15px 0}.sentinelStartHero p{color:#c0d8cc;font-size:15px;max-width:750px;line-height:1.7}.sentinelEyebrow{color:#e6d08d;font-size:11px;font-weight:900;letter-spacing:.16em}.sentinelStartActions{display:flex;flex-wrap:wrap;gap:12px;margin-top:21px}.sentinelStartActions>*{border-radius:12px;padding:14px 17px!important;font-size:13px!important;font-weight:900!important;min-height:46px;cursor:pointer}.sentinelStartSteps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.sentinelStartSteps article{padding:19px;border:1px solid var(--line);background:var(--panel);border-radius:16px;display:grid;gap:8px;align-content:start}.sentinelStartSteps span{font-size:30px;color:#a68645;font-weight:900}.sentinelStartSteps strong{font-size:16px;color:var(--text)}.sentinelStartSteps p{font-size:12px;color:var(--muted);line-height:1.55;margin:0}.sentinelStartStatus{display:flex;flex-wrap:wrap;gap:11px}.sentinelStartStatus span{padding:11px 15px;border-radius:12px;border:1px solid var(--line);background:var(--panel-2);font-size:12px;color:var(--muted)}.sentinelStartStatus b{margin-left:8px;color:var(--text)}
+.sentinelMembership{padding:29px;border:1px solid var(--line);background:var(--panel);border-radius:18px}.sentinelMembership h2{font-size:29px;margin:10px 0;color:var(--text)}.sentinelMembership p{color:var(--muted);font-size:14px;line-height:1.6}.sentinelMembershipSummary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}.sentinelMembershipSummary>div{padding:15px;background:var(--panel-2);border-radius:12px;border:1px solid var(--line);display:grid;gap:8px}.sentinelMembershipSummary small{font-size:11px;color:var(--muted)}.sentinelMembershipSummary strong{font-size:18px;color:var(--text)}.sentinelMembershipActions{display:flex;align-items:center;flex-wrap:wrap;gap:17px;margin-top:22px}.sentinelMembershipActions span{font-weight:900;color:#ad8c48}.sentinelMembershipActions a{font-size:13px}
+@media(max-width:900px){.sentinelStartSteps{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.liveScenario .liveDecision{padding:16px 14px;margin:10px 0}.liveScenario .liveDecision strong{font-size:39px}.liveScenarioCompact .liveDecision{padding:14px!important}.liveScenarioCompact .liveDecision strong{font-size:32px!important}.liveScenarioCompact .liveDecision>span:last-child{font-size:10px}.liveScenarioCompact .compactReversal{padding:12px}.liveScenarioCompact .compactReversal strong{font-size:17px}.sentinelStartHero{padding:23px}.sentinelStartSteps{grid-template-columns:1fr 1fr}.sentinelStartSteps article{padding:13px}.sentinelStartSteps strong{font-size:14px}.sentinelMembershipSummary{grid-template-columns:1fr}.sentinelStartActions>*{width:100%}}
+@media(max-width:380px){.sentinelStartSteps{grid-template-columns:1fr}.liveScenario .liveDecision strong{font-size:31px}}
+@media(prefers-reduced-motion:reduce){.liveScenario .liveDecision.actionable{animation:none}}
