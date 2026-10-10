@@ -155,7 +155,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
     OR (
       a.status='active'
       AND a.agent_enabled=true
-      AND a.plan='sentinel-kiwify-usd50-prepaid-30d'
+      AND a.plan IN ('sentinel-kiwify-usd50-prepaid-30d','manual')
       AND a.access_expires_at IS NOT NULL
       AND a.access_expires_at>now()
     )
