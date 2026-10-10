@@ -81,7 +81,17 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const exhausted=!reversal&&(call?short.callOverextended===true||short.callReversalRisk===true:short.putOverextended===true||short.putReversalRisk===true);
     const localSetup=call?short.callSetup||short.readyCall||short.accelUp:short.putSetup||short.readyPut||short.accelDown;
     const forecastSetup=forecast.rawBias===side&&forecast.scenario?.continuationReady===true;
-    const continuation=!reversal&&!!(localSetup||forecastSetup)&&bar.length>=2;
+    // A fresh break of an ALREADY CLOSED 5s range is a legitimate local
+    // continuation candidate. Do not wait for a slower trend projection to
+    // label the movement after the impulse is over. Preserve the existing
+    // technical, flow, freshness, and two-quote execution confirmations.
+    const closedRange=bar.length>=2?(call?Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price))):null;
+    const firstRangeBreak=closedRange!=null&&
+      (call?price>closedRange:price<closedRange)&&
+      (call?Number(micro.delta2)>0:Number(micro.delta2)<0)&&
+      (call?short.structureReadyCall===true&&short.flowReadyCall===true:
+            short.structureReadyPut===true&&short.flowReadyPut===true);
+    const continuation=!reversal&&!!(localSetup||forecastSetup||firstRangeBreak)&&bar.length>=2;
     const kind=reversal?'reversal':short.retest?.side===(call?'BUY':'SELL')?'breakout':'continuation';
     const rawScore=Number(call?short.callScore:short.putScore),reversalScore=Number(call?short.reversalCallScore:short.reversalPutScore);
     const score=Math.min(100,Math.max(Number.isFinite(rawScore)?rawScore:0,reversal&&Number.isFinite(reversalScore)?reversalScore:0)+(mapped.qualified?10:0));
