@@ -31,7 +31,7 @@ export function earlyScenarioTurn({micro={},short={},price,upper=null,lower=null
   const changing=clamp(lead*.46+opposingPulse*.27+weakening*.17+rejection*.10,0,1);
   const context=.55+nearLevel*.27+stretched*.13+rejection*.05;
   const strength=clamp(changing*context,0,1);
-  const signal=(side==='CALL'?1:-1)*strength;
+  const signal=strength>0?(side==='CALL'?strength:-strength):0;
   return{side,signal,strength,phase:strength>=.52?'VIRADA EM FORMACAO':strength>=.22?'PERDA DE FORCA':'TENDENCIA EM CURSO',
     basis:'received-quote-pressure',lead,opposingPulse,weakening,stretched,rejection,nearLevel,validLevel};
 }
