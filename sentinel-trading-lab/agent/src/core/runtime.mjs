@@ -12,6 +12,7 @@ import {analyzeMarket,analyzePrediction} from './strategy.mjs';
 import {ForecastResearch} from './forecast-research.mjs';
 import {EntryResearch} from './entry-research.mjs';
 import {entryOpportunities} from './entry-opportunities.mjs';
+import {assessIndependentSignalHistory,ENTRY_QUALITY_EPOCH} from './independent-signal-quality.mjs';
 import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 
@@ -489,7 +490,21 @@ export class DemoTradingRuntime{
       analysis.strategyConfluence,durationMs/1000
     );
     if(verifiedPredictionUnavailable(analysis,this.predictionModel))for(const c of candidates){c.allowed=false;c.blockedBy='prediction-history';c.reason='Renovando o histórico do período da previsão.';}
-    this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction,reversalEvidence})=>({side,kind,score,allowed,blockedBy,reversalEvidence,
+    // One local, forward-only validation gate for EVERY independently selected
+    // candidate. The previous historical block was bypassed during entry mode.
+    // This gate does not depend on the old scenario or the reversal subanalyst.
+    for(const row of candidates){
+      row.historicalQuality=assessIndependentSignalHistory({
+        outcomes:this.signalValidation.outcomes,
+        provider,asset,durationMs,side:row.side,payout:snap.payout
+      });
+      if(row.allowed===true&&row.historicalQuality.blocked){
+        row.allowed=false;
+        row.blockedBy='empirical-history';
+        row.reason='Entradas independentes deste lado/prazo abaixo do equilíbrio estatístico em cotações futuras confirmadas.';
+      }
+    }
+    this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction,reversalEvidence,historicalQuality})=>({side,kind,score,allowed,blockedBy,reversalEvidence,historicalQuality,
       reason:blockedBy==='score'?'Pontuação técnica '+score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':reason,
       level,approaching,structuralReaction,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints}));
     const baselineCandidates=candidates.filter(x=>x.allowed);
@@ -503,7 +518,7 @@ export class DemoTradingRuntime{
       if(entryEnded)return terminalEntry();
       if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
       const relevant=candidates.slice().sort((a,b)=>b.score-a.score)[0];
-      this.entryQualification={allowed:false,flow:relevant.flow,structure:relevant.structure,fresh:relevant.fresh,blockedBy:relevant.blockedBy,
+      this.entryQualification={allowed:false,flow:relevant.flow,structure:relevant.structure,fresh:relevant.fresh,blockedBy:relevant.blockedBy,historicalQuality:relevant.historicalQuality||null,
         technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,
         reason:relevant.blockedBy==='score'?'Pontuação técnica '+relevant.score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':relevant.reason};
       return decorate({...empty,side:this.operationalSetup?.side||main.side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',reason:this.entryQualification.reason});
@@ -516,7 +531,7 @@ export class DemoTradingRuntime{
     const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
     const prediction=this.entryResearch.predict(researchContext,features,Number.isFinite(baseline)?baseline:.5);
     const learnedWeak=prediction.qualified&&prediction.probability<10/12;
-    this.entryQualification={allowed:!learnedWeak,flow:candidate.flow,structure:candidate.structure,fresh:candidate.fresh,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,blockedBy:learnedWeak?'entry-model':null,reason:learnedWeak?'Modelo qualificado não confirma este ponto.':candidate.reason};
+    this.entryQualification={allowed:!learnedWeak,flow:candidate.flow,structure:candidate.structure,fresh:candidate.fresh,historicalQuality:candidate.historicalQuality,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,blockedBy:learnedWeak?'entry-model':null,reason:learnedWeak?'Modelo qualificado não confirma este ponto.':candidate.reason};
     if(learnedWeak)return decorate({...empty,side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',entryResearch:prediction,reason:this.entryQualification.reason});
     const expiryKey=String(Math.round(durationMs/1000));
     const independent={...analysis,entryPlanner:{...analysis.entryPlanner,horizons:{...plans,[expiryKey]:localPlan}}};
@@ -686,7 +701,7 @@ export class DemoTradingRuntime{
     if(pointPassed)return{...base,side,state:'AGUARDAR PONTO',trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,activeUntil:setup.activeUntil||null,reason:'Ponto de entrada ultrapassado; aguardando novo ponto confirmado, sem perseguir o movimento.'};
     const entrySide=String(quality.entrySide||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.entrySide||'WAIT').toUpperCase()==='SELL'?'PUT':null,preSide=quality.preEntry?.active===true?(String(quality.preEntry.side||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.preEntry.side||'WAIT').toUpperCase()==='SELL'?'PUT':null):null,presentAligned=presentSide===side,reversalTransition=['CALL','PUT'].includes(presentSide)&&presentSide!==side,timingConfirmed=reversal?(sustainedTrigger&&(reactionPlan?.side===side||preSide===side||entrySide===side||presentAligned)&&(side==='CALL'?callTurnConfirmed:putTurnConfirmed)):sustainedTrigger,ready=triggerMet&&timingConfirmed&&sideSupported&&!impulseConflict&&(!this._entryAnalysisMode||this.entryQualification?.allowed===true);
     const windowOpen=now<=Number(setup.entryWindowEndAt||0);
-    if(ready&&windowOpen&&!setup.firedAt){setup.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;base.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;setup.firedAt=now;setup.entryPrice=price;this._queueSignalCandidate({kind:'operational_v3',side:side==='CALL'?'BUY':'SELL',confidence:decisionStrength,probability:this._entryAnalysisMode?Number(plan.entryForecastProbability??50):side==='CALL'?futureCall:futurePut,referencePrice:price,asset,durationMs,strategy:operationalStrategy,now,settleDurationMs:durationMs,expirationSource:'card-setting'})}
+    if(ready&&windowOpen&&!setup.firedAt){setup.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;base.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;setup.firedAt=now;setup.entryPrice=price;this._queueSignalCandidate({kind:'operational_v3',side:side==='CALL'?'BUY':'SELL',confidence:decisionStrength,probability:this._entryAnalysisMode?null:side==='CALL'?futureCall:futurePut,referencePrice:price,asset,durationMs,strategy:operationalStrategy,now,settleDurationMs:durationMs,expirationSource:'card-setting'})}
     const activeUntil=setup.firedAt?Math.min(Number(setup.entryWindowEndAt||0),Number(setup.firedAt)+3500):0,activeWindow=Number(setup.firedAt||0)>0&&now<=activeUntil,actionable=activeWindow&&ready&&!Number(setup.releasedAt||0);
     setup.activeUntil=activeUntil;
     if(Number(setup.firedAt||0)>0&&!activeWindow)return{...base,side,state:'ACOMPANHANDO',activeUntil,entryAt:setup.firedAt,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet,armed:setup.armed,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:'Oportunidade de entrada encerrada; cenário mantido até o prazo, sem liberar nova entrada.'};
@@ -803,7 +818,7 @@ export class DemoTradingRuntime{
       key,kind,provider:String(this.validationProvider||this.externalMarket?.provider||'unknown'),asset:String(asset||'—'),durationMs:requestedDuration,settleDurationMs:actualDuration,
       strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),
       probability:probability!=null&&Number.isFinite(Number(probability))?Math.max(0,Math.min(100,Number(probability))):null,
-      probabilityBucket:probability!=null&&Number.isFinite(Number(probability))?this._probabilityBucket(probability):null,regime:regime||null,
+      probabilityBucket:probability!=null&&Number.isFinite(Number(probability))?this._probabilityBucket(probability):null,regime:regime||null,entryQualityEpoch:kind==='operational_v3'?ENTRY_QUALITY_EPOCH:null,
       referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+actualDuration,expirationSource:expirationSource||null
     });
     this.signalValidation.pending=this.signalValidation.pending.slice(-240);
