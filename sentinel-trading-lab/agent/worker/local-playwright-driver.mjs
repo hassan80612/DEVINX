@@ -1531,6 +1531,11 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
+            <div data-sentinel-card="immediate-market-observation" style="margin-top:10px;padding:9px 11px;display:grid;gap:4px;border:1px solid ${panelBorder};border-left:3px solid ${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):goldSoft};border-radius:10px;background:${fieldBg};min-height:82px">
+              <small style="font-size:9px;font-weight:850;color:${goldSoft}">PONTO DE ENTRADA OBSERVADO · PESQUISA EM DEMO · SEM ORDEM AUTOMÁTICA</small>
+              <b style="font-size:17px;color:${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):ink}">${observationFresh?(liveObservation.side==='CALL'?'↑ CALL OBSERVADO AGORA':'↓ PUT OBSERVADO AGORA'):'AGUARDANDO PONTO DE ENTRADA'}</b>
+              <small style="font-size:10px;color:${muted}">${observationFresh?(liveObservation.kind==='support-reaction'?'Reação no suporte anterior':liveObservation.kind==='resistance-reaction'?'Reação na resistência anterior':liveObservation.kind==='resistance-break'?'Rompimento de resistência anterior':'Rompimento de suporte anterior')+' · cotação no evento '+price(liveObservation.price)+' · às '+new Date(Number(liveObservation.at)).toLocaleTimeString('pt-BR',{hour12:false})+' · expiração configurada '+(duration<60000?duration/1000+'s':duration/60000+'min')+' · alvo teórico '+new Date(Number(liveObservation.targetAt||0)).toLocaleTimeString('pt-BR',{hour12:false}):'Sem reação estrutural observada neste instante. Previsão futura não é gatilho de entrada.'}</small>
+            </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="padding:15px 14px;margin-top:10px;border-radius:13px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${pinnedReceipt?.side==='CALL'?callTone:pinnedReceipt?.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow}">
               <div style="font-size:10px;font-weight:850;letter-spacing:.09em;color:${goldSoft}">PROJEÇÃO FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="margin:7px 0;font-size:clamp(20px,3vw,29px);font-weight:900;color:${pinnedReceipt?.side==='CALL'?callTone:pinnedReceipt?.side==='PUT'?putTone:ink}">${targetFinished?'PREVISÃO ENCERRADA':pinnedReceipt?.side==='CALL'?'↑ CALL PREVISTO':pinnedReceipt?.side==='PUT'?'↓ PUT PREVISTO':'AGUARDANDO PREVISÃO'}</div>
@@ -1543,20 +1548,17 @@ export class LocalPlaywrightDriver{
                 <span style="color:${putTone}">PUT projetado: ${pinnedProjection&&Number.isFinite(Number(pinnedProjection.putPct))&&pinnedReceipt?.engineId===d.engine?Math.round(Number(pinnedProjection.putPct))+'%':'—'}</span>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:13px">
-                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO AGORA</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${Number(d.price)>0?(liveNow?price(d.price):'ÚLTIMA: '+price(d.price)):'AGUARDANDO COTAÇÃO'}</b></div>
+                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">${liveNow?'PREÇO AGORA':'ÚLTIMA COTAÇÃO · ATRASADA'}</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${Number(d.price)>0?(liveNow?price(d.price):'ÚLTIMA: '+price(d.price)):'AGUARDANDO COTAÇÃO'}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO PROJETADO</small><b style="display:block;margin-top:4px;font-size:16px;color:${goldSoft}">${price(pinnedReceipt?.projectedPrice)}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PRAZO</small><b style="display:block;margin-top:4px;font-size:14px;color:${ink}">${duration<60000?duration/1000+' s':duration/60000+' min'}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">ATUALIZAÇÃO</small><b style="display:block;margin-top:4px;font-size:13px;color:${ink}">${liveNow?'AO VIVO':Number.isFinite(liveAge)?(liveAge/1000).toFixed(1)+' s atrás':'SEM COTAÇÃO'}</b></div>
               </div>
+              ${d.vnext?.lastSettled&&d.vnext.lastSettled.engineId===d.engine?'<div data-sentinel-card="last-future-outcome" style="padding:8px;border:1px solid '+panelBorder+';border-radius:8px;margin-top:8px;font-size:10px;color:'+ink+'"><b>ÚLTIMA PREVISÃO AVALIADA · '+esc(new Date(Number(d.vnext.lastSettled.targetAt)).toLocaleTimeString('pt-BR',{hour12:false}))+' · '+(d.vnext.lastSettled.correct?'DIREÇÃO ACERTOU':'DIREÇÃO NÃO ACERTOU')+'</b><div>Referência '+price(d.vnext.lastSettled.referencePrice)+' · Previsto '+price(d.vnext.lastSettled.projectedPrice)+' · Observado '+price(d.vnext.lastSettled.settledPrice)+'</div></div>':''}
+              ${d.vnext?.receipt&&pinnedReceipt&&d.vnext.receipt.issuedAt!==pinnedReceipt.issuedAt?'<div style="font-size:10px;line-height:1.4;margin-top:8px;color:'+muted+'">ÚLTIMO CÁLCULO DO MOTOR: '+esc(d.vnext.receipt.side)+' às '+esc(new Date(Number(d.vnext.receipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false}))+' para '+esc(new Date(Number(d.vnext.receipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false}))+' · não altera o alvo fixado acima.</div>':''}
               <div style="font-size:10px;color:${muted};line-height:1.45;margin-top:10px">Faixa futura: ${price(pinnedReceipt?.expectedLow)} até ${price(pinnedReceipt?.expectedHigh)} · Cálculo: ${pinnedReceipt&&d.vnext?.engineId===d.engine?esc(new Date(pinnedReceipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'} · ${n(d.vnext?.outcomesVerified,0)} resultados observados neste prazo.</div>
               <div style="padding-top:8px;margin-top:9px;border-top:1px solid ${panelBorder};font-size:10px;color:${goldSoft};font-weight:750">PREVISÃO EXPERIMENTAL · NÃO É CALL/PUT AGORA · nenhuma ordem automática</div>
             </section>
 
-            <div data-sentinel-card="immediate-market-observation" style="margin-top:10px;padding:9px 11px;display:grid;gap:4px;border:1px solid ${panelBorder};border-left:3px solid ${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):goldSoft};border-radius:10px;background:${fieldBg}">
-              <small style="font-size:9px;font-weight:850;color:${goldSoft}">OPORTUNIDADE ESTRUTURAL OBSERVADA · SEM ORDEM AUTOMÁTICA</small>
-              <b style="font-size:17px;color:${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):ink}">${observationFresh?(liveObservation.side==='CALL'?'↑ CALL AGORA':'↓ PUT AGORA'):'AGUARDANDO OPORTUNIDADE'}</b>
-              <small style="font-size:10px;color:${muted}">${observationFresh?(liveObservation.kind==='support-reaction'?'Reação no suporte anterior':liveObservation.kind==='resistance-reaction'?'Reação na resistência anterior':liveObservation.kind==='resistance-break'?'Rompimento de resistência anterior':'Rompimento de suporte anterior')+' · preço '+price(liveObservation.price):'Sem gatilho estrutural observado neste instante'}</small>
-            </div>
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
               ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
@@ -1731,7 +1733,6 @@ export class LocalPlaywrightDriver{
         const template=document.createElement('template');template.innerHTML=nextHtml;
         // Reuse the existing DOM and keep the live countdown's own text;
         // rewriting its placeholder on every card refresh caused —:— flashes.
-        const priorClockText=el.querySelector('[data-sentinel-vnext-clock-value]')?.textContent||null;
         const reconcile=(parent,nextParent)=>{
           const nextChildren=[...nextParent.childNodes];
           for(let i=0;i<nextChildren.length;i++){
