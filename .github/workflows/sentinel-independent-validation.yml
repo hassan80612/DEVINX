@@ -26,5 +26,5 @@ jobs:
       - name: Next.js frontend typecheck and build
         run: |
           cd sentinel-trading-lab
-          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --ignore-scripts --no-audit --no-fund
           npm run build
