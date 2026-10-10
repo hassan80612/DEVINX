@@ -1518,6 +1518,10 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="padding:15px 14px;margin-top:10px;border-radius:13px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${d.vnext?.receipt?.side==='CALL'?callTone:d.vnext?.receipt?.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow}">
               <div style="font-size:10px;font-weight:850;letter-spacing:.09em;color:${goldSoft}">PROJEÇÃO FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="margin:7px 0;font-size:clamp(20px,3vw,29px);font-weight:900;color:${d.vnext?.receipt?.side==='CALL'?callTone:d.vnext?.receipt?.side==='PUT'?putTone:ink}">${d.vnext?.receipt?.side==='CALL'?'↑ CALL PREVISTO':d.vnext?.receipt?.side==='PUT'?'↓ PUT PREVISTO':'AGUARDANDO PREVISÃO'}</div>
+              <div data-sentinel-vnext-clock data-deadline="${Number(d.vnext?.receipt?.targetAt||0)}" data-issued="${Number(d.vnext?.receipt?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(90px,.83fr) minmax(0,1.17fr);align-items:center;gap:10px;padding:10px 12px;margin:8px 0;border:1px solid ${panelBorder};border-radius:11px;background:${fieldBg}">
+                <div><small style="display:block;font-size:9px;font-weight:850;color:${goldSoft};letter-spacing:.045em">CONTAGEM ATÉ O ALVO</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:clamp(23px,3vw,35px);font-weight:950;letter-spacing:.05em;font-variant-numeric:tabular-nums;color:${goldSoft};margin-top:4px">—:—</strong></div>
+                <div style="display:grid;gap:4px"><small style="font-size:9px;font-weight:800;color:${muted}">HORÁRIO EXATO DA PREVISÃO</small><b style="font-size:19px;font-variant-numeric:tabular-nums;color:${ink}">${d.vnext?.receipt?esc(new Date(Number(d.vnext.receipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:10px;color:${muted}">Expiração escolhida: ${duration<60000?duration/1000+'s':duration/60000+'min'}</small></div>
+              </div>
               <div data-sentinel-future-target style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:7px 0;padding:9px 11px;border:1px solid ${panelBorder};border-radius:10px;background:${fieldBg}">
                 <strong style="font-size:14px;color:${goldSoft}">${d.vnext?.receipt?'PARA '+esc(new Date(Number(d.vnext.receipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'SEM HORÁRIO-ALVO'}</strong>
                 <span style="font-size:11px;font-weight:850;color:${ink}">${d.vnext?.receipt?'Projeção de '+(duration<60000?duration/1000+' segundos':duration/60000+' minutos'):'Aguardando dados'}</span>
@@ -1725,6 +1729,35 @@ export class LocalPlaywrightDriver{
           while(parent.childNodes.length>nextChildren.length)parent.lastChild.remove();
         };
         reconcile(el,template.content);
+        // Clock updates in the overlay DOM without re-running the motor,
+        // polling Supabase, regenerating cards, or adjusting entry signals.
+        // Its target is precisely the current selected motor forecast receipt.
+        if(el.dataset.vnextTargetClockBound!=='1'){
+          el.dataset.vnextTargetClockBound='1';
+          const tickTargetClock=()=>{
+            const pane=el.querySelector('[data-sentinel-vnext-clock]');
+            const value=pane?.querySelector('[data-sentinel-vnext-clock-value]');
+            if(!pane||!value)return;
+            const target=Number(pane.getAttribute('data-deadline')||0);
+            const issued=Number(pane.getAttribute('data-issued')||0);
+            let shown='—:—';
+            if(Number.isFinite(target)&&Number.isFinite(issued)&&target>issued&&issued>0){
+              const left=Math.ceil((target-Date.now())/1000);
+              if(left<=0){shown='ALVO ENCERRADO';value.style.fontSize='17px'}
+              else{
+                const pad=n=>String(n).padStart(2,'0');
+                shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
+                value.style.fontSize='';
+              }
+            }
+            if(value.textContent!==shown)value.textContent=shown;
+          };
+          const interval=window.setInterval(()=>{
+            if(!el.isConnected){window.clearInterval(interval);return}
+            tickTargetClock();
+          },250);
+          tickTargetClock();
+        }
         if(window.__sentinelEntryDeadlineTimer){clearTimeout(window.__sentinelEntryDeadlineTimer);window.__sentinelEntryDeadlineTimer=null}
         if(operationalNow)window.__sentinelEntryDeadlineTimer=setTimeout(()=>{
           window.__sentinelEntryDeadlineTimer=null;
