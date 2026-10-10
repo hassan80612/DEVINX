@@ -1366,3 +1366,13 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .vnextInstantObservation.call strong{color:#83f2c6}
 .vnextInstantObservation.put strong{color:#ffaab8}
 .vnextInstantObservation span{font-size:10px;color:#d3e5db;line-height:1.4}
+
+/* PC and mobile parity: keep immediate structural observation separate from
+   anchored forecast; no scroll shift when calculation status changes. */
+.vnextLiveCalculation,.vnextSettledOutcome{display:grid;gap:4px;min-width:0;margin:2px 0;padding:8px 10px;border:1px solid #547d706b;border-radius:9px;background:#091d1c}
+.vnextLiveCalculation small{font-size:9px;font-weight:850;color:#e6cf9b}
+.vnextLiveCalculation span,.vnextSettledOutcome span{font-size:10px;line-height:1.5;color:#d5e8df;overflow-wrap:anywhere}
+.vnextSettledOutcome b{font-size:10px;line-height:1.4;color:#e6d6a5}
+.vnextInstantObservation{min-height:92px;align-content:center}
+.vnextReadingsHeading{overflow-wrap:anywhere}
+.vnextMobileReadingsGrid>div{min-height:68px;align-content:start}
