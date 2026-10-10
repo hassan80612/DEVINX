@@ -35,10 +35,9 @@ export function analystSnapshot(runtimeStatus,live){
     computedStatus:vnext.computedStatus||'unavailable',
     outcomesVerified:Number(vnext.outcomesVerified||0),
     receipt,
-    nowIndication:vnext.nowIndication?take(vnext.nowIndication,[
-      'side','engineId','issuedAt','referencePrice','projectedPrice',
-      'expirySeconds','expiresAt','verified','actionable']):null,
-    cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3).map(c=>take(c,['id','label','side','strength','hint'])):[]
+    projection:vnext.projection?take(vnext.projection,['side','callPct','putPct']):null,
+    cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
+      .map(c=>take(c,['id','side','callPct','putPct'])):[]
   }:null;
   if(op.scenarioProjection)operational.scenarioProjection=take(op.scenarioProjection,[
     'side','status','confirmed','actionable','horizonSeconds','asOf',
