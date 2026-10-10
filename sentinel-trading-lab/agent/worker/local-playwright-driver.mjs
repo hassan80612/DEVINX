@@ -1264,7 +1264,7 @@ export class LocalPlaywrightDriver{
         const entryPanelBorder=confirmedEntrySide==='CALL'?callTone:confirmedEntrySide==='PUT'?putTone:
           timingClosed?putTone:scenarioRisk?warnTone:outlookTone;
         const entryActionLabel=confirmedEntrySide?('ENTRADA '+confirmedEntrySide+' AGORA'):
-          timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide+' · SEM ENTRADA'):'SEM ENTRADA AGORA';
+          timingClosed?'CENÁRIO ENCERRADO':formingSide?(runtimeView.projectionOnly?('PROJEÇÃO '+formingSide+' · EM ANÁLISE'):('CENÁRIO '+formingSide+' · SEM ENTRADA')):'SEM ENTRADA AGORA';
         const entryActionTone=confirmedEntrySide==='CALL'?callTone:confirmedEntrySide==='PUT'?putTone:actionTone;
         const entryStatusLabel=confirmedEntrySide?
           ('SINAL DE ENTRADA · '+confirmedEntrySeconds+'s RESTANTES · EXPIRA EM '+durationText):
