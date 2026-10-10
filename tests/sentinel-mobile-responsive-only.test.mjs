@@ -7,7 +7,7 @@ const style=()=>readFile(new URL('../sentinel-trading-lab/src/app/globals.css',i
 test('Mobile full-size card never splits the old enormous SEM ENTRADA headline',async()=>{
  const s=await component(),css=await style();
  assert.doesNotMatch(s,/liveDirection\|\|'SEM ENTRADA'/);
- assert.match(s,/m\.scenarioInactive\?'ENCERRADO':'AGUARDANDO'/);
+ assert.match(s,/m\.scenarioInactive\?'ENCERRADO':'SEM ENTRADA AGORA'/);
  assert.match(css,/@media\(max-width:700px\)/);
  assert.match(css,/\.liveScenario:not\(\.liveScenarioCompact\) \.liveDecision>strong/);
  assert.match(css,/white-space:nowrap;overflow:hidden/);
