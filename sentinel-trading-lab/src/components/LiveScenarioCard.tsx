@@ -56,6 +56,14 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // Large green/red is reserved for an actionable entry, not a forecast.
   const directionClass=m.entrySide==='CALL'?'call':m.entrySide==='PUT'?'put':'neutral';
   const reversalArrow=m.alert?.side==='CALL'?'↑':m.alert?.side==='PUT'?'↓':'◇';
+  // The scenario can have time remaining after an entry opportunity expires.
+  // Neither a closed entry nor this visual clock authorizes a new trade.
+  const opportunityNotice=m.opportunityEnded?<div className="liveOpportunityEnded" data-testid="entry-opportunity-ended" role="status" aria-live="polite">
+    <span aria-hidden="true" className="liveOpportunityEndedIcon">!</span><div><strong>ESTA OPORTUNIDADE TERMINOU</strong><span>Aguardando novo ponto ou gatilho. O cenário pode continuar aberto.</span></div>
+  </div>:null;
+  const scenarioClock=m.remaining!==null?<div className="liveScenarioCountdown" data-testid="scenario-clock">
+    <small>PRAZO DO CENÁRIO</small><strong>{m.remaining}s</strong>
+  </div>:null;
   useEffect(()=>{
     if(m.fresh&&m.market!==null&&m.strategies!==null&&m.combined!==null&&m.average!==null){
       lastTotals.current={asset:m.asset,market:m.market,strategies:m.strategies,combined:m.combined,average:m.average,at:m.evaluationAt};
@@ -84,8 +92,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao card completo">Expandir ↗</button></header>
-    <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'ENTRADA CONFIRMADA NO CARD · confirme o prazo na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário; aguarde um ponto de entrada':'Aguardando dados e estrutura válida'}</span></div>
-    <div className="compactScenario"><div><small>{m.scenarioLabel}</small><strong>{m.state}</strong></div><div className="compactCountdown"><small>PRAZO DO CENÁRIO</small><b>{m.remaining!==null?m.remaining+'s':'—'}</b></div></div>
+    <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'ENTRADA CONFIRMADA NO CARD · confirme o prazo na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário; aguarde um ponto de entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>
+    {opportunityNotice}
+    <div className="compactScenario"><div><small>{m.scenarioLabel}</small><strong>{m.state}</strong></div></div>
     <div className="compactQuote"><span><small>COTAÇÃO DO PC</small><b>{price(quoteShown)}</b></span><small>{m.fresh?'Dado '+seconds(m.quoteAge)+' atrás':'DADO INDISPONÍVEL'}</small></div>
     {historicalNotice}
     {streamBadge}
@@ -94,13 +103,14 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="compactTotals">
       {([['Mercado',totals.market],['Estratégias',totals.strategies],['Presente + futuro',totals.combined]] as const).map(([label,value])=><div key={label}><span>{label}</span><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}
     </div>
-    <div className="compactAverage"><div><small>MÉDIA DOS 3 TOTAIS · INDICATIVA</small><strong>{totals.averageSide}</strong><span>{totals.average===null?'—':`CALL ${totals.average}% · PUT ${100-totals.average}%`}</span></div><label>Limite visual<input aria-label="Limite visual da média" type="text" inputMode="numeric" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
+    <div className={`compactAverage ${totals.averageSide==='CALL'?'call':totals.averageSide==='PUT'?'put':'neutral'}`} data-testid="compact-three-totals-average"><div><small>MÉDIA DOS 3 TOTAIS · INDICATIVA</small><strong>{totals.averageSide}</strong><span>{totals.average===null?'—':`CALL ${totals.average}% · PUT ${100-totals.average}%`}</span></div><label>Limite visual<input aria-label="Limite visual da média" type="text" inputMode="numeric" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
     <div className="compactContext">Previsão {Math.round(Number(s?.settings?.forecastHorizonSeconds||60))}s · Prazo configurado {Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)}s <b>≠ expiração no app</b></div>
     <footer>Somente análise. Confira ativo, entrada e vencimento na corretora. CALL/PUT aqui não executa ordens.</footer>
   </section>;
   return <section className={`liveScenario ${m.tone}`} aria-label="Cenário ao vivo" data-testid="live-scenario">
-    <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.scenarioLabel}</h2><b>{m.state}</b></div><div className="liveHeaderRight"><strong>{m.remaining!==null?'PRAZO DO CENÁRIO '+m.remaining+'s':'SEM JANELA ATIVA'}</strong><button type="button" className="compactToggle" onClick={onToggleCompact}>Modo flutuante ↘</button></div></header>
-    <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'ENTRADA CONFIRMADA NO CARD · confirme o prazo na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida'}</span></div>
+    <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.scenarioLabel}</h2><b>{m.state}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>Modo flutuante ↘</button></div></header>
+    <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'ENTRADA CONFIRMADA NO CARD · confirme o prazo na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>
+    {opportunityNotice}
     <div className="liveScenarioMeta"><span>Cotação {price(quoteShown)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
     {historicalNotice}
     {streamBadge}
