@@ -70,8 +70,10 @@ async function publishLiveFrame(){
   // reads or database queries are needed to prioritize a changed decision.
   const op=runtime.lastResult?.analysis?.operationalSignal||{};
   const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
-  const decisionKey=[runtime.settings.asset,scenario.side,scenario.status,
-    scenario.closed,op.side,op.state,op.ready,op.actionable,op.activeUntil,
+  const liveForecast=runtime.lastResult?.analysis?.vnext?.receipt||null;
+  const decisionKey=[runtime.settings.asset,runtime.settings.engine,runtime.settings.orderDurationMs,
+    liveForecast?.side,scenario.side,scenario.status,scenario.closed,
+    op.side,op.state,op.ready,op.actionable,op.activeUntil,
     alert.side,alert.trigger,alert.testing,op.subanalyst?.status].join('|');
   const urgent=decisionKey!==lastLiveSentDecisionKey;
   if(Date.now()-liveBridge.lastSentAt<(urgent?500:1100))return;
