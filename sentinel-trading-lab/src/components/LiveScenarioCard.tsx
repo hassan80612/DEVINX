@@ -62,17 +62,19 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   },[incoming?.asset,incoming?.side,incoming?.price,incoming?.at]);
   const lastSignal=recordedSignal?.asset===m.asset?recordedSignal:null;
   const liveDirection=m.entrySide||(!m.scenarioInactive?m.side:null);
-  const decisionLabel=m.entrySide?'ENTRADA AGORA':liveDirection?'CENÁRIO PRINCIPAL':m.scenarioInactive?'CENÁRIO FINALIZADO':'ANÁLISE OPERACIONAL';
+  // Forecast CALL/PUT is not authorization to trade. Never use the word
+  // "AGORA" outside a still-actionable, fresh and validated entry.
+  const decisionLabel=m.entrySide?'ENTRADA CONFIRMADA AGORA':liveDirection?'SOMENTE PREVISÃO · SEM ENTRADA':m.scenarioInactive?'CENÁRIO FINALIZADO':'AGUARDANDO OPORTUNIDADE';
   const decisionArrow=liveDirection==='CALL'?'↑':liveDirection==='PUT'?'↓':'◇';
-  const decisionText=liveDirection||(m.scenarioInactive?'ENCERRADO':'AGUARDANDO');
+  const decisionText=m.entrySide?m.entrySide:liveDirection?('VIÉS '+liveDirection):m.scenarioInactive?'ENCERRADO':'SEM ENTRADA';
   // Large green/red is reserved for an actionable entry, not a forecast.
   const directionClass=m.entrySide==='CALL'?'call':m.entrySide==='PUT'?'put':'neutral';
   const reversalArrow=m.alert?.side==='CALL'?'↑':m.alert?.side==='PUT'?'↓':'◇';
   const mobileDirection=m.entrySide||null;
   const mobileScenarioDirection=!m.scenarioInactive&&m.side?m.side:null;
   const mobileArrow=(mobileDirection||mobileScenarioDirection)==='CALL'?'↑':(mobileDirection||mobileScenarioDirection)==='PUT'?'↓':'◇';
-  const mobileDecisionText=mobileDirection?mobileDirection+' AGORA':mobileScenarioDirection?'ACOMPANHANDO '+mobileScenarioDirection:m.scenarioInactive?'ENCERRADO':'AGUARDANDO';
-  const mobileDecisionLabel=mobileDirection?'PONTO DE ENTRADA CONFIRMADO':mobileScenarioDirection?'CENÁRIO EM ACOMPANHAMENTO':'ANÁLISE OPERACIONAL';
+  const mobileDecisionText=mobileDirection?'ENTRADA '+mobileDirection+' AGORA':mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection+' · AGUARDE ENTRADA':m.scenarioInactive?'ENCERRADO':'SEM ENTRADA AGORA';
+  const mobileDecisionLabel=mobileDirection?'GATILHO OPERACIONAL CONFIRMADO':mobileScenarioDirection?'PREVISÃO · NÃO É ORDEM DE ENTRADA':'ANÁLISE OPERACIONAL';
   const mobileQuote=m.fresh?Number(s?.liveBroker?.quote??s?.feed?.price):null;
   const quoteValid=mobileQuote!==null&&Number.isFinite(mobileQuote)&&mobileQuote>0;
   const entryDelta=lastSignal&&quoteValid?mobileQuote!-lastSignal.price:null;
