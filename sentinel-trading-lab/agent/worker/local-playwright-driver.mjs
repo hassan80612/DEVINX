@@ -1536,7 +1536,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
               ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
-                const value=Number(c?.callPct),other=Number(c?.putPct);
+                const value=c?.callPct==null?NaN:Number(c.callPct),other=c?.putPct==null?NaN:Number(c.putPct);
                 const fresh=Number.isFinite(value)&&Number.isFinite(other)&&liveNow&&d.vnext?.engineId===d.engine&&d.vnext?.receipt?.engineId===d.engine&&Math.round(Number(d.vnext?.receipt?.expirySeconds)*1000)===duration;
                 const side=fresh?esc(c.side):'AGUARDAR';
                 const color=fresh&&value>other?callTone:fresh&&other>value?putTone:ink;
@@ -1547,12 +1547,7 @@ export class LocalPlaywrightDriver{
                   '<small style="display:block;margin-top:5px;color:'+muted+';line-height:1.35;font-size:9px">'+esc(c.hint||'')+'</small></div>';
               }).join('')}
             </div>
-            <div data-sentinel-summary="average-total" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:10px 12px;background:${panelBg};border:1px solid ${panelBorder};border-radius:11px;box-shadow:${panelShadow}">
-              <div style="min-width:0"><b style="display:block;font-size:11px;color:${goldSoft}">MÉDIA DOS 3 TOTAIS</b><small style="display:block;font-size:9px;color:${muted};margin-top:3px">Resumo visual sem voto dos motores</small></div>
-              <strong style="font-size:13px;color:${d.vnext?.average?.side==='CALL'?callTone:d.vnext?.average?.side==='PUT'?putTone:ink}">${d.vnext?.average&&liveNow&&d.vnext?.engineId===d.engine?esc(d.vnext.average.side):'AGUARDAR'}</strong>
-              <div style="display:flex;gap:10px;font-size:10px;font-weight:850"><span style="color:${callTone}">CALL ${d.vnext?.average?.callPct!=null&&liveNow?Math.round(Number(d.vnext.average.callPct))+'%':'—'}</span><span style="color:${putTone}">PUT ${d.vnext?.average?.putPct!=null&&liveNow?Math.round(Number(d.vnext.average.putPct))+'%':'—'}</span></div>
-            </div>
-            <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">Total Mercado + Total do Motor Selecionado + Total Presente e Futuro. Apenas visualização; nenhuma interferência na previsão.</small>
+            <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">Mercado Agora + Estrutura Anterior = Total dos Totais. Motor e percentuais futuros somente no painel Projeção Futura.</small>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
               <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:linear-gradient(180deg,#d8bb72,#b48d39);font-size:11px;font-weight:900;color:#1c1912;cursor:pointer">▶ Iniciar</button>
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">Ⅱ Pausar</button>
