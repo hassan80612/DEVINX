@@ -133,7 +133,9 @@ export default function Page(){
           setAgent((v:any)=>({...v,remote:false,process:false,worker:false}));
           setErr('');
         }else{
-          setErr('Atualização temporariamente indisponível · tentando novamente.');
+          // Keep the fixed-height card's own stale-quote notice; a transient
+          // cloud error must not add a banner that shifts the entire layout.
+          setErr('');
         }
       }
     }finally{refreshBusy.current=false}
