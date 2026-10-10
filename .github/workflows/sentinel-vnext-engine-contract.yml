@@ -22,4 +22,4 @@ jobs:
           node --check sentinel-trading-lab/agent/src/core/automatic-forward-model.mjs
           node --check sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs
           node --check sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs
-          node --test tests/sentinel-single-engine-contract-1359.test.mjs tests/sentinel-expiry-driven-1359.test.mjs tests/sentinel-forward-forecast-proof-1359.test.mjs tests/sentinel-automatic-forward-model-1359.test.mjs tests/sentinel-specialist-motors-1359.test.mjs tests/sentinel-vnext-runtime-1359.test.mjs
+          node --test tests/sentinel-single-engine-contract-1359.test.mjs tests/sentinel-expiry-driven-1359.test.mjs tests/sentinel-forward-forecast-proof-1359.test.mjs tests/sentinel-automatic-forward-model-1359.test.mjs tests/sentinel-specialist-motors-1359.test.mjs tests/sentinel-vnext-runtime-1359.test.mjs tests/sentinel-vnext-ui-1359.test.mjs
