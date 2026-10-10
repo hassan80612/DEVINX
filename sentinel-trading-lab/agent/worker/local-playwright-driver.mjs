@@ -1170,7 +1170,14 @@ export class LocalPlaywrightDriver{
         const deadlinePassed=runtimeDeadline>0&&decisionNow>=runtimeDeadline;
         const entryDeadlinePassed=Number(runtimeView.entryDeadline||0)>0&&decisionNow>=Number(runtimeView.entryDeadline);
         const operationalTimingState=deadlinePassed?(operational?.entryAt?'JANELA ENCERRADA':'JANELA PERDIDA'):entryDeadlinePassed&&runtimeView.state==='ENTRADA'?(operational.entryAnalyst?.independent===true&&operational.scenario?'JANELA ABERTA':operational.scenario?'OPORTUNIDADE CONSUMIDA':'ACOMPANHANDO'):runtimeView.state||'AGUARDAR';
-        const timingClosed=['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO','OPORTUNIDADE PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA'].includes(operationalTimingState);
+        // An entry may expire while the independently timed market scenario
+        // continues. Do not turn an ended entry into "CENÁRIO ENCERRADO".
+        const timingClosed=runtimeView.closed===true||['JANELA PERDIDA','JANELA ENCERRADA','INVALIDADO','AJUSTAR TEMPO'].includes(operationalTimingState);
+        const opportunityFinished=runtimeContextMatches&&!runtimeView.canEnter&&(
+          ['OPORTUNIDADE PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA'].includes(String(operational?.state||'').toUpperCase())||
+          ['OPORTUNIDADE PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA'].includes(operationalTimingState)||
+          /esta oportunidade terminou|oportunidade de entrada encerrada|oportunidade encerrada|ponto de entrada ultrapassado/i.test(String(operational?.reason||''))
+        )&&!timingClosed;
         const futureDecision=plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup&&!timingClosed&&runtimeDeadline>decisionNow?{side:runtimeOperationalSide,targetAt:runtimeDeadline}:null;
         const futureDecisionPaused=!plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup;
         const feedPauseSeconds=Math.max(0,Math.ceil((Number(d.liveAgeMs||0)+elapsedSincePayload)/1000));
@@ -1239,6 +1246,8 @@ export class LocalPlaywrightDriver{
           '<div data-sentinel-reversal-level style="font-size:11px;line-height:1.4;color:'+ink+'">'+(reversalInfo?'Ponto '+price(reversalInfo.level)+' · gatilho '+price(reversalInfo.trigger)+' · invalida '+price(reversalInfo.invalidation):'Aguardando uma reversão.')+'</div>'+
           '<div data-sentinel-reversal-activity style="font-size:10px;color:'+muted+'">'+(reversalInfo&&reversalInfo.testing?'Reversão em teste.':ownFresh&&Number(reversal?.checkedAt)>0?'Analisando preços · '+esc(new Date(Number(reversal.checkedAt)).toLocaleTimeString('pt-BR')):'')+'</div></div>':legacySubanalystHtml;
         const entryActionLabel=futureActionLabel;
+        // Amber informational notice, NEVER an extra entry / scenario deadline.
+        const opportunityNoticeHtml=opportunityFinished?'<div data-sentinel-entry-ended role="status" aria-live="polite" style="display:flex;gap:9px;align-items:center;margin:7px 0 9px;padding:12px 14px;border:2px solid '+(uiTheme==='light'?'#ba8535':'#f2cd77')+';border-radius:11px;background:'+(uiTheme==='light'?'#fff1d2':'linear-gradient(115deg,#70501e,#3c2b1b)')+';box-shadow:0 0 0 3px rgba(219,170,78,.13),0 5px 19px rgba(0,0,0,.22)"><span aria-hidden="true" style="display:grid;place-items:center;width:27px;height:27px;flex:0 0 27px;border-radius:50%;background:#f4d897;color:#50391d;font-size:18px;font-weight:950">!</span><span style="display:grid;gap:3px;min-width:0"><b style="font-size:14px;font-weight:950;letter-spacing:.025em;color:'+(uiTheme==='light'?'#70491b':'#fff1c5')+'">ESTA OPORTUNIDADE TERMINOU</b><small style="font-size:11px;line-height:1.3;font-weight:800;color:'+(uiTheme==='light'?'#865920':'#f1d9a1')+'">Aguardando novo ponto ou gatilho · cenário ainda pode estar aberto</small></span></div>':'';
         // No second subanalyst headline: one compact status, above model/Call/Put.
         const legacyFuturePhase=(entryDecisionHorizon!==Number(plannerHorizon)?
           'ANÁLISE DA ENTRADA '+Math.round(entryDecisionHorizon)+'s · ':'')+
@@ -1248,7 +1257,7 @@ export class LocalPlaywrightDriver{
             timingClosed?'PRAZO ENCERRADO · ESPERE NOVA ESTRUTURA':
             formingSide?(advisoryMode?'CENÁRIO EM ACOMPANHAMENTO · SUBANALISTA SOMENTE AVISA':'ANÁLISE EM ANDAMENTO · AGUARDE O SINAL DE ENTRADA'):
             'ANALISANDO · AGUARDANDO CONFIRMAÇÃO');
-        const futurePhase=advisoryMode?(timingClosed?'PRAZO ENCERRADO':scenarioRisk?'PREVISÃO EM REAVALIAÇÃO':futureDecision?'PREVISÃO EM ACOMPANHAMENTO':'AGUARDANDO UM CENÁRIO'):legacyFuturePhase;
+        const futurePhase=advisoryMode?(timingClosed?'PRAZO ENCERRADO':opportunityFinished?'AGUARDANDO NOVO PONTO':scenarioRisk?'PREVISÃO EM REAVALIAÇÃO':futureDecision?'PREVISÃO EM ACOMPANHAMENTO':'AGUARDANDO UM CENÁRIO'):legacyFuturePhase;
         const futureDecisionStatus=timingClosed?'00:00 · ENCERRADO':!plannerReadable?'SEM LEITURA':futureDecision?('FECHA EM '+windowSeconds+'s'):'EM ANÁLISE';
         const currentAnalysisReason=String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
         const futureDecisionConfidence=advisoryMode&&operational.scenario?Number(operational.scenario.confidence||0):futureConfidence;
@@ -1482,6 +1491,7 @@ export class LocalPlaywrightDriver{
               <span data-sentinel-scenario-status style="color:${timingClosed?(uiTheme==='light'?'#9c2334':'#ffe0e2'):futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:${timingClosed?'17px':'15px'};font-weight:750;line-height:1.25;max-width:138px;height:48px;min-height:48px;max-height:48px;display:flex;align-items:center;overflow:hidden">${esc(futureDecisionStatus)}</span>
               <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;flex-wrap:nowrap;font-size:10px;line-height:1.35;height:49px;min-height:49px;max-height:49px;overflow:hidden"><span data-sentinel-scenario-phase style="color:${timingClosed?(uiTheme==='light'?'#9c2334':'#ffffff'):ink};font-weight:${timingClosed?'900':'700'};flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(futurePhase)}</span><span style="color:${goldSoft};font-weight:700;flex-shrink:0">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-weight:600;flex-shrink:0">${liveLabel}</span></div>
             </div>
+            ${opportunityNoticeHtml}
             <div style="color:${expiryDetected&&!expiryMatch?putTone:muted};font-size:11px;font-weight:${expiryDetected&&!expiryMatch?'850':'650'};line-height:1.4;margin-bottom:7px;height:47px;min-height:47px;max-height:47px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${expiryDetected&&!expiryMatch?'ATENÇÃO: corretora em '+expiryDurationLabel+', Sentinel em '+durationText+'. Ajuste também a expiração na corretora.':futureDecisionPaused?(liveNow?'Atualizando leitura deste prazo; entrada suspensa.':('Feed sem confirmação há '+feedPauseSeconds+'s; entrada suspensa.')):analysisStale||!liveNow?'Feed fora da leitura atual.':analysisTransient?'Atualizando cenário.':!analysisFresh?'Atualizando cálculo deste prazo.':!plannerReadable?'Aguardando dados atuais deste prazo.':esc(currentAnalysisReason)}</div>
             <div data-sentinel-scenario-plan style="min-height:172px">${planHtml}</div>
           </div>
