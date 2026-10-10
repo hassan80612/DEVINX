@@ -2,7 +2,7 @@ import {selectedEngineForecastRequest} from './scenario-engine-catalog.mjs';
 import {automaticForwardPrediction} from './automatic-forward-model.mjs';
 import {specialistForwardPrediction} from './specialist-forward-models.mjs';
 import {recordForwardForecast,evaluateForwardForecast} from './forward-forecast-receipt.mjs';
-import {lightweightReadings} from './vnext-market-cards.mjs';
+import {lightweightDashboard} from './vnext-market-cards.mjs';
 
 /**
  * VNext main-scenario signal adapter. Computes only the selected motor;
@@ -34,16 +34,11 @@ export function singleEngineForecast({
      prediction:computed.prediction,createdAt:now}):
    {status:freshQuote?'historical-quote-delayed':'stale-live-quote',receipt:null};
  const receipt=report.receipt||null,side=receipt?.side||null;
- const cards=lightweightReadings({quoteHistory:quotes,receipt,now});
- // The binary direction indicated AT THE CURRENT QUOTE is separate from the
- // rolling future-price estimate. It is informational, not an evaluated
- // entry setup, a qualified win probability or permission to place orders.
- const nowIndication=receipt&&['CALL','PUT'].includes(side)?{
-   side,engineId:request.engineId,issuedAt:receipt.issuedAt,
-   referencePrice:receipt.referencePrice,projectedPrice:receipt.projectedPrice,
-   expirySeconds:Number(seconds||0),expiresAt:receipt.issuedAt+3000,
-   verified:false,actionable:false
- }:null;
+ // Market NOW remains a historical momentum display. Future projection
+ // is calculated separately by exactly the selected motor. No counterfeit
+ // instantaneous CALL/PUT created from the forecast.
+ const dashboard=lightweightDashboard({quoteHistory:quotes,receipt,now});
+ const cards=dashboard.cards,projection=dashboard.projection;
  const predictedPrice=receipt?.projectedPrice??null;
  const horizon=Number(seconds||0),durationMs=Math.round(horizon*1000);
  const plan=receipt?{
@@ -83,7 +78,7 @@ export function singleEngineForecast({
    expirySeconds:horizon,
    source:'user-selected-expiry',modelVersion:'vnext-single-owner-v1',
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
-   computedStatus:computed?.status||'unavailable',receipt,cards,nowIndication,
+   computedStatus:computed?.status||'unavailable',receipt,cards,projection,
    plan,operational,scenarioProjection,
    evaluation:evaluateForwardForecast,
    calibrationKey:request.calibrationKey,
