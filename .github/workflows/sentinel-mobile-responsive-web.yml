@@ -1,0 +1,35 @@
+name: Sentinel mobile-responsive web-only validation
+on:
+  push:
+    branches:
+      - sentinel-mobile-responsive-only-20261010
+    paths:
+      - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
+      - 'sentinel-trading-lab/src/app/globals.css'
+      - 'tests/sentinel-mobile-responsive-only.test.mjs'
+      - '.github/workflows/sentinel-mobile-responsive-web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinel-mobile-responsive-web
+  cancel-in-progress: true
+
+jobs:
+  test-web-no-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify responsive UI without changing Agent
+        run: |
+          node --test tests/sentinel-mobile-responsive-only.test.mjs tests/sentinel-opportunity-visual-only.test.mjs tests/sentinel-reversal-arbitration-mobile-price.test.mjs tests/sentinel-mobile-card.test.mjs
+      - name: Build complete Next.js site
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
