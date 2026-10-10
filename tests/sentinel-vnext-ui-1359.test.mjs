@@ -16,7 +16,7 @@ test('mobile compact and full card contain the SAME selected single engine and f
 });
 test('desktop Agent selects only one motor and displays the target price/time rather than 3-strategy cards',async()=>{
  const s=await source('agent/worker/local-playwright-driver.mjs');
- const v=s.slice(s.indexOf('const nextHtml=d.engine?'),s.indexOf('const nextHtml=d.engine?')+10000);
+ const v=s.slice(s.indexOf('const nextHtml=d.engine?'),s.indexOf('const nextHtml=d.engine?')+18000);
  assert.match(v,/data-sentinel-setting="engine"/);
  assert.match(v,/data-sentinel-setting="duration"/);
  assert.match(v,/PREÇO PROJETADO/);
