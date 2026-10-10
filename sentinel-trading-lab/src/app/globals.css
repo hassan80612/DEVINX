@@ -1310,3 +1310,22 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenarioCompact .vnextNowAdvisory{padding:8px;gap:4px}
 .liveScenarioCompact .vnextNowAdvisory strong{font-size:14px}
 @media(max-width:520px){.vnextNowAdvisory{padding:9px}.vnextNowAdvisory>div{gap:4px}}
+
+/* 13.4.60: a SINGLE mobile future-forecast hero replaces duplicate direction
+   and pseudo-"AGORA" panels; both compact and full keep existing live transport. */
+.vnextFutureReceipt.call{border-left:3px solid #5cbd99}
+.vnextFutureReceipt.put{border-left:3px solid #de8c9f}
+.vnextFutureDirection{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:3px 0}
+.vnextFutureDirection strong{font-size:clamp(18px,4.8vw,29px);line-height:1.2;letter-spacing:-.02em;color:#e7f9ed}
+.vnextFutureReceipt.call .vnextFutureDirection strong{color:#7ee1b7}
+.vnextFutureReceipt.put .vnextFutureDirection strong{color:#ffa0b3}
+.vnextFutureDirection span{font-size:11px;font-weight:800;color:#e4d3a2}
+.vnextProjectionBias{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:9px;background:#071d1b;border:1px solid #ffffff1b}
+.vnextProjectionBias span{font-size:11px;color:#c5ddcb;font-weight:700}
+.vnextProjectionBias span:first-child b{color:#75dfb9}
+.vnextProjectionBias span:last-child b{color:#ff9dad}
+.vnextProjectionBias b{font-size:14px;margin-left:4px}
+.liveScenarioCompact .vnextFutureDirection strong{font-size:19px}
+.liveScenarioCompact .vnextProjectionValues strong{font-size:15px}
+.liveScenarioCompact .vnextFutureReceipt{margin:7px 0}
+@media(max-width:420px){.vnextFutureReceipt{padding:10px}.vnextFutureDirection{flex-direction:column;align-items:flex-start}.vnextProjectionBias{padding:7px}}
