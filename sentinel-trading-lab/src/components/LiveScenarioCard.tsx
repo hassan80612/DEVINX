@@ -190,15 +190,15 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       'Rompimento do suporte anterior'} · Cotação {price(m.vnextNowObservation.price)} · {clock(m.vnextNowObservation.at)}</span>
   </div>:null;
   const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings">
-    <strong className="vnextReadingsHeading">Mercado Agora · Estrutura Anterior · Total dos Totais</strong>
+    <strong className="vnextReadingsHeading">Mercado Agora · Estrutura Anterior · Estrutura Anterior + Mercado Agora</strong>
     <div className="vnextMobileReadingsGrid">
       {(s?.lastResult?.analysis?.vnext?.cards||[]).slice(0,3).map((c:any,i:number)=>
-        <div key={c.id||i}><small>{['MERCADO AGORA','ESTRUTURA ANTERIOR','TOTAL DOS TOTAIS'][i]}</small>
+        <div key={c.id||i}><small>{['MERCADO AGORA','ESTRUTURA ANTERIOR','ESTRUTURA ANTERIOR + MERCADO AGORA'][i]}</small>
           <strong>{c.side||'AGUARDAR'}</strong>
           <span>CALL {c.callPct==null?'—':c.callPct+'%'} · PUT {c.putPct==null?'—':c.putPct+'%'}</span>
         </div>)}
     </div>
-    <small>Mercado Agora + Estrutura Anterior = Total dos Totais. O motor e os percentuais projetados aparecem apenas em Projeção Futura. Índices visuais, não taxas de acerto.</small>
+    <small>O terceiro card é a média de Estrutura Anterior + Mercado Agora. O motor e os percentuais projetados aparecem apenas em Projeção Futura. Índices visuais, não taxas de acerto.</small>
   </div>:null;
   const applyScenario=async()=>{
     const ok=await act('settings',{
