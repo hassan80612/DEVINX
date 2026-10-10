@@ -21,7 +21,7 @@ test('Agent independently pins display clock to original forecast without gating
  assert.match(s,/const model=singleEngineForecast\(\{settings,snap,now\}\)/);
  assert.match(s,/const previousAnchor=this\.vnextTargetAnchor\|\|null/);
  assert.match(s,/Number\(previousAnchor\.targetAt\)>now/);
- assert.match(s,/current\.side===previousAnchor\.side/);
+ assert.doesNotMatch(s,/current\.side===previousAnchor\.side/); // do not restart the clock when the live market direction flips
  assert.match(s,/vnext:\{\.\.\.model,evaluation:undefined,targetAnchor/);
  const bridge=await read('agent/worker/live-bridge.mjs');
  assert.match(bridge,/targetAnchor:vnext\.targetAnchor\?take/);
