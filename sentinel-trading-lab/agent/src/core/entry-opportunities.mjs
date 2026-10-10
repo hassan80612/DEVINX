@@ -134,10 +134,19 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const allowed=fresh&&short.ready===true&&flow&&structure&&room&&!adverse&&!exhausted&&(reversal||continuation)&&score>=minPoints&&timingValid&&(!reversalEvidence||reversalEvidence.allowed);
     const blockedBy=!fresh?'feed':short.ready!==true?'warmup':!flow?'flow':!structure?'structure':!room?'room':adverse?'opposite-reaction':exhausted?'exhaustion':!(reversal||continuation)?'setup':score<minPoints?'score':!timingValid?'quotes':reversalEvidence?.blockedBy??null;
     const reason={feed:'Cotação fora da leitura atual.',warmup:'Aguardando microestrutura.',flow:'Aguardando fluxo do ponto.',structure:'Aguardando estrutura do ponto.',room:'Preço sem espaço antes da barreira.', 'opposite-reaction':'Reação contrária no ponto.',exhaustion:'Movimento estendido no ponto.',setup:'Aguardando oportunidade estrutural.',score:'Força do ponto abaixo do filtro.',quotes:'Aguardando cotações independentes do ponto.','structure-history':'Reação curta sem estrutura anterior identificável.','structure-break':'Reação curta ainda não rompeu a estrutura anterior.','expiration-room':'Reversão sem espaço conhecido para o movimento da expiração.'}[blockedBy]||(mapped.mapped&&mapped.approaching&&!mapped.qualified?'Nível estrutural mapeado; aguardando a primeira reação confirmada.':'Oportunidade local confirmada.');
-    const plan={...forecast,entryForecastProbability:Number(call?forecast.callProbability:forecast.putProbability),rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:repeated?.maxDistance||maxDistance,sourceBarAt:sourceAt},safety:{blocked:false}};
+    // A technical setup score is a ranking, NOT an empirically validated
+    // probability of a win. Preserve the real forecast as a separate estimate.
+    const forecastCall=forecast.outlookReady===true&&forecast.callProbability!=null&&
+      Number.isFinite(Number(forecast.callProbability))
+      ? Math.max(5,Math.min(95,Number(forecast.callProbability))) : null;
+    const forecastSidePct=forecastCall==null?null:(call?forecastCall:100-forecastCall);
+    const plan={...forecast,technicalScore:score,entryForecastProbability:forecastSidePct,
+      probabilityValidated:false,probabilitySource:forecastCall==null?'unavailable':'unverified-forecast-estimate',rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:repeated?.maxDistance||maxDistance,sourceBarAt:sourceAt},safety:{blocked:false}};
     if(call){plan.callTrigger=trigger;plan.callInvalidation=invalidation;}else{plan.putTrigger=trigger;plan.putInvalidation=invalidation;}
-    // Percentages here are internal gating scores, not measured win probabilities.
-    plan.callProbability=call?score:100-score;plan.putProbability=100-plan.callProbability;
+    // Never turn an 85-point technical setup into a fictional "85% win"
+    // prediction. A missing forecast is neutral/unknown, not an invented edge.
+    plan.callProbability=forecastCall??50;
+    plan.putProbability=100-plan.callProbability;
     return{side,kind,score,allowed,flow,structure,room,fresh,blockedBy,reason,plan,reversalEvidence,level:mapped.mapped?mapped.level:null,approaching:mapped.approaching===true,structuralReaction:mapped.qualified,key:[side,kind,sourceAt,trigger].join('|')};
   });
 }
