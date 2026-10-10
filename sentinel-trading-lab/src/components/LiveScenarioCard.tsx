@@ -79,9 +79,15 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const mobileDirection=m.entrySide||null;
   const mobileScenarioDirection=!m.scenarioInactive&&m.side?m.side:null;
   const mobileArrow=(mobileDirection||mobileScenarioDirection)==='CALL'?'↑':(mobileDirection||mobileScenarioDirection)==='PUT'?'↓':'◇';
-  const mobileDecisionText=mobileDirection?'ENTRADA '+mobileDirection+' AGORA':mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection+' · AGUARDE ENTRADA':m.scenarioInactive?'ENCERRADO':'SEM ENTRADA AGORA';
-  const mobileDecisionLabel=mobileDirection?'GATILHO OPERACIONAL CONFIRMADO':mobileScenarioDirection?'PREVISÃO · NÃO É ORDEM DE ENTRADA':'ANÁLISE OPERACIONAL';
-  const mobileQuote=m.fresh?Number(s?.liveBroker?.quote??s?.feed?.price):null;
+  // Show a SHORT headline: the previous 36-character mobile headline
+  // overflowed the bordered card, including the word "ENTRADA".
+  const mobileDecisionText=mobileDirection?mobileDirection+' AGORA':mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection:m.scenarioInactive?'ENCERRADO':'AGUARDANDO';
+  const mobileDecisionLabel=mobileDirection?'ENTRADA CONFIRMADA':mobileScenarioDirection?'PREVISÃO · NÃO É ENTRADA':'SEM SINAL OPERACIONAL';
+  const mobileWatchTone=!mobileDirection&&m.fresh&&mobileScenarioDirection?
+    (mobileScenarioDirection==='CALL'?'watch-call':'watch-put'):'';
+  // A delayed quote can still be shown as historical information, never live.
+  const showLastQuote=m.online&&s?.liveBroker?.assetValidated===true&&m.quoteAge!==null&&m.quoteAge<=30;
+  const mobileQuote=showLastQuote?Number(s?.liveBroker?.quote??s?.feed?.price):null;
   const quoteValid=mobileQuote!==null&&Number.isFinite(mobileQuote)&&mobileQuote>0;
   const entryDelta=lastSignal&&quoteValid?mobileQuote!-lastSignal.price:null;
   const entryFavourable=entryDelta!==null&&lastSignal?
@@ -126,12 +132,12 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">← Início</button></header>
-    <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
+    <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
       <small>{mobileDecisionLabel}</small><strong><span aria-hidden="true">{mobileArrow}</span> {mobileDecisionText}</strong>
-      <span className="mobileScenarioContext">{mobileDirection?'Entrada confirmada pelo PC':mobileScenarioDirection?'Cenário '+mobileScenarioDirection+' · não é entrada':'Sem entrada confirmada'}</span>
-      <small className="mobileEntryWindow">{m.entrySide?'Janela da entrada: '+m.entryRemaining+'s':'Acompanhando o motor · nenhuma ordem liberada'}</small>
+      <span className="mobileScenarioContext">{mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?'Aguarde o gatilho · cenário não é ordem':'Nenhuma entrada confirmada'}</span>
+      <small className="mobileEntryWindow">{m.entrySide?'Entrada válida por '+m.entryRemaining+'s':m.fresh?'Acompanhando cotações · sem entrada agora':'Aguardando cotação e análise atuais'}</small>
     </div>
-    <div className="compactScenario"><div><small>CENÁRIO PRINCIPAL</small><strong>{m.scenarioLabel} · {m.state}</strong></div>{scenarioClock}</div>
+    <div className={`compactScenario ${m.fresh?m.scenarioTone:'neutral'}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{m.scenarioLabel} · {m.state}</strong></div>{scenarioClock}</div>
     {opportunityNotice}
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
@@ -141,14 +147,14 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       </div>
     </div>:<div className="mobileCurrentQuoteOnly" data-testid="mobile-current-quote">
       <div><small>COTAÇÃO AGORA</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
-      <span>{m.fresh?'Preço em tempo real':'Sem cotação atual'}</span>
+      <span>{m.quoteFresh?'Cotação recebida agora':showLastQuote?'Última cotação · '+seconds(m.quoteAge)+' atrás':'Sem cotação recente'}</span>
     </div>}
     <div className="mobileBotControls" data-testid="compact-bot-controls">
       <button type="button" disabled={disabled||m.running||s?.killSwitch||s?.masterFrozen||!!s?.startBlockedReason} onClick={start}>{s?.state==='paused'?'Retomar':'Iniciar'}</button>
       <button type="button" disabled={disabled||s?.state!=='running'} onClick={()=>act('control/pause')}>Pausar</button>
       <button type="button" disabled={disabled||s?.state==='stopped'} onClick={()=>act('control/stop')}>Parar</button>
     </div>
-    <div className="mobileMonitorState" role="status">{m.fresh?(pushed?'● AO VIVO · PUSH':'● COTAÇÃO ATUAL · '+seconds(m.quoteAge)+' atrás'):'SEM COTAÇÃO ATUAL · AGUARDE A ATUALIZAÇÃO'}</div>
+    <div className={`mobileMonitorState ${m.quoteFresh?'':'delayed'}`} role="status">{m.quoteFresh?(pushed?'● AO VIVO · PUSH':'● COTAÇÃO RECENTE · '+seconds(m.quoteAge)+' atrás'):m.quoteAge!==null?'COTAÇÃO ATRASADA · '+seconds(m.quoteAge)+' atrás · SEM ENTRADA AGORA':'SEM COTAÇÃO ATUAL · AGUARDE A ATUALIZAÇÃO'}</div>
     <div className="mobileReversalObservation" data-testid="mobile-reversal-observation">
       <span>REVERSÃO · OBSERVAÇÃO</span>
       <strong>{m.alert?'Possível virada de '+(m.alert.side==='CALL'?'alta':'baixa'):m.fresh?'Monitorando reação do preço':'Aguardando dados'}</strong>
