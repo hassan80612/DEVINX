@@ -14,6 +14,7 @@ import {EntryResearch} from './entry-research.mjs';
 import {entryOpportunities} from './entry-opportunities.mjs';
 import {assessIndependentSignalHistory,ENTRY_QUALITY_EPOCH} from './independent-signal-quality.mjs';
 import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
+import {STRATEGY_LABELS,strategySelectionGuidance} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -142,7 +143,7 @@ export class DemoTradingRuntime{
     return{callPct:Math.round(smoothCall),putPct:Math.round(smoothPut),side:stableSide,alpha,candidate,cycles:count}
   }
   _strategyPanel(snap,now=Date.now(),{candidateModel=false}={}){
-    const labels={smart_confluence:'Smart Confluence',price_action:'Price Action',trendline_breakout:'Trendline Breakout',support_resistance:'Suporte / Resistência',fibonacci_retest:'Fibonacci Retest',trend:'Trend Following',mean_reversion:'Mean Reversion',breakout:'Breakout'};
+    const labels=STRATEGY_LABELS;
     const ids=[String(this.settings.strategy||'smart_confluence'),String(this.settings.strategy2||'none'),String(this.settings.strategy3||'none')];
     const paused=this.settings.pausedReadings||{},durationKey=String(Math.max(30,Number(this.settings.forecastHorizonSeconds||Math.round(Math.max(30000,Number(this.settings.orderDurationMs||60000))/1000))));
     const clamp01=v=>Math.max(0,Math.min(1,Number(v)||0));
@@ -193,7 +194,8 @@ export class DemoTradingRuntime{
     const selected=horizons[durationKey]||horizons['60']||horizons['30']||{activeCount:0,callPct:null,putPct:null,edge:0,side:'AGUARDAR',agreement:0,evidence:0,confidence:0};
     const weighted=activeConfigured.filter(x=>Number(x.evidence||0)>0),callVotes=weighted.filter(x=>x.side==='CALL').length,putVotes=weighted.filter(x=>x.side==='PUT').length;
     const agreement=selected.activeCount===0?'SEM ESTRATÉGIAS':selected.activeCount===1?'1 ESTRATÉGIA PROJETANDO':selected.side==='AGUARDAR'?'DIVERGÊNCIA · '+callVotes+' CALL / '+putVotes+' PUT':Math.max(callVotes,putVotes)+'/'+Math.max(1,weighted.length)+' PROJETAM '+selected.side;
-    return{cards,confluence:{...selected,callVotes,putVotes,agreement,horizons,projectionHorizonSeconds:Number(durationKey)}};
+    const guidance=strategySelectionGuidance({ids,paused,cards});
+    return{cards,guidance,confluence:{...selected,callVotes,putVotes,agreement,horizons,projectionHorizonSeconds:Number(durationKey)}};
   }
 
   _mergeScenarioConfluence(analysis,strategyPanel,snap,now=Date.now()){
