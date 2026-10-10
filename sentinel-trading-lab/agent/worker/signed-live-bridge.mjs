@@ -35,11 +35,15 @@ export class SignedLiveBridge extends LiveBridge{
       snapshot?.liveBroker?.symbol,snapshot?.state,
       gc.rapid?.callPct,gc.strategies?.callPct,gc.displayCallPct,
       scenario.side,scenario.status,scenario.closed,scenario.deadline,
-      alert.side,alert.trigger,op.subanalyst?.status,op.state,op.side,
+      alert.side,alert.trigger,alert.testing,op.subanalyst?.status,
+      op.state,op.side,op.ready,op.actionable,op.activeUntil,
       snapshot?.killSwitch,snapshot?.masterFrozen
     ]);
-    if(signal===this.lastSignalKey&&this.clock()-this.lastSentAt<4000)return false;
-    const published=super.publish(snapshot);
+    const changed=signal!==this.lastSignalKey;
+    if(!changed&&this.clock()-this.lastSentAt<4000)return false;
+    // Never delay a fresh CALL/PUT, reversal test, cancellation or scenario
+    // review behind the four-second unchanged-quote optimization.
+    const published=super.publish(snapshot,{urgent:changed&&!!this.lastSignalKey});
     if(published)this.lastSignalKey=signal;
     return published;
   }
