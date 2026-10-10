@@ -10,7 +10,7 @@ test('mobile compact and full card contain the SAME selected single engine and f
  assert.ok((s.match(/\{forecastReceipt\}/g)||[]).length===2);
  assert.match(s,/Motor responsável pelo cenário/);
  assert.match(s,/Expiração escolhida para previsão/);
- assert.match(s,/PREÇO (PROJETADO|DA ÚLTIMA PROJEÇÃO)/);
+ assert.match(s,/PREÇO (PROJETADO|DA ÚLTIMA PROJEÇÃO|PREVISTO NO ALVO)/);
  assert.match(s,/(ALVO NO FUTURO|HORÁRIO DO ALVO FIXADO)/);
  assert.match(s,/!vnext&&<details className="liveSettings"/);
 });
