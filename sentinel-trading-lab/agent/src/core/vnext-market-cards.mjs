@@ -52,7 +52,7 @@ export function lightweightDashboard({quoteHistory=[],receipt=null,now=Date.now(
   const history=reading('prior-structure','TOTAL ESTRUTURA ANTERIOR',
     pressure(quoteBefore(rows,current.ts-60000),60),
     'Movimento anterior observado em 60 segundos');
-  const total=reading('total-of-totals','TOTAL DOS TOTAIS',
+  const total=reading('total-of-totals','ESTRUTURA ANTERIOR + MERCADO AGORA',
     market.callPct!==null&&history.callPct!==null?
       (market.callPct+history.callPct)/2:null,
     'Média das duas leituras anteriores');
