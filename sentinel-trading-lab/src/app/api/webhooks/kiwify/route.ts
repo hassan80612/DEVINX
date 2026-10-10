@@ -14,7 +14,7 @@ function safeSignature(signature:string,expected:string){
   const a=Buffer.from(signature,'hex'),b=Buffer.from(expected,'hex');
   return a.length===b.length&&timingSafeEqual(a,b);
 }
-export function verifyKiwifySignature(raw:string,signature:string,secret:string){
+function verifyKiwifySignature(raw:string,signature:string,secret:string){
   if(!secret||!signature)return false;
   const rawHmac=createHmac('sha1',secret).update(raw).digest('hex');
   if(safeSignature(signature,rawHmac))return true;
