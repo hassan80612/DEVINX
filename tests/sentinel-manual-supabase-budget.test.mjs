@@ -76,8 +76,10 @@ test('selected-asset tracking and passive quotes survive without broker-page aut
   assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
   assert.match(worker,/driver\.shutdown\?\.\(\)/);
   assert.match(manager,/for\(let i=0;i<100;i\+\+\)/);
-  assert.match(installer,/13\.4\.49-independent-1010/);
-  assert.doesNotMatch(installer,/13\.4\.39-broker-passive-1009/);
+  // Installer identity must follow the EXE's embedded release, never an old hardcoded build.
+  assert.match(installer,/\$agentRelease\.version -ne \$expectedVersion/);
+  assert.match(installer,/\$agentRelease\.build -ne \$expectedBuild/);
+  assert.doesNotMatch(installer,/13\.4\.49-independent-1010/);
 });
 
 test('broker account validation never masks a valid market analysis in the floating card',()=>{
