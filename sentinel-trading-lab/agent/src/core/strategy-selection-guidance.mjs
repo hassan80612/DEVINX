@@ -15,6 +15,9 @@ export const STRATEGY_FAMILIES=Object.freeze({
 const name=id=>STRATEGY_LABELS[id]||String(id);
 const validSide=s=>['CALL','PUT'].includes(String(s||'').toUpperCase())?String(s).toUpperCase():null;
 
+/**
+ * @param {{ids?:string[],paused?:Record<string,boolean>,cards?:Array<{slot?:number,side?:string,evidence?:number,paused?:boolean}>}} [options]
+ */
 export function strategySelectionGuidance({ids=[],paused={},cards=[]}={}){
   const selected=ids.map((id,i)=>({id:String(id||'none'),slot:i+1}))
     .filter(x=>x.id!=='none'&&STRATEGY_LABELS[x.id]&&paused['strategy_'+x.slot]!==true);
