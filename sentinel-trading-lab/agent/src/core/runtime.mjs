@@ -12,7 +12,7 @@ import {analyzeMarket,analyzePrediction} from './strategy.mjs';
 import {ForecastResearch} from './forecast-research.mjs';
 import {EntryResearch} from './entry-research.mjs';
 import {entryOpportunities} from './entry-opportunities.mjs';
-import {reconcileEntryWithConfirmedReversal} from './reversal-entry-arbitration.mjs';
+import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -481,8 +481,13 @@ export class DemoTradingRuntime{
       entryAt:previousEntry.firedAt||null,entryPrice:previousEntry.firedAt?previousEntry.entryPrice??null:null,trigger:previousEntry.trigger,invalidation:previousEntry.invalidation,
       reason:'Esta oportunidade terminou; aguardando outro ponto estrutural confirmado.'});
     const entryPoints=Math.max(minPoints,threshold);
-    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,entryPolicy:this.entryPolicy})
-      .map(candidate=>reconcileEntryWithConfirmedReversal(candidate,reversalAlert,snap,now));
+    // The main analyst does not defer to the independent reversal monitor.
+    // The selected strategies participate in ranking local opportunities;
+    // all directions still originate in actual price/structure, not a vote.
+    const candidates=rankByChosenStrategies(
+      entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,entryPolicy:this.entryPolicy}),
+      analysis.strategyConfluence,durationMs/1000
+    );
     if(verifiedPredictionUnavailable(analysis,this.predictionModel))for(const c of candidates){c.allowed=false;c.blockedBy='prediction-history';c.reason='Renovando o histórico do período da previsão.';}
     this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction,reversalEvidence})=>({side,kind,score,allowed,blockedBy,reversalEvidence,
       reason:blockedBy==='score'?'Pontuação técnica '+score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':reason,
@@ -490,27 +495,24 @@ export class DemoTradingRuntime{
     const baselineCandidates=candidates.filter(x=>x.allowed);
     for(const c of baselineCandidates)this.pathResearch.observe({evidence:path,provider,asset,
       durationMs,price:snap.price,quoteTs:snap.quoteTs,now,candidateSide:c.side});
-    const guardEnabled=this.settings.pathGuardMode==='enforce';
-    // The guard can only delay an exhausted same-side entry. It cannot
-    // authorize a countertrend entry or rewrite the main scenario's direction.
-    const candidate=baselineCandidates.filter(c=>!guardEnabled||path.guardedSide!==c.side)
-      .sort((a,b)=>b.score-a.score)[0];
+    // Path remains contextual evidence, not an additional veto after a
+    // local price/structure entry has independently qualified.
+    const candidate=baselineCandidates
+      .sort((a,b)=>b.rankingScore-a.rankingScore||b.score-a.score)[0];
     if(!candidate){
       if(entryEnded)return terminalEntry();
       if(main.closed)return decorate({...empty,side:this.operationalSetup?.side||main.side,state:main.status,createdAt:main.createdAt,targetAt:main.deadline,reason:main.reason});
       const relevant=candidates.slice().sort((a,b)=>b.score-a.score)[0];
-      if(guardEnabled&&baselineCandidates.some(c=>c.side===path.guardedSide)){
-        this.entryQualification={allowed:false,blockedBy:'path-rejection',requiredScore:entryPoints,
-          reason:'Retração estrutural detectada: evitar seguir a vela já rejeitada.'};
-        return decorate({...empty,side:main.side,createdAt:main.createdAt,
-          targetAt:main.deadline,state:'OBSERVANDO ENTRADA',reason:this.entryQualification.reason});
-      }
       this.entryQualification={allowed:false,flow:relevant.flow,structure:relevant.structure,fresh:relevant.fresh,blockedBy:relevant.blockedBy,
         technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,
         reason:relevant.blockedBy==='score'?'Pontuação técnica '+relevant.score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':relevant.reason};
       return decorate({...empty,side:this.operationalSetup?.side||main.side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',reason:this.entryQualification.reason});
     }
     const {side,kind,plan:localPlan}=candidate,call=side==='CALL';
+    // This is ranking evidence only; never overwrite the displayed technical
+    // confidence or claim the chosen strategies agree when they do not.
+    localPlan.chosenStrategyBias=candidate.chosenStrategyBias;
+    localPlan.chosenStrategySupport=candidate.strategyEvidence;
     const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
     const prediction=this.entryResearch.predict(researchContext,features,Number.isFinite(baseline)?baseline:.5);
     const learnedWeak=prediction.qualified&&prediction.probability<10/12;
