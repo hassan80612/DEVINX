@@ -1,6 +1,6 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {NextRequest,NextResponse} from 'next/server';
-import {SUPABASE_URL} from '../../../../lib/supabase-config';
+import {SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY} from '../../../../lib/supabase-config';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -44,8 +44,8 @@ function toApprovedDate(value:any):string|null{
 }
 export async function POST(req:NextRequest){
   const secret=process.env.SENTINEL_KIWIFY_WEBHOOK_SECRET||'';
-  const adminKey=process.env.SENTINEL_SUPABASE_SERVICE_ROLE_KEY||'';
-  if(!secret||!adminKey)return reply({ok:false,error:'webhook_not_configured'},503);
+  const internalToken=process.env.SENTINEL_KIWIFY_DATABASE_TOKEN||'';
+  if(!secret||!internalToken)return reply({ok:false,error:'webhook_not_configured'},503);
   const declared=Number(req.headers.get('content-length')||0);
   if(declared>MAX_BYTES)return reply({ok:false,error:'payload_too_large'},413);
   const raw=await req.text();
@@ -65,11 +65,11 @@ export async function POST(req:NextRequest){
   const body={
     p_order_id:orderId,p_product_id:productId,p_email:email,
     p_kind:kind,p_paid_at:kind==='paid'?date:null,
-    p_event_at:new Date().toISOString()
+    p_event_at:new Date().toISOString(),p_internal_token:internalToken
   };
   try{
-    const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/sentinel_kiwify_apply_prepaid',{
-      method:'POST',headers:{'content-type':'application/json',apikey:adminKey,authorization:'Bearer '+adminKey},
+    const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/sentinel_kiwify_paid_verified',{
+      method:'POST',headers:{'content-type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY},
       body:JSON.stringify(body),cache:'no-store',signal:AbortSignal.timeout(12000)
     });
     const result=await r.json().catch(()=>({ok:false}));
