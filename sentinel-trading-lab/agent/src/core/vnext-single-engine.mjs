@@ -2,6 +2,7 @@ import {selectedEngineForecastRequest} from './scenario-engine-catalog.mjs';
 import {automaticForwardPrediction} from './automatic-forward-model.mjs';
 import {specialistForwardPrediction} from './specialist-forward-models.mjs';
 import {recordForwardForecast,evaluateForwardForecast} from './forward-forecast-receipt.mjs';
+import {lightweightReadings} from './vnext-market-cards.mjs';
 
 /**
  * VNext main-scenario signal adapter. Computes only the selected motor;
@@ -33,6 +34,7 @@ export function singleEngineForecast({
      prediction:computed.prediction,createdAt:now}):
    {status:freshQuote?'historical-quote-delayed':'stale-live-quote',receipt:null};
  const receipt=report.receipt||null,side=receipt?.side||null;
+ const cards=lightweightReadings({quoteHistory:quotes,receipt,now});
  const predictedPrice=receipt?.projectedPrice??null;
  const horizon=Number(seconds||0),durationMs=Math.round(horizon*1000);
  const plan=receipt?{
@@ -72,7 +74,7 @@ export function singleEngineForecast({
    expirySeconds:horizon,
    source:'user-selected-expiry',modelVersion:'vnext-single-owner-v1',
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
-   computedStatus:computed?.status||'unavailable',receipt,
+   computedStatus:computed?.status||'unavailable',receipt,cards,
    plan,operational,scenarioProjection,
    evaluation:evaluateForwardForecast,
    calibrationKey:request.calibrationKey,
