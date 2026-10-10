@@ -141,8 +141,10 @@ function smartConfluence(rows,s,h){
  return result(s,h,move,'Smart Confluence: evidências próprias de estrutura, regime e média',{drift,reversion});
 }
 export const SPECIALIST_FORECASTS=Object.freeze({
- trend,mean_reversion,price_action,support_resistance,
- breakout,trendline_breakout,fibonacci_retest,smart_confluence
+ trend,mean_reversion:meanReversion,price_action:priceAction,
+ support_resistance:supportResistance,breakout,
+ trendline_breakout:trendlineBreakout,fibonacci_retest:fibonacciRetest,
+ smart_confluence:smartConfluence
 });
 export function specialistForwardPrediction({engineId,quoteHistory=[],asOf=Date.now(),selectedSeconds=60}={}){
  const h=val(selectedSeconds),t=val(asOf),fn=SPECIALIST_FORECASTS[String(engineId||'')];
