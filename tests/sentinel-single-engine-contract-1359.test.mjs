@@ -30,7 +30,7 @@ test('all current strategies remain available as selectable independent engines'
  'trendline_breakout','fibonacci_retest','smart_confluence']);
 });
 
-test('every selected motor projects the user/broker expiration, never stale 1m forecast',()=>{
+test('every selected motor projects the chosen expiration, never stale 1m forecast',()=>{
  const now=1800000000000;
  for(const e of SCENARIO_ENGINES){
    const q=selectedEngineForecastRequest({
@@ -40,16 +40,17 @@ test('every selected motor projects the user/broker expiration, never stale 1m f
    assert.equal(q.engineId,e.id);
    assert.equal(q.forecastHorizonSeconds,5);
    assert.equal(q.actionable,false);
-   assert.match(q.calibrationKey,/vnext-expiry-driven/);
+   assert.match(q.calibrationKey,/vnext-user-expiry-v1/);
  }
 });
-test('broker-confirmed expiry redefines selected-engine horizon without mixing models',()=>{
+test('broker observation cannot override the selected motor forecast horizon',()=>{
  const q=selectedEngineForecastRequest({
   settings:{engine:'mean_reversion',orderDurationMs:60000,forecastHorizonSeconds:900},
   broker:{instrument:'blitz',expirationVerified:true,expirationDurationMs:15000},
   provider:'iq_option',asset:'EUR/USD OTC',now:1800000000000
  });
  assert.equal(q.engineId,'mean_reversion');
- assert.equal(q.forecastHorizonSeconds,15);
+ assert.equal(q.forecastHorizonSeconds,60);
+ assert.equal(q.forecastExpiresAt,1800000000000+60000);
  assert.equal(q.expiry.durationMismatch,true);
 });
