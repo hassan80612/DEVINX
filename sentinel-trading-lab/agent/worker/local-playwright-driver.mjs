@@ -648,7 +648,7 @@ export class LocalPlaywrightDriver{
   async requestBaseData(provider){const st=this.state(provider),rid=reqId(provider);const requests=[
     {name:'sendMessage',msg:{name:'get-balances',version:'1.0'},request_id:`${rid}-bal`},
     {name:'sendMessage',msg:{name:'get-initialization-data',version:'3.0',body:{}},request_id:`${rid}-init`}
-  ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();if(ok)st.protocol='active-websocket';return ok}
+  ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();st.lastBaseRequestAt=st.lastRequestAt;if(ok)st.protocol='active-websocket';return ok}
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
     const targetId=activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
@@ -880,7 +880,11 @@ export class LocalPlaywrightDriver{
       st.lastFullDomAt=now;
       await this.domSnapshot(provider).catch(()=>{});
     }
-    if(!st.lastRequestAt||now-st.lastRequestAt>9000||st.balance==null)await this.requestBaseData(provider).catch(()=>{});
+    // Missing balance must not trigger repeated broker base requests on every
+    // maintenance cycle (2.5s). A regular bounded retry is sufficient;
+    // explicit user refresh requests are still immediate.
+    const baseRetryMs=st.balance==null?15000:30000;
+    if(!st.lastBaseRequestAt||now-st.lastBaseRequestAt>=baseRetryMs)await this.requestBaseData(provider).catch(()=>{});
     const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     if(st.candles.length&&(!integrity.ok||st.candleActiveId==null||st.activeId==null||Number(st.candleActiveId)!==Number(st.activeId))){
       st.lastIntegrityError={...integrity,reason:integrity.ok?'active_id_do_historico_divergente':integrity.reason,at:Date.now(),activeId:st.activeId,candleActiveId:st.candleActiveId,symbol:st.symbol};
