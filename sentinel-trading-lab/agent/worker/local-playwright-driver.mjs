@@ -1263,14 +1263,24 @@ export class LocalPlaywrightDriver{
         const currentAnalysisReason=String(operational?.reason||'Aguardando confirmação do cenário e do prazo da operação.');
         const futureDecisionConfidence=advisoryMode&&operational.scenario?Number(operational.scenario.confidence||0):futureConfidence;
         const measuredHistory=operational?.entryAnalyst?.research||{},measuredSamples=Math.max(0,Number(measuredHistory.samples||0));
-        const measuredHistoryLabel=advisoryMode?'Aviso de reversão':measuredSamples?('Entradas liberadas neste contexto: '+n(measuredHistory.winRate,1)+'% · '+measuredSamples+' resultados · '+(measuredHistory.qualified?'modelo qualificado':'em validação')):'Entradas deste contexto: ainda sem resultados medidos';
+        const forwardQuality=operational?.entryAnalyst?.qualification?.historicalQuality||null;
+        const forwardSamples=Number(forwardQuality?.samples||0);
+        // Never advertise a 1/1 outcome as a proven 100%-accurate prediction.
+        // Live quote-settled signals are shadow observations, not broker trades.
+        const measuredHistoryLabel=advisoryMode?'Aviso de reversão':forwardQuality?.blocked===true?
+          'SINAL BLOQUEADO · amostra futura abaixo do equilíbrio: '+n(Number(forwardQuality.winRate||0)*100,1)+'% em '+forwardSamples+' resultados':
+          forwardSamples>=Number(forwardQuality?.minSamples||60)?
+          'Histórico simulado do lado/prazo: '+n(Number(forwardQuality.winRate||0)*100,1)+'% · '+forwardSamples+' observações · não é taxa garantida':
+          forwardSamples>0?'Histórico do lado/prazo em coleta · '+forwardSamples+'/'+Number(forwardQuality?.minSamples||60)+' amostras':
+          measuredSamples>0?'Modelo em validação · '+measuredSamples+' resultados, sem taxa comprovada':
+          'Sem histórico suficiente para comprovar a assertividade';
         const displayedCallTrigger=operationalHeroSide==='CALL'&&operational?.trigger!=null?operational.trigger:plannerPlan?.callTrigger,displayedPutTrigger=operationalHeroSide==='PUT'&&operational?.trigger!=null?operational.trigger:plannerPlan?.putTrigger;
         const displayedCallInvalidation=operationalHeroSide==='CALL'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.callInvalidation,displayedPutInvalidation=operationalHeroSide==='PUT'&&operational?.invalidation!=null?operational.invalidation:plannerPlan?.putInvalidation;
         const planHtml=subanalystHtml+(plannerReadable?(
           '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:5px">'+
             '<div style="padding:5px;border-radius:8px;background:rgba(201,166,91,.06);border:1px solid '+panelBorder+';text-align:center"><span style="display:block;font-size:9.5px;color:'+subtle+';font-weight:700">'+(advisoryMode?'LEITURA ATUAL':'CONFIANÇA DO MODELO')+'</span><b style="font-size:15px;color:'+goldSoft+'">'+n(futureConfidence,0)+' pts</b></div>'+
-            '<div style="padding:5px;border-radius:8px;background:rgba(114,230,185,.05);border:1px solid rgba(105,225,181,.11);text-align:center"><span style="display:block;font-size:9.5px;color:'+callTone+';font-weight:700">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(futureCallPct,0)+'%</b></div>'+
-            '<div style="padding:5px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,156,.11);text-align:center"><span style="display:block;font-size:9.5px;color:'+putTone+';font-weight:700">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(futurePutPct,0)+'%</b></div>'+
+            '<div style="padding:5px;border-radius:8px;background:rgba(114,230,185,.05);border:1px solid rgba(105,225,181,.11);text-align:center"><span style="display:block;font-size:9.5px;color:'+callTone+';font-weight:700" title="Projeção heurística; não é taxa de acerto medida">CALL</span><b style="font-size:15px;color:'+callTone+'">'+n(futureCallPct,0)+'%</b></div>'+
+            '<div style="padding:5px;border-radius:8px;background:rgba(255,143,157,.05);border:1px solid rgba(255,143,156,.11);text-align:center"><span style="display:block;font-size:9.5px;color:'+putTone+';font-weight:700" title="Projeção heurística; não é taxa de acerto medida">PUT</span><b style="font-size:15px;color:'+putTone+'">'+n(futurePutPct,0)+'%</b></div>'+
           '</div>'+
           '<div style="font-size:11px;color:'+muted+';margin-bottom:5px;line-height:1.38;height:31px;min-height:31px;max-height:31px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">Agora <b style="color:'+ink+'">'+price(plannerPlan.currentPrice)+'</b>'+(futureProjectedPrice!=null?' · projeção <b style="color:'+outlookTone+'">'+price(futureProjectedPrice)+'</b>':'')+' · acordo '+n(futureAgreement,0)+'% · '+esc(futureRegime)+'</div>'+
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+
