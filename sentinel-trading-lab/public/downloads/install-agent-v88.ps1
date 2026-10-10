@@ -1,4 +1,9 @@
-param([string]$LocalPayload='')
+param(
+  [string]$LocalPayload='',
+  [string]$ExpectedVersion='',
+  [string]$ExpectedBuild='',
+  [switch]$VerifyPayloadOnly
+)
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 $site = 'https://sentinel-trading-lab.vercel.app'
@@ -18,11 +23,26 @@ try {
   if (-not $locked) { throw 'Outra instalacao do Sentinel esta em andamento. Aguarde ela terminar.' }
   New-Item -ItemType Directory -Force -Path $stage | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.49-independent-1010" -OutFile $payloadZip }
+  else {
+    $cacheTag = if ($ExpectedBuild) { $ExpectedBuild } else { [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds().ToString() }
+    Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=$([Uri]::EscapeDataString($cacheTag))" -OutFile $payloadZip
+  }
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
   $manifest = Get-Content (Join-Path $payloadTmp 'package.json') -Raw | ConvertFrom-Json
   $agentRelease = Get-Content (Join-Path $payloadTmp 'release.json') -Raw | ConvertFrom-Json
-  if ($manifest.version -ne $agentRelease.version -or $agentRelease.version -ne '13.4.49' -or $agentRelease.build -ne '13.4.49-independent-1010') { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.49.' }
+  # The EXE embeds the build identity together with the ZIP. Never hardcode
+  # a release number in this installer: the two must be verified as a pair.
+  $expectedVersion = if ($ExpectedVersion) { $ExpectedVersion } else { [string]$agentRelease.version }
+  $expectedBuild = if ($ExpectedBuild) { $ExpectedBuild } else { [string]$agentRelease.build }
+  if ([string]::IsNullOrWhiteSpace($expectedVersion) -or [string]::IsNullOrWhiteSpace($expectedBuild) -or
+      $manifest.version -ne $agentRelease.version -or
+      $agentRelease.version -ne $expectedVersion -or $agentRelease.build -ne $expectedBuild) {
+    throw "Pacote do Agent nao corresponde a esta instalacao $expectedVersion."
+  }
+  if ($VerifyPayloadOnly) {
+    Write-Host "PACOTE VALIDADO: $expectedVersion / $expectedBuild" -ForegroundColor Green
+    exit 0
+  }
   try { Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 3 | Out-Null } catch {}
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
   Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
@@ -53,7 +73,7 @@ try {
     }
   }
   Write-Host '========================================' -ForegroundColor DarkCyan
-  Write-Host '       SENTINEL WINDOWS AGENT V13.4.49' -ForegroundColor White
+  Write-Host "       SENTINEL WINDOWS AGENT V$expectedVersion" -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
   Write-Host '========================================' -ForegroundColor DarkCyan
 
@@ -141,11 +161,11 @@ try {
   for ($i=0; $i -lt 120; $i++) {
     try {
       $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.49' -and $h.build -eq '13.4.49-independent-1010') { $ready = $true; break }
+      if ($h.ok -and $h.workerHealthy -and $h.version -eq $expectedVersion -and $h.build -eq $expectedBuild) { $ready = $true; break }
     } catch {}
     Start-Sleep -Milliseconds 500
   }
-  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Consulte install.log e worker\data\manager.log; execute novamente o Agent V13.4.49.' }
+  if (-not $ready) { throw "Agent abriu, mas o Worker nao respondeu. Consulte install.log e worker\data\manager.log; execute novamente o Agent V$expectedVersion." }
 
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     $trayReady = $false
@@ -159,7 +179,7 @@ try {
     }
     if (-not $trayReady) { throw 'Agent ativo, mas a bandeja nao iniciou. Consulte worker\data\tray.log.' }
   }
-  Write-Host "`nAgent V13.4.49 pronto." -ForegroundColor Green
+  Write-Host "`nAgent V$expectedVersion pronto." -ForegroundColor Green
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan
