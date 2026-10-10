@@ -104,7 +104,7 @@ export default function Page(){
       try{
         const data=normalizeStatus(await cloudFetch('status'));
         remotePolledAt.current=Date.now();
-        setS(previous=>{
+        setS((previous:Status|null)=>{
           // Late cloud snapshots must never rewind the faster live quote or
           // overwrite its signal with an older evaluation.
           if(previous?.liveStreamAt&&Date.now()-Number(previous.liveStreamAt)<5000&&
@@ -129,7 +129,7 @@ export default function Page(){
     if(!/^realtime:sentinel-[0-9a-f]{48}$/.test(topic))return;
     return watchLiveAnalyst(topic,payload=>{
       liveFrameAt.current=Date.now();
-      setS(previous=>{
+      setS((previous:Status|null)=>{
         if(!previous||String(previous.liveTopic||'')!==topic)return previous;
         // Ignore out-of-order events across remote status snapshots.
         const prevPriceAt=Number(previous.liveBroker?.lastQuoteAt||0);
