@@ -1485,44 +1485,15 @@ export class LocalPlaywrightDriver{
         const stableScrollTop=el.scrollTop;
         const stableRect=el.getBoundingClientRect();
         const stableLeft=el.style.left,stableTop=el.style.top,stableRight=el.style.right;
-        // Pin one real forecast receipt through its original outcome instant.
-        // Updating a rolling 30s model must NOT restart its 30s clock.
-        const incoming=d.vnext?.receipt;
-        const forecastPinKey=[d.engine||'',visibleAsset||'',duration].join('|');
-        const clockNow=Date.now();
-        const validIncoming=!!(d.engine&&liveNow&&incoming&&
-          incoming.engineId===d.engine&&Number(incoming.issuedAt)>0&&
-          Number(incoming.issuedAt)<=clockNow+2500&&Number(incoming.targetAt)>clockNow&&
-          Number(incoming.targetAt)-Number(incoming.issuedAt)===duration);
-        let remembered=el.__sentinelForecastAnchor;
-        if(!d.engine){el.__sentinelForecastAnchor=null;remembered=null}
-        else if(validIncoming&&(!remembered||remembered.key!==forecastPinKey||
-          Number(remembered.receipt?.targetAt)<=clockNow)){
-          remembered={key:forecastPinKey,receipt:{...incoming},
-            projection:d.vnext?.projection?{...d.vnext.projection}:null};
-          el.__sentinelForecastAnchor=remembered;
-        }
-        const validPinned=remembered?.key===forecastPinKey&&
-          Number(remembered.receipt?.targetAt)>clockNow;
-        const pinnedReceipt=validPinned?remembered.receipt:null;
-        const pinnedProjection=validPinned?remembered.projection:null;
-        const secsLeft=pinnedReceipt?Math.max(0,Math.ceil((Number(pinnedReceipt.targetAt)-clockNow)/1000)):null;
-        const pinClock=secsLeft===null?'--:--':
-          String(Math.floor(secsLeft/60)).padStart(2,'0')+':'+
-          String(secsLeft%60).padStart(2,'0');
-        // Minimal timer: update only one text node; never rerun a strategy,
-        // broadcast, query the broker, or reset the projected future time.
-        if(!el.__sentinelForecastClockTimer){
-          el.__sentinelForecastClockTimer=setInterval(()=>{
-            if(!el.isConnected){clearInterval(el.__sentinelForecastClockTimer);el.__sentinelForecastClockTimer=null;return}
-            const timer=el.querySelector('[data-sentinel-forecast-countdown]');
-            if(!timer)return;
-            const current=el.__sentinelForecastAnchor;
-            const left=current?.receipt?.targetAt?Math.max(0,Math.ceil((Number(current.receipt.targetAt)-Date.now())/1000)):null;
-            timer.textContent=left===null?'--:--':
-              String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
-          },500);
-        }
+        // Shared single-source prediction is pinned by the Agent itself.
+        // The PC and mobile receive the SAME issuedAt/targetAt and price.
+        // Live changes of direction never restart its original countdown.
+        const anchored=d.vnext?.targetAnchor||null;
+        const pinnedReceipt=anchored&&anchored.engineId===d.engine&&
+          anchored.asset===visibleAsset&&
+          Number(anchored.expirySeconds)*1000===duration&&
+          Number(anchored.targetAt)>Date.now()?anchored:null;
+        const pinnedProjection=pinnedReceipt?d.vnext?.targetProjection||null:null;
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -1560,26 +1531,17 @@ export class LocalPlaywrightDriver{
                 <div><small style="display:block;font-size:9px;font-weight:850;color:${goldSoft};letter-spacing:.045em">CONTAGEM ATÉ O ALVO</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:clamp(23px,3vw,35px);font-weight:950;letter-spacing:.05em;font-variant-numeric:tabular-nums;color:${goldSoft};margin-top:4px">—:—</strong></div>
                 <div style="display:grid;gap:4px"><small style="font-size:9px;font-weight:800;color:${muted}">HORÁRIO EXATO DA PREVISÃO</small><b style="font-size:19px;font-variant-numeric:tabular-nums;color:${ink}">${pinnedReceipt?esc(new Date(Number(pinnedReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:10px;color:${muted}">Expiração escolhida: ${duration<60000?duration/1000+'s':duration/60000+'min'}</small></div>
               </div>
-              <div data-sentinel-future-target style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:7px 0;padding:9px 11px;border:1px solid ${panelBorder};border-radius:10px;background:${fieldBg}">
-                <strong style="font-size:14px;color:${goldSoft}">${pinnedReceipt?'PARA '+esc(new Date(Number(pinnedReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'SEM HORÁRIO-ALVO'}</strong>
-                <span style="font-size:11px;font-weight:850;color:${ink}">${pinnedReceipt?'Projeção de '+(duration<60000?duration/1000+' segundos':duration/60000+' minutos'):'Aguardando dados'}</span>
-                <small style="font-size:10px;color:${muted}">${pinnedReceipt?'Calculada às '+esc(new Date(Number(pinnedReceipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false})):'Sem previsão válida'}</small>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:11px;padding:11px 13px;margin:9px 0;border-radius:11px;border:1px solid ${panelBorder};background:${panelBg}">
-                <div style="display:grid;gap:4px"><small style="font-size:10px;letter-spacing:.08em;color:${goldSoft};font-weight:800">FALTA PARA O MOVIMENTO PREVISTO</small><strong data-sentinel-forecast-countdown style="font-size:clamp(23px,3.7vw,36px);font-variant-numeric:tabular-nums;line-height:1.05;color:${ink}">${pinClock}</strong></div>
-                <div style="display:grid;gap:4px;text-align:right"><small style="font-size:10px;color:${muted}">HORÁRIO-ALVO</small><strong style="font-size:15px;font-variant-numeric:tabular-nums;color:${goldSoft}">${pinnedReceipt?esc(new Date(Number(pinnedReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</strong></div>
-              </div>
               <div style="display:flex;gap:12px;align-items:center;margin-top:7px;font-size:11px;font-weight:850">
                 <span style="color:${callTone}">CALL projetado: ${pinnedProjection&&Number.isFinite(Number(pinnedProjection.callPct))&&pinnedReceipt?.engineId===d.engine?Math.round(Number(pinnedProjection.callPct))+'%':'—'}</span>
                 <span style="color:${putTone}">PUT projetado: ${pinnedProjection&&Number.isFinite(Number(pinnedProjection.putPct))&&pinnedReceipt?.engineId===d.engine?Math.round(Number(pinnedProjection.putPct))+'%':'—'}</span>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:13px">
-                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO ATUAL</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${price(pinnedReceipt?.referencePrice??d.price)}</b></div>
+                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO AGORA</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${price(d.price)}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO PROJETADO</small><b style="display:block;margin-top:4px;font-size:16px;color:${goldSoft}">${price(pinnedReceipt?.projectedPrice)}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PRAZO</small><b style="display:block;margin-top:4px;font-size:14px;color:${ink}">${duration<60000?duration/1000+' s':duration/60000+' min'}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">ATUALIZAÇÃO</small><b style="display:block;margin-top:4px;font-size:13px;color:${ink}">${liveNow?'AO VIVO':Number.isFinite(liveAge)?(liveAge/1000).toFixed(1)+' s atrás':'SEM COTAÇÃO'}</b></div>
               </div>
-              <div style="font-size:10px;color:${muted};line-height:1.45;margin-top:10px">Faixa futura: ${price(pinnedReceipt?.expectedLow)} até ${price(pinnedReceipt?.expectedHigh)} · Cálculo: ${d.vnext?.receipt&&d.vnext?.engineId===d.engine?esc(new Date(pinnedReceipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'} · ${n(d.vnext?.outcomesVerified,0)} resultados observados neste prazo.</div>
+              <div style="font-size:10px;color:${muted};line-height:1.45;margin-top:10px">Faixa futura: ${price(pinnedReceipt?.expectedLow)} até ${price(pinnedReceipt?.expectedHigh)} · Cálculo: ${pinnedReceipt&&d.vnext?.engineId===d.engine?esc(new Date(pinnedReceipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'} · ${n(d.vnext?.outcomesVerified,0)} resultados observados neste prazo.</div>
               <div style="padding-top:8px;margin-top:9px;border-top:1px solid ${panelBorder};font-size:10px;color:${goldSoft};font-weight:750">PREVISÃO EXPERIMENTAL · NÃO É CALL/PUT AGORA · nenhuma ordem automática</div>
             </section>
 
