@@ -62,9 +62,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   },[incoming?.asset,incoming?.side,incoming?.price,incoming?.at]);
   const lastSignal=recordedSignal?.asset===m.asset?recordedSignal:null;
   const liveDirection=m.entrySide||(!m.scenarioInactive?m.side:null);
-  const decisionLabel=m.entrySide?'ENTRADA AGORA':liveDirection?'CENÁRIO PRINCIPAL':'AGUARDANDO OPORTUNIDADE';
+  const decisionLabel=m.entrySide?'ENTRADA AGORA':liveDirection?'CENÁRIO PRINCIPAL':m.scenarioInactive?'CENÁRIO FINALIZADO':'ANÁLISE OPERACIONAL';
   const decisionArrow=liveDirection==='CALL'?'↑':liveDirection==='PUT'?'↓':'◇';
-  const decisionText=liveDirection||'SEM ENTRADA';
+  const decisionText=liveDirection||(m.scenarioInactive?'ENCERRADO':'AGUARDANDO');
   // Large green/red is reserved for an actionable entry, not a forecast.
   const directionClass=m.entrySide==='CALL'?'call':m.entrySide==='PUT'?'put':'neutral';
   const reversalArrow=m.alert?.side==='CALL'?'↑':m.alert?.side==='PUT'?'↓':'◇';
@@ -87,7 +87,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <span aria-hidden="true">◇</span><span>{m.scenarioInactive?'Cenário encerrado; aguardando nova análise':m.entrySide?'Entrada sinalizada · acompanhe a cotação':m.opportunityEnded?'Aguardando novo gatilho':'Observando um novo ponto de entrada'}</span>
   </div>;
   const scenarioClock=<div className="liveScenarioCountdown" data-testid="scenario-clock">
-    <small>PRAZO DO CENÁRIO</small><strong>{m.remaining!==null?m.remaining+'s':'—'}</strong>
+    <small>PRAZO DO CENÁRIO</small><strong>{m.scenarioInactive?'ENCERRADO':m.remaining!==null?m.remaining+'s':'—'}</strong>
   </div>;
   useEffect(()=>{
     if(m.fresh&&m.market!==null&&m.strategies!==null&&m.combined!==null&&m.average!==null){
@@ -124,13 +124,16 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     </div>
     <div className="compactScenario"><div><small>CENÁRIO PRINCIPAL</small><strong>{m.scenarioLabel} · {m.state}</strong></div>{scenarioClock}</div>
     {opportunityNotice}
-    <div className="mobilePriceComparison" data-testid="mobile-price-comparison">
-      <div><small>{lastSignal?'ÚLTIMO SINAL · '+lastSignal.side:'PREÇO DO SINAL'}</small><strong>{lastSignal?price(lastSignal.price):'—'}</strong></div>
+    {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
+      <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
       <div><small>COTAÇÃO AGORA</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
       <div className={`mobilePriceChange ${entryFavourable?'favourable':entryAgainst?'against':'neutral'}`}>
         <span>{trendLabel}</span><b>{priceChange}</b>
       </div>
-    </div>
+    </div>:<div className="mobileCurrentQuoteOnly" data-testid="mobile-current-quote">
+      <div><small>COTAÇÃO AGORA</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
+      <span>{m.fresh?'Aguardando preço de uma entrada confirmada.':'Aguardando cotação atual.'}</span>
+    </div>}
     <div className="mobileMonitorState" role="status">{m.fresh?(pushed?'● AO VIVO · PUSH':'● COTAÇÃO ATUAL · '+seconds(m.quoteAge)+' atrás'):'SEM COTAÇÃO ATUAL · AGUARDE A ATUALIZAÇÃO'}</div>
     <div className="mobileReversalObservation" data-testid="mobile-reversal-observation">
       <span>REVERSÃO · OBSERVAÇÃO</span>
@@ -145,7 +148,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       {historicalNotice}
     </details>
     <div className="compactContext">Previsão {Math.round(Number(s?.settings?.forecastHorizonSeconds||60))}s · Expiração manual {Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)}s</div>
-    <footer>O preço do sinal permanece fixo nesta tela; a cotação varia em tempo real. Não executa ordens.</footer>
+    <footer>{lastSignal?'Preço do último sinal confirmado permanece fixo; a cotação varia.':'Quando houver um sinal com preço registrado, a comparação aparecerá aqui.'} Não executa ordens.</footer>
   </section>;
   return <section className={`liveScenario ${m.tone}`} aria-label="Cenário ao vivo" data-testid="live-scenario">
     <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.scenarioLabel}</h2><b>{m.state}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>Modo flutuante ↘</button></div></header>
@@ -160,8 +163,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       {m.alert?<><p>{m.alert.testing?'Reversão em teste':'Reversão com continuidade confirmada'}</p><div className="liveLevels"><span>Gatilho <b>{price(m.alert.trigger)}</b></span><span>Invalida <b>{price(m.alert.invalidation)}</b></span><span>Próximo nível <b>{price(m.alert.target)}</b></span></div></>:<p>{m.fresh?'Acompanhando o preço. Ainda sem reversão confirmada.':'A leitura será retomada quando chegarem dados atuais.'}</p>}
       <small>{m.fresh&&m.evaluationAt?'Última análise '+new Date(s?.lastResult?.analysis?.operationalSignal?.subanalyst?.checkedAt||m.evaluationAt).toLocaleTimeString('pt-BR'):'Sem análise atual'}</small>
     </div>
-    <div className="liveTotals">{[['Total Mercado',totals.market],['Total Estratégias',totals.strategies],['Presente + Futuro',totals.combined]].map(([label,value])=><div key={String(label)}><small>{label}</small><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}</div>
-    <div className="liveAverage"><div><small>MÉDIA DOS 3 TOTAIS</small><h3>{totals.averageSide}</h3><span>{totals.average===null?'—':`CALL ${totals.average}% · PUT ${100-totals.average}%`}</span></div><label>Limite visual %<input aria-label="Limite visual da média" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
+    <p className="mobileTechnicalNote">LEITURAS TÉCNICAS · NÃO SÃO ORDEM DE ENTRADA</p><div className="liveTotals">{[['Total Mercado',totals.market],['Total Estratégias',totals.strategies],['Presente + Futuro',totals.combined]].map(([label,value])=><div key={String(label)}><small>{label}</small><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}</div>
+    <div className="liveAverage"><div><small>MÉDIA DOS 3 TOTAIS</small><h3 className="liveAverageDirection">{totals.averageSide}</h3><h3 className="liveAverageMobile">{totals.average===null?'SEM LEITURA':totals.averageSide==='CALL'?'VIÉS DE ALTA':totals.averageSide==='PUT'?'VIÉS DE BAIXA':'SEM VIÉS DEFINIDO'}</h3><span>{totals.average===null?'—':`CALL ${totals.average}% · PUT ${100-totals.average}%`}</span></div><label>Limite visual %<input aria-label="Limite visual da média" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
     <div className="liveControls"><button className="primary" disabled={disabled||s?.state==='running'||s?.killSwitch||s?.masterFrozen||!!s?.startBlockedReason} onClick={start}>{s?.state==='paused'?'Retomar análise':'Iniciar análise'}</button><button className="secondary" disabled={disabled||s?.state!=='running'} onClick={()=>act('control/pause')}>Pausar análise</button><button className="secondary" disabled={disabled||s?.state==='stopped'} onClick={()=>act('control/stop')}>Parar análise</button></div>
     <details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Expiração (manual)<select aria-label="Expiração escolhida manualmente" value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Estratégia 1<select aria-label="Estratégia 1" value={strategy1} onChange={e=>{settingsEditing.current=true;setStrategy1(e.target.value)}}>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 2<select aria-label="Estratégia 2" value={strategy2} onChange={e=>{settingsEditing.current=true;setStrategy2(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 3<select aria-label="Estratégia 3" value={strategy3} onChange={e=>{settingsEditing.current=true;setStrategy3(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>Aplicar no PC</button></div></details>
     <footer>Escolha até 3 estratégias e toque em “Aplicar no PC” para sincronizar o card do computador. Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo; o limite visual vale apenas nesta tela.</footer>
