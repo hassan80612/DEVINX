@@ -1,3 +1,4 @@
+import {expiryDrivenForecast,expiryForecastIdentity} from './expiry-driven-forecast.mjs';
 /**
  * Sentinel VNext — independent main-scenario engine selection.
  *
@@ -30,4 +31,34 @@ export function oneEngineSelection(settings={}){
 export function scenarioEngineContext(settings={},provider='',asset='',durationMs=0,horizonSeconds=0){
   const engine=selectedScenarioEngine(settings);
   return ['main-forecast-vnext',provider,asset,engine.id,Math.round(Number(durationMs)||0),Math.round(Number(horizonSeconds)||0)].join('|');
+}
+
+/**
+ * Contract handed to exactly ONE selected prediction engine in VNext.
+ * The broker-confirmed expiration (when available), not the chart candle
+ * interval and not a stale manually set forecast horizon, is authoritative.
+ */
+export function selectedEngineForecastRequest({settings={},broker={},provider='unknown',asset='unknown',now=Date.now()}={}){
+  const engine=selectedScenarioEngine(settings);
+  const ms=Number(settings.orderDurationMs);
+  const expiry=expiryDrivenForecast({
+    selectedSeconds:Number.isFinite(ms)&&ms>0?ms/1000:null,
+    brokerVerified:broker.expirationVerified===true,
+    brokerDurationMs:broker.expirationDurationMs,
+    brokerExpiresAt:broker.expirationAt,
+    brokerAvailableSeconds:broker.availableExpirationsSeconds,
+    brokerInstrument:broker.instrument,
+    now
+  });
+  return Object.freeze({
+    engineId:engine.id,engineFamily:engine.family,
+    forecastHorizonSeconds:expiry.forecastHorizonSeconds,
+    forecastHorizonMs:expiry.forecastHorizonMs,
+    forecastExpiresAt:expiry.expiresAt,
+    expiry,
+    calibrationKey:expiryForecastIdentity({
+      engine:engine.id,provider,asset,instrument:expiry.instrument,forecast:expiry
+    }),
+    actionable:false // A forecast request never authorizes CALL/PUT NOW.
+  });
 }
