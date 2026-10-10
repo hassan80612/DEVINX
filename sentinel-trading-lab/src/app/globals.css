@@ -888,3 +888,54 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 @media(max-width:600px){.liveScenario .liveDecision{padding:16px 14px;margin:10px 0}.liveScenario .liveDecision strong{font-size:39px}.liveScenarioCompact .liveDecision{padding:14px!important}.liveScenarioCompact .liveDecision strong{font-size:32px!important}.liveScenarioCompact .liveDecision>span:last-child{font-size:10px}.liveScenarioCompact .compactReversal{padding:12px}.liveScenarioCompact .compactReversal strong{font-size:17px}.sentinelStartHero{padding:23px}.sentinelStartSteps{grid-template-columns:1fr 1fr}.sentinelStartSteps article{padding:13px}.sentinelStartSteps strong{font-size:14px}.sentinelMembershipSummary{grid-template-columns:1fr}.sentinelStartActions>*{width:100%}}
 @media(max-width:380px){.sentinelStartSteps{grid-template-columns:1fr}.liveScenario .liveDecision strong{font-size:31px}}
 @media(prefers-reduced-motion:reduce){.liveScenario .liveDecision.actionable{animation:none}}
+
+
+/* The opportunity belongs to an entry, not the scenario deadline.
+   Amber is informational: neither a CALL/PUT entry nor scenario cancellation. */
+.liveScenario .liveOpportunityEnded{
+  display:flex;align-items:center;gap:13px;margin:9px 0 13px;padding:15px 17px;
+  border:2px solid #ecc16a;border-radius:14px;
+  background:linear-gradient(120deg,#71501d,#46301b 56%,#36251d);
+  color:#fff8e2;box-shadow:0 0 0 3px #eebc5e20,0 8px 28px #150e0770;
+}
+.liveScenario .liveOpportunityEndedIcon{
+  display:grid;place-items:center;flex:0 0 31px;width:31px;height:31px;
+  color:#463019;background:#ffe3a2;border-radius:50%;font-size:22px;font-weight:950;
+}
+.liveScenario .liveOpportunityEnded>div{display:grid;gap:4px;min-width:0}
+.liveScenario .liveOpportunityEnded strong{
+  color:#fff5d0;font-size:clamp(14px,2vw,18px);font-weight:950;letter-spacing:.04em;
+}
+.liveScenario .liveOpportunityEnded>div>span{color:#f2dca7;font-size:12px;line-height:1.45;font-weight:750}
+.liveScenario .liveDecisionCountdown,.liveScenario .liveScenarioCountdown{
+  display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;
+  gap:5px 9px;margin-top:6px;padding:10px 13px;
+  background:#071e2096;border:1px solid #e5c27777;border-radius:10px;
+}
+.liveScenario .liveScenarioCountdown small{color:#f0d69a;font-size:11px;letter-spacing:.08em;font-weight:900}
+.liveScenario .liveScenarioCountdown strong{font-size:27px;font-weight:950;font-variant-numeric:tabular-nums;color:#ffe3a1;text-shadow:0 0 18px #daa95380}
+.liveScenarioCompact .liveDecision .liveScenarioCountdown{margin-top:4px;padding:7px 10px}
+.liveScenarioCompact .liveDecision .liveScenarioCountdown strong{font-size:24px}
+.liveScenarioCompact .liveOpportunityEnded{padding:12px;gap:10px;margin:9px 0}
+.liveScenarioCompact .liveOpportunityEnded strong{font-size:14px}
+.liveScenarioCompact .liveOpportunityEnded>div>span{font-size:11px}
+.liveScenarioCompact .compactAverage{
+  background:radial-gradient(circle at 92% 2%,#e0bb5926,transparent 55%),linear-gradient(120deg,#254239,#112e2c)!important;
+  border:2px solid #e5c576!important;border-radius:13px!important;
+  padding:13px 12px!important;gap:10px!important;
+  box-shadow:inset 0 1px 0 #fff2,0 6px 20px #0007,0 0 0 3px #d6ad4c23;
+}
+.liveScenarioCompact .compactAverage>div>small{font-size:11px;color:#f4d795;font-weight:950;letter-spacing:.065em}
+.liveScenarioCompact .compactAverage strong{font-size:clamp(22px,5vw,27px);font-weight:950;color:#fff}
+.liveScenarioCompact .compactAverage.call strong{color:#6bf5b7}
+.liveScenarioCompact .compactAverage.put strong{color:#ff95aa}
+.liveScenarioCompact .compactAverage span{font-size:13px;font-weight:850;color:#e9f5eb;line-height:1.45}
+.liveScenarioCompact .compactAverage label{font-size:10px;color:#efd29b;font-weight:800}
+@media(max-width:600px){
+ .liveScenario .liveOpportunityEnded{padding:13px 12px;gap:10px}
+ .liveScenario .liveOpportunityEnded strong{font-size:14px}
+ .liveScenario .liveDecision .liveScenarioCountdown{margin-top:7px}
+ .liveScenario .liveScenarioCountdown strong{font-size:25px}
+ .liveScenario .liveAverage{border:2px solid #d7bc78;border-radius:13px;background:linear-gradient(140deg,#27463e,#18322f);box-shadow:0 0 0 3px #d7bd6e13}
+ .liveScenario .liveAverage h3{font-size:23px}
+}
