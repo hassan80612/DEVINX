@@ -169,7 +169,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="vnextFutureClock" data-testid="forecast-issue-and-expiry">Prazo escolhido: {expiryLabel(forecastExpirySeconds||Number(s?.settings?.orderDurationMs||60000)/1000)} · Emissão {forecastTimeValid?clock(forecastIssuedAt):'—'} · Alvo {forecastTimeValid?clock(forecastTargetAt):'—'} · {forecastTargetPast?'Previsão fixada encerrada':'Motor recalcula ao vivo; relógio segue o alvo fixado'}</div>
     {forecast?<><div className="vnextProjectionValues">
       <div><small>PREÇO DE REFERÊNCIA</small><strong>{price(forecast.referencePrice)}</strong></div>
-      <div><small>PREÇO DA ÚLTIMA PROJEÇÃO</small><strong>{price(forecast.projectedPrice)}</strong></div>
+      <div><small>PREÇO PROJETADO · ÚLTIMA LEITURA</small><strong>{price(forecast.projectedPrice)}</strong></div>
       <div><small>EMISSÃO</small><strong>{clock(forecast.issuedAt)}</strong></div>
       <div><small>ÚLTIMA LEITURA · ALVO</small><strong>{clock(forecast.targetAt)}</strong></div>
     </div>
