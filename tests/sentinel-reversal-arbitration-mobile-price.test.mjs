@@ -55,5 +55,6 @@ test('no duplicate mobile CALL/PUT directions from aggregate totals',async()=>{
  assert.match(s,/mobileTechnicalDetails/);
  assert.match(s,/PriceComparison|mobilePriceComparison/);
  const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
- assert.match(runtime,/reconcileEntryWithConfirmedReversal\(candidate,reversalAlert,snap,now\)/);
+ assert.doesNotMatch(runtime,/reconcileEntryWithConfirmedReversal\(candidate,reversalAlert,snap,now\)/);
+ assert.match(runtime,/rankByChosenStrategies\(/);
 });
