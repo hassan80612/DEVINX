@@ -31,7 +31,7 @@ test('mapped support confirms early CALL after two advancing quotes, not a furth
  const c=entryOpportunities({analysis,snap,now,minPoints:70,durationMs:30000,entryPolicy:'structural-reversals-v1'})[0];
  assert.equal(c.allowed,true,c.reason);
  assert.equal(c.kind,'reversal');
- assert.equal(c.structuralReaction?.preMapped,true);
+ assert.equal(c.structuralReaction,true);
  assert.ok(c.plan.callTrigger<snap.price);
 });
 test('mapped resistance confirms early PUT independently of main forecast',()=>{
@@ -39,7 +39,7 @@ test('mapped resistance confirms early PUT independently of main forecast',()=>{
  const p=entryOpportunities({analysis,snap,now,minPoints:70,durationMs:30000,entryPolicy:'structural-reversals-v1'})[1];
  assert.equal(p.allowed,true,p.reason);
  assert.equal(p.kind,'reversal');
- assert.equal(p.structuralReaction?.preMapped,true);
+ assert.equal(p.structuralReaction,true);
 });
 test('one isolated bounce never becomes a confirmed early reversal',()=>{
  const {snap,analysis}=mapped('CALL',false);
