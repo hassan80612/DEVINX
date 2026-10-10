@@ -139,7 +139,11 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const forecastCall=forecast.outlookReady===true&&forecast.callProbability!=null&&
       Number.isFinite(Number(forecast.callProbability))
       ? Math.max(5,Math.min(95,Number(forecast.callProbability))) : null;
-    const forecastSidePct=forecastCall==null?null:(call?forecastCall:100-forecastCall);
+    // Keep the model's *raw* directional estimate for shadow scoring,
+    // even if that forecast was unqualified. Never replace it with score.
+    const rawSideEstimate=call?forecast.callProbability:forecast.putProbability;
+    const forecastSidePct=rawSideEstimate!=null&&Number.isFinite(Number(rawSideEstimate))
+      ? Math.max(0,Math.min(100,Number(rawSideEstimate))) : null;
     const plan={...forecast,technicalScore:score,entryForecastProbability:forecastSidePct,
       probabilityValidated:false,probabilitySource:forecastCall==null?'unavailable':'unverified-forecast-estimate',rawBias:side,bias:side,outlookReady:true,directionReady:true,confidence:score,modelConfidence:score,strategyFutureBias:side,strategyFutureConflict:false,strategyFuture:{activeCount:0,confidence:score},reaction,expectedMove,scenario:{kind,reversalConfirmed:reversal,continuationReady:continuation,triggerBasis:reversal?'confirmed-local-reaction':'previous-short-bar'},entryTiming:{maxDistance:repeated?.maxDistance||maxDistance,sourceBarAt:sourceAt},safety:{blocked:false}};
     if(call){plan.callTrigger=trigger;plan.callInvalidation=invalidation;}else{plan.putTrigger=trigger;plan.putInvalidation=invalidation;}
