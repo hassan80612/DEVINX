@@ -1,0 +1,39 @@
+name: Sentinel site release label validation
+on:
+  push:
+    branches:
+      - sentinel-site-agent-version-label-20261010
+    paths:
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - '.github/workflows/sentinel-site-version-label-verify.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-site-version-label-verify
+  cancel-in-progress: true
+jobs:
+  site-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check actual packaged version matches text on site
+        run: |
+          node --input-type=module -e "
+          import {readFileSync} from 'node:fs';
+          import assert from 'node:assert/strict';
+          const release=JSON.parse(readFileSync('sentinel-trading-lab/agent/release.json','utf8'));
+          const page=readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
+          assert.ok(page.includes(\"const AVAILABLE_AGENT_VERSION='\"+release.version+\"'\"),'Site version differs from packaged Agent');
+          assert.ok(!page.includes('V13.4.53'),'Obsolete version must not be advertised');
+          assert.ok(page.includes('Versão instalada no PC')&&page.includes('Versão disponível'));
+          "
+          node --test tests/sentinel-installer-release.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-page-passive.test.mjs
+      - name: Build website only (never rebuild or replace Windows Agent)
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
