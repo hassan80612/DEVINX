@@ -78,8 +78,16 @@ const livePublishTimer=setInterval(async()=>{
   livePublishBusy=true;
   try{
     const chosen=chooseLive();if(!chosen?.m)return;
-    const snapshot=await runtime.status();
-    if(liveBridge.publish(analystSnapshot({...snapshot,agentVersion:VERSION},chosen.m)))
+    // Fast path: the remote phone needs the already-computed analyst state,
+    // not a second full balance/broker/history/status sweep every second.
+    // The authenticated periodic status API still carries full details.
+    const snapshot={
+      agentVersion:VERSION,state:runtime.stateName,
+      killSwitch:runtime.killSwitch,masterFrozen:runtime.masterFrozen,
+      settings:runtime.settings,lastEvalMs:runtime.lastEvalMs,
+      lastResult:runtime.lastResult
+    };
+    if(liveBridge.publish(analystSnapshot(snapshot,chosen.m)))
       lastLiveSentDecisionKey=decisionKey;
   }catch{}finally{livePublishBusy=false}
 },220);
