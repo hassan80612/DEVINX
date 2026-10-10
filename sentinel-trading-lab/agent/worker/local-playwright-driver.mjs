@@ -1494,6 +1494,12 @@ export class LocalPlaywrightDriver{
           Number(anchored.expirySeconds)*1000===duration&&
           Number(anchored.targetAt)>Date.now()?anchored:null;
         const pinnedProjection=pinnedReceipt?d.vnext?.targetProjection||null:null;
+        const liveObservation=d.vnext?.nowIndication||null;
+        const observationFresh=liveObservation&&liveNow&&
+          d.vnext?.engineId===d.engine&&
+          liveObservation.asset===visibleAsset&&
+          ['CALL','PUT'].includes(liveObservation.side)&&
+          Number(liveObservation.expiresAt)>Date.now();
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -1545,6 +1551,11 @@ export class LocalPlaywrightDriver{
               <div style="padding-top:8px;margin-top:9px;border-top:1px solid ${panelBorder};font-size:10px;color:${goldSoft};font-weight:750">PREVISÃO EXPERIMENTAL · NÃO É CALL/PUT AGORA · nenhuma ordem automática</div>
             </section>
 
+            <div data-sentinel-card="immediate-market-observation" style="margin-top:10px;padding:9px 11px;display:grid;gap:4px;border:1px solid ${panelBorder};border-left:3px solid ${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):goldSoft};border-radius:10px;background:${fieldBg}">
+              <small style="font-size:9px;font-weight:850;color:${goldSoft}">OPORTUNIDADE ESTRUTURAL OBSERVADA · SEM ORDEM AUTOMÁTICA</small>
+              <b style="font-size:17px;color:${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):ink}">${observationFresh?(liveObservation.side==='CALL'?'↑ CALL AGORA':'↓ PUT AGORA'):'AGUARDANDO OPORTUNIDADE'}</b>
+              <small style="font-size:10px;color:${muted}">${observationFresh?(liveObservation.kind==='support-reaction'?'Reação no suporte anterior':liveObservation.kind==='resistance-reaction'?'Reação na resistência anterior':liveObservation.kind==='resistance-break'?'Rompimento de resistência anterior':'Rompimento de suporte anterior')+' · preço '+price(liveObservation.price):'Sem gatilho estrutural observado neste instante'}</small>
+            </div>
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
               ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
