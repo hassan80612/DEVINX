@@ -34,7 +34,7 @@ test('PC uses latest receipt and latest projection; never frozen targetProjectio
 });
 test('normal and floating mobile share live percent and same scenario-aligned now observation',async()=>{
   const s=await read('src/components/LiveScenarioCard.tsx');
-  assert.match(s,/const liveProjection=liveForecastValid\?m\.vnextProjection:null/);
+  assert.match(s,/const liveProjection=forecastReadable\?m\.vnextProjection:null/);
   assert.match(s,/const observation=liveForecastValid&&observed\?\.side===liveForecast\.side/);
   assert.match(s,/opposingObserved\?'Movimento atual contrário à projeção/);
   assert.match(s,/liveProjection\.callPct/);
