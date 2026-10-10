@@ -13,7 +13,7 @@ const observations=(wins,losses,extra={})=>[
   ...Array.from({length:losses},(_,i)=>({...base,...extra,won:false,createdAt:t-(i+wins)*36000}))
 ];
 const assess=(outcomes,extra={})=>assessIndependentSignalHistory({
- outcomes,asset:'EUR/USD OTC',provider:'iq_option',durationMs:30000,side:'CALL',payout:.82,...extra
+ outcomes,asset:'EUR/USD OTC',provider:'iq_option',durationMs:30000,side:'CALL',profile:'smart_confluence',payout:.82,...extra
 });
 
 test('forward quality: an empty, unproven history cannot claim measured accuracy',()=>{
