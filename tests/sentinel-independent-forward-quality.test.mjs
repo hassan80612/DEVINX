@@ -5,7 +5,7 @@ import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime
 import {EntryResearch} from '../sentinel-trading-lab/agent/src/core/entry-research.mjs';
 
 const t=Date.UTC(2026,9,10,12);
-const base={kind:'operational_v3',entryQualityEpoch:ENTRY_QUALITY_EPOCH,
+const base={kind:'operational_v3',entryQualityEpoch:ENTRY_QUALITY_EPOCH,qualityProfile:'smart_confluence',
  provider:'iq_option',asset:'EUR/USD OTC',durationMs:30000,settleDurationMs:30000,
  side:'BUY',settlementQuality:'exact'};
 const observations=(wins,losses,extra={})=>[
@@ -39,6 +39,7 @@ test('forward quality: good sample is not rejected and interval is finite',()=>{
 test('forward quality: independent side, provider, asset, duration and release epoch never mix',()=>{
  const wrong=[
  ...observations(0,80,{side:'SELL'}),
+ ...observations(0,80,{qualityProfile:'different'}),
  ...observations(0,80,{provider:'exnova'}),
  ...observations(0,80,{asset:'GOLD'}),
  ...observations(0,80,{settleDurationMs:60000}),
