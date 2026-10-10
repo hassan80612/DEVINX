@@ -19,7 +19,7 @@ on:
       - 'tests/sentinel-page-passive.test.mjs'
       - 'tests/sentinel-scenario-reversal-latency.test.mjs'
       - 'tests/sentinel-installer-release.test.mjs'
-      - '.github/workflows/sentinel-scenario-reversal-latency.yml'
+      - '.github/workflows/sentinel-unified-windows-release.yml'
 
 permissions:
   contents: write
@@ -103,6 +103,7 @@ jobs:
     needs: validate-and-bundle
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: sentinel-unified-verified-windows-installer
