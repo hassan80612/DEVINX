@@ -1202,7 +1202,7 @@ export class LocalPlaywrightDriver{
         const entrySeconds=operationalNow?Math.max(0,Math.ceil((Number(runtimeView.entryDeadline)-decisionNow)/1000)):null;
         const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO';
         const scenarioRisk=runtimeView.risk===true&&!timingClosed;
-        const scenarioCardBg=timingClosed?(uiTheme==='light'?'#fff0ef':'linear-gradient(145deg,#55262c,#291318)'):scenarioRisk?(uiTheme==='light'?'#fff7df':'linear-gradient(145deg,#4b3c18,#242211)'):formingSide==='CALL'?(uiTheme==='light'?'#e3f7eb':'linear-gradient(145deg,#12583c,#083526)'):heroPanelBg;
+        const scenarioCardBg=timingClosed?(uiTheme==='light'?'#fff0ef':'linear-gradient(145deg,#55262c,#291318)'):scenarioRisk?(uiTheme==='light'?'#fff7df':'linear-gradient(145deg,#4b3c18,#242211)'):formingSide==='CALL'?(uiTheme==='light'?'#e3f7eb':'linear-gradient(145deg,#12583c,#083526)'):formingSide==='PUT'?(uiTheme==='light'?'#fff0f3':'linear-gradient(145deg,#632b3a,#371c29)'):heroPanelBg;
         const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide+(scenarioRisk?' · REAVALIANDO':'')):'AGUARDE UM CENÁRIO';
 
         // Subanalyst remains independently executable even when the scenario
@@ -1255,6 +1255,14 @@ export class LocalPlaywrightDriver{
           operationalNow&&['CALL','PUT'].includes(operationalHeroSide)?operationalHeroSide:null;
         const confirmedEntrySeconds=confirmedEntrySide?
           Math.max(0,Math.ceil((Number(ownNow?ownSignal.activeUntil:runtimeView.entryDeadline)-decisionNow)/1000)):null;
+        // The operational CALL/PUT must own the color of its own headline.
+        // A previous main CALL forecast MUST NOT surround a PUT NOW in green.
+        const entryPanelBg=confirmedEntrySide==='CALL'?
+          (uiTheme==='light'?'linear-gradient(145deg,#e3f7eb,#bce9d5)':'linear-gradient(145deg,#16634a,#07392c)'):
+          confirmedEntrySide==='PUT'?
+          (uiTheme==='light'?'linear-gradient(145deg,#ffe9ee,#f5b8c6)':'linear-gradient(145deg,#713146,#381b2c)'):scenarioCardBg;
+        const entryPanelBorder=confirmedEntrySide==='CALL'?callTone:confirmedEntrySide==='PUT'?putTone:
+          timingClosed?putTone:scenarioRisk?warnTone:outlookTone;
         const entryActionLabel=confirmedEntrySide?('ENTRADA '+confirmedEntrySide+' AGORA'):
           timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide+' · SEM ENTRADA'):'SEM ENTRADA AGORA';
         const entryActionTone=confirmedEntrySide==='CALL'?callTone:confirmedEntrySide==='PUT'?putTone:actionTone;
@@ -1470,7 +1478,7 @@ export class LocalPlaywrightDriver{
         }
 
         const currentAction=el.querySelector('[data-sentinel-scenario-action]'),currentStatus=el.querySelector('[data-sentinel-scenario-status]');
-        if(currentAction)currentAction.textContent=entryActionLabel;if(currentStatus)currentStatus.textContent=futureDecisionStatus;
+        if(currentAction)currentAction.textContent=entryActionLabel;if(currentStatus)currentStatus.textContent=entryStatusLabel;
         const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select,input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')))return;
 
         
@@ -1508,7 +1516,7 @@ export class LocalPlaywrightDriver{
           </div>
 
           <div data-sentinel-pilot-status style="margin-top:7px;font-size:9.5px;font-weight:700;color:${goldSoft};line-height:1.4">${esc(pilotLabel)}</div>
-          <div class="sentinel-shine" data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="position:relative;margin-top:10px;padding:10px 11px;min-height:230px;height:auto;overflow:visible;border:1px solid ${uiTheme==='light'?'rgba(145,105,34,.42)':'rgba(226,194,105,.66)'};border-left:4px solid ${timingClosed?putTone:scenarioRisk?warnTone:outlookTone};background:${scenarioCardBg};border-radius:15px;box-sizing:border-box;box-shadow:${heroShadow}">
+          <div class="sentinel-shine" data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="position:relative;margin-top:10px;padding:10px 11px;min-height:230px;height:auto;overflow:visible;border:1px solid ${uiTheme==='light'?'rgba(145,105,34,.42)':'rgba(226,194,105,.66)'};border-left:4px solid ${entryPanelBorder};background:${entryPanelBg};border-radius:15px;box-sizing:border-box;box-shadow:${heroShadow}">
             <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:24px;overflow:visible">
               <span class="sentinel-metal-gold" style="font-size:12.5px;font-weight:750;letter-spacing:.055em">CENÁRIO FUTURO POR PRAZO</span><span style="font-size:9.5px;font-weight:750;color:${ink};letter-spacing:.06em">PRÓXIMO PASSO</span>
             </div>
@@ -1518,7 +1526,7 @@ export class LocalPlaywrightDriver{
               <label style="display:flex;align-items:center;gap:3px;font-size:9.5px;font-weight:750;color:${ink}">FILTRO <select data-sentinel-setting="minConfidence" title="Filtro mínimo de pontos técnicos" style="height:25px;min-width:58px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 4px;font-size:9.5px;font-weight:700"><option value="55" ${minConfidence===55?'selected':''}>55 pts</option><option value="60" ${minConfidence===60?'selected':''}>60 pts</option><option value="65" ${minConfidence===65?'selected':''}>65 pts</option><option value="70" ${minConfidence===70?'selected':''}>70 pts</option><option value="75" ${minConfidence===75?'selected':''}>75 pts</option><option value="80" ${minConfidence===80?'selected':''}>80 pts</option><option value="85" ${minConfidence===85?'selected':''}>85 pts</option><option value="90" ${minConfidence===90?'selected':''}>90 pts</option><option value="95" ${minConfidence===95?'selected':''}>95 pts</option></select></label>
               <label style="display:flex;align-items:center;gap:2px;font-size:9.5px;font-weight:750;color:${ink}" title="Percentual mínimo para considerar CALL ou PUT">SINAL <input data-sentinel-future-threshold type="number" min="50" max="95" step="1" value="${futureDisplayThreshold}" style="width:38px;height:25px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font:700 10px/1 inherit;padding:0 3px;text-align:center;outline:none"><b style="font-size:9.5px;color:${goldSoft}">%</b></label>
             </div>
-            <div data-sentinel-scenario-header style="display:grid;grid-template-columns:minmax(0,1fr) minmax(104px,138px);gap:4px 7px;margin:9px 0 6px;height:111px;min-height:111px;max-height:111px;align-content:start;overflow:hidden;box-sizing:border-box;padding:5px 7px;border-radius:10px;background:${timingClosed?(uiTheme==='light'?'#fff0ef':'#55262c'):'transparent'};border:2px solid ${timingClosed?(uiTheme==='light'?'#bc3846':'#ff6d7d'):'transparent'};box-shadow:${timingClosed?'0 0 17px rgba(234,83,101,.20)':'none'}">
+            <div data-sentinel-scenario-header style="display:grid;grid-template-columns:minmax(0,1fr) minmax(104px,138px);gap:4px 7px;margin:9px 0 6px;height:111px;min-height:111px;max-height:111px;align-content:start;overflow:hidden;box-sizing:border-box;padding:5px 7px;border-radius:10px;background:${confirmedEntrySide?entryPanelBg:timingClosed?(uiTheme==='light'?'#fff0ef':'#55262c'):'transparent'};border:2px solid ${confirmedEntrySide?entryPanelBorder:timingClosed?(uiTheme==='light'?'#bc3846':'#ff6d7d'):'transparent'};box-shadow:${timingClosed?'0 0 17px rgba(234,83,101,.20)':'none'}">
               <b data-sentinel-scenario-action style="font-size:${confirmedEntrySide?'22px':timingClosed?'20px':'18px'};line-height:1.2;color:${confirmedEntrySide?entryActionTone:timingClosed?(uiTheme==='light'?'#9c2334':'#ffffff'):actionTone};letter-spacing:0;height:48px;min-height:48px;max-height:48px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere">${esc(entryActionLabel)}</b>
               <span data-sentinel-scenario-status style="color:${timingClosed?(uiTheme==='light'?'#9c2334':'#ffe0e2'):futureDecision?goldSoft:(outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone)};font-size:${timingClosed?'17px':'15px'};font-weight:750;line-height:1.25;max-width:138px;height:48px;min-height:48px;max-height:48px;display:flex;align-items:flex-start;padding-top:1px;box-sizing:border-box;overflow:hidden">${esc(entryStatusLabel)}</span>
               <div style="grid-column:1/-1;display:flex;align-items:center;gap:7px;flex-wrap:nowrap;font-size:10px;line-height:1.35;height:49px;min-height:49px;max-height:49px;overflow:hidden"><span data-sentinel-scenario-phase style="color:${timingClosed?(uiTheme==='light'?'#9c2334':'#ffffff'):ink};font-weight:${timingClosed?'900':'700'};flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(clearPhase)}</span><span style="color:${goldSoft};font-weight:700;flex-shrink:0">${plannerReadable||futureDecision?'MODELO '+n(futureDecisionConfidence,0)+' pts':''}</span><span style="color:${muted};font-weight:600;flex-shrink:0">${liveLabel}</span></div>
