@@ -458,6 +458,7 @@ export class DemoTradingRuntime{
         signal:{side:op.side,state:op.state,ready:op.ready===true,actionable:op.actionable===true,
           reason:op.reason||null,trigger:op.trigger??null,invalidation:op.invalidation??null,
           activeUntil:op.activeUntil??null,entryAt:op.entryAt??null,
+          entryPrice:Number(this.operationalSetup?.firedAt||0)>0&&Number(this.operationalSetup.firedAt)===Number(op.entryAt)&&Number(this.operationalSetup.entryPrice)>0?this.operationalSetup.entryPrice:null,
           createdAt:op.createdAt??null,expiresAt:op.expiresAt??null,durationMs,
           technicalPoints:op.decisionStrength??op.strength??null},
         candidates:this.entryCandidates||[],qualification:this.entryQualification||null,
@@ -476,7 +477,7 @@ export class DemoTradingRuntime{
       state:previousEntry.invalidated?'OPORTUNIDADE CANCELADA':previousEntry.firedAt?'OPORTUNIDADE CONSUMIDA':'OPORTUNIDADE PERDIDA',
       createdAt:previousEntry.createdAt,targetAt:previousEntry.targetAt,
       entryWindowEndAt:previousEntry.entryWindowEndAt,activeUntil:previousEntry.activeUntil||null,
-      entryAt:previousEntry.firedAt||null,trigger:previousEntry.trigger,invalidation:previousEntry.invalidation,
+      entryAt:previousEntry.firedAt||null,entryPrice:previousEntry.firedAt?previousEntry.entryPrice??null:null,trigger:previousEntry.trigger,invalidation:previousEntry.invalidation,
       reason:'Esta oportunidade terminou; aguardando outro ponto estrutural confirmado.'});
     const entryPoints=Math.max(minPoints,threshold);
     const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,entryPolicy:this.entryPolicy});
