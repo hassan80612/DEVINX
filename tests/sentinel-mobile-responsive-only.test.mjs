@@ -7,7 +7,7 @@ const style=()=>readFile(new URL('../sentinel-trading-lab/src/app/globals.css',i
 test('Mobile full-size card never splits the old enormous SEM ENTRADA headline',async()=>{
  const s=await component(),css=await style();
  assert.doesNotMatch(s,/liveDirection\|\|'SEM ENTRADA'/);
- assert.match(s,/m\.scenarioInactive\?'ENCERRADO':'SEM ENTRADA AGORA'/);
+ assert.match(s,/mobileScenarioDirection\?'CENÁRIO '\+mobileScenarioDirection/);
  assert.match(css,/@media\(max-width:700px\)/);
  assert.match(css,/\.liveScenario:not\(\.liveScenarioCompact\) \.liveDecision>strong/);
  assert.match(css,/white-space:nowrap;overflow:hidden/);
@@ -21,7 +21,8 @@ test('No fabricated signal price: show just current quote if Agent did not repor
  const s=await component();
  assert.match(s,/lastSignal\?<div className="mobilePriceComparison"/);
  assert.match(s,/data-testid="mobile-current-quote"/);
- assert.match(s,/Preço em tempo real/);
+ assert.match(s,/Cotação recebida agora/);
+ assert.match(s,/Última cotação/);
  assert.doesNotMatch(s,/Aguardando preço de uma entrada confirmada/);
 });
 test('Phone labels three-totals as information, not a second CALL or PUT instruction',async()=>{
