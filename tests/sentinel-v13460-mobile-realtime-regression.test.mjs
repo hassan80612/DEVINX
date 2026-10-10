@@ -13,6 +13,7 @@ function build(engine='automatic',durationMs=30000,call=true){
  return {state:'running',agentVersion:'13.4.60',lastEvalMs:t,settings:{engine,asset,orderDurationMs:durationMs,forecastHorizonSeconds:60},
   lastResult:{asset,analysis:{vnext:{
     engineId:engine,expirySeconds:durationMs/1000,computedStatus:'candidate-forward-prediction',receipt,
+    targetAnchor:receipt,
     cards:lightweightReadings({quoteHistory:quotes,receipt,now:t}),
     projection:lightweightDashboard({quoteHistory:quotes,receipt,now:t}).projection,
     outcomesVerified:0,
@@ -33,6 +34,8 @@ test('signed mobile frame contains new motor and expiry and full future forecast
  assert.equal(frame.settings.orderDurationMs,30000);
  assert.equal(frame.lastResult.analysis.vnext.receipt.side,'CALL');
  assert.equal(frame.lastResult.analysis.vnext.receipt.projectedPrice,1.1004);
+ assert.equal(frame.lastResult.analysis.vnext.targetAnchor.targetAt,t+30000);
+ assert.equal(frame.lastResult.analysis.vnext.targetAnchor.issuedAt,t);
  assert.equal(frame.lastResult.analysis.vnext.receipt.side,'CALL');
  assert.equal(frame.lastResult.analysis.vnext.cards.length,3);
  assert.equal(frame.lastResult.analysis.vnext.projection.side,'CALL');
