@@ -31,11 +31,13 @@ test('signed mobile frame contains new motor and expiry and full future forecast
  assert.equal(frame.settings.orderDurationMs,30000);
  assert.equal(frame.lastResult.analysis.vnext.receipt.side,'CALL');
  assert.equal(frame.lastResult.analysis.vnext.receipt.projectedPrice,1.1004);
- assert.equal(frame.lastResult.analysis.operationalSignal.scenarioProjection.side,'CALL');
+ assert.equal(frame.lastResult.analysis.vnext.receipt.side,'CALL');
  assert.equal(frame.lastResult.analysis.vnext.cards.length,3);
- assert.equal(frame.lastResult.analysis.vnext.nowIndication.side,'CALL');
- assert.equal(frame.lastResult.analysis.vnext.nowIndication.actionable,false);
- assert.equal(frame.lastResult.analysis.vnext.cards[0].label,'MERCADO AGORA');
+ assert.equal(frame.lastResult.analysis.vnext.projection.side,'CALL');
+ assert.equal(frame.lastResult.analysis.vnext.projection.kind,undefined);
+ assert.equal(frame.lastResult.analysis.vnext.cards[0].id,'market-now');
+ assert.equal(frame.lastResult.analysis.vnext.cards[1].id,'prior-structure');
+ assert.equal(frame.lastResult.analysis.vnext.cards[2].id,'total-of-totals');
  assert.ok(Buffer.byteLength(JSON.stringify(frame),'utf8')+73<=3000,'frames including signature must fit bridge 3000-byte budget');
  assert.equal('quoteHistory' in frame,false);
  assert.equal('evidence' in frame.lastResult.analysis.vnext.receipt,false);
@@ -80,8 +82,9 @@ test('mobile reducer merges signed engine, expiry and vnext fields while preserv
 test('normal and floating mobile use the SAME direct motor indication without remote polling',async()=>{
  const card=await readFile(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
  const model=await readFile(new URL('../sentinel-trading-lab/src/lib/live-card-model.ts',import.meta.url),'utf8');
- assert.ok((card.match(/\{nowAdvisory\}/g)||[]).length===2);
- assert.match(card,/AGORA · EM TESTE/);
+ assert.ok((card.match(/\{forecastReceipt\}/g)||[]).length===2);
+ assert.match(card,/PROJEÇÃO FUTURA/);
+ assert.doesNotMatch(card,/AGORA · EM TESTE/);
  assert.match(model,/vnextNow=vnextReceipt&&fresh/);
  assert.match(model,/vnext\?\.engineId===s\?\.settings\?\.engine/);
 });
