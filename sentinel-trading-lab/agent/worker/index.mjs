@@ -263,6 +263,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       strategy2:view.settings?.strategy2||'none',
       strategy3:view.settings?.strategy3||'none',
       strategyCards:a.strategyCards||[],
+      strategyGuidance:a.strategyGuidance||null,
       strategyConfluence:a.strategyConfluence||null,
       generalConsensus:a.generalConsensus||null,
       operationalSignal:a.operationalSignal||null,
