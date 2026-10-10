@@ -86,7 +86,17 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     // label the movement after the impulse is over. Preserve the existing
     // technical, flow, freshness, and two-quote execution confirmations.
     const closedRange=bar.length>=2?(call?Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price))):null;
-    const firstRangeBreak=closedRange!=null&&
+    // Judge the actual acceptance of a completed range, not the colour of
+    // the latest candle. One isolated spike beyond a weak prior candle is
+    // insufficient; two distinct advancing post-break quotes are evidence.
+    // Do NOT cap the size of a sustained breakout or require a retracement.
+    const currentQuotes=unique.filter(q=>q.ts>=closedBucket+5000);
+    const beyond=closedRange==null?[]:currentQuotes.filter(q=>call?q.price>closedRange:q.price<closedRange);
+    const firstBreak=beyond[0]||null;
+    const nextAdvance=firstBreak?beyond.find(q=>q.ts>firstBreak.ts&&(call?q.price>firstBreak.price:q.price<firstBreak.price)):null;
+    const lostLevel=firstBreak&&currentQuotes.some(q=>q.ts>firstBreak.ts&&(call?q.price<=closedRange:q.price>=closedRange));
+    const acceptedBreak=!!nextAdvance&&!lostLevel;
+    const firstRangeBreak=closedRange!=null&&acceptedBreak&&
       (call?price>closedRange:price<closedRange)&&
       (call?Number(micro.delta2)>0:Number(micro.delta2)<0)&&
       (call?short.structureReadyCall===true&&short.flowReadyCall===true:
