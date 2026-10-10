@@ -1,0 +1,40 @@
+name: Sentinel unified product and timing validation
+on:
+  push:
+    branches:
+      - sentinel-unified-product-card-quality-20261010
+    paths:
+      - 'sentinel-trading-lab/src/**'
+      - 'sentinel-trading-lab/agent/src/**'
+      - 'sentinel-trading-lab/agent/worker/**'
+      - 'sentinel-trading-lab/migrations/**'
+      - 'tests/sentinel-*.test.mjs'
+      - '.github/workflows/sentinel-unified-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sentinel-unified-validation
+  cancel-in-progress: true
+
+jobs:
+  test-without-publishing:
+    name: Analysis and interface regressions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Agent source syntax
+        run: find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Verify entry timing and existing regression tests
+        run: |
+          node --test             tests/sentinel-first-break-timing.test.mjs             tests/sentinel-independent-13416.test.mjs             tests/sentinel-path-13415.test.mjs             tests/sentinel-engine-timing.test.mjs             tests/sentinel-scenario-reversal-latency.test.mjs             tests/sentinel-scenario-transition.test.mjs             tests/sentinel-reversal-structure.test.mjs             tests/sentinel-repeated-reaction.test.mjs             tests/sentinel-independent-reversal-coexist.test.mjs             tests/sentinel-mobile-card.test.mjs             tests/sentinel-page-passive.test.mjs             tests/sentinel-remote-status.test.mjs
+      - name: Build Next.js pages and webhook types
+        working-directory: sentinel-trading-lab
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
