@@ -160,6 +160,11 @@ export default function Page(){
           state:payload.state,
           killSwitch:payload.killSwitch,masterFrozen:payload.masterFrozen,
           lastEvalMs:nextEval,
+          // Motor and expiration can change on the PC between the expensive
+          // authenticated status polls. The signed live packet must update
+          // both so the mobile card immediately follows the actual motor.
+          settings:{...(previous.settings||{}),
+            ...(payload.settings||{})},
           // The live packet is intentionally compact. Preserve all other
           // diagnostic/strategy fields from the slower complete snapshot.
           lastResult:{
