@@ -16,6 +16,8 @@ import {assessIndependentSignalHistory,ENTRY_QUALITY_EPOCH} from './independent-
 import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
+import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -73,7 +75,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',engine:'automatic',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -782,7 +784,7 @@ export class DemoTradingRuntime{
     // Manual-only policy: legacy clients cannot re-arm automated broker orders.
     if(patch?.demoAutopilot===true)throw new Error('autopilot_disabled_manual_only');
     this.settings.demoAutopilot=false;
-    const resetOperational=['asset','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+    const resetOperational=['asset','engine','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
     const wasAutopilot=false,armingAutopilot=false;
     this.settings={...this.settings,...patch,demoAutopilot:false,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
     if(armingAutopilot){
@@ -790,7 +792,7 @@ export class DemoTradingRuntime{
       this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_armed',metadata:{maxTradesPerSession:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)}})
     }
     if(wasAutopilot&&patch.demoAutopilot===false)this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_disarmed'});
-    if(resetOperational){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;}this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()
+    if(resetOperational){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;this.vnextPending=[];this.vnextOutcomes=[];}this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'settings.update'});return this.status()
   }
   clearExecutionError(actor='master'){if(actor!=='master')throw new Error('master_required');this.state.executionError=false;if(this.stateName==='error')this.stateName='stopped';this.audit.write({actorId:actor,actorRole:'master',action:'execution_error.clear'});return this.status()}
   _riskState(now){
@@ -870,6 +872,47 @@ export class DemoTradingRuntime{
     this.signalValidation.pending=this.signalValidation.pending.slice(-240);
   }
   _signalValidationGate({analysis,snap,settings,now}){
+    if(settings.engine){
+      // VNext: ONE motor, ONE user-selected expiration. Never call the old
+      // strategy panel, 3-way confluence or release logic for this branch.
+      // Keep quotes moving live, but never call a research forecast a
+      // historically validated CALL/PUT NOW.
+      const model=singleEngineForecast({settings,snap,now});
+      const previous=Array.isArray(this.vnextPending)?this.vnextPending:[];
+      const outcomes=Array.isArray(this.vnextOutcomes)?this.vnextOutcomes:[];
+      const eligible=previous.filter(x=>x?.targetAt>now-2000);
+      const rest=[];
+      for(const receipt of eligible){
+        if(now<receipt.targetAt){rest.push(receipt);continue}
+        const q=(snap.quoteHistory||[]).find(q=>Number(q.ts)>=receipt.targetAt&&
+          Number(q.ts)<=receipt.targetAt+1000);
+        const evaluation=evaluateForwardForecast({receipt,actualQuote:q?{at:Number(q.ts),price:Number(q.price)}:{}});
+        if(evaluation.verified)outcomes.push({engineId:receipt.engineId,
+          expirySeconds:receipt.expirySeconds,forecastAt:receipt.issuedAt,
+          targetAt:receipt.targetAt,correct:evaluation.correct,
+          predictionError:evaluation.predictionError});
+      }
+      const current=model.receipt;
+      if(current&&!rest.some(x=>x.engineId===current.engineId&&x.quoteReceivedAt===current.quoteReceivedAt&&x.expirySeconds===current.expirySeconds)){
+        rest.push(current);
+      }
+      this.vnextPending=rest.slice(-500);
+      this.vnextOutcomes=outcomes.slice(-300);
+      const result={...analysis,asset:settings.asset,
+        engineId:model.engineId,
+        vnext:{...model,evaluation:undefined,
+          outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
+        entryPlanner:{modelVersion:model.modelVersion,
+          defaultHorizonSeconds:model.expirySeconds,
+          horizons:model.plan?{[String(model.expirySeconds)]:model.plan}:{}},
+        operationalSignal:model.operational,
+        strategyCards:[],strategyConfluence:null,strategyGuidance:null,
+        generalConsensus:null,
+        side:'WAIT',confidence:0,
+        reasons:[model.reason,'O resultado desta previsão ainda não constitui taxa de acerto medida.']
+      };
+      return{allowed:false,analysis:result,reasons:[model.reason]};
+    }
     this._settleSignalValidation(now,snap);
     const asset=String(settings.asset||'—'),strategy=String(settings.strategy||'smart_confluence'),durationMs=Math.max(15000,Number(settings.orderDurationMs||60000));
     const rawSide=String(analysis?.side||'WAIT').toUpperCase(),rawForecastSide=String(analysis?.forecast30?.side||'WAIT').toUpperCase();
