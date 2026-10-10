@@ -14,7 +14,7 @@ import {EntryResearch} from './entry-research.mjs';
 import {entryOpportunities} from './entry-opportunities.mjs';
 import {assessIndependentSignalHistory,ENTRY_QUALITY_EPOCH} from './independent-signal-quality.mjs';
 import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
-import {STRATEGY_LABELS,strategySelectionGuidance} from './strategy-selection-guidance.mjs';
+import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -503,6 +503,12 @@ export class DemoTradingRuntime{
     // candidate. The previous historical block was bypassed during entry mode.
     // This gate does not depend on the old scenario or the reversal subanalyst.
     for(const row of candidates){
+      row.strategySelection=chosenStrategiesPermit({cards:analysis.strategyCards,side:row.side});
+      if(row.allowed===true&&!row.strategySelection.allowed){
+        row.allowed=false;
+        row.blockedBy='selected-strategy';
+        row.reason=row.strategySelection.reason;
+      }
       row.historicalQuality=assessIndependentSignalHistory({
         outcomes:this.signalValidation.outcomes,
         provider,asset,durationMs,side:row.side,profile:this._activeStrategyProfile(),payout:snap.payout
@@ -958,6 +964,7 @@ export class DemoTradingRuntime{
       if(result.analysis&&!result.analysis.operationalSignal){
         strategyPanel=this._strategyPanel(snap,now);
         result.analysis.strategyCards=strategyPanel.cards;
+        result.analysis.strategyGuidance=strategyPanel.guidance;
         result.analysis.strategyConfluence=strategyPanel.confluence;
         result.analysis.generalConsensus=this._generalConsensus(result.analysis,strategyPanel);
         this._mergeScenarioConfluence(result.analysis,strategyPanel,snap,now);
