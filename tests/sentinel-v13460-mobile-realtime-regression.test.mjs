@@ -85,6 +85,6 @@ test('normal and floating mobile use the SAME direct motor indication without re
  assert.ok((card.match(/\{forecastReceipt\}/g)||[]).length===2);
  assert.match(card,/PROJEÇÃO FUTURA/);
  assert.doesNotMatch(card,/AGORA · EM TESTE/);
- assert.match(model,/vnextNow=vnextReceipt&&fresh/);
+ assert.match(model,/const vnextProjection=vnextReceipt/);
  assert.match(model,/vnext\?\.engineId===s\?\.settings\?\.engine/);
 });
