@@ -1198,3 +1198,15 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
   .liveScenarioCompact .liveDecision strong{font-size:22px!important}
   .liveScenarioCompact .compactScenario .liveScenarioCountdown strong{font-size:14px!important}
 }
+
+
+/* Mobile is a remote trading monitor, not a Windows installer catalogue. */
+@media(max-width:900px){
+  .app a[href*="/downloads/sentinel-agent-windows.exe"]{display:none!important}
+  .app .connectIntro{display:none!important}
+  .app:not(.compactAnalyst) .agentbanner{display:none!important}
+  .app .topbar .pageHeading{max-width:100%}
+  .app.marketWorkspace .topbar{padding-top:11px;padding-bottom:8px;margin-bottom:9px}
+  .app.marketWorkspace .pageHeading h1{font-size:19px;line-height:1.18}
+  .app.marketWorkspace .pageHeading p{font-size:11px;line-height:1.4;max-width:36ch}
+}
