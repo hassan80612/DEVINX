@@ -52,5 +52,7 @@ test('broker observation cannot override the selected motor forecast horizon',()
  assert.equal(q.engineId,'mean_reversion');
  assert.equal(q.forecastHorizonSeconds,60);
  assert.equal(q.forecastExpiresAt,1800000000000+60000);
- assert.equal(q.expiry.durationMismatch,true);
+ assert.equal(q.expiry.durationMismatch,false);
+ assert.equal(q.expiry.observedBrokerDurationMs,null);
+ assert.equal(q.expiry.source,'user-selection');
 });
