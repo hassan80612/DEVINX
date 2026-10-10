@@ -146,6 +146,17 @@ export class DemoTradingRuntime{
     const labels=STRATEGY_LABELS;
     const ids=[String(this.settings.strategy||'smart_confluence'),String(this.settings.strategy2||'none'),String(this.settings.strategy3||'none')];
     const paused=this.settings.pausedReadings||{},durationKey=String(Math.max(30,Number(this.settings.forecastHorizonSeconds||Math.round(Math.max(30000,Number(this.settings.orderDurationMs||60000))/1000))));
+    // Repeated 400ms Worker cycles with the SAME quote/candle need not run
+    // three full strategy forecasts again. The cache is strictly local,
+    // quote-keyed and lives for at most 1s; a fresh quote always invalidates.
+    const latestBar=snap.candles?.at(-1)||{},lastQuote=snap.quoteHistory?.at(-1)||{};
+    const cacheKey=JSON.stringify([candidateModel===true,this.settings.asset,ids,paused,
+      this.settings.orderDurationMs,this.settings.forecastHorizonSeconds,this.settings.risk.minConfidence,
+      this.settings.risk.maxFeedLatencyMs,snap.quoteTs,snap.price,snap.quoteHistory?.length,
+      lastQuote.ts,lastQuote.price,snap.candles?.length,latestBar.from,latestBar.to,latestBar.close,
+      Math.floor(now/1000)]);
+    const cache=this._strategyPanelCache;
+    if(cache?.key===cacheKey&&now-Number(cache.at||0)<=1000)return cache.value;
     const clamp01=v=>Math.max(0,Math.min(1,Number(v)||0));
     const cards=ids.map((strategy,index)=>{
       const pauseKey='strategy_'+(index+1),isPaused=paused[pauseKey]===true;
@@ -195,7 +206,9 @@ export class DemoTradingRuntime{
     const weighted=activeConfigured.filter(x=>Number(x.evidence||0)>0),callVotes=weighted.filter(x=>x.side==='CALL').length,putVotes=weighted.filter(x=>x.side==='PUT').length;
     const agreement=selected.activeCount===0?'SEM ESTRATÉGIAS':selected.activeCount===1?'1 ESTRATÉGIA PROJETANDO':selected.side==='AGUARDAR'?'DIVERGÊNCIA · '+callVotes+' CALL / '+putVotes+' PUT':Math.max(callVotes,putVotes)+'/'+Math.max(1,weighted.length)+' PROJETAM '+selected.side;
     const guidance=strategySelectionGuidance({ids,paused,cards});
-    return{cards,guidance,confluence:{...selected,callVotes,putVotes,agreement,horizons,projectionHorizonSeconds:Number(durationKey)}};
+    const value={cards,guidance,confluence:{...selected,callVotes,putVotes,agreement,horizons,projectionHorizonSeconds:Number(durationKey)}};
+    this._strategyPanelCache={key:cacheKey,at:now,value};
+    return value;
   }
 
   _mergeScenarioConfluence(analysis,strategyPanel,snap,now=Date.now()){
