@@ -41,6 +41,9 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const scenario=op.scenario||null;
   const vnext=a?.vnext||null;
   const vnextReceipt=matchingMarket&&vnext?.engineId===s?.settings?.engine&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
+  const vnextTargetAnchor=matchingMarket&&vnext?.targetAnchor?.engineId===s?.settings?.engine&&
+    vnext?.targetAnchor?.asset?.toUpperCase()===asset.toUpperCase()&&
+    Number(vnext.targetAnchor.expirySeconds)===horizon?vnext.targetAnchor:null;
   const vnextProjection=vnextReceipt&&vnext?.projection?.kind!=='invalid'?
     vnext.projection:null;
   const scenarioDeadline=Number(scenario?.deadline||0);
@@ -109,7 +112,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextProjection,vnextStatus:vnext?.computedStatus||null,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
