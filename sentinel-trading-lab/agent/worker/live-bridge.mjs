@@ -43,7 +43,8 @@ export function analystSnapshot(runtimeStatus,live){
     ]):null,
     projection:vnext.projection?take(vnext.projection,['side','callPct','putPct']):null,
     targetProjection:vnext.targetProjection?take(vnext.targetProjection,['side','callPct','putPct']):null,
-    nowIndication:vnext.nowIndication?take(vnext.nowIndication,['asset','side','kind','at','price','level','expiresAt']):null,
+    nowIndication:vnext.nowIndication?take(vnext.nowIndication,['asset','side','kind','at','price','level','expiresAt','expirySeconds','targetAt']):null,
+    lastSettled:vnext.lastSettled?take(vnext.lastSettled,['engineId','asset','side','targetAt','referencePrice','projectedPrice','settledPrice','correct','expirySeconds']):null,
     cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
       .map(c=>take(c,['id','side','callPct','putPct'])):[]
   }:null;
