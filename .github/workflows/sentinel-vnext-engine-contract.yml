@@ -17,4 +17,5 @@ jobs:
       - name: Independent engine catalog and compatibility contract
         run: |
           node --check sentinel-trading-lab/agent/src/core/scenario-engine-catalog.mjs
-          node --test tests/sentinel-single-engine-contract-1359.test.mjs
+          node --check sentinel-trading-lab/agent/src/core/expiry-driven-forecast.mjs
+          node --test tests/sentinel-single-engine-contract-1359.test.mjs tests/sentinel-expiry-driven-1359.test.mjs
