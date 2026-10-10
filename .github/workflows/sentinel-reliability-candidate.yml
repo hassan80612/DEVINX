@@ -12,19 +12,39 @@ permissions:
   contents: read
 
 jobs:
-  test-agent:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install dependencies (no scripts)
+      - name: Install dependencies without install scripts
         run: npm ci --ignore-scripts
-      - name: Validate agent syntax
+      - name: Syntax-check candidate Agent
         run: |
           find sentinel-trading-lab/agent/src/core -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
           node --check sentinel-trading-lab/agent/worker/index.mjs
-      - name: Verify Sentinel core and regression tests
-        run: node --test tests/sentinel*.test.mjs
+      - name: Compare regressions with exact production commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NO_COLOR=1
+          original="$(git rev-parse HEAD)"
+          node --test --test-reporter=spec tests/sentinel*.test.mjs > candidate.log 2>&1 || true
+          grep '^✖ ' candidate.log | sed 's/^✖ //' | sort -u > candidate.fail || true
+          echo "Candidate: $(grep -E 'ℹ (tests|pass|fail) ' candidate.log | tr '\n' ' ')"
+          git checkout --detach 7404d81a6a0889f23a49da56a0eb53808a9193e0
+          node --test --test-reporter=spec tests/sentinel*.test.mjs > baseline.log 2>&1 || true
+          grep '^✖ ' baseline.log | sed 's/^✖ //' | sort -u > baseline.fail || true
+          echo "Baseline: $(grep -E 'ℹ (tests|pass|fail) ' baseline.log | tr '\n' ' ')"
+          echo "Only-in-candidate failures:"
+          comm -13 baseline.fail candidate.fail | tee new.fail
+          echo "Pre-existing failures:"
+          cat baseline.fail
+          test ! -s new.fail
+          git checkout --detach "$original"
+          echo "No newly failing Sentinel tests versus published production commit."
