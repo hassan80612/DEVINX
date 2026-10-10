@@ -35,15 +35,17 @@ export function scenarioEngineContext(settings={},provider='',asset='',durationM
 
 /**
  * Contract handed to exactly ONE selected prediction engine in VNext.
- * The broker-confirmed expiration (when available), not the chart candle
- * interval and not a stale manually set forecast horizon, is authoritative.
+ * Only the USER-selected expiration drives the requested future outcome.
+ * Broker observations may be displayed as a mismatch diagnostic, but must
+ * not override the chosen expiry or initiate a broker expiry lookup.
+ * A chart candle interval and older forecastHorizonSeconds are NOT authority.
  */
 export function selectedEngineForecastRequest({settings={},broker={},provider='unknown',asset='unknown',now=Date.now()}={}){
   const engine=selectedScenarioEngine(settings);
   const ms=Number(settings.orderDurationMs);
   const expiry=expiryDrivenForecast({
     selectedSeconds:Number.isFinite(ms)&&ms>0?ms/1000:null,
-    brokerVerified:broker.expirationVerified===true,
+    brokerVerified:broker.expirationVerified===true, // advisory only; never changes requested horizon
     brokerDurationMs:broker.expirationDurationMs,
     brokerExpiresAt:broker.expirationAt,
     brokerAvailableSeconds:broker.availableExpirationsSeconds,
