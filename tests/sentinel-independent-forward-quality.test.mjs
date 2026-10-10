@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {assessIndependentSignalHistory,ENTRY_QUALITY_EPOCH,wilsonInterval} from '../sentinel-trading-lab/agent/src/core/independent-signal-quality.mjs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
+import {EntryResearch} from '../sentinel-trading-lab/agent/src/core/entry-research.mjs';
 
 const t=Date.UTC(2026,9,10,12);
 const base={kind:'operational_v3',entryQualityEpoch:ENTRY_QUALITY_EPOCH,
@@ -84,4 +85,29 @@ test('independent operational signals save technical confidence without guessed 
  const p=r.signalValidation.pending[0];
  assert.equal(p.confidence,85);assert.equal(p.probability,null);
  assert.equal(p.entryQualityEpoch,ENTRY_QUALITY_EPOCH);
+});
+
+test('learning can become eligible after forward evidence without pretending 10:2 was achieved',()=>{
+ const e=new EntryResearch(),context={provider:'iq_option',asset:'EUR/USD OTC',durationMs:30000,
+   kind:'reversal',side:'CALL',regime:'range',combo:'learning',payout:.82};
+ const key=e.key(context);
+ e.models[key]={bias:.7,weights:[0],updates:120};
+ e.outcomes=Array.from({length:120},(_,i)=>({
+   id:'p'+i,key,createdAt:t+(i%3)*86400000,won:i<80,
+   modelLoss:.1,baselineLoss:.3
+ }));
+ const p=e.predict(context,[1],.65);
+ assert.equal(p.samples,120);
+ assert.equal(p.qualified,true,'forward model should not require arbitrary 83% baseline win rate');
+ assert.equal(p.targetMet,false,'model eligibility must never claim 10:2 success');
+});
+test('learned model with statistically poor baseline remains unqualified',()=>{
+ const e=new EntryResearch(),context={provider:'iq_option',asset:'EUR/USD OTC',durationMs:30000,
+   kind:'reversal',side:'CALL',regime:'range',combo:'learning',payout:.82};
+ const key=e.key(context);e.models[key]={bias:.7,weights:[0],updates:120};
+ e.outcomes=Array.from({length:120},(_,i)=>({
+   id:'q'+i,key,createdAt:t+(i%3)*86400000,won:i<55,
+   modelLoss:.1,baselineLoss:.3
+ }));
+ assert.equal(e.predict(context,[1],.65).qualified,false);
 });
