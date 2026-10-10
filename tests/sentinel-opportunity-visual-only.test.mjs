@@ -60,5 +60,5 @@ test('broker overlay differentiates entry expiration from scenario countdown',as
   assert.match(source,/opportunityNoticeHtml/);
   assert.match(source,/futureDecisionStatus=timingClosed\?'00:00 · ENCERRADO'/);
   assert.doesNotMatch(source,/const timingClosed=\[[^\]]*OPORTUNIDADE CONSUMIDA/);
-  assert.match(source,/Aguardando novo ponto ou gatilho/);
+  assert.match(source,/Aguardando novo gatilho/);
 });
