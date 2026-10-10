@@ -36,17 +36,21 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const terminalStates=['INVALIDADO','JANELA ENCERRADA','JANELA PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA','OPORTUNIDADE PERDIDA'];
   // UI-only classification: never present an expired/invalidated direction as an active setup.
   const scenarioInactive=fresh&&(view.closed===true||terminalStates.includes(String(view.state||'')));
-  const tone=!fresh?'neutral':scenarioInactive?'closed':view.risk?'review':side==='CALL'?'call':side==='PUT'?'put':'neutral';
+  // Visual priority: a *currently actionable* independent entry wins over
+  // the older main scenario colour. No change to actual signal permissions.
+  const entrySide=fresh&&view.canEnter===true&&op.entryAnalyst?.independent===true?view.entrySide:null;
+  const tone=!fresh?'neutral':entrySide==='CALL'?'call':entrySide==='PUT'?'put':scenarioInactive?'closed':view.risk?'review':side==='CALL'?'call':side==='PUT'?'put':'neutral';
+  const scenarioTone=!fresh||scenarioInactive?'neutral':view.risk?'review':side==='CALL'?'call':side==='PUT'?'put':'neutral';
   const quoteAge=quoteAt>0?Math.max(0,Math.floor((now-quoteAt)/1000)):null;
   const analysisAge=evaluationAt>0?Math.max(0,Math.floor((now-evaluationAt)/1000)):null;
-  const entrySide=fresh&&view.canEnter===true&&op.entryAnalyst?.independent===true?view.entrySide:null;
   const entryRemaining=entrySide&&Number.isFinite(Number(view.entryRemainingSeconds))?Math.max(0,Number(view.entryRemainingSeconds)):null;
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
-  return{asset,online,running,fresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioInactive,
+  return{asset,online,running,fresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
     entrySide,entryRemaining,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
     remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,
-    subStatus:!fresh?unavailable:sub.mode!=='reversal-alert'?'ATUALIZE O AGENT':sub.status==='SEM LEITURA'?'AGUARDANDO COTAÇÕES':alert?'POSSÍVEL REVERSÃO '+alert.side:'OBSERVANDO REVERSÃO',
+    subStatus:!fresh?unavailable:sub.mode!=='reversal-alert'?'ATUALIZE O AGENT':sub.status==='SEM LEITURA'?'AGUARDANDO COTAÇÕES':alert?(alert.testing?'REVERSÃO EM TESTE ':'REVERSÃO CONFIRMADA ')+alert.side:'OBSERVANDO REVERSÃO',
+    reversalTone:alert?.side==='CALL'?'call':alert?.side==='PUT'?'put':'neutral',reversalTesting:alert?.testing===true,
     alert,market:hasTotals?market:null,strategies:hasTotals?strategies:null,combined:hasTotals?combined:null,average,averageSide};
 }
