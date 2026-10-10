@@ -22,7 +22,7 @@ test('prediction uses one candle interval, unique points, and only received time
  const a=analyzePrediction({...x,quoteTs:x.now,predictionStrategies:['trend','trend']}),b=analyzePrediction({...x,quoteTs:x.now,predictionStrategies:['trend']});assert.deepEqual(a.entryPlanner,b.entryPlanner);
  const next={from:x.now/1000+1,to:x.now/1000+61,open:999,high:999,low:999,close:999};
  const c=analyzePrediction({...x,quoteTs:x.now,predictionStrategies:['trend'],candles:[...x.candles,next],quoteHistory:[...x.quoteHistory,{ts:x.now+1000,price:999}]});assert.deepEqual(c.entryPlanner,b.entryPlanner);
- for(const p of Object.values(a.entryPlanner.horizons)){assert.equal(p.modelVersion,'future-v6.0');assert.equal(p.rawCallProbability+p.rawPutProbability,100);assert.ok(p.familyEvidence.every(r=>r.weight<=.28+1e-10));assert.equal(p.reliability.familyAgreement,p.agreement);}
+ for(const p of Object.values(a.entryPlanner.horizons)){assert.equal(p.modelVersion,'future-v6.3-early-turn');assert.equal(p.rawCallProbability+p.rawPutProbability,100);assert.ok(p.familyEvidence.every(r=>r.weight<=.28+1e-10));assert.equal(p.reliability.familyAgreement,p.agreement);}
 });
 test('runtime changes future forecasts while preserving current readings and all three totals',async()=>{
  const x=await fixture(),snap={...x,quoteTs:x.now,price:x.quoteHistory.at(-1).price,provider:'test'};
@@ -32,7 +32,7 @@ test('runtime changes future forecasts while preserving current readings and all
  const before=structuredClone({totals:a.generalConsensus,metrics:a.metrics,final:a.finalConfluence});
  r._mergeScenarioConfluence(a,panel,snap,x.now);
  assert.deepEqual({totals:a.generalConsensus,metrics:a.metrics,final:a.finalConfluence},before);
- assert.equal(a.entryPlanner.horizons['30'].modelVersion,'future-v6.0');assert.equal(a.entryPlanner.horizons['30'].strategyFuture.blend,0);
+ assert.equal(a.entryPlanner.horizons['30'].modelVersion,'future-v6.3-early-turn');assert.equal(a.entryPlanner.horizons['30'].strategyFuture.blend,0);
  assert.ok(a.predictionMetrics);assert.ok(a.predictionInputQuality.excludedCandles>0);
  assert.deepEqual(r._generalConsensus(a,panel),before.totals);
 });

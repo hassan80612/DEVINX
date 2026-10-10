@@ -51,7 +51,7 @@ test('phone forecast headline fits and scenario colors respond only to validated
  const base=new URL('../sentinel-trading-lab/',import.meta.url);
  const s=await readFile(new URL('src/components/LiveScenarioCard.tsx',base),'utf8');
  const css=await readFile(new URL('src/app/globals.css',base),'utf8');
- assert.match(s,/mobileScenarioDirection\?'CENÁRIO '\+mobileScenarioDirection/);
+ assert.match(s,/mobileScenarioDirection\?\(m\.displayScenarioPreliminary\?'PROJEÇÃO ':'CENÁRIO '\)\+mobileScenarioDirection/);
  assert.doesNotMatch(s,/CENÁRIO '\+mobileScenarioDirection\+' · AGUARDE ENTRADA/);
  assert.match(s,/mobileWatchTone/);assert.match(s,/mobileScenarioDirection\?\(mobileScenarioDirection==='CALL'\?'call':'put'\):'neutral'/);
  assert.match(css,/\.liveDecision\.watch-call/);assert.match(css,/\.liveDecision\.watch-put/);

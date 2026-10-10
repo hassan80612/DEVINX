@@ -6,7 +6,7 @@ const src=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
 test('floating card makes passive CALL/PUT visibly distinct from an actionable entry',async()=>{
  const c=await src('sentinel-trading-lab/src/components/LiveScenarioCard.tsx');
  assert.match(c,/mobileScenarioDirection=!m\.scenarioInactive&&m\.displayScenarioSide/);
- assert.match(c,/mobileDecisionText=mobileDirection\?mobileDirection\+' AGORA':mobileScenarioDirection\?'CENÁRIO '/);
+ assert.match(c,/mobileDecisionText=mobileDirection\?mobileDirection\+' AGORA':mobileScenarioDirection\?\(m\.displayScenarioPreliminary\?'PROJEÇÃO ':'CENÁRIO '\)/);
  assert.match(c,/mobileScenarioDirection\?'CENÁRIO EM ANÁLISE · SEM ENTRADA'/);
  assert.match(c,/ANALISANDO · AGUARDE CONFIRMAÇÃO/);
  assert.match(c,/scenarioClock/);

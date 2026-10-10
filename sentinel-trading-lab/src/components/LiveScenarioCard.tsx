@@ -81,8 +81,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const mobileArrow=(mobileDirection||mobileScenarioDirection)==='CALL'?'↑':(mobileDirection||mobileScenarioDirection)==='PUT'?'↓':'◇';
   // Show a SHORT headline: the previous 36-character mobile headline
   // overflowed the bordered card, including the word "ENTRADA".
-  const mobileDecisionText=mobileDirection?mobileDirection+' AGORA':mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection:m.scenarioInactive?'ENCERRADO':'AGUARDANDO';
-  const mobileDecisionLabel=mobileDirection?'ENTRADA CONFIRMADA':mobileScenarioDirection?'CENÁRIO EM ANÁLISE · SEM ENTRADA':'AGUARDANDO CENÁRIO';
+  const mobileDecisionText=mobileDirection?mobileDirection+' AGORA':mobileScenarioDirection?(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:m.scenarioInactive?'ENCERRADO':'AGUARDANDO';
+  const mobileDecisionLabel=mobileDirection?'ENTRADA CONFIRMADA':m.displayScenarioPreliminary?'ESTIMATIVA ANTECIPADA · NÃO É ENTRADA':mobileScenarioDirection?'CENÁRIO EM ANÁLISE · SEM ENTRADA':'AGUARDANDO CENÁRIO';
   const mobileWatchTone=!mobileDirection&&mobileScenarioDirection?
     (mobileScenarioDirection==='CALL'?'watch-call':'watch-put'):'';
   // A delayed quote can still be shown as historical information, never live.
@@ -134,10 +134,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">← Início</button></header>
     <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.displayScenarioStale?'stale-preview':''} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
       <small>{mobileDecisionLabel}</small><strong><span aria-hidden="true">{mobileArrow}</span> {mobileDecisionText}</strong>
-      <span className="mobileScenarioContext">{mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?m.displayScenarioStale?'COTAÇÃO ATRASADA · SEM ENTRADA':'ANALISANDO · AGUARDE CONFIRMAÇÃO':'Nenhuma entrada confirmada'}</span>
+      <span className="mobileScenarioContext">{mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?m.displayScenarioStale?'COTAÇÃO ATRASADA · SEM ENTRADA':m.displayScenarioPreliminary?'PROJEÇÃO FUTURA · AGUARDE CONFIRMAÇÃO':'ANALISANDO · AGUARDE CONFIRMAÇÃO':'Nenhuma entrada confirmada'}</span>
       <small className="mobileEntryWindow">{m.entrySide?'Entrada válida por '+m.entryRemaining+'s':m.displayScenarioStale?'Aguardando atualização do preço · não entre':mobileScenarioDirection?'Preparando leitura · aguardando gatilho':m.fresh?'Analisando o preço · aguarde':'Aguardando cotação e análise atuais'}</small>
     </div>
-    <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection:'CENÁRIO'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
+    <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection?(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:'CENÁRIO'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
     {opportunityNotice}
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>

@@ -19,7 +19,13 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
     const contextMatches=String(op.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(op.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(op.durationMs)===Number(durationMs);
     const entryEnd=Number(op.activeUntil||0),setupEnd=Number(op.entryWindowEndAt||op.targetAt||0);
     const canEnter=contextMatches&&op.entryAnalyst.qualification?.allowed===true&&op.state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now&&setupEnd>now;
-    return {entrySide,signalHorizonSeconds:Number(op.entryDecisionHorizonSeconds||durationMs/1000),analysisSide:null,displaySide:null,oppositeAnalysis:false,contextMatches,side:null,state:'AGUARDAR',closed:false,hasSetup:false,canEnter,deadline:null,remainingSeconds:null,confidence:0,entryState:op.state||'AGUARDAR',entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.ceil((entryEnd-now)/1000):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null};
+    const projection=op.scenarioProjection||null;
+    const projectionSide=contextMatches&&['CALL','PUT'].includes(projection?.side)&&
+      Number(projection.horizonSeconds)===Number(horizonSeconds)&&
+      Number(projection.asOf)>0&&now-Number(projection.asOf)<=2500&&
+      projection.actionable!==true?projection.side:null;
+    return {entrySide,signalHorizonSeconds:Number(op.entryDecisionHorizonSeconds||durationMs/1000),analysisSide:projectionSide,displaySide:projectionSide,projectionSide,projectionOnly:!!projectionSide,
+      oppositeAnalysis:false,contextMatches,side:null,state:projectionSide?'PROJETANDO':'AGUARDAR',closed:false,hasSetup:false,canEnter,deadline:null,remainingSeconds:null,confidence:0,entryState:op.state||'AGUARDAR',entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.ceil((entryEnd-now)/1000):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null};
   }
   const op=operational||{},entrySide=op.entryAnalyst?.independent===true&&op.entryAnalyst?.signal?.actionable!==true?null:['CALL','PUT'].includes(op.side)?op.side:null,side=['CALL','PUT'].includes(op.scenario?.side)?op.scenario.side:entrySide;
   const contextMatches=!!side&&String(op.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(op.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(op.durationMs)===Number(durationMs);

@@ -1187,7 +1187,7 @@ export class LocalPlaywrightDriver{
         const feedPauseSeconds=Math.max(0,Math.ceil((Number(d.liveAgeMs||0)+elapsedSincePayload)/1000));
         const pilotLabel=operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'ANALISTA PAUSADO':'ANALISTA ATIVO · EXECUÇÃO AUTOMÁTICA DESLIGADA';
         const displayCandidate=candidateOutlook;
-        const formingSide=plannerReadable&&String(operational?.asset||visibleAsset).toUpperCase()===visibleAsset&&['CALL','PUT'].includes(runtimeView.displaySide)?runtimeView.displaySide:null;
+        const formingSide=(plannerReadable||runtimeView.projectionOnly===true)&&String(operational?.asset||visibleAsset).toUpperCase()===visibleAsset&&['CALL','PUT'].includes(runtimeView.displaySide)?runtimeView.displaySide:null;
         const outlook=formingSide||((runtimeView.hasSetup||timingClosed)?runtimeOperationalSide:null)||'AGUARDAR';
         const outlookTone=outlook==='CALL'?callTone:outlook==='PUT'?putTone:neutralTone;
         const operationalHeroSide=runtimeView.entrySide||runtimeOperationalSide;
@@ -1203,7 +1203,7 @@ export class LocalPlaywrightDriver{
         const trackingSameSide=!!futureDecision&&operationalTimingState==='ACOMPANHANDO';
         const scenarioRisk=runtimeView.risk===true&&!timingClosed;
         const scenarioCardBg=timingClosed?(uiTheme==='light'?'#fff0ef':'linear-gradient(145deg,#55262c,#291318)'):scenarioRisk?(uiTheme==='light'?'#fff7df':'linear-gradient(145deg,#4b3c18,#242211)'):formingSide==='CALL'?(uiTheme==='light'?'#e3f7eb':'linear-gradient(145deg,#12583c,#083526)'):formingSide==='PUT'?(uiTheme==='light'?'#fff0f3':'linear-gradient(145deg,#632b3a,#371c29)'):heroPanelBg;
-        const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide+(scenarioRisk?' · REAVALIANDO':'')):'AGUARDE UM CENÁRIO';
+        const futureActionLabel=operationalTimingState==='INVALIDADO'?'CENÁRIO CANCELADO':timingClosed?'CENÁRIO ENCERRADO':formingSide?(runtimeView.projectionOnly?'PROJEÇÃO '+formingSide+' · EM ANÁLISE':'CENÁRIO '+formingSide+(scenarioRisk?' · REAVALIANDO':'')):'AGUARDE UM CENÁRIO';
 
         // Subanalyst remains independently executable even when the scenario
         // is closed or opposite; only its own verified signal is presented.
@@ -1264,7 +1264,7 @@ export class LocalPlaywrightDriver{
         const entryPanelBorder=confirmedEntrySide==='CALL'?callTone:confirmedEntrySide==='PUT'?putTone:
           timingClosed?putTone:scenarioRisk?warnTone:outlookTone;
         const entryActionLabel=confirmedEntrySide?('ENTRADA '+confirmedEntrySide+' AGORA'):
-          timingClosed?'CENÁRIO ENCERRADO':formingSide?('CENÁRIO '+formingSide+' · SEM ENTRADA'):'SEM ENTRADA AGORA';
+          timingClosed?'CENÁRIO ENCERRADO':formingSide?(runtimeView.projectionOnly?('PROJEÇÃO '+formingSide+' · EM ANÁLISE'):('CENÁRIO '+formingSide+' · SEM ENTRADA')):'SEM ENTRADA AGORA';
         const entryActionTone=confirmedEntrySide==='CALL'?callTone:confirmedEntrySide==='PUT'?putTone:actionTone;
         const entryStatusLabel=confirmedEntrySide?
           ('SINAL DE ENTRADA · '+confirmedEntrySeconds+'s RESTANTES · EXPIRA EM '+durationText):
