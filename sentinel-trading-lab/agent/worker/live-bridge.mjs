@@ -109,8 +109,13 @@ export class LiveBridge{
     const op=snapshot.lastResult?.analysis?.operationalSignal||{};
     const fingerprint=[
       snapshot.lastEvalMs,snapshot.liveBroker?.lastQuoteAt,snapshot.liveBroker?.symbol,snapshot.state,
-      // An actual state transition can share the SAME quote and analysis
-      // timestamp. It must not be silently discarded by fingerprint dedup.
+      // A new motor, expiry or live forecast is meaningful even if no new
+      // broker quote arrived. The old dedup ignored all three, so the phone
+      // could appear stuck until its next whole-state cloud poll.
+      snapshot.settings?.engine,snapshot.settings?.orderDurationMs,
+      snapshot.lastResult?.analysis?.vnext?.receipt?.side,
+      snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
+      op.scenarioProjection?.side,
       op.side,op.state,op.ready,op.actionable,op.activeUntil,
       op.scenario?.side,op.scenario?.status,op.scenario?.closed,op.scenario?.deadline,
       op.subanalyst?.alert?.side,op.subanalyst?.alert?.testing
