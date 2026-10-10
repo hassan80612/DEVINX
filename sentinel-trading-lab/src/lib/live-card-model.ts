@@ -46,6 +46,8 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     Number(vnext.targetAnchor.expirySeconds)===horizon?vnext.targetAnchor:null;
   const vnextProjection=vnextReceipt&&vnext?.projection?.kind!=='invalid'?
     vnext.projection:null;
+  const vnextTargetProjection=vnextTargetAnchor&&vnext?.targetProjection?
+    vnext.targetProjection:null;
   const scenarioDeadline=Number(scenario?.deadline||0);
   const scenarioOrigin=Number(scenario?.createdAt||0);
   const scenarioContextOk=matchingMarket&&feedValidated&&
@@ -112,7 +114,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextStatus:vnext?.computedStatus||null,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
