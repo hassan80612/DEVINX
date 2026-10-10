@@ -34,11 +34,11 @@ jobs:
           set -euo pipefail
           export NO_COLOR=1
           original="$(git rev-parse HEAD)"
-          node --test --test-reporter=spec tests/sentinel*.test.mjs > candidate.log 2>&1 || true
+          node --test --test-concurrency=4 --test-reporter=spec tests/sentinel*.test.mjs > candidate.log 2>&1 || true
           grep '^✖ ' candidate.log | sed -E 's/^✖ //; s/ \([0-9]+(\.[0-9]+)?ms\)$//' | sort -u > candidate.fail || true
           echo "Candidate: $(grep -E 'ℹ (tests|pass|fail) ' candidate.log | tr '\n' ' ')"
           git checkout --detach 7404d81a6a0889f23a49da56a0eb53808a9193e0
-          node --test --test-reporter=spec tests/sentinel*.test.mjs > baseline.log 2>&1 || true
+          node --test --test-concurrency=4 --test-reporter=spec tests/sentinel*.test.mjs > baseline.log 2>&1 || true
           grep '^✖ ' baseline.log | sed -E 's/^✖ //; s/ \([0-9]+(\.[0-9]+)?ms\)$//' | sort -u > baseline.fail || true
           echo "Baseline: $(grep -E 'ℹ (tests|pass|fail) ' baseline.log | tr '\n' ' ')"
           echo "Only-in-candidate failures:"
