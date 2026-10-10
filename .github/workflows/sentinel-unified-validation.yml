@@ -36,5 +36,5 @@ jobs:
       - name: Build Next.js pages and webhook types
         working-directory: sentinel-trading-lab
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund
           npm run build
