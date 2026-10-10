@@ -157,10 +157,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <small>Faixa: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · {m.vnextFoundation==='historical-forward-outcomes'?'Comparação histórica: '+m.vnextHistorical+' casos completos':'Histórico insuficiente para comparar resultados futuros; projeção baseada no modelo atual'}. Não é taxa de acerto.</small></>:<p>Aguardando cotações suficientes para previsão futura. Sem entrada confirmada.</p>}
   </div>:null;
   const observationCards=vnext?<details className="vnextMobileReadings" data-testid="mobile-vnext-readings">
-    <summary>Mercado Agora · Estrutura Anterior · Média dos Dois</summary>
+    <summary>Mercado Agora · Estrutura Anterior · Total dos Totais</summary>
     <div className="vnextMobileReadingsGrid">
       {(s?.lastResult?.analysis?.vnext?.cards||[]).slice(0,3).map((c:any,i:number)=>
-        <div key={c.id||i}><small>{['MERCADO AGORA','ESTRUTURA ANTERIOR','MÉDIA DOS DOIS'][i]}</small>
+        <div key={c.id||i}><small>{['MERCADO AGORA','ESTRUTURA ANTERIOR','TOTAL DOS TOTAIS'][i]}</small>
           <strong>{c.side||'AGUARDAR'}</strong>
           <span>CALL {c.callPct==null?'—':c.callPct+'%'} · PUT {c.putPct==null?'—':c.putPct+'%'}</span>
         </div>)}
