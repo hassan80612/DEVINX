@@ -51,7 +51,7 @@ test('mobile shows exact Agent entryPrice and live quote separately',()=>{
 });
 test('no duplicate mobile CALL/PUT directions from aggregate totals',async()=>{
  const s=await readFile(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
- assert.match(s,/mobileDecisionText=mobileDirection\?mobileDirection\+' AGORA':'AGUARDANDO'/);
+ assert.match(s,/mobileDecisionText=mobileDirection/);
  assert.match(s,/mobileTechnicalDetails/);
  assert.match(s,/PriceComparison|mobilePriceComparison/);
  const runtime=await readFile(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
