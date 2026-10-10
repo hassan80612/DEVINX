@@ -141,6 +141,34 @@ BEGIN
       '  v_token:=encode(extensions.gen_random_bytes(32)',
       '  PERFORM sentinel_app.refresh_kiwify_prepaid_access(v_email);'
       ||chr(10)||'  v_token:=encode(extensions.gen_random_bytes(32)');
+    v_definition:=replace(v_definition,
+      '''agentEnabled'',v_is_owner,''accessExpiresAt'',null,''accessActive'',v_is_owner',
+      '''agentEnabled'',sentinel_app.agent_access_active(v_id),''accessExpiresAt'','
+       ||'(select access_expires_at from sentinel_app.accounts where id=v_id),'
+       ||'''accessActive'',sentinel_app.agent_access_active(v_id)');
     EXECUTE v_definition;
   END IF;
-END $$;
+END $;
+-- Only the real master and paid, unexpired Kiwify users can operate the Agent.
+-- This check is shared by web login, Agent heartbeat and command polling.
+CREATE OR REPLACE FUNCTION sentinel_app.agent_access_active(p_account_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $
+  SELECT coalesce((
+    SELECT EXISTS (
+      SELECT 1 FROM sentinel_app.master_owner mo
+      WHERE mo.singleton=true AND mo.account_id=a.id
+    )
+    OR (
+      a.status='active'
+      AND a.agent_enabled=true
+      AND a.plan='sentinel-kiwify-usd50-prepaid-30d'
+      AND a.access_expires_at IS NOT NULL
+      AND a.access_expires_at>now()
+    )
+    FROM sentinel_app.accounts a WHERE a.id=p_account_id
+  ),false)
+$;
+REVOKE ALL ON FUNCTION sentinel_app.agent_access_active(uuid) FROM PUBLIC,anon,authenticated;
+-- Security-definer callers resolve this function with creator privileges.
+GRANT EXECUTE ON FUNCTION sentinel_app.agent_access_active(uuid) TO service_role;
+
