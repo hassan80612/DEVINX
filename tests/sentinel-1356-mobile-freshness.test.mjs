@@ -53,7 +53,7 @@ test('phone forecast headline fits and scenario colors respond only to validated
  const css=await readFile(new URL('src/app/globals.css',base),'utf8');
  assert.match(s,/mobileScenarioDirection\?'CENÁRIO '\+mobileScenarioDirection/);
  assert.doesNotMatch(s,/CENÁRIO '\+mobileScenarioDirection\+' · AGUARDE ENTRADA/);
- assert.match(s,/mobileWatchTone/);assert.match(s,/m\.fresh\?m\.scenarioTone:'neutral'/);
+ assert.match(s,/mobileWatchTone/);assert.match(s,/mobileScenarioDirection\?\(mobileScenarioDirection==='CALL'\?'call':'put'\):'neutral'/);
  assert.match(css,/\.liveDecision\.watch-call/);assert.match(css,/\.liveDecision\.watch-put/);
  assert.match(css,/\.compactScenario\.call/);assert.match(css,/\.compactScenario\.put/);
  assert.match(css,/white-space:normal!important;overflow-wrap:anywhere/);
