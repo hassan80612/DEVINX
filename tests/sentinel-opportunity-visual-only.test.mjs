@@ -46,9 +46,11 @@ test('React card places same prominent amber notice on desktop and compact mobil
   const css=await readFile(new URL('../sentinel-trading-lab/src/app/globals.css',import.meta.url),'utf8');
   assert.equal(react.split('{opportunityNotice}').length-1,2);
   assert.equal(react.split('{scenarioClock}').length-1,2);
-  assert.match(react,/ESTA OPORTUNIDADE TERMINOU/);
+  assert.match(react,/Aguardando novo gatilho/);
   assert.match(react,/compact-three-totals-average/);
-  assert.match(css,/liveOpportunityEnded/);
+  assert.match(react,/mobile-price-comparison/);
+  assert.match(react,/mobile-technical-readings/);
+  assert.match(css,/liveOpportunityState/);
   assert.match(css,/liveScenarioCompact \.compactAverage/);
   assert.match(css,/liveScenarioCountdown/);
 });
