@@ -22,17 +22,16 @@ export function singleEngineForecast({
    specialistForwardPrediction({...options,engineId:request.engineId});
  const freshQuote=Number(snap.quoteTs)>0&&Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500;
  const recentQuote=quotes.filter(q=>Number(q.ts)<=now).at(-1);
- const quotePrice=Number(snap.price||recentQuote?.price||0);
- // Keep the recorded source quote synchronized with the actual model input.
+ // The receipt must pin the quote the model ACTUALLY used, even when
+ // a newer broker-screen quote reaches the UI milliseconds earlier.
+ const quotePrice=Number(computed?.diagnostic?.referencePrice||recentQuote?.price||0);
  const quoteTime=Number(computed?.diagnostic?.quoteAt||recentQuote?.ts||snap.quoteTs||0);
- const quoteMatches=Number(computed?.diagnostic?.referencePrice||0)>0&&
-   Math.abs(Number(computed.diagnostic.referencePrice)-quotePrice)<=
-   Math.max(1e-10,quotePrice*1e-7);
- const report=freshQuote&&quoteMatches&&computed?.prediction?
+ const modelQuoteFresh=quoteTime>0&&quoteTime<=now&&now-quoteTime<=2500;
+ const report=freshQuote&&modelQuoteFresh&&computed?.prediction?
    recordForwardForecast({request:{...request,asset,provider},
      referenceQuote:{at:quoteTime,price:quotePrice},
      prediction:computed.prediction,createdAt:now}):
-   {status:freshQuote?'quote-not-synchronized':'stale-live-quote',receipt:null};
+   {status:freshQuote?'historical-quote-delayed':'stale-live-quote',receipt:null};
  const receipt=report.receipt||null,side=receipt?.side||null;
  const predictedPrice=receipt?.projectedPrice??null;
  const horizon=Number(seconds||0),durationMs=Math.round(horizon*1000);
