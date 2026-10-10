@@ -14,7 +14,7 @@ test('remote polling is bounded and heartbeat does not hold up mobile actions',(
   assert.match(worker,/runtime\.stateName==='running'\?5000:20000/);
   assert.match(worker,/void sendRemoteHeartbeat\(\)/);
   assert.match(worker,/lastRemoteHeartbeatAttemptAt=0/);
-  assert.match(worker,/compactRemoteState\(/);
+  assert.match(worker,/dashboardTransportState\(/);
   const remote=read(WORKER+'remote-status.mjs');
   assert.match(remote,/MAX_ANALYSES\s*=\s*6/);
   assert.match(remote,/MAX_CANDLES\s*=\s*40/);
@@ -76,7 +76,7 @@ test('selected-asset tracking and passive quotes survive without broker-page aut
   assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
   assert.match(worker,/driver\.shutdown\?\.\(\)/);
   assert.match(manager,/for\(let i=0;i<100;i\+\+\)/);
-  assert.match(installer,/13\.4\.46-realtime-lite-1009/);
+  assert.match(installer,/13\.4\.47-bandwidth-safe-1010/);
   assert.doesNotMatch(installer,/13\.4\.39-broker-passive-1009/);
 });
 
