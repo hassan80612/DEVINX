@@ -74,8 +74,6 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const confirmed=call?short.reversalCallConfirmed===true:short.reversalPutConfirmed===true;
     const located=call?short.reversalCallCandidate||short.failedBreakDown||short.turnUp:short.reversalPutCandidate||short.failedBreakUp||short.turnDown;
     const reversal=!!repeated||mapped.qualified||(confirmed&&!!located);
-    const flow=mapped.qualified||aligned&&(call?short.flowReadyCall===true:short.flowReadyPut===true)||aligned&&reversal;
-    const structure=mapped.qualified||(call?short.structureReadyCall===true:short.structureReadyPut===true)||reversal;
     const room=mapped.qualified?mapped.room:repeated?repeated.roomOk===true:(call?short.callRoomOk===true:short.putRoomOk===true);
     const adverse=!mapped.qualified&&(call?short.turnDown===true||short.weakeningUp===true&&Number(micro.delta2)<0&&Number(micro.delta5)<0:short.turnUp===true||short.weakeningDown===true&&Number(micro.delta2)>0&&Number(micro.delta5)>0);
     const exhausted=!reversal&&(call?short.callOverextended===true||short.callReversalRisk===true:short.putOverextended===true||short.putReversalRisk===true);
@@ -96,11 +94,16 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
     const nextAdvance=firstBreak?beyond.find(q=>q.ts>firstBreak.ts&&(call?q.price>firstBreak.price:q.price<firstBreak.price)):null;
     const lostLevel=firstBreak&&currentQuotes.some(q=>q.ts>firstBreak.ts&&(call?q.price<=closedRange:q.price>=closedRange));
     const acceptedBreak=!!nextAdvance&&!lostLevel;
-    const firstRangeBreak=closedRange!=null&&acceptedBreak&&
+    // The closed prior range and advancing post-break quotes are already
+    // structural and flow evidence. Requiring slower short-model labels
+    // AGAIN after this proof makes the engine recognize the move too late.
+    // This does not skip the current-price check, independent progression,
+    // direction of delta2/delta5, room or the user's configured score.
+    const firstRangeBreak=closedRange!=null&&acceptedBreak&&aligned&&
       (call?price>closedRange:price<closedRange)&&
-      (call?Number(micro.delta2)>0:Number(micro.delta2)<0)&&
-      (call?short.structureReadyCall===true&&short.flowReadyCall===true:
-            short.structureReadyPut===true&&short.flowReadyPut===true);
+      (call?Number(micro.delta2)>0:Number(micro.delta2)<0);
+    const flow=mapped.qualified||aligned&&(call?short.flowReadyCall===true:short.flowReadyPut===true)||aligned&&reversal||firstRangeBreak;
+    const structure=mapped.qualified||(call?short.structureReadyCall===true:short.structureReadyPut===true)||reversal||firstRangeBreak;
     const continuation=!reversal&&!!(localSetup||forecastSetup||firstRangeBreak)&&bar.length>=2;
     const kind=reversal?'reversal':short.retest?.side===(call?'BUY':'SELL')?'breakout':'continuation';
     const rawScore=Number(call?short.callScore:short.putScore),reversalScore=Number(call?short.reversalCallScore:short.reversalPutScore);
