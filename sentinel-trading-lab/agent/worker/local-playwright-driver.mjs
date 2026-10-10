@@ -1485,7 +1485,62 @@ export class LocalPlaywrightDriver{
         const stableScrollTop=el.scrollTop;
         const stableRect=el.getBoundingClientRect();
         const stableLeft=el.style.left,stableTop=el.style.top,stableRight=el.style.right;
-        const nextHtml=`
+        const nextHtml=d.engine?`
+          <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+              <div style="display:grid;gap:3px"><strong style="color:${goldSoft};font-size:15px;letter-spacing:.035em">SENTINEL <span style="font-size:11px;color:${muted}">V${esc(d.agentVersion||'13.4.59')}</span></strong><small style="color:${muted};font-size:10px">${esc(visibleAsset)} · ${liveNow?'● COTAÇÃO AO VIVO':'● AGUARDANDO FEED'} · ${runtimeLabel}</small></div>
+              <div style="display:flex;gap:4px;align-items:center">
+                <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">Claro</button>
+                <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">Escuro</button>
+                <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">↻ Leitura</button>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(95px,.7fr);gap:9px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">MOTOR ATIVO
+                <select data-sentinel-setting="engine" title="Um motor responsável pela previsão" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>
+                  <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
+                  <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>Suporte e Resistência</option>
+                  <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
+                  <option value="mean_reversion" ${d.engine==='mean_reversion'?'selected':''}>Mean Reversion</option>
+                  <option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>
+                  <option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
+                  <option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
+                  <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
+                </select>
+              </label>
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">PREVER ATÉ
+                <select data-sentinel-setting="duration" title="Prazo da previsão selecionado por você" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+                  ${[5,10,15,30,45,60,120,180,300,600,900,3600].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+(v<60?v+'s':v/60+'min')+'</option>').join('')}
+                </select>
+              </label>
+            </div>
+            <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="padding:15px 14px;margin-top:10px;border-radius:13px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${d.vnext?.receipt?.side==='CALL'?callTone:d.vnext?.receipt?.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow}">
+              <div style="font-size:10px;font-weight:850;letter-spacing:.09em;color:${goldSoft}">PROJEÇÃO FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
+              <div data-sentinel-scenario-action style="margin:7px 0;font-size:clamp(20px,3vw,29px);font-weight:900;color:${d.vnext?.receipt?.side==='CALL'?callTone:d.vnext?.receipt?.side==='PUT'?putTone:ink}">${d.vnext?.receipt?.side==='CALL'?'↑ CALL FUTURO':d.vnext?.receipt?.side==='PUT'?'↓ PUT FUTURO':'AGUARDANDO PREVISÃO'}</div>
+              <div style="font-size:11px;color:${ink};line-height:1.45">${d.vnext?.receipt?'Preço estimado para '+esc(new Date(Number(d.vnext.receipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'Aguardando histórico suficiente e cotação válida'}</div>
+              <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:13px">
+                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO ATUAL</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${price(d.vnext?.receipt?.referencePrice??d.price)}</b></div>
+                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO PROJETADO</small><b style="display:block;margin-top:4px;font-size:16px;color:${goldSoft}">${price(d.vnext?.receipt?.projectedPrice)}</b></div>
+                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PRAZO</small><b style="display:block;margin-top:4px;font-size:14px;color:${ink}">${duration<60000?duration/1000+' s':duration/60000+' min'}</b></div>
+                <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">ATUALIZAÇÃO</small><b style="display:block;margin-top:4px;font-size:13px;color:${ink}">${liveNow?'AO VIVO':Number.isFinite(liveAge)?(liveAge/1000).toFixed(1)+' s atrás':'SEM COTAÇÃO'}</b></div>
+              </div>
+              <div style="font-size:10px;color:${muted};line-height:1.45;margin-top:10px">Faixa futura: ${price(d.vnext?.receipt?.expectedLow)} até ${price(d.vnext?.receipt?.expectedHigh)} · ${n(d.vnext?.outcomesVerified,0)} resultados observados neste prazo.</div>
+              <div style="padding-top:8px;margin-top:9px;border-top:1px solid ${panelBorder};font-size:10px;color:${goldSoft};font-weight:750">PREVISÃO EXPERIMENTAL · NÃO É CALL/PUT AGORA · nenhuma ordem automática</div>
+            </section>
+            <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
+              <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:linear-gradient(180deg,#d8bb72,#b48d39);font-size:11px;font-weight:900;color:#1c1912;cursor:pointer">▶ Iniciar</button>
+              <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">Ⅱ Pausar</button>
+              <button data-sentinel-action="stop" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">■ Parar</button>
+            </div>
+            <div data-sentinel-control-msg style="margin-top:5px;color:${goldSoft};min-height:13px;font-size:10px;font-weight:700"></div>
+            <details style="margin-top:10px;padding:7px;border:1px solid ${panelBorder};border-radius:8px">
+              <summary style="font-size:10px;font-weight:750;cursor:pointer;color:${muted}">Detalhes da previsão</summary>
+              <div style="font-size:11px;line-height:1.5;margin-top:8px;color:${ink}">Motor: ${esc(d.engine)}. ${esc(d.vnext?.computedStatus||'aguardando')}.</div>
+              <div style="font-size:10px;line-height:1.5;color:${muted}">Emissão: ${d.vnext?.receipt?esc(new Date(d.vnext.receipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'} · Alvo: ${d.vnext?.receipt?esc(new Date(d.vnext.receipt.targetAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'}. Fonte: cotações anteriores ao cálculo. Nenhuma garantia de assertividade.</div>
+            </details>
+          </div>
+`:`
           <div data-sentinel-drag style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;cursor:grab;padding:3px 2px 10px;border-bottom:1px solid ${panelBorder}">
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
