@@ -6,6 +6,7 @@ on:
     paths:
       - 'sentinel-trading-lab/agent/src/core/**'
       - 'tests/sentinel-main-independent-strategy.test.mjs'
+      - 'tests/sentinel-first-break-timing.test.mjs'
       - 'tests/sentinel-reversal-arbitration-mobile-price.test.mjs'
       - '.github/workflows/sentinel-main-independent-strategy.yml'
   workflow_dispatch:
