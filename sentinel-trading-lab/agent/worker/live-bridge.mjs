@@ -43,6 +43,7 @@ export function analystSnapshot(runtimeStatus,live){
     ]):null,
     projection:vnext.projection?take(vnext.projection,['side','callPct','putPct']):null,
     targetProjection:vnext.targetProjection?take(vnext.targetProjection,['side','callPct','putPct']):null,
+    nowIndication:vnext.nowIndication?take(vnext.nowIndication,['asset','side','kind','at','price','level','expiresAt']):null,
     cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
       .map(c=>take(c,['id','side','callPct','putPct'])):[]
   }:null;
@@ -124,6 +125,8 @@ export class LiveBridge{
       snapshot.settings?.engine,snapshot.settings?.orderDurationMs,
       snapshot.lastResult?.analysis?.vnext?.receipt?.side,
       snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
+      snapshot.lastResult?.analysis?.vnext?.nowIndication?.side,
+      snapshot.lastResult?.analysis?.vnext?.nowIndication?.at,
       op.scenarioProjection?.side,
       op.side,op.state,op.ready,op.actionable,op.activeUntil,
       op.scenario?.side,op.scenario?.status,op.scenario?.closed,op.scenario?.deadline,
