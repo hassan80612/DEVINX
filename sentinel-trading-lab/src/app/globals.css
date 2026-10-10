@@ -1439,3 +1439,9 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
  .liveScenario .vnextMobileReadingsGrid>div{height:47px;min-height:47px;max-height:47px;align-content:center}
  .liveScenario .vnextFutureReceipt{grid-template-rows:20px 27px 74px 49px 27px 24px}
 }
+
+/* V13.4.63: zero does not change timer typography or push target column.
+   Scenario percentages/direction are data updates, not layout updates. */
+.liveScenario .vnextTargetCountdown.ended strong{font-size:23px!important;line-height:27px!important}
+.liveScenario .vnextTargetCountdown small{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.liveScenario .vnextFutureDirection span{min-width:0;max-width:55%;overflow:hidden;text-overflow:ellipsis}
