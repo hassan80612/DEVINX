@@ -21,7 +21,7 @@ async function authInfo(token:string):Promise<AuthInfo>{
 
 export async function middleware(req:NextRequest){
   const p=req.nextUrl.pathname;
-  if(p==='/favicon.ico'||p.startsWith('/_next/')||p.startsWith('/downloads/'))return NextResponse.next();
+  if(p==='/'||p==='/planos'||p==='/favicon.ico'||p.startsWith('/_next/')||p.startsWith('/downloads/'))return NextResponse.next();
   if(p==='/login'||p.startsWith('/api/auth/'))return NextResponse.next();
 
   const token=req.cookies.get(SESSION_COOKIE)?.value||'';
@@ -32,7 +32,7 @@ export async function middleware(req:NextRequest){
   if(p.startsWith('/api/'))return NextResponse.json({ok:false,error:'unauthorized'},{status:401});
   const url=req.nextUrl.clone();
   url.pathname='/login';
-  url.searchParams.set('next',p);
+  url.searchParams.set('next',req.nextUrl.pathname+req.nextUrl.search);
   return NextResponse.redirect(url);
 }
 
