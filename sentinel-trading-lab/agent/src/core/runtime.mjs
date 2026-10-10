@@ -17,6 +17,7 @@ import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {observeImmediateMarket} from './immediate-market-observation.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -898,6 +899,18 @@ export class DemoTradingRuntime{
           predictionError:evaluation.predictionError});
       }
       const current=model.receipt;
+      // This is a separate, already-observed short structural price event.
+      // It never votes on, blocks or replaces the selected future forecast.
+      // A 3s visual lifetime is not an entry gate or a waiting delay.
+      const detectedNow=observeImmediateMarket({
+        quoteHistory:snap.quoteHistory,asOf:now,quoteTs:snap.quoteTs
+      });
+      const lastNow=this.vnextNowObservation||null;
+      const holdNow=lastNow&&lastNow.asset===settings.asset&&
+        Number(lastNow.expiresAt)>now;
+      const nowIndication=detectedNow?
+        {...detectedNow,asset:settings.asset}:(holdNow?lastNow:null);
+      this.vnextNowObservation=nowIndication;
       // The live motor remains unrestrained: this ONE immutable reference
       // receipt powers the visible countdown without resetting to 30s on
       // every 400ms recalculation. Reset for a different motor, asset or
@@ -924,7 +937,7 @@ export class DemoTradingRuntime{
       this.vnextOutcomes=outcomes.slice(-300);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
-        vnext:{...model,evaluation:undefined,targetAnchor,
+        vnext:{...model,evaluation:undefined,nowIndication,targetAnchor,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
         entryPlanner:{modelVersion:model.modelVersion,
