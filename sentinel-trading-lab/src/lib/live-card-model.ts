@@ -40,7 +40,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   // Entry remains gated by fresh (2.5s) and runtimeView.canEnter.
   const scenario=op.scenario||null;
   const vnext=a?.vnext||null;
-  const vnextReceipt=matchingMarket&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
+  const vnextReceipt=matchingMarket&&vnext?.engineId===s?.settings?.engine&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
   const scenarioDeadline=Number(scenario?.deadline||0);
   const scenarioOrigin=Number(scenario?.createdAt||0);
   const scenarioContextOk=matchingMarket&&feedValidated&&
@@ -66,7 +66,8 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     evaluationAt>=Number(preliminary.asOf)-2500;
   const displayScenarioPreliminary=!scenarioContextOk&&!scenario&&preliminaryMatches;
   const displayScenarioSide=side||(scenarioContextOk?String(scenario.side):
-    displayScenarioPreliminary?String(preliminary.side):null);
+    displayScenarioPreliminary?String(preliminary.side):
+    fresh&&vnextReceipt?String(vnextReceipt.side):null);
   const displayScenarioStale=!fresh&&!!displayScenarioSide;
   const displayScenarioRemaining=!displayScenarioPreliminary&&displayScenarioSide&&scenarioDeadline>now?
     Math.max(0,Math.ceil((scenarioDeadline-now)/1000)):null;
