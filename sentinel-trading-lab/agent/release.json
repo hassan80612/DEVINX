@@ -1,6 +1,6 @@
 {
-  "version": "13.4.51",
-  "build": "13.4.51-unified-product-timing-1010",
+  "version": "13.4.52",
+  "build": "13.4.52-visual-expiry-1010",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
