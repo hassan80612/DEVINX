@@ -344,6 +344,13 @@ export class DemoTradingRuntime{
     const ids=[this.settings.strategy,this.settings.strategy2,this.settings.strategy3].map(x=>String(x||'none')).filter(x=>x!=='none');
     return [...new Set(ids)].join('+')||'none';
   }
+  _activeStrategyProfile(){
+    const rows=[this.settings.strategy,this.settings.strategy2,this.settings.strategy3];
+    const paused=this.settings.pausedReadings||{};
+    const active=rows.map((v,i)=>paused['strategy_'+(i+1)]===true?'none':String(v||'none'))
+      .filter(v=>v!=='none');
+    return [...new Set(active)].sort().join('+')||'none';
+  }
   _newOperationalSetup({contextKey,asset,forecastHorizonSeconds,durationMs,combo,side,plan,now}){
     const trigger=Number(side==='CALL'?plan?.callTrigger:plan?.putTrigger),rawInvalidation=side==='CALL'?plan?.callInvalidation:plan?.putInvalidation;
     if(!Number.isFinite(trigger))return null;
@@ -496,7 +503,7 @@ export class DemoTradingRuntime{
     for(const row of candidates){
       row.historicalQuality=assessIndependentSignalHistory({
         outcomes:this.signalValidation.outcomes,
-        provider,asset,durationMs,side:row.side,payout:snap.payout
+        provider,asset,durationMs,side:row.side,profile:this._activeStrategyProfile(),payout:snap.payout
       });
       if(row.allowed===true&&row.historicalQuality.blocked){
         row.allowed=false;
@@ -528,9 +535,9 @@ export class DemoTradingRuntime{
     // confidence or claim the chosen strategies agree when they do not.
     localPlan.chosenStrategyBias=candidate.chosenStrategyBias;
     localPlan.chosenStrategySupport=candidate.strategyEvidence;
-    const researchContext={provider,asset,durationMs,kind,side,payout:snap.payout,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
+    const researchContext={provider,asset,durationMs,kind,side,payout:snap.payout,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|independent-forward-quality-v1|'+this._activeStrategyProfile()+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
     const prediction=this.entryResearch.predict(researchContext,features,Number.isFinite(baseline)?baseline:.5);
-    const livePayout=Number(snap.payout);
+    const rawPayout=Number(snap.payout),livePayout=rawPayout>1&&rawPayout<=100?rawPayout/100:rawPayout;
     const breakEvenProbability=snap.payout!=null&&Number.isFinite(livePayout)&&livePayout>0&&livePayout<=1?1/(1+livePayout):.55;
     // Model estimates are not certainty. Gate qualified, forward-tested
     // predictions by the actual economic break-even plus a small safety margin.
@@ -705,7 +712,7 @@ export class DemoTradingRuntime{
     if(pointPassed)return{...base,side,state:'AGUARDAR PONTO',trigger:setup.trigger,invalidation:setup.invalidation,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,activeUntil:setup.activeUntil||null,reason:'Ponto de entrada ultrapassado; aguardando novo ponto confirmado, sem perseguir o movimento.'};
     const entrySide=String(quality.entrySide||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.entrySide||'WAIT').toUpperCase()==='SELL'?'PUT':null,preSide=quality.preEntry?.active===true?(String(quality.preEntry.side||'WAIT').toUpperCase()==='BUY'?'CALL':String(quality.preEntry.side||'WAIT').toUpperCase()==='SELL'?'PUT':null):null,presentAligned=presentSide===side,reversalTransition=['CALL','PUT'].includes(presentSide)&&presentSide!==side,timingConfirmed=reversal?(sustainedTrigger&&(reactionPlan?.side===side||preSide===side||entrySide===side||presentAligned)&&(side==='CALL'?callTurnConfirmed:putTurnConfirmed)):sustainedTrigger,ready=triggerMet&&timingConfirmed&&sideSupported&&!impulseConflict&&(!this._entryAnalysisMode||this.entryQualification?.allowed===true);
     const windowOpen=now<=Number(setup.entryWindowEndAt||0);
-    if(ready&&windowOpen&&!setup.firedAt){setup.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;base.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;setup.firedAt=now;setup.entryPrice=price;this._queueSignalCandidate({kind:'operational_v3',side:side==='CALL'?'BUY':'SELL',confidence:decisionStrength,probability:this._entryAnalysisMode?(plan.entryForecastProbability??null):side==='CALL'?futureCall:futurePut,referencePrice:price,asset,durationMs,strategy:operationalStrategy,now,settleDurationMs:durationMs,expirationSource:'card-setting'})}
+    if(ready&&windowOpen&&!setup.firedAt){setup.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;base.entryDecisionHorizonSeconds=entryDecisionHorizonSeconds;setup.firedAt=now;setup.entryPrice=price;this._queueSignalCandidate({kind:'operational_v3',side:side==='CALL'?'BUY':'SELL',confidence:decisionStrength,probability:this._entryAnalysisMode?(plan.entryForecastProbability??null):side==='CALL'?futureCall:futurePut,referencePrice:price,asset,durationMs,strategy:operationalStrategy,qualityProfile:this._activeStrategyProfile(),now,settleDurationMs:durationMs,expirationSource:'card-setting'})}
     const activeUntil=setup.firedAt?Math.min(Number(setup.entryWindowEndAt||0),Number(setup.firedAt)+3500):0,activeWindow=Number(setup.firedAt||0)>0&&now<=activeUntil,actionable=activeWindow&&ready&&!Number(setup.releasedAt||0);
     setup.activeUntil=activeUntil;
     if(Number(setup.firedAt||0)>0&&!activeWindow)return{...base,side,state:'ACOMPANHANDO',activeUntil,entryAt:setup.firedAt,trigger:setup.trigger,invalidation:setup.invalidation,triggerMet,armed:setup.armed,createdAt:setup.createdAt,targetAt:setup.targetAt,entryWindowStartAt:setup.entryWindowStartAt,entryWindowEndAt:setup.entryWindowEndAt,expiresAt:setup.expiresAt,reason:'Oportunidade de entrada encerrada; cenário mantido até o prazo, sem liberar nova entrada.'};
@@ -808,7 +815,7 @@ export class DemoTradingRuntime{
     this.signalValidation.pending=keep.slice(-200);
     this.signalValidation.outcomes=this.signalValidation.outcomes.slice(-1000);
   }
-  _queueSignalCandidate({kind,side,confidence,probability=null,regime=null,referencePrice,asset,durationMs,strategy,now,settleDurationMs=null,expirationSource=null}){
+  _queueSignalCandidate({kind,side,confidence,probability=null,regime=null,referencePrice,asset,durationMs,strategy,qualityProfile=null,now,settleDurationMs=null,expirationSource=null}){
     if(!['BUY','SELL'].includes(String(side||'').toUpperCase()))return;
     const requestedDuration=Math.max(10000,Number(durationMs||30000)),actualDuration=settleDurationMs!=null&&Number.isFinite(Number(settleDurationMs))&&Number(settleDurationMs)>0?Math.max(10000,Number(settleDurationMs)):requestedDuration;
     const isHorizon=String(kind||'').startsWith('horizon_forecast_')||String(kind||'').startsWith('horizon_decision_');
@@ -822,7 +829,7 @@ export class DemoTradingRuntime{
       key,kind,provider:String(this.validationProvider||this.externalMarket?.provider||'unknown'),asset:String(asset||'—'),durationMs:requestedDuration,settleDurationMs:actualDuration,
       strategy:String(strategy||'smart_confluence'),side:String(side).toUpperCase(),confidence:Number(confidence||0),
       probability:probability!=null&&Number.isFinite(Number(probability))?Math.max(0,Math.min(100,Number(probability))):null,
-      probabilityBucket:probability!=null&&Number.isFinite(Number(probability))?this._probabilityBucket(probability):null,regime:regime||null,entryQualityEpoch:kind==='operational_v3'?ENTRY_QUALITY_EPOCH:null,
+      probabilityBucket:probability!=null&&Number.isFinite(Number(probability))?this._probabilityBucket(probability):null,regime:regime||null,entryQualityEpoch:kind==='operational_v3'?ENTRY_QUALITY_EPOCH:null,qualityProfile:kind==='operational_v3'?(qualityProfile??this._activeStrategyProfile()):null,
       referencePrice:Number(referencePrice||0),createdAt:now,dueAt:now+actualDuration,expirationSource:expirationSource||null
     });
     this.signalValidation.pending=this.signalValidation.pending.slice(-240);
