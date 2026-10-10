@@ -248,7 +248,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const configuredFreshnessMs=Math.max(500,Number(view.settings?.risk?.maxFeedLatencyMs||2500));
     const effectiveQuoteFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshnessMs,1500):forecastSeconds<=60?Math.min(configuredFreshnessMs,2000):configuredFreshnessMs;
     const quoteStale=!(liveTs>0)||Date.now()-liveTs>effectiveQuoteFreshnessMs;
-    const op=a.operationalSignal||{},overlayTimingKey=[currentAsset,op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil].join('|');
+    const op=a.operationalSignal||{},scenario=op.scenario||{},
+      overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,
+        op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil].join('|');
+    const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey;
     if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayTimingKey=overlayTimingKey;
       lastOverlayAt=Date.now();
@@ -298,7 +301,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       demoAutopilot:view.autopilot?.enabled===true,
       executionReady:view.autopilot?.eligible===true,
       agentVersion:VERSION
-    });
+    },{urgent:urgentOverlay});
     }
   }
   if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}
