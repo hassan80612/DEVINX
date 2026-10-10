@@ -21,7 +21,7 @@ export function scenarioViewFromRuntime({operational={},asset,horizonSeconds,dur
     const canEnter=contextMatches&&op.entryAnalyst.qualification?.allowed===true&&op.state==='ENTRADA'&&op.ready===true&&op.actionable===true&&entryEnd>now&&setupEnd>now;
     return {entrySide,signalHorizonSeconds:Number(op.entryDecisionHorizonSeconds||durationMs/1000),analysisSide:null,displaySide:null,oppositeAnalysis:false,contextMatches,side:null,state:'AGUARDAR',closed:false,hasSetup:false,canEnter,deadline:null,remainingSeconds:null,confidence:0,entryState:op.state||'AGUARDAR',entryWindowOpen:canEnter,entryRemainingSeconds:canEnter?Math.ceil((entryEnd-now)/1000):null,entryDeadline:contextMatches&&entryEnd>0?entryEnd:null};
   }
-  const op=operational||{},entrySide=['CALL','PUT'].includes(op.side)?op.side:null,side=['CALL','PUT'].includes(op.scenario?.side)?op.scenario.side:entrySide;
+  const op=operational||{},entrySide=op.entryAnalyst?.independent===true&&op.entryAnalyst?.signal?.actionable!==true?null:['CALL','PUT'].includes(op.side)?op.side:null,side=['CALL','PUT'].includes(op.scenario?.side)?op.scenario.side:entrySide;
   const contextMatches=!!side&&String(op.asset||'').toUpperCase()===String(asset||'').toUpperCase()&&Number(op.forecastHorizonSeconds)===Number(horizonSeconds)&&Number(op.durationMs)===Number(durationMs);
   let state=contextMatches?String(op.state||'AGUARDAR'):'AGUARDAR';
   const terminal=['INVALIDADO','JANELA PERDIDA','JANELA ENCERRADA','OPORTUNIDADE PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA'];

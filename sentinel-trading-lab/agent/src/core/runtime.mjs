@@ -450,7 +450,7 @@ export class DemoTradingRuntime{
         main.closed=true;main.invalidatedAt=now;main.invalidatedPrice=price;main.invalidationEvidence=main.review.evidence;
       }
     }
-    const decorate=op=>({...op,subanalyst:reversalAlert,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,
+    const decorate=op=>({...op,subanalyst:reversalAlert,scenarioReviewReason:admission.allowed?null:admission.reason,scenario:main.independentOnly?null:{...main},scenarioSide:main.independentOnly?'AGUARDAR':main.side,scenarioCreatedAt:main.independentOnly?null:main.createdAt,scenarioDeadline:main.independentOnly||main.closed?null:main.deadline,
       scenarioFeedback:{mainSide:main.independentOnly?'NEUTRO':main.side,
         subanalystSide:path.watchSide||'NEUTRO',pathPhase:path.phase,conflict:!!path.watchSide&&!main.independentOnly&&path.watchSide!==main.side,
         advisoryOnly:this.settings.pathGuardMode!=='enforce',reason:path.reason},

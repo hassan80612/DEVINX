@@ -63,7 +63,7 @@ test('prospective selection rejects exhaustion with weakening and unconfirmed re
   const call=side==='CALL',short={ready:true,[call?'callStretched':'putStretched']:true,[call?'weakeningUp':'weakeningDown']:true};
   assert.equal(scenarioAdmission(p(side),{shortModel:short}).code,'exhaustion');
   const r=runtime(),analysis=a(p(side));analysis.metrics={shortModel:short};
-  const o=r._operationalSignalState(analysis,{provider:'test',price:100,quoteTs:t,quoteHistory:[{ts:t,price:100}]},t);assert.equal(o.scenario,null);assert.match(o.reason,/perdendo força/);
+  const o=r._operationalSignalState(analysis,{provider:'test',price:100,quoteTs:t,quoteHistory:[{ts:t,price:100}]},t);assert.equal(o.scenario,null);assert.match(o.scenarioReviewReason,/perdendo força/);assert.equal(o.actionable,false);
   short[call?'weakeningUp':'weakeningDown']=false;assert.equal(scenarioAdmission(p(side),{shortModel:short}).allowed,true);
   short[call?'callStretched':'putStretched']=false;assert.equal(scenarioAdmission(p(side),{shortModel:short}).allowed,true);
   assert.equal(scenarioAdmission(p(side,{scenario:{kind:'reversal',reversalConfirmed:false}}),{}).allowed,false);

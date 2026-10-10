@@ -30,26 +30,32 @@ function runtime(){const r=new DemoTradingRuntime(RUNTIME_OPTIONS);
  r.settings.futureDisplayThreshold=70;r.settings.risk.minConfidence=55;
  return r;
 }
-test('production reversal monitor and independent entry coexist, without rewriting the opposite forecast',()=>{
- const r=runtime();
- assert.equal(r.subanalystPolicy,'persistent-reversal-alert-v1');
+test('production policy preserves independent evaluation while refusing unverified synthetic input',()=>{
+ const r=runtime();assert.equal(r.subanalystPolicy,'persistent-reversal-alert-v1');
  const op=r._operationalSignalState(analysis(),sample(),t);
  assert.equal(op.subanalyst.mode,'reversal-alert');
  assert.equal(op.subanalyst.advisoryOnly,true);
  assert.equal(op.scenario.side,'PUT');
  assert.equal(op.entryAnalyst.independent,true);
- assert.equal(op.entryAnalyst.signal.side,'CALL');
- assert.equal(op.actionable,true,op.reason);
- assert.equal(op.entryAnalyst.signal.actionable,true);
- assert.equal(op.entryAnalyst.signal.durationMs,30000);
+ assert.equal(op.actionable,false,'unverified prediction history must not authorize entry');
+ assert.equal(op.entryAnalyst.signal.actionable,false);
+ const view=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:120,durationMs:30000,now:t});
+ assert.equal(view.side,'PUT');
+ assert.equal(view.entrySide,null,'scenario direction must not masquerade as an independent entry');
+ assert.equal(view.canEnter,false);
+ assert.equal(r.entryResearch.pending.length,0);
+});
+test('a fully qualified independent entry is visible alongside a separate opposite forecast and advisory',()=>{
+ const op={asset:'TEST',forecastHorizonSeconds:120,durationMs:30000,side:'CALL',state:'ENTRADA',ready:true,actionable:true,
+  createdAt:t,activeUntil:t+3000,targetAt:t+30000,entryWindowEndAt:t+30000,entryDecisionHorizonSeconds:30,
+  scenario:{side:'PUT',createdAt:t-1000,deadline:t+120000,confidence:80,status:'OPEN',closed:false},
+  subanalyst:{mode:'reversal-alert',advisoryOnly:true,active:false,status:'OBSERVANDO REVERSÃO'},
+  entryAnalyst:{independent:true,qualification:{allowed:true},signal:{side:'CALL',actionable:true,ready:true,durationMs:30000}}};
  const v=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:120,durationMs:30000,now:t});
- assert.equal(v.side,'PUT');
- assert.equal(v.entrySide,'CALL');
- assert.equal(v.canEnter,true);
- assert.equal(v.entryWindowOpen,true);
- assert.equal(v.displaySide,'PUT');
- assert.ok(v.entryRemainingSeconds>0);
- assert.equal(r.entryResearch.pending.length,1,'must record actual independent opportunity once');
+ assert.equal(v.side,'PUT');assert.equal(v.entrySide,'CALL');assert.equal(v.canEnter,true);
+ assert.equal(v.displaySide,'PUT');assert.equal(v.entryWindowOpen,true);
+ const expired=scenarioViewFromRuntime({operational:op,asset:'TEST',horizonSeconds:120,durationMs:30000,now:t+3001});
+ assert.equal(expired.canEnter,false,'entry expires independently of main scenario');
 });
 test('no independent entry on stale quotes or inadequate microstructure',()=>{
  for(const mode of ['stale','empty']){

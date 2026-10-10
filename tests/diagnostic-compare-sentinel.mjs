@@ -1,6 +1,7 @@
 // Offline A/B diagnostic ONLY. Reads a short recorded quote fixture.
 // Never opens the broker, connects to Supabase, or changes production signals.
 import {readFileSync} from 'node:fs';
+import assert from 'node:assert/strict';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 
 const fixture=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation-prices.json',import.meta.url),'utf8'));
@@ -31,13 +32,14 @@ async function runBaseline(durationSec,subanalystPolicy='persistent-reversal-ale
  r.settings.schedule.intervalMs=400;
  r.settings.requireLiveBroker=true;
  r.stateName='running';r.state.sessionStartedAt=start;
- const events=[];const stateCounts={};const statusCounts={};let firstError=null,readyFrames=0,analyses=0,positiveForecastFrames=0,lastSignalKey='',consensusSamples=[];
+ const events=[];const stateCounts={};const statusCounts={};let firstError=null,readyFrames=0,analyses=0,positiveForecastFrames=0,monitorFrames=0,lastSignalKey='',consensusSamples=[];
  for(let i=0;i<quotes.length;i++){
   const q=quotes[i],hist=quotes.slice(0,i+1),candles=makeCandles(hist,q.ts);
   r.setExternalMarket({provider:'iq_option',symbol:'TEST RECORDED',validatedSymbol:'TEST RECORDED',uiSymbol:'TEST RECORDED',mode:'real',analysisFeedValidated:true,feedValidated:true,assetValidated:true,quote:q.price,quoteTs:q.ts,candles,predictionCandles:candles,quoteHistory:hist.slice(-900),balance:10000});
   r.requestImmediateEvaluation();
   const result=await r.tick(q.ts);
   const a=result?.lastResult?.analysis||r.lastResult?.analysis||{},op=a.operationalSignal||{},co=a.generalConsensus||{};
+  if(op.subanalyst?.mode==='reversal-alert')monitorFrames++;
   const state=String(op.state||'NO_STATE');stateCounts[state]=(stateCounts[state]||0)+1;
   const status=String(op.reason||a.quality?.blockCode||'NO_REASON').slice(0,100);statusCounts[status]=(statusCounts[status]||0)+1;
   if(r.stateName==='error'&&!firstError)firstError=String(r.incidents?.[0]?.message||'unknown');
@@ -51,7 +53,7 @@ async function runBaseline(durationSec,subanalystPolicy='persistent-reversal-ale
    events.push({at:q.ts,side:op.side,price:q.price,kind:op.kind,state:op.state,confidence:op.strength});
   }
  }
- return {durationSec,subanalystPolicy,events,readyFrames,analyses,firstError,stateCounts,topReasons:Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]).slice(0,7),consensusAbove70:positiveForecastFrames,consensusRange:consensusSamples.length?[Math.min(...consensusSamples),Math.max(...consensusSamples)]:null};
+ return {durationSec,subanalystPolicy,monitorFrames,events,readyFrames,analyses,firstError,stateCounts,topReasons:Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]).slice(0,7),consensusAbove70:positiveForecastFrames,consensusRange:consensusSamples.length?[Math.min(...consensusSamples),Math.max(...consensusSamples)]:null};
 }
 function earlyTurnAlerts(){
  const alerts=[];let lastAlertAt=0,lastSide='';
@@ -93,6 +95,11 @@ function evaluate(events){
 for(const sec of [30,60])baseline[sec]=await runBaseline(sec);
 const independent={};
 for(const sec of [30,60])independent[sec]=await runBaseline(sec,'entry');
+assert.ok(baseline[30].events.length>0,'combined production policy must evaluate real structural entry opportunities');
+assert.equal(baseline[30].monitorFrames,quotes.length,'reversal monitor must remain active on every quote');
+assert.ok(independent[30].events.length>0,'comparison control must have structural entries');
+assert.equal(baseline[30].firstError,null);
+assert.equal(independent[30].firstError,null);
 const candidate=earlyTurnAlerts();
 const result={
  dataset:{date:new Date(start).toISOString().slice(0,10),recordedQuotes:quotes.length,durationSeconds:Number(((stop-start)/1000).toFixed(1)),backgroundCandles:base.length,source:'recorded repo fixture, not verified IQ Option execution history',warning:'No actual trades. 3-minute sample cannot demonstrate profitability or claim 10:2 hit rate.'},

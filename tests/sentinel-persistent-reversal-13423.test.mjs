@@ -80,13 +80,21 @@ test('reversal structure is evaluated once per received closed-bar boundary, not
  assert.equal(m.evaluations,1);
 });
 
-test('slow overlay updates leave evaluation free and coalesce the pending frames; errors recover',async()=>{
+test('slow overlay updates leave evaluation free and coalesce pending frames; errors recover',async()=>{
  let unblock;const gate=new Promise(r=>unblock=r),sent=[];
- const scheduler=new LatestOverlayScheduler(async(_,d)=>{sent.push(d.id);if(d.id===1)await gate;else if(d.id===3)throw Error('page closed');});
- scheduler.publish('test',{id:1});scheduler.publish('test',{id:2});scheduler.publish('test',{id:3});
- assert.deepEqual(sent,[1]);unblock();await new Promise(r=>setImmediate(r));
+ const delay=ms=>new Promise(r=>setTimeout(r,ms));
+ const scheduler=new LatestOverlayScheduler(async(_,d)=>{sent.push(d.id);if(d.id===1)await gate;else if(d.id===3)throw Error('page closed');},{minIntervalMs:0,slowThresholdMs:99999});
+ scheduler.publish('test',{id:1});
+ await delay(15);
+ assert.deepEqual(sent,[1]);
+ scheduler.publish('test',{id:2});scheduler.publish('test',{id:3});
+ assert.deepEqual(sent,[1]);
+ unblock();
+ await delay(20);
  assert.deepEqual(sent,[1,3]);assert.equal(scheduler.errors,1);assert.equal(scheduler.running,false);
- scheduler.publish('test',{id:4});await new Promise(r=>setImmediate(r));assert.deepEqual(sent,[1,3,4]);
+ scheduler.publish('test',{id:4});
+ await delay(20);
+ assert.deepEqual(sent,[1,3,4]);
 });
 
 test('the live Worker bridge delivers both verified intervals to the runtime without replacing totals history',()=>{
