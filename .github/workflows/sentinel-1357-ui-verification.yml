@@ -1,0 +1,46 @@
+name: Sentinel 13.4.57 stable realtime mobile display
+on:
+  push:
+    branches: [sentinel-1356-stale-scenario-display-20261010]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Run targeted mobile, realtime and delayed-engine tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --test-concurrency=2 tests/sentinel-mobile-scenario-stability-1357.test.mjs tests/sentinel-1356*.test.mjs tests/sentinel-mobile*.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-scenario-reversal-latency.test.mjs
+      - name: Run full baseline vs new version
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test --test-concurrency=4 --test-reporter=spec tests/sentinel*.test.mjs > candidate.log 2>&1 || true
+          grep '^✖ ' candidate.log | sed -E 's/^✖ //; s/ \([0-9]+(\.[0-9]+)?ms\)$//' | sort -u > candidate.fail || true
+          echo "Candidate: $(grep -E 'ℹ (tests|pass|fail)' candidate.log | tr '\n' ' ')"
+          original=$(git rev-parse HEAD)
+          git checkout --detach dc3a0e426b2909f5ce2dedc51597f153fb71596b
+          node --test --test-concurrency=4 --test-reporter=spec tests/sentinel*.test.mjs > baseline.log 2>&1 || true
+          grep '^✖ ' baseline.log | sed -E 's/^✖ //; s/ \([0-9]+(\.[0-9]+)?ms\)$//' | sort -u > baseline.fail || true
+          echo "Baseline: $(grep -E 'ℹ (tests|pass|fail)' baseline.log | tr '\n' ' ')"
+          echo 'New regressions:'
+          comm -13 baseline.fail candidate.fail | tee regression.fail
+          git checkout --detach "$original"
+          if test -s regression.fail; then
+            echo '=== TARGETED NEW FAILURE DETAILS ==='
+            grep -F -A25 -f regression.fail candidate.log | tail -n 170
+            exit 1
+          fi
+          echo 'No new failures against current production (13.4.56).'
