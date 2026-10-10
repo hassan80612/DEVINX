@@ -21,8 +21,8 @@ function makeCandles(rows,now){
  return out;
 }
 const baseline={};
-async function runBaseline(durationSec){
- const r=new DemoTradingRuntime({predictionModel:'family-v6-verified-input',entryPolicy:'structural-reversals-v1',scenarioPolicy:'own-review-v1',subanalystPolicy:'persistent-reversal-alert-v1'});
+async function runBaseline(durationSec,subanalystPolicy='persistent-reversal-alert-v1'){
+ const r=new DemoTradingRuntime({predictionModel:'family-v6-verified-input',entryPolicy:'structural-reversals-v1',scenarioPolicy:'own-review-v1',subanalystPolicy});
  r.settings.mode='real';
  r.settings.orderDurationMs=durationSec*1000;
  r.settings.forecastHorizonSeconds=durationSec;
@@ -51,7 +51,7 @@ async function runBaseline(durationSec){
    events.push({at:q.ts,side:op.side,price:q.price,kind:op.kind,state:op.state,confidence:op.strength});
   }
  }
- return {durationSec,events,readyFrames,analyses,firstError,stateCounts,topReasons:Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]).slice(0,7),consensusAbove70:positiveForecastFrames,consensusRange:consensusSamples.length?[Math.min(...consensusSamples),Math.max(...consensusSamples)]:null};
+ return {durationSec,subanalystPolicy,events,readyFrames,analyses,firstError,stateCounts,topReasons:Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]).slice(0,7),consensusAbove70:positiveForecastFrames,consensusRange:consensusSamples.length?[Math.min(...consensusSamples),Math.max(...consensusSamples)]:null};
 }
 function earlyTurnAlerts(){
  const alerts=[];let lastAlertAt=0,lastSide='';
@@ -91,6 +91,8 @@ function evaluate(events){
  return res;
 }
 for(const sec of [30,60])baseline[sec]=await runBaseline(sec);
+const independent={};
+for(const sec of [30,60])independent[sec]=await runBaseline(sec,'entry');
 const candidate=earlyTurnAlerts();
 const result={
  dataset:{date:new Date(start).toISOString().slice(0,10),recordedQuotes:quotes.length,durationSeconds:Number(((stop-start)/1000).toFixed(1)),backgroundCandles:base.length,source:'recorded repo fixture, not verified IQ Option execution history',warning:'No actual trades. 3-minute sample cannot demonstrate profitability or claim 10:2 hit rate.'},
@@ -98,6 +100,7 @@ const result={
   '30s':{...baseline[30],outcomes:evaluate(baseline[30].events)},
   '60s':{...baseline[60],outcomes:evaluate(baseline[60].events)}
  },
+ independentEntryMode:{'30s':{...independent[30],outcomes:evaluate(independent[30].events)},'60s':{...independent[60],outcomes:evaluate(independent[60].events)}},
  experimentalShadow:{description:'Early micro-turn advisory built ONLY from past/current prices; no order, no promise of profit',firstSignals:candidate.slice(0,12),outcomes:evaluate(candidate)},
  safeguards:{lookAhead:false,realMoney:false,productionUnchanged:true}
 };
