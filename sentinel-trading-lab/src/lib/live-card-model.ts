@@ -40,7 +40,11 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   // Entry remains gated by fresh (2.5s) and runtimeView.canEnter.
   const scenario=op.scenario||null;
   const vnext=a?.vnext||null;
-  const vnextReceipt=matchingMarket&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
+  const vnextReceipt=matchingMarket&&vnext?.engineId===s?.settings?.engine&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
+  const vnextNow=vnextReceipt&&fresh&&vnext?.nowIndication?.engineId===s?.settings?.engine&&
+    ['CALL','PUT'].includes(String(vnext?.nowIndication?.side))&&
+    Number(vnext.nowIndication.issuedAt)<=now+2500&&
+    Number(vnext.nowIndication.expiresAt)>now?vnext.nowIndication:null;
   const scenarioDeadline=Number(scenario?.deadline||0);
   const scenarioOrigin=Number(scenario?.createdAt||0);
   const scenarioContextOk=matchingMarket&&feedValidated&&
@@ -66,7 +70,8 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     evaluationAt>=Number(preliminary.asOf)-2500;
   const displayScenarioPreliminary=!scenarioContextOk&&!scenario&&preliminaryMatches;
   const displayScenarioSide=side||(scenarioContextOk?String(scenario.side):
-    displayScenarioPreliminary?String(preliminary.side):null);
+    displayScenarioPreliminary?String(preliminary.side):
+    fresh&&vnextReceipt?String(vnextReceipt.side):null);
   const displayScenarioStale=!fresh&&!!displayScenarioSide;
   const displayScenarioRemaining=!displayScenarioPreliminary&&displayScenarioSide&&scenarioDeadline>now?
     Math.max(0,Math.ceil((scenarioDeadline-now)/1000)):null;
@@ -106,7 +111,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextStatus:vnext?.computedStatus||null,vnextVerified:vnext?.outcomesVerified||0,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextNow,vnextStatus:vnext?.computedStatus||null,vnextVerified:vnext?.outcomesVerified||0,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
     entrySide,entryRemaining,opportunityEnded,lastSignal,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,

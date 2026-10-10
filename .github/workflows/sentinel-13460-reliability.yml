@@ -1,0 +1,51 @@
+name: Sentinel 13.4.60 regression comparison
+
+on:
+  push:
+    branches:
+      - sentinel-v13460-mobile-live-restoration-20261010
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies without install scripts
+        run: npm ci --ignore-scripts
+      - name: Syntax-check candidate Agent
+        run: |
+          find sentinel-trading-lab/agent/src/core -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+      - name: Focused strategy-selection tests
+        run: node --test --test-concurrency=1 tests/sentinel-selected-strategy-authority.test.mjs
+      - name: Compare regressions with exact production commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NO_COLOR=1
+          original="$(git rev-parse HEAD)"
+          node --test --test-concurrency=4 --test-reporter=spec tests/sentinel*.test.mjs > candidate.log 2>&1 || true
+          grep '^✖ ' candidate.log | sed -E 's/^✖ //; s/ \([0-9]+(\.[0-9]+)?ms\)$//' | sort -u > candidate.fail || true
+          echo "Candidate: $(grep -E 'ℹ (tests|pass|fail) ' candidate.log | tr '\n' ' ')"
+          git checkout --detach 34eca301cf0c4bd2f3c7121647a5f51e3e013ef8
+          node --test --test-concurrency=4 --test-reporter=spec tests/sentinel*.test.mjs > baseline.log 2>&1 || true
+          grep '^✖ ' baseline.log | sed -E 's/^✖ //; s/ \([0-9]+(\.[0-9]+)?ms\)$//' | sort -u > baseline.fail || true
+          echo "Baseline: $(grep -E 'ℹ (tests|pass|fail) ' baseline.log | tr '\n' ' ')"
+          echo "Only-in-candidate failures:"
+          comm -13 baseline.fail candidate.fail | tee new.fail
+          if test -s new.fail; then echo 'NEW FAILURE LOG:'; tail -n 100 candidate.log; fi
+          echo "Pre-existing failures:"
+          cat baseline.fail
+          test ! -s new.fail
+          git checkout --detach "$original"
+          echo "No newly failing Sentinel tests versus production 13.4.59."

@@ -9,7 +9,7 @@ export function analystSnapshot(runtimeStatus,live){
   const analysis=runtimeStatus?.lastResult?.analysis||{};
   const op=analysis.operationalSignal||{};
   const gc=analysis.generalConsensus||{};
-  const horizon=Number(runtimeStatus?.settings?.forecastHorizonSeconds||60);
+  const horizon=runtimeStatus?.settings?.engine?Number(runtimeStatus?.settings?.orderDurationMs||60000)/1000:Number(runtimeStatus?.settings?.forecastHorizonSeconds||60);
   const forecast=analysis.entryPlanner?.horizons?.[String(horizon)]||null;
   const take=(obj,keys)=>Object.fromEntries(keys.filter(k=>obj?.[k]!==undefined).map(k=>[k,obj[k]]));
   const allowed=v=>v!=null&&typeof v==='object'?v:{};
@@ -20,6 +20,30 @@ export function analystSnapshot(runtimeStatus,live){
   operational.scenario=scenario;
   operational.subanalyst=sub;
   if(op.entryAnalyst?.independent===true)operational.entryAnalyst={independent:true,qualification:take(op.entryAnalyst.qualification,['allowed'])};
+  // Signed mobile Broadcast must include the new engine's already-computed
+  // forecast. In 13.4.59 these fields were absent: mobile received quotes
+  // quickly but its forecast card waited for the slow full status poll.
+  // Only compact, already-calculated numbers cross the socket; no extra
+  // inference, no DB writes and no order authorization.
+  const vnext=allowed(analysis.vnext);
+  const receipt=vnext.receipt?take(vnext.receipt,[
+    'engineId','asset','side','referencePrice','quoteReceivedAt','issuedAt',
+    'expirySeconds','targetAt','projectedPrice','expectedLow','expectedHigh'
+  ]):null;
+  const compactVnext=runtimeStatus?.settings?.engine?{
+    engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
+    computedStatus:vnext.computedStatus||'unavailable',
+    outcomesVerified:Number(vnext.outcomesVerified||0),
+    receipt,
+    nowIndication:vnext.nowIndication?take(vnext.nowIndication,[
+      'side','engineId','issuedAt','referencePrice','projectedPrice',
+      'expirySeconds','expiresAt','verified','actionable']):null,
+    cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3).map(c=>take(c,['id','label','side','strength','hint'])):[]
+  }:null;
+  if(op.scenarioProjection)operational.scenarioProjection=take(op.scenarioProjection,[
+    'side','status','confirmed','actionable','horizonSeconds','asOf',
+    'issuedAt','targetAt','projectedPrice','expectedLow','expectedHigh','engineId'
+  ]);
   const result=runtimeStatus?.lastResult||{};
   const asset=String(live?.validatedSymbol||live?.symbol||runtimeStatus?.settings?.asset||'');
   const liveQuoteAt=Number(live?.lastQuoteAt||0);
@@ -27,10 +51,12 @@ export function analystSnapshot(runtimeStatus,live){
     v:1,at:Date.now(),seq:0,agentVersion:String(runtimeStatus?.agentVersion||''),
     state:runtimeStatus?.state,killSwitch:runtimeStatus?.killSwitch,masterFrozen:runtimeStatus?.masterFrozen,
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
+    settings:{engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
     liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null},
     feed:{price:live?.quote??null,quoteTs:liveQuoteAt},
     lastResult:{asset:result.asset||asset,analysis:{
       operationalSignal:operational,
+      ...(compactVnext?{vnext:compactVnext}:{}),
       generalConsensus:{
         rapid:take(gc.rapid,['callPct','activeCount']),
         strategies:take(gc.strategies,['callPct','activeCount']),
@@ -86,8 +112,13 @@ export class LiveBridge{
     const op=snapshot.lastResult?.analysis?.operationalSignal||{};
     const fingerprint=[
       snapshot.lastEvalMs,snapshot.liveBroker?.lastQuoteAt,snapshot.liveBroker?.symbol,snapshot.state,
-      // An actual state transition can share the SAME quote and analysis
-      // timestamp. It must not be silently discarded by fingerprint dedup.
+      // A new motor, expiry or live forecast is meaningful even if no new
+      // broker quote arrived. The old dedup ignored all three, so the phone
+      // could appear stuck until its next whole-state cloud poll.
+      snapshot.settings?.engine,snapshot.settings?.orderDurationMs,
+      snapshot.lastResult?.analysis?.vnext?.receipt?.side,
+      snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
+      op.scenarioProjection?.side,
       op.side,op.state,op.ready,op.actionable,op.activeUntil,
       op.scenario?.side,op.scenario?.status,op.scenario?.closed,op.scenario?.deadline,
       op.subanalyst?.alert?.side,op.subanalyst?.alert?.testing

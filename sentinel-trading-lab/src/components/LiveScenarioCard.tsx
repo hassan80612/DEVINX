@@ -163,6 +163,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     });
     if(ok)settingsEditing.current=false;
   };
+  const nowAdvisory=vnext&&m.vnextNow?<div className={`vnextNowAdvisory ${m.vnextNow.side==='CALL'?'call':'put'}`} data-testid="vnext-now-indication" role="status" aria-live="off">
+    <div><small>INDICAÇÃO DO MOTOR NESTE INSTANTE</small><strong>{m.vnextNow.side} AGORA · EM TESTE</strong></div>
+    <span>Calculada às {clock(m.vnextNow.issuedAt)} · prazo {expiryLabel(Number(m.vnextNow.expirySeconds))}. É a direção hipotética no preço atual, não entrada confirmada.</span>
+  </div>:null;
   const quoteShown=m.fresh?(s?.liveBroker?.quote??s?.feed?.price):null;
   const pushed=m.fresh&&s?.liveTransport==='push'&&now-Number(s?.liveStreamAt||0)<4000;
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
@@ -176,6 +180,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     </div>
     <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection?(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:'CENÁRIO'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
     {forecastReceipt}
+    {nowAdvisory}
     {opportunityNotice}
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
@@ -213,6 +218,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {engineSettings}
     <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'JANELA DE ENTRADA '+m.entryRemaining+'s · confirme a expiração na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>
     {forecastReceipt}
+    {nowAdvisory}
     {opportunityNotice}
     <div className="liveScenarioMeta"><span>Cotação {price(quoteShown)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
     {historicalNotice}

@@ -39,6 +39,8 @@ export class SignedLiveBridge extends LiveBridge{
       scenario.side,scenario.status,scenario.closed,scenario.deadline,
       alert.side,alert.trigger,alert.testing,op.subanalyst?.status,
       op.state,op.side,op.ready,op.actionable,op.activeUntil,
+      snapshot?.settings?.engine,snapshot?.settings?.orderDurationMs,
+      a.vnext?.engineId,a.vnext?.receipt?.side,
       snapshot?.killSwitch,snapshot?.masterFrozen
     ]);
     const changed=signal!==this.lastSignalKey;

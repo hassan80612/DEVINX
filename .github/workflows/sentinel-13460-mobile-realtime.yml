@@ -1,0 +1,27 @@
+name: Sentinel 13.4.60 mobile realtime and PC cards
+on:
+  push:
+    branches: [sentinel-v13460-mobile-live-restoration-20261010]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile-realtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify JavaScript modules
+        run: |
+          node --check sentinel-trading-lab/agent/worker/live-bridge.mjs
+          node --check sentinel-trading-lab/agent/worker/signed-live-bridge.mjs
+          node --check sentinel-trading-lab/agent/src/core/vnext-market-cards.mjs
+          node --check sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - name: Signed mobile and motor regression tests
+        run: |
+          node --test tests/sentinel-v13460-mobile-realtime-regression.test.mjs tests/sentinel-v13460-cards-outcomes.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-mobile-low-latency-1357.test.mjs tests/sentinel-vnext-runtime-1359.test.mjs tests/sentinel-vnext-ui-1359.test.mjs tests/sentinel-specialist-motors-1359.test.mjs

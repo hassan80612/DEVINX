@@ -1298,3 +1298,15 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
  .vnextEngineToolbar select{font-size:10px!important;padding:0 5px!important}
  .vnextProjectionValues strong{font-size:14px}
 }
+
+/* 13.4.60: compact factual realtime hypothesis separate from future forecast.
+   Uses the existing signed frame. This is not a broker order button. */
+.vnextNowAdvisory{border:1px solid #d6b96980;border-left:4px solid #b89946;border-radius:12px;padding:10px 13px;background:linear-gradient(130deg,#153a36,#0a2524);color:#ecf9f3;display:grid;gap:5px;margin:8px 0}
+.vnextNowAdvisory>div{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.vnextNowAdvisory small{font-size:10px;font-weight:800;letter-spacing:.06em;color:#f6ddaa}
+.vnextNowAdvisory strong{font-size:clamp(14px,1.8vw,19px);letter-spacing:.02em}
+.vnextNowAdvisory.call strong{color:#83e5c6}.vnextNowAdvisory.put strong{color:#ff9dab}
+.vnextNowAdvisory>span{font-size:10px;line-height:1.5;color:#dae8df}
+.liveScenarioCompact .vnextNowAdvisory{padding:8px;gap:4px}
+.liveScenarioCompact .vnextNowAdvisory strong{font-size:14px}
+@media(max-width:520px){.vnextNowAdvisory{padding:9px}.vnextNowAdvisory>div{gap:4px}}
