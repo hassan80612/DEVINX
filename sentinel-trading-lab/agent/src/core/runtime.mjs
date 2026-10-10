@@ -17,6 +17,7 @@ import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {observeImmediateMarket} from './immediate-market-observation.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -885,19 +886,49 @@ export class DemoTradingRuntime{
       const model=singleEngineForecast({settings,snap,now});
       const previous=Array.isArray(this.vnextPending)?this.vnextPending:[];
       const outcomes=Array.isArray(this.vnextOutcomes)?this.vnextOutcomes:[];
-      const eligible=previous.filter(x=>x?.targetAt>now-2000);
+      // Retain due forecasts briefly while waiting for a quote at the
+      // ORIGINAL deadline; never substitute a later quote for the outcome.
+      const eligible=previous.filter(x=>x?.targetAt>now-15000);
       const rest=[];
       for(const receipt of eligible){
         if(now<receipt.targetAt){rest.push(receipt);continue}
         const q=(snap.quoteHistory||[]).find(q=>Number(q.ts)>=receipt.targetAt&&
           Number(q.ts)<=receipt.targetAt+1000);
         const evaluation=evaluateForwardForecast({receipt,actualQuote:q?{at:Number(q.ts),price:Number(q.price)}:{}});
-        if(evaluation.verified)outcomes.push({engineId:receipt.engineId,
+        if(!evaluation.verified){
+          if(now-receipt.targetAt<15000)rest.push(receipt);
+          continue;
+        }
+        const settled={
+          engineId:receipt.engineId,asset:receipt.asset,
           expirySeconds:receipt.expirySeconds,forecastAt:receipt.issuedAt,
-          targetAt:receipt.targetAt,correct:evaluation.correct,
-          predictionError:evaluation.predictionError});
+          targetAt:receipt.targetAt,side:receipt.side,referencePrice:receipt.referencePrice,
+          projectedPrice:receipt.projectedPrice,settledPrice:Number(q.price),
+          correct:evaluation.correct,predictionError:evaluation.predictionError,
+          verifiedAt:now
+        };
+        outcomes.push(settled);
+        this.vnextLastOutcome=settled;
       }
       const current=model.receipt;
+      // This is a separate, already-observed short structural price event.
+      // It never votes on, blocks or replaces the selected future forecast.
+      // A 3s visual lifetime is not an entry gate or a waiting delay.
+      const detectedNow=observeImmediateMarket({
+        quoteHistory:snap.quoteHistory,asOf:now,quoteTs:snap.quoteTs
+      });
+      const lastNow=this.vnextNowObservation||null;
+      const holdNow=lastNow&&lastNow.asset===settings.asset&&
+        Number(lastNow.expiresAt)>now;
+      const sameEvent=detectedNow&&holdNow&&detectedNow.side===lastNow.side&&
+        detectedNow.kind===lastNow.kind&&Math.abs(Number(detectedNow.level)-Number(lastNow.level))<
+        Math.max(Number(detectedNow.level)*1e-6,1e-12);
+      const nowIndication=detectedNow&&!sameEvent?
+        {...detectedNow,asset:settings.asset,
+          expirySeconds:model.expirySeconds,
+          targetAt:detectedNow.at+model.expirySeconds*1000}:
+        (holdNow?lastNow:null);
+      this.vnextNowObservation=nowIndication;
       // The live motor remains unrestrained: this ONE immutable reference
       // receipt powers the visible countdown without resetting to 30s on
       // every 400ms recalculation. Reset for a different motor, asset or
@@ -924,9 +955,11 @@ export class DemoTradingRuntime{
       this.vnextOutcomes=outcomes.slice(-300);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
-        vnext:{...model,evaluation:undefined,targetAnchor,
+        vnext:{...model,evaluation:undefined,targetAnchor,nowIndication,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
-          outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
+          outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length,
+          lastSettled:this.vnextLastOutcome?.engineId===model.engineId&&this.vnextLastOutcome?.asset===settings.asset&&
+            this.vnextLastOutcome?.expirySeconds===model.expirySeconds?this.vnextLastOutcome:null},
         entryPlanner:{modelVersion:model.modelVersion,
           defaultHorizonSeconds:model.expirySeconds,
           horizons:model.plan?{[String(model.expirySeconds)]:model.plan}:{}},

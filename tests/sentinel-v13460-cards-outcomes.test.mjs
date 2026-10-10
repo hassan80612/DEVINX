@@ -27,7 +27,7 @@ test('new desktop has restored three light CALL PUT cards but old strategy voter
  assert.match(view,/TOTAIS · LEITURAS AO VIVO/);
  assert.match(view,/d\.vnext\?\.cards/);
  assert.match(view,/TOTAIS · LEITURAS AO VIVO/);
- assert.match(view,/Mercado Agora \+ Estrutura Anterior = Total dos Totais/);
+ assert.match(view,/O terceiro card é a média de Estrutura Anterior \+ Mercado Agora/);
  assert.match(view,/Motor e percentuais futuros somente no painel Projeção Futura/);
  assert.doesNotMatch(view,/TOTAL MOTOR SELECIONADO/);
  assert.doesNotMatch(view,/TOTAL PRESENTE \+ FUTURO/);

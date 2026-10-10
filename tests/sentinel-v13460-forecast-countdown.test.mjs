@@ -28,7 +28,7 @@ test('Agent independently pins display clock to original forecast without gating
 });
 test('Windows PC countdown ticks locally without extra analysis, broker polling or network',async()=>{
  const s=await read('agent/worker/local-playwright-driver.mjs');
- assert.equal((s.match(/data-sentinel-vnext-clock-value/g)||[]).length,2);
+ assert.equal((s.match(/data-sentinel-vnext-clock-value/g)||[]).length,3); // markup, ticker, DOM reconciliation guard
  assert.match(s,/data-deadline="\$\{Number\(pinnedReceipt\?\.targetAt\|\|0\)\}"/);
  assert.match(s,/const tickTargetClock=\(\)=>/);
  assert.match(s,/target-Date\.now\(\)/);

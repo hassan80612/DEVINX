@@ -48,6 +48,15 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     vnext.projection:null;
   const vnextTargetProjection=vnextTargetAnchor&&vnext?.targetProjection?
     vnext.targetProjection:null;
+  const observed=vnext?.nowIndication||null;
+  // Observations and broadcasts are read-only. A delayed quote must never
+  // be promoted into a CALL/PUT AGORA just because a card was left open.
+  const vnextNowObservation=matchingMarket&&feedValidated&&quoteFresh&&
+    vnext?.engineId===s?.settings?.engine&&
+    String(observed?.asset||'').toUpperCase()===asset.toUpperCase()&&
+    ['CALL','PUT'].includes(String(observed?.side||''))&&
+    Number(observed.at)>0&&Number(observed.at)<=now&&
+    Number(observed.expiresAt)>now?observed:null;
   const scenarioDeadline=Number(scenario?.deadline||0);
   const scenarioOrigin=Number(scenario?.createdAt||0);
   const scenarioContextOk=matchingMarket&&feedValidated&&
@@ -114,9 +123,9 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextStatus:vnext?.computedStatus||null,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextNowObservation,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
-    vnextVerified:vnext?.outcomesVerified||0,
+    vnextVerified:vnext?.outcomesVerified||0,vnextLastSettled:vnext?.lastSettled||null,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
     entrySide,entryRemaining,opportunityEnded,lastSignal,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
