@@ -124,7 +124,12 @@ export function entryOpportunities({analysis,snap,now,minPoints=55,durationMs=30
       }
     }else if(continuation){trigger=call?Math.max(...bar.map(q=>q.price)):Math.min(...bar.map(q=>q.price));invalidation=call?Math.min(...bar.map(q=>q.price))-maxDistance*.2:Math.max(...bar.map(q=>q.price))+maxDistance*.2;}
     const timingValid=finite(trigger)&&finite(invalidation)&&(!reaction||reaction.expiresAt>now);
-    const reversalEvidence=entryPolicy==='structural-reversals-v1'&&reversal?reversalStructure({side,snap,now,durationMs,reaction,expectedMove,oppositeLevel:call?short.sr?.resistance:short.sr?.support}):null;
+    // A pre-mapped support/resistance with TWO independent advancing quotes,
+    // intact invalidation and room is already a confirmed local reaction.
+    // Requiring an additional neckline break would recognize it only after
+    // the early entry has passed. Unmapped reversals keep the stricter gate.
+    const reversalEvidence=entryPolicy==='structural-reversals-v1'&&reversal&&!mapped.qualified?
+      reversalStructure({side,snap,now,durationMs,reaction,expectedMove,oppositeLevel:call?short.sr?.resistance:short.sr?.support}):null;
     if(reversalEvidence?.allowed){
       // Own the structural break as the trigger. Reusing the first uptick's
       // earlier trigger would incorrectly classify a timely break as late.
