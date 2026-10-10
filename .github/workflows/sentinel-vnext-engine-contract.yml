@@ -18,4 +18,5 @@ jobs:
         run: |
           node --check sentinel-trading-lab/agent/src/core/scenario-engine-catalog.mjs
           node --check sentinel-trading-lab/agent/src/core/expiry-driven-forecast.mjs
-          node --test tests/sentinel-single-engine-contract-1359.test.mjs tests/sentinel-expiry-driven-1359.test.mjs
+          node --check sentinel-trading-lab/agent/src/core/forward-forecast-receipt.mjs
+          node --test tests/sentinel-single-engine-contract-1359.test.mjs tests/sentinel-expiry-driven-1359.test.mjs tests/sentinel-forward-forecast-proof-1359.test.mjs
