@@ -9,6 +9,7 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[now,setNow]=useState(()=>Date.now());
+  const[recordedSignal,setRecordedSignal]=useState<{asset:string,side:string,price:number,at:number}|null>(null);
   const[averageThreshold,setAverageThreshold]=useState(60);
   const[averageInput,setAverageInput]=useState('60');
   const thresholdEditing=useRef(false);
@@ -49,6 +50,17 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     }
   };
   const m=liveCardModel(s,now,averageThreshold);
+  // A signal freezes its ACTUAL broker quote at creation. Subsequent live
+  // quotes never overwrite it. Cache only in the open page; no DB logging.
+  const incoming=m.lastSignal;
+  useEffect(()=>{
+    if(!incoming)return;
+    setRecordedSignal(previous=>{
+      if(previous?.asset===incoming.asset&&previous.at>=incoming.at)return previous;
+      return incoming;
+    });
+  },[incoming?.asset,incoming?.side,incoming?.price,incoming?.at]);
+  const lastSignal=recordedSignal?.asset===m.asset?recordedSignal:null;
   const liveDirection=m.entrySide||(!m.scenarioInactive?m.side:null);
   const decisionLabel=m.entrySide?'ENTRADA AGORA':liveDirection?'CENÁRIO PRINCIPAL':'AGUARDANDO OPORTUNIDADE';
   const decisionArrow=liveDirection==='CALL'?'↑':liveDirection==='PUT'?'↓':'◇';
@@ -56,14 +68,27 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // Large green/red is reserved for an actionable entry, not a forecast.
   const directionClass=m.entrySide==='CALL'?'call':m.entrySide==='PUT'?'put':'neutral';
   const reversalArrow=m.alert?.side==='CALL'?'↑':m.alert?.side==='PUT'?'↓':'◇';
+  const mobileDirection=m.entrySide||null;
+  const mobileArrow=mobileDirection==='CALL'?'↑':mobileDirection==='PUT'?'↓':'◇';
+  const mobileDecisionText=mobileDirection?mobileDirection+' AGORA':'AGUARDANDO';
+  const mobileDecisionLabel=mobileDirection?'PONTO DE ENTRADA CONFIRMADO':'ANÁLISE OPERACIONAL';
+  const mobileQuote=m.fresh?Number(s?.liveBroker?.quote??s?.feed?.price):null;
+  const quoteValid=mobileQuote!==null&&Number.isFinite(mobileQuote)&&mobileQuote>0;
+  const entryDelta=lastSignal&&quoteValid?mobileQuote!-lastSignal.price:null;
+  const entryFavourable=entryDelta!==null&&lastSignal?
+    (lastSignal.side==='CALL'?entryDelta>0:entryDelta<0):false;
+  const entryAgainst=entryDelta!==null&&lastSignal?
+    (lastSignal.side==='CALL'?entryDelta<0:entryDelta>0):false;
+  const trendLabel=entryDelta===null?'SEM COMPARAÇÃO':entryDelta===0?'PREÇO IGUAL':entryFavourable?'A FAVOR DO SINAL':'CONTRA O SINAL';
+  const priceChange=entryDelta===null?'—':entryDelta===0?'0.00000':(entryDelta>0?'+':'')+entryDelta.toFixed(5);
   // The scenario can have time remaining after an entry opportunity expires.
   // Neither a closed entry nor this visual clock authorizes a new trade.
-  const opportunityNotice=m.opportunityEnded?<div className="liveOpportunityEnded" data-testid="entry-opportunity-ended" role="status" aria-live="polite">
-    <span aria-hidden="true" className="liveOpportunityEndedIcon">!</span><div><strong>ESTA OPORTUNIDADE TERMINOU</strong><span>Aguardando novo ponto ou gatilho. O cenário pode continuar aberto.</span></div>
-  </div>:null;
-  const scenarioClock=m.remaining!==null?<div className="liveScenarioCountdown" data-testid="scenario-clock">
-    <small>PRAZO DO CENÁRIO</small><strong>{m.remaining}s</strong>
-  </div>:null;
+  const opportunityNotice=<div className={`liveOpportunityState ${m.opportunityEnded?'ended':''}`} data-testid="entry-opportunity-state" role="status" aria-live="off">
+    <span aria-hidden="true">◇</span><span>{m.entrySide?'Entrada sinalizada · acompanhe a cotação':m.opportunityEnded?'Aguardando novo gatilho':'Observando um novo ponto de entrada'}</span>
+  </div>;
+  const scenarioClock=<div className="liveScenarioCountdown" data-testid="scenario-clock">
+    <small>PRAZO DO CENÁRIO</small><strong>{m.remaining!==null?m.remaining+'s':'—'}</strong>
+  </div>;
   useEffect(()=>{
     if(m.fresh&&m.market!==null&&m.strategies!==null&&m.combined!==null&&m.average!==null){
       lastTotals.current={asset:m.asset,market:m.market,strategies:m.strategies,combined:m.combined,average:m.average,at:m.evaluationAt};
@@ -92,20 +117,35 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao card completo">Expandir ↗</button></header>
-    <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'ENTRADA CONFIRMADA NO CARD · confirme o prazo na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário; aguarde um ponto de entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>
-    {opportunityNotice}
-    <div className="compactScenario"><div><small>{m.scenarioLabel}</small><strong>{m.state}</strong></div></div>
-    <div className="compactQuote"><span><small>COTAÇÃO DO PC</small><b>{price(quoteShown)}</b></span><small>{m.fresh?'Dado '+seconds(m.quoteAge)+' atrás':'DADO INDISPONÍVEL'}</small></div>
-    {historicalNotice}
-    {streamBadge}
-    {m.entrySide&&<div className="liveEntryCountdown">JANELA DE ENTRADA <strong>{m.entryRemaining}s</strong></div>}
-    <div className={`compactReversal liveReversalState ${m.reversalTone} ${m.reversalTesting?'testing':''}`} role={m.alert?'status':undefined} aria-live="polite"><small>◈ ALERTA DE REVERSÃO</small><strong><span aria-hidden="true">{reversalArrow}</span> {m.subStatus}</strong>{m.alert&&<small>{m.reversalTesting?'EM TESTE · não é entrada confirmada':'ESTRUTURA CONFIRMADA · avaliação independente'} · Gatilho {price(m.alert.trigger)} · Invalida {price(m.alert.invalidation)}</small>}</div>
-    <div className="compactTotals">
-      {([['Mercado',totals.market],['Estratégias',totals.strategies],['Presente + futuro',totals.combined]] as const).map(([label,value])=><div key={label}><span>{label}</span><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}
+    <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
+      <small>{mobileDecisionLabel}</small><strong><span aria-hidden="true">{mobileArrow}</span> {mobileDecisionText}</strong>
+      <span className="mobileScenarioContext">{m.side?'Cenário em observação: '+m.side:'Aguardando cenário válido'}</span>
+      <small className="mobileEntryWindow">{m.entrySide?'Janela de entrada: '+m.entryRemaining+'s · verifique a expiração na corretora':'Somente um sinal confirmado autoriza uma entrada'}</small>
     </div>
-    <div className={`compactAverage ${totals.averageSide==='CALL'?'call':totals.averageSide==='PUT'?'put':'neutral'}`} data-testid="compact-three-totals-average"><div><small>MÉDIA DOS 3 TOTAIS · INDICATIVA</small><strong>{totals.averageSide}</strong><span>{totals.average===null?'—':`CALL ${totals.average}% · PUT ${100-totals.average}%`}</span></div><label>Limite visual<input aria-label="Limite visual da média" type="text" inputMode="numeric" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
-    <div className="compactContext">Previsão {Math.round(Number(s?.settings?.forecastHorizonSeconds||60))}s · Prazo configurado {Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)}s <b>≠ expiração no app</b></div>
-    <footer>Somente análise. Confira ativo, entrada e vencimento na corretora. CALL/PUT aqui não executa ordens.</footer>
+    <div className="compactScenario"><div><small>CENÁRIO PRINCIPAL</small><strong>{m.scenarioLabel} · {m.state}</strong></div>{scenarioClock}</div>
+    {opportunityNotice}
+    <div className="mobilePriceComparison" data-testid="mobile-price-comparison">
+      <div><small>{lastSignal?'ÚLTIMO SINAL · '+lastSignal.side:'PREÇO DO SINAL'}</small><strong>{lastSignal?price(lastSignal.price):'—'}</strong></div>
+      <div><small>COTAÇÃO AGORA</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
+      <div className={`mobilePriceChange ${entryFavourable?'favourable':entryAgainst?'against':'neutral'}`}>
+        <span>{trendLabel}</span><b>{priceChange}</b>
+      </div>
+    </div>
+    <div className="mobileMonitorState" role="status">{m.fresh?(pushed?'● AO VIVO · PUSH':'● COTAÇÃO ATUAL · '+seconds(m.quoteAge)+' atrás'):'SEM COTAÇÃO ATUAL · AGUARDE A ATUALIZAÇÃO'}</div>
+    <div className="mobileReversalObservation" data-testid="mobile-reversal-observation">
+      <span>REVERSÃO · OBSERVAÇÃO</span>
+      <strong>{m.alert?'Possível virada de '+(m.alert.side==='CALL'?'alta':'baixa'):m.fresh?'Monitorando reação do preço':'Aguardando dados'}</strong>
+    </div>
+    <details className="mobileTechnicalDetails" data-testid="mobile-technical-readings">
+      <summary><span>LEITURA TÉCNICA · 3 TOTAIS</span><b>{totals.average===null?'—':`Média: alta ${totals.average}% · baixa ${100-totals.average}%`}</b></summary>
+      <div className="compactTotals">
+        {([['Mercado',totals.market],['Estratégias',totals.strategies],['Presente + futuro',totals.combined]] as const).map(([label,value])=><div key={label}><span>{label}</span><b>{value===null?'—':`Alta ${value}% · baixa ${100-Number(value)}%`}</b></div>)}
+      </div>
+      <div className="compactAverage" data-testid="compact-three-totals-average"><div><small>MÉDIA DOS 3 TOTAIS · LEITURA</small><strong>{totals.average===null?'—':`Alta ${totals.average}% · baixa ${100-totals.average}%`}</strong><span>Não é ordem de entrada.</span></div><label>Limite visual<input aria-label="Limite visual da média" type="text" inputMode="numeric" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
+      {historicalNotice}
+    </details>
+    <div className="compactContext">Previsão {Math.round(Number(s?.settings?.forecastHorizonSeconds||60))}s · Expiração manual {Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)}s</div>
+    <footer>O preço do sinal permanece fixo nesta tela; a cotação varia em tempo real. Não executa ordens.</footer>
   </section>;
   return <section className={`liveScenario ${m.tone}`} aria-label="Cenário ao vivo" data-testid="live-scenario">
     <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.scenarioLabel}</h2><b>{m.state}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>Modo flutuante ↘</button></div></header>
