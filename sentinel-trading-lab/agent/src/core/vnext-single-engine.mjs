@@ -75,8 +75,8 @@ export function singleEngineForecast({
  // Market NOW remains a historical momentum display. Future projection
  // is calculated separately by exactly the selected motor. No counterfeit
  // instantaneous CALL/PUT created from the forecast.
- const dashboard=lightweightDashboard({quoteHistory:quotes,receipt,now,engineId:request.engineId});
- const cards=dashboard.cards,average=dashboard.average,projection=dashboard.projection;
+ const dashboard=lightweightDashboard({quoteHistory:quotes,receipt,now});
+ const cards=dashboard.cards,projection=dashboard.projection;
  const predictedPrice=receipt?.projectedPrice??null;
  const horizon=Number(seconds||0),durationMs=Math.round(horizon*1000);
  const plan=receipt?{
@@ -116,7 +116,7 @@ export function singleEngineForecast({
    expirySeconds:horizon,
    source:'user-selected-expiry',modelVersion:'vnext-single-owner-v1',
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
-   computedStatus:computed?.status||'unavailable',receipt,cards,average,projection,
+   computedStatus:computed?.status||'unavailable',receipt,cards,projection,
    forecastFoundation:analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
    historicalComparisons:analog?.comparisons||0,similarCases:analog?.neighbors||0,
    plan,operational,scenarioProjection,
