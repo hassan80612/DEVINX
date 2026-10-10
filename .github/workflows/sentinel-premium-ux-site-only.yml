@@ -1,0 +1,41 @@
+name: Sentinel premium UX - site only validation
+on:
+  push:
+    branches:
+      - sentinel-premium-ux-cleanup-20261010
+    paths:
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
+      - 'sentinel-trading-lab/src/app/globals.css'
+      - 'sentinel-trading-lab/src/app/landing.module.css'
+      - 'tests/sentinel-premium-ux-cleanup.test.mjs'
+      - 'tests/sentinel-mobile-responsive-only.test.mjs'
+      - 'tests/sentinel-reversal-arbitration-mobile-price.test.mjs'
+      - '.github/workflows/sentinel-premium-ux-site-only.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-premium-ux-website
+  cancel-in-progress: true
+jobs:
+  validate-site-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate mobile, desktop, signal clocks and navigation
+        run: |
+          node --test tests/sentinel-premium-ux-cleanup.test.mjs
+          node --test tests/sentinel-mobile-responsive-only.test.mjs
+          node --test tests/sentinel-reversal-arbitration-mobile-price.test.mjs
+          node --test tests/sentinel-opportunity-visual-only.test.mjs
+          node --test tests/sentinel-mobile-card.test.mjs
+          node --test tests/sentinel-page-passive.test.mjs
+      - name: Build Next.js
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
