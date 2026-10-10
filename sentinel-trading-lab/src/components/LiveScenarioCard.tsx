@@ -151,7 +151,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <div><small>PREÇO DE REFERÊNCIA</small><strong>{price(forecast.referencePrice)}</strong></div>
       <div><small>PREÇO PROJETADO</small><strong>{price(forecast.projectedPrice)}</strong></div>
       <div><small>EMISSÃO</small><strong>{clock(forecast.issuedAt)}</strong></div>
-      <div><small>ALVO FUTURO</small><strong>{clock(forecast.targetAt)}</strong></div>
+      <div><small>ALVO NO FUTURO</small><strong>{clock(forecast.targetAt)}</strong></div>
     </div>
     <div className="vnextProjectionBias"><span>CALL projetado <b>{m.vnextProjection?.callPct==null?'—':m.vnextProjection.callPct+'%'}</b></span><span>PUT projetado <b>{m.vnextProjection?.putPct==null?'—':m.vnextProjection.putPct+'%'}</b></span></div>
     <small>Faixa: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · {m.vnextFoundation==='historical-forward-outcomes'?'Comparação histórica: '+m.vnextHistorical+' casos completos':'Histórico insuficiente para comparar resultados futuros; projeção baseada no modelo atual'}. Não é taxa de acerto.</small></>:<p>Aguardando cotações suficientes para previsão futura. Sem entrada confirmada.</p>}
@@ -165,7 +165,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
           <span>CALL {c.callPct==null?'—':c.callPct+'%'} · PUT {c.putPct==null?'—':c.putPct+'%'}</span>
         </div>)}
     </div>
-    <small>Leituras descritivas do mercado, não confiança nem sinais de entrada.</small>
+    <small>Mercado Agora + Estrutura Anterior = Total dos Totais. O motor e os percentuais projetados aparecem apenas em Projeção Futura. Índices visuais, não taxas de acerto.</small>
   </details>:null;
   const applyScenario=async()=>{
     const ok=await act('settings',{
