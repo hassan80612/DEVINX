@@ -900,8 +900,9 @@ export class DemoTradingRuntime{
       const current=model.receipt;
       // The live motor remains unrestrained: this ONE immutable reference
       // receipt powers the visible countdown without resetting to 30s on
-      // every 400ms recalculation. Reset only for a new side/motor/asset/
-      // selected duration, or after the forecast's original target passes.
+      // every 400ms recalculation. Reset for a different motor, asset or
+      // duration, or after the original target. A later direction flip must
+      // never rewrite the already-emitted prediction's original target.
       const previousAnchor=this.vnextTargetAnchor||null;
       const anchorMatches=current&&previousAnchor&&
         current.engineId===previousAnchor.engineId&&
