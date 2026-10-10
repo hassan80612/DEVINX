@@ -2,6 +2,7 @@ import {FORECAST_MODEL,fuseForecastEvidence,attenuateForecast,predictionInput,me
 import {ema,rsi,atr,bollinger,momentum,supportResistance,macd,stochastic,marketStructure,trendLines,fibonacci,candlePatterns,breakoutRetest,aggregateCandles,aggregateTimedCandles,supportResistanceZones,trendLineQuality,swingFibonacci,volatilityState} from './indicators.mjs';
 import {SignalSide} from './types.mjs';
 import {repeatedReaction} from './repeated-reaction.mjs';
+import {earlyScenarioTurn} from './early-scenario-turn.mjs';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const near=(a,b,t)=>a!=null&&b!=null&&Math.abs(a-b)<=Math.max(t,Math.abs(b)*.00015);
@@ -537,6 +538,12 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const minHistory=seconds>=3600?90:seconds>=900?55:seconds>=600?45:seconds>=300?35:Math.max(18,Math.min(30,barsBack+10));
    const enoughHistory=closes.length>=minHistory;
    const microSignal=micro.ready?clamp(norm(micro.p5,1.35)*.31+norm(micro.p15,1.65)*.30+norm(micro.p30,2.10)*.23+norm(micro.pulse,18)*.16,-1,1):0;
+   // Estimate an impending turn from received quotes without awaiting a bar.
+   // Does not change entry or non-prediction technical analysis.
+   const earlyTurn=predictionModel?earlyScenarioTurn({micro,short,price:last,
+     upper:nearestUpper,lower:nearestLower,expectedMove,seconds}):null;
+   const projectedReversalSignal=predictionModel?
+     clamp(forecastReversalSignal+Number(earlyTurn?.signal||0)*.70,-1,1):forecastReversalSignal;
    const upRoom=nearestUpper!=null?clamp((nearestUpper-last)/Math.max(expectedMove,1e-12),0,3):1.5;
    const downRoom=nearestLower!=null?clamp((last-nearestLower)/Math.max(expectedMove,1e-12),0,3):1.5;
    let locationSignal=clamp((upRoom-downRoom)/2.2,-1,1);
@@ -559,7 +566,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    const declaredWeight=Object.values(w).reduce((a,b)=>a+Number(b||0),0)||1;
    const features=[
      {name:'microfluxo',key:'micro',value:microSignal,weight:w.micro,available:w.micro>0&&micro.ready},
-     {name:'reversão/exaustão',key:'reversal',value:forecastReversalSignal,weight:w.reversal,available:short.ready===true},
+     {name:'reversão/exaustão',key:'reversal',value:projectedReversalSignal,weight:w.reversal,available:short.ready===true},
      {name:'momentum',key:'momentum',value:momentumSignal,weight:w.momentum,available:m.rsi!=null||m.macd!=null||m.momentum!=null},
      {name:'estrutura/tendência',key:'trend',value:trendSignal,weight:w.trend,available:true},
      {name:'histórico fechado',key:'history',value:historySignal,weight:w.history,available:historyLegs.length>=2},
@@ -583,6 +590,8 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
    // a previsão deixa de perseguir a vela atual e antecipa a possibilidade de virada.
    if(predictionModel){
      signal=attenuateForecast(signal,{overextended:signal>0?short.callOverextended:short.putOverextended,turning:signal>0?short.turnDown:short.turnUp,flowConflict:seconds<=60&&(signal>0?microSignal<-.25:microSignal>.25),accelerationConflict:signal>0?accelerationSignal<-.35:accelerationSignal>.35,seconds});
+     // Continuous prospective evidence, never an opposite-side override.
+     signal=clamp(signal+Number(earlyTurn?.signal||0)*(seconds<=60?.12:seconds<=120?.07:0),-1,1);
    }else{
    if(short.callOverextended&&signal>0)signal-=Math.min(.30,Math.abs(signal)*.48+.07);
    if(short.putOverextended&&signal<0)signal+=Math.min(.30,Math.abs(signal)*.48+.07);
@@ -681,6 +690,7 @@ export function analyzeMarket({candles,quoteHistory=[],strategy='smart_confluenc
      confidence:modelConfidence,modelConfidence,agreement:Math.round(agreement*100),dataQuality:Math.round(quality*100),
      bias,nextStep:bias,outlookReady,directionReady,callTrigger,putTrigger,callInvalidation,putInvalidation,callRule,putRule,
      regime:m.regime,modelRole:candidateModel?'candidate':'control',scenario:{kind,continuationReady,reversalConfirmed,triggerBasis:continuationTrigger?'previous-short-bar':'structural-level',invalidationBasis:'recent-swing'},entryTiming:{maxDistance:candidateModel?entryTolerance:null,sourceBarAt:recentShort?previousShort.ts:null},evidenceFamilies,multiTimeframe:mtf,
+     earlyTurn:earlyTurn||null,
      reversalAuthority:{side:reversalAuthoritySide,callVotes:reversalCallVotes,putVotes:reversalPutVotes,callScore:Number(short.reversalCallScore||0),putScore:Number(short.reversalPutScore||0)},
      safety:{blocked:safetyBlocked,chaseBlocked,barrierBlocked,mtfConflict,blockedSide:safetyBlocked?signalSide:null},
      reliability:{evidenceFamilyCount,familyAgreement:Math.round(familyAgreement*100),featureAgreement:Math.round(agreement*100),correlationPenalty,baseModelConfidence,leadAligned,microLead:Math.round(microLeadSignal*100)},
