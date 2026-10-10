@@ -6,6 +6,8 @@ $trayHealth = Join-Path $root 'worker\data\tray-health.json'
 $lastTrayStart = [DateTimeOffset]::MinValue
 $watchdog = Join-Path $root 'worker\watchdog.ps1'
 $exitMarker = Join-Path $root 'worker\data\agent.exit'
+$autoUpdater = Join-Path $root 'worker\auto-update.ps1'
+$lastAutoUpdateCheck = [DateTimeOffset]::MinValue
 
 $created = $false
 $mutex = New-Object System.Threading.Mutex($true,'Local\SentinelTradingLabWatchdogV880',[ref]$created)
@@ -31,6 +33,14 @@ try {
     try {
       & powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File $watchdog | Out-Null
     } catch {}
+    # One lightweight release check every 75 min. Never interrupt an active
+    # analysis: updater validates remote license + stopped runtime first.
+    if (([DateTimeOffset]::UtcNow - $lastAutoUpdateCheck).TotalMinutes -ge 75 -and (Test-Path $autoUpdater)) {
+      $lastAutoUpdateCheck = [DateTimeOffset]::UtcNow
+      try {
+        Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$autoUpdater`"") -WindowStyle Hidden | Out-Null
+      } catch {}
+    }
     Start-Sleep -Seconds 20
   }
 } finally {
