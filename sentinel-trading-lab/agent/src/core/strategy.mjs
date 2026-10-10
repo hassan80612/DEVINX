@@ -163,8 +163,8 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  const callStretched=(micro.p5>=1.8&&micro.p15>=1.8)||micro.p15>=2.6||(microRsi!=null&&microRsi>=74&&micro.p5>.75);
  const putStretched=(micro.p5<=-1.8&&micro.p15<=-1.8)||micro.p15<=-2.6||(microRsi!=null&&microRsi<=26&&micro.p5<-.75);
  // A strong trend can remain stretched. Exhaustion requires weakening/rejection or a barrier.
- const callOverextended=!reversalCallCandidate&&(candidateModel?((callStretched&&(weakeningUp||turnDown||rejectionDown))||(resistanceReversalZone&&micro.delta5>0)):(callStretched||(resistanceReversalZone&&micro.delta5>0)));
- const putOverextended=!reversalPutCandidate&&(candidateModel?((putStretched&&(weakeningDown||turnUp||rejectionUp))||(supportReversalZone&&micro.delta5<0)):(putStretched||(supportReversalZone&&micro.delta5<0)));
+ const callOverextended=!reversalCallCandidate&&((callStretched&&(weakeningUp||turnDown||rejectionDown))||(resistanceReversalZone&&(rejectionDown||turnDown)));
+ const putOverextended=!reversalPutCandidate&&((putStretched&&(weakeningDown||turnUp||rejectionUp))||(supportReversalZone&&(rejectionUp||turnUp)));
  if(callReversalRisk)call-=24;
  if(putReversalRisk)put-=24;
  if(callOverextended)call-=18;
@@ -180,10 +180,10 @@ function shortHorizonModel({quoteHistory,micro,last,vol,context={},minConfidence
  const structureReadyPut=((fast!=null&&slow!=null&&fast<=slow*1.00002)&&(structure.bias!=='bullish'))||reversalPutCandidate;
  const callRoomOk=breakUp||reversalCallCandidate||callRoom==null||callRoom>minRoom;
  const putRoomOk=breakDown||reversalPutCandidate||putRoom==null||putRoom>minRoom;
- const callSetup=reversalCallCandidate||(retest?.side==='BUY')||(nearSupport&&rejectionUp)||(accelUp&&structureReadyCall&&!nearResistance)||(breakUp&&micro.p5>0&&micro.p5<1.55);
- const putSetup=reversalPutCandidate||(retest?.side==='SELL')||(nearResistance&&rejectionDown)||(accelDown&&structureReadyPut&&!nearSupport)||(breakDown&&micro.p5<0&&micro.p5>-1.55);
- const callContinuation=flowReadyCall&&structureReadyCall&&callRoomOk&&micro.p5<1.55&&micro.p15<2.15;
- const putContinuation=flowReadyPut&&structureReadyPut&&putRoomOk&&micro.p5>-1.55&&micro.p15>-2.15;
+ const callSetup=reversalCallCandidate||(retest?.side==='BUY')||(nearSupport&&rejectionUp)||(accelUp&&structureReadyCall&&!nearResistance)||(breakUp&&micro.p5>0);
+ const putSetup=reversalPutCandidate||(retest?.side==='SELL')||(nearResistance&&rejectionDown)||(accelDown&&structureReadyPut&&!nearSupport)||(breakDown&&micro.p5<0);
+ const callContinuation=flowReadyCall&&structureReadyCall&&callRoomOk&&!callReversalRisk&&!callOverextended;
+ const putContinuation=flowReadyPut&&structureReadyPut&&putRoomOk&&!putReversalRisk&&!putOverextended;
  const callReversalTrigger=reversalCallCandidate&&micro.delta5>0;
  const putReversalTrigger=reversalPutCandidate&&micro.delta5<0;
  const readyCall=call>=threshold&&edge>=15&&callRoomOk&&((callReversalTrigger)||(!reversalCallCandidate&&flowReadyCall&&structureReadyCall&&(callSetup||callContinuation)))&&!callReversalRisk&&!callOverextended;
