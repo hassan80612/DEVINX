@@ -54,11 +54,20 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     endedEntryStates.includes(entryStatus)||
     /esta oportunidade terminou|oportunidade de entrada encerrada|oportunidade encerrada|ponto de entrada ultrapassado/i.test(entryReason)
   );
+  // Capture ONLY the exact quote recorded by the engine at a confirmed
+  // signal. The display must never substitute a trigger or a later market
+  // quote for that historical price.
+  const signal=op.entryAnalyst?.signal||{};
+  const recordedAt=Number(signal.entryAt||0),recordedPrice=num(signal.entryPrice);
+  const recordedSide=String(signal.side||'').toUpperCase();
+  const lastSignal=matches&&recordedAt>0&&recordedAt<=now+2500&&
+    recordedPrice!==null&&recordedPrice>0&&['CALL','PUT'].includes(recordedSide)?
+    {asset,side:recordedSide,price:recordedPrice,at:recordedAt}:null;
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
-    entrySide,entryRemaining,opportunityEnded,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
+    entrySide,entryRemaining,opportunityEnded,lastSignal,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
     remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,
     subStatus:!fresh?unavailable:sub.mode!=='reversal-alert'?'ATUALIZE O AGENT':sub.status==='SEM LEITURA'?'AGUARDANDO COTAÇÕES':alert?(alert.testing?'REVERSÃO EM TESTE ':'REVERSÃO CONFIRMADA ')+alert.side:'OBSERVANDO REVERSÃO',
     reversalTone:alert?.side==='CALL'?'call':alert?.side==='PUT'?'put':'neutral',reversalTesting:alert?.testing===true,
