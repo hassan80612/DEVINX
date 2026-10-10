@@ -56,7 +56,7 @@ test('React card places same prominent amber notice on desktop and compact mobil
 });
 test('broker overlay differentiates entry expiration from scenario countdown',async()=>{
   const source=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
-  assert.match(source,/data-sentinel-entry-ended/);
+  assert.match(source,/data-sentinel-entry-state/);
   assert.match(source,/opportunityNoticeHtml/);
   assert.match(source,/futureDecisionStatus=timingClosed\?'00:00 · ENCERRADO'/);
   assert.doesNotMatch(source,/const timingClosed=\[[^\]]*OPORTUNIDADE CONSUMIDA/);
