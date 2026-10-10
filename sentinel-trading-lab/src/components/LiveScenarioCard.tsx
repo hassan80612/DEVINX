@@ -66,6 +66,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     forecastExpirySeconds>0&&forecastTargetAt-forecastIssuedAt===forecastExpirySeconds*1000);
   const forecastSecondsRemaining=forecastTimeValid?Math.max(0,Math.ceil((forecastTargetAt-now)/1000)):null;
   const forecastTargetPast=forecastTimeValid&&forecastTargetAt<=now;
+  const countdownTime=forecastSecondsRemaining===null?'—:—':forecastSecondsRemaining>=3600?String(Math.floor(forecastSecondsRemaining/3600)).padStart(2,'0')+':'+String(Math.floor(forecastSecondsRemaining%3600/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0'):String(Math.floor(forecastSecondsRemaining/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0');
   const forecastTimeLabel=forecastTimeValid?
     (forecastTargetPast?'ALVO ENCERRADO':
       'DAQUI A '+forecastSecondsRemaining+'s · ALVO '+clock(forecastTargetAt)):'SEM HORÁRIO FUTURO';
@@ -159,6 +160,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const forecastReceipt=vnext?<div className={`vnextFutureReceipt ${forecast?.side==='CALL'?'call':forecast?.side==='PUT'?'put':'neutral'}`} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>PROJEÇÃO FUTURA · {chosenEngine.replaceAll('_',' ').toUpperCase()}</b><small>{m.fresh?'● AO VIVO':m.quoteAge!==null?'COTAÇÃO ATRASADA':'SEM COTAÇÃO'}</small></div>
     <div className="vnextFutureDirection"><strong>{forecastTimeValid&&!forecastTargetPast&&forecast?.side==='CALL'?'↑ CALL PROJETADO':forecastTimeValid&&!forecastTargetPast&&forecast?.side==='PUT'?'↓ PUT PROJETADO':forecastTargetPast?'ALVO ENCERRADO':'AGUARDANDO PREVISÃO'}</strong><span data-testid="forecast-exact-target">{forecastTimeLabel}</span></div>
+    <div className={`vnextTargetCountdown ${forecastTargetPast?'ended':''}`} data-testid="forecast-countdown-clock" role="timer" aria-live="off"><div><small>TEMPO ATÉ O ALVO</small><strong>{forecastTargetPast?'ENCERRADO':countdownTime}</strong></div><div><small>ALVO EXATO DA PREVISÃO</small><b>{forecastTimeValid?clock(forecastTargetAt):'—'}</b><span>{forecastTimeValid?'Previsão emitida às '+clock(forecastIssuedAt):'Aguardando previsão válida'}</span></div></div>
     <div className="vnextFutureClock" data-testid="forecast-issue-and-expiry">Prazo escolhido: {expiryLabel(forecastExpirySeconds||Number(s?.settings?.orderDurationMs||60000)/1000)} · Emissão {forecastTimeValid?clock(forecastIssuedAt):'—'} · Alvo {forecastTimeValid?clock(forecastTargetAt):'—'} · {forecastTargetPast?'Previsão anterior encerrada':'Recalculado a cada nova análise'}</div>
     {forecast?<><div className="vnextProjectionValues">
       <div><small>PREÇO DE REFERÊNCIA</small><strong>{price(forecast.referencePrice)}</strong></div>
