@@ -54,7 +54,24 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   };
   const m=liveCardModel(s,now,averageThreshold);
   const vnext=!!s?.settings?.engine;
-  const forecast=m.vnextReceipt;
+  const liveForecast=m.vnextReceipt;
+  const [pinnedForecast,setPinnedForecast]=useState<{key:string,receipt:any,projection:any}|null>(null);
+  const pinKey=[m.asset,String(s?.settings?.engine||''),Number(s?.settings?.orderDurationMs||60000)].join('|');
+  // A future prediction is anchored to its ORIGINAL issue and outcome time:
+  // the rolling model must not reset the countdown on every fresh quote.
+  useEffect(()=>{
+    setPinnedForecast(previous=>{
+      if(!s?.settings?.engine)return null;
+      if(previous?.key===pinKey&&Number(previous.receipt?.targetAt)>now)return previous;
+      const r=liveForecast;
+      if(!m.fresh||!r||Number(r.issuedAt)<=0||Number(r.issuedAt)>now+2500||
+        Number(r.targetAt)<=now||Number(r.targetAt)<=Number(r.issuedAt))return null;
+      return {key:pinKey,receipt:{...r},projection:m.vnextProjection?{...m.vnextProjection}:null};
+    });
+  },[pinKey,now,liveForecast?.issuedAt,liveForecast?.targetAt,m.fresh,Boolean(s?.settings?.engine)]);
+  const anchored=pinnedForecast?.key===pinKey&&Number(pinnedForecast.receipt?.targetAt)>now;
+  const forecast=anchored?pinnedForecast!.receipt:liveForecast;
+  const pinnedProjection=anchored?pinnedForecast!.projection:m.vnextProjection;
   const expiryChoices=[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
   // A rolling forecast always targets an exact future instant from its
@@ -65,6 +82,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const forecastTimeValid=Boolean(forecast&&forecastTargetAt>forecastIssuedAt&&
     forecastExpirySeconds>0&&forecastTargetAt-forecastIssuedAt===forecastExpirySeconds*1000);
   const forecastSecondsRemaining=forecastTimeValid?Math.max(0,Math.ceil((forecastTargetAt-now)/1000)):null;
+  const remainingClock=forecastSecondsRemaining===null?'--:--':
+    String(Math.floor(forecastSecondsRemaining/60)).padStart(2,'0')+':'+
+    String(forecastSecondsRemaining%60).padStart(2,'0');
   const forecastTargetPast=forecastTimeValid&&forecastTargetAt<=now;
   const countdownTime=forecastSecondsRemaining===null?'—:—':forecastSecondsRemaining>=3600?String(Math.floor(forecastSecondsRemaining/3600)).padStart(2,'0')+':'+String(Math.floor(forecastSecondsRemaining%3600/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0'):String(Math.floor(forecastSecondsRemaining/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0');
   const forecastTimeLabel=forecastTimeValid?
@@ -161,6 +181,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="vnextReceiptTitle"><b>PROJEÇÃO FUTURA · {chosenEngine.replaceAll('_',' ').toUpperCase()}</b><small>{m.fresh?'● AO VIVO':m.quoteAge!==null?'COTAÇÃO ATRASADA':'SEM COTAÇÃO'}</small></div>
     <div className="vnextFutureDirection"><strong>{forecastTimeValid&&!forecastTargetPast&&forecast?.side==='CALL'?'↑ CALL PROJETADO':forecastTimeValid&&!forecastTargetPast&&forecast?.side==='PUT'?'↓ PUT PROJETADO':forecastTargetPast?'ALVO ENCERRADO':'AGUARDANDO PREVISÃO'}</strong><span data-testid="forecast-exact-target">{forecastTimeLabel}</span></div>
     <div className={`vnextTargetCountdown ${forecastTargetPast?'ended':''}`} data-testid="forecast-countdown-clock" role="timer" aria-live="off"><div><small>TEMPO ATÉ O ALVO</small><strong>{forecastTargetPast?'ENCERRADO':countdownTime}</strong></div><div><small>ALVO EXATO DA PREVISÃO</small><b>{forecastTimeValid?clock(forecastTargetAt):'—'}</b><span>{forecastTimeValid?'Previsão emitida às '+clock(forecastIssuedAt):'Aguardando previsão válida'}</span></div></div>
+    <div className="vnextPinnedCountdown" data-testid="forecast-fixed-countdown" role="timer" aria-label="Tempo restante até o resultado previsto">
+      <strong>{forecastTimeValid?remainingClock:'--:--'}</strong>
+      <span>{forecastTimeValid?'FALTA PARA '+clock(forecastTargetAt):'AGUARDANDO PREVISÃO COM HORÁRIO'}</span>
+    </div>
     <div className="vnextFutureClock" data-testid="forecast-issue-and-expiry">Prazo escolhido: {expiryLabel(forecastExpirySeconds||Number(s?.settings?.orderDurationMs||60000)/1000)} · Emissão {forecastTimeValid?clock(forecastIssuedAt):'—'} · Alvo {forecastTimeValid?clock(forecastTargetAt):'—'} · {forecastTargetPast?'Previsão anterior encerrada':'Recalculado a cada nova análise'}</div>
     {forecast?<><div className="vnextProjectionValues">
       <div><small>PREÇO DE REFERÊNCIA</small><strong>{price(forecast.referencePrice)}</strong></div>
@@ -168,7 +192,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <div><small>EMISSÃO</small><strong>{clock(forecast.issuedAt)}</strong></div>
       <div><small>ALVO NO FUTURO</small><strong>{clock(forecast.targetAt)}</strong></div>
     </div>
-    <div className="vnextProjectionBias"><span>CALL projetado <b>{forecastTargetPast||m.vnextProjection?.callPct==null?'—':m.vnextProjection.callPct+'%'}</b></span><span>PUT projetado <b>{forecastTargetPast||m.vnextProjection?.putPct==null?'—':m.vnextProjection.putPct+'%'}</b></span></div>
+    <div className="vnextProjectionBias"><span>CALL projetado <b>{forecastTargetPast||pinnedProjection?.callPct==null?'—':pinnedProjection.callPct+'%'}</b></span><span>PUT projetado <b>{forecastTargetPast||pinnedProjection?.putPct==null?'—':pinnedProjection.putPct+'%'}</b></span></div>
     <small>Faixa: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · {m.vnextFoundation==='historical-forward-outcomes'?'Comparação histórica: '+m.vnextHistorical+' casos completos':'Histórico insuficiente para comparar resultados futuros; projeção baseada no modelo atual'}. Não é taxa de acerto.</small></>:<p>Aguardando cotações suficientes para previsão futura. Sem entrada confirmada.</p>}
   </div>:null;
   const observationCards=vnext?<details className="vnextMobileReadings" data-testid="mobile-vnext-readings">
