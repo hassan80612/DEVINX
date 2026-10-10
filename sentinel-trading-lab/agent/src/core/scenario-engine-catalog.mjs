@@ -45,10 +45,8 @@ export function selectedEngineForecastRequest({settings={},broker={},provider='u
   const ms=Number(settings.orderDurationMs);
   const expiry=expiryDrivenForecast({
     selectedSeconds:Number.isFinite(ms)&&ms>0?ms/1000:null,
-    brokerVerified:broker.expirationVerified===true, // advisory only; never changes requested horizon
-    brokerDurationMs:broker.expirationDurationMs,
-    brokerExpiresAt:broker.expirationAt,
-    brokerAvailableSeconds:broker.availableExpirationsSeconds,
+    // Intentionally NEVER read/auto-detect expiry from the broker.
+    // Only its instrument label is used for calibration identity.
     brokerInstrument:broker.instrument,
     now
   });
