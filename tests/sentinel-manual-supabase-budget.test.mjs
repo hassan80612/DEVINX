@@ -76,7 +76,7 @@ test('selected-asset tracking and passive quotes survive without broker-page aut
   assert.doesNotMatch(driver,/__sentinelOverlayClock\s*=\s*setInterval/);
   assert.match(worker,/driver\.shutdown\?\.\(\)/);
   assert.match(manager,/for\(let i=0;i<100;i\+\+\)/);
-  assert.match(installer,/13\.4\.48-signal-first-1010/);
+  assert.match(installer,/13\.4\.49-independent-1010/);
   assert.doesNotMatch(installer,/13\.4\.39-broker-passive-1009/);
 });
 

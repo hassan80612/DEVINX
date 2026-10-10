@@ -12,6 +12,8 @@ on:
       - 'sentinel-trading-lab/src/app/page.tsx'
       - 'sentinel-trading-lab/src/app/api/runtime/**'
       - 'tests/sentinel-manual-supabase-budget.test.mjs'
+      - 'tests/sentinel-independent-reversal-coexist.test.mjs'
+      - 'tests/diagnostic-compare-sentinel.mjs'
       - 'tests/sentinel-scenario-renewal.test.mjs'
       - 'tests/sentinel-page-passive.test.mjs'
       - '.github/workflows/sentinel-mobile-safe-agent.yml'
@@ -38,7 +40,8 @@ jobs:
         run: |
           set -euo pipefail
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
-          node --test tests/sentinel-manual-supabase-budget.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-bandwidth-budget.test.mjs tests/sentinel-scenario-renewal.test.mjs tests/sentinel-page-passive.test.mjs
+          node tests/diagnostic-compare-sentinel.mjs
+          node --test tests/sentinel-manual-supabase-budget.test.mjs tests/sentinel-remote-status.test.mjs tests/sentinel-mobile-card.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-bandwidth-budget.test.mjs tests/sentinel-scenario-renewal.test.mjs tests/sentinel-persistent-reversal-13423.test.mjs tests/sentinel-independent-reversal-coexist.test.mjs tests/sentinel-own-scenario-review-13424.test.mjs tests/sentinel-subanalyst.test.mjs tests/sentinel-page-passive.test.mjs
       - name: Build self contained Windows Agent
         shell: bash
         run: |
@@ -75,5 +78,5 @@ jobs:
             echo 'Installer unchanged'
             exit 0
           fi
-          git commit -m 'build(sentinel): validated analysis-only Windows Agent 13.4.48'
+          git commit -m 'build(sentinel): validated analysis-only Windows Agent 13.4.49'
           git push origin "HEAD:$branch"
