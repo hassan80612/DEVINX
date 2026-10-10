@@ -21,14 +21,20 @@ async function authInfo(token:string):Promise<AuthInfo>{
 
 export async function middleware(req:NextRequest){
   const p=req.nextUrl.pathname;
-  if(p==='/'||p==='/planos'||p==='/favicon.ico'||p.startsWith('/_next/')||p.startsWith('/downloads/'))return NextResponse.next();
-  if(p==='/login'||p.startsWith('/api/auth/'))return NextResponse.next();
+  if(p==='/'||p==='/planos'||p==='/favicon.ico'||p.startsWith('/_next/'))return NextResponse.next();
+  if(p==='/login'||p.startsWith('/api/auth/')||p==='/api/webhooks/kiwify')return NextResponse.next();
 
   const token=req.cookies.get(SESSION_COOKIE)?.value||'';
   const auth=await authInfo(token);
 
-  if(auth.ok)return NextResponse.next();
-
+  // Having an account is not a license. Clients must have a verified
+  // Kiwify payment before entering the console, pairing, streaming or even
+  // downloading static EXE/ZIP assets. The database owns the expiry clock.
+  if(auth.ok&&(auth.role==='master'||auth.accessActive===true))return NextResponse.next();
+  if(auth.ok){
+    if(p.startsWith('/api/'))return NextResponse.json({ok:false,error:'subscription_inactive'},{status:403,headers:{'cache-control':'no-store'}});
+    return NextResponse.redirect(new URL('/planos',req.url));
+  }
   if(p.startsWith('/api/'))return NextResponse.json({ok:false,error:'unauthorized'},{status:401});
   const url=req.nextUrl.clone();
   url.pathname='/login';
