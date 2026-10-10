@@ -72,3 +72,38 @@ test('PC and both mobile modes show NOW separately from exactly three totals',as
   assert.match(mobile,/vnextReadingsHeading/);
   assert.doesNotMatch(mobile,/<summary>Mercado Agora/);
 });
+
+test('PC receives a real broker quote and preserves the clock across reconciliation',async()=>{
+  const worker=await readFile(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
+  const pc=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+  assert.match(worker,/price:view\.liveBroker\?\.quote\?\?view\.feed\?\.price\?\?null/);
+  assert.match(pc,/Number\(d\.price\)>0/);
+  assert.match(pc,/\[data-sentinel-vnext-clock-value\]/);
+  assert.match(pc,/el\.__sentinelTargetClockTick\?\.\(\)/);
+  assert.match(pc,/ÚLTIMA PREVISÃO AVALIADA/);
+});
+test('a settled prediction is measured at its own fixed deadline, without changing the motor',async()=>{
+  const {DemoTradingRuntime}=await import('../sentinel-trading-lab/agent/src/core/runtime.mjs');
+  const runtime=new DemoTradingRuntime({enableVNext:true});
+  const asset='EUR/USD OTC',duration=30000,t=now,initial=[];
+  for(let i=0;i<120;i++)initial.push({ts:t-(119-i)*1000,price:1.1+Math.sin(i/10)*.00003+i*.0000001});
+  runtime.patchSettings({asset,engine:'automatic',orderDurationMs:duration});
+  const snap0={quoteHistory:initial,quoteTs:t,price:initial.at(-1).price,provider:'iq_option'};
+  const first=runtime._signalValidationGate({analysis:{},snap:snap0,settings:runtime.settings,now:t});
+  assert.equal(first.analysis.vnext.receipt?.targetAt,t+duration);
+  const quotes=[...initial];
+  for(let i=1;i<=30;i++)quotes.push({ts:t+i*1000,price:initial.at(-1).price+i*.0000009});
+  const end=t+duration;
+  const second=runtime._signalValidationGate({analysis:{},snap:{quoteHistory:quotes,quoteTs:end,price:quotes.at(-1).price,provider:'iq_option'},settings:runtime.settings,now:end});
+  assert.ok(second.analysis.vnext.outcomesVerified>=1,'must validate against quote at target');
+  assert.equal(second.analysis.vnext.lastSettled?.targetAt,t+duration);
+  assert.equal(second.analysis.vnext.lastSettled?.settledPrice,quotes.at(-1).price);
+  assert.equal(second.allowed,false,'a research outcome never authorizes automatic orders');
+});
+test('both mobile sizes keep anchored forecast and observed-now moment independently',async()=>{
+  const mobile=await readFile(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
+  assert.equal((mobile.match(/\{instantObservation\}/g)||[]).length,2);
+  assert.equal((mobile.match(/\{forecastReceipt\}/g)||[]).length,2);
+  assert.match(mobile,/data-testid="last-settled-projection"/);
+  assert.match(mobile,/expiryLabel\(Number\(m\.vnextNowObservation\.expirySeconds/);
+});
