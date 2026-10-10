@@ -1,0 +1,37 @@
+name: Sentinel independent strategy engine validation
+on:
+  push:
+    branches:
+      - sentinel-independent-strategy-engine-20261010
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/**'
+      - 'tests/sentinel-main-independent-strategy.test.mjs'
+      - 'tests/sentinel-reversal-arbitration-mobile-price.test.mjs'
+      - '.github/workflows/sentinel-main-independent-strategy.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-independent-strategy-engine
+  cancel-in-progress: true
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test independent main analyst, strategy selection, timing and reversal
+        run: |
+          node --test tests/sentinel-main-independent-strategy.test.mjs
+          node --test tests/sentinel-reversal-arbitration-mobile-price.test.mjs
+          node --test tests/sentinel-first-break-timing.test.mjs
+          node --test tests/sentinel-engine-timing.test.mjs
+          node --test tests/sentinel-independent-reversal-coexist.test.mjs
+          node --test tests/sentinel-reversal-structure.test.mjs
+          node --test tests/sentinel-scenario-reversal-latency.test.mjs
+          node --test tests/sentinel-scenario-transition.test.mjs
+      - name: Verify Agent module integrity
+        working-directory: sentinel-trading-lab
+        run: node --check agent/src/core/runtime.mjs && node --check agent/src/core/entry-opportunities.mjs && node --check agent/src/core/strategy-entry-ranking.mjs
