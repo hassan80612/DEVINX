@@ -57,6 +57,18 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const forecast=m.vnextReceipt;
   const expiryChoices=[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
+  // A rolling forecast always targets an exact future instant from its
+  // original issuance. A countdown alone must never replace the deadline.
+  const forecastTargetAt=Number(forecast?.targetAt||0);
+  const forecastIssuedAt=Number(forecast?.issuedAt||0);
+  const forecastExpirySeconds=Number(forecast?.expirySeconds||0);
+  const forecastTimeValid=Boolean(forecast&&forecastTargetAt>forecastIssuedAt&&
+    forecastExpirySeconds>0&&forecastTargetAt-forecastIssuedAt===forecastExpirySeconds*1000);
+  const forecastSecondsRemaining=forecastTimeValid?Math.max(0,Math.ceil((forecastTargetAt-now)/1000)):null;
+  const forecastTargetPast=forecastTimeValid&&forecastTargetAt<=now;
+  const forecastTimeLabel=forecastTimeValid?
+    (forecastTargetPast?'ALVO ENCERRADO':
+      'DAQUI A '+forecastSecondsRemaining+'s · ALVO '+clock(forecastTargetAt)):'SEM HORÁRIO FUTURO';
   const strategyAdvice=strategySelectionGuidance({
     ids:[strategy1,strategy2,strategy3],
     paused:s?.settings?.pausedReadings||{},
@@ -146,14 +158,15 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   </div>:null;
   const forecastReceipt=vnext?<div className={`vnextFutureReceipt ${forecast?.side==='CALL'?'call':forecast?.side==='PUT'?'put':'neutral'}`} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>PROJEÇÃO FUTURA · {chosenEngine.replaceAll('_',' ').toUpperCase()}</b><small>{m.fresh?'● AO VIVO':m.quoteAge!==null?'COTAÇÃO ATRASADA':'SEM COTAÇÃO'}</small></div>
-    <div className="vnextFutureDirection"><strong>{forecast?.side==='CALL'?'↑ CALL PROJETADO':forecast?.side==='PUT'?'↓ PUT PROJETADO':'AGUARDANDO PREVISÃO'}</strong><span>Horizonte {expiryLabel(Number(s?.settings?.orderDurationMs||60000)/1000)}</span></div>
+    <div className="vnextFutureDirection"><strong>{forecastTimeValid&&!forecastTargetPast&&forecast?.side==='CALL'?'↑ CALL PROJETADO':forecastTimeValid&&!forecastTargetPast&&forecast?.side==='PUT'?'↓ PUT PROJETADO':forecastTargetPast?'ALVO ENCERRADO':'AGUARDANDO PREVISÃO'}</strong><span data-testid="forecast-exact-target">{forecastTimeLabel}</span></div>
+    <div className="vnextFutureClock" data-testid="forecast-issue-and-expiry">Prazo escolhido: {expiryLabel(forecastExpirySeconds||Number(s?.settings?.orderDurationMs||60000)/1000)} · Emissão {forecastTimeValid?clock(forecastIssuedAt):'—'} · Alvo {forecastTimeValid?clock(forecastTargetAt):'—'} · {forecastTargetPast?'Previsão anterior encerrada':'Recalculado a cada nova análise'}</div>
     {forecast?<><div className="vnextProjectionValues">
       <div><small>PREÇO DE REFERÊNCIA</small><strong>{price(forecast.referencePrice)}</strong></div>
       <div><small>PREÇO PROJETADO</small><strong>{price(forecast.projectedPrice)}</strong></div>
       <div><small>EMISSÃO</small><strong>{clock(forecast.issuedAt)}</strong></div>
       <div><small>ALVO NO FUTURO</small><strong>{clock(forecast.targetAt)}</strong></div>
     </div>
-    <div className="vnextProjectionBias"><span>CALL projetado <b>{m.vnextProjection?.callPct==null?'—':m.vnextProjection.callPct+'%'}</b></span><span>PUT projetado <b>{m.vnextProjection?.putPct==null?'—':m.vnextProjection.putPct+'%'}</b></span></div>
+    <div className="vnextProjectionBias"><span>CALL projetado <b>{forecastTargetPast||m.vnextProjection?.callPct==null?'—':m.vnextProjection.callPct+'%'}</b></span><span>PUT projetado <b>{forecastTargetPast||m.vnextProjection?.putPct==null?'—':m.vnextProjection.putPct+'%'}</b></span></div>
     <small>Faixa: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · {m.vnextFoundation==='historical-forward-outcomes'?'Comparação histórica: '+m.vnextHistorical+' casos completos':'Histórico insuficiente para comparar resultados futuros; projeção baseada no modelo atual'}. Não é taxa de acerto.</small></>:<p>Aguardando cotações suficientes para previsão futura. Sem entrada confirmada.</p>}
   </div>:null;
   const observationCards=vnext?<details className="vnextMobileReadings" data-testid="mobile-vnext-readings">
