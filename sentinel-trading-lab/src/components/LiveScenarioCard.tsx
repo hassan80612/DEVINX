@@ -257,6 +257,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const quoteShown=m.fresh?(s?.liveBroker?.quote??s?.feed?.price):null;
   const pushed=m.fresh&&s?.liveTransport==='push'&&now-Number(s?.liveStreamAt||0)<4000;
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
+  const mobileFeedDelay=m.quoteAgeAtFrame!==null&&m.transportAge!==null?
+    'PC '+m.quoteAgeAtFrame+'s · CANAL '+m.transportAge+'s':null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">← Início</button></header>
     {engineSettings}
@@ -273,7 +275,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {opportunityNotice}
     {vnext?<div className="mobileCurrentQuoteOnly" data-testid="mobile-current-quote">
       <div><small>COTAÇÃO DO ATIVO</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
-      <span>{m.quoteFresh?(pushed?'● AO VIVO · PUSH':'Cotação recente'):'Cotação atrasada · '+seconds(m.quoteAge)}</span>
+      <span>{m.quoteFresh?(pushed?'● AO VIVO · PUSH':'Cotação recente'):'Cotação atrasada · '+seconds(m.quoteAge)}{mobileFeedDelay?' · '+mobileFeedDelay:''}</span>
     </div>:<>
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
