@@ -6,8 +6,8 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.60';
-const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-mobile-realtime-cards-1010`;
+const AVAILABLE_AGENT_VERSION='13.4.64';
+const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-mobile-feed-continuity-1010`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
@@ -173,6 +173,10 @@ export default function Page(){
           },
           liveBroker:{...(previous.liveBroker||{}),...payload.liveBroker},
           feed:{...(previous.feed||{}),...payload.feed},
+          // Both values are derived from the signed frame. No extra API or
+          // Supabase writes; distinguish an old PC quote from a delayed socket.
+          liveQuoteAgeAtFrame:Number(payload.liveBroker?.lastQuoteAt)>0?
+            Math.max(0,Number(payload.at)-Number(payload.liveBroker.lastQuoteAt)):null,
           liveStreamAt:Date.now(),liveTransport:'push',
           remote:{...(previous.remote||{}),online:true}
         };
