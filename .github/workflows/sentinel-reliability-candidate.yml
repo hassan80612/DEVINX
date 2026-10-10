@@ -43,6 +43,7 @@ jobs:
           echo "Baseline: $(grep -E 'ℹ (tests|pass|fail) ' baseline.log | tr '\n' ' ')"
           echo "Only-in-candidate failures:"
           comm -13 baseline.fail candidate.fail | tee new.fail
+          if test -s new.fail; then echo 'NEW FAILURE LOG:'; tail -n 100 candidate.log; fi
           echo "Pre-existing failures:"
           cat baseline.fail
           test ! -s new.fail
