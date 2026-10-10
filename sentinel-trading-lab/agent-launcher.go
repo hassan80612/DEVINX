@@ -2,6 +2,7 @@ package main
 
 import (
     _ "embed"
+    "encoding/json"
     "fmt"
     "io"
     "os"
@@ -14,6 +15,14 @@ var installerPS1 []byte
 
 //go:embed public/downloads/agent_payload_v88.zip
 var payloadZIP []byte
+
+//go:embed agent/release.json
+var bundledRelease []byte
+
+type AgentRelease struct {
+    Version string `json:"version"`
+    Build   string `json:"build"`
+}
 
 func fail(msg string, err error) {
     text := msg
@@ -34,6 +43,11 @@ func fail(msg string, err error) {
 }
 
 func main() {
+    var expected AgentRelease
+    if err := json.Unmarshal(bundledRelease, &expected); err != nil || expected.Version == "" || expected.Build == "" {
+        fail("Metadados do pacote Sentinel invalidos", err)
+    }
+
     tmpRoot, err := os.MkdirTemp("", "SentinelAgentV88-")
     if err != nil {
         fail("Não foi possível preparar a instalação", err)
@@ -51,13 +65,20 @@ func main() {
         fail("Não foi possível preparar os arquivos do Agent", err)
     }
 
-    cmd := exec.Command(
-        "powershell.exe",
+    args := []string{
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
         "-File", installerPath,
         "-LocalPayload", payloadPath,
-    )
+        "-ExpectedVersion", expected.Version,
+        "-ExpectedBuild", expected.Build,
+    }
+    // CI validates the actual embedded ZIP + script on Windows without
+    // stopping processes or altering the installed Agent.
+    if os.Getenv("SENTINEL_INSTALL_VERIFY_ONLY") == "1" {
+        args = append(args, "-VerifyPayloadOnly")
+    }
+    cmd := exec.Command("powershell.exe", args...)
     cmd.Stdout = os.Stdout
     cmd.Stderr = os.Stderr
     logPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "SentinelTradingLab", "install.log")
