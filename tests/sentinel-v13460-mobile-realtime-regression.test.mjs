@@ -13,7 +13,10 @@ function build(engine='automatic',durationMs=30000,call=true){
  return {state:'running',agentVersion:'13.4.60',lastEvalMs:t,settings:{engine,asset,orderDurationMs:durationMs,forecastHorizonSeconds:60},
   lastResult:{asset,analysis:{vnext:{
     engineId:engine,expirySeconds:durationMs/1000,computedStatus:'candidate-forward-prediction',receipt,
-    cards:lightweightReadings({quoteHistory:quotes,receipt,now:t}),outcomesVerified:0
+    cards:lightweightReadings({quoteHistory:quotes,receipt,now:t}),outcomesVerified:0,
+    nowIndication:{side:receipt.side,engineId:engine,issuedAt:t,referencePrice:1.1000,
+      projectedPrice:receipt.projectedPrice,expirySeconds:durationMs/1000,expiresAt:t+3000,
+      verified:false,actionable:false}
   },operationalSignal:{asset,side:'AGUARDAR',state:'PROJETANDO',ready:false,actionable:false,
     forecastHorizonSeconds:durationMs/1000,durationMs,scenarioProjection:{
       side:receipt.side,asOf:t,horizonSeconds:durationMs/1000,targetAt:receipt.targetAt,
@@ -30,6 +33,8 @@ test('signed mobile frame contains new motor and expiry and full future forecast
  assert.equal(frame.lastResult.analysis.vnext.receipt.projectedPrice,1.1004);
  assert.equal(frame.lastResult.analysis.operationalSignal.scenarioProjection.side,'CALL');
  assert.equal(frame.lastResult.analysis.vnext.cards.length,3);
+ assert.equal(frame.lastResult.analysis.vnext.nowIndication.side,'CALL');
+ assert.equal(frame.lastResult.analysis.vnext.nowIndication.actionable,false);
  assert.equal(frame.lastResult.analysis.vnext.cards[0].label,'MERCADO AGORA');
  assert.ok(Buffer.byteLength(JSON.stringify(frame),'utf8')+73<=3000,'frames including signature must fit bridge 3000-byte budget');
  assert.equal('quoteHistory' in frame,false);
@@ -70,4 +75,13 @@ test('mobile reducer merges signed engine, expiry and vnext fields while preserv
  const s=await readFile(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
  assert.match(s,/settings:\{\.\.\.\(previous\.settings\|\|\{\}\),\s*\.\.\.\(payload\.settings\|\|\{\}\)\}/);
  assert.match(s,/analysis:\{\.\.\.\(previous\.lastResult\?\.analysis\|\|\{\}\),\.\.\.\(payload\.lastResult\?\.analysis\|\|\{\}\)\}/);
+});
+
+test('normal and floating mobile use the SAME direct motor indication without remote polling',async()=>{
+ const card=await readFile(new URL('../sentinel-trading-lab/src/components/LiveScenarioCard.tsx',import.meta.url),'utf8');
+ const model=await readFile(new URL('../sentinel-trading-lab/src/lib/live-card-model.ts',import.meta.url),'utf8');
+ assert.ok((card.match(/\{nowAdvisory\}/g)||[]).length===2);
+ assert.match(card,/AGORA · EM TESTE/);
+ assert.match(model,/vnextNow=vnextReceipt&&fresh/);
+ assert.match(model,/vnext\?\.engineId===s\?\.settings\?\.engine/);
 });
