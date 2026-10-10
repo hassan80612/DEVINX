@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const src=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
 
-test('floating card follows active CALL/PUT scenarios independently of actual entry',async()=>{
+test('floating card makes passive CALL/PUT visibly distinct from an actionable entry',async()=>{
  const c=await src('sentinel-trading-lab/src/components/LiveScenarioCard.tsx');
  assert.match(c,/mobileScenarioDirection=!m\.scenarioInactive&&m\.side/);
- assert.match(c,/mobileDecisionText=mobileDirection\?mobileDirection\+' AGORA':mobileScenarioDirection\?'ACOMPANHANDO '/);
- assert.match(c,/mobileScenarioDirection\?'CENÁRIO EM ACOMPANHAMENTO'/);
+ assert.match(c,/mobileDecisionText=mobileDirection\?'ENTRADA '\+mobileDirection\+' AGORA':mobileScenarioDirection\?'CENÁRIO '/);
+ assert.match(c,/mobileScenarioDirection\?'PREVISÃO · NÃO É ORDEM DE ENTRADA'/);
  assert.match(c,/Cenário.*não é entrada/);
  assert.match(c,/scenarioClock/);
 });
