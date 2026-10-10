@@ -263,6 +263,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       strategy2:view.settings?.strategy2||'none',
       strategy3:view.settings?.strategy3||'none',
       strategyCards:a.strategyCards||[],
+      strategyGuidance:a.strategyGuidance||null,
       strategyConfluence:a.strategyConfluence||null,
       generalConsensus:a.generalConsensus||null,
       operationalSignal:a.operationalSignal||null,
@@ -304,7 +305,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,400).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
-  return{...base,marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http'},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
+  return{...base,marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);const ALLOWED_ORIGINS=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
 function allowedOrigin(origin=''){

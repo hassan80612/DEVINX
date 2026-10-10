@@ -8,7 +8,11 @@ export class EntryResearch {
   key({provider,asset,durationMs,kind,side,regime,combo}){return [provider||'unknown',asset,durationMs,kind,side,regime||'unknown',combo].join('|');}
   features(analysis,plan,side){const sign=side==='CALL'?1:-1;return ['micro','momentum','history','location','setup','reversal','acceleration','mtf'].map(k=>clamp(sign*Number(plan?.evidenceFamilies?.[k]?.signal||0),-1,1)).concat([clamp(Number(plan?.agreement||0)/100,0,1),clamp(Number(plan?.dataQuality||0)/100,0,1)]);}
   predict(context,features,baseline=.5){const key=this.key(context),m=this.models[key],probability=m?sigmoid(m.bias+features.reduce((v,x,i)=>v+x*Number(m.weights[i]||0),0)):baseline,rows=this.outcomes.filter(x=>x.key===key&&!x.draw).slice(-300),samples=rows.length,wins=rows.filter(x=>x.won).length,rate=samples?wins/samples:0,interval=wilson(wins,samples),diff=rows.map(x=>x.baselineLoss-x.modelLoss),mean=samples?diff.reduce((v,x)=>v+x,0)/samples:0,variance=samples>1?diff.reduce((v,x)=>v+(x-mean)**2,0)/(samples-1):0,improvementLowerBound=mean-1.96*Math.sqrt(variance/Math.max(samples,1)),sessions=new Set(rows.map(x=>new Date(x.createdAt).toISOString().slice(0,10))).size;
-    const qualified=samples>=120&&sessions>=3&&rate>=10/12&&interval.low>50&&improvementLowerBound>0;
+    const payout=Number(context.payout),breakEvenPct=context.payout!=null&&Number.isFinite(payout)&&payout>0&&payout<=1?100/(1+payout):55;
+    // A historical aspiration of 10 wins / 2 losses is not a prerequisite
+    // for any model to learn. Qualify only from independent forward improvement,
+    // sufficient sessions, and a conservative profitability confidence bound.
+    const qualified=samples>=120&&sessions>=3&&interval.low>breakEvenPct&&improvementLowerBound>0;
     return {key,probability:qualified?probability:baseline,shadowProbability:probability,qualified,samples,wins,losses:samples-wins,winRate:samples?Math.round(rate*1000)/10:null,interval,sessions,improvementLowerBound,targetWinRate:1000/12,targetMet:samples>=120&&sessions>=3&&interval.low>=1000/12,probabilitySource:qualified?'entry-forward-model':'technical-estimate'};
   }
   record({id,context,features,baseline,price,now,durationMs,prediction}){if(this.seen.has(id))return;this.seen.add(id);this.pending.push({id,key:this.key(context),...context,features,baselineProbability:baseline,modelProbability:prediction.shadowProbability,price,createdAt:now,dueAt:now+durationMs});if(this.pending.length>500)this.unresolved+=this.pending.length-500;this.pending=this.pending.slice(-500);}

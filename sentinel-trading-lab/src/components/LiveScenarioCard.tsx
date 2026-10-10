@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {liveCardModel} from '../lib/live-card-model';
+import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
 const STRATEGIES=[['smart_confluence','Smart Confluence'],['price_action','Price Action'],['trendline_breakout','Trendline Breakout'],['support_resistance','Suporte / Resistência'],['fibonacci_retest','Fibonacci Retest'],['trend','Trend Following'],['mean_reversion','Mean Reversion'],['breakout','Breakout']] as const;
@@ -50,6 +51,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     }
   };
   const m=liveCardModel(s,now,averageThreshold);
+  const strategyAdvice=strategySelectionGuidance({
+    ids:[strategy1,strategy2,strategy3],
+    paused:s?.settings?.pausedReadings||{},
+    cards:s?.lastResult?.analysis?.strategyCards||[]
+  });
   // A signal freezes its ACTUAL broker quote at creation. Subsequent live
   // quotes never overwrite it. Cache only in the open page; no DB logging.
   const incoming=m.lastSignal;
@@ -62,17 +68,19 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   },[incoming?.asset,incoming?.side,incoming?.price,incoming?.at]);
   const lastSignal=recordedSignal?.asset===m.asset?recordedSignal:null;
   const liveDirection=m.entrySide||(!m.scenarioInactive?m.side:null);
-  const decisionLabel=m.entrySide?'ENTRADA AGORA':liveDirection?'CENÁRIO PRINCIPAL':m.scenarioInactive?'CENÁRIO FINALIZADO':'ANÁLISE OPERACIONAL';
+  // Forecast CALL/PUT is not authorization to trade. Never use the word
+  // "AGORA" outside a still-actionable, fresh and validated entry.
+  const decisionLabel=m.entrySide?'ENTRADA CONFIRMADA AGORA':liveDirection?'SOMENTE PREVISÃO · SEM ENTRADA':m.scenarioInactive?'CENÁRIO FINALIZADO':'AGUARDANDO OPORTUNIDADE';
   const decisionArrow=liveDirection==='CALL'?'↑':liveDirection==='PUT'?'↓':'◇';
-  const decisionText=liveDirection||(m.scenarioInactive?'ENCERRADO':'AGUARDANDO');
+  const decisionText=m.entrySide?m.entrySide:liveDirection?('VIÉS '+liveDirection):m.scenarioInactive?'ENCERRADO':'SEM ENTRADA';
   // Large green/red is reserved for an actionable entry, not a forecast.
   const directionClass=m.entrySide==='CALL'?'call':m.entrySide==='PUT'?'put':'neutral';
   const reversalArrow=m.alert?.side==='CALL'?'↑':m.alert?.side==='PUT'?'↓':'◇';
   const mobileDirection=m.entrySide||null;
   const mobileScenarioDirection=!m.scenarioInactive&&m.side?m.side:null;
   const mobileArrow=(mobileDirection||mobileScenarioDirection)==='CALL'?'↑':(mobileDirection||mobileScenarioDirection)==='PUT'?'↓':'◇';
-  const mobileDecisionText=mobileDirection?mobileDirection+' AGORA':mobileScenarioDirection?'ACOMPANHANDO '+mobileScenarioDirection:m.scenarioInactive?'ENCERRADO':'AGUARDANDO';
-  const mobileDecisionLabel=mobileDirection?'PONTO DE ENTRADA CONFIRMADO':mobileScenarioDirection?'CENÁRIO EM ACOMPANHAMENTO':'ANÁLISE OPERACIONAL';
+  const mobileDecisionText=mobileDirection?'ENTRADA '+mobileDirection+' AGORA':mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection+' · AGUARDE ENTRADA':m.scenarioInactive?'ENCERRADO':'SEM ENTRADA AGORA';
+  const mobileDecisionLabel=mobileDirection?'GATILHO OPERACIONAL CONFIRMADO':mobileScenarioDirection?'PREVISÃO · NÃO É ORDEM DE ENTRADA':'ANÁLISE OPERACIONAL';
   const mobileQuote=m.fresh?Number(s?.liveBroker?.quote??s?.feed?.price):null;
   const quoteValid=mobileQuote!==null&&Number.isFinite(mobileQuote)&&mobileQuote>0;
   const entryDelta=lastSignal&&quoteValid?mobileQuote!-lastSignal.price:null;
@@ -172,7 +180,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <p className="mobileTechnicalNote">LEITURAS TÉCNICAS · NÃO SÃO ORDEM DE ENTRADA</p><div className="liveTotals">{[['Total Mercado',totals.market],['Total Estratégias',totals.strategies],['Presente + Futuro',totals.combined]].map(([label,value])=><div key={String(label)}><small>{label}</small><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}</div>
     <div className="liveAverage"><div><small>MÉDIA DOS 3 TOTAIS</small><h3 className="liveAverageDirection">{totals.averageSide}</h3><h3 className="liveAverageMobile">{totals.average===null?'SEM LEITURA':totals.averageSide==='CALL'?'VIÉS DE ALTA':totals.averageSide==='PUT'?'VIÉS DE BAIXA':'SEM VIÉS DEFINIDO'}</h3><span>{totals.average===null?'—':`CALL ${totals.average}% · PUT ${100-totals.average}%`}</span></div><label>Limite visual %<input aria-label="Limite visual da média" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
     <div className="liveControls"><button className="primary" disabled={disabled||s?.state==='running'||s?.killSwitch||s?.masterFrozen||!!s?.startBlockedReason} onClick={start}>{s?.state==='paused'?'Retomar análise':'Iniciar análise'}</button><button className="secondary" disabled={disabled||s?.state!=='running'} onClick={()=>act('control/pause')}>Pausar análise</button><button className="secondary" disabled={disabled||s?.state==='stopped'} onClick={()=>act('control/stop')}>Parar análise</button></div>
-    <details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Expiração (manual)<select aria-label="Expiração escolhida manualmente" value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Estratégia 1<select aria-label="Estratégia 1" value={strategy1} onChange={e=>{settingsEditing.current=true;setStrategy1(e.target.value)}}>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 2<select aria-label="Estratégia 2" value={strategy2} onChange={e=>{settingsEditing.current=true;setStrategy2(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 3<select aria-label="Estratégia 3" value={strategy3} onChange={e=>{settingsEditing.current=true;setStrategy3(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>Aplicar</button></div></details>
+    <details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Expiração (manual)<select aria-label="Expiração escolhida manualmente" value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Estratégia 1<select aria-label="Estratégia 1" value={strategy1} onChange={e=>{settingsEditing.current=true;setStrategy1(e.target.value)}}>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 2<select aria-label="Estratégia 2" value={strategy2} onChange={e=>{settingsEditing.current=true;setStrategy2(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 3<select aria-label="Estratégia 3" value={strategy3} onChange={e=>{settingsEditing.current=true;setStrategy3(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><p data-testid="strategy-selection-advice" role="note" style={{gridColumn:'1 / -1',fontSize:11,opacity:.85,margin:'4px 0'}}>
+      <b>Combinação:</b> {strategyAdvice.message} <span>· {strategyAdvice.recommendation}</span>
+    </p><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>Aplicar</button></div></details>
     <footer>Escolha até 3 estratégias e toque em “Aplicar” para sincronizar a análise no PC. Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo; o limite visual vale apenas nesta tela.</footer>
   </section>
 }
