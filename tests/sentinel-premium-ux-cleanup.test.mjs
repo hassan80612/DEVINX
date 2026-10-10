@@ -6,9 +6,9 @@ const src=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
 test('floating card makes passive CALL/PUT visibly distinct from an actionable entry',async()=>{
  const c=await src('sentinel-trading-lab/src/components/LiveScenarioCard.tsx');
  assert.match(c,/mobileScenarioDirection=!m\.scenarioInactive&&m\.side/);
- assert.match(c,/mobileDecisionText=mobileDirection\?'ENTRADA '\+mobileDirection\+' AGORA':mobileScenarioDirection\?'CENÁRIO '/);
- assert.match(c,/mobileScenarioDirection\?'PREVISÃO · NÃO É ORDEM DE ENTRADA'/);
- assert.match(c,/Cenário.*não é entrada/);
+ assert.match(c,/mobileDecisionText=mobileDirection\?mobileDirection\+' AGORA':mobileScenarioDirection\?'CENÁRIO '/);
+ assert.match(c,/mobileScenarioDirection\?'PREVISÃO · NÃO É ENTRADA'/);
+ assert.match(c,/Aguarde o gatilho · cenário não é ordem/);
  assert.match(c,/scenarioClock/);
 });
 test('compact mode return is authenticated navigation to home, never logout or login',async()=>{
@@ -22,7 +22,7 @@ test('no fake recorded entry price and no pointless waiting text',async()=>{
  const s=await src('sentinel-trading-lab/src/components/LiveScenarioCard.tsx');
  assert.match(s,/lastSignal\?<div className="mobilePriceComparison"/);
  assert.doesNotMatch(s,/Aguardando preço de uma entrada confirmada/);
- assert.match(s,/Preço em tempo real/);
+ assert.match(s,/Cotação recebida agora/);
 });
 test('compact cards expose the existing authenticated bot controls, no manual orders',async()=>{
  const s=await src('sentinel-trading-lab/src/components/LiveScenarioCard.tsx');
