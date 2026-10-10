@@ -84,7 +84,7 @@ export function historicalForwardAnalogs({
  // observations artificial weight.
  const strideMs=Math.max(3000,Math.min(h*150,60000));
  const examples=[];
- for(let anchor=first+Math.max(40,h*3)*1000;anchor<=latestAnchor;anchor+=strideMs){
+ for(let anchor=first+Math.max(40,Math.min(240,h*3))*1000;anchor<=latestAnchor;anchor+=strideMs){
    const f=features(rows,anchor,h);
    if(!f)continue;
    const future=after(rows,anchor+h*1000);
