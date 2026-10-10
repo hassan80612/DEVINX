@@ -6,8 +6,22 @@ export function reviewScenario(main,plan,snap,now,{threshold,minPoints}={}){
   const fresh=valid(snap.quoteTs)&&Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500;
   if(!fresh)return{state:'REAVALIANDO',code:'feed',reason:'Aguardando preços atuais.',sourceAt:main.review?.sourceAt||0};
   const bars=closedPriceBars(snap,now),last=bars.at(-1);
-  if(!last||last.to<=main.createdAt||last.to<=Number(main.review?.sourceAt||0))return main.review||{state:'OPEN',code:'initial',sourceAt:0};
   const side=String(plan?.rawBias||plan?.bias||'NEUTRO'),lead=Number(side==='CALL'?plan?.callProbability:plan?.putProbability);
+  // Do not wait for a 5s close to *warn* that the main forecast has
+  // independently turned against the existing scenario. Its actual
+  // invalidation still requires the original completed-bar evidence.
+  const opposingNow=side!==main.side&&['CALL','PUT'].includes(side)&&
+    plan?.outlookReady===true&&plan?.directionReady===true&&
+    plan?.safety?.blocked!==true&&lead>=Number(threshold)&&
+    Number(plan?.confidence||0)>=Number(minPoints);
+  if(!last||last.to<=main.createdAt||last.to<=Number(main.review?.sourceAt||0)){
+    if(opposingNow)return{...main.review,state:'REAVALIANDO',code:'opposition-live',
+      reason:'O Cenário detectou sinal contrário em tempo real; aguardando confirmação estrutural.',
+      sourceAt:Number(main.review?.sourceAt||0)};
+    if(main.review?.code==='opposition-live')return{...main.review,state:'OPEN',code:'forecast-resumed',
+      reason:'Previsão original retomou sustentação.'};
+    return main.review||{state:'OPEN',code:'initial',sourceAt:0};
+  }
   // Admission limits belong to a NEW forecast, not to its lifetime. The
   // planner must still support the direction with fresh, safe own evidence.
   const readable=plan?.outlookReady===true&&['CALL','PUT'].includes(side)&&lead>50;
