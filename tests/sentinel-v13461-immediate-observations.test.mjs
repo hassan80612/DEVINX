@@ -80,7 +80,7 @@ test('PC receives a real broker quote and preserves the clock across reconciliat
   assert.match(pc,/Number\(d\.price\)>0/);
   assert.match(pc,/\[data-sentinel-vnext-clock-value\]/);
   assert.match(pc,/el\.__sentinelTargetClockTick\?\.\(\)/);
-  assert.match(pc,/ÚLTIMA PREVISÃO AVALIADA/);
+  assert.match(pc,/Último resultado:/);
 });
 test('a settled prediction is measured at its own fixed deadline, without changing the motor',async()=>{
   const {DemoTradingRuntime}=await import('../sentinel-trading-lab/agent/src/core/runtime.mjs');
@@ -105,5 +105,5 @@ test('both mobile sizes keep anchored forecast and observed-now moment independe
   assert.equal((mobile.match(/\{instantObservation\}/g)||[]).length,2);
   assert.equal((mobile.match(/\{forecastReceipt\}/g)||[]).length,2);
   assert.match(mobile,/data-testid="last-settled-projection"/);
-  assert.match(mobile,/expiryLabel\(Number\(m\.vnextNowObservation\.expirySeconds/);
+  assert.match(mobile,/expiryLabel\(Number\(observation\.expirySeconds/);
 });

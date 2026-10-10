@@ -1376,3 +1376,66 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .vnextInstantObservation{min-height:92px;align-content:center}
 .vnextReadingsHeading{overflow-wrap:anywhere}
 .vnextMobileReadingsGrid>div{min-height:68px;align-content:start}
+
+/* Sentinel 13.4.62: stable dimensions, not a new motor or a delayed signal.
+   The SAME LiveScenarioCard renders normal and floating mobile layouts. */
+.liveScenario .vnextInstantObservation{
+  display:grid;grid-template-rows:14px 26px 16px 16px;gap:3px;
+  height:94px;min-height:94px;max-height:94px;
+  padding:8px 10px;overflow:hidden;align-content:start;
+}
+.liveScenario .vnextCompactHeading{display:flex;justify-content:space-between;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap}
+.liveScenario .vnextCompactHeading b{font-size:10px;font-weight:850;color:#e6d39a}
+.liveScenario .vnextCompactHeading small{font-size:9px;font-weight:650;color:#d3e6d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.liveScenario .vnextInstantObservation .vnextCompactDirection{font-size:19px!important;line-height:26px!important;white-space:nowrap;letter-spacing:0;min-height:26px}
+.liveScenario .vnextInstantObservation .vnextCompactLine{display:block;height:16px;line-height:16px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d7e6dd}
+.liveScenario .vnextFutureReceipt{
+  display:grid;grid-template-rows:20px 27px 74px 49px 27px 24px;
+  gap:5px;padding:9px 10px;margin:7px 0;align-content:start;
+}
+.liveScenario .vnextReceiptTitle{height:20px;min-height:20px;gap:5px;flex-wrap:nowrap;overflow:hidden}
+.liveScenario .vnextReceiptTitle b{font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
+.liveScenario .vnextReceiptTitle small{font-size:9px;white-space:nowrap;flex-shrink:0}
+.liveScenario .vnextFutureDirection{height:27px;min-height:27px;max-height:27px;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:6px;margin:0;overflow:hidden}
+.liveScenario .vnextFutureDirection strong,.liveScenarioCompact .vnextFutureDirection strong{font-size:18px!important;line-height:27px!important;min-width:0;white-space:nowrap}
+.liveScenario .vnextFutureDirection span{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:auto}
+.liveScenario .vnextTargetCountdown,.liveScenarioCompact .vnextTargetCountdown{
+  height:74px;min-height:74px;max-height:74px;padding:6px 8px;margin:0;
+  gap:6px;grid-template-columns:minmax(90px,.8fr) minmax(0,1.2fr);
+  overflow:hidden;
+}
+.liveScenario .vnextTargetCountdown strong,.liveScenarioCompact .vnextTargetCountdown strong{
+  font-size:23px!important;line-height:27px!important;white-space:nowrap;
+}
+.liveScenario .vnextTargetCountdown.ended strong{font-size:15px!important}
+.liveScenario .vnextTargetCountdown b,.liveScenarioCompact .vnextTargetCountdown b{
+  font-size:15px!important;white-space:nowrap;
+}
+.liveScenario .vnextTargetCountdown small{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenario .vnextTargetCountdown span{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenario .vnextProjectionValues,.liveScenarioCompact .vnextProjectionValues{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+  height:49px;min-height:49px;max-height:49px;overflow:hidden;
+}
+.liveScenario .vnextProjectionValues>div{padding:5px 7px;gap:2px;min-height:0;overflow:hidden}
+.liveScenario .vnextProjectionValues small{font-size:8px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenario .vnextProjectionValues strong,.liveScenarioCompact .vnextProjectionValues strong{font-size:14px!important;white-space:nowrap}
+.liveScenario .vnextProjectionBias{height:27px;min-height:27px;max-height:27px;padding:3px 7px;gap:6px;flex-wrap:nowrap;overflow:hidden}
+.liveScenario .vnextProjectionBias span{font-size:10px;white-space:nowrap}
+.liveScenario .vnextProjectionBias b{font-size:12px}
+.liveScenario .vnextForecastDetails{min-height:24px;align-self:start;position:relative}
+.liveScenario .vnextForecastDetails summary{
+  display:block;min-height:24px;height:24px;padding:5px 7px;border:1px solid #91a08b73;
+  border-radius:6px;font-size:10px;color:#e1d6b5;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.liveScenario .vnextForecastDetails:not([open])>*:not(summary){display:none}
+.liveScenario .vnextForecastDetails[open]{z-index:5;background:#09231f;box-shadow:0 7px 18px #0006;border-radius:8px;padding-bottom:8px}
+.liveScenario .vnextForecastDetails[open]>*:not(summary){display:block;margin:6px 7px;font-size:10px;line-height:1.4}
+.liveScenario .vnextForecastDetails[open] .vnextLiveCalculation,.liveScenario .vnextForecastDetails[open] .vnextSettledOutcome{display:grid}
+.liveScenario .vnextMobileReadingsGrid>div{height:71px;min-height:71px;max-height:71px;overflow:hidden}
+.liveScenario .vnextMobileReadingsGrid small{line-height:1.15;max-height:33px;overflow:hidden}
+@media(max-width:390px){
+ .liveScenario .vnextMobileReadingsGrid>div{height:47px;min-height:47px;max-height:47px;align-content:center}
+ .liveScenario .vnextFutureReceipt{grid-template-rows:20px 27px 74px 49px 27px 24px}
+}

@@ -11,10 +11,10 @@ test('one clock in normal and floating mobile cards, not two overlapping clocks'
  assert.equal((s.match(/\{forecastReceipt\}/g)||[]).length,2);
  assert.match(s,/const clockForecast=m\.vnextTargetAnchor\|\|liveForecast/);
  assert.match(s,/Math\.ceil\(\(forecastTargetAt-now\)\/1000\)/);
- assert.match(s,/RELÓGIO DO ALVO FIXADO/);
- assert.match(s,/HORÁRIO DO ALVO FIXADO/);
- assert.match(s,/ALVO ENCERRADO/);
- assert.match(s,/PREÇO (PROJETADO PARA O ALVO|PREVISTO NO ALVO)/);
+ assert.match(s,/CONTAGEM ATÉ O ALVO/);
+ assert.match(s,/HORÁRIO DO ALVO/);
+ assert.match(s,/ENCERRADO/);
+ assert.match(s,/PREÇO PROJETADO/);
 });
 test('Agent independently pins display clock to original forecast without gating its live model',async()=>{
  const s=await read('agent/src/core/runtime.mjs');
