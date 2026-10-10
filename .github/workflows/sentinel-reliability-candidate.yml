@@ -28,6 +28,8 @@ jobs:
         run: |
           find sentinel-trading-lab/agent/src/core -name '*.mjs' -type f -print0 | xargs -0 -n1 node --check
           node --check sentinel-trading-lab/agent/worker/index.mjs
+      - name: Focused strategy-selection tests
+        run: node --test --test-concurrency=1 tests/sentinel-selected-strategy-authority.test.mjs
       - name: Compare regressions with exact production commit
         shell: bash
         run: |
