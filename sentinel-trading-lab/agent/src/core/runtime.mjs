@@ -528,9 +528,13 @@ export class DemoTradingRuntime{
     // confidence or claim the chosen strategies agree when they do not.
     localPlan.chosenStrategyBias=candidate.chosenStrategyBias;
     localPlan.chosenStrategySupport=candidate.strategyEvidence;
-    const researchContext={provider,asset,durationMs,kind,side,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
+    const researchContext={provider,asset,durationMs,kind,side,payout:snap.payout,regime:entryPlan?.regime?.label||'unknown',combo:combo+'|local-opportunities-v2'+(this.entryPolicy!=='local-v2'?'|'+this.entryPolicy:'')+(entryPlan?.researchContext?'|'+entryPlan.researchContext:'')},features=this.entryResearch.features(analysis,entryPlan,side),baseline=Number(call?entryPlan?.callProbability:entryPlan?.putProbability)/100;
     const prediction=this.entryResearch.predict(researchContext,features,Number.isFinite(baseline)?baseline:.5);
-    const learnedWeak=prediction.qualified&&prediction.probability<10/12;
+    const livePayout=Number(snap.payout);
+    const breakEvenProbability=snap.payout!=null&&Number.isFinite(livePayout)&&livePayout>0&&livePayout<=1?1/(1+livePayout):.55;
+    // Model estimates are not certainty. Gate qualified, forward-tested
+    // predictions by the actual economic break-even plus a small safety margin.
+    const learnedWeak=prediction.qualified&&prediction.probability<breakEvenProbability+.02;
     this.entryQualification={allowed:!learnedWeak,flow:candidate.flow,structure:candidate.structure,fresh:candidate.fresh,historicalQuality:candidate.historicalQuality,technicalFilter:minPoints,percentFilter:threshold,requiredScore:entryPoints,blockedBy:learnedWeak?'entry-model':null,reason:learnedWeak?'Modelo qualificado não confirma este ponto.':candidate.reason};
     if(learnedWeak)return decorate({...empty,side,createdAt:main.createdAt,targetAt:main.deadline,state:'OBSERVANDO ENTRADA',entryResearch:prediction,reason:this.entryQualification.reason});
     const expiryKey=String(Math.round(durationMs/1000));
