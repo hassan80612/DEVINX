@@ -75,6 +75,35 @@ export function analystSnapshot(runtimeStatus,live){
   };
 }
 
+// The signed Realtime channel has a 3000-byte frame budget. Keep critical
+// quote + forecast + three reading cards even when optional details grow.
+// No database writes, extra requests, motor filters, or trade permissions.
+export function fitAnalystFrame(snapshot,maxBytes=2920){
+  const size=value=>Buffer.byteLength(JSON.stringify(value),'utf8');
+  if(!snapshot||size(snapshot)<=maxBytes)return snapshot;
+  const a=snapshot.lastResult?.analysis||{},v=a.vnext;
+  if(!v)return null;
+  const compactVnext={
+    engineId:v.engineId,expirySeconds:v.expirySeconds,
+    receipt:v.receipt,targetAnchor:v.targetAnchor,
+    projection:v.projection,nowIndication:v.nowIndication,cards:v.cards
+  };
+  const trimmed={...snapshot,
+    lastResult:{...snapshot.lastResult,analysis:{
+      operationalSignal:{side:'WAIT',actionable:false},
+      vnext:compactVnext
+    }}
+  };
+  if(size(trimmed)<=maxBytes)return trimmed;
+  // Second tier: preserve the exact most recent forecast and live source
+  // without ancillary observations. A fat optional panel must not drop a quote.
+  const minimal={...trimmed,lastResult:{...trimmed.lastResult,analysis:{
+    ...trimmed.lastResult.analysis,
+    vnext:{...compactVnext,nowIndication:null}
+  }}};
+  return size(minimal)<=maxBytes?minimal:null;
+}
+
 export class LiveBridge{
   constructor(topic,{WebSocketClass=globalThis.WebSocket,minIntervalMs=1100,clock=()=>Date.now()}={}){
     this.topic=topic;this.socket=null;this.WebSocketClass=WebSocketClass;this.minIntervalMs=Math.max(1000,minIntervalMs);
@@ -134,10 +163,12 @@ export class LiveBridge{
       op.subanalyst?.alert?.side,op.subanalyst?.alert?.testing
     ].join('|');
     if(fingerprint===this.lastFingerprint)return false;
-    snapshot.seq=++this.seq;const encoded=JSON.stringify(snapshot);
-    // Strict egress budget; huge reports never flow through the live channel.
-    if(Buffer.byteLength(encoded,'utf8')>3000)return false;
-    if(!this.send('broadcast',{type:'broadcast',event:'analyst',payload:snapshot}))return false;
+    snapshot.seq=++this.seq;
+    // Reserve space for the 64-hex HMAC signature added by SignedLiveBridge.
+    // Previously >3000-byte optional details caused complete quote loss.
+    const frame=fitAnalystFrame(snapshot,2920);
+    if(!frame)return false;
+    if(!this.send('broadcast',{type:'broadcast',event:'analyst',payload:frame}))return false;
     this.lastSentAt=now;this.lastFingerprint=fingerprint;return true;
   }
   close(){this.stopped=true;clearTimeout(this.timer);clearInterval(this.heartbeat);try{this.socket?.close()}catch{}this.socket=null}
