@@ -44,11 +44,21 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const quoteAge=quoteAt>0?Math.max(0,Math.floor((now-quoteAt)/1000)):null;
   const analysisAge=evaluationAt>0?Math.max(0,Math.floor((now-evaluationAt)/1000)):null;
   const entryRemaining=entrySide&&Number.isFinite(Number(view.entryRemainingSeconds))?Math.max(0,Number(view.entryRemainingSeconds)):null;
+  // The entry opportunity and the longer scenario have separate lifecycles.
+  // A consumed/missed entry is NOT a closed forecast. This classification
+  // changes presentation only: the engine still owns every signal.
+  const entryStatus=String(op?.entryAnalyst?.signal?.state||op.state||'').toUpperCase();
+  const entryReason=String(op?.entryAnalyst?.signal?.reason||op.reason||'');
+  const endedEntryStates=['OPORTUNIDADE PERDIDA','OPORTUNIDADE CONSUMIDA','OPORTUNIDADE CANCELADA','AGUARDAR PONTO'];
+  const opportunityEnded=fresh&&!entrySide&&(
+    endedEntryStates.includes(entryStatus)||
+    /esta oportunidade terminou|oportunidade de entrada encerrada|oportunidade encerrada|ponto de entrada ultrapassado/i.test(entryReason)
+  );
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
-    entrySide,entryRemaining,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
+    entrySide,entryRemaining,opportunityEnded,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
     remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,
     subStatus:!fresh?unavailable:sub.mode!=='reversal-alert'?'ATUALIZE O AGENT':sub.status==='SEM LEITURA'?'AGUARDANDO COTAÇÕES':alert?(alert.testing?'REVERSÃO EM TESTE ':'REVERSÃO CONFIRMADA ')+alert.side:'OBSERVANDO REVERSÃO',
     reversalTone:alert?.side==='CALL'?'call':alert?.side==='PUT'?'put':'neutral',reversalTesting:alert?.testing===true,
