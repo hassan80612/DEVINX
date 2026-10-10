@@ -64,3 +64,35 @@ test('product navigation separates onboarding from Market and keeps price public
  assert.ok(consolePage.includes("tab==='Market Analysis')&&<LiveScenarioCard"));
  assert.equal(consolePage.includes("tab==='Dashboard'||tab==='Market Analysis'"),false);
 });
+
+
+test('a confirmed first break CALL is not delayed waiting for the old slow flow/structure labels',()=>{
+  const {snap,analysis}=scenario('CALL',true);
+  Object.assign(analysis.metrics.shortModel,{flowReadyCall:false,structureReadyCall:false});
+  const [call]=entryOpportunities({analysis,snap,now:time,minPoints:74,durationMs:30000});
+  assert.equal(call.allowed,true,call.reason);
+  assert.equal(call.kind,'continuation');
+  assert.equal(call.plan.scenario.triggerBasis,'previous-short-bar');
+});
+test('a confirmed first break PUT is not delayed waiting for the old slow flow/structure labels',()=>{
+  const {snap,analysis}=scenario('PUT',true);
+  Object.assign(analysis.metrics.shortModel,{flowReadyPut:false,structureReadyPut:false});
+  const put=entryOpportunities({analysis,snap,now:time,minPoints:74,durationMs:30000})[1];
+  assert.equal(put.allowed,true,put.reason);
+});
+test('an unsupported wick beyond the range is not a first-break entry',()=>{
+  const {snap,analysis}=scenario('CALL',true);
+  Object.assign(analysis.metrics.shortModel,{flowReadyCall:false,structureReadyCall:false});
+  const current=snap.quoteHistory.slice(-4);
+  current[2].price=100.03;current[3].price=100.018;
+  snap.price=current[3].price;
+  const call=entryOpportunities({analysis,snap,now:time,minPoints:74,durationMs:30000})[0];
+  assert.equal(call.allowed,false);
+});
+test('the first-break improvement still respects actual opposite-barrier room',()=>{
+  const {snap,analysis}=scenario('CALL',true);
+  Object.assign(analysis.metrics.shortModel,{flowReadyCall:false,structureReadyCall:false,callRoomOk:false});
+  const call=entryOpportunities({analysis,snap,now:time,minPoints:74,durationMs:30000})[0];
+  assert.equal(call.allowed,false);
+  assert.equal(call.blockedBy,'room');
+});
