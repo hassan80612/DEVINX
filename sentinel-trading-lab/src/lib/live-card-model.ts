@@ -35,6 +35,28 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const unavailable=!online?'PC OFFLINE':!running?s?.state==='paused'?'ANÁLISE PAUSADA':'ANÁLISE PARADA':!matches?'SINCRONIZANDO ATIVO':'AGUARDANDO DADOS ATUAIS';
   const state=fresh?view.state:unavailable;
   const side=fresh&&view.contextMatches?view.side:null;
+  // DISPLAY ONLY: a brief missing quote does not erase an unexpired,
+  // asset-matched main scenario. Never reuse this state for entry permission.
+  // Entry remains gated by fresh (2.5s) and runtimeView.canEnter.
+  const scenario=op.scenario||null;
+  const scenarioDeadline=Number(scenario?.deadline||0);
+  const scenarioOrigin=Number(scenario?.createdAt||0);
+  const scenarioContextOk=matchingMarket&&feedValidated&&
+    Number(op.forecastHorizonSeconds)===horizon&&
+    Number(op.durationMs)===Number(s?.settings?.orderDurationMs||60000)&&
+    ['CALL','PUT'].includes(String(scenario?.side||''))&&
+    scenarioOrigin>0&&scenarioOrigin<=now+2500&&scenarioDeadline>now&&
+    scenario?.closed!==true&&!['INVALIDADO','JANELA ENCERRADA'].includes(String(scenario?.status||''))&&
+    // The scenario's OWN deadline controls visibility, not the quote age.
+    // Even a long outage leaves a clearly marked non-actionable prior view;
+    // the trade gate above still requires <=2.5s quotes.
+    quoteAt>0&&now-quoteAt>=-2500&&
+    evaluationAt>=scenarioOrigin-2500;
+  const displayScenarioSide=side||(scenarioContextOk?String(scenario.side):null);
+  const displayScenarioStale=!fresh&&!!displayScenarioSide;
+  const displayScenarioRemaining=displayScenarioSide&&scenarioDeadline>now?
+    Math.max(0,Math.ceil((scenarioDeadline-now)/1000)):null;
+  const displayScenarioState=displayScenarioStale?'AGUARDANDO COTAÇÃO':state;
   const terminalStates=['INVALIDADO','JANELA ENCERRADA','JANELA PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA','OPORTUNIDADE PERDIDA'];
   // UI-only classification: never present an expired/invalidated direction as an active setup.
   const scenarioInactive=fresh&&(view.closed===true||terminalStates.includes(String(view.state||'')));
@@ -68,6 +90,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
+    displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
     entrySide,entryRemaining,opportunityEnded,lastSignal,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
     remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,

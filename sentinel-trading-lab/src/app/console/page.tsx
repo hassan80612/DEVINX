@@ -6,8 +6,8 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.56';
-const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-fresh-realtime-overlay-1010`;
+const AVAILABLE_AGENT_VERSION='13.4.57';
+const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-stable-mobile-instant-signal-1010`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
@@ -83,9 +83,12 @@ export default function Page(){
   const isMaster=account?.profile?.role==='master';const agentAccess=isMaster||account?.profile?.access_active===true;const visibleTabs=tabDefs.filter(x=>x.key!=='Master Console'||isMaster);
   const refreshMe=useCallback(async()=>{try{const r=await fetch('/api/auth/me',{cache:'no-store'});const j=await r.json();if(r.ok&&j.ok)setAccount(j);else if(r.status===401)window.location.href='/login'}catch{}},[]);
   const refresh=useCallback(async()=>{
-    // A connected live channel supplies the card without repeated heavy
-    // Supabase status reads. Keep a slow authenticated fallback (45s).
-    if(liveFrameAt.current&&Date.now()-liveFrameAt.current<5000&&Date.now()-remotePolledAt.current<45000)return;
+    // Do not run the expensive remote status endpoint on every 2.5s tick.
+    // Live broadcast drives the screen; when broadcasts are interrupted,
+    // use an 8s fallback rather than a flood of duplicate requests.
+    const lastCloudPollAge=Date.now()-remotePolledAt.current;
+    const streaming=Date.now()-liveFrameAt.current<8000;
+    if(remotePolledAt.current>0&&lastCloudPollAge<(streaming?45000:8000))return;
     if(refreshBusy.current)return;refreshBusy.current=true;
     try{
       const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -107,17 +110,33 @@ export default function Page(){
         setS((previous:Status|null)=>{
           // Late cloud snapshots must never rewind the faster live quote or
           // overwrite its signal with an older evaluation.
-          if(previous?.liveStreamAt&&Date.now()-Number(previous.liveStreamAt)<5000&&
-             String(previous.liveTopic||'')===String(data.liveTopic||'')&&
-             Number(previous.lastEvalMs||0)>=Number(data.lastEvalMs||0))return previous;
+          const sameStream=String(previous?.liveTopic||'')===String(data.liveTopic||'');
+          const prevQuote=Number(previous?.liveBroker?.lastQuoteAt||0);
+          const cloudQuote=Number(data.liveBroker?.lastQuoteAt||0);
+          if(sameStream&&data.remote?.online!==false&&
+             ((previous?.liveStreamAt&&Date.now()-Number(previous.liveStreamAt)<5000&&
+               Number(previous.lastEvalMs||0)>=Number(data.lastEvalMs||0))||
+              prevQuote>cloudQuote))return previous;
           return data;
         });
         setSource('remote');const online=!!data?.remote?.online;
         setAgent((v:any)=>({...v,remote:online,process:online,worker:online,paired:true,version:data.agentVersion||v.version}));
         setErr(online?'':'PC vinculado, mas Agent offline.')
       }catch(e:any){
-        setS(null);setSource('remote');setAgent((v:any)=>({...v,remote:false,process:false,worker:false}));
-        const m=String(e?.message||e);setErr(m==='pc_nao_vinculado'?'':m)
+        // A single failed/slow cloud refresh must NOT unmount the analyst,
+        // tear down the authenticated WebSocket or blank a valid scenario.
+        // Last quotes become stale naturally and cannot authorize entries.
+        setSource('remote');
+        const m=String(e?.message||e);
+        if(m==='pc_nao_vinculado'){
+          setS(null);
+          setAgent((v:any)=>({...v,remote:false,process:false,worker:false}));
+          setErr('');
+        }else{
+          // Keep the fixed-height card's own stale-quote notice; a transient
+          // cloud error must not add a banner that shifts the entire layout.
+          setErr('');
+        }
       }
     }finally{refreshBusy.current=false}
   },[]);
@@ -197,7 +216,13 @@ export default function Page(){
   };
   const agentCommand=async(action:'restart'|'exit')=>{if(source!=='local'){setErr('Reiniciar/desligar o Agent exige acesso ao PC. Pelo celular você controla o Bot: iniciar, pausar, parar e Kill Switch.');return}setBusy(true);try{await managerFetch(action,'POST',{});if(action==='exit'){setAgent({process:false,worker:false});setSource('remote')}setTimeout(refresh,700);setErr('')}catch(e:any){setErr(`Agent: ${String(e?.message||e)}`)}finally{setBusy(false)}};
   const claimPair=async()=>{if(!pairCode.trim())return;setBusy(true);const send=async(replaceExisting=false)=>{const r=await fetch('/api/devices/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:pairCode,replaceExisting})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'Falha ao vincular PC');return j};try{let j:any;try{j=await send(false)}catch(e:any){if(String(e?.message||e)==='limite_de_pcs'){const ok=window.confirm('Esta conta já atingiu o limite de computadores. Substituir o PC antigo por este novo computador?');if(!ok)throw e;j=await send(true)}else throw e}setPairCode('');setErr('');setNotice(j?.replaced?'Novo computador vinculado. O PC antigo foi substituído.':'Computador vinculado com sucesso.');setTimeout(refresh,300);setTimeout(()=>setNotice(''),4200)}catch(e:any){setErr(friendlyError(e))}finally{setBusy(false)}};
-  const current=visibleTabs.find(x=>x.key===tab)??visibleTabs[0];const groups=['Acesso','Análise','Conexão','Conta','Admin'];const content=useMemo(()=>tab==='Master Console'?<Master s={s} act={act} busy={busy}/>:(s||tab==='Dashboard'||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair} onNavigate={setTab}/>:<OfflinePanel/>,[tab,s,busy,agent,account,pairCode,isMaster,source]);
+  const current=visibleTabs.find(x=>x.key===tab)??visibleTabs[0];const groups=['Acesso','Análise','Conexão','Conta','Admin'];const content=useMemo(()=>{
+    // Hidden dashboard grids are expensive. During compact/market streaming,
+    // only render the analyst; build the other tab AFTER navigating there.
+    if(compactAnalyst||tab==='Market Analysis')return null;
+    return tab==='Master Console'?<Master s={s} act={act} busy={busy}/>:
+      (s||tab==='Dashboard'||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair} onNavigate={setTab}/>:<OfflinePanel/>;
+  },[compactAnalyst,tab,s,busy,agent,account,pairCode,isMaster,source]);
   const mobileMain=[['Dashboard','Início','⌂'],['Market Analysis','Mercado','⌁'],['Broker Connection','Corretora','⇄'],['Settings','Conta','⚙']] as const;
   return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/favicon.ico" alt="Sentinel"/></div><div><span>SENTINEL</span><strong>Trading Lab</strong><small>Análise em tempo real</small></div></div><nav className="navGroups">{groups.map(group=><div className="navGroup" key={group}><div className="navTitle">{group}</div>{visibleTabs.filter(x=>x.group===group).map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>setTab(x.key)}><i>{x.icon}</i><span>{x.label}</span></button>)}</div>)}</nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':'CONTA'}</div><span>{account?.user?.email||'Sentinel'} · {source==='local'?'PC local':'PC remoto'}</span></div></aside>
     <main className="main"><header className="topbar"><div className="pageHeading"><div className="topBrand"><img src="/favicon.ico" alt="Sentinel"/><span>Sentinel Trading Lab</span></div><div className="eyebrow">{current.group} / {current.label}</div><h1>{current.title}</h1><p>{current.subtitle}</p></div><div className="topactions">

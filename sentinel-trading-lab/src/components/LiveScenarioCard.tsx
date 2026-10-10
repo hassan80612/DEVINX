@@ -67,7 +67,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     });
   },[incoming?.asset,incoming?.side,incoming?.price,incoming?.at]);
   const lastSignal=recordedSignal?.asset===m.asset?recordedSignal:null;
-  const liveDirection=m.entrySide||(!m.scenarioInactive?m.side:null);
+  const liveDirection=m.entrySide||(!m.scenarioInactive?m.displayScenarioSide:null);
   // Forecast CALL/PUT is not authorization to trade. Never use the word
   // "AGORA" outside a still-actionable, fresh and validated entry.
   const decisionLabel=m.entrySide?'ENTRADA CONFIRMADA AGORA':liveDirection?'SOMENTE PREVISÃO · SEM ENTRADA':m.scenarioInactive?'CENÁRIO FINALIZADO':'AGUARDANDO OPORTUNIDADE';
@@ -77,13 +77,13 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const directionClass=m.entrySide==='CALL'?'call':m.entrySide==='PUT'?'put':'neutral';
   const reversalArrow=m.alert?.side==='CALL'?'↑':m.alert?.side==='PUT'?'↓':'◇';
   const mobileDirection=m.entrySide||null;
-  const mobileScenarioDirection=!m.scenarioInactive&&m.side?m.side:null;
+  const mobileScenarioDirection=!m.scenarioInactive&&m.displayScenarioSide?m.displayScenarioSide:null;
   const mobileArrow=(mobileDirection||mobileScenarioDirection)==='CALL'?'↑':(mobileDirection||mobileScenarioDirection)==='PUT'?'↓':'◇';
   // Show a SHORT headline: the previous 36-character mobile headline
   // overflowed the bordered card, including the word "ENTRADA".
   const mobileDecisionText=mobileDirection?mobileDirection+' AGORA':mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection:m.scenarioInactive?'ENCERRADO':'AGUARDANDO';
-  const mobileDecisionLabel=mobileDirection?'ENTRADA CONFIRMADA':mobileScenarioDirection?'PREVISÃO · NÃO É ENTRADA':'SEM SINAL OPERACIONAL';
-  const mobileWatchTone=!mobileDirection&&m.fresh&&mobileScenarioDirection?
+  const mobileDecisionLabel=mobileDirection?'ENTRADA CONFIRMADA':mobileScenarioDirection?'CENÁRIO EM ANÁLISE · SEM ENTRADA':'AGUARDANDO CENÁRIO';
+  const mobileWatchTone=!mobileDirection&&mobileScenarioDirection?
     (mobileScenarioDirection==='CALL'?'watch-call':'watch-put'):'';
   // A delayed quote can still be shown as historical information, never live.
   const showLastQuote=m.online&&s?.liveBroker?.assetValidated===true&&m.quoteAge!==null&&m.quoteAge<=30;
@@ -102,7 +102,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <span aria-hidden="true">◇</span><span>{m.scenarioInactive?'Cenário encerrado; aguardando nova análise':m.entrySide?'Entrada sinalizada · acompanhe a cotação':m.opportunityEnded?'Aguardando novo gatilho':'Observando um novo ponto de entrada'}</span>
   </div>;
   const scenarioClock=<div className="liveScenarioCountdown" data-testid="scenario-clock">
-    <small>PRAZO DO CENÁRIO</small><strong>{m.scenarioInactive?'ENCERRADO':m.remaining!==null?m.remaining+'s':'—'}</strong>
+    <small>PRAZO DO CENÁRIO</small><strong>{m.scenarioInactive?'ENCERRADO':m.displayScenarioRemaining!==null?m.displayScenarioRemaining+'s':m.remaining!==null?m.remaining+'s':'—'}</strong>
   </div>;
   useEffect(()=>{
     if(m.fresh&&m.market!==null&&m.strategies!==null&&m.combined!==null&&m.average!==null){
@@ -132,12 +132,12 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">← Início</button></header>
-    <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
+    <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.displayScenarioStale?'stale-preview':''} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
       <small>{mobileDecisionLabel}</small><strong><span aria-hidden="true">{mobileArrow}</span> {mobileDecisionText}</strong>
-      <span className="mobileScenarioContext">{mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?'Aguarde o gatilho · cenário não é ordem':'Nenhuma entrada confirmada'}</span>
-      <small className="mobileEntryWindow">{m.entrySide?'Entrada válida por '+m.entryRemaining+'s':m.fresh?'Acompanhando cotações · sem entrada agora':'Aguardando cotação e análise atuais'}</small>
+      <span className="mobileScenarioContext">{mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?m.displayScenarioStale?'COTAÇÃO ATRASADA · SEM ENTRADA':'ANALISANDO · AGUARDE CONFIRMAÇÃO':'Nenhuma entrada confirmada'}</span>
+      <small className="mobileEntryWindow">{m.entrySide?'Entrada válida por '+m.entryRemaining+'s':m.displayScenarioStale?'Aguardando atualização do preço · não entre':mobileScenarioDirection?'Preparando leitura · aguardando gatilho':m.fresh?'Analisando o preço · aguarde':'Aguardando cotação e análise atuais'}</small>
     </div>
-    <div className={`compactScenario ${m.fresh?m.scenarioTone:'neutral'}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{m.scenarioLabel} · {m.state}</strong></div>{scenarioClock}</div>
+    <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection?'CENÁRIO '+mobileScenarioDirection:'CENÁRIO'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
     {opportunityNotice}
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>

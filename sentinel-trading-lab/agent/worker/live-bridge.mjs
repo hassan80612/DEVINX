@@ -83,7 +83,15 @@ export class LiveBridge{
     // Still cap burst delivery to avoid websocket/Supabase overload.
     const now=this.clock();if(now-this.lastSentAt<(urgent?500:this.minIntervalMs))return false;
     // Re-send only when the local analysis, price or scenario actually changed.
-    const fingerprint=[snapshot.lastEvalMs,snapshot.liveBroker?.lastQuoteAt,snapshot.liveBroker?.symbol,snapshot.state].join('|');
+    const op=snapshot.lastResult?.analysis?.operationalSignal||{};
+    const fingerprint=[
+      snapshot.lastEvalMs,snapshot.liveBroker?.lastQuoteAt,snapshot.liveBroker?.symbol,snapshot.state,
+      // An actual state transition can share the SAME quote and analysis
+      // timestamp. It must not be silently discarded by fingerprint dedup.
+      op.side,op.state,op.ready,op.actionable,op.activeUntil,
+      op.scenario?.side,op.scenario?.status,op.scenario?.closed,op.scenario?.deadline,
+      op.subanalyst?.alert?.side,op.subanalyst?.alert?.testing
+    ].join('|');
     if(fingerprint===this.lastFingerprint)return false;
     snapshot.seq=++this.seq;const encoded=JSON.stringify(snapshot);
     // Strict egress budget; huge reports never flow through the live channel.

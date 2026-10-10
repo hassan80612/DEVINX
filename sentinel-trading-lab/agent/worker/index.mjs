@@ -64,7 +64,7 @@ const liveSignatureKey=randomBytes(32).toString('hex');
 const liveBridge=new SignedLiveBridge(liveTopic,liveSignatureKey);
 liveBridge.start();
 let livePublishBusy=false,lastLiveSentDecisionKey='';
-const livePublishTimer=setInterval(async()=>{
+async function publishLiveFrame(){
   if(livePublishBusy||!liveBridge.hasViewer()||runtime.stateName!=='running')return;
   // Inspect only the already-computed local state. No extra analysis, broker
   // reads or database queries are needed to prioritize a changed decision.
@@ -78,11 +78,20 @@ const livePublishTimer=setInterval(async()=>{
   livePublishBusy=true;
   try{
     const chosen=chooseLive();if(!chosen?.m)return;
-    const snapshot=await runtime.status();
-    if(liveBridge.publish(analystSnapshot({...snapshot,agentVersion:VERSION},chosen.m)))
+    // Fast path: the remote phone needs the already-computed analyst state,
+    // not a second full balance/broker/history/status sweep every second.
+    // The authenticated periodic status API still carries full details.
+    const snapshot={
+      agentVersion:VERSION,state:runtime.stateName,
+      killSwitch:runtime.killSwitch,masterFrozen:runtime.masterFrozen,
+      settings:runtime.settings,lastEvalMs:runtime.lastEvalMs,
+      lastResult:runtime.lastResult
+    };
+    if(liveBridge.publish(analystSnapshot(snapshot,chosen.m)))
       lastLiveSentDecisionKey=decisionKey;
   }catch{}finally{livePublishBusy=false}
-},220);
+}
+const livePublishTimer=setInterval(()=>{void publishLiveFrame()},220);
 livePublishTimer.unref?.();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
@@ -234,6 +243,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider)}
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
   await runtime.tick(loopNow,{skipStatus:true});
+  // Deliver a confirmed decision as soon as the engine finishes its quote
+  // analysis, before broker overlay rendering or expensive status work.
+  // The signed realtime bridge enforces burst limits and viewer verification.
+  void publishLiveFrame();
   if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
   if(activeProvider){
     const view=await runtime.status();

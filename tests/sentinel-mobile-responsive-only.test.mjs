@@ -14,7 +14,7 @@ test('Mobile full-size card never splits the old enormous SEM ENTRADA headline',
 });
 test('A closed forecast displays ENDED and not a counterfeit running timer',async()=>{
  const s=await component();
- assert.match(s,/m\.scenarioInactive\?'ENCERRADO':m\.remaining!==null\?m\.remaining\+'s':'—'/);
+ assert.match(s,/m\.scenarioInactive\?'ENCERRADO':m\.displayScenarioRemaining!==null\?m\.displayScenarioRemaining\+'s'/);
  assert.match(s,/PRAZO DO CENÁRIO/);
 });
 test('No fabricated signal price: show just current quote if Agent did not report an executed signal',async()=>{
