@@ -146,7 +146,7 @@ CREATE TRIGGER sentinel_kiwify_claim_on_signup
 -- Only the real master and paid, unexpired Kiwify users can operate the Agent.
 -- This check is shared by web login, Agent heartbeat and command polling.
 CREATE OR REPLACE FUNCTION sentinel_app.agent_access_active(p_account_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
   SELECT coalesce((
     SELECT EXISTS (
       SELECT 1 FROM sentinel_app.master_owner mo
@@ -161,7 +161,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $
     )
     FROM sentinel_app.accounts a WHERE a.id=p_account_id
   ),false)
-$;
+$$;
 REVOKE ALL ON FUNCTION sentinel_app.agent_access_active(uuid) FROM PUBLIC,anon,authenticated;
 -- Security-definer callers resolve this function with creator privileges.
 GRANT EXECUTE ON FUNCTION sentinel_app.agent_access_active(uuid) TO service_role;
