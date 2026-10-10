@@ -2,6 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {liveCardModel} from '../lib/live-card-model';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
+import {SCENARIO_ENGINES} from '../../agent/src/core/scenario-engine-catalog.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
 const STRATEGIES=[['smart_confluence','Smart Confluence'],['price_action','Price Action'],['trendline_breakout','Trendline Breakout'],['support_resistance','Suporte / Resistência'],['fibonacci_retest','Fibonacci Retest'],['trend','Trend Following'],['mean_reversion','Mean Reversion'],['breakout','Breakout']] as const;
@@ -20,15 +21,16 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[horizon,setHorizon]=useState(String(s?.settings?.forecastHorizonSeconds||60));
   const[expirySeconds,setExpirySeconds]=useState(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
   const[threshold,setThreshold]=useState(String(s?.settings?.futureDisplayThreshold||70));
+  const[chosenEngine,setChosenEngine]=useState(String(s?.settings?.engine||'automatic'));
   const[strategy1,setStrategy1]=useState(String(s?.settings?.strategy||'smart_confluence'));
   const[strategy2,setStrategy2]=useState(String(s?.settings?.strategy2||'none'));
   const[strategy3,setStrategy3]=useState(String(s?.settings?.strategy3||'none'));
   useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);
   useEffect(()=>{
-    if(!settingsEditing.current){setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
+    if(!settingsEditing.current){setChosenEngine(String(s?.settings?.engine||'automatic'));setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
     // Remote status refreshes must not overwrite a value the user is typing.
     if(!thresholdEditing.current)setThreshold(String(s?.settings?.futureDisplayThreshold||70));
-  },[s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3]);
+  },[s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.engine,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3]);
   const onAverageChange=(raw:string)=>{
     const draft=raw.replace(/\D/g,'').slice(0,2);
     setAverageInput(draft);
@@ -51,6 +53,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     }
   };
   const m=liveCardModel(s,now,averageThreshold);
+  const vnext=!!s?.settings?.engine;
+  const forecast=m.vnextReceipt;
+  const expiryChoices=[5,10,15,30,45,60,120,180,300,600,900,3600];
+  const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
   const strategyAdvice=strategySelectionGuidance({
     ids:[strategy1,strategy2,strategy3],
     paused:s?.settings?.pausedReadings||{},
@@ -118,6 +124,36 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const historicalNotice=historicalTotals?<p className="liveInactiveNotice" role="status">ÚLTIMA LEITURA · dados atrasados ({seconds(m.analysisAge)}). Os percentuais são históricos e NÃO autorizam entrada.</p>:null;
   const disabled=busy||!m.online;
   const start=async()=>{if(await act('settings',{demoAutopilot:false})!==false)await act('control/start')};
+  const changeEngine=async(value:string)=>{
+    setChosenEngine(value);
+    await act('settings',{engine:value,strategy2:'none',strategy3:'none'});
+  };
+  const changeExpiry=async(value:string)=>{
+    setExpirySeconds(value);
+    await act('settings',{orderDurationMs:Number(value)*1000,forecastHorizonSeconds:Number(value)});
+  };
+  const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
+    <label>Motor do cenário
+      <select aria-label="Motor responsável pelo cenário" value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
+        {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{e.name}</option>)}
+      </select>
+    </label>
+    <label>Prever até
+      <select aria-label="Expiração escolhida para previsão" value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
+        {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
+      </select>
+    </label>
+  </div>:null;
+  const forecastReceipt=vnext?<div className="vnextFutureReceipt" data-testid="future-price-projection" role="status" aria-live="off">
+    <div className="vnextReceiptTitle"><b>PREVISÃO FUTURA DO MOTOR</b><small>{forecast?'HORÁRIO E PREÇO FIXADOS':'AGUARDANDO HISTÓRICO'}</small></div>
+    {forecast?<div className="vnextProjectionValues">
+      <div><small>PREÇO DE REFERÊNCIA</small><strong>{price(forecast.referencePrice)}</strong></div>
+      <div><small>PREÇO PROJETADO</small><strong>{price(forecast.projectedPrice)}</strong></div>
+      <div><small>ALVO NO FUTURO</small><strong>{clock(forecast.targetAt)}</strong></div>
+      <div><small>HORIZONTE</small><strong>{expiryLabel(Number(forecast.expirySeconds))}</strong></div>
+    </div>:<p>O motor está aguardando cotações suficientes para calcular um preço futuro. Nenhum cronômetro substitui uma previsão.</p>}
+    {forecast&&<small>Faixa estimada: {price(forecast.expectedLow)} a {price(forecast.expectedHigh)} · Projeção experimental, sem taxa de acerto comprovada.</small>}
+  </div>:null;
   const applyScenario=async()=>{
     const ok=await act('settings',{
       forecastHorizonSeconds:Number(horizon),
@@ -132,12 +168,14 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
     <header className="compactHeader"><div><small>SENTINEL · ANALISTA PC</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">← Início</button></header>
+    {engineSettings}
     <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.displayScenarioStale?'stale-preview':''} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
       <small>{mobileDecisionLabel}</small><strong><span aria-hidden="true">{mobileArrow}</span> {mobileDecisionText}</strong>
       <span className="mobileScenarioContext">{mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?m.displayScenarioStale?'COTAÇÃO ATRASADA · SEM ENTRADA':m.displayScenarioPreliminary?'PROJEÇÃO FUTURA · AGUARDE CONFIRMAÇÃO':'ANALISANDO · AGUARDE CONFIRMAÇÃO':'Nenhuma entrada confirmada'}</span>
       <small className="mobileEntryWindow">{m.entrySide?'Entrada válida por '+m.entryRemaining+'s':m.displayScenarioStale?'Aguardando atualização do preço · não entre':mobileScenarioDirection?'Preparando leitura · aguardando gatilho':m.fresh?'Analisando o preço · aguarde':'Aguardando cotação e análise atuais'}</small>
     </div>
     <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>CENÁRIO PRINCIPAL</small><strong>{mobileScenarioDirection?(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:'CENÁRIO'} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
+    {forecastReceipt}
     {opportunityNotice}
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
@@ -159,36 +197,39 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <span>REVERSÃO · OBSERVAÇÃO</span>
       <strong>{m.alert?'Possível virada de '+(m.alert.side==='CALL'?'alta':'baixa'):m.fresh?'Monitorando reação do preço':'Aguardando dados'}</strong>
     </div>
-    <details className="mobileTechnicalDetails" data-testid="mobile-technical-readings">
+    {!vnext&&<details className="mobileTechnicalDetails" data-testid="mobile-technical-readings">
       <summary><span>LEITURA TÉCNICA · 3 TOTAIS</span><b>{totals.average===null?'—':`Média: alta ${totals.average}% · baixa ${100-totals.average}%`}</b></summary>
       <div className="compactTotals">
         {([['Mercado',totals.market],['Estratégias',totals.strategies],['Presente + futuro',totals.combined]] as const).map(([label,value])=><div key={label}><span>{label}</span><b>{value===null?'—':`Alta ${value}% · baixa ${100-Number(value)}%`}</b></div>)}
       </div>
       <div className="compactAverage" data-testid="compact-three-totals-average"><div><small>MÉDIA DOS 3 TOTAIS · LEITURA</small><strong>{totals.average===null?'—':`Alta ${totals.average}% · baixa ${100-totals.average}%`}</strong><span>Não é ordem de entrada.</span></div><label>Limite visual<input aria-label="Limite visual da média" type="text" inputMode="numeric" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
       {historicalNotice}
-    </details>
+    </details>}
     <div className="compactContext">Previsão {Math.round(Number(s?.settings?.forecastHorizonSeconds||60))}s · Expiração manual {Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)}s</div>
     <footer>Leitura do PC. Cenário e médias não são ordens de entrada.</footer>
   </section>;
   return <section className={`liveScenario ${m.tone}`} aria-label="Cenário ao vivo" data-testid="live-scenario">
     <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.scenarioLabel}</h2><b>{m.state}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>Modo flutuante ↘</button></div></header>
+    {engineSettings}
     <div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'JANELA DE ENTRADA '+m.entryRemaining+'s · confirme a expiração na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>
+    {forecastReceipt}
     {opportunityNotice}
     <div className="liveScenarioMeta"><span>Cotação {price(quoteShown)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
     {historicalNotice}
     {streamBadge}
     
     
-    <div className={`liveReversal liveReversalState ${m.reversalTone} ${m.reversalTesting?'testing':''}`} role={m.alert?'status':undefined} aria-live="polite"><small>◈ SUBANALISTA · AVISO DE REVERSÃO</small><h3><span aria-hidden="true">{reversalArrow}</span> {m.subStatus}</h3>
+    {!vnext&&<div className={`liveReversal liveReversalState ${m.reversalTone} ${m.reversalTesting?'testing':''}`} role={m.alert?'status':undefined} aria-live="polite"><small>◈ SUBANALISTA · AVISO DE REVERSÃO</small><h3><span aria-hidden="true">{reversalArrow}</span> {m.subStatus}</h3>
       {m.alert?<><p>{m.alert.testing?'Reversão em teste':'Reversão com continuidade confirmada'}</p><div className="liveLevels"><span>Gatilho <b>{price(m.alert.trigger)}</b></span><span>Invalida <b>{price(m.alert.invalidation)}</b></span><span>Próximo nível <b>{price(m.alert.target)}</b></span></div></>:<p>{m.fresh?'Acompanhando o preço. Ainda sem reversão confirmada.':'A leitura será retomada quando chegarem dados atuais.'}</p>}
       <small>{m.fresh&&m.evaluationAt?'Última análise '+new Date(s?.lastResult?.analysis?.operationalSignal?.subanalyst?.checkedAt||m.evaluationAt).toLocaleTimeString('pt-BR'):'Sem análise atual'}</small>
-    </div>
-    <p className="mobileTechnicalNote">LEITURAS TÉCNICAS · NÃO SÃO ORDEM DE ENTRADA</p><div className="liveTotals">{[['Total Mercado',totals.market],['Total Estratégias',totals.strategies],['Presente + Futuro',totals.combined]].map(([label,value])=><div key={String(label)}><small>{label}</small><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}</div>
+    </div>}
+    {!vnext&&<><p className="mobileTechnicalNote">LEITURAS TÉCNICAS · NÃO SÃO ORDEM DE ENTRADA</p><div className="liveTotals">{[['Total Mercado',totals.market],['Total Estratégias',totals.strategies],['Presente + Futuro',totals.combined]].map(([label,value])=><div key={String(label)}><small>{label}</small><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}</div>
     <div className="liveAverage"><div><small>MÉDIA DOS 3 TOTAIS</small><h3 className="liveAverageDirection">{totals.averageSide}</h3><h3 className="liveAverageMobile">{totals.average===null?'SEM LEITURA':totals.averageSide==='CALL'?'VIÉS DE ALTA':totals.averageSide==='PUT'?'VIÉS DE BAIXA':'SEM VIÉS DEFINIDO'}</h3><span>{totals.average===null?'—':`CALL ${totals.average}% · PUT ${100-totals.average}%`}</span></div><label>Limite visual %<input aria-label="Limite visual da média" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
+    </>}
     <div className="liveControls"><button className="primary" disabled={disabled||s?.state==='running'||s?.killSwitch||s?.masterFrozen||!!s?.startBlockedReason} onClick={start}>{s?.state==='paused'?'Retomar análise':'Iniciar análise'}</button><button className="secondary" disabled={disabled||s?.state!=='running'} onClick={()=>act('control/pause')}>Pausar análise</button><button className="secondary" disabled={disabled||s?.state==='stopped'} onClick={()=>act('control/stop')}>Parar análise</button></div>
-    <details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Expiração (manual)<select aria-label="Expiração escolhida manualmente" value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Estratégia 1<select aria-label="Estratégia 1" value={strategy1} onChange={e=>{settingsEditing.current=true;setStrategy1(e.target.value)}}>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 2<select aria-label="Estratégia 2" value={strategy2} onChange={e=>{settingsEditing.current=true;setStrategy2(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 3<select aria-label="Estratégia 3" value={strategy3} onChange={e=>{settingsEditing.current=true;setStrategy3(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><p data-testid="strategy-selection-advice" role="note" style={{gridColumn:'1 / -1',fontSize:11,opacity:.85,margin:'4px 0'}}>
+    {!vnext&&<details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Expiração (manual)<select aria-label="Expiração escolhida manualmente" value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Estratégia 1<select aria-label="Estratégia 1" value={strategy1} onChange={e=>{settingsEditing.current=true;setStrategy1(e.target.value)}}>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 2<select aria-label="Estratégia 2" value={strategy2} onChange={e=>{settingsEditing.current=true;setStrategy2(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 3<select aria-label="Estratégia 3" value={strategy3} onChange={e=>{settingsEditing.current=true;setStrategy3(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><p data-testid="strategy-selection-advice" role="note" style={{gridColumn:'1 / -1',fontSize:11,opacity:.85,margin:'4px 0'}}>
       <b>Combinação:</b> {strategyAdvice.message} <span>· {strategyAdvice.recommendation}</span>
-    </p><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>Aplicar</button></div></details>
-    <footer>Escolha até 3 estratégias e toque em “Aplicar” para sincronizar a análise no PC. Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo; o limite visual vale apenas nesta tela.</footer>
+    </p><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>Aplicar</button></div></details>}
+    <footer>{vnext?'Um motor por vez. Prazo escolhido aqui define o preço futuro projetado; confirme a expiração na corretora. Previsão experimental não é sinal de entrada.':'Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo.'}</footer>
   </section>
 }

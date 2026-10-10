@@ -6,13 +6,13 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.58';
-const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-scenario-early-projection-candidate-1010`;
+const AVAILABLE_AGENT_VERSION='13.4.59';
+const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-independent-future-motors-1010`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
   {key:'Broker Connection',label:'Corretora',icon:'⇄',group:'Conexão',title:'Corretora',subtitle:'Conecte IQ Option ou Exnova no computador.'},
-  {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Gerencie as estratégias do motor técnico.'},
+  {key:'Strategies',label:'Motores',icon:'◇',group:'Análise',title:'Motores',subtitle:'Escolha apenas um motor independente de previsão.'},
   {key:'Settings',label:'Conta & Agent',icon:'⚙',group:'Conta',title:'Conta & Agent',subtitle:'Licença, computadores vinculados e segurança.'},
   {key:'Membership',label:'Plano / Renovar',icon:'◈',group:'Conta',title:'Meu plano',subtitle:'Seu acesso e informações de renovação.'},
   {key:'Master Console',label:'Master',icon:'◆',group:'Admin',title:'Master Sentinel',subtitle:'Gerencie clientes, licenças, PCs e suporte remoto.'}
@@ -371,21 +371,28 @@ function Market({s}:{s:Status}){
 }
 
 function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
-  const rows=[
-    ['smart_confluence','Smart Confluence','Combina estrutura, EMA, MACD, padrões de vela, suporte/resistência, Fibonacci e timeframe superior.'],
-    ['price_action','Price Action','Usa estrutura de mercado, pivôs e padrões de vela como engolfo, pin bar, martelo e estrela cadente.'],
-    ['trendline_breakout','Trendline Breakout','Projeta linhas por pivôs e procura rompimento confirmado + reteste.'],
-    ['support_resistance','Suporte & Resistência','Busca reação e rompimentos nas zonas técnicas mais recentes.'],
-    ['fibonacci_retest','Fibonacci Retest','Procura retrações 23,6 / 38,2 / 50 / 61,8 / 78,6 alinhadas à tendência.'],
-    ['trend','Trend Following','Segue EMA, momentum e estrutura de tendência.'],
-    ['mean_reversion','Mean Reversion','Procura extremos de RSI, Estocástico e Bollinger.'],
-    ['breakout','Breakout','Procura rompimento + reteste de suporte/resistência.']
-  ];
-  const set=async(strategy:string)=>{if(busy||s.settings.strategy===strategy)return;await act('settings',{strategy})};
-  const active=rows.find(x=>x[0]===s.settings.strategy);
+  const motors=[
+    ['automatic','Automático Sentinel','Previsão própria baseada no comportamento futuro de preço, sem outra estratégia.'],
+    ['price_action','Price Action','Projeta impulsos e rejeições a partir das sequências anteriores de preço.'],
+    ['support_resistance','Suporte e Resistência','Analisa regiões históricas de preço e possíveis reações futuras.'],
+    ['trend','Trend Following','Calcula continuidade e desaceleração histórica de tendências.'],
+    ['mean_reversion','Mean Reversion','Projeta possível retorno estatístico à faixa média.'],
+    ['breakout','Breakout','Estima a expansão de faixas e pressão de rompimento.'],
+    ['trendline_breakout','Trendline Breakout','Projetos de linhas históricas, desvios e eventuais quebras.'],
+    ['fibonacci_retest','Fibonacci Retest','Analisa swings anteriores e regiões de retração.'],
+    ['smart_confluence','Smart Confluence','Combina indicadores internos deste motor; não vota com outros motores.']
+  ] as const;
+  const selected=String(s.settings?.engine||'automatic');
+  const active=motors.find(x=>x[0]===selected)||motors[0];
   return <section className="card span12 strategySection">
-    <div className="split"><div><div className="eyebrow">MOTOR DE DECISÃO</div><h3>Estratégias técnicas</h3><p className="muted">Escolher uma estratégia altera o motor do Agent. A ativa aparece destacada e o status é confirmado pelo Worker.</p></div><div className="strategyActive"><span>Ativa agora</span><b>{active?.[1]||s.settings.strategy}</b></div></div>
-    <div className="strategygrid">{rows.map(([id,title,desc])=><button disabled={busy} key={id} className={'strategy '+(s.settings.strategy===id?'selected':'')} onClick={()=>set(id)}><div className="strategyHead"><b>{title}</b><span className={'strategyState '+(s.settings.strategy===id?'live':'')}>{s.settings.strategy===id?'ATIVA':'USAR'}</span></div><span className="strategyDesc">{desc}</span><small>{s.settings.strategy===id?'✓ Motor usando esta estratégia':'Clique para aplicar ao Worker'}</small></button>)}</div>
+    <div className="split"><div><div className="eyebrow">NOVO MOTOR INDEPENDENTE</div><h3>Escolha um motor para o cenário</h3><p className="muted">Somente o motor escolhido calcula a previsão principal, respeitando a expiração selecionada. Sem votação entre estratégias.</p></div><div className="strategyActive"><span>Motor em uso</span><b>{active[1]}</b></div></div>
+    <label className="vnextStrategyPicker">Motor responsável
+      <select disabled={busy} aria-label="Selecionar motor independente" value={selected} onChange={e=>void act('settings',{engine:e.target.value,strategy2:'none',strategy3:'none'})}>
+        {motors.map(([id,title])=><option value={id} key={id}>{title}</option>)}
+      </select>
+    </label>
+    <p className="muted" style={{marginTop:12}}>{active[2]}</p>
+    <div className="demoDisclaimer">As projeções são experimentais e precisam ser verificadas em DEMO. Confiança de modelo não é porcentagem comprovada de acertos; nenhuma ordem é enviada automaticamente.</div>
   </section>
 }
 

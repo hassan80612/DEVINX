@@ -31,7 +31,7 @@ const recordMarketJournal=process.env.SENTINEL_MARKET_JOURNAL==='1';
 const marketJournal=new MarketJournal({directory:resolve(dirname(STATE_FILE),'market-history'),release:{version:VERSION,build:BUILD,runtime:RUNTIME_OPTIONS}});
 let journalAnalysisAt=0;
 if(recordMarketJournal)setInterval(()=>marketJournal.flush(),2000).unref();
-const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
+const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,enableVNext:true,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
 const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({baseUrl:process.env.SENTINEL_BROWSER_DRIVER_URL,token:process.env.SENTINEL_BROWSER_DRIVER_TOKEN||''}):new LocalPlaywrightDriver({dataDir:process.env.SENTINEL_BROWSER_PROFILE_DIR||'worker/data/browser-profiles'});
 const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data));
 const brokers={iq_option:new IqOptionAdapter({driver}),exnova:new ExnovaAdapter({driver})};
@@ -142,15 +142,20 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
-    if(key==='strategy'||key==='strategy2'||key==='strategy3'){
+    if(key==='engine'){
+      const allowed=['automatic','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
+      if(!allowed.includes(String(value)))throw new Error('invalid_engine');
+      runtime.patchSettings({engine:String(value),strategy2:'none',strategy3:'none'},'overlay');
+      runtime.requestImmediateEvaluation?.();
+    }else if(key==='strategy'||key==='strategy2'||key==='strategy3'){
       const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
       const optional=key!=='strategy';
       if(!(optional&&String(value)==='none')&&!allowed.includes(String(value)))throw new Error('invalid_strategy');
       runtime.patchSettings({[key]:String(value)},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='duration'){
-      const n=Number(value);if(![30000,60000,120000,300000,600000,900000].includes(n))throw new Error('invalid_duration');
-      runtime.patchSettings({orderDurationMs:n},'overlay');
+      const n=Number(value);if(![5000,10000,15000,30000,45000,60000,120000,180000,300000,600000,900000,3600000].includes(n))throw new Error('invalid_duration');
+      runtime.patchSettings({orderDurationMs:n,forecastHorizonSeconds:Math.round(n/1000)},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='forecastHorizon'){
       const n=Math.round(Number(value));if(![30,60,120,300,600,900,3600].includes(n))throw new Error('invalid_forecast_horizon');
@@ -257,7 +262,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     // Match the strategy's quote-freshness gate. A new historical candle must
     // never make an old live quote appear current to the trader.
     const liveTs=Number(view.liveBroker?.lastQuoteAt||view.feed?.quoteTs||view.liveBroker?.lastCandleAt||0);
-    const forecastSeconds=Math.max(30,Number(view.settings?.forecastHorizonSeconds||Math.round(Number(view.settings?.orderDurationMs||60000)/1000)));
+    const forecastSeconds=view.settings?.engine?Math.max(5,Number(view.settings?.orderDurationMs||60000)/1000):Math.max(30,Number(view.settings?.forecastHorizonSeconds||Math.round(Number(view.settings?.orderDurationMs||60000)/1000)));
     const configuredFreshnessMs=Math.max(500,Number(view.settings?.risk?.maxFeedLatencyMs||2500));
     const effectiveQuoteFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshnessMs,1500):forecastSeconds<=60?Math.min(configuredFreshnessMs,2000):configuredFreshnessMs;
     const quoteStale=!(liveTs>0)||Date.now()-liveTs>effectiveQuoteFreshnessMs;
@@ -275,7 +280,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       screenCandidateSymbol:view.liveBroker?.screenCandidateSymbol||null,
       marketStatus:view.liveBroker?.marketStatus||null,
       marketReason:view.liveBroker?.marketReason||null,
-      strategy:view.settings?.strategy||'smart_confluence',
+      engine:view.settings?.engine||null,
+       vnext:a.vnext||null,
+       strategy:view.settings?.strategy||'smart_confluence',
       strategy2:view.settings?.strategy2||'none',
       strategy3:view.settings?.strategy3||'none',
       strategyCards:a.strategyCards||[],

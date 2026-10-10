@@ -19,7 +19,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   // freshness. This is presentation parity with the existing Agent 2.5s gate.
   const quoteFresh=quoteAt>0&&now-quoteAt<=2500&&now-quoteAt>=-2500;
   const fresh=matchingMarket&&feedValidated&&quoteFresh&&evaluationAt>0&&now-evaluationAt<=10000;
-  const horizon=Number(s?.settings?.forecastHorizonSeconds||s?.settings?.orderDurationMs/1000||60);
+  const horizon=s?.settings?.engine?Number(s?.settings?.orderDurationMs||60000)/1000:Number(s?.settings?.forecastHorizonSeconds||s?.settings?.orderDurationMs/1000||60);
   const forecast=a.entryPlanner?.horizons?.[String(horizon)];
   const view:any=scenarioViewFromRuntime({operational:op,asset,horizonSeconds:horizon,durationMs:Number(s?.settings?.orderDurationMs||60000),forecast,now} as any);
   const sub=op.subanalyst||{},alert=fresh&&sub.mode==='reversal-alert'&&sub.active===true?sub.alert:null;
@@ -39,6 +39,8 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   // asset-matched main scenario. Never reuse this state for entry permission.
   // Entry remains gated by fresh (2.5s) and runtimeView.canEnter.
   const scenario=op.scenario||null;
+  const vnext=a?.vnext||null;
+  const vnextReceipt=matchingMarket&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
   const scenarioDeadline=Number(scenario?.deadline||0);
   const scenarioOrigin=Number(scenario?.createdAt||0);
   const scenarioContextOk=matchingMarket&&feedValidated&&
@@ -104,6 +106,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextStatus:vnext?.computedStatus||null,vnextVerified:vnext?.outcomesVerified||0,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
     entrySide,entryRemaining,opportunityEnded,lastSignal,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,

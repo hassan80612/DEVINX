@@ -10,7 +10,16 @@ export async function engineCycle({feed,broker,settings,state,balanceOverride=nu
   const forecastSeconds=Math.max(30,Number(settings.forecastHorizonSeconds||Math.round(Number(settings.orderDurationMs||60000)/1000)));
   const configuredFreshness=Math.max(500,Number(settings.risk.maxFeedLatencyMs||2500));
   const effectiveFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshness,1500):forecastSeconds<=60?Math.min(configuredFreshness,2000):configuredFreshness;
-  let analysis=analyzeMarket({
+  // VNext deliberately skips the whole legacy candle / combined-strategy
+  // analysis. The selected independent price-history engine owns its own
+  // forecast inside the signalGate; old calculations are NOT inputs or
+  // hidden vetoes. Baseline runtime is unchanged without settings.engine.
+  let analysis=settings.engine?{
+    asset:settings.asset,side:'WAIT',confidence:0,
+    metrics:{last:Number(snap.price||0),strategy:String(settings.engine)},
+    reasons:['Processando previsão futura do motor selecionado.'],
+    entryPlanner:{modelVersion:'vnext-single-owner-v1',horizons:{}}
+  }:analyzeMarket({
     candles:snap.candles,quoteHistory:snap.quoteHistory||[],strategy:settings.strategy,minConfidence:settings.risk.minConfidence,
     durationMs:settings.orderDurationMs,forecastHorizonSeconds:forecastSeconds,freshnessMs:effectiveFreshnessMs,quoteTs:snap.quoteTs,now
   });
