@@ -12,7 +12,7 @@ export function wilsonInterval(wins, samples, z = 1.96) {
 }
 
 export function assessIndependentSignalHistory({
-  outcomes = [], asset, provider, durationMs, side, payout = null,
+  outcomes = [], asset, provider, durationMs, side, profile = null, payout = null,
   minSamples = 60, maxSamples = 240
 } = {}) {
   const targetAsset = String(asset || '').toUpperCase();
@@ -24,6 +24,7 @@ export function assessIndependentSignalHistory({
     row?.settlementQuality === 'exact' &&
     String(row.asset || '').toUpperCase() === targetAsset &&
     String(row.provider || '').toLowerCase() === targetProvider &&
+    (profile == null || String(row.qualityProfile || '') === String(profile)) &&
     Number(row.settleDurationMs ?? row.durationMs) === Number(durationMs) &&
     (row.side === 'BUY' ? 'CALL' : row.side === 'SELL' ? 'PUT' : '') === targetSide &&
     (row.won === true || row.won === false)
@@ -33,7 +34,8 @@ export function assessIndependentSignalHistory({
   const losses = samples - wins;
   const interval = wilsonInterval(wins, samples);
   // Unknown payout must not be treated as zero-cost or as a 50% break-even market.
-  const safePayout = Number(payout);
+  const payoutNumber = Number(payout);
+  const safePayout = payoutNumber > 1 && payoutNumber <= 100 ? payoutNumber / 100 : payoutNumber;
   const economicBreakEven = payout != null && Number.isFinite(safePayout) &&
     safePayout > 0 && safePayout <= 1 ? 1 / (1 + safePayout) : 0.55;
   // Do not block from one loss or an arbitrary target win rate. Stop only
@@ -44,6 +46,6 @@ export function assessIndependentSignalHistory({
     samples, wins, losses, winRate: samples ? wins / samples : null,
     lower95: interval.lower, upper95: interval.upper, economicBreakEven,
     minSamples, blocked, source: 'local-quote-settled-forward-signals',
-    probabilityValidated: false, epoch: ENTRY_QUALITY_EPOCH
+    probabilityValidated: false, epoch: ENTRY_QUALITY_EPOCH, profile
   };
 }
