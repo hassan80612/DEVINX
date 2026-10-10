@@ -1329,3 +1329,14 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenarioCompact .vnextProjectionValues strong{font-size:15px}
 .liveScenarioCompact .vnextFutureReceipt{margin:7px 0}
 @media(max-width:420px){.vnextFutureReceipt{padding:10px}.vnextFutureDirection{flex-direction:column;align-items:flex-start}.vnextProjectionBias{padding:7px}}
+
+/* Three original observational cards are optional on the phone; not additional engines. */
+.vnextMobileReadings{margin:8px 0;border:1px solid #537867;border-radius:10px;padding:8px 10px;background:#0c2925}
+.vnextMobileReadings summary{font-size:11px;font-weight:850;cursor:pointer;color:#d9dba7;line-height:1.5}
+.vnextMobileReadingsGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}
+.vnextMobileReadingsGrid>div{display:grid;gap:4px;padding:7px;background:#ffffff08;border-radius:8px;min-width:0}
+.vnextMobileReadingsGrid small{font-size:9px;font-weight:850;color:#e3d59b}
+.vnextMobileReadingsGrid strong{font-size:13px;color:#e8f8ef;overflow-wrap:anywhere}
+.vnextMobileReadingsGrid span{font-size:10px;color:#c8d9d2;line-height:1.4}
+.vnextMobileReadings>small{display:block;margin-top:7px;color:#c4dacb;font-size:9px}
+@media(max-width:390px){.vnextMobileReadingsGrid{grid-template-columns:1fr;gap:5px}.vnextMobileReadingsGrid>div{grid-template-columns:1fr auto;align-items:center}.vnextMobileReadingsGrid small{grid-column:1/-1}}
