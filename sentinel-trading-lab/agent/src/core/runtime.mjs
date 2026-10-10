@@ -937,7 +937,7 @@ export class DemoTradingRuntime{
       this.vnextOutcomes=outcomes.slice(-300);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
-        vnext:{...model,evaluation:undefined,nowIndication,targetAnchor,
+        vnext:{...model,evaluation:undefined,targetAnchor,nowIndication,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
         entryPlanner:{modelVersion:model.modelVersion,
