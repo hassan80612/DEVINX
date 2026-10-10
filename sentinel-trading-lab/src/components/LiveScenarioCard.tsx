@@ -141,12 +141,12 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {opportunityNotice}
     {lastSignal?<div className="mobilePriceComparison" data-testid="mobile-price-comparison">
       <div><small>ÚLTIMO SINAL · {lastSignal.side}</small><strong>{price(lastSignal.price)}</strong></div>
-      <div><small>COTAÇÃO AGORA</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
+      <div><small>COTAÇÃO DO ATIVO</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
       <div className={`mobilePriceChange ${entryFavourable?'favourable':entryAgainst?'against':'neutral'}`}>
         <span>{trendLabel}</span><b>{priceChange}</b>
       </div>
     </div>:<div className="mobileCurrentQuoteOnly" data-testid="mobile-current-quote">
-      <div><small>COTAÇÃO AGORA</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
+      <div><small>COTAÇÃO DO ATIVO</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
       <span>{m.quoteFresh?'Cotação recebida agora':showLastQuote?'Última cotação · '+seconds(m.quoteAge)+' atrás':'Sem cotação recente'}</span>
     </div>}
     <div className="mobileBotControls" data-testid="compact-bot-controls">
