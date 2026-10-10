@@ -53,7 +53,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const decisionLabel=m.entrySide?'ENTRADA AGORA':liveDirection?'CENÁRIO PRINCIPAL':'AGUARDANDO OPORTUNIDADE';
   const decisionArrow=liveDirection==='CALL'?'↑':liveDirection==='PUT'?'↓':'◇';
   const decisionText=liveDirection||'SEM ENTRADA';
-  const directionClass=liveDirection==='CALL'?'call':liveDirection==='PUT'?'put':'neutral';
+  // Large green/red is reserved for an actionable entry, not a forecast.
+  const directionClass=m.entrySide==='CALL'?'call':m.entrySide==='PUT'?'put':'neutral';
   const reversalArrow=m.alert?.side==='CALL'?'↑':m.alert?.side==='PUT'?'↓':'◇';
   useEffect(()=>{
     if(m.fresh&&m.market!==null&&m.strategies!==null&&m.combined!==null&&m.average!==null){
