@@ -7,7 +7,7 @@ const time=Date.UTC(2026,9,10,12,0,12);
 function scenario(side='CALL',broken=true,strong=false){
   const isCall=side==='CALL',dir=isCall?1:-1;
   const prior=[100,100.01,100.02,100.025].map((value,i)=>({ts:time-6500+i*900,price:100+dir*(value-100)}));
-  const current=[100.005,100.015,broken?100.03:100.019].map((value,i)=>({ts:time-1100+i*550,price:100+dir*(value-100)}));
+  const current=[100.005,100.015,broken?100.03:100.019,broken?100.034:100.018].map((value,i)=>({ts:time-1200+i*400,price:100+dir*(value-100)}));
   const quotes=[...prior,...current],latest=quotes.at(-1);
   return {
     snap:{quoteTs:latest.ts,price:latest.price,quoteHistory:quotes},
