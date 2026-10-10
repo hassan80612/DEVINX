@@ -1517,8 +1517,12 @@ export class LocalPlaywrightDriver{
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="padding:15px 14px;margin-top:10px;border-radius:13px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${d.vnext?.receipt?.side==='CALL'?callTone:d.vnext?.receipt?.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow}">
               <div style="font-size:10px;font-weight:850;letter-spacing:.09em;color:${goldSoft}">PROJEÇÃO FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
-              <div data-sentinel-scenario-action style="margin:7px 0;font-size:clamp(20px,3vw,29px);font-weight:900;color:${d.vnext?.receipt?.side==='CALL'?callTone:d.vnext?.receipt?.side==='PUT'?putTone:ink}">${d.vnext?.receipt?.side==='CALL'?'↑ CALL FUTURO':d.vnext?.receipt?.side==='PUT'?'↓ PUT FUTURO':'AGUARDANDO PREVISÃO'}</div>
-              <div style="font-size:11px;color:${ink};line-height:1.45">${d.vnext?.receipt?'Preço estimado para '+esc(new Date(Number(d.vnext.receipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'Aguardando histórico suficiente e cotação válida'}</div>
+              <div data-sentinel-scenario-action style="margin:7px 0;font-size:clamp(20px,3vw,29px);font-weight:900;color:${d.vnext?.receipt?.side==='CALL'?callTone:d.vnext?.receipt?.side==='PUT'?putTone:ink}">${d.vnext?.receipt?.side==='CALL'?'↑ CALL PROJETADO':d.vnext?.receipt?.side==='PUT'?'↓ PUT PROJETADO':'AGUARDANDO PREVISÃO'}</div>
+              <div style="font-size:11px;color:${ink};line-height:1.45">${d.vnext?.receipt?'Emitida '+esc(new Date(Number(d.vnext.receipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false}))+' · Alvo '+esc(new Date(Number(d.vnext.receipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'Aguardando histórico suficiente e cotação válida'} · ${duration<60000?duration/1000+'s':duration/60000+'min'}</div>
+              <div style="display:flex;gap:12px;align-items:center;margin-top:7px;font-size:11px;font-weight:850">
+                <span style="color:${callTone}">CALL projetado: ${d.vnext?.cards?.[1]&&Number.isFinite(Number(d.vnext.cards[1].callPct))&&d.vnext?.receipt?.engineId===d.engine?Math.round(Number(d.vnext.cards[1].callPct))+'%':'—'}</span>
+                <span style="color:${putTone}">PUT projetado: ${d.vnext?.cards?.[1]&&Number.isFinite(Number(d.vnext.cards[1].putPct))&&d.vnext?.receipt?.engineId===d.engine?Math.round(Number(d.vnext.cards[1].putPct))+'%':'—'}</span>
+              </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:13px">
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO ATUAL</small><b style="display:block;margin-top:4px;font-size:16px;color:${ink}">${price(d.vnext?.receipt?.referencePrice??d.price)}</b></div>
                 <div style="padding:8px;background:rgba(0,0,0,.12);border-radius:8px"><small style="font-size:9px;color:${muted}">PREÇO PROJETADO</small><b style="display:block;margin-top:4px;font-size:16px;color:${goldSoft}">${price(d.vnext?.receipt?.projectedPrice)}</b></div>
@@ -1528,28 +1532,35 @@ export class LocalPlaywrightDriver{
               <div style="font-size:10px;color:${muted};line-height:1.45;margin-top:10px">Faixa futura: ${price(d.vnext?.receipt?.expectedLow)} até ${price(d.vnext?.receipt?.expectedHigh)} · Cálculo: ${d.vnext?.receipt&&d.vnext?.engineId===d.engine?esc(new Date(d.vnext.receipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'} · ${n(d.vnext?.outcomesVerified,0)} resultados observados neste prazo.</div>
               <div style="padding-top:8px;margin-top:9px;border-top:1px solid ${panelBorder};font-size:10px;color:${goldSoft};font-weight:750">PREVISÃO EXPERIMENTAL · NÃO É CALL/PUT AGORA · nenhuma ordem automática</div>
             </section>
-            ${d.vnext?.nowIndication&&d.vnext?.nowIndication.engineId===d.engine&&liveNow&&Number(d.vnext.nowIndication.expiresAt)>Date.now()?
-              '<div data-sentinel-vnext-now style="padding:9px 11px;margin:9px 0;border:1px solid '+panelBorder+';border-radius:10px;background:'+fieldBg+';display:flex;justify-content:space-between;align-items:baseline;gap:7px;flex-wrap:wrap">'+
-                '<div><small style="color:'+muted+';font-size:9px">INDICAÇÃO NESTE INSTANTE · EM TESTE</small>'+
-                '<b style="display:block;color:'+(d.vnext.nowIndication.side==='CALL'?callTone:putTone)+';font-size:18px">'+esc(d.vnext.nowIndication.side)+' AGORA</b></div>'+
-                '<div style="color:'+muted+';font-size:10px">Motor '+esc(d.engine)+' · '+esc(new Date(d.vnext.nowIndication.issuedAt).toLocaleTimeString('pt-BR',{hour12:false}))+'<br>Não é entrada confirmada</div>'+
-              '</div>':'<div style="padding:5px;color:'+muted+';font-size:10px">Aguardando direção atual do motor.</div>'}
-            <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-top:11px;margin-bottom:7px"><b style="font-size:10px;letter-spacing:.06em;color:${goldSoft}">LEITURAS CALL / PUT · AO VIVO</b><small style="color:${muted};font-size:9px">Pressão técnica, NÃO taxa de acerto</small></div>
+
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · CALL / PUT</b><small style="font-size:9px;color:${muted}">Índices direcionais · não são taxas de acerto</small></div>
+            ${(()=>{
+              const cards=Array.isArray(d.vnext?.cards)?d.vnext.cards:[];
+              const valid=cards.length===3&&cards.every(c=>Number.isFinite(Number(c?.callPct))&&Number.isFinite(Number(c?.putPct)));
+              const fresh=valid&&liveNow&&d.vnext?.engineId===d.engine&&d.vnext?.receipt?.engineId===d.engine&&Math.round(Number(d.vnext?.receipt?.expirySeconds)*1000)===duration;
+              const avg=fresh?Math.round(cards.reduce((sum,c)=>sum+Number(c.callPct),0)/3):null;
+              const avgPut=avg==null?null:100-avg;
+              const side=avg==null?'AGUARDAR':avg>51?'CALL':avg<49?'PUT':'NEUTRO';
+              const color=avg==null?muted:avg>51?callTone:avg<49?putTone:ink;
+              return '<div data-sentinel-summary="average-total" style="padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap;border-radius:11px;border:1px solid '+panelBorder+';background:'+panelBg+';box-shadow:'+panelShadow+'">'+
+                '<div style="display:grid;gap:4px"><b style="font-size:10px;color:'+goldSoft+'">MÉDIA DOS 3 TOTAIS</b><strong style="font-size:15px;color:'+color+'">'+side+'</strong></div>'+
+                '<div style="display:flex;gap:10px;align-items:center;font-size:12px;font-weight:850"><span style="color:'+callTone+'">CALL '+(avg==null?'—':avg+'%')+'</span><span style="color:'+putTone+'">PUT '+(avgPut==null?'—':avgPut+'%')+'</span></div>'+
+              '</div>';
+            })()}
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
               ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
-                const valid=c&&Number.isFinite(Number(c.callPct))&&Number.isFinite(Number(c.putPct));
-                const liveCard=valid&&liveNow&&d.vnext?.engineId===d.engine;
-                const call=liveCard?Math.round(Number(c.callPct)):null;
-                const put=liveCard?Math.round(Number(c.putPct)):null;
-                return '<div style="border:1px solid '+panelBorder+';background:'+fieldBg+';border-radius:10px;padding:9px 8px;min-width:0">'+
-                  '<div style="color:'+goldSoft+';font-size:9px;font-weight:800;letter-spacing:.035em">'+esc(c.label||'LEITURA')+'</div>'+
-                  '<strong style="display:block;font-size:15px;margin:6px 0;color:'+(liveCard&&call>put?callTone:liveCard&&put>call?putTone:ink)+'">'+(liveCard?esc(c.side):'AGUARDANDO')+'</strong>'+
-                  '<div style="font-size:10px;font-weight:750;line-height:1.6;color:'+callTone+'">CALL '+(call===null?'—':call+'%')+'</div>'+
-                  '<div style="font-size:10px;font-weight:750;line-height:1.6;color:'+putTone+'">PUT '+(put===null?'—':put+'%')+'</div>'+
-                  '<div style="font-size:9px;color:'+muted+';margin-top:4px">'+esc(c.hint||'')+'</div></div>';
+                const value=Number(c?.callPct),other=Number(c?.putPct);
+                const fresh=Number.isFinite(value)&&Number.isFinite(other)&&liveNow&&d.vnext?.engineId===d.engine&&d.vnext?.receipt?.engineId===d.engine&&Math.round(Number(d.vnext?.receipt?.expirySeconds)*1000)===duration;
+                const side=fresh?esc(c.side):'AGUARDAR';
+                const color=fresh&&value>other?callTone:fresh&&other>value?putTone:ink;
+                return '<div data-sentinel-summary="'+esc(c.id||'')+'" style="padding:10px 9px;border:1px solid '+panelBorder+';background:'+panelBg+';border-radius:11px;min-width:0;box-shadow:'+panelShadow+'">'+
+                  '<div style="min-height:27px;font-size:10px;line-height:1.3;font-weight:800;color:'+ink+'">'+esc(c.label||'TOTAL')+'</div>'+
+                  '<b style="display:block;margin:6px 0;font-size:14px;color:'+color+'">'+side+'</b>'+
+                  '<div style="display:flex;flex-wrap:wrap;gap:5px;font-size:10px;font-weight:800"><span style="color:'+callTone+'">CALL '+(fresh?Math.round(value)+'%':'—')+'</span><span style="color:'+putTone+'">PUT '+(fresh?Math.round(other)+'%':'—')+'</span></div>'+
+                  '<small style="display:block;margin-top:5px;color:'+muted+';line-height:1.35;font-size:9px">'+esc(c.hint||'')+'</small></div>';
               }).join('')}
             </div>
-            <div style="font-size:10px;color:${muted};margin-top:5px">Os 3 cards são somente indicadores visuais. Não votam nem interferem na decisão do motor selecionado.</div>
+            <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">Mercado atual + motor selecionado + total combinado. Apenas leituras visuais, sem votação nem bloqueio de entrada.</small>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
               <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:linear-gradient(180deg,#d8bb72,#b48d39);font-size:11px;font-weight:900;color:#1c1912;cursor:pointer">▶ Iniciar</button>
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">Ⅱ Pausar</button>
