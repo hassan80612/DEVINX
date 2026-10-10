@@ -1,0 +1,20 @@
+name: Sentinel VNext single-engine contract
+on:
+  push:
+    branches: [sentinel-engine-independence-1359-20261010]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  single-engine-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Independent engine catalog and compatibility contract
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/scenario-engine-catalog.mjs
+          node --test tests/sentinel-single-engine-contract-1359.test.mjs
