@@ -1,10 +1,12 @@
 {
-  "version": "13.4.58",
-  "build": "13.4.58-scenario-early-projection-candidate-1010",
+  "version": "13.4.59",
+  "build": "13.4.59-independent-future-motors-1010",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
-    "subanalystPolicy": "persistent-reversal-alert-v1"
+    "subanalystPolicy": "persistent-reversal-alert-v1",
+    "engineArchitecture": "single-independent-user-expiry-vnext",
+    "modelValidation": "research-preview-manual-only"
   }
 }
