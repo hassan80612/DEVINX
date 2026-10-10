@@ -52,11 +52,25 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     // the trade gate above still requires <=2.5s quotes.
     quoteAt>0&&now-quoteAt>=-2500&&
     evaluationAt>=scenarioOrigin-2500;
-  const displayScenarioSide=side||(scenarioContextOk?String(scenario.side):null);
+  // A forecast before confirmation is information, not a scenario/entry.
+  // Preserve a real scenario first, even if a new raw projection disagrees.
+  const preliminary=op.scenarioProjection||null;
+  const preliminaryMatches=matchingMarket&&feedValidated&&
+    Number(op.forecastHorizonSeconds)===horizon&&
+    Number(op.durationMs)===Number(s?.settings?.orderDurationMs||60000)&&
+    ['CALL','PUT'].includes(String(preliminary?.side||''))&&
+    Number(preliminary?.horizonSeconds)===horizon&&
+    Number(preliminary?.asOf)>0&&Number(preliminary.asOf)<=now+2500&&
+    evaluationAt>=Number(preliminary.asOf)-2500;
+  const displayScenarioPreliminary=!scenarioContextOk&&!scenario&&preliminaryMatches;
+  const displayScenarioSide=side||(scenarioContextOk?String(scenario.side):
+    displayScenarioPreliminary?String(preliminary.side):null);
   const displayScenarioStale=!fresh&&!!displayScenarioSide;
-  const displayScenarioRemaining=displayScenarioSide&&scenarioDeadline>now?
+  const displayScenarioRemaining=!displayScenarioPreliminary&&displayScenarioSide&&scenarioDeadline>now?
     Math.max(0,Math.ceil((scenarioDeadline-now)/1000)):null;
-  const displayScenarioState=displayScenarioStale?'AGUARDANDO COTAÇÃO':state;
+  const displayScenarioState=displayScenarioPreliminary?
+    (displayScenarioStale?'PROJEÇÃO · COTAÇÃO ATRASADA':'PROJEÇÃO EM ANÁLISE'):
+    displayScenarioStale?'AGUARDANDO COTAÇÃO':state;
   const terminalStates=['INVALIDADO','JANELA ENCERRADA','JANELA PERDIDA','OPORTUNIDADE CANCELADA','OPORTUNIDADE CONSUMIDA','OPORTUNIDADE PERDIDA'];
   // UI-only classification: never present an expired/invalidated direction as an active setup.
   const scenarioInactive=fresh&&(view.closed===true||terminalStates.includes(String(view.state||'')));
@@ -90,7 +104,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
-    displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,
+    displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
     entrySide,entryRemaining,opportunityEnded,lastSignal,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
     remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,
