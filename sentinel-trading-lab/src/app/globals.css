@@ -939,3 +939,47 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
  .liveScenario .liveAverage{border:2px solid #d7bc78;border-radius:13px;background:linear-gradient(140deg,#27463e,#18322f);box-shadow:0 0 0 3px #d7bd6e13}
  .liveScenario .liveAverage h3{font-size:23px}
 }
+
+
+/* Calm operational hierarchy: all countdowns and notices reserve footprint. */
+.liveScenario .liveOpportunityState{display:flex;align-items:center;gap:8px;height:36px;min-height:36px;max-height:36px;margin:8px 0;padding:7px 10px;border:1px solid #64937d55;border-radius:8px;background:#0b2c28;color:#bcd7c9;box-sizing:border-box;font-size:11px;font-weight:750;overflow:hidden}
+.liveScenario .liveOpportunityState.ended{background:#3e331f;border-color:#d1af6e;color:#f1dbad}
+.liveScenario .liveOpportunityState>span:last-child{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.liveScenario .liveOpportunityState>span:first-child{font-size:13px;flex-shrink:0}
+.liveScenarioCompact .liveDecision{min-height:135px;height:135px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:12px 14px!important;margin:9px 0 8px!important}
+.liveScenarioCompact .liveDecision strong{font-size:clamp(27px,7vw,36px)!important;line-height:1.1;white-space:nowrap}
+.liveScenarioCompact .liveDecision .mobileScenarioContext{font-size:10px;color:#d6e4df;font-weight:750;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.liveScenarioCompact .liveDecision .mobileEntryWindow{font-size:10px;color:#c8dcd1;font-weight:750;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.liveScenarioCompact .compactScenario{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:9px;min-height:66px;height:66px;padding:7px 9px;border-radius:10px;background:#0a2624;border:1px solid #527a6b55;box-sizing:border-box;overflow:hidden}
+.liveScenarioCompact .compactScenario>div:first-child{display:flex;flex-direction:column;gap:4px;min-width:0;justify-content:center;overflow:hidden}
+.liveScenarioCompact .compactScenario strong{font-size:12px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.liveScenarioCompact .compactScenario .liveScenarioCountdown{display:flex;align-items:center;flex-direction:column;justify-content:center;margin:0!important;min-width:105px;width:105px;height:48px;padding:5px 7px!important;border-radius:8px}
+.liveScenarioCompact .compactScenario .liveScenarioCountdown small{font-size:8px;letter-spacing:0}
+.liveScenarioCompact .compactScenario .liveScenarioCountdown strong{font-size:22px!important;color:#ffdc95;line-height:1.1}
+.liveScenarioCompact .mobilePriceComparison{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;background:linear-gradient(130deg,#0c3431,#092522);border:1px solid #5b9e88;border-radius:10px;padding:9px;margin-top:8px;min-height:120px;box-sizing:border-box}
+.liveScenarioCompact .mobilePriceComparison>div:not(.mobilePriceChange){display:flex;flex-direction:column;gap:4px;min-width:0;padding:7px 8px;background:#0002;border-radius:8px}
+.liveScenarioCompact .mobilePriceComparison small{font-size:9px;color:#cbded4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenarioCompact .mobilePriceComparison strong{font-size:clamp(17px,4.4vw,24px);color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenarioCompact .mobilePriceChange{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;font-weight:850;padding:1px 6px;min-height:20px}
+.liveScenarioCompact .mobilePriceChange span{color:#bfd9cd}
+.liveScenarioCompact .mobilePriceChange b{font-size:13px;color:#e5f6ed;font-variant-numeric:tabular-nums}
+.liveScenarioCompact .mobilePriceChange.favourable b{color:#78f6b8}
+.liveScenarioCompact .mobilePriceChange.against b{color:#ff99a9}
+.liveScenarioCompact .mobileMonitorState{height:18px;min-height:18px;margin:4px 0;color:#c0d9cd;font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenarioCompact .mobileReversalObservation{height:55px;min-height:55px;margin:7px 0;padding:8px 10px;border:1px solid #618b795c;border-radius:9px;background:#0b2524;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.liveScenarioCompact .mobileReversalObservation span{font-size:9px;font-weight:850;color:#d9c88d;letter-spacing:.06em}
+.liveScenarioCompact .mobileReversalObservation strong{font-size:12px;font-weight:800;color:#f1f5f1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenarioCompact .mobileTechnicalDetails{margin:7px 0;border:1px solid #7298866e;border-radius:10px;background:#102e2b;overflow:hidden}
+.liveScenarioCompact .mobileTechnicalDetails>summary{display:flex;flex-direction:column;gap:3px;padding:12px;min-height:59px;box-sizing:border-box;cursor:pointer;list-style-position:inside}
+.liveScenarioCompact .mobileTechnicalDetails>summary span{font-size:10px;color:#eccf8a;font-weight:900;letter-spacing:.05em}
+.liveScenarioCompact .mobileTechnicalDetails>summary b{font-size:12px;color:#d7e9df;font-weight:800}
+.liveScenarioCompact .mobileTechnicalDetails .compactTotals,.liveScenarioCompact .mobileTechnicalDetails .compactAverage{margin:4px 9px 8px}
+.liveScenarioCompact .mobileTechnicalDetails .compactAverage{border:1px solid #886b3f!important;box-shadow:none!important;padding:8px!important;background:#102c28!important}
+.liveScenarioCompact .mobileTechnicalDetails .compactAverage strong{font-size:12px;color:#dceadd;font-weight:850}
+.liveScenarioCompact .mobileTechnicalDetails .compactAverage span{font-size:10px}
+.liveScenario:not(.liveScenarioCompact) .liveDecision{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,145px);gap:8px 14px;align-items:center;min-height:152px;box-sizing:border-box}
+.liveScenario:not(.liveScenarioCompact) .liveDecision>small{grid-column:1/-1}
+.liveScenario:not(.liveScenarioCompact) .liveDecision>strong{grid-column:1;min-width:0}
+.liveScenario:not(.liveScenarioCompact) .liveDecision>span:last-of-type{grid-column:1/-1}
+.liveScenario:not(.liveScenarioCompact) .liveDecision .liveScenarioCountdown{grid-column:2;grid-row:2;align-self:center;margin:0}
+@media(max-width:380px){.liveScenarioCompact .mobilePriceComparison strong{font-size:17px}.liveScenarioCompact .compactScenario .liveScenarioCountdown{width:97px;min-width:97px}.liveScenarioCompact .liveDecision strong{font-size:29px!important}}
