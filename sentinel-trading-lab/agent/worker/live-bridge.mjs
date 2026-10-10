@@ -33,14 +33,20 @@ export function analystSnapshot(runtimeStatus,live){
   const compactVnext=runtimeStatus?.settings?.engine?{
     engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     computedStatus:vnext.computedStatus||'unavailable',
+    forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
+    historicalComparisons:Number(vnext.historicalComparisons||0),
     outcomesVerified:Number(vnext.outcomesVerified||0),
     receipt,
-    nowIndication:vnext.nowIndication?take(vnext.nowIndication,[
-      'side','engineId','issuedAt','referencePrice','projectedPrice',
-      'expirySeconds','expiresAt','verified','actionable']):null,
-    cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3).map(c=>take(c,['id','label','side','strength','hint'])):[]
+    targetAnchor:vnext.targetAnchor?take(vnext.targetAnchor,[
+      'engineId','asset','side','issuedAt','expirySeconds','targetAt',
+      'referencePrice','projectedPrice'
+    ]):null,
+    projection:vnext.projection?take(vnext.projection,['side','callPct','putPct']):null,
+    targetProjection:vnext.targetProjection?take(vnext.targetProjection,['side','callPct','putPct']):null,
+    cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
+      .map(c=>take(c,['id','side','callPct','putPct'])):[]
   }:null;
-  if(op.scenarioProjection)operational.scenarioProjection=take(op.scenarioProjection,[
+  if(!compactVnext&&op.scenarioProjection)operational.scenarioProjection=take(op.scenarioProjection,[
     'side','status','confirmed','actionable','horizonSeconds','asOf',
     'issuedAt','targetAt','projectedPrice','expectedLow','expectedHigh','engineId'
   ]);
@@ -57,12 +63,12 @@ export function analystSnapshot(runtimeStatus,live){
     lastResult:{asset:result.asset||asset,analysis:{
       operationalSignal:operational,
       ...(compactVnext?{vnext:compactVnext}:{}),
-      generalConsensus:{
+      generalConsensus:compactVnext?{}:{
         rapid:take(gc.rapid,['callPct','activeCount']),
         strategies:take(gc.strategies,['callPct','activeCount']),
         displayCallPct:gc.displayCallPct??null,
       },
-      entryPlanner:{horizons:forecast?{[String(horizon)]:take(forecast,['asset','horizonSeconds','rawBias','bias','displayBias','outlookReady','directionReady','confidence','modelConfidence','callProbability','putProbability'])}:{}}
+      entryPlanner:{horizons:!compactVnext&&forecast?{[String(horizon)]:take(forecast,['asset','horizonSeconds','rawBias','bias','displayBias','outlookReady','directionReady','confidence','modelConfidence','callProbability','putProbability'])}:{}}
     }}
   };
 }

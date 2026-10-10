@@ -1,4 +1,5 @@
 # VNext release: regenerate embedded agent and checksum from the exact source commit.
+# Rebuild verified final Agent with the stable-clock regression fixed.
 name: Sentinel Windows 13.4.60 candidate
 
 on:
@@ -29,10 +30,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'
-      - name: Verify independent-signal and timing regressions
+      - name: Verify independent-signal, market totals and live mobile regressions
         run: |
           set -euo pipefail
-          node --test tests/sentinel-single-engine-contract-1359.test.mjs tests/sentinel-expiry-driven-1359.test.mjs tests/sentinel-forward-forecast-proof-1359.test.mjs tests/sentinel-automatic-forward-model-1359.test.mjs tests/sentinel-specialist-motors-1359.test.mjs tests/sentinel-vnext-runtime-1359.test.mjs tests/sentinel-vnext-ui-1359.test.mjs tests/sentinel-independent-reversal-coexist.test.mjs tests/sentinel-v13460-mobile-realtime-regression.test.mjs tests/sentinel-v13460-cards-outcomes.test.mjs tests/sentinel-live-bridge.test.mjs
+          node --test tests/sentinel-single-engine-contract-1359.test.mjs tests/sentinel-expiry-driven-1359.test.mjs tests/sentinel-forward-forecast-proof-1359.test.mjs tests/sentinel-automatic-forward-model-1359.test.mjs tests/sentinel-specialist-motors-1359.test.mjs tests/sentinel-vnext-runtime-1359.test.mjs tests/sentinel-vnext-ui-1359.test.mjs tests/sentinel-independent-reversal-coexist.test.mjs tests/sentinel-v13460-mobile-realtime-regression.test.mjs tests/sentinel-v13460-forecast-countdown.test.mjs tests/sentinel-v13460-cards-outcomes.test.mjs tests/sentinel-live-bridge.test.mjs
           find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
       - name: Package embedded agent and checksum manifest
         shell: bash

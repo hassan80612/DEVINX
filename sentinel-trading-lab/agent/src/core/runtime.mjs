@@ -104,7 +104,7 @@ export class DemoTradingRuntime{
       this.nextEvalMs=0
     }
     const candles=Array.isArray(market.candles)?market.candles.filter(c=>[c?.open,c?.high,c?.low,c?.close].every(v=>Number.isFinite(Number(v)))):[];
-    const quoteHistory=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number.isFinite(Number(x?.price))&&Number(x.price)>0).slice(-900):[];
+    const quoteHistory=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number.isFinite(Number(x?.price))&&Number(x.price)>0).slice(this.settings.engine?-2400:-900):[];
     this.externalMarket={...market,candles,quoteHistory,quote:Number(market.quote??market.price??quoteHistory.at(-1)?.price??candles.at(-1)?.close),quoteTs:Number(market.quoteTs||market.lastFrameAt||market.lastDomAt||Date.now()),source:market.source||String(market.provider||'LIVE').toUpperCase()};
     return this
   }
@@ -898,6 +898,21 @@ export class DemoTradingRuntime{
           predictionError:evaluation.predictionError});
       }
       const current=model.receipt;
+      // The live motor remains unrestrained: this ONE immutable reference
+      // receipt powers the visible countdown without resetting to 30s on
+      // every 400ms recalculation. Reset for a different motor, asset or
+      // duration, or after the original target. A later direction flip must
+      // never rewrite the already-emitted prediction's original target.
+      const previousAnchor=this.vnextTargetAnchor||null;
+      const anchorMatches=current&&previousAnchor&&
+        current.engineId===previousAnchor.engineId&&
+        current.asset===previousAnchor.asset&&
+        current.expirySeconds===previousAnchor.expirySeconds&&
+        Number(previousAnchor.targetAt)>now&&
+        Number(previousAnchor.issuedAt)<=now;
+      const targetAnchor=current?(anchorMatches?previousAnchor:current):null;
+      this.vnextTargetAnchor=targetAnchor;
+      if(targetAnchor===current)this.vnextTargetProjection=model.projection?{...model.projection}:null;
       // Track only one receipt per selected motor+asset+duration each 1s.
       // A 15-minute prediction cannot be evaluated if a 500-item FIFO
       // overwrites it after only a few minutes of 400ms evaluations.
@@ -909,7 +924,8 @@ export class DemoTradingRuntime{
       this.vnextOutcomes=outcomes.slice(-300);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
-        vnext:{...model,evaluation:undefined,
+        vnext:{...model,evaluation:undefined,targetAnchor,
+          targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
         entryPlanner:{modelVersion:model.modelVersion,
           defaultHorizonSeconds:model.expirySeconds,

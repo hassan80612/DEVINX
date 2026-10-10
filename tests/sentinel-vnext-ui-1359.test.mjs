@@ -10,13 +10,13 @@ test('mobile compact and full card contain the SAME selected single engine and f
  assert.ok((s.match(/\{forecastReceipt\}/g)||[]).length===2);
  assert.match(s,/Motor responsável pelo cenário/);
  assert.match(s,/Expiração escolhida para previsão/);
- assert.match(s,/PREÇO PROJETADO/);
- assert.match(s,/ALVO NO FUTURO/);
+ assert.match(s,/PREÇO (PROJETADO|DA ÚLTIMA PROJEÇÃO|PREVISTO NO ALVO)/);
+ assert.match(s,/(ALVO NO FUTURO|HORÁRIO DO ALVO FIXADO)/);
  assert.match(s,/!vnext&&<details className="liveSettings"/);
 });
 test('desktop Agent selects only one motor and displays the target price/time rather than 3-strategy cards',async()=>{
  const s=await source('agent/worker/local-playwright-driver.mjs');
- const v=s.slice(s.indexOf('const nextHtml=d.engine?'),s.indexOf('const nextHtml=d.engine?')+10000);
+ const v=s.slice(s.indexOf('const nextHtml=d.engine?'),s.indexOf('const nextHtml=d.engine?')+18000);
  assert.match(v,/data-sentinel-setting="engine"/);
  assert.match(v,/data-sentinel-setting="duration"/);
  assert.match(v,/PREÇO PROJETADO/);

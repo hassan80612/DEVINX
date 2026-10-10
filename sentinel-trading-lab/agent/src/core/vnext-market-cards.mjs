@@ -1,49 +1,72 @@
 /**
- * Three lightweight information-only PC cards, derived from the SAME quote
- * history already consumed by the selected independent forecast motor.
- * No legacy strategy calculations or third motor voting.
+ * VNext presentation-only historic market totals.
  *
- * The displayed percentages are NORMALIZED DIRECTIONAL PRESSURE; they are
- * NOT model success probabilities or historical win rate.
+ * TOTAL MERCADO AGORA: recent 8-second quote movement.
+ * TOTAL ESTRUTURA ANTERIOR: previous 60-second quote movement.
+ * TOTAL DOS TOTAIS: the simple average of those two market readings.
+ *
+ * Only the selected independent engine forecasts the future; its direction,
+ * price and expiry belong in Projeção Futura, not in these cards.
+ *
+ * These are normalized observational indices, NOT win rates, calibrated
+ * probabilities, trading signals or weighted votes on any strategy engine.
  */
 const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
-function sampleBefore(quotes,ts){
- for(let i=quotes.length-1;i>=0;i--){
-  if(Number(quotes[i]?.ts)<=ts&&Number(quotes[i]?.price)>0)return Number(quotes[i].price);
- }return null;
+function quoteBefore(rows,at){
+  let l=0,r=rows.length-1,found=-1;
+  while(l<=r){const m=(l+r)>>1;if(rows[m].ts<=at){found=m;l=m+1}else r=m-1}
+  return found>=0?rows[found]:null;
 }
-function card(id,label,logMovement,noise,display){
- const ratio=Number.isFinite(logMovement)?logMovement/Math.max(1e-12,Number(noise)):0;
- const callPct=Math.round(clamp(50+42*Math.tanh(ratio),8,92));
- const side=callPct>51?'CALL':callPct<49?'PUT':'NEUTRO';
- return Object.freeze({id,label,side,strength:callPct,hint:display,
-  callPct,putPct:100-callPct,kind:'directional-pressure-not-probability'});
+function reading(id,label,value,hint){
+  const callPct=Number.isFinite(value)?Math.round(clamp(value,8,92)):null;
+  const putPct=callPct===null?null:100-callPct;
+  return Object.freeze({
+    id,label,callPct,putPct,strength:callPct,
+    side:callPct===null?'AGUARDAR':callPct>51?'CALL':callPct<49?'PUT':'NEUTRO',
+    hint,kind:'directional-pressure-not-probability'
+  });
 }
-export function lightweightReadings({quoteHistory=[],receipt=null,now=Date.now()}={}){
- const seen=(Array.isArray(quoteHistory)?quoteHistory:[]).filter(q=>
-  Number.isFinite(Number(q?.ts))&&Number(q.ts)<=now&&Number(q?.price)>0)
-  .sort((a,b)=>Number(a.ts)-Number(b.ts)).slice(-900);
- const last=seen.at(-1),p=Number(last?.price||0);
- if(!(p>0))return [];
- const previous8=sampleBefore(seen,Number(last.ts)-8000);
- const previous60=sampleBefore(seen,Number(last.ts)-60000);
- const p8=previous8??p,p60=previous60??p;
- const log8=Math.log(p/p8),log60=Math.log(p/p60);
- let square=0,count=0;
- for(let i=1;i<seen.length;i++){
-  const dt=(Number(seen[i].ts)-Number(seen[i-1].ts))/1000;
-  if(dt<=0||dt>10)continue;
-  const r=Math.log(Number(seen[i].price)/Number(seen[i-1].price));
-  square+=r*r;count+=dt;
- }
- const perSqrt=count>0?Math.sqrt(square/count):1e-12;
- const forecastMs=Number(receipt?.expirySeconds||30);
- const projected=Number(receipt?.projectedPrice);
- const projectedLog=receipt&&projected>0&&Number(receipt.referencePrice)>0?
-   Math.log(projected/Number(receipt.referencePrice)):0;
- return Object.freeze([
-  card('pulse','MERCADO AGORA',log8,perSqrt*Math.sqrt(8),'Impulso de 8 segundos'),
-  card('history','ESTRUTURA ANTERIOR',log60,perSqrt*Math.sqrt(60),'Movimento histórico de 60 segundos'),
-  card('forward','PREVISÃO DO MOTOR',projectedLog,perSqrt*Math.sqrt(forecastMs),'Preço projetado para '+forecastMs+' segundos')
- ]);
+export function lightweightDashboard({quoteHistory=[],receipt=null,now=Date.now()}={}){
+  const map=new Map();
+  for(const x of Array.isArray(quoteHistory)?quoteHistory:[]){
+    const ts=Number(x?.ts),p=Number(x?.price);
+    if(Number.isFinite(ts)&&ts<=now&&Number.isFinite(p)&&p>0)map.set(ts,p);
+  }
+  const rows=[...map].sort((a,b)=>a[0]-b[0]).slice(-900)
+    .map(([ts,price])=>({ts,price}));
+  const current=rows.at(-1);
+  if(!current)return Object.freeze({cards:Object.freeze([]),projection:null});
+  let sumSq=0,seconds=0;
+  for(let i=1;i<rows.length;i++){
+    const dt=(rows[i].ts-rows[i-1].ts)/1000;
+    if(dt<=0||dt>10)continue;
+    const move=Math.log(rows[i].price/rows[i-1].price);
+    sumSq+=move*move;seconds+=dt;
+  }
+  const sigma=seconds>0?Math.sqrt(sumSq/seconds):0;
+  const pressure=(past,horizon)=>past&&sigma>0?
+    50+42*Math.tanh(Math.log(current.price/past.price)/(sigma*Math.sqrt(horizon))):null;
+  const market=reading('market-now','TOTAL MERCADO AGORA',
+    pressure(quoteBefore(rows,current.ts-8000),8),
+    'Força atual observada em 8 segundos');
+  const history=reading('prior-structure','TOTAL ESTRUTURA ANTERIOR',
+    pressure(quoteBefore(rows,current.ts-60000),60),
+    'Movimento anterior observado em 60 segundos');
+  const total=reading('total-of-totals','TOTAL DOS TOTAIS',
+    market.callPct!==null&&history.callPct!==null?
+      (market.callPct+history.callPct)/2:null,
+    'Média das duas leituras anteriores');
+  // The selected engine alone supplies projected price, not these totals.
+  const h=Number(receipt?.expirySeconds),future=Number(receipt?.projectedPrice);
+  const ref=Number(receipt?.referencePrice);
+  const receiptValid=receipt?.status==='forecast-created'&&
+    ['CALL','PUT'].includes(receipt?.side)&&
+    Number(receipt?.issuedAt)>0&&Number(receipt.issuedAt)<=now&&
+    now-Number(receipt.issuedAt)<=3500&&h>0&&future>0&&ref>0;
+  const projectedCallPct=receiptValid&&sigma>0?
+    50+42*Math.tanh(Math.log(future/ref)/(sigma*Math.sqrt(h))):null;
+  const projection=reading('forecast','PROJEÇÃO FUTURA',projectedCallPct,
+    'Índice do preço projetado pelo único motor selecionado');
+  return Object.freeze({cards:Object.freeze([market,history,total]),projection});
 }
+export const lightweightReadings=options=>lightweightDashboard(options).cards;
