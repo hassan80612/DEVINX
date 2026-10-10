@@ -77,9 +77,11 @@ export class LiveBridge{
     socket.addEventListener('close',done);
   }
   hasViewer(){return this.joined&&this.clock()-this.viewerAt<16000}
-  publish(snapshot){
+  publish(snapshot,{urgent=false}={}){
     if(!this.hasViewer()||!snapshot)return false;
-    const now=this.clock();if(now-this.lastSentAt<this.minIntervalMs)return false;
+    // Only a material decision transition can bypass the routine cadence.
+    // Still cap burst delivery to avoid websocket/Supabase overload.
+    const now=this.clock();if(now-this.lastSentAt<(urgent?500:this.minIntervalMs))return false;
     // Re-send only when the local analysis, price or scenario actually changed.
     const fingerprint=[snapshot.lastEvalMs,snapshot.liveBroker?.lastQuoteAt,snapshot.liveBroker?.symbol,snapshot.state].join('|');
     if(fingerprint===this.lastFingerprint)return false;
