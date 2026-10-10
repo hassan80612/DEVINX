@@ -73,6 +73,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     if(ok)settingsEditing.current=false;
   };
   const quoteShown=m.fresh?(s?.liveBroker?.quote??s?.feed?.price):null;
+  const pushed=m.fresh&&s?.liveTransport==='push'&&now-Number(s?.liveStreamAt||0)<4000;
+  const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   const diagnostic=<details className="liveTiming"><summary>Diagnóstico de atualização</summary>
     <div>Cotação recebida há <b>{seconds(m.quoteAge)}</b> · análise recebida há <b>{seconds(m.analysisAge)}</b></div>
     <div>Hora da última cotação: <b>{clock(m.quoteAt)}</b> · última análise: <b>{clock(m.evaluationAt)}</b></div>
@@ -84,6 +86,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <div className="compactScenario"><div><small>{m.scenarioLabel}</small><strong>{m.state}</strong></div><div className="compactCountdown"><small>PRAZO DO CENÁRIO</small><b>{m.remaining!==null?m.remaining+'s':'—'}</b></div></div>
     <div className="compactQuote"><span><small>COTAÇÃO DO PC</small><b>{price(quoteShown)}</b></span><small>{m.fresh?'Dado '+seconds(m.quoteAge)+' atrás':'DADO INDISPONÍVEL'}</small></div>
     {historicalNotice}
+    {streamBadge}
     <div className="compactReversal"><small>SUBANALISTA · REVERSÃO</small><strong>{m.subStatus}</strong>{m.alert&&<small>Gatilho {price(m.alert.trigger)} · Invalida {price(m.alert.invalidation)}</small>}</div>
     <div className="compactTotals">
       {([['Mercado',totals.market],['Estratégias',totals.strategies],['Presente + futuro',totals.combined]] as const).map(([label,value])=><div key={label}><span>{label}</span><b>{value===null?'—':`CALL ${value}% · PUT ${100-Number(value)}%`}</b></div>)}
@@ -97,6 +100,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <header><div><small>{m.asset} · LEITURA DO PC</small><h2>{m.scenarioLabel}</h2><b>{m.state}</b></div><div className="liveHeaderRight"><strong>{m.remaining!==null?'PRAZO DO CENÁRIO '+m.remaining+'s':'SEM JANELA ATIVA'}</strong><button type="button" className="compactToggle" onClick={onToggleCompact}>Modo flutuante ↘</button></div></header>
     <div className="liveScenarioMeta"><span>Cotação {price(quoteShown)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
     {historicalNotice}
+    {streamBadge}
     {m.scenarioInactive&&<p className="liveInactiveNotice">Cenário anterior encerrado ou invalidado. Não é uma nova indicação de entrada.</p>}
     <div className="liveReversal"><small>SUBANALISTA · AVISO DE REVERSÃO</small><h3>{m.subStatus}</h3>
       {m.alert?<><p>{m.alert.testing?'Reversão em teste':'Reversão com continuidade confirmada'}</p><div className="liveLevels"><span>Gatilho <b>{price(m.alert.trigger)}</b></span><span>Invalida <b>{price(m.alert.invalidation)}</b></span><span>Próximo nível <b>{price(m.alert.target)}</b></span></div></>:<p>{m.fresh?'Acompanhando o preço. Ainda sem reversão confirmada.':'A leitura será retomada quando chegarem dados atuais.'}</p>}

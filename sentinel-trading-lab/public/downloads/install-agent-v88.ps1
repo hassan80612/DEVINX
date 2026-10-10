@@ -18,11 +18,11 @@ try {
   if (-not $locked) { throw 'Outra instalacao do Sentinel esta em andamento. Aguarde ela terminar.' }
   New-Item -ItemType Directory -Force -Path $stage | Out-Null
   if ($LocalPayload -and (Test-Path $LocalPayload)) { Copy-Item $LocalPayload $payloadZip -Force }
-  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.45-mobile-bridge-1009" -OutFile $payloadZip }
+  else { Invoke-WebRequest -UseBasicParsing "$site/downloads/agent_payload_v88.zip?v=13.4.46-realtime-lite-1009" -OutFile $payloadZip }
   Expand-Archive -LiteralPath $payloadZip -DestinationPath $payloadTmp -Force
   $manifest = Get-Content (Join-Path $payloadTmp 'package.json') -Raw | ConvertFrom-Json
   $agentRelease = Get-Content (Join-Path $payloadTmp 'release.json') -Raw | ConvertFrom-Json
-  if ($manifest.version -ne $agentRelease.version -or $agentRelease.version -ne '13.4.45' -or $agentRelease.build -ne '13.4.45-mobile-bridge-1009') { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.45.' }
+  if ($manifest.version -ne $agentRelease.version -or $agentRelease.version -ne '13.4.46' -or $agentRelease.build -ne '13.4.46-realtime-lite-1009') { throw 'Pacote do Agent nao corresponde a esta instalacao 13.4.46.' }
   try { Invoke-RestMethod 'http://127.0.0.1:8788/exit' -Method Post -TimeoutSec 3 | Out-Null } catch {}
   # Substituicao forçada de qualquer Agent Sentinel antigo antes da instalação.
   Write-Host 'Removendo processos da versão anterior...' -ForegroundColor Cyan
@@ -53,7 +53,7 @@ try {
     }
   }
   Write-Host '========================================' -ForegroundColor DarkCyan
-  Write-Host '       SENTINEL WINDOWS AGENT V13.4.45' -ForegroundColor White
+  Write-Host '       SENTINEL WINDOWS AGENT V13.4.46' -ForegroundColor White
   Write-Host '       Agent + Worker background + icone na bandeja' -ForegroundColor Gray
   Write-Host '========================================' -ForegroundColor DarkCyan
 
@@ -141,11 +141,11 @@ try {
   for ($i=0; $i -lt 120; $i++) {
     try {
       $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.45' -and $h.build -eq '13.4.45-mobile-bridge-1009') { $ready = $true; break }
+      if ($h.ok -and $h.workerHealthy -and $h.version -eq '13.4.46' -and $h.build -eq '13.4.46-realtime-lite-1009') { $ready = $true; break }
     } catch {}
     Start-Sleep -Milliseconds 500
   }
-  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Consulte install.log e worker\data\manager.log; execute novamente o Agent V13.4.45.' }
+  if (-not $ready) { throw 'Agent abriu, mas o Worker nao respondeu. Consulte install.log e worker\data\manager.log; execute novamente o Agent V13.4.46.' }
 
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     $trayReady = $false
@@ -159,7 +159,7 @@ try {
     }
     if (-not $trayReady) { throw 'Agent ativo, mas a bandeja nao iniciou. Consulte worker\data\tray.log.' }
   }
-  Write-Host "`nAgent V13.4.45 pronto." -ForegroundColor Green
+  Write-Host "`nAgent V13.4.46 pronto." -ForegroundColor Green
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan
