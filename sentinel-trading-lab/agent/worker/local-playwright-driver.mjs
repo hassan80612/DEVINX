@@ -1528,6 +1528,12 @@ export class LocalPlaywrightDriver{
               <div style="font-size:10px;color:${muted};line-height:1.45;margin-top:10px">Faixa futura: ${price(d.vnext?.receipt?.expectedLow)} até ${price(d.vnext?.receipt?.expectedHigh)} · Cálculo: ${d.vnext?.receipt&&d.vnext?.engineId===d.engine?esc(new Date(d.vnext.receipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'} · ${n(d.vnext?.outcomesVerified,0)} resultados observados neste prazo.</div>
               <div style="padding-top:8px;margin-top:9px;border-top:1px solid ${panelBorder};font-size:10px;color:${goldSoft};font-weight:750">PREVISÃO EXPERIMENTAL · NÃO É CALL/PUT AGORA · nenhuma ordem automática</div>
             </section>
+            ${d.vnext?.nowIndication&&d.vnext?.nowIndication.engineId===d.engine&&liveNow&&Number(d.vnext.nowIndication.expiresAt)>Date.now()?
+              '<div data-sentinel-vnext-now style="padding:9px 11px;margin:9px 0;border:1px solid '+panelBorder+';border-radius:10px;background:'+fieldBg+';display:flex;justify-content:space-between;align-items:baseline;gap:7px;flex-wrap:wrap">'+
+                '<div><small style="color:'+muted+';font-size:9px">INDICAÇÃO NESTE INSTANTE · EM TESTE</small>'+
+                '<b style="display:block;color:'+(d.vnext.nowIndication.side==='CALL'?callTone:putTone)+';font-size:18px">'+esc(d.vnext.nowIndication.side)+' AGORA</b></div>'+
+                '<div style="color:'+muted+';font-size:10px">Motor '+esc(d.engine)+' · '+esc(new Date(d.vnext.nowIndication.issuedAt).toLocaleTimeString('pt-BR',{hour12:false}))+'<br>Não é entrada confirmada</div>'+
+              '</div>':'<div style="padding:5px;color:'+muted+';font-size:10px">Aguardando direção atual do motor.</div>'}
             <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-top:11px;margin-bottom:7px"><b style="font-size:10px;letter-spacing:.06em;color:${goldSoft}">LEITURAS CALL / PUT · AO VIVO</b><small style="color:${muted};font-size:9px">Pressão técnica, NÃO taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
               ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
