@@ -129,26 +129,20 @@ GRANT EXECUTE ON FUNCTION public.sentinel_kiwify_apply_prepaid(text,text,text,te
 
 -- Allow a user who paid before registering to claim her prepaid days without
 -- exposing any untrusted RPC or bypassing normal registration validation.
-DO $$
-DECLARE v_definition text;
+CREATE OR REPLACE FUNCTION sentinel_app.kiwify_claim_on_signup()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 BEGIN
-  v_definition:=pg_get_functiondef('public.sentinel_auth_register(text,text)'::regprocedure);
-  IF position('sentinel_app.refresh_kiwify_prepaid_access(v_email)' IN v_definition)=0 THEN
-    IF position('  v_token:=encode(extensions.gen_random_bytes(32)' IN v_definition)=0 THEN
-      RAISE EXCEPTION 'Unexpected sentinel_auth_register version: refusing unsafe migration';
-    END IF;
-    v_definition:=replace(v_definition,
-      '  v_token:=encode(extensions.gen_random_bytes(32)',
-      '  PERFORM sentinel_app.refresh_kiwify_prepaid_access(v_email);'
-      ||chr(10)||'  v_token:=encode(extensions.gen_random_bytes(32)');
-    v_definition:=replace(v_definition,
-      '''agentEnabled'',v_is_owner,''accessExpiresAt'',null,''accessActive'',v_is_owner',
-      '''agentEnabled'',sentinel_app.agent_access_active(v_id),''accessExpiresAt'','
-       ||'(select access_expires_at from sentinel_app.accounts where id=v_id),'
-       ||'''accessActive'',sentinel_app.agent_access_active(v_id)');
-    EXECUTE v_definition;
+  IF new.role <> 'master' THEN
+    PERFORM sentinel_app.refresh_kiwify_prepaid_access(new.email);
   END IF;
-END $;
+  RETURN new;
+END $$;
+REVOKE ALL ON FUNCTION sentinel_app.kiwify_claim_on_signup() FROM PUBLIC,anon,authenticated;
+DROP TRIGGER IF EXISTS sentinel_kiwify_claim_on_signup ON sentinel_app.accounts;
+CREATE TRIGGER sentinel_kiwify_claim_on_signup
+  AFTER INSERT ON sentinel_app.accounts
+  FOR EACH ROW EXECUTE FUNCTION sentinel_app.kiwify_claim_on_signup();
+
 -- Only the real master and paid, unexpired Kiwify users can operate the Agent.
 -- This check is shared by web login, Agent heartbeat and command polling.
 CREATE OR REPLACE FUNCTION sentinel_app.agent_access_active(p_account_id uuid)
