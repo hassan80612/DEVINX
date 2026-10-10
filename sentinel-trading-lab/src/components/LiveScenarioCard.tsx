@@ -164,7 +164,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       </select>
     </label>
   </div>:null;
-  const lastSettled=m.vnextLastSettled;
+
   // All mobile modes share these exact two permanent card nodes. Neither
   // switching observation sides nor expiring a forecast inserts/removes a hero.
   const lastSettled=m.vnextLastSettled;
