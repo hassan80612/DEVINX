@@ -898,6 +898,20 @@ export class DemoTradingRuntime{
           predictionError:evaluation.predictionError});
       }
       const current=model.receipt;
+      // The live motor remains unrestrained: this ONE immutable reference
+      // receipt powers the visible countdown without resetting to 30s on
+      // every 400ms recalculation. Reset only for a new side/motor/asset/
+      // selected duration, or after the forecast's original target passes.
+      const previousAnchor=this.vnextTargetAnchor||null;
+      const anchorMatches=current&&previousAnchor&&
+        current.engineId===previousAnchor.engineId&&
+        current.asset===previousAnchor.asset&&
+        current.expirySeconds===previousAnchor.expirySeconds&&
+        current.side===previousAnchor.side&&
+        Number(previousAnchor.targetAt)>now&&
+        Number(previousAnchor.issuedAt)<=now;
+      const targetAnchor=current?(anchorMatches?previousAnchor:current):null;
+      this.vnextTargetAnchor=targetAnchor;
       // Track only one receipt per selected motor+asset+duration each 1s.
       // A 15-minute prediction cannot be evaluated if a 500-item FIFO
       // overwrites it after only a few minutes of 400ms evaluations.
@@ -909,7 +923,7 @@ export class DemoTradingRuntime{
       this.vnextOutcomes=outcomes.slice(-300);
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
-        vnext:{...model,evaluation:undefined,
+        vnext:{...model,evaluation:undefined,targetAnchor,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
         entryPlanner:{modelVersion:model.modelVersion,
           defaultHorizonSeconds:model.expirySeconds,
