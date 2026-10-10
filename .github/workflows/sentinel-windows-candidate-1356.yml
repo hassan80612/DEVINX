@@ -1,0 +1,122 @@
+name: Sentinel Windows 13.4.56 candidate
+
+on:
+  push:
+    branches: [sentinel-1356-mobile-freshness-ui-20261010]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
+      - '.github/workflows/sentinel-windows-candidate-1356.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sentinel-windows-candidate-1356
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Verify independent-signal and timing regressions
+        run: |
+          set -euo pipefail
+          node --test tests/sentinel-1356-mobile-freshness.test.mjs tests/sentinel-1356-engine-card-latency.test.mjs tests/sentinel-scenario-reversal-latency.test.mjs tests/sentinel-selected-strategy-authority.test.mjs
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+      - name: Package embedded agent and checksum manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const release=JSON.parse(fs.readFileSync('agent/release.json','utf8'));
+          const pkg=JSON.parse(fs.readFileSync('agent/package.json','utf8'));
+          if(release.version!=='13.4.56'||pkg.version!==release.version)throw Error('release_mismatch');
+          const zipSha256=crypto.createHash('sha256').update(fs.readFileSync('public/downloads/agent_payload_v88.zip')).digest('hex');
+          fs.writeFileSync('public/downloads/agent-update.json',JSON.stringify({format:'sentinel-agent-update-v1',version:release.version,build:release.build,zipSha256})+'\n');
+          NODE
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/agent_payload_v88.zip public/downloads/Sentinel-Agent-Windows.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.56-Windows-candidate
+          path: |
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+            sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+            sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+            sentinel-trading-lab/public/downloads/agent-update.json
+          if-no-files-found: error
+          retention-days: 7
+
+  windows-smoke:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.56-Windows-candidate
+          path: candidate
+      - name: Check EXE internal ZIP and installer without modifying existing installation
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Get-ChildItem -Path 'candidate' -Recurse -Filter 'Sentinel-Agent-Windows.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Candidate EXE was not uploaded'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "Embedded Sentinel Agent verification failed: $LASTEXITCODE"}
+
+  publish-branch-candidate:
+    needs: windows-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: sentinel-1356-mobile-freshness-ui-20261010
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.56-Windows-candidate
+          path: candidate
+      - name: Publish matching ZIP, EXE and manifest to candidate branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=candidate
+          test -f "$src/Sentinel-Agent-Windows.exe"
+          test -f "$src/agent_payload_v88.zip"
+          cp "$src/Sentinel-Agent-Windows.exe" sentinel-trading-lab/public/downloads/
+          cp "$src/sentinel-agent-windows.exe" sentinel-trading-lab/public/downloads/
+          cp "$src/agent_payload_v88.zip" sentinel-trading-lab/public/downloads/
+          cp "$src/agent-update.json" sentinel-trading-lab/public/downloads/
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/{Sentinel-Agent-Windows.exe,sentinel-agent-windows.exe,agent_payload_v88.zip,agent-update.json}
+          if git diff --cached --quiet; then echo "Candidate binaries already match"; exit 0; fi
+          git commit -m 'build(sentinel): Windows 13.4.56 candidate with verified payload'
+          git push origin HEAD:sentinel-1356-mobile-freshness-ui-20261010

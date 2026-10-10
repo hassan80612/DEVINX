@@ -955,16 +955,20 @@ export class DemoTradingRuntime{
       this.audit.write({actorId:'engine',actorRole:'system',action:'trade.settle',metadata:{orderId:p.orderId,won,draw,pnl:trade.pnl,external:!!p.external}})
     }
   }
-  async tick(now=Date.now()){
-    this.lastHeartbeat=now;this._settleDue(now);if(this.stateName!=='running')return this.status();
+  async tick(now=Date.now(),{skipStatus=false}={}){
+    // Internal quote-driven cycles do not need to build the expensive full
+    // status object twice; API callers retain the exact previous return value.
+    const reply=()=>skipStatus?this.lastResult:this.status();
+    const evaluationStartedAt=Date.now();
+    this.lastHeartbeat=now;this._settleDue(now);if(this.stateName!=='running')return reply();
     const sessionTrades=Math.max(0,this.trades.length-Math.max(0,Number(this.state.sessionTradeStartCount||0))),sessionLimit=Math.max(1,Number(this.settings.risk.maxTradesPerSession||10));
     this.settings.demoAutopilot=false;
     if(this.settings.mode==='demo'&&this.settings.demoAutopilot===true&&sessionTrades>=sessionLimit){
       this.settings.demoAutopilot=false;this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['limite da sessão de operações'],executionMode:'broker_demo_stopped'};
       this.audit.write({actorId:'engine',actorRole:'system',action:'bot.auto_stop',metadata:{reason:'limite da sessão de operações',sessionTrades,sessionLimit}});
-      return this.status()
+      return reply()
     }
-    if(now<this.nextEvalMs)return this.status();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={asset:this.settings.asset,action:'WAIT',analysis:{asset:this.settings.asset,side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return this.status()}if(!this.externalMarket)this.feed.tick(now);
+    if(now<this.nextEvalMs)return reply();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={asset:this.settings.asset,action:'WAIT',analysis:{asset:this.settings.asset,side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return reply()}if(!this.externalMarket)this.feed.tick(now);
     try{
       const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;
       const brokerMode=String(this.externalMarket?.brokerMode||this.externalMarket?.mode||'').toLowerCase();
@@ -992,7 +996,11 @@ export class DemoTradingRuntime{
         result.action='WAIT';result.order=null;result.executionMode='broker_demo_wait';result.reasons=[...(result.reasons||[]),'Sinal válido, mas a conta DEMO/controles da corretora não estão validados — nenhuma ordem foi clicada.']
       }else if(this.settings.mode==='demo'&&canUseExternalDemo&&result.action==='DEMO_ORDER')result.executionMode='broker_demo';
       this.forecastResearch.observe({asset:this.settings.asset,analysis:result.analysis,snap,now});
-      result.asset=this.settings.asset;result.plan=signalPlan({analysis:result.analysis,settings:this.settings,price:snap.price,now});this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,this.settings.schedule.intervalMs,now);
+      result.asset=this.settings.asset;result.plan=signalPlan({analysis:result.analysis,settings:this.settings,price:snap.price,now});
+      this.pipelineTimings={analysisMs:Math.max(0,Date.now()-evaluationStartedAt),
+        quoteAgeAtDecisionMs:snap.quoteTs?Math.max(0,Date.now()-Number(snap.quoteTs)):null,
+        quoteAt:snap.quoteTs||null,completedAt:Date.now()};
+      this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,this.settings.schedule.intervalMs,now);
       if(result.analysis)this.analyses.unshift(this._compactAnalysis({ts:iso(now),asset:this.settings.asset,...result.analysis,latency:result.latency}));this.analyses=this.analyses.slice(0,180);
       if(result.action==='DEMO_ORDER'){
         this.pending.push({orderId:result.order.id,side:result.order.side,referencePrice:result.order.referencePrice,amount:result.order.amount??result.amount,asset:result.order.asset||this.settings.asset,openedAt:result.order.openedAt||iso(now),external:!!result.order.external,provider:result.order.provider||this.externalMarket?.provider,settleAt:now+this.settings.orderDurationMs});
@@ -1000,8 +1008,8 @@ export class DemoTradingRuntime{
         if(Number(result.latency?.executionMs||0)>Number(this.settings.risk.maxExecutionLatencyMs||1500)){this.state.executionError=true;this.incidents.unshift({ts:iso(now),severity:'error',code:'execution_latency',message:'latência de execução acima do limite'});this.stateName='error'}
       }
       const fatal=(result.reasons||[]).find(x=>AUTO_STOP_REASONS.has(x));if(fatal){if(this.settings.mode==='demo')this.settings.demoAutopilot=false;this.stateName='stopped';this.audit.write({actorId:'engine',actorRole:'system',action:'bot.auto_stop',metadata:{reason:fatal}})}
-      return this.status();
-    }catch(error){this.state.executionError=true;this.stateName='error';this.incidents.unshift({ts:iso(now),severity:'error',code:'cycle_error',message:String(error?.message||error)});return this.status()}
+      return reply();
+    }catch(error){this.state.executionError=true;this.stateName='error';this.incidents.unshift({ts:iso(now),severity:'error',code:'cycle_error',message:String(error?.message||error)});return reply()}
   }
   _compactAnalysis(row={}){
     const metrics=row?.metrics||{},regime=metrics?.regime||{};
@@ -1026,7 +1034,7 @@ export class DemoTradingRuntime{
       liveBroker:this.externalMarket?{...this.externalMarket,mode:brokerMode}:null,
       executionMode:this.settings.mode==='real'?'real_manual':demoEligible?(this.settings.demoAutopilot===true?'broker_demo_auto':'broker_demo_disarmed'):'broker_demo_wait',
       autopilot:{enabled:this.settings.demoAutopilot===true,eligible:demoEligible,brokerMode:brokerMode||'unknown',sessionStartedAt:this.state.sessionStartedAt,sessionTrades,maxSessionTrades:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)},
-      startBlockedReason:this._startBlockReason(),broker:await this.broker.getStatus(),pending:this.pending.length,recentTrades:this.trades.slice(0,50),recentAnalyses:this.analyses.slice(0,20),signalValidation:this.lastResult?.analysis?.quality||null,incidents:this.incidents.slice(0,50),settings:this.settings,audit:this.audit.list().slice(-100).reverse()}
+      startBlockedReason:this._startBlockReason(),pipelineTimings:this.pipelineTimings||null,broker:await this.broker.getStatus(),pending:this.pending.length,recentTrades:this.trades.slice(0,50),recentAnalyses:this.analyses.slice(0,20),signalValidation:this.lastResult?.analysis?.quality||null,incidents:this.incidents.slice(0,50),settings:this.settings,audit:this.audit.list().slice(-100).reverse()}
   }
 }
 

@@ -14,9 +14,11 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   // Relay and polling add delay. Report it explicitly and suppress old signals.
   const matchingMarket=online&&running&&matches&&live.assetValidated===true;
   const feedValidated=live.analysisFeedValidated===true||(live.analysisFeedValidated==null&&live.feedValidated!==false);
-  // A remote snapshot arrives after the Agent heartbeat + mobile HTTP polling.
-  // Keep the strict limit for ACTIVE signals, independently from historical display.
-  const fresh=matchingMarket&&feedValidated&&quoteAt>0&&now-quoteAt<=8000&&now-quoteAt>=-2500&&evaluationAt>0&&now-evaluationAt<=10000;
+  // An 8s-old quote must NEVER be labelled real-time or authorize an entry
+  // for a 30s expiration. Keep history visible, but separate it from actionable
+  // freshness. This is presentation parity with the existing Agent 2.5s gate.
+  const quoteFresh=quoteAt>0&&now-quoteAt<=2500&&now-quoteAt>=-2500;
+  const fresh=matchingMarket&&feedValidated&&quoteFresh&&evaluationAt>0&&now-evaluationAt<=10000;
   const horizon=Number(s?.settings?.forecastHorizonSeconds||s?.settings?.orderDurationMs/1000||60);
   const forecast=a.entryPlanner?.horizons?.[String(horizon)];
   const view:any=scenarioViewFromRuntime({operational:op,asset,horizonSeconds:horizon,durationMs:Number(s?.settings?.orderDurationMs||60000),forecast,now} as any);
@@ -65,7 +67,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     {asset,side:recordedSide,price:recordedPrice,at:recordedAt}:null;
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
-  return{asset,online,running,fresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
+  return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,state,side,tone,scenarioTone,scenarioInactive,
     scenarioLabel:side?(scenarioInactive?'CENÁRIO ANTERIOR '+side:'CENÁRIO '+side):'CENÁRIO',
     entrySide,entryRemaining,opportunityEnded,lastSignal,signalCreatedAt:setupCreatedAt>0?setupCreatedAt:null,reversalCheckedAt:reversalCheckedAt>0?reversalCheckedAt:null,
     remaining:fresh&&!scenarioInactive?view.remainingSeconds:null,confidence:fresh&&side&&!scenarioInactive?view.confidence:null,
