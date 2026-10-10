@@ -1494,13 +1494,28 @@ export class LocalPlaywrightDriver{
           Number(anchored.expirySeconds)*1000===duration&&
           Number(anchored.issuedAt)>0&&Number(anchored.targetAt)>Number(anchored.issuedAt)?anchored:null;
         const targetFinished=pinnedReceipt&&Number(pinnedReceipt.targetAt)<=Date.now();
-        const pinnedProjection=pinnedReceipt?d.vnext?.targetProjection||null:null;
+        // Current motor prediction is LIVE. Only the past reference deadline
+        // remains fixed, so that its original outcome can still be measured.
+        const liveReceipt=d.vnext?.receipt||null;
+        const liveForecastReady=!!(liveNow&&d.vnext?.engineId===d.engine&&
+          liveReceipt?.engineId===d.engine&&liveReceipt?.asset===visibleAsset&&
+          Number(liveReceipt.expirySeconds)*1000===duration&&
+          Number(liveReceipt.targetAt)>Date.now()&&
+          Date.now()-Number(liveReceipt.issuedAt)<=6000);
+        const liveProjection=liveForecastReady?d.vnext?.projection||null:null;
         const liveObservation=d.vnext?.nowIndication||null;
-        const observationFresh=liveObservation&&liveNow&&
+        const observationPresent=!!(liveObservation&&liveNow&&
           d.vnext?.engineId===d.engine&&
           liveObservation.asset===visibleAsset&&
           ['CALL','PUT'].includes(liveObservation.side)&&
-          Number(liveObservation.expiresAt)>Date.now();
+          Number(liveObservation.expiresAt)>Date.now());
+        // Presentation-only scenario alignment. Never filter or delay motor.
+        const observationFresh=!!(observationPresent&&liveForecastReady&&
+          liveObservation.side===liveReceipt.side&&
+          Number(liveObservation.at)>=Number(pinnedReceipt?.issuedAt||0)&&
+          Number(liveObservation.at)<=Number(pinnedReceipt?.targetAt||Infinity));
+        const observationOpposing=!!(observationPresent&&liveForecastReady&&
+          liveObservation.side!==liveReceipt.side);
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -1532,25 +1547,25 @@ export class LocalPlaywrightDriver{
               </label>
             </div>
             <div data-sentinel-card="immediate-market-observation" style="display:grid;grid-template-rows:13px 24px 16px 16px;gap:2px;height:88px;max-height:88px;overflow:hidden;margin-top:7px;padding:7px 10px;border:1px solid ${panelBorder};border-left:3px solid ${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):goldSoft};border-radius:9px;background:${fieldBg}">
-              <small style="font-size:9px;font-weight:850;color:${goldSoft};white-space:nowrap">LEITURA AGORA <span style="color:${muted};font-weight:600">· evento de preço, não é ordem</span></small>
+              <small style="font-size:9px;font-weight:850;color:${goldSoft};white-space:nowrap">LEITURA AGORA <span style="color:${muted};font-weight:600">· só quando alinhada à projeção</span></small>
               <b style="font-size:17px;line-height:24px;white-space:nowrap;color:${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):ink}">${observationFresh?(liveObservation.side==='CALL'?'↑ CALL':'↓ PUT'):'—'}</b>
-              <small style="display:block;font-size:10px;line-height:16px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${observationFresh?(liveObservation.kind==='support-reaction'?'Reação no suporte':liveObservation.kind==='resistance-reaction'?'Reação na resistência':liveObservation.kind==='resistance-break'?'Rompimento de resistência':'Rompimento de suporte')+' · '+price(liveObservation.price)+' · '+new Date(Number(liveObservation.at)).toLocaleTimeString('pt-BR',{hour12:false}):'Sem reação estrutural observada neste instante'}</small>
-              <small style="display:block;font-size:9px;line-height:16px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${observationFresh?'Prazo '+(duration<60000?duration/1000+'s':duration/60000+'min')+' · alvo teórico '+new Date(Number(liveObservation.targetAt||0)).toLocaleTimeString('pt-BR',{hour12:false}):'Observação rápida sem autorização de entrada'}</small>
+              <small style="display:block;font-size:10px;line-height:16px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${observationFresh?(liveObservation.kind==='support-reaction'?'Reação no suporte':liveObservation.kind==='resistance-reaction'?'Reação na resistência':liveObservation.kind==='resistance-break'?'Rompimento de resistência':'Rompimento de suporte')+' · '+price(liveObservation.price)+' · '+new Date(Number(liveObservation.at)).toLocaleTimeString('pt-BR',{hour12:false}):observationOpposing?'Movimento contrário · aguardando alinhamento':'Sem reação alinhada ao cenário'}</small>
+              <small style="display:block;font-size:9px;line-height:16px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${observationFresh?'Prazo '+(duration<60000?duration/1000+'s':duration/60000+'min')+' · alvo teórico '+new Date(Number(liveObservation.targetAt||0)).toLocaleTimeString('pt-BR',{hour12:false}):'Leitura apenas quando acompanha a projeção futura'}</small>
             </div>
-            <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px 25px;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${pinnedReceipt?.side==='CALL'?callTone:pinnedReceipt?.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
-              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PROJEÇÃO FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
-              <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${pinnedReceipt?.side==='CALL'?callTone:pinnedReceipt?.side==='PUT'?putTone:ink}">${targetFinished?'ENCERRADO':pinnedReceipt?.side==='CALL'?'↑ CALL':pinnedReceipt?.side==='PUT'?'↓ PUT':'—'}</div>
+            <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px 25px;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${liveForecastReady&&liveReceipt.side==='CALL'?callTone:liveForecastReady&&liveReceipt.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
+              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PROJEÇÃO FUTURA EM ANÁLISE · ${esc(d.engine||'automatic').toUpperCase()}</div>
+              <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${liveForecastReady&&liveReceipt.side==='CALL'?callTone:liveForecastReady&&liveReceipt.side==='PUT'?putTone:ink}">${liveForecastReady?(liveReceipt.side==='CALL'?'↑ CALL':'↓ PUT'):'EM ANÁLISE'}</div>
               <div data-sentinel-vnext-clock data-deadline="${Number(pinnedReceipt?.targetAt||0)}" data-issued="${Number(pinnedReceipt?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
-                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}">CONTAGEM</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
-                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">HORÁRIO-ALVO</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${pinnedReceipt?esc(new Date(Number(pinnedReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">Prazo ${duration<60000?duration/1000+'s':duration/60000+'min'}</small></div>
+                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>CONTAGEM DA RODADA</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
+                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">HORÁRIO-ALVO</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${pinnedReceipt?esc(new Date(Number(pinnedReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">ALVO EM ANÁLISE ${liveForecastReady?new Date(Number(liveReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false}):'—'}</small></div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;height:47px">
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${liveNow?'PREÇO AGORA':'ÚLTIMA COTAÇÃO'}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${Number(d.price)>0?price(d.price):'—'}</b></div>
-                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO PROJETADO</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${price(pinnedReceipt?.projectedPrice)}</b></div>
+                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PROJEÇÃO AO VIVO</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${liveForecastReady?price(liveReceipt.projectedPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
-                <span style="color:${callTone}">CALL ${pinnedProjection&&Number.isFinite(Number(pinnedProjection.callPct))&&pinnedReceipt?.engineId===d.engine?Math.round(Number(pinnedProjection.callPct))+'%':'—'}</span>
-                <span style="color:${putTone}">PUT ${pinnedProjection&&Number.isFinite(Number(pinnedProjection.putPct))&&pinnedReceipt?.engineId===d.engine?Math.round(Number(pinnedProjection.putPct))+'%':'—'}</span>
+                <span style="color:${callTone}">CALL ${liveProjection&&Number.isFinite(Number(liveProjection.callPct))?Math.round(Number(liveProjection.callPct))+'%':'—'}</span>
+                <span style="color:${putTone}">PUT ${liveProjection&&Number.isFinite(Number(liveProjection.putPct))?Math.round(Number(liveProjection.putPct))+'%':'—'}</span>
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${liveNow?'AO VIVO':'COTAÇÃO ATRASADA'}</span>
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
@@ -1768,10 +1783,12 @@ export class LocalPlaywrightDriver{
             if(!pane||!value)return;
             const target=Number(pane.getAttribute('data-deadline')||0);
             const issued=Number(pane.getAttribute('data-issued')||0);
+            const cycleStatus=pane.querySelector('[data-sentinel-cycle-status]');
+            if(cycleStatus)cycleStatus.textContent=target>issued&&Date.now()>=target?'ALVO ENCERRADO':'CONTAGEM DA RODADA';
             let shown='—:—';
             if(Number.isFinite(target)&&Number.isFinite(issued)&&target>issued&&issued>0){
               const left=Math.ceil((target-Date.now())/1000);
-              if(left<=0){shown='ALVO ENCERRADO';value.style.fontSize='17px'}
+              if(left<=0){shown='00:00'}
               else{
                 const pad=n=>String(n).padStart(2,'0');
                 shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
