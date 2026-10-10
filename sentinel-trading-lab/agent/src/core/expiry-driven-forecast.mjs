@@ -1,23 +1,17 @@
 /**
- * Expiry-driven MAIN forecast clock for Sentinel VNext.
+ * Forecast horizon VNext: the USER-selected expiration is authoritative.
  *
- * The user's selected expiration or the broker's verified expiration defines
- * which future outcome is predicted. Chart candle period is NOT the horizon.
- * Broker capabilities vary by account/asset: a listed duration is never
- * assumed to be available without explicit broker evidence.
- *
- * Pure configuration module. Does not change the installed 13.4.58 engine,
- * authorize any trade, or estimate prediction accuracy.
+ * Broker expiry information, if already available, is DIAGNOSTIC ONLY.
+ * No automatic broker expiration lookup, no inferred switch to 30/60s,
+ * no implicit model blocking or entry rule changes.
+ * This is not a forecast engine, a trade signal, or a timer pretending
+ * to predict the market. It defines a future prediction target.
  */
-export const FORECAST_DURATION_PRESETS=Object.freeze([
-  5,10,15,30,45,60,120,180,300,600,900,3600
-]);
-const finitePositive=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))&&Number(v)>0;
-const durationMs=v=>finitePositive(v)?Number(v):null;
-function availableSeconds(input){
-  if(!Array.isArray(input))return null;
-  return [...new Set(input.map(Number).filter(s=>Number.isFinite(s)&&s>0))].sort((a,b)=>a-b);
-}
+export const FORECAST_DURATION_PRESETS=Object.freeze([5,10,15,30,45,60,120,180,300,600,900,3600]);
+const numberOrNull=x=>x!==null&&x!==undefined&&x!==''&&Number.isFinite(Number(x))?Number(x):null;
+const positive=x=>{const v=numberOrNull(x);return v!==null&&v>0?v:null};
+const availableSeconds=x=>Array.isArray(x)?[...new Set(x.map(Number).filter(v=>Number.isFinite(v)&&v>0))].sort((a,b)=>a-b):null;
+
 export function expiryDrivenForecast({
   selectedSeconds=null,
   brokerVerified=false,
@@ -27,57 +21,45 @@ export function expiryDrivenForecast({
   brokerInstrument='unknown',
   now=Date.now()
 }={}){
-  const selectedMs=finitePositive(selectedSeconds)?Number(selectedSeconds)*1000:null;
-  const confirmedDuration=brokerVerified===true?durationMs(brokerDurationMs):null;
-  const confirmedDeadline=brokerVerified===true&&finitePositive(brokerExpiresAt)?Number(brokerExpiresAt):null;
+  const timestamp=numberOrNull(now);
+  if(timestamp===null)throw new Error('invalid_timestamp');
+  const selectedMs=positive(selectedSeconds)!==null?positive(selectedSeconds)*1000:null;
+  // Observations NEVER change the requested forecast horizon, target time,
+  // or direction. This matters especially for 5s/10s/15s Blitz.
+  const observedDuration=brokerVerified===true?positive(brokerDurationMs):null;
+  const observedDeadline=brokerVerified===true?positive(brokerExpiresAt):null;
   const available=availableSeconds(brokerAvailableSeconds);
-  const timestamp=Number(now);
-  if(!Number.isFinite(timestamp))throw new Error('invalid_timestamp');
-  // For fixed-duration Blitz, use the broker-confirmed fixed duration.
-  // For deadline-based options, predict exactly to the broker expiration;
-  // remaining time is NOT the original duration selected earlier.
-  const deadlineMs=confirmedDeadline==null?null:confirmedDeadline-timestamp;
-  const staleDeadline=confirmedDeadline!==null&&deadlineMs<=0;
-  const finalMs=confirmedDeadline!==null?deadlineMs:
-    confirmedDuration!==null?confirmedDuration:selectedMs;
-  const source=confirmedDeadline!==null?'broker-deadline':
-    confirmedDuration!==null?'broker-duration':
-    selectedMs!==null?'user-selection':'not-selected';
   const selectedAvailable=selectedMs===null||available===null?null:
     available.some(s=>Math.abs(s*1000-selectedMs)<1);
-  const differentDuration=selectedMs!==null&&confirmedDuration!==null&&
-    Math.abs(selectedMs-confirmedDuration)>1;
-  const result={
+  const durationMismatch=selectedMs!==null&&observedDuration!==null&&
+    Math.abs(selectedMs-observedDuration)>1;
+  const deadlineMismatch=selectedMs!==null&&observedDeadline!==null&&
+    Math.abs(timestamp+selectedMs-observedDeadline)>1000;
+  return Object.freeze({
     instrument:String(brokerInstrument||'unknown').toLowerCase(),
-    source,selectedDurationMs:selectedMs,brokerDurationMs:confirmedDuration,
-    brokerExpiresAt:confirmedDeadline,forecastHorizonMs:finalMs!==null&&finalMs>0?finalMs:null,
-    forecastHorizonSeconds:finalMs!==null&&finalMs>0?finalMs/1000:null,
-    expiresAt:confirmedDeadline!==null?confirmedDeadline:
-      finalMs!==null&&finalMs>0?timestamp+finalMs:null,
+    source:selectedMs!==null?'user-selection':'not-selected',
+    selectedDurationMs:selectedMs,
+    // Observation fields are informational, not the source of truth.
+    observedBrokerDurationMs:observedDuration,
+    observedBrokerExpiresAt:observedDeadline,
+    forecastHorizonMs:selectedMs,
+    forecastHorizonSeconds:selectedMs===null?null:selectedMs/1000,
+    issuedAt:timestamp,
+    targetAt:selectedMs===null?null:timestamp+selectedMs,
+    expiresAt:selectedMs===null?null:timestamp+selectedMs,
     selectionAvailable:selectedAvailable,
-    durationMismatch:differentDuration,
-    expired:staleDeadline,
-    // An unavailable or unknown expiry is a truth/status indicator,
-    // never silent substitution with a 30-second prediction.
-    reason:staleDeadline?'broker-expiration-passed':
-      finalMs===null?'select-expiration':
-      selectedAvailable===false?'selected-expiration-not-offered-by-broker':
-      differentDuration?'broker-expiration-differs-from-selection':
-      confirmedDeadline!==null?'broker-deadline-confirmed':
-      confirmedDuration!==null?'broker-duration-confirmed':'manual-expiration'
-  };
-  return Object.freeze(result);
+    durationMismatch,
+    deadlineMismatch,
+    expired:false,
+    reason:selectedMs===null?'select-expiration':
+      selectedAvailable===false?'broker-availability-observation-differs':
+      durationMismatch||deadlineMismatch?'broker-observation-differs-from-selected-expiration':
+      'selected-expiration-authoritative'
+  });
 }
+
 export function expiryForecastIdentity({engine='automatic',provider='unknown',asset='unknown',instrument='unknown',forecast}={}){
   if(!forecast?.forecastHorizonMs)return null;
-  const fixedDuration=forecast.brokerDurationMs??forecast.selectedDurationMs;
-  const expiryType=forecast.brokerExpiresAt!=null?'absolute-deadline':'fixed-duration';
-  return [
-    'vnext-expiry-driven',String(engine),String(provider).toLowerCase(),String(asset).toUpperCase(),
-    String(instrument).toLowerCase(),expiryType,
-    // A clock-expiry model is a moving remaining horizon, not a nominal
-    // 1-minute label; a per-second bucket prevents fake exact matching.
-    Math.round(Number(forecast.forecastHorizonMs)/1000),
-    expiryType==='absolute-deadline'?Math.round(Number(forecast.brokerExpiresAt)/1000):Math.round(Number(fixedDuration||0))
-  ].join('|');
+  return ['vnext-user-expiry-v1',String(engine),String(provider).toLowerCase(),String(asset).toUpperCase(),
+    String(instrument).toLowerCase(),Number(forecast.forecastHorizonMs)].join('|');
 }
