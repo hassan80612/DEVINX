@@ -12,6 +12,7 @@ import {analyzeMarket,analyzePrediction} from './strategy.mjs';
 import {ForecastResearch} from './forecast-research.mjs';
 import {EntryResearch} from './entry-research.mjs';
 import {entryOpportunities} from './entry-opportunities.mjs';
+import {reconcileEntryWithConfirmedReversal} from './reversal-entry-arbitration.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -480,7 +481,8 @@ export class DemoTradingRuntime{
       entryAt:previousEntry.firedAt||null,entryPrice:previousEntry.firedAt?previousEntry.entryPrice??null:null,trigger:previousEntry.trigger,invalidation:previousEntry.invalidation,
       reason:'Esta oportunidade terminou; aguardando outro ponto estrutural confirmado.'});
     const entryPoints=Math.max(minPoints,threshold);
-    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,entryPolicy:this.entryPolicy});
+    const candidates=entryOpportunities({analysis,snap,now,minPoints:entryPoints,durationMs,entryPolicy:this.entryPolicy})
+      .map(candidate=>reconcileEntryWithConfirmedReversal(candidate,reversalAlert,snap,now));
     if(verifiedPredictionUnavailable(analysis,this.predictionModel))for(const c of candidates){c.allowed=false;c.blockedBy='prediction-history';c.reason='Renovando o histórico do período da previsão.';}
     this.entryCandidates=candidates.map(({side,kind,score,allowed,blockedBy,reason,level,approaching,structuralReaction,reversalEvidence})=>({side,kind,score,allowed,blockedBy,reversalEvidence,
       reason:blockedBy==='score'?'Pontuação técnica '+score+' abaixo dos filtros: '+minPoints+' pts e '+threshold+'% configurados.':reason,
