@@ -1,12 +1,12 @@
 {
-  "version": "13.4.70",
-  "build": "13.4.70-nine-independent-structure-lab-1011",
+  "version": "13.4.74",
+  "build": "13.4.74-context-path-three-pairs-mobile-experimental-1011",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
-    "engineArchitecture": "nine-motor-distinct-structure-vnext",
-    "modelValidation": "research-preview-manual-only"
+    "engineArchitecture": "nine-independent-plus-three-research-pairs",
+    "modelValidation": "opt-in-experimental-manual-only"
   }
 }
