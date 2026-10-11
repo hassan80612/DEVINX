@@ -1,3 +1,4 @@
+import {retainAdaptiveHistory} from '../sentinel-trading-lab/agent/src/core/adaptive-temporal-history.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -107,4 +108,44 @@ test('67.1 visual components, desktop controls and expansion handlers are byte-i
  const page=fs.readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
  assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.2'"));
  assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.2.exe'));
+});
+
+test('dense feed retains time context for 300s model, without expanding mobile or old-card data',()=>{
+ const base=now-2500000;
+ const all=Array.from({length:10001},(_,i)=>({
+  ts:base+i*250,price:1.1+Math.sin(i/76)*.00016+Math.sin(i/188)*.00007+i*.0000000075
+ }));
+ let context=null,raw=[];
+ for(const issue of [600,1200,1800,2400,2500]){
+  const at=base+issue*1000;
+  raw=all.filter(q=>q.ts<=at).slice(-2400);
+  context=retainAdaptiveHistory({previous:context,quotes:raw,now:at,
+   asset,provider:'iq_option'});
+  assert.ok(context.quotes.length<=3602);
+  assert.equal(context.quotes.at(-1).ts,at);
+ }
+ const at=base+2500000;
+ assert.ok(context.quotes.at(-1).ts-context.quotes[0].ts>1200000);
+ assert.equal(adaptiveDirectTrajectory({quoteHistory:raw,asOf:at,
+  entryDelaySeconds:300,holdingSeconds:300}).status,'insufficient-completed-context');
+ const learned=adaptiveDirectTrajectory({quoteHistory:context.quotes,asOf:at,
+  entryDelaySeconds:300,holdingSeconds:300});
+ assert.equal(learned.status,'adaptive-direct-trajectory');
+ const result=futureEntrySchedule({settings:{...settings,orderDurationMs:300000},
+  snap:{quoteHistory:raw,quoteTs:at,provider:'iq_option'},now:at,
+  delays:[300],forecastModel:MODEL,adaptiveHistory:context.quotes})[0];
+ assert.equal(result.modelVersion,MODEL);
+ assert.equal(result.projectedExitPrice,learned.projectedExitPrice);
+});
+test('time context rejects future arrivals, expires old points and isolates asset/provider',()=>{
+ const previous=retainAdaptiveHistory({quotes:history,now,asset,provider:'iq_option'});
+ const isolated=retainAdaptiveHistory({previous,quotes:[{ts:now,price:2}],
+  now,asset:'BTC/USD',provider:'exnova'});
+ assert.equal(isolated.quotes.length,1);
+ const rejected=retainAdaptiveHistory({previous,quotes:[{ts:now+1,price:1e12},
+  {ts:now-1,price:1e-12,receivedAt:now+1000}],now,asset,provider:'iq_option'});
+ assert.deepEqual(rejected,previous);
+ const later=retainAdaptiveHistory({previous,quotes:[],now:now+4000000,
+  asset,provider:'iq_option'});
+ assert.equal(later.quotes.length,0);
 });
