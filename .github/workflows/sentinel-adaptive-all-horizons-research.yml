@@ -1,0 +1,27 @@
+name: Sentinel 13.4.67 Adaptive All-Horizon Research
+on:
+  push:
+    branches: [sentinel-13467-adaptive-residual-comparison-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/vnext-residual-reversal-research.mjs'
+      - 'sentinel-trading-lab/agent/src/core/vnext-adaptive-residual-research.mjs'
+      - 'tests/sentinel-v13467-adaptive-all-horizons.test.mjs'
+      - '.github/workflows/sentinel-adaptive-all-horizons-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify original 67 forecast contract, price chronology and residual research
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/vnext-adaptive-residual-research.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-residual-reversal-research.test.mjs
+      - name: Compare all six horizons and all nine motors chronologically (synthetic research only)
+        run: node --test tests/sentinel-v13467-adaptive-all-horizons.test.mjs
