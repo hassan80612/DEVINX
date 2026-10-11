@@ -15,7 +15,7 @@ import {SentinelRemoteRelay} from './remote-relay.mjs';
 import {dashboardTransportState} from './remote-status.mjs';
 import {analystSnapshot} from './live-bridge.mjs';
 import {SignedLiveBridge} from './signed-live-bridge.mjs';
-import {MarketJournal} from './market-journal.mjs';
+import {DemoQuoteRecorder} from './demo-quote-recorder.mjs';
 
 import {VERSION,BUILD} from './release.mjs';
 import {RUNTIME_OPTIONS} from './release.mjs';
@@ -27,10 +27,12 @@ const VAULT_FILE=resolve(process.env.SENTINEL_SESSION_VAULT_FILE||'worker/data/b
 const SECRET_FILE=resolve(process.env.SENTINEL_LOCAL_SECRET_FILE||'worker/data/local-agent.secret');
 if(HOST!=='127.0.0.1'&&HOST!=='localhost'&&!TOKEN)throw new Error('SENTINEL_WORKER_TOKEN is required when exposing worker beyond loopback');
 
-const recordMarketJournal=process.env.SENTINEL_MARKET_JOURNAL==='1';
-const marketJournal=new MarketJournal({directory:resolve(dirname(STATE_FILE),'market-history'),release:{version:VERSION,build:BUILD,runtime:RUNTIME_OPTIONS}});
+// Demo quote collection is absent from standard releases. The research EXE
+// includes this option, and collecting stops on REAL/UNKNOWN account modes.
+const recordDemoQuotes=RUNTIME_OPTIONS.demoQuoteCollection===true&&process.env.SENTINEL_DEMO_JOURNAL!=='0';
+const marketJournal=new DemoQuoteRecorder({directory:resolve(dirname(STATE_FILE),'market-history'),release:{version:VERSION,build:BUILD}});
 let journalAnalysisAt=0;
-if(recordMarketJournal)setInterval(()=>marketJournal.flush(),2000).unref();
+if(recordDemoQuotes)setInterval(()=>marketJournal.flush(),2000).unref();
 const runtime=new DemoTradingRuntime({...RUNTIME_OPTIONS,enableVNext:true,seed:Number(process.env.SENTINEL_DEMO_SEED||20261002),balance:Number(process.env.SENTINEL_DEMO_BALANCE||10000)});
 const driver=process.env.SENTINEL_BROWSER_DRIVER_URL?new HttpBrowserDriver({baseUrl:process.env.SENTINEL_BROWSER_DRIVER_URL,token:process.env.SENTINEL_BROWSER_DRIVER_TOKEN||''}):new LocalPlaywrightDriver({dataDir:process.env.SENTINEL_BROWSER_PROFILE_DIR||'worker/data/browser-profiles'});
 const overlayUpdates=new LatestOverlayScheduler((provider,data)=>driver.updateOverlay?.(provider,data));
@@ -53,7 +55,7 @@ function chooseLive(){
   }
   return null
 }
-function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.(runtimeMarketFromLive(k,m,screenSymbol));runtime.setExecutionBroker?.(brokers[k]);if(recordMarketJournal)marketJournal.market(runtime.externalMarket,runtime.settings);if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
+function syncRuntimeMarket(){const live=chooseLive();if(!live){runtime.setExternalMarket?.(null);runtime.setExecutionBroker?.(null);return null}const {k,m}=live;const status=String(m.marketStatus||'').toLowerCase(),unresolvedSwitch=status==='switching'&&!m.validatedSymbol&&!m.symbol;const screenSymbol=m.validatedSymbol||m.symbol||m.uiSymbol||(unresolvedSwitch?'':runtime.settings.asset),brokerMode=String(m.mode||'').toLowerCase();runtime.setExternalMarket?.(runtimeMarketFromLive(k,m,screenSymbol));runtime.setExecutionBroker?.(brokers[k]);if(recordDemoQuotes)marketJournal.observe({provider:k,market:m,adapterMode:brokers[k]?.accountMode,now:Date.now()});if(screenSymbol)runtime.settings.asset=screenSymbol;if(['demo','real'].includes(brokerMode)&&runtime.settings.mode!==brokerMode)runtime.setMode(brokerMode,'broker');return live}
 async function localSecret(){if(process.env.BROKER_SESSION_ENCRYPTION_KEY)return process.env.BROKER_SESSION_ENCRYPTION_KEY;try{return(await readFile(SECRET_FILE,'utf8')).trim()}catch(e){if(e?.code!=='ENOENT')throw e}await mkdir(dirname(SECRET_FILE),{recursive:true});const secret=randomBytes(32).toString('base64url');await writeFile(SECRET_FILE,secret,{encoding:'utf8',mode:0o600});await chmod(SECRET_FILE,0o600).catch(()=>{});return secret}
 const vault=new EncryptedSessionVault({secret:await localSecret(),file:VAULT_FILE});await vault.load();for(const [name,adapter] of Object.entries(brokers))adapter.attachSessionRef(vault.get(name));
 const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.init();
@@ -254,7 +256,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   // analysis, before broker overlay rendering or expensive status work.
   // The signed realtime bridge enforces burst limits and viewer verification.
   void publishLiveFrame();
-  if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
+  if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);runtime.forecastResearch.drain()}
   if(activeProvider){
     const view=await runtime.status();
     const brokerSwitching=String(view.liveBroker?.marketStatus||'').toLowerCase()==='switching'&&!view.liveBroker?.uiSymbol&&!view.liveBroker?.symbol;
@@ -334,7 +336,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,400).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
-  return{...base,marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
+  return{...base,marketJournal:{...marketJournal.status(),enabled:recordDemoQuotes&&marketJournal.enabled},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);const ALLOWED_ORIGINS=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
 function allowedOrigin(origin=''){
