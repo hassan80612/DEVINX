@@ -143,3 +143,23 @@ test('archived quote fixture replay; disclose small sample and unknown broker pr
   nonindependentOverlappingExamples:true,...summary(r)}));
  assert.ok(r.n>0,'fixture must produce a measurable comparison');
 });
+
+test('second set of unseen market seeds after first readout, not used to fit model',()=>{
+ const seeds=[44021,47801,55777,60607,71237];
+ const outcome=Object.fromEntries(HORIZONS.map(h=>[h,result()]));
+ for(const mode of MODES)for(const seed of seeds){
+  const rows=generate(seed,mode);
+  for(const issue of INDICES){
+   const history=rows.slice(Math.max(0,issue-2400),issue+1);
+   for(const h of HORIZONS){
+    const {baseline,candidate}=predict(history,h,history.at(-1).ts);
+    measure(outcome[h],baseline,candidate,history,rows[issue+h].price,mode);
+   }
+  }
+ }
+ console.log('SENTINEL_67_UNSEEN_SEEDS='+JSON.stringify({
+  seeds,source:'different deterministic synthetic streams (not actual broker history)',
+  horizons:Object.fromEntries(Object.entries(outcome).map(([h,x])=>[h,summary(x)]))
+ }));
+ assert.equal(Object.values(outcome).reduce((n,x)=>n+x.n,0),240);
+});
