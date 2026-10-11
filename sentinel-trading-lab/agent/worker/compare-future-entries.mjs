@@ -104,11 +104,14 @@ export function evaluateFutureEntryJournal({
   results.push(...forecasts);
  }
  results.sort((a,b)=>a.issuedAt-b.issuedAt);
- const hold=results.slice(splitAt(results));
  const days=[...new Set(results.map(r=>r.day))];
+ const holdDays=days.length>=6?days.slice(Math.ceil(days.length*.65)):[];
+ const hold=holdDays.length?results.filter(r=>holdDays.includes(r.day)):
+   results.slice(splitAt(results));
  return {engineId,horizonSeconds:h,comparison:'registered-future-entry-to-actual-future-expiry',
   sources:grouped.size,predictions:results.length,days:days.length,
-  all:score(results),heldOut:score(hold),
+  all:score(results),heldOut:score(hold),heldOutDays:holdDays,
+  preliminarySplit:holdDays.length===0,
   byRegime:grouping(results,'regime'),
   heldOutByRegime:grouping(hold,'regime'),
   enoughEvidence:days.length>=6&&hold.filter(x=>x.outcome&&x.outcome!=='DRAW').length>=100,
