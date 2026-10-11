@@ -112,11 +112,16 @@ export function meanReversionAr1(rows,now,{lookbackSeconds=240}={}){
 export function priorTouches(rows,level,now,windowMs){
  const cut=now-Math.max(3000,windowMs),points=rows.filter(x=>x.ts<now&&x.ts>=cut);
  if(points.length<3)return 0;
- let count=0,near=false;
+ // Separate one market TEST of a level from many rapid quote updates
+ // during that test. Visits cannot multiply simply due to faster feed rate.
+ let count=0,near=false,lastVisit=-Infinity;
  const tolerance=Math.max(1e-10,(Math.max(...points.map(x=>x.l))-Math.min(...points.map(x=>x.l)))*.06);
  for(const p of points){
   const touching=Math.abs(p.l-level)<=tolerance;
-  if(touching&&!near)count++;
+  if(touching&&!near&&p.ts-lastVisit>=5000){
+   count++;
+   lastVisit=p.ts;
+  }
   near=touching;
  }
  return count;
