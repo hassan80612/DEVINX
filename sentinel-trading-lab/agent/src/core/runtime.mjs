@@ -17,6 +17,7 @@ import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {pairedEntryResearch,reconcileEntryPreview} from './paired-entry-research.mjs';
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
@@ -77,7 +78,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,strategy:'smart_confluence',strategy2:'none',strategy3:'none',pairResearchEnabled:false,pairResearchId:'reversal',entryTimeMode:'fixed',entryLeadSeconds:30,holdingSeconds:60,requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -786,7 +787,7 @@ export class DemoTradingRuntime{
     // Manual-only policy: legacy clients cannot re-arm automated broker orders.
     if(patch?.demoAutopilot===true)throw new Error('autopilot_disabled_manual_only');
     this.settings.demoAutopilot=false;
-    const resetOperational=['asset','engine','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+    const resetOperational=['asset','engine','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings','pairResearchEnabled','pairResearchId','entryTimeMode','entryLeadSeconds','holdingSeconds'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
     const wasAutopilot=false,armingAutopilot=false;
     this.settings={...this.settings,...patch,demoAutopilot:false,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
     if(armingAutopilot){
@@ -794,7 +795,7 @@ export class DemoTradingRuntime{
       this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_armed',metadata:{maxTradesPerSession:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)}})
     }
     if(wasAutopilot&&patch.demoAutopilot===false)this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_disarmed'});
-    if(resetOperational){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;
+    if(resetOperational){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;this.vnextPairResearchCache=null;this.vnextPairPreview=null;
       // Preserve actual observed outcomes when changing the motor or expiry;
       // these are in-memory only and never uploaded to Supabase. Asset changes
       // invalidate both the pending forecast and its evaluation context.
@@ -953,9 +954,60 @@ export class DemoTradingRuntime{
       if(current&&!duplicate)rest.push(current);
       this.vnextPending=rest.slice(-1200);
       this.vnextOutcomes=outcomes.slice(-300);
+      // Optional SHADOW research: disabled by default, no broker orders, no
+      // Supabase writes. One cached computation per unique quote/configuration.
+      let combinedResearch=null;
+      if(settings.pairResearchEnabled===true){
+        const latest=snap.quoteHistory?.at(-1)||null;
+        const researchKey=JSON.stringify([settings.asset,snap.provider,
+          settings.pairResearchId,settings.entryTimeMode,
+          settings.entryLeadSeconds,settings.holdingSeconds,
+          Number(latest?.ts||0),Number(latest?.price||0)]);
+        const cached=this.vnextPairResearchCache;
+        if(cached?.key===researchKey){
+          combinedResearch=cached.result;
+        }else{
+          try{
+            const candidate=pairedEntryResearch({settings,snap,now,
+              mode:settings.entryTimeMode==='automatic'?'automatic':'fixed',
+              pairId:settings.pairResearchId||'reversal',
+              leadSeconds:Number(settings.entryLeadSeconds||30),
+              holdingSeconds:Number(settings.holdingSeconds||60)});
+            const previous=this.vnextPairPreview?.current||null;
+            const transition=reconcileEntryPreview({previous,research:candidate,now});
+            this.vnextPairPreview=transition;
+            if(transition.archived){
+              this.vnextPairArchive=[...(this.vnextPairArchive||[]),transition.archived].slice(-150);
+            }
+            combinedResearch={
+              mode:candidate.mode,pairId:candidate.pairId,pairLabel:candidate.pairLabel,
+              status:candidate.status,holdingSeconds:candidate.holdingSeconds,
+              event:transition.event,selected:transition.current,
+              // Original forecast and its timestamp are never overwritten.
+              archivedCount:(this.vnextPairArchive||[]).length,
+              alternatives:candidate.alternatives.map(x=>({
+                leadSeconds:x.leadSeconds,holdingSeconds:x.holdingSeconds,
+                side:x.side,decision:x.decision,entryAt:x.entryAt,exitAt:x.exitAt,
+                // Historical neighbor share is not a calibrated win rate.
+                historicalNeighborShare:x.trajectory.observedNeighborShare??null
+              })),
+              extremeTimes:candidate.extremeTimes,
+              futurePath:candidate.futurePath,
+              historyStatus:candidate.historyStatus,
+              historyComparisons:candidate.historyComparisons,
+              actionable:false,calibrated:false
+            };
+            this.vnextPairResearchCache={key:researchKey,result:combinedResearch};
+          }catch(error){
+            combinedResearch={status:'research-unavailable',
+              reason:String(error?.message||error).slice(0,120),actionable:false,calibrated:false};
+          }
+        }
+      }
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
         vnext:{...model,evaluation:undefined,targetAnchor,
+          combinedResearch,
           horizonForecasts:matrix.rows,
           futureEntryForecast:currentEntry,
           futureEntryAnchor:entryAnchor,
