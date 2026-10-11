@@ -82,6 +82,12 @@ export function entryRegimeFeatures(quoteHistory,asOf){
    eff>.5?'trend':'mixed';
  return {features,sigma,regime,turning,eff,failedUp,failedDown,asOf:last.ts};
 }
+const baselineLogReturn=plan=>{
+ const raw=Number(plan?.expectedLogReturn);
+ if(plan?.expectedLogReturn!==undefined&&Number.isFinite(raw))return raw;
+ const entry=Number(plan?.projectedEntryPrice),exit=Number(plan?.projectedExitPrice);
+ return entry>0&&exit>0?Math.log(exit/entry):null;
+};
 const match=(x,y)=>{
  const weights=[1.4,1.3,1.2,.75,1.3,1.3,1.6,1.2,1.2,1.35];
  const scales=[2.5,2.5,2.5,2.5,.25,.25,.2,.55,.55,2.5];
@@ -93,7 +99,7 @@ const match=(x,y)=>{
  return Math.sqrt(sum/w);
 };
 export function correctSelectedEngineFutureEntry({basePlan,examples=[],quoteHistory=[],now=Date.now()}={}){
- if(!basePlan?.side||!Number.isFinite(Number(basePlan.expectedLogReturn)))
+ if(!basePlan?.side||baselineLogReturn(basePlan)===null)
   return {baselineSide:basePlan?.side||null,shadowSide:basePlan?.side||null,
    correction:0,observations:0,reason:'no-base-forecast'};
  const current=entryRegimeFeatures(quoteHistory,now);
@@ -120,7 +126,7 @@ export function correctSelectedEngineFutureEntry({basePlan,examples=[],quoteHist
  const reliability=nearest.length/(nearest.length+8);
  const scale=Number(current.sigma)*Math.sqrt(basePlan.holdingSeconds||basePlan.delaySeconds||30);
  const correction=clamp(reliability*observedResidual,-2*scale,2*scale);
- const corrected=Number(basePlan.expectedLogReturn)+correction;
+ const corrected=baselineLogReturn(basePlan)+correction;
  const shadowSide=corrected>0?'CALL':corrected<0?'PUT':null;
  return{baselineSide:basePlan.side,shadowSide,
   correction,correctedLogReturn:corrected,observations:nearest.length,
@@ -151,11 +157,11 @@ export function advanceSelectedEngineResidualStudy({
  const signature=plan?[plan.engineId,plan.asset,plan.delaySeconds,plan.issuedAt].join('|'):null;
  if(plan&&signature!==prior.lastRegistered){
   const features=entryRegimeFeatures(quoteHistory,now);
-  if(features&&Number.isFinite(Number(plan.expectedLogReturn)))
+  if(features&&baselineLogReturn(plan)!==null)
    newPending.push({engineId:plan.engineId,asset:plan.asset,
     delaySeconds:plan.delaySeconds,issuedAt:plan.issuedAt,
     entryAt:plan.entryAt,exitAt:plan.exitAt,
-    expectedLogReturn:plan.expectedLogReturn,
+    expectedLogReturn:baselineLogReturn(plan),
     baselineSide:plan.side,shadowSide:candidate?.shadowSide||plan.side,
     features:features.features,regime:features.regime});
  }
