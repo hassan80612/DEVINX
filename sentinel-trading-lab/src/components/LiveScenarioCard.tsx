@@ -201,6 +201,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes da previsão</summary>
       <small>Motor calculado: {liveForecast?.engineId?liveForecast.engineId.replaceAll('_',' ').toUpperCase():'AGUARDANDO'} · Último cálculo {liveForecast?.issuedAt?clock(liveForecast.issuedAt):'—'} · Referência {liveForecast?.referencePrice?price(liveForecast.referencePrice):'—'}</small>
       <small data-testid="mobile-feed-path">Cotação PC na transmissão: {m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'} · Idade do pacote no celular: {m.transportAge===null?'sem push recente':m.transportAge+'s'}. {forecastDelayed?'Previsão retida apenas para consulta; não é entrada atual.':''}</small>
+      <small data-testid="forecast-forward-outcome-research">Conferências no vencimento (pesquisa): {(m.vnextHorizonMeasurements||[]).length?
+        m.vnextHorizonMeasurements.map((x:any)=>expiryLabel(x.horizonSeconds)+': '+x.correct+'/'+x.verified).join(' · '):
+        'ainda sem resultados suficientes'}. Não representam probabilidade calibrada de acerto.</small>
       <small>Prazo escolhido: {expiryLabel(forecastExpirySeconds||Number(s?.settings?.orderDurationMs||60000)/1000)} · Alvo fixado {forecastTimeValid?clock(forecastTargetAt):'—'} · Alvo móvel do motor {liveForecastValid?clock(liveForecast.targetAt):'—'}</small>
       <small>{forecast?'Faixa: '+price(forecast.expectedLow)+' a '+price(forecast.expectedHigh):'Aguardando histórico para previsão'} · {m.vnextFoundation==='historical-forward-outcomes'?'Histórico: '+m.vnextHistorical+' casos completos':'Previsão experimental, sem assertividade comprovada'}</small>
       <div className="vnextLiveCalculation" data-testid="motor-live-refresh"><small>NOVA LEITURA DO MOTOR (INDEPENDENTE DO ALVO FIXADO)</small>
