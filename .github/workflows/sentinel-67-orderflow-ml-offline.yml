@@ -1,0 +1,41 @@
+name: Sentinel 67 Orderflow and Trajectory Research — No Deployment
+on:
+  push:
+    branches: [sentinel-67-branching-path-offline-20261011]
+    paths:
+      - 'tests/research/sentinel-67-real-flow-ml.py'
+      - '.github/workflows/sentinel-67-orderflow-ml-offline.yml'
+permissions:
+  contents: read
+jobs:
+  real-orderflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert 67 original production files unchanged
+        run: |
+          set -euo pipefail
+          git diff --exit-code 5c20afbef3060d00a5caa52cf0498aebff6b20c9 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/public sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/automatic-forward-model.mjs sentinel-trading-lab/agent/src/core/historical-forward-analogs.mjs sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs
+      - name: Install offline scientific tools
+        run: python -m pip install --disable-pip-version-check --no-input numpy scikit-learn
+      - name: Download real Binance archived 1s market data used only within this test
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/sentinel-market-1s
+          for symbol in BTCUSDT ETHUSDT; do
+            for date in 2026-10-08 2026-10-09; do
+              filename="$symbol-1s-$date"
+              url="https://data.binance.vision/data/spot/daily/klines/$symbol/1s/$filename.zip"
+              curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url" -o "tmp/$filename.zip"
+              unzip -p "tmp/$filename.zip" "$filename.csv" > "tmp/sentinel-market-1s/$filename.csv"
+              test "$(wc -l < "tmp/sentinel-market-1s/$filename.csv")" -gt 80000
+            done
+          done
+      - name: Supervised chronological holdout; one full day train, next day entirely unseen
+        run: python tests/research/sentinel-67-real-flow-ml.py
