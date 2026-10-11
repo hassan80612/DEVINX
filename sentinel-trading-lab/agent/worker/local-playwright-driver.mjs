@@ -1513,8 +1513,8 @@ export class LocalPlaywrightDriver{
               </div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(95px,.7fr);gap:9px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">MOTOR ATIVO
-                <select data-sentinel-setting="engine" title="Um motor responsável pela previsão" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ESTRATÉGIA ATIVA
+                <select data-sentinel-setting="engine" title="Estratégia responsável pela previsão" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   <option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>
                   <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
                   <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>Suporte e Resistência</option>
@@ -1551,10 +1551,9 @@ export class LocalPlaywrightDriver{
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
                 <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
                 <div style="padding:7px;display:grid;gap:6px">
-                  <div>Previsão experimental, sem assertividade validada e sem autorização automática de ordem.</div>
                   <div>Registrada ${entryPlanReady?new Date(Number(pinnedEntry.issuedAt)).toLocaleTimeString("pt-BR",{hour12:false}):"—"} · direção imutável até a hora prevista · nova cotação não altera o registro.</div>
-                  <div>${liveNow?"Cotação recebida":"Cotação desatualizada ou indisponível"} · NÃO representa oportunidade confirmada de operação.</div>
-                  <div data-sentinel-horizon-evidence>Conferências históricas de projeção de preço não validam esta previsão de entrada futura.</div>
+                  <div>${liveNow?"Cotação recebida":"Cotação desatualizada ou indisponível"}.</div>
+                  <div data-sentinel-horizon-evidence>Projeção registrada para o horário e prazo selecionados.</div>
                 </div>
               </details>
             </section>
@@ -1571,7 +1570,7 @@ export class LocalPlaywrightDriver{
                 return '<div data-sentinel-horizon="'+h+'" style="min-width:0;padding:5px;border:1px solid '+(h*1000===duration?goldSoft:panelBorder)+';border-radius:6px"><small style="font-size:9px;white-space:nowrap">EM '+label+'</small><b style="display:block;color:'+(valid?(item.side==='CALL'?callTone:putTone):muted)+';font-size:12px">'+(valid?(item.side==='CALL'?'↑ CALL':'↓ PUT'):'—')+'</b><small style="font-size:8px;color:'+ink+'">'+(valid?price(item.projectedEntryPrice):'Sem previsão')+'</small></div>';
               }).join('')}
               </div>
-              <small style="font-size:8px;color:${muted}">Previsões experimentais para possíveis entradas posteriores. Sem autorização de operação.</small>
+              <small style="font-size:8px;color:${muted}">Projeções para os próximos horários de entrada.</small>
             </details>
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
@@ -1588,7 +1587,7 @@ export class LocalPlaywrightDriver{
                   '<small style="display:block;margin-top:5px;color:'+muted+';line-height:1.35;font-size:9px">'+esc(c.hint||'')+'</small></div>';
               }).join('')}
             </div>
-            <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">O terceiro card é a média de Estrutura Anterior + Mercado Agora. Motor e percentuais futuros somente no painel Projeção Futura.</small>
+            <small style="display:block;margin-top:6px;font-size:9px;line-height:1.4;color:${muted}">O terceiro card é a média de Estrutura Anterior + Mercado Agora. Estratégia e percentuais futuros somente no painel Projeção Futura.</small>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px">
               <button data-sentinel-action="start" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:linear-gradient(180deg,#d8bb72,#b48d39);font-size:11px;font-weight:900;color:#1c1912;cursor:pointer">▶ Iniciar</button>
               <button data-sentinel-action="pause" style="height:38px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};color:${ink};font-size:11px;font-weight:850;cursor:pointer">Ⅱ Pausar</button>
@@ -1597,8 +1596,8 @@ export class LocalPlaywrightDriver{
             <div data-sentinel-control-msg style="margin-top:5px;color:${goldSoft};min-height:13px;font-size:10px;font-weight:700"></div>
             <details style="margin-top:10px;padding:7px;border:1px solid ${panelBorder};border-radius:8px">
               <summary style="font-size:10px;font-weight:750;cursor:pointer;color:${muted}">Detalhes da previsão</summary>
-              <div style="font-size:11px;line-height:1.5;margin-top:8px;color:${ink}">Motor: ${esc(d.engine)}. ${esc(d.vnext?.computedStatus||'aguardando')}.</div>
-              <div style="font-size:10px;line-height:1.5;color:${muted}">Emissão: ${d.vnext?.receipt?esc(new Date(d.vnext.receipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'} · Alvo: ${d.vnext?.receipt?esc(new Date(d.vnext.receipt.targetAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'}. Fonte: cotações anteriores ao cálculo. Nenhuma garantia de assertividade.</div>
+              <div style="font-size:11px;line-height:1.5;margin-top:8px;color:${ink}">Estratégia: ${esc(d.engine)}. ${esc(d.vnext?.computedStatus||'aguardando')}.</div>
+              <div style="font-size:10px;line-height:1.5;color:${muted}">Emissão: ${d.vnext?.receipt?esc(new Date(d.vnext.receipt.issuedAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'} · Alvo: ${d.vnext?.receipt?esc(new Date(d.vnext.receipt.targetAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'}. Fonte: cotações anteriores ao cálculo.</div>
             </details>
           </div>
 `:`
