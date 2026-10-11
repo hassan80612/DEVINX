@@ -131,3 +131,49 @@ test('archived quote fixture is too short for a trained branching path, so candi
  console.log('SENTINEL_67_BRANCHING_REAL_FIXTURE='+JSON.stringify({quotes:q.length,usableFullMinutePaths:0,
   note:'Not enough quote history for independently sampled 30s trajectory branches; real broker provenance not established'}));
 });
+
+test('precommitted horizon gate tested on third unseen synthetic seed batch, no fitting on it',()=>{
+ // Config selected from FIRST seed batch only: standalone branches at 30s/180s,
+ // original 67 at 60s. This is a stress test, not live-broker validation.
+ const finalSeeds=[83011,83123,84503,86101,88493,90149,91907,94841,97073,101903,
+  104239,107021,110023,113791,117019,120011,124001,127013,131041,135007];
+ const report=Object.fromEntries(HORIZONS.map(h=>[h,{
+  baseline:stats(),standalone:stats(),precommittedGate:stats(),
+  reversalDetected:0,reversalHits:0,falseReversal:0,missedReversal:0
+ }]));
+ for(const kind of MODES)for(const seed of finalSeeds){
+  const prices=generate(seed,kind);
+  for(const i of INDICES){
+   const history=prices.slice(Math.max(0,i-2400),i+1);
+   const current=prices[i].price,before=prices[i-20].price;
+   for(const h of HORIZONS){
+    const actual=prices[i+h].price,forecast=scenario(history,h),base=forecast.baseline67;
+    const turn=directions(before,current)!==directions(current,actual)&&
+      directions(before,current)!=='DRAW'&&directions(current,actual)!=='DRAW';
+    const p=report[h];
+    score(p.baseline,base,base,current,actual,turn);
+    score(p.standalone,forecast.standaloneBranches,base,current,actual,turn);
+    score(p.precommittedGate,h===60?base:forecast.standaloneBranches,base,current,actual,turn);
+    const branch=forecast.standaloneBranches.branching?.expectedBranch;
+    const predicted=branch==='reversal';
+    if(predicted)p.reversalDetected++;
+    if(predicted&&turn)p.reversalHits++;
+    if(predicted&&!turn)p.falseReversal++;
+    if(!predicted&&turn)p.missedReversal++;
+   }
+  }
+ }
+ console.log('SENTINEL_67_FINAL_UNSEEN='+JSON.stringify({
+  provenance:'precommitted synthetic stress set, NOT real IQ Option / Xnova',
+  nSeeds:finalSeeds.length,
+  horizonGate:'30s standalone, 60s original 67, 180s standalone',
+  selectedBeforeThisTest:true,
+  report:Object.fromEntries(Object.entries(report).map(([h,x])=>[h,{
+   baseline:normalize(x.baseline),standalone:normalize(x.standalone),
+   precommittedGate:normalize(x.precommittedGate),
+   branchDetection:{predicted:x.reversalDetected,correct:x.reversalHits,
+     falsePositives:x.falseReversal,missed:x.missedReversal}
+  }]))
+ }));
+ assert.equal(Object.values(report).reduce((n,x)=>n+x.baseline.n,0),960);
+});
