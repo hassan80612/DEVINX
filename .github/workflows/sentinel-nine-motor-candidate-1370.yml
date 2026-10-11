@@ -84,7 +84,11 @@ jobs:
           set -euo pipefail
           cd sentinel-trading-lab
           mkdir -p preview-bin
-          (cd agent && zip -qr ../preview-bin/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          # The Go launcher EMBEDS public/downloads/agent_payload_v88.zip.
+          # Do not build a new preview ZIP at a different path while leaving
+          # the embedded ZIP at the old 13.4.67 version.
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          cp public/downloads/agent_payload_v88.zip preview-bin/agent_payload_v88.zip
           node --input-type=module - <<'NODE'
           import fs from 'node:fs';
           import crypto from 'node:crypto';
