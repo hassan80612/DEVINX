@@ -34,14 +34,18 @@ export function progressFutureEntryAudit({
   const seen=ledger[key]||{
     engineId:item.engineId,asset:item.asset,delaySeconds:item.delaySeconds,
     regime:item.regime,verified:0,correct:0,draws:0,
-    baselineCorrect:0,baselineVerified:0
+    baselineCorrect:0,baselineVerified:0,
+    candidateCorrect:0,candidateVerified:0
   };
   ledger[key]={...seen,verified:seen.verified+1,
    correct:seen.correct+(movement!==0&&movement===(item.side==='CALL'?1:-1)?1:0),
    draws:seen.draws+(movement===0?1:0),
    baselineVerified:seen.baselineVerified+(item.baselineSide?1:0),
    baselineCorrect:seen.baselineCorrect+
-    (item.baselineSide&&movement!==0&&movement===(item.baselineSide==='CALL'?1:-1)?1:0)};
+    (item.baselineSide&&movement!==0&&movement===(item.baselineSide==='CALL'?1:-1)?1:0),
+   candidateVerified:seen.candidateVerified+(item.candidateSide?1:0),
+   candidateCorrect:seen.candidateCorrect+
+    (item.candidateSide&&movement!==0&&movement===(item.candidateSide==='CALL'?1:-1)?1:0)};
  }
  const last=old.lastRegistered||null;
  const newKey=plan?.side&&['CALL','PUT'].includes(plan.side)&&
@@ -53,7 +57,8 @@ export function progressFutureEntryAudit({
   next.push({engineId:plan.engineId,asset:plan.asset,
     delaySeconds:Number(plan.delaySeconds),entryAt:Number(plan.entryAt),
     exitAt:Number(plan.exitAt),side:plan.side,
-    baselineSide:plan.baselineSide||null,regime:plan.researchRegime||'unclassified'});
+    baselineSide:plan.baselineSide||null,
+    candidateSide:plan.candidateSide||null,regime:plan.researchRegime||'unclassified'});
  }
  const activeEngine=plan?.engineId;
  const activeAsset=plan?.asset;
