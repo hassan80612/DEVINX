@@ -109,21 +109,27 @@ function absScale(train,e,versions,h){
 function pick(r,a,b,policy,fit){
  const f=forecast(r,a,fit.versions),g=forecast(r,b,fit.versions);
  if(!f.side||!g.side)return null;
- if(f.side===g.side)return f.side;
- if(policy==='agreement')return null;
+ // A confirmed agreement can still be two strategies making the SAME error.
+ // Check ex-ante conditional reliability using past-only market features.
+ const guarded=policy.endsWith('_guard');
+ const base=guarded?policy.replace('_guard',''):policy;
  const qa=fit.qualities[a][r.h][r.state],qb=fit.qualities[b][r.h][r.state];
- if(policy==='adaptive'){
+ if(guarded&&(qa+qb)/2<.595)return null;
+ if(f.side===g.side)return f.side;
+ if(base==='agreement')return null;
+ if(base==='adaptive'){
+  if(guarded&&Math.max(qa,qb)<.63)return null;
   const better=qa>=qb?{side:f.side,q:qa,other:qb}:{side:g.side,q:qb,other:qa};
   return better.q>=.585&&better.q-better.other>=.035?better.side:null
  }
- if(policy==='evidence'){
+ if(base==='evidence'){
   // Compare conditional historical accuracy AND normalized forecast displacement,
   // NOT raw percent figures or uncalibrated model confidences.
   const sa=Math.sign(f.delta)*clamp((qa-.5)*2,.05,1)*Math.abs(f.delta)/fit.scales[a][r.h];
   const sb=Math.sign(g.delta)*clamp((qb-.5)*2,.05,1)*Math.abs(g.delta)/fit.scales[b][r.h];
   const strength=Math.abs(sa+sb)/(Math.abs(sa)+Math.abs(sb)+1e-12);
   const side=sa+sb>0?'CALL':'PUT',q=side===f.side?qa:qb;
-  return strength>=.35&&q>=.55?side:null
+  return strength>=(guarded?.48:.35)&&q>=(guarded?.62:.55)?side:null
  }
  throw Error('unknown policy')
 }
@@ -173,8 +179,8 @@ function rank(pair,trainingStats){
  return conservative+0.025*(trainingStats.coverage/100)
 }
 export function evaluateTwoStrategies(){
- const train=build([41,731,83,1201]),hold=build([211,1049,1601,2027]);
- const fit=prepare(train),policies=['agreement','adaptive','evidence'],candidates=[];
+ const train=build([41,731,83,1201,211,1049,1601,2027]),hold=build([3001,4001,5021,6007]);
+ const fit=prepare(train),policies=['agreement','adaptive','evidence','agreement_guard','adaptive_guard','evidence_guard'],candidates=[];
  for(let i=0;i<ENGINES.length;i++)for(let j=i+1;j<ENGINES.length;j++)
  for(const policy of policies){
   const a=ENGINES[i],b=ENGINES[j],training=stats(train,a,b,policy,fit);
@@ -190,7 +196,7 @@ export function evaluateTwoStrategies(){
  return {
   warning:'synthetic deterministic generator only, NOT validated broker accuracy; scenarios repeated by engine and horizon',
   trainingSize:train.length,holdoutSize:hold.length,
-  trainSeeds:[41,731,83,1201],unusedHoldoutSeeds:[211,1049,1601,2027],
+  trainSeeds:[41,731,83,1201,211,1049,1601,2027],unusedHoldoutSeeds:[3001,4001,5021,6007],
   versionByStrategy:fit.versions,
   policiesEvaluated:policies,
   configurationsCompared:candidates.length,
@@ -207,11 +213,11 @@ export function evaluateTwoStrategies(){
   doNotDeploy:true
  }
 }
-test('internal two strategy comparison: no production code changed',()=>{
+test('third independent seed set; no production code changed',()=>{
  const r=evaluateTwoStrategies();
  console.log('SENTINEL_TWO_STRATEGY_BENCHMARK='+JSON.stringify(r));
- assert.equal(r.trainingSize,8*4*3*6);
- assert.equal(r.holdoutSize,r.trainingSize);
- assert.equal(r.configurationsCompared,36*3);
+ assert.equal(r.trainingSize,8*8*3*6);
+ assert.equal(r.holdoutSize,8*4*3*6);
+ assert.equal(r.configurationsCompared,36*6);
  assert.equal(r.doNotDeploy,true);
 });
