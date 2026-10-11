@@ -21,7 +21,7 @@ test('desktop Agent selects only one motor and displays the target price/time ra
  assert.match(v,/data-sentinel-setting="duration"/);
  assert.match(v,/PREÇO FUTURO AO VENCER/);
  assert.match(v,/ENTRADA FUTURA/);
- assert.match(v,/Projeção experimental/);
+ assert.match(v,/Previsão experimental/);
  assert.doesNotMatch(v,/Estratégia 1/);
  assert.doesNotMatch(v,/Estratégia 2/);
  assert.doesNotMatch(v,/Estratégia 3/);
