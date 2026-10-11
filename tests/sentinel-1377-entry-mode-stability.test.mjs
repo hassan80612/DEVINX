@@ -103,7 +103,7 @@ test('changing strategy and mode resets old future entry anchor without losing m
  assert.equal(rt.settings.orderDurationMs,180000);
  assert.equal(rt.settings.demoAutopilot,false);
 });
-test('signed mobile frame carries E, D, mode and 3 stable market readings',()=>{
+test('signed mobile frame carries E, D, mode and 3 stable market readings',async()=>{
  const q=quotes(223),now=q.at(-1).ts,shot=snap(q);
  const rt=new DemoTradingRuntime({enableVNext:true});
  rt.patchSettings(config('pair_reversal',180,{entryTimeMode:'fixed',entryLeadSeconds:15}));
@@ -111,7 +111,7 @@ test('signed mobile frame carries E, D, mode and 3 stable market readings',()=>{
  rt.lastResult={asset:'EUR/USD OTC',analysis:out.analysis};
  const live={symbol:'EUR/USD OTC',validatedSymbol:'EUR/USD OTC',assetValidated:true,
   analysisFeedValidated:true,lastQuoteAt:now,quote:q.at(-1).price};
- const frame=analystSnapshot(rt.status(),live);
+ const frame=analystSnapshot(await rt.status(),live);
  const v=frame.lastResult.analysis.vnext;
  assert.equal(frame.settings.entryTimeMode,'fixed');
  assert.equal(frame.settings.entryLeadSeconds,15);

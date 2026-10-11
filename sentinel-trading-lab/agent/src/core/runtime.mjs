@@ -813,6 +813,10 @@ export class DemoTradingRuntime{
       this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_armed',metadata:{maxTradesPerSession:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)}})
     }
     if(wasAutopilot&&patch.demoAutopilot===false)this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_disarmed'});
+    if(['asset','engine','entryTimeMode','entryLeadSeconds','orderDurationMs'].some(k=>Object.prototype.hasOwnProperty.call(patch,k))){
+      this.vnextFutureEntryAnchor=null;this.vnextTargetAnchor=null;
+      this.vnextTargetProjection=null;this.vnextHorizonMatrix=null;
+    }
     if(resetOperational){this.scenarioSetup=null;this.operationalSetup=null;this.oppositeOperationalSetup=null;this.vnextPairResearchCache=null;this.vnextThreeMinuteCache=null;this.vnextFutureResearchCache=null;this.vnextQualificationCache=null;this.vnextAdvisorCache=null;this.vnextPairPreview=null;
       // Preserve actual observed outcomes when changing the motor or expiry;
       // these are in-memory only and never uploaded to Supabase. Asset changes
