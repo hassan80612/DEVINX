@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {specialistForwardPrediction}
  from '../sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs';
+import {automaticForwardPrediction}
+ from '../sentinel-trading-lab/agent/src/core/automatic-forward-model.mjs';
 import {
  compressTemporalQuotes,temporalQuoteProfile,BoundedTemporalQuoteArchive
 } from '../sentinel-trading-lab/agent/src/core/vnext-temporal-evidence-research.mjs';
@@ -29,14 +31,12 @@ test('the SAME price trajectory should not depend on quote refresh rate',()=>{
  const normalized4=compressTemporalQuotes({quoteHistory:multiple,asOf,maxPoints:4096});
  assert.deepEqual(normalized1,normalized4);
  for(const h of [5,10,30,60,120,300]){
-  for(const engineId of ['price_action','mean_reversion','trend','support_resistance',
+  for(const engineId of ['automatic','price_action','mean_reversion','trend','support_resistance',
      'breakout','trendline_breakout','fibonacci_retest','smart_confluence']){
-   const first=specialistForwardPrediction({
-    engineId,quoteHistory:normalized1,asOf,selectedSeconds:h
-   });
-   const second=specialistForwardPrediction({
-    engineId,quoteHistory:normalized4,asOf,selectedSeconds:h
-   });
+   const compute=engineId==='automatic'?automaticForwardPrediction:
+    opts=>specialistForwardPrediction({...opts,engineId});
+   const first=compute({quoteHistory:normalized1,asOf,selectedSeconds:h});
+   const second=compute({quoteHistory:normalized4,asOf,selectedSeconds:h});
    assert.equal(first.prediction?.projectedPrice,second.prediction?.projectedPrice,
     'identical history must mean identical future projection '+engineId+' '+h);
   }
