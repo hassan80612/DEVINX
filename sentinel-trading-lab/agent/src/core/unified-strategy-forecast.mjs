@@ -28,10 +28,11 @@ export function selectedForecast({settings={},snap={},now=Date.now(),provider=sn
   Math.abs(Math.log(x.referencePrice/y.referencePrice))<1e-5);
  const seconds=Number(settings.orderDurationMs)/1000;
  const asset=String(settings.asset||'UNKNOWN').toUpperCase();
+ const marketReadings=lightweightDashboard({quoteHistory:snap.quoteHistory,receipt:null,now});
  const base={...a,engineId:pair.id,engineFamily:'two-independent-strategies',
   modelVersion:'unified-pair-owner-1',source:'selected-pair',
   pairMembers:[...pair.engines],expirySeconds:Number(a?.expirySeconds||seconds),
-  cards:[],projection:null,plan:null,scenarioProjection:null,
+  cards:marketReadings.cards,projection:null,plan:null,scenarioProjection:null,
   actionable:false,calibrated:false};
  if(!coherent)return {...base,receipt:null,computedStatus:'pair-disagreement',
   forecastFoundation:'two-independent-predictions',

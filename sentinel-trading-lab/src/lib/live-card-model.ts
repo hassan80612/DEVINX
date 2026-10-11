@@ -53,13 +53,14 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const entryFromTuple=(v:any)=>Array.isArray(v)?{
     delaySeconds:Number(v[0]),side:v[1]||null,
     projectedEntryPrice:Number(v[2])||null,projectedExitPrice:Number(v[3])||null,
-    issuedAt:Number(v[4])||0,holdingSeconds:Number(v[5])||0,
+    issuedAt:Number(v[4])||0,holdingSeconds:Number(v[5])||0,mode:v[6]||'fixed',
     entryAt:(Number(v[4])||0)+(Number(v[0])||0)*1000,
     exitAt:(Number(v[4])||0)+((Number(v[0])||0)+(Number(v[5])||0))*1000
   }:v;
   const entryAnchor=entryFromTuple(vnext?.ea||vnext?.futureEntryAnchor);
   const vnextFutureEntryAnchor=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
-    Number(entryAnchor?.delaySeconds)===horizon&&
+    Number(entryAnchor?.holdingSeconds)===horizon&&
+    (entryAnchor?.mode||'fixed')===(s?.settings?.entryTimeMode==='automatic'?'automatic':'fixed')&&
     Number(entryAnchor?.entryAt)>Number(entryAnchor?.issuedAt)&&
     ['CALL','PUT'].includes(String(entryAnchor?.side||''))?entryAnchor:null;
   const vnextFutureEntryRows=matchingMarket&&vnext?.engineId===s?.settings?.engine?

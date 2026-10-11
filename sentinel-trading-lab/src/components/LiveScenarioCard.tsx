@@ -141,11 +141,26 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         {PAIR_STRATEGIES.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
       </select>
     </label>
-    <label>Entrada daqui a
-      <select aria-label="Tempo até a entrada prevista" value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
+    <label>Duração da operação
+      <select aria-label="Duração da operação" value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
+    <label>Entrada prevista
+      <select aria-label="Modo da entrada prevista" disabled={busy}
+        value={s?.settings?.entryTimeMode==='automatic'?'automatic':'fixed'}
+        onChange={e=>void act('settings',{entryTimeMode:e.target.value})}>
+        <option value="fixed">Tempo fixo</option>
+        <option value="automatic">Tempo automático</option>
+      </select>
+    </label>
+    {s?.settings?.entryTimeMode!=='automatic'&&<label>Entrar daqui a
+      <select aria-label="Tempo fixo até a entrada" disabled={busy}
+        value={Number(s?.settings?.entryLeadSeconds||30)}
+        onChange={e=>void act('settings',{entryLeadSeconds:Number(e.target.value)})}>
+        {[5,10,15,30,60,120,300].map(v=><option value={v} key={v}>{expiryLabel(v)}</option>)}
+      </select>
+    </label>}
   </div>:null;
 
 
@@ -157,7 +172,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const plannedExit=Number(futureEntry?.exitAt||0);
   const entryPlanValid=!!(futureEntry&&['CALL','PUT'].includes(futureEntry.side)&&
     plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
-    Number(futureEntry.delaySeconds)===Number(expirySeconds));
+    Number(futureEntry.holdingSeconds)===Number(expirySeconds)&&
+    (futureEntry.mode||'fixed')===(s?.settings?.entryTimeMode==='automatic'?'automatic':'fixed'));
   const countdownSeconds=entryPlanValid?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
   const entryCountdown=countdownSeconds===null?'—:—':
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
@@ -178,8 +194,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanValid?price(futureEntry.projectedExitPrice):'—'}</strong></div>
     </div>
     <div className="vnextProjectionBias" aria-label="Cenário de entrada futura não confirmado">
-      <span>ENTRADA EM <b>{expiryLabel(Number(expirySeconds))}</b></span>
-      <span>PERÍODO APÓS <b>{expiryLabel(Number(futureEntry?.holdingSeconds||expirySeconds))}</b></span>
+      <span>ENTRADA EM <b>{entryPlanValid?expiryLabel(Number(futureEntry.delaySeconds)):'—'}</b></span>
+      <span>DURAÇÃO <b>{expiryLabel(Number(expirySeconds))}</b></span>
     </div>
     <details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes e qualidade da previsão</summary>
       <small>{entryDataFresh?'Cotação atual recebida':'Cotação atrasada ou indisponível · não operar com dados antigos'} · estimativa não calibrada.</small>
@@ -211,16 +227,21 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         </div>;
       })}
     </div>
-    <small className="vnextForwardHorizonsNote">Entrada prevista no horário de cada célula; período posterior igual ao prazo. Experimental.</small>
+    <small className="vnextForwardHorizonsNote">Entrada e duração da operação são independentes; previsões experimentais.</small>
   </details>:null;
   const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings">
     <strong className="vnextReadingsHeading">TOTAIS DO MERCADO · SEM ESTRATÉGIA</strong>
     <div className="vnextMobileReadingsGrid">
-      {(s?.lastResult?.analysis?.vnext?.cards||[]).slice(0,3).map((c:any,i:number)=>
-        <div key={c.id||i}><small>{['MERCADO AGORA','ESTRUTURA ANTERIOR','ESTRUTURA ANTERIOR + MERCADO AGORA'][i]}</small>
+      {[
+        {id:'market-now',side:'AGUARDAR',callPct:null,putPct:null},
+        {id:'prior-structure',side:'AGUARDAR',callPct:null,putPct:null},
+        {id:'total-of-totals',side:'AGUARDAR',callPct:null,putPct:null}
+      ].map((fallback:any,i:number)=>{
+        const c:any=(s?.lastResult?.analysis?.vnext?.cards||[]).find((x:any)=>x.id===fallback.id)||fallback;
+        return <div key={fallback.id}><small>{['MERCADO AGORA','ESTRUTURA ANTERIOR','ESTRUTURA ANTERIOR + MERCADO AGORA'][i]}</small>
           <strong>{c.side||'AGUARDAR'}</strong>
           <span>CALL {c.callPct==null?'—':c.callPct+'%'} · PUT {c.putPct==null?'—':c.putPct+'%'}</span>
-        </div>)}
+        </div>})}
     </div>
     <small>O terceiro card é a média de Estrutura Anterior + Mercado Agora. A estratégia e os percentuais projetados aparecem apenas em Projeção Futura. Índices visuais, não taxas de acerto.</small>
   </div>:null;

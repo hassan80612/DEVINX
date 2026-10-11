@@ -1507,7 +1507,8 @@ export class LocalPlaywrightDriver{
         const pinnedEntry=d.vnext?.futureEntryAnchor||null;
         const entryPlanReady=!!(pinnedEntry&&pinnedEntry.engineId===d.engine&&
           pinnedEntry.asset===visibleAsset&&
-          Number(pinnedEntry.delaySeconds)*1000===duration&&
+          Number(pinnedEntry.holdingSeconds)*1000===duration&&
+          pinnedEntry.mode===(d.entryTimeMode==='automatic'?'automatic':'fixed')&&
           Number(pinnedEntry.entryAt)>Number(pinnedEntry.issuedAt)&&
           ['CALL','PUT'].includes(pinnedEntry.side));
         const scheduledAt=entryPlanReady?Number(pinnedEntry.entryAt):0;
@@ -1544,11 +1545,19 @@ export class LocalPlaywrightDriver{
                   <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
                 </select>
               </label>
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ENTRADA DAQUI A
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">DURAÇÃO DA OPERAÇÃO
                 <select data-sentinel-setting="duration" title="Prazo da previsão selecionado por você" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   ${[5,10,15,30,45,60,120,180,300,600,900,3600].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+(v<60?v+'s':v/60+'min')+'</option>').join('')}
                 </select>
               </label>
+            </div>
+            <div data-sentinel-entry-mode style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;margin-top:5px;border:1px solid ${panelBorder};border-radius:8px;min-height:39px;font-size:10px;color:${goldSoft}">
+              <span style="font-weight:800">ENTRADA</span>
+              <select data-sentinel-setting="entryTimeMode" title="Momento da entrada, independente da duração" style="min-width:118px;height:28px;background:${fieldBg};border:1px solid ${fieldBorder};border-radius:7px;color:${fieldInk};padding:0 6px">
+                <option value="fixed" ${d.entryTimeMode!=='automatic'?'selected':''}>Tempo fixo</option>
+                <option value="automatic" ${d.entryTimeMode==='automatic'?'selected':''}>Tempo automático</option>
+              </select>
+              ${d.entryTimeMode!=='automatic'?'<span style="font-weight:750">DAQUI A</span><select data-sentinel-setting="entryLeadSeconds" style="height:28px;min-width:70px;background:'+fieldBg+';color:'+fieldInk+';border:1px solid '+fieldBorder+';border-radius:7px;padding:0 4px">'+[5,10,15,30,60,120,300].map(v=>'<option value="'+v+'" '+(Number(d.entryLeadSeconds||30)===v?'selected':'')+'>'+ (v<60?v+'s':v/60+'min')+'</option>').join('')+'</select>':'<span style="font-size:9px;color:'+muted+'">Busca uma janela no histórico</span>'}
             </div>
             <div data-sentinel-strategy-context style="padding:5px 9px;margin-top:5px;color:${muted};font-size:10px">
               ${d.engine==='automatic'&&d.vnext?.forecastOwner?.switched?'Automático usa '+esc(String(d.vnext.forecastOwner.effectiveEngine).replaceAll('_',' ')):
@@ -1585,7 +1594,7 @@ export class LocalPlaywrightDriver{
             <details data-sentinel-vnext-horizon-matrix data-sentinel-preserve-open="1" style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
               <summary style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">
-              ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((x,y)=>x-y).slice(0,9).map(h=>{
+              ${[...new Set([5,10,30,60,120,180,300,Number(d.entryLeadSeconds||30)])].sort((x,y)=>x-y).slice(0,9).map(h=>{
                 const item=(Array.isArray(d.vnext?.futureEntryRows)?d.vnext.futureEntryRows:[]).find(x=>Number(x.delaySeconds)===h);
                 const valid=!!(item&&['CALL','PUT'].includes(item.side)&&
                   Number(item.projectedEntryPrice)>0&&Number(item.projectedExitPrice)>0&&
@@ -1598,10 +1607,15 @@ export class LocalPlaywrightDriver{
             </details>
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
-            <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
-              ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
+            <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;align-items:stretch;min-height:118px">
+              ${[
+                ['market-now','TOTAL MERCADO AGORA'],
+                ['prior-structure','TOTAL ESTRUTURA ANTERIOR'],
+                ['total-of-totals','ESTRUTURA ANTERIOR + MERCADO AGORA']
+              ].map(([id,label])=>{
+                const c=(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).find(v=>v?.id===id)||{id,label,side:'AGUARDAR',callPct:null,putPct:null,hint:'Aguardando histórico'};
                 const value=c?.callPct==null?NaN:Number(c.callPct),other=c?.putPct==null?NaN:Number(c.putPct);
-                const fresh=Number.isFinite(value)&&Number.isFinite(other)&&liveNow&&d.vnext?.engineId===d.engine&&d.vnext?.receipt?.engineId===d.engine&&Math.round(Number(d.vnext?.receipt?.expirySeconds)*1000)===duration;
+                const fresh=Number.isFinite(value)&&Number.isFinite(other)&&liveNow&&d.vnext?.engineId===d.engine&&Math.round(Number(d.vnext?.expirySeconds)*1000)===duration;
                 const side=fresh?esc(c.side):'AGUARDAR';
                 const color=fresh&&value>other?callTone:fresh&&other>value?putTone:ink;
                 return '<div data-sentinel-summary="'+esc(c.id||'')+'" style="padding:10px 9px;border:1px solid '+panelBorder+';background:'+panelBg+';border-radius:11px;min-width:0;box-shadow:'+panelShadow+'">'+

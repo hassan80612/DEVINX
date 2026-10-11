@@ -33,7 +33,7 @@ export function analystSnapshot(runtimeStatus,live){
   const entryTuple=e=>e?[
     Number(e.delaySeconds)||0,e.side||null,
     Number(e.projectedEntryPrice)||0,Number(e.projectedExitPrice)||0,
-    Number(e.issuedAt)||0,Number(e.holdingSeconds)||0
+    Number(e.issuedAt)||0,Number(e.holdingSeconds)||0,e.mode||'fixed'
   ]:null;
   const advisor=vnext.strategyAdvisor||null;
   const forward=vnext.generalFutureResearch||vnext.general180Research||null;
@@ -212,7 +212,7 @@ export class LiveBridge{
       snapshot.settings?.pairResearchEnabled,snapshot.settings?.pairResearchId,
       snapshot.settings?.futureResearchEnabled,snapshot.settings?.strategyAdvisorEnabled,
       snapshot.settings?.strategyAdvisorMode,snapshot.settings?.entryTimeMode,
-      snapshot.settings?.entryLeadSeconds,snapshot.settings?.holdingSeconds,
+      snapshot.settings?.entryLeadSeconds,snapshot.settings?.entryTimeMode,snapshot.settings?.holdingSeconds,
       snapshot.lastResult?.analysis?.vnext?.receipt?.side,
       snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
       snapshot.lastResult?.analysis?.vnext?.hf?.map(row=>row.slice(0,3).join(',')).join(';'),

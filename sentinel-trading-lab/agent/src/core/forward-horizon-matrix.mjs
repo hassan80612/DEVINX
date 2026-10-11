@@ -12,7 +12,8 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   const quoteAt=positive(snap.quoteTs);
   const last=Array.isArray(snap.quoteHistory)?snap.quoteHistory.at(-1):null;
   const context=JSON.stringify([
-    settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
+    settings.engine,settings.asset,horizon,settings.entryTimeMode||'fixed',
+    Number(settings.entryLeadSeconds??30),quoteAt,Number(last?.ts)||0,
     Number(last?.price)||0,Array.isArray(snap.quoteHistory)?snap.quoteHistory.length:0
   ]);
   const horizons=isPairedStrategy(settings.engine)?[horizon]:[...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);

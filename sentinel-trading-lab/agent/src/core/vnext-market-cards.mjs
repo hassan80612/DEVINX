@@ -35,7 +35,13 @@ export function lightweightDashboard({quoteHistory=[],receipt=null,now=Date.now(
   const rows=[...map].sort((a,b)=>a[0]-b[0]).slice(-900)
     .map(([ts,price])=>({ts,price}));
   const current=rows.at(-1);
-  if(!current)return Object.freeze({cards:Object.freeze([]),projection:null});
+  // Layout contract: the three OBSERVATIONAL readings must always exist.
+  // Missing/stale quotes mean neutral placeholders, never a disappearing row.
+  if(!current)return Object.freeze({cards:Object.freeze([
+    reading('market-now','TOTAL MERCADO AGORA',null,'Aguardando cotações recentes'),
+    reading('prior-structure','TOTAL ESTRUTURA ANTERIOR',null,'Aguardando histórico'),
+    reading('total-of-totals','ESTRUTURA ANTERIOR + MERCADO AGORA',null,'Aguardando as duas leituras')
+  ]),projection:null});
   let sumSq=0,seconds=0;
   for(let i=1;i<rows.length;i++){
     const dt=(rows[i].ts-rows[i-1].ts)/1000;
