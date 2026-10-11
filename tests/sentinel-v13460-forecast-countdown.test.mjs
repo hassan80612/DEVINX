@@ -18,7 +18,7 @@ test('one clock in normal and floating mobile cards, not two overlapping clocks'
 });
 test('Agent independently pins display clock to original forecast without gating its live model',async()=>{
  const s=await read('agent/src/core/runtime.mjs');
- assert.match(s,/const model=singleEngineForecast\(\{settings,snap,now(?:,forecastModel:this\.forecastModel)?\}\)/);
+ assert.match(s,/const model=singleEngineForecast\(\{settings,snap,now(?:,forecastModel:this\.forecastModel(?:,adaptiveHistory)?)?\}\)/);
  assert.match(s,/const previousAnchor=this\.vnextTargetAnchor\|\|null/);
  assert.match(s,/Number\(previousAnchor\.targetAt\)>now/);
  assert.doesNotMatch(s,/current\.side===previousAnchor\.side/); // do not restart the clock when the live market direction flips
