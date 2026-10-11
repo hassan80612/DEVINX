@@ -111,7 +111,7 @@ export function singleEngineForecast({
    price:receipt.referencePrice,projectedPrice:predictedPrice,
    expectedLow:receipt.expectedLow,expectedHigh:receipt.expectedHigh,
    engineId:request.engineId,modelVersion,
-   reason:'Estimativa futura ainda não validada por operações.'
+   reason:'Estimativa de preço para o prazo selecionado.'
  }:null;
  const operational={
    asset,side:'AGUARDAR',state:'PROJETANDO',ready:false,actionable:false,
@@ -120,7 +120,7 @@ export function singleEngineForecast({
      qualification:{allowed:false},signal:{actionable:false}},
    scenario:null,scenarioProjection,
    reason:receipt?'Projeção '+side+' até '+new Date(receipt.targetAt).toISOString()+
-     ' · preço esperado '+(predictedPrice??'—')+' · análise experimental sem sinal de entrada.':
+     ' · preço esperado '+(predictedPrice??'—')+' · projeção futura.':
      'Aguardando cotações válidas para previsão '+horizon+'s.',
    engineId:request.engineId,experimental:true
  };
