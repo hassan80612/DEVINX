@@ -66,7 +66,7 @@ export function lightweightDashboard({quoteHistory=[],receipt=null,now=Date.now(
   const projectedCallPct=receiptValid&&sigma>0?
     50+42*Math.tanh(Math.log(future/ref)/(sigma*Math.sqrt(h))):null;
   const projection=reading('forecast','PROJEÇÃO FUTURA',projectedCallPct,
-    'Índice do preço projetado pelo único motor selecionado');
+    'Índice do preço projetado pela estratégia selecionada');
   return Object.freeze({cards:Object.freeze([market,history,total]),projection});
 }
 export const lightweightReadings=options=>lightweightDashboard(options).cards;
