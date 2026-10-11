@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {singleEngineForecast as baseline70} from '../baseline70/sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs';
 import {selectedForecast as latest76} from '../sentinel-trading-lab/agent/src/core/unified-strategy-forecast.mjs';
+import {singleEngineForecast as old67Specialist} from '../sentinel-trading-lab/agent/src/core/research-baseline-13467/vnext-single-engine.mjs';
 import {SCENARIO_ENGINES} from '../sentinel-trading-lab/agent/src/core/scenario-engine-catalog.mjs';
 import {PAIR_STRATEGIES} from '../sentinel-trading-lab/agent/src/core/pair-strategy-catalog.mjs';
 import {DemoTradingRuntime as Runtime70} from '../baseline70/sentinel-trading-lab/agent/src/core/runtime.mjs';
@@ -93,7 +94,10 @@ test('13.4.70 versus 13.4.76: same unseen synthetic quote histories, direct mode
       const p=latest76({settings:{...cfg,engine:pair.id},snap,now,provider:snap.provider});
       assert.equal(p.engineId,pair.id);
       const q=stat.pairs[pair.id],qR=regstat.pairs[pair.id];
-      const first=latest[pair.engines[0]],second=latest[pair.engines[1]];
+      const member=(n)=>pair.versions[n]===67?old67Specialist({
+       settings:{...cfg,engine:pair.engines[n]},snap,now,provider:snap.provider
+      }):latest[pair.engines[n]];
+      const first=member(0),second=member(1);
       record(q.first,first,actual,reference);
       record(q.second,second,actual,reference);
       const base70=old.automatic;
