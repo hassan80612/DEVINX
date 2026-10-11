@@ -10,6 +10,7 @@ on:
       - 'sentinel-trading-lab/src/**'
       - 'tests/sentinel-v13464-mobile-feed-continuity.test.mjs'
       - 'tests/sentinel-v13465-rollback.test.mjs'
+      - 'tests/sentinel-v13460-cards-outcomes.test.mjs'
       - 'tests/sentinel-v13466-multihorizon-forecasts.test.mjs'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
