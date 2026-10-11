@@ -1,12 +1,12 @@
 {
-  "version": "13.4.67",
-  "build": "13.4.67-future-entry-pinned-1010",
+  "version": "13.4.70",
+  "build": "13.4.70-nine-independent-structure-lab-1011",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
-    "engineArchitecture": "single-independent-user-expiry-vnext",
+    "engineArchitecture": "nine-motor-distinct-structure-vnext",
     "modelValidation": "research-preview-manual-only"
   }
 }
