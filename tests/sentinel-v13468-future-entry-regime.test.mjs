@@ -133,3 +133,33 @@ test('shadow forecast never changes a pinned approved decision or edits the PC/m
   quoteHistory:[...quotes,{ts:now+30000,price:1.1},{ts:now+60000,price:1.099}]});
  assert.deepEqual(completed.summaries.map(x=>[x.verified,x.correct,x.candidateVerified,x.candidateCorrect]),[[1,0,1,1]]);
 });
+
+test('microstructure: repeated reversals inside a range are oscillation, not a persistent reversal',()=>{
+ const origin=now-1099000;
+ const oscillating=Array.from({length:1100},(_,i)=>({
+  ts:origin+i*1000,price:1.1+.00007*Math.sin(i*Math.PI/12)+.000006*Math.sin(i*Math.PI/4)
+ }));
+ const singleReversal=Array.from({length:1100},(_,i)=>({
+  ts:origin+i*1000,price:1.1+(i<1092?i*.0000018:1092*.0000018-(i-1092)*.000004)
+ }));
+ const continuousTrend=Array.from({length:1100},(_,i)=>({
+  ts:origin+i*1000,price:1.1+i*.0000018+.000005*Math.sin(i/35)
+ }));
+ const make=quoteHistory=>historicalFutureEntryAnalogs({
+  quoteHistory,asOf:now,delaySeconds:30,holdingSeconds:30,engineId:'automatic'
+ });
+ const osc=make(oscillating),reversal=make(singleReversal),trend=make(continuousTrend);
+ assert.equal(osc.regime,'oscillating');
+ assert.equal(reversal.regime,'reversal');
+ assert.equal(trend.regime,'trending');
+ assert.ok(osc.turnDensity>reversal.turnDensity);
+ assert.ok(reversal.possibleTurn);
+ assert.ok(!trend.possibleTurn);
+ // Classification informs future outcome research; never changes frozen side.
+ const estimated=futureEntrySchedule({
+  settings:settings('automatic'),
+  snap:{...snap,quoteHistory:oscillating},
+  now,delays:[30],focusDelaySeconds:30
+ })[0];
+ assert.equal(estimated.side,estimated.baselineSide);
+});
