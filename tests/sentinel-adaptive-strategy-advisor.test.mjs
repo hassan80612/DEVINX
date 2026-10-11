@@ -92,12 +92,13 @@ test('both PC overlay and web console explain strategy suitability and experimen
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const web=readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
  assert.ok(worker.includes('data-sentinel-strategy-context'));
- assert.ok(worker.includes('Onde cada estratégia tende a ser mais útil'));
- assert.ok(worker.includes('PREVISÃO POR TRAJETÓRIA · EXPERIMENTAL'));
+ assert.ok(worker.includes('⚙ Opções de previsão'));
+ assert.ok(!worker.includes('Onde cada estratégia tende a ser mais útil'));
+ assert.ok(!worker.includes('PREVISÃO POR TRAJETÓRIA · EXPERIMENTAL'));
  assert.ok(web.includes('strategyAdvisorEnabled'));
- assert.ok(web.includes('strategyAdvisorMode'));
+ assert.ok(web.includes('autoRoutingEnabled'));
  assert.ok(web.includes('futureResearchEnabled'));
  assert.ok(web.includes('pairResearchEnabled'));
- assert.ok(web.includes('Duração da operação depois da entrada'));
+ assert.ok(web.includes('Duração independente da entrada'));
  assert.ok(!worker.includes('MOTOR ATIVO'));
 });

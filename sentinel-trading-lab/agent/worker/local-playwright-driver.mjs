@@ -1563,6 +1563,12 @@ export class LocalPlaywrightDriver{
             <details data-sentinel-pair-settings data-sentinel-preserve-open="1" data-sentinel-no-drag
               style="margin-top:7px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};padding:8px;color:${goldSoft};font-size:10px">
               <summary style="cursor:pointer;font-weight:850">ESTRATÉGIA ÚNICA OU COMBINAÇÃO DE DUAS · expandir</summary>
+              <label style="display:grid;gap:4px;margin-top:8px">Previsão automática
+                <select data-sentinel-setting="autoRoutingEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
+                  <option value="true" ${d.autoRoutingEnabled!==false?'selected':''}>Adapta cálculo ao gráfico</option>
+                  <option value="false" ${d.autoRoutingEnabled===false?'selected':''}>Usa previsão geral antiga</option>
+                </select>
+              </label>
               <div style="margin-top:8px;display:grid;gap:8px">
                 <label style="display:grid;gap:3px">Modo da previsão
                   <select data-sentinel-setting="pairResearchEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">

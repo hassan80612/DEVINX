@@ -409,82 +409,63 @@ function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
       </select>
     </label>
     <p className="muted" style={{marginTop:12}}>{active[2]}</p>
-    <div className="demoDisclaimer" style={{marginTop:10}}>
-      <b>Compatibilidade por contexto (experimental)</b>
-      <p>O prazo da operação não é necessariamente o tempo do gráfico. A orientação compara o prazo escolhido com o movimento recente e estruturas históricas. Nunca substitui sua escolha manual.</p>
-      <label style={{display:'block',marginTop:8}}>
-        <input type="checkbox" disabled={busy}
-          checked={s.settings?.strategyAdvisorEnabled===true}
-          onChange={e=>void act('settings',{strategyAdvisorEnabled:e.target.checked})}/>
-        {' '}Mostrar recomendações para as nove estratégias
-      </label>
-      <label style={{display:'block',marginTop:8}}>Escolha da estratégia
-        <select disabled={busy} value={s.settings?.strategyAdvisorMode||'manual'}
-          onChange={e=>void act('settings',{strategyAdvisorMode:e.target.value})}>
-          <option value="manual">Manual — minha estratégia sempre prevalece</option>
-          <option value="automatic_advisory">Automático experimental — apenas sugere, sem trocar</option>
-        </select>
-      </label>
-      <p>{advisor?.status==='experimental-advice'
-        ?'Mercado: '+String(advisor.marketPhaseLabel)+' · Prazo: '+String(advisor.requestedHoldingSeconds)+'s'
-        :'A classificação só aparece com histórico recente suficiente e a opção ligada.'}</p>
-      {advisor?.recommended&&<p><b>Estratégia sugerida:</b> {advisor.recommended.name} (compatibilidade teórica, não acerto medido).</p>}
-      <p><b>Leitura do gráfico:</b> {advisor?.chartContext||'Aguardando análise contextual'}</p>
-      <details><summary>Ver as nove estratégias e onde são mais adequadas</summary>
-        <div style={{display:'grid',gap:6,marginTop:9}}>
-          {(advisorNotes.length?advisorNotes:motors.map(([id,title,desc])=>({engineId:id,name:title,description:desc,interpretation:'ainda sem leitura'}))).map((item:any)=>(
-            <div key={item.engineId}><b>{item.name}</b>: {item.description} <span>· {item.interpretation}</span></div>
-          ))}
+    <div className="demoDisclaimer" style={{marginTop:12}}>
+      <b>{selected==='automatic'?'Automático escolhe a estratégia do cálculo':'Estratégia escolhida manualmente'}</b>
+      <p>{selected==='automatic'
+        ?(s.lastResult?.analysis?.vnext?.forecastOwner?.switched
+          ?'Usando: '+String(s.lastResult.analysis.vnext.forecastOwner.effectiveEngine).replaceAll('_',' ')+' · prazo '+String(s.settings?.orderDurationMs/1000)+'s'
+          :'Usando a previsão geral, até haver histórico confiável para mudar.')
+        :'A estratégia escolhida permanece no controle da previsão.'}</p>
+      {selected==='automatic'&&<label style={{display:'block',marginTop:7}}>
+        <input type="checkbox" checked={s.settings?.autoRoutingEnabled!==false} disabled={busy}
+          onChange={e=>void act('settings',{autoRoutingEnabled:e.target.checked})}/>
+        {' '}Adequar automaticamente o cálculo ao prazo e gráfico
+      </label>}
+      <details style={{marginTop:9}}>
+        <summary style={{cursor:'pointer',fontWeight:750}}>⚙ Ajustes e combinações</summary>
+        <div style={{display:'grid',gap:10,padding:'10px 4px'}}>
+          <label><input type="checkbox" disabled={busy} checked={s.settings?.pairResearchEnabled===true}
+            onChange={e=>void act('settings',{pairResearchEnabled:e.target.checked})}/>
+            {' '}Comparar duas estratégias (pesquisa independente)
+          </label>
+          {s.settings?.pairResearchEnabled&&<label>Dupla
+            <select disabled={busy} value={s.settings?.pairResearchId||'reversal'}
+              onChange={e=>void act('settings',{pairResearchId:e.target.value})}>
+              <option value="reversal">Mean Reversion 70 + Smart Confluence 67</option>
+              <option value="levels_breakout">Suporte/Resistência 67 + Breakout 67</option>
+              <option value="retest">Mean Reversion 70 + Fibonacci Retest 70</option>
+            </select>
+          </label>}
+          {s.settings?.pairResearchEnabled&&<label>Entrada futura
+            <select disabled={busy} value={s.settings?.entryTimeMode||'fixed'}
+              onChange={e=>void act('settings',{entryTimeMode:e.target.value})}>
+              <option value="fixed">Fixa</option><option value="automatic">Automática estimada</option>
+            </select>
+          </label>}
+          {s.settings?.pairResearchEnabled&&s.settings?.entryTimeMode!=='automatic'&&
+            <label>Entrar daqui a
+              <select disabled={busy} value={Number(s.settings?.entryLeadSeconds||30)}
+                onChange={e=>void act('settings',{entryLeadSeconds:Number(e.target.value)})}>
+                {[5,10,15,30,60,120,300].map(v=><option key={v} value={v}>{v}s</option>)}
+              </select>
+            </label>}
+          {s.settings?.pairResearchEnabled&&<label>Duração independente da entrada
+            <select disabled={busy} value={Number(s.settings?.holdingSeconds||60)}
+              onChange={e=>void act('settings',{holdingSeconds:Number(e.target.value)})}>
+              {[15,30,45,60,120,180,300,600,900].map(v=><option key={v} value={v}>{v}s</option>)}
+            </select>
+          </label>}
+          <label><input type="checkbox" disabled={busy} checked={s.settings?.futureResearchEnabled===true}
+            onChange={e=>void act('settings',{futureResearchEnabled:e.target.checked})}/>
+            {' '}Exibir confirmação histórica da previsão
+          </label>
+          <label><input type="checkbox" disabled={busy} checked={s.settings?.strategyAdvisorEnabled===true}
+            onChange={e=>void act('settings',{strategyAdvisorEnabled:e.target.checked})}/>
+            {' '}Mostrar contexto das nove estratégias
+          </label>
+          <p>Combinações e estudos de trajetória não autorizam ordens automáticas.</p>
         </div>
       </details>
-    </div>
-    <div className="demoDisclaimer" style={{marginTop:10}}>
-      <b>Previsão futura por trajetória — pesquisa</b>
-      <label style={{display:'block',marginTop:8}}>
-        <input type="checkbox" disabled={busy}
-          checked={s.settings?.futureResearchEnabled===true}
-          onChange={e=>void act('settings',{futureResearchEnabled:e.target.checked})}/>
-        {' '}Comparar a previsão da estratégia escolhida com trajetórias históricas no prazo selecionado
-      </label>
-      <p>{future?'Horizonte '+future.horizonSeconds+'s · '+(future.confirmedSide?'Confirmação experimental '+future.confirmedSide:'Sem confirmação suficiente'):'Pesquisa desligada ou aguardando leitura.'}</p>
-      <p>Janelas de extremos são estimativas incertas. CALL e PUT do experimento não autorizam nenhuma ordem.</p>
-    </div>
-    <div className="demoDisclaimer" style={{marginTop:10}}>
-      <b>Combinação de duas estratégias — pesquisa separada</b>
-      <label style={{display:'block',marginTop:8}}>
-        <input type="checkbox" disabled={busy}
-          checked={s.settings?.pairResearchEnabled===true}
-          onChange={e=>void act('settings',{pairResearchEnabled:e.target.checked})}/>
-        {' '}Ativar comparação apenas informativa
-      </label>
-      <label style={{display:'block',marginTop:8}}>Dupla experimental
-        <select disabled={busy} value={s.settings?.pairResearchId||'reversal'}
-          onChange={e=>void act('settings',{pairResearchId:e.target.value})}>
-          <option value="reversal">Mean Reversion 70 + Smart Confluence 67</option>
-          <option value="levels_breakout">Suporte/Resistência 67 + Breakout 67</option>
-          <option value="retest">Mean Reversion 70 + Fibonacci Retest 70</option>
-        </select>
-      </label>
-      <label style={{display:'block',marginTop:8}}>Prazo para possível entrada
-        <select disabled={busy} value={s.settings?.entryTimeMode||'fixed'}
-          onChange={e=>void act('settings',{entryTimeMode:e.target.value})}>
-          <option value="fixed">Fixo</option><option value="automatic">Automático (estimado)</option>
-        </select>
-      </label>
-      {s.settings?.entryTimeMode!=='automatic'&&<label style={{display:'block',marginTop:8}}>
-        Entrada depois de
-        <select disabled={busy} value={Number(s.settings?.entryLeadSeconds||30)}
-          onChange={e=>void act('settings',{entryLeadSeconds:Number(e.target.value)})}>
-          {[5,10,15,30,60,120,300].map(v=><option value={v} key={v}>{v}s</option>)}
-        </select>
-      </label>}
-      <label style={{display:'block',marginTop:8}}>Duração da operação depois da entrada
-        <select disabled={busy} value={Number(s.settings?.holdingSeconds||60)}
-          onChange={e=>void act('settings',{holdingSeconds:Number(e.target.value)})}>
-          {[15,30,45,60,120,180,300,600,900].map(v=><option value={v} key={v}>{v}s</option>)}
-        </select>
-      </label>
-      <p>{pair?'Dupla: '+pair.pairLabel+' · '+pair.status:'Aguardando comparação de dupla.'}</p>
     </div>
     <div className="demoDisclaimer">As projeções são experimentais e precisam ser verificadas em DEMO. Confiança de modelo não é porcentagem comprovada de acertos; nenhuma ordem é enviada automaticamente.</div>
   </section>

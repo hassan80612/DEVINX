@@ -47,12 +47,15 @@ export function analystSnapshot(runtimeStatus,live){
     Number(forward.horizonSeconds)||0,forward.confirmedSide||null,
     forward.status||null,forward.possibleExtremes?.peak?.windowSeconds||null,
     forward.possibleExtremes?.trough?.windowSeconds||null]:null;
+  const owner=vnext.forecastOwner||null;
+  const ow=owner?[owner.requestedEngine||null,owner.effectiveEngine||null,
+    owner.phase||null]:null;
   const tp=combo?[
     combo.pairId||null,combo.status||null,combo.selected?.side||null,
     Number(combo.selected?.entryAt)||0,Number(combo.selected?.exitAt)||0,
     combo.event||null]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
-    ...(sa?{sa}:{}),...(fp?{fp}:{}),...(tp?{tp}:{}),
+    ...(sa?{sa}:{}),...(fp?{fp}:{}),...(tp?{tp}:{}),...(ow?{ow}:{}),
     engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     computedStatus:vnext.computedStatus||'unavailable',
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
@@ -95,6 +98,7 @@ export function analystSnapshot(runtimeStatus,live){
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
     settings:{
       engine:runtimeStatus?.settings?.engine||null,
+      autoRoutingEnabled:runtimeStatus?.settings?.autoRoutingEnabled!==false,
       orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000),
       pairResearchEnabled:runtimeStatus?.settings?.pairResearchEnabled===true,
       pairResearchId:runtimeStatus?.settings?.pairResearchId||'reversal',
@@ -133,7 +137,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
     receipt:v.receipt,targetAnchor:v.targetAnchor,
     ea:v.ea,er:v.er,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards,
-    sa:v.sa,fp:v.fp,tp:v.tp
+    sa:v.sa,fp:v.fp,tp:v.tp,ow:v.ow
   };
   const trimmed={...snapshot,
     lastResult:{...snapshot.lastResult,analysis:{
@@ -148,7 +152,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
     ...trimmed.lastResult.analysis,
     vnext:{...compactVnext,targetProjection:null,hm:[],hf:[],er:[],
       // Direction + choice summaries stay after less important horizon rows.
-      sa:v.sa,fp:v.fp,tp:v.tp}
+      sa:v.sa,fp:v.fp,tp:v.tp,ow:v.ow}
   }}};
   return size(minimal)<=maxBytes?minimal:null;
 }

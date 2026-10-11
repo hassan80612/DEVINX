@@ -1,0 +1,26 @@
+name: Sentinel 13.4.75 Auto Forecast & Clean Cards Offline Tests
+on:
+  push:
+    branches:
+      - sentinel-1375-auto-routing-clean-card-20261011
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Real model baseline vs adapted automatic on unseen synthetic paths
+        run: node --test tests/sentinel-1375-effective-routing.test.mjs
+      - name: Regression tests for PC/mobile and three pair modes
+        run: |
+          node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-adaptive-strategy-advisor.test.mjs tests/sentinel-pair-mode-pc-controls.test.mjs tests/sentinel-mobile-research-parity.test.mjs tests/sentinel-3min-global-shadow.test.mjs
+      - name: Typecheck mobile and PC without publishing
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          ./node_modules/.bin/tsc --noEmit --pretty false

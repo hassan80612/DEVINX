@@ -43,6 +43,13 @@ export function MobileExperimentalControls({s,busy,act}:Props){
  const suggestion=advisory?.recommended?.name||sa?.[2]||null;
  const chartContext=advisory?.chartContext||sa?.[3]||'Análise por estrutura e prazo';
  const selected=String(settings.engine||'automatic');
+ const own=vnext.forecastOwner||null;
+ const route=Array.isArray(vnext.ow)?vnext.ow:null;
+ const actual=own?.effectiveEngine||route?.[1]||selected;
+ const using=selected==='automatic'&&actual!=='automatic'
+  ?'Automático usa '+actual.replaceAll('_',' ')
+  :selected==='automatic'?'Automático · previsão geral':'Manual · '+selected.replaceAll('_',' ');
+
  const update=(values:Record<string,any>)=>{void act('settings',values)};
  const sel={display:'block',width:'100%',minWidth:0,marginTop:4,padding:'8px 6px',
   borderRadius:6} as const;
@@ -50,21 +57,24 @@ export function MobileExperimentalControls({s,busy,act}:Props){
  return <section data-testid="mobile-experimental-research"
    style={{margin:'10px 0',padding:10,border:'1px solid rgba(215,182,93,.38)',
     borderRadius:10,display:'grid',gap:8,minWidth:0,fontSize:12}}>
-   <strong>PREVISÃO E ESTRATÉGIAS · EXPERIMENTAL</strong>
-   <div data-testid="mobile-context-guide">Gráfico: {phase} · {assessment}</div>
-   <small>Estratégia atual: {selected.replaceAll('_',' ')} · {labels[selected]||'Sem especialização definida'}</small>
-   <small>{chartContext}</small>
-   {suggestion&&<small>Melhor encaixe sugerido: {suggestion} · não altera sua estratégia.</small>}
+   <strong>PREVISÃO · {Number(settings.orderDurationMs||60000)/1000}s</strong>
+   <div data-testid="mobile-context-guide">{using}</div>
    <div data-testid="mobile-future-path-summary">
-     <b>Trajetória futura:</b> {currentSide?'Confirmação '+currentSide:'Sem confirmação'}
-     {' '}· topo {fmtTime(peaks)} · fundo {fmtTime(troughs)}
+     {currentSide?'Histórico confirma '+currentSide:'Histórico sem confirmação'}
+     {' '}· {phase}
    </div>
-   <div data-testid="mobile-pair-research"><b>Combinação:</b> {mode==='pair'?pairName:'Estratégia única'}
-     {' '}· {pairSide||'AGUARDAR'}
-   </div>
+   {mode==='pair'&&<div data-testid="mobile-pair-research">Dupla: {pairName} · {pairSide||'AGUARDAR'}</div>}
    <details data-testid="mobile-strategy-pair-controls">
-     <summary style={{cursor:'pointer',padding:'7px 2px',fontWeight:800}}>Ajustar estratégia, combinações e tempos</summary>
+     <summary style={{cursor:'pointer',padding:'7px 2px',fontWeight:800}}>⚙ Ajustes de previsão</summary>
      <div style={{display:'grid',gap:10,marginTop:9,minWidth:0}}>
+       {selected==='automatic'&&<label style={field}>Automático escolhe a estratégia para o cálculo
+         <select aria-label="Roteamento automático de estratégias" style={sel} disabled={busy}
+           value={settings.autoRoutingEnabled!==false?'true':'false'}
+           onChange={e=>update({autoRoutingEnabled:e.target.value==='true'})}>
+           <option value="true">Ligado · muda o cálculo conforme o cenário</option>
+           <option value="false">Desligado · previsão geral antiga</option>
+         </select>
+       </label>}
        <label style={field}>Modo de estratégia
          <select aria-label="Modo de estratégia" disabled={busy} style={sel} value={mode}
            onChange={e=>update({pairResearchEnabled:e.target.value==='pair'})}>
@@ -108,12 +118,12 @@ export function MobileExperimentalControls({s,busy,act}:Props){
            <option value="false">Desativada</option><option value="true">Ativada</option>
          </select>
        </label>
-       <label style={field}>Sugestão automática
+       <label style={field}>Orientação contextual
          <select aria-label="Modo de orientação" disabled={busy} style={sel}
            value={settings.strategyAdvisorMode||'manual'}
            onChange={e=>update({strategyAdvisorMode:e.target.value})}>
            <option value="manual">Manual · minha estratégia permanece</option>
-           <option value="automatic_advisory">Automático · apenas recomenda</option>
+           <option value="automatic_advisory">Automático · apenas indica contexto</option>
          </select>
        </label>
        <label style={field}>Histórico da previsão futura

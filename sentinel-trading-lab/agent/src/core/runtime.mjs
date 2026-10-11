@@ -20,6 +20,7 @@ import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {pairedEntryResearch,reconcileEntryPreview} from './paired-entry-research.mjs';
 import {threeMinuteGeneralResearch,generalHorizonResearch} from './three-minute-general-research.mjs';
 import {strategyHorizonAdvisor} from './strategy-horizon-advisor.mjs';
+import {resolveForecastOwner} from './effective-forecast-owner.mjs';
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
@@ -80,7 +81,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,strategy:'smart_confluence',strategy2:'none',strategy3:'none',pairResearchEnabled:false,threeMinuteResearchEnabled:false,futureResearchEnabled:false,strategyAdvisorEnabled:false,strategyAdvisorMode:'manual',pairResearchId:'reversal',entryTimeMode:'fixed',entryLeadSeconds:30,holdingSeconds:60,requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,autoRoutingEnabled:true,strategy:'smart_confluence',strategy2:'none',strategy3:'none',pairResearchEnabled:false,threeMinuteResearchEnabled:false,futureResearchEnabled:false,strategyAdvisorEnabled:false,strategyAdvisorMode:'manual',pairResearchId:'reversal',entryTimeMode:'fixed',entryLeadSeconds:30,holdingSeconds:60,requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -801,7 +802,7 @@ export class DemoTradingRuntime{
     // Manual-only policy: legacy clients cannot re-arm automated broker orders.
     if(patch?.demoAutopilot===true)throw new Error('autopilot_disabled_manual_only');
     this.settings.demoAutopilot=false;
-    const resetOperational=['asset','engine','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings','pairResearchEnabled','threeMinuteResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','strategyAdvisorMode','pairResearchId','entryTimeMode','entryLeadSeconds','holdingSeconds'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
+    const resetOperational=['asset','engine','autoRoutingEnabled','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings','pairResearchEnabled','threeMinuteResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','strategyAdvisorMode','pairResearchId','entryTimeMode','entryLeadSeconds','holdingSeconds'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
     const wasAutopilot=false,armingAutopilot=false;
     this.settings={...this.settings,...patch,demoAutopilot:false,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
     if(armingAutopilot){
@@ -899,11 +900,17 @@ export class DemoTradingRuntime{
       // strategy panel, 3-way confluence or release logic for this branch.
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
-      const model=singleEngineForecast({settings,snap,now});
-      // Compute the same SELECTED engine for each genuinely distinct future
+      // The automatic mode now chooses the real forecast owner using the
+      // selected holding time and completed historical market structure.
+      // A manually selected strategy is never overwritten.
+      const forecastOwner=resolveForecastOwner({settings,snap,now});
+      const effectiveSettings=forecastOwner.switched?
+        {...settings,engine:forecastOwner.effectiveEngine}:settings;
+      const model=singleEngineForecast({settings:effectiveSettings,snap,now});
+      // Compute the same EFFECTIVE engine for each genuinely distinct future
       // expiration. Avoid re-running unchanged ticks, never delay new quotes.
       const matrix=forwardHorizonMatrix({
-        settings,snap,now,primary:model,previous:this.vnextHorizonMatrix||null
+        settings:effectiveSettings,snap,now,primary:model,previous:this.vnextHorizonMatrix||null
       });
       this.vnextHorizonMatrix=matrix;
       // One immutable planned future ENTRY per chosen lead time. The rolling
@@ -999,7 +1006,7 @@ export class DemoTradingRuntime{
         if(this.vnextFutureResearchCache?.key===k)generalFutureResearch=this.vnextFutureResearchCache.value;
         else{
           try{
-            generalFutureResearch=generalHorizonResearch({settings,snap,now,
+            generalFutureResearch=generalHorizonResearch({settings:effectiveSettings,snap,now,
               horizonSeconds:Number(settings.orderDurationMs)/1000,baseline:model});
           }catch(error){
             generalFutureResearch={status:'research-error',reason:String(error?.message||error).slice(0,90),
@@ -1025,7 +1032,7 @@ export class DemoTradingRuntime{
             const analysisSnap={...snap,quoteHistory:snap.quoteHistory};
             const sample=model?.expirySeconds===180?model:null;
             general180Research=threeMinuteGeneralResearch({
-              settings,snap:analysisSnap,now,baseline:sample
+              settings:effectiveSettings,snap:analysisSnap,now,baseline:sample
             });
           }catch(error){
             general180Research={status:'research-error',reason:
@@ -1091,6 +1098,7 @@ export class DemoTradingRuntime{
         engineId:model.engineId,
         vnext:{...model,evaluation:undefined,targetAnchor,
           combinedResearch,general180Research,generalFutureResearch,strategyAdvisor,
+          forecastOwner,
           horizonForecasts:matrix.rows,
           futureEntryForecast:currentEntry,
           futureEntryAnchor:entryAnchor,

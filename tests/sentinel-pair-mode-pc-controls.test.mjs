@@ -15,10 +15,10 @@ test('PC and console share exactly three experimental two-strategy choices',()=>
   assert.ok(server.includes("'"+pair.id+"'"));
   assert.notEqual(pair.first.engine,pair.second.engine);
  }
- assert.ok(worker.includes('ESTRATÉGIA ÚNICA OU COMBINAÇÃO DE DUAS'));
+ assert.ok(worker.includes('⚙ Opções de previsão'));
  assert.ok(worker.includes('Duração da operação independente da entrada'));
  assert.ok(worker.includes('data-sentinel-preserve-open="1" data-sentinel-no-drag'));
- assert.ok(server.includes("['pairResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled']"));
+ assert.ok(server.includes("['pairResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','autoRoutingEnabled']"));
  assert.ok(server.includes("runtime.patchSettings({[key]:value===true||String(value)==='true'}"));
 });
 test('PC overlay settings map to independently validated runtime fields',()=>{

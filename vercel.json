@@ -64,7 +64,8 @@
   ],
   "git": {
     "deploymentEnabled": {
-      "sentinel-research-*": false
+      "sentinel-research-*": false,
+      "sentinel-1375-*": false
     }
   }
 }
