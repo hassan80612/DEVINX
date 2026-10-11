@@ -166,14 +166,14 @@ function prepare(train){
  return {versions,qualities,scales}
 }
 function rank(pair,trainingStats){
- if(trainingStats.signals<280||trainingStats.coverage<30)return -Infinity;
+ if(trainingStats.signals<Math.max(80,Math.ceil(trainingStats.n*.35))||trainingStats.coverage<35)return -Infinity;
  const p=trainingStats.wins/trainingStats.signals;
  // Penalize low-coverage, small samples and optimistic noisy training hits.
  const conservative=p-1.65*Math.sqrt(p*(1-p)/trainingStats.signals);
- return conservative+0.07*(trainingStats.coverage/100)
+ return conservative+0.025*(trainingStats.coverage/100)
 }
 export function evaluateTwoStrategies(){
- const train=build([41,731]),hold=build([211,1049]);
+ const train=build([41,731,83,1201]),hold=build([211,1049,1601,2027]);
  const fit=prepare(train),policies=['agreement','adaptive','evidence'],candidates=[];
  for(let i=0;i<ENGINES.length;i++)for(let j=i+1;j<ENGINES.length;j++)
  for(const policy of policies){
@@ -186,11 +186,11 @@ export function evaluateTwoStrategies(){
  const solos=Object.fromEntries(ENGINES.map(e=>[e,soloStats(hold,e,fit)]));
  const soloTop=Object.entries(solos).sort((a,b)=>b[1].accuracy-a[1].accuracy)[0];
  const qualified=validation.accuracy>=70&&validation.coverage>=30&&
-  validation.accuracy>soloTop[1].accuracy&&validation.signals>=280;
+  validation.accuracy>soloTop[1].accuracy&&validation.signals>=Math.ceil(hold.length*.35);
  return {
   warning:'synthetic deterministic generator only, NOT validated broker accuracy; scenarios repeated by engine and horizon',
   trainingSize:train.length,holdoutSize:hold.length,
-  trainSeeds:[41,731],unusedHoldoutSeeds:[211,1049],
+  trainSeeds:[41,731,83,1201],unusedHoldoutSeeds:[211,1049,1601,2027],
   versionByStrategy:fit.versions,
   policiesEvaluated:policies,
   configurationsCompared:candidates.length,
@@ -210,7 +210,7 @@ export function evaluateTwoStrategies(){
 test('internal two strategy comparison: no production code changed',()=>{
  const r=evaluateTwoStrategies();
  console.log('SENTINEL_TWO_STRATEGY_BENCHMARK='+JSON.stringify(r));
- assert.equal(r.trainingSize,8*2*3*6);
+ assert.equal(r.trainingSize,8*4*3*6);
  assert.equal(r.holdoutSize,r.trainingSize);
  assert.equal(r.configurationsCompared,36*3);
  assert.equal(r.doNotDeploy,true);
