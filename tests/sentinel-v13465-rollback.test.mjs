@@ -2,17 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 
 const read=p=>readFile(new URL('../sentinel-trading-lab/'+p,import.meta.url));
 const source=async p=>(await read(p)).toString('utf8');
 
-test('single selected-engine forecasting algorithm remains exactly 13.4.60, with no new instant-signal observer',async()=>{
- const bytes=await read('agent/src/core/vnext-single-engine.mjs');
+test('67.1 rollback baseline is immutable while the new release opts into a separate learned model',async()=>{
+ const bytes=execFileSync('git',['show','431bd6ffc276015a6581e0d6ba7a56c244de72e9:sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs']);
  const hash=createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0'))
   .update(bytes).digest('hex');
  assert.equal(hash,'6a546ae6113cf313e803bf8d2bd5b9151eba8a30');
+ const active=await source('agent/src/core/vnext-single-engine.mjs');
+ assert.match(active,/forecastModel='original-67'/);
+ assert.match(active,/forecastModel==='adaptive-direct-trajectory-v1'/);
  const runtime=await source('agent/src/core/runtime.mjs');
- assert.match(runtime,/const model=singleEngineForecast\(\{settings,snap,now\}\)/);
+ assert.match(runtime,/const model=singleEngineForecast\(\{settings,snap,now(?:,forecastModel:this\.forecastModel(?:,adaptiveHistory)?)?\}\)/);
  assert.doesNotMatch(runtime,/observeImmediateMarket|vnextNowObservation|nowIndication/);
  assert.match(runtime,/const eligible=previous\.filter\(x=>x\?\.targetAt>now-2000\)/);
  assert.match(runtime,/forwardHorizonMatrix\(/);

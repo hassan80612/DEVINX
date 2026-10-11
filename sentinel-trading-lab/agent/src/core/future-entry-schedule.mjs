@@ -1,3 +1,4 @@
+import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
@@ -10,7 +11,7 @@ const num=x=>Number.isFinite(Number(x))?Number(x):null;
 const valid=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
 
 export function futureEntrySchedule({
-  settings={},snap={},now=Date.now(),delays=[30],knownForecasts=[]
+  settings={},snap={},now=Date.now(),delays=[30],knownForecasts=[],forecastModel='original-67',adaptiveHistory=null
 }={}){
   const engineId=String(settings.engine||'automatic');
   const asset=String(settings.asset||'UNKNOWN').toUpperCase();
@@ -37,6 +38,25 @@ export function futureEntrySchedule({
   return [...new Set(delays.map(Number).filter(h=>h>0&&h<=3600))]
     .sort((a,b)=>a-b).map(delaySeconds=>{
       const holdingSeconds=delaySeconds;
+      if(forecastModel==='adaptive-direct-trajectory-v1'&&engineId==='automatic'){
+        const quoteAt=Number(snap.quoteTs);
+        const learned=quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500?
+          adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,
+            entryDelaySeconds:delaySeconds,holdingSeconds}):null;
+        if(learned?.status==='adaptive-direct-trajectory'&&learned.side){
+          return {engineId,asset,delaySeconds,holdingSeconds,side:learned.side,
+            issuedAt:learned.issuedAt,entryAt:learned.entryAt,exitAt:learned.exitAt,
+            projectedEntryPrice:learned.projectedEntryPrice,
+            projectedExitPrice:learned.projectedExitPrice,
+            status:'forecast',actionable:false,calibrated:false,
+            modelVersion:learned.modelVersion,expectedPath:learned.expectedPath,
+            expectedLow:learned.expectedLow,expectedHigh:learned.expectedHigh};
+        }
+        // Preserve original 67 behavior while the learned context is incomplete.
+        // Both fallback endpoints come from the ORIGINAL model, never mixed.
+        return futureEntrySchedule({settings,snap,now,delays:[delaySeconds],
+          knownForecasts:[],forecastModel:'original-67'})[0];
+      }
       const entry=predict(delaySeconds),exit=predict(delaySeconds+holdingSeconds);
       const entryPrice=valid(entry?.projectedPrice),exitPrice=valid(exit?.projectedPrice);
       const issuedAt=num(entry?.issuedAt);

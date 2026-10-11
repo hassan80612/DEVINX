@@ -6,13 +6,14 @@ import {futureEntrySchedule} from './future-entry-schedule.mjs';
 // never from the colour/direction of the current candle or the other motors.
 export const FORWARD_HORIZONS=Object.freeze([5,10,30,60,120,300]);
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
-export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary=null,previous=null}={}){
+export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary=null,previous=null,forecastModel='original-67',adaptiveHistory=null}={}){
   const selected=positive(settings.orderDurationMs)&&Number(settings.orderDurationMs)/1000;
   const horizon=selected||60;
   const quoteAt=positive(snap.quoteTs);
   const last=Array.isArray(snap.quoteHistory)?snap.quoteHistory.at(-1):null;
   const context=JSON.stringify([
-    settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
+    forecastModel,settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
+    adaptiveHistory?.length||0,Number(adaptiveHistory?.[0]?.ts)||0,
     Number(last?.price)||0,Array.isArray(snap.quoteHistory)?snap.quoteHistory.length:0
   ]);
   const horizons=[...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
@@ -28,12 +29,12 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     const model=seconds===horizon&&primary?
       primary:singleEngineForecast({
         settings:{...settings,orderDurationMs:seconds*1000},
-        snap,now,provider:snap.provider
+        snap,now,provider:snap.provider,forecastModel,adaptiveHistory
       });
     rows.push(rowFor(model,seconds));
   }
   const entryRows=futureEntrySchedule({
-    settings,snap,now,delays:horizons,knownForecasts:rows
+    settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory
   });
   return {context,rows,entryRows,computedAt:now,reused:false};
 }
