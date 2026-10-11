@@ -1,10 +1,10 @@
 # VNext release: regenerate embedded agent and checksum from the exact source commit.
 # Rebuild verified final Agent with the stable-clock regression fixed.
-name: Sentinel Windows 13.4.67.2 Adaptive Release
+name: Sentinel Windows 13.4.67.2 Strategy Copy
 
 on:
   push:
-    branches: [sentinel-134672-adaptive-release-20261011]
+    branches: [sentinel-672-strategy-copy-20261011]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/src/**'
@@ -25,7 +25,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: sentinel-windows-candidate-13672
+  group: sentinel-672-strategy-copy
   cancel-in-progress: true
 
 jobs:
@@ -120,7 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: sentinel-134672-adaptive-release-20261011
+          ref: sentinel-672-strategy-copy-20261011
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
@@ -130,7 +130,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$(git ls-remote origin "refs/heads/sentinel-134672-adaptive-release-20261011" | cut -f1)" != "$GITHUB_SHA" ]; then
+          if [ "$(git ls-remote origin "refs/heads/sentinel-672-strategy-copy-20261011" | cut -f1)" != "$GITHUB_SHA" ]; then
             echo 'Release source changed during verification; refuse stale binary'
             exit 1
           fi
@@ -146,5 +146,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -f sentinel-trading-lab/public/downloads/{Sentinel-Agent-Windows.exe,Sentinel-Agent-13.4.67.2.exe,sentinel-agent-windows.exe,agent_payload_v88.zip,agent-update.json}
           if git diff --cached --quiet; then echo "Candidate binaries already match"; exit 0; fi
-          git commit -m 'build(sentinel): verified 13.4.67.2 adaptive release and preserved 67.1 rollback [skip ci] [skip deploy]'
-          git push origin HEAD:sentinel-134672-adaptive-release-20261011
+          git commit -m 'build(sentinel): verified 13.4.67.2 cosmetic copy and preserved 67.1 rollback [skip ci] [skip deploy]'
+          git push origin HEAD:sentinel-672-strategy-copy-20261011
