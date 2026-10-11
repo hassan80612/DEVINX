@@ -169,8 +169,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{e.name}</option>)}
       </select>
     </label>
-    <label>Prever até
-      <select aria-label="Expiração escolhida para previsão" value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
+    <label>Entrada daqui a
+      <select aria-label="Tempo até a entrada prevista" value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
@@ -221,24 +221,26 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // 9 fixed slots prevent changing data/selection from moving the card.
   const allFutureHorizons=[...new Set([5,10,30,60,120,300,Number(expirySeconds)])]
     .filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b).slice(0,9);
-  const futureByHorizon=new Map<number,any>((m.vnextHorizons||[]).map((r:any):[number,any]=>[Number(r.horizonSeconds),r]));
-  const forecastHorizonStrip=vnext?<section className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Projeções de preços para os próximos períodos">
-    <div className="vnextForwardHorizonsTitle"><strong>PROJEÇÕES PARA O FUTURO</strong><small>{m.fresh?'● DADOS ATUAIS':'ÚLTIMOS DADOS · ATRASADOS'}</small></div>
+
+  const futureByHorizon=new Map<number,any>((m.vnextFutureEntryRows||[])
+    .map((r:any):[number,any]=>[Number(r.delaySeconds),r]));
+  const forecastHorizonStrip=vnext?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
+    <summary>OUTROS HORÁRIOS FUTUROS · expandir</summary>
     <div className="vnextForwardHorizonsGrid">
       {allFutureHorizons.map(h=>{
         const r:any=futureByHorizon.get(h);
         const valid=!!(r&&['CALL','PUT'].includes(r.side)&&
-          Number(r.projectedPrice)>0&&Number(r.issuedAt)>0&&
-          Number(r.targetAt)>now&&Number(r.issuedAt)<=now+2000);
-        return <div key={h} className={`vnextForwardHorizon ${h===Number(expirySeconds)?'selected':''}`} data-horizon-seconds={h}>
-          <small>{expiryLabel(h)}{h===Number(expirySeconds)?' · ESCOLHIDO':''}</small>
+          Number(r.projectedEntryPrice)>0&&Number(r.projectedExitPrice)>0&&
+          Number(r.issuedAt)>0&&Number(r.entryAt)>now&&Number(r.issuedAt)<=now+2000);
+        return <div key={h} className={'vnextForwardHorizon '+(h===Number(expirySeconds)?'selected':'')} data-horizon-seconds={h}>
+          <small>EM {expiryLabel(h)}{h===Number(expirySeconds)?' · ESCOLHIDO':''}</small>
           <strong className={valid?(r.side==='CALL'?'call':'put'):'neutral'}>{valid?(r.side==='CALL'?'↑ CALL':'↓ PUT'):'—'}</strong>
-          <span>{valid?price(r.projectedPrice):'Sem previsão'}</span>
+          <span>{valid?price(r.projectedEntryPrice):'Sem previsão'}</span>
         </div>;
       })}
     </div>
-    <small className="vnextForwardHorizonsNote">Direção do preço em cada prazo, comparada ao preço da previsão. Não é ordem de entrada.</small>
-  </section>:null;
+    <small className="vnextForwardHorizonsNote">Entrada prevista no horário de cada célula; período posterior igual ao prazo. Experimental.</small>
+  </details>:null;
   const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings">
     <strong className="vnextReadingsHeading">TOTAIS DO MERCADO · SEM MOTOR</strong>
     <div className="vnextMobileReadingsGrid">
