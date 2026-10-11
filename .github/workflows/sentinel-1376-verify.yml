@@ -1,0 +1,28 @@
+name: Sentinel 13.4.76 Unified Strategy PC + Mobile Validation
+on:
+  push:
+    branches: [sentinel-1376-unified-strategy-simple-20261011]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check Node source syntax for worker and core
+        run: |
+          find sentinel-trading-lab/agent/src/core -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - name: Test unified choice, automatic, exact forecast and pairs
+        run: |
+          node --test tests/sentinel-1376-unified-selection.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-180s-holdout.test.mjs
+      - name: Verify responsive TypeScript builds without deployment
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          ./node_modules/.bin/tsc --noEmit --pretty false

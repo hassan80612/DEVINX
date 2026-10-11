@@ -16,13 +16,15 @@ import {assessIndependentSignalHistory,ENTRY_QUALITY_EPOCH} from './independent-
 import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
-import {singleEngineForecast} from './vnext-single-engine.mjs';
-import {pairedEntryResearch,reconcileEntryPreview} from './paired-entry-research.mjs';
-import {threeMinuteGeneralResearch,generalHorizonResearch} from './three-minute-general-research.mjs';
-import {strategyHorizonAdvisor} from './strategy-horizon-advisor.mjs';
-import {resolveForecastOwner} from './effective-forecast-owner.mjs';
-import {qualifyFutureDirection,applyQualifiedDisplay} from './qualified-future-direction.mjs';
+
+
+
+
+
+import {selectedForecast,isPairedStrategy} from './unified-strategy-forecast.mjs';
+
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
+import {selectedForecast} from './unified-strategy-forecast.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
@@ -82,7 +84,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,autoRoutingEnabled:false,futureSignalFilterEnabled:true,strategy:'smart_confluence',strategy2:'none',strategy3:'none',pairResearchEnabled:false,threeMinuteResearchEnabled:false,futureResearchEnabled:false,strategyAdvisorEnabled:false,strategyAdvisorMode:'manual',pairResearchId:'reversal',entryTimeMode:'fixed',entryLeadSeconds:30,holdingSeconds:60,requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,autoRoutingEnabled:false,futureSignalFilterEnabled:false,strategy:'smart_confluence',strategy2:'none',strategy3:'none',pairResearchEnabled:false,threeMinuteResearchEnabled:false,futureResearchEnabled:false,strategyAdvisorEnabled:false,strategyAdvisorMode:'manual',pairResearchId:'reversal',entryTimeMode:'fixed',entryLeadSeconds:30,holdingSeconds:60,requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -805,7 +807,7 @@ export class DemoTradingRuntime{
     this.settings.demoAutopilot=false;
     const resetOperational=['asset','engine','autoRoutingEnabled','futureSignalFilterEnabled','strategy','strategy2','strategy3','orderDurationMs','forecastHorizonSeconds','futureDisplayThreshold','pausedReadings','pairResearchEnabled','threeMinuteResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','strategyAdvisorMode','pairResearchId','entryTimeMode','entryLeadSeconds','holdingSeconds'].some(k=>Object.prototype.hasOwnProperty.call(patch,k));
     const wasAutopilot=false,armingAutopilot=false;
-    this.settings={...this.settings,...patch,demoAutopilot:false,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
+    this.settings={...this.settings,...patch,pairResearchEnabled:false,threeMinuteResearchEnabled:false,futureResearchEnabled:false,strategyAdvisorEnabled:false,autoRoutingEnabled:false,futureSignalFilterEnabled:false,demoAutopilot:false,pausedReadings:{...this.settings.pausedReadings,...(patch.pausedReadings||{})},schedule:{...this.settings.schedule,...(patch.schedule||{})},risk:{...this.settings.risk,...(patch.risk||{})}};
     if(armingAutopilot){
       this.state.sessionStartedAt=Date.now();this.state.sessionTradeStartCount=this.trades.length;this.state.consecutiveLosses=0;
       this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'demo.autopilot_armed',metadata:{maxTradesPerSession:Number(this.settings.risk.maxTradesPerSession||10),maxConsecutiveLosses:Number(this.settings.risk.maxConsecutiveLosses||3)}})
@@ -901,35 +903,15 @@ export class DemoTradingRuntime{
       // strategy panel, 3-way confluence or release logic for this branch.
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
-      // The automatic mode now chooses the real forecast owner using the
-      // selected holding time and completed historical market structure.
-      // A manually selected strategy is never overwritten.
-      const forecastOwner=resolveForecastOwner({settings,snap,now});
-      const effectiveSettings=forecastOwner.switched?
-        {...settings,engine:forecastOwner.effectiveEngine}:settings;
-      const model=singleEngineForecast({settings:effectiveSettings,snap,now});
-      // Optional actual output FILTER: on unconfirmed completed historical
-      // paths, the card displays AGUARDAR rather than an unsupported CALL/PUT.
-      // The original model forecast stays in the prospective audit below.
-      const filterEnabled=settings.futureSignalFilterEnabled===true&&settings.engine==='automatic';
-      let qualification=null;
-      if(filterEnabled){
-        const last=snap.researchQuoteHistory?.at(-1)||snap.quoteHistory?.at(-1)||null;
-        const key=JSON.stringify([model.engineId,settings.asset,model.expirySeconds,
-          Number(last?.ts||0),Number(last?.price||0)]);
-        if(this.vnextQualificationCache?.key===key){
-          qualification=this.vnextQualificationCache.value;
-        }else{
-          const quotes=snap.researchQuoteHistory?.length?
-            snap.researchQuoteHistory:snap.quoteHistory;
-          qualification=qualifyFutureDirection({
-            receipt:model.receipt,quoteHistory:quotes,asOf:now
-          });
-          this.vnextQualificationCache={key,value:qualification};
-        }
-      }
-      const qualified=!filterEnabled||qualification?.confirmed===true;
-      const displayModel=qualified?model:applyQualifiedDisplay({model,qualification});
+      // Only the user-selected option owns the displayed forecast.
+      // Automático uses its native independent prediction; the old hidden
+      // confirmation filter can no longer silently cancel its output.
+      const effectiveSettings=settings;
+      const model=selectedForecast({settings,snap,now});
+      const displayModel=model,qualified=true,qualification=null;
+      const forecastOwner={requestedEngine:String(settings.engine),
+        effectiveEngine:model.engineId,switched:false,active:true,
+        reason:'explicit-user-selection',actionable:false};
       // Compute the same EFFECTIVE engine for each genuinely distinct future
       // expiration. Avoid re-running unchanged ticks, never delay new quotes.
       const matrix=forwardHorizonMatrix({
@@ -998,125 +980,11 @@ export class DemoTradingRuntime{
       if(current&&!duplicate)rest.push(current);
       this.vnextPending=rest.slice(-1200);
       this.vnextOutcomes=outcomes.slice(-300);
-      // Strategy selection advisor: independent descriptive research.
-      // MANUAL mode always leaves the selected engine unchanged. Suggested
-      // automatic mode is advisory-only until forward validated in DEMO.
-      let strategyAdvisor=null;
-      if(settings.strategyAdvisorEnabled===true){
-        const quote=snap.researchQuoteHistory?.at(-1)||snap.quoteHistory?.at(-1)||null;
-        const k=JSON.stringify([settings.asset,settings.engine,settings.orderDurationMs,
-          settings.strategyAdvisorMode,Number(quote?.ts||0),Number(quote?.price||0)]);
-        if(this.vnextAdvisorCache?.key===k)strategyAdvisor=this.vnextAdvisorCache.value;
-        else{
-          try{
-            strategyAdvisor=strategyHorizonAdvisor({settings,
-              quoteHistory:snap.researchQuoteHistory?.length?
-                snap.researchQuoteHistory:snap.quoteHistory,asOf:now});
-          }catch(error){
-            strategyAdvisor={status:'research-error',reason:String(error?.message||error).slice(0,90),
-              actionable:false,calibrated:false};
-          }
-          this.vnextAdvisorCache={key:k,value:strategyAdvisor};
-        }
-      }
-      // Forecast all user-selected horizons (including 180s) with completed
-      // historical trajectories. No replacement of the production forecast.
-      let generalFutureResearch=null;
-      if(settings.futureResearchEnabled===true){
-        const q=snap.researchQuoteHistory?.at(-1)||snap.quoteHistory?.at(-1)||null;
-        const k=JSON.stringify([settings.engine,settings.asset,settings.orderDurationMs,
-          Number(q?.ts||0),Number(q?.price||0)]);
-        if(this.vnextFutureResearchCache?.key===k)generalFutureResearch=this.vnextFutureResearchCache.value;
-        else{
-          try{
-            generalFutureResearch=generalHorizonResearch({settings:effectiveSettings,snap,now,
-              horizonSeconds:Number(settings.orderDurationMs)/1000,baseline:model});
-          }catch(error){
-            generalFutureResearch={status:'research-error',reason:String(error?.message||error).slice(0,90),
-              actionable:false,calibrated:false};
-          }
-          this.vnextFutureResearchCache={key:k,value:generalFutureResearch};
-        }
-      }
-      // Separate GENERAL 180s future: evaluate only the user-selected
-      // strategy, irrespective of whether it is part of a paired mode.
-      // Entirely offline and disabled by default; cache at 1s quote cadence.
-      let general180Research=null;
-      if(settings.threeMinuteResearchEnabled===true){
-        const quote=snap.researchQuoteHistory?.at(-1)||
-          snap.quoteHistory?.at(-1)||null;
-        const key=JSON.stringify([settings.engine,settings.asset,snap.provider,
-          Number(quote?.ts||0),Number(quote?.price||0),
-          Number(snap.researchQuoteHistory?.length||0)]);
-        if(this.vnextThreeMinuteCache?.key===key){
-          general180Research=this.vnextThreeMinuteCache.result;
-        }else{
-          try{
-            const analysisSnap={...snap,quoteHistory:snap.quoteHistory};
-            const sample=model?.expirySeconds===180?model:null;
-            general180Research=threeMinuteGeneralResearch({
-              settings:effectiveSettings,snap:analysisSnap,now,baseline:sample
-            });
-          }catch(error){
-            general180Research={status:'research-error',reason:
-              String(error?.message||error).slice(0,120),
-              calibrated:false,actionable:false};
-          }
-          this.vnextThreeMinuteCache={key,result:general180Research};
-        }
-      }
-      // Optional SHADOW research: disabled by default, no broker orders, no
-      // Supabase writes. One cached computation per unique quote/configuration.
-      let combinedResearch=null;
-      if(settings.pairResearchEnabled===true){
-        const latest=snap.quoteHistory?.at(-1)||null;
-        const researchKey=JSON.stringify([settings.asset,snap.provider,
-          settings.pairResearchId,settings.entryTimeMode,
-          settings.entryLeadSeconds,settings.holdingSeconds,
-          Number(latest?.ts||0),Number(latest?.price||0)]);
-        const cached=this.vnextPairResearchCache;
-        if(cached?.key===researchKey){
-          combinedResearch=cached.result;
-        }else{
-          try{
-            const researchSnap={...snap,quoteHistory:
-              snap.researchQuoteHistory?.length>0?snap.researchQuoteHistory:snap.quoteHistory};
-            const candidate=pairedEntryResearch({settings,snap:researchSnap,now,
-              mode:settings.entryTimeMode==='automatic'?'automatic':'fixed',
-              pairId:settings.pairResearchId||'reversal',
-              leadSeconds:Number(settings.entryLeadSeconds||30),
-              holdingSeconds:Number(settings.holdingSeconds||60)});
-            const previous=this.vnextPairPreview?.current||null;
-            const transition=reconcileEntryPreview({previous,research:candidate,now});
-            this.vnextPairPreview=transition;
-            if(transition.archived){
-              this.vnextPairArchive=[...(this.vnextPairArchive||[]),transition.archived].slice(-150);
-            }
-            combinedResearch={
-              mode:candidate.mode,pairId:candidate.pairId,pairLabel:candidate.pairLabel,
-              status:candidate.status,holdingSeconds:candidate.holdingSeconds,
-              event:transition.event,selected:transition.current,
-              // Original forecast and its timestamp are never overwritten.
-              archivedCount:(this.vnextPairArchive||[]).length,
-              alternatives:candidate.alternatives.map(x=>({
-                leadSeconds:x.leadSeconds,holdingSeconds:x.holdingSeconds,
-                side:x.side,decision:x.decision,entryAt:x.entryAt,exitAt:x.exitAt,
-                // Historical neighbor share is not a calibrated win rate.
-                historicalNeighborShare:x.trajectory.observedNeighborShare??null
-              })),
-              extremeTimes:candidate.extremeTimes,
-              futurePath:candidate.futurePath,
-              regime:candidate.regime,historyStatus:candidate.historyStatus,
-              historyComparisons:candidate.historyComparisons,
-              actionable:false,calibrated:false
-            };
-            this.vnextPairResearchCache={key:researchKey,result:combinedResearch};
-          }catch(error){
-            combinedResearch={status:'research-unavailable',
-              reason:String(error?.message||error).slice(0,120),actionable:false,calibrated:false};
-          }
-        }
-      }
+      // Removed the four hidden shadow engines from the live cycle:
+      // their toggles previously did not change the main prediction.
+      // Selected pairs now own it directly through selectedForecast().
+      const combinedResearch=null,general180Research=null,
+        generalFutureResearch=null,strategyAdvisor=null;
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
         vnext:{...displayModel,evaluation:undefined,targetAnchor,

@@ -1,4 +1,4 @@
-import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {selectedForecast} from './unified-strategy-forecast.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -23,7 +23,7 @@ export function futureEntrySchedule({
   }
   const predict=(seconds)=>{
     if(cached.has(seconds))return cached.get(seconds);
-    const forecast=singleEngineForecast({settings:{
+    const forecast=selectedForecast({settings:{
       ...settings,orderDurationMs:seconds*1000
     },snap,now,provider:snap.provider});
     const r=forecast.receipt?{

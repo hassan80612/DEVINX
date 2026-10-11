@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "sentinel-research-*": false,
-      "sentinel-1375-*": false
+      "sentinel-1375-*": false,
+      "sentinel-1376-*": false
     }
   }
 }

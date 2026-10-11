@@ -145,7 +145,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
     if(key==='engine'){
-      const allowed=['automatic','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
+      const allowed=['automatic','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout','pair_reversal','pair_levels_breakout','pair_retest'];
       if(!allowed.includes(String(value)))throw new Error('invalid_engine');
       runtime.patchSettings({engine:String(value),strategy2:'none',strategy3:'none'},'overlay');
       runtime.requestImmediateEvaluation?.();

@@ -1538,6 +1538,9 @@ export class LocalPlaywrightDriver{
                   <option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>
                   <option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
                   <option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
+                  <option value="pair_reversal" ${d.engine==='pair_reversal'?'selected':''}>Mean Reversion + Smart Confluence</option>
+                  <option value="pair_levels_breakout" ${d.engine==='pair_levels_breakout'?'selected':''}>Suporte/Resistência + Breakout</option>
+                  <option value="pair_retest" ${d.engine==='pair_retest'?'selected':''}>Mean Reversion + Fibonacci Retest</option>
                   <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
                 </select>
               </label>
@@ -1549,81 +1552,11 @@ export class LocalPlaywrightDriver{
             </div>
             <div data-sentinel-strategy-context style="padding:5px 9px;margin-top:5px;color:${muted};font-size:10px">
               ${d.engine==='automatic'&&d.vnext?.forecastOwner?.switched?'Automático usa '+esc(String(d.vnext.forecastOwner.effectiveEngine).replaceAll('_',' ')):
-                d.engine==='automatic'?'Automático · previsão geral':'Estratégia manual · '+esc(String(d.engine).replaceAll('_',' '))}
-              ${d.vnext?.futureQualification?.enabled?' · '+(d.vnext.futureQualification.confirmed?'Histórico confirmado':'AGUARDAR confirmação'):''}
+                d.engine==='automatic'?'Automático · previsão geral':(d.engine==='pair_reversal'?'Mean Reversion + Smart Confluence':d.engine==='pair_levels_breakout'?'Suporte/Resistência + Breakout':d.engine==='pair_retest'?'Mean Reversion + Fibonacci Retest':esc(String(d.engine).replaceAll('_',' ')))}
+
             </div>
-            <details data-sentinel-pair-settings data-sentinel-preserve-open="1" data-sentinel-no-drag
-              style="margin-top:7px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};padding:8px;color:${goldSoft};font-size:10px">
-              <summary style="cursor:pointer;font-weight:850">⚙ Opções de previsão · expandir</summary>
-              <label style="display:grid;gap:4px;margin-top:8px">Previsão automática
-                <select data-sentinel-setting="autoRoutingEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                  <option value="true" ${d.autoRoutingEnabled===true?'selected':''}>Adapta cálculo ao gráfico · teste não validado</option>
-                  <option value="false" ${d.autoRoutingEnabled!==true?'selected':''}>Padrão · mantém previsão geral</option>
-                </select>
-              </label>
-              <label style="display:grid;gap:4px;margin-top:7px">Filtrar previsão por histórico
-                <select data-sentinel-setting="futureSignalFilterEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                  <option value="false" ${d.futureSignalFilterEnabled!==true?'selected':''}>Desligado · previsão original</option>
-                  <option value="true" ${d.futureSignalFilterEnabled===true?'selected':''}>Ligado · AGUARDAR sem confirmação</option>
-                </select>
-              </label>
-              <div style="margin-top:8px;display:grid;gap:8px">
-                <label style="display:grid;gap:3px">Modo da previsão
-                  <select data-sentinel-setting="pairResearchEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                    <option value="false" ${d.pairResearchEnabled!==true?'selected':''}>Estratégia única (padrão)</option>
-                    <option value="true" ${d.pairResearchEnabled===true?'selected':''}>Combinação de duas · pesquisa</option>
-                  </select>
-                </label>
-                <label style="display:grid;gap:3px">Escolha a combinação
-                  <select data-sentinel-setting="pairResearchId" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                    <option value="reversal" ${d.pairResearchId==='reversal'?'selected':''}>Mean Reversion 70 + Smart Confluence 67</option>
-                    <option value="levels_breakout" ${d.pairResearchId==='levels_breakout'?'selected':''}>Suporte/Resistência 67 + Breakout 67</option>
-                    <option value="retest" ${d.pairResearchId==='retest'?'selected':''}>Mean Reversion 70 + Fibonacci Retest 70</option>
-                  </select>
-                </label>
-                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px">
-                  <label style="display:grid;gap:3px">Entrada prevista
-                    <select data-sentinel-setting="entryTimeMode" style="width:100%;min-width:0;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                      <option value="fixed" ${d.entryTimeMode!=='automatic'?'selected':''}>Prazo fixo</option>
-                      <option value="automatic" ${d.entryTimeMode==='automatic'?'selected':''}>Automática</option>
-                    </select>
-                  </label>
-                  <label style="display:grid;gap:3px">Entrada daqui a
-                    <select data-sentinel-setting="entryLeadSeconds" style="width:100%;min-width:0;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                      ${[5,10,15,30,60,120,300].map(v=>'<option value="'+v+'" '+(Number(d.entryLeadSeconds||30)===v?'selected':'')+'>'+v+'s</option>').join('')}
-                    </select>
-                  </label>
-                </div>
-                <label style="display:grid;gap:3px">Duração da operação independente da entrada
-                  <select data-sentinel-setting="holdingSeconds" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                    ${[15,30,45,60,120,180,300,600,900].map(v=>'<option value="'+v+'" '+(Number(d.holdingSeconds||60)===v?'selected':'')+'>'+v+'s</option>').join('')}
-                  </select>
-                </label>
-                <div>Resultado da combinação: ${esc(d.vnext?.combinedResearch?.selected?.side||'AGUARDAR')} · ${esc(d.vnext?.combinedResearch?.status||'pesquisa desligada')}. Sem ordens automáticas.</div>
-                <div style="border-top:1px solid ${panelBorder};padding-top:7px">Auxiliares da previsão</div>
-                <label style="display:grid;gap:3px">Leitura de compatibilidade de estratégias
-                  <select data-sentinel-setting="strategyAdvisorEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                    <option value="false" ${d.strategyAdvisorEnabled!==true?'selected':''}>Desativada</option>
-                    <option value="true" ${d.strategyAdvisorEnabled===true?'selected':''}>Ativar observações</option>
-                  </select>
-                </label>
-                <label style="display:grid;gap:3px">Seleção automática
-                  <select data-sentinel-setting="strategyAdvisorMode" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                    <option value="manual" ${d.strategyAdvisorMode!=='automatic_advisory'?'selected':''}>Manual · mantém sua estratégia</option>
-                    <option value="automatic_advisory" ${d.strategyAdvisorMode==='automatic_advisory'?'selected':''}>Automático · sugere sem trocar</option>
-                  </select>
-                </label>
-                <label style="display:grid;gap:3px">Confirmar previsão pelo histórico no prazo escolhido
-                  <select data-sentinel-setting="futureResearchEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                    <option value="false" ${d.futureResearchEnabled!==true?'selected':''}>Desativada</option>
-                    <option value="true" ${d.futureResearchEnabled===true?'selected':''}>Ativar comparação experimental</option>
-                  </select>
-                </label>
-                <small>Combinações e recomendações não mudam a análise principal nem executam operações.</small>
-              </div>
-            </details>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
-              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
+              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine==='pair_reversal'?'MEAN REVERSION + SMART CONFLUENCE':d.engine==='pair_levels_breakout'?'SUPORTE/RESISTÊNCIA + BREAKOUT':d.engine==='pair_retest'?'MEAN REVERSION + FIBONACCI RETEST':d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
               <div data-sentinel-vnext-clock data-deadline="${scheduledAt}" data-issued="${Number(pinnedEntry?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>ATÉ POSSÍVEL ENTRADA</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>

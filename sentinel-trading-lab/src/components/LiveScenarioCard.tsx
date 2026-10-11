@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import {liveCardModel} from '../lib/live-card-model';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {SCENARIO_ENGINES} from '../../agent/src/core/scenario-engine-catalog.mjs';
-import {MobileExperimentalControls} from './MobileExperimentalControls';
+import {PAIR_STRATEGIES} from '../../agent/src/core/pair-strategy-catalog.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
 const STRATEGIES=[['smart_confluence','Smart Confluence'],['price_action','Price Action'],['trendline_breakout','Trendline Breakout'],['support_resistance','Suporte / Resistência'],['fibonacci_retest','Fibonacci Retest'],['trend','Trend Following'],['mean_reversion','Mean Reversion'],['breakout','Breakout']] as const;
@@ -138,6 +138,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <label>Estratégia ativa
       <select aria-label="Estratégia responsável pelo cenário" value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{e.name}</option>)}
+        {PAIR_STRATEGIES.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
       </select>
     </label>
     <label>Entrada daqui a
@@ -250,7 +251,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     </>}
     {forecastReceipt}
     {forecastHorizonStrip}
-    {vnext&&<MobileExperimentalControls s={s} busy={busy} act={act}/>}
     {opportunityNotice}
     {vnext?<div className="mobileCurrentQuoteOnly" data-testid="mobile-current-quote">
       <div><small>COTAÇÃO DO ATIVO</small><strong>{quoteValid?price(mobileQuote):'—'}</strong></div>
@@ -295,7 +295,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {!vnext&&<div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?'JANELA DE ENTRADA '+m.entryRemaining+'s · confirme a expiração na corretora':m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida'}</span>{scenarioClock}</div>}
     {forecastReceipt}
     {forecastHorizonStrip}
-    {vnext&&<MobileExperimentalControls s={s} busy={busy} act={act}/>}
     {opportunityNotice}
     {observationCards}
     <div className="liveScenarioMeta"><span>Cotação {price(quoteShown)}</span><span>{m.quoteAge===null?'Sem cotação':`Cotação recebida há ${m.quoteAge}s`}</span><span>{m.confidence===null?'':'Confiança '+m.confidence+' pts'}</span></div>
@@ -314,6 +313,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {!vnext&&<details className="liveSettings"><summary>Ajustar cenário</summary><div><label>Prazo da previsão<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Expiração (manual)<select aria-label="Expiração escolhida manualmente" value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>Estratégia 1<select aria-label="Estratégia 1" value={strategy1} onChange={e=>{settingsEditing.current=true;setStrategy1(e.target.value)}}>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 2<select aria-label="Estratégia 2" value={strategy2} onChange={e=>{settingsEditing.current=true;setStrategy2(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><label>Estratégia 3<select aria-label="Estratégia 3" value={strategy3} onChange={e=>{settingsEditing.current=true;setStrategy3(e.target.value)}}><option value="none">Não selecionada</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select></label><p data-testid="strategy-selection-advice" role="note" style={{gridColumn:'1 / -1',fontSize:11,opacity:.85,margin:'4px 0'}}>
       <b>Combinação:</b> {strategyAdvice.message} <span>· {strategyAdvice.recommendation}</span>
     </p><label>Limite do Cenário %<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>Aplicar</button></div></details>}
-    <footer>{vnext?'Uma estratégia por vez. O prazo define a projeção; confirme a expiração na corretora. Previsão experimental não é entrada autorizada.':'Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo.'}</footer>
+    <footer>{vnext?'A estratégia escolhida define a previsão futura; confirme o vencimento na corretora. Sem operação automática.':'Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo.'}</footer>
   </section>
 }

@@ -393,7 +393,10 @@ function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
     ['breakout','Breakout','Estima a expansão de faixas e pressão de rompimento.'],
     ['trendline_breakout','Trendline Breakout','Projetos de linhas históricas, desvios e eventuais quebras.'],
     ['fibonacci_retest','Fibonacci Retest','Analisa swings anteriores e regiões de retração.'],
-    ['smart_confluence','Smart Confluence','Combina indicadores internos desta estratégia; não vota com outras estratégias.']
+    ['smart_confluence','Smart Confluence','Combina indicadores internos desta estratégia; não vota com outras estratégias.'],
+    ['pair_reversal','Mean Reversion + Smart Confluence','As duas analisam independentemente; previsão somente quando concordam.'],
+    ['pair_levels_breakout','Suporte/Resistência + Breakout','Níveis e rompimentos avaliados juntos, sem somar porcentagens.'],
+    ['pair_retest','Mean Reversion + Fibonacci Retest','Retornos e retestes confirmados pelas duas leituras.']
   ] as const;
   const selected=String(s.settings?.engine||'automatic');
   const active=motors.find(x=>x[0]===selected)||motors[0];
@@ -402,77 +405,14 @@ function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
   const pair=s.lastResult?.analysis?.vnext?.combinedResearch||null;
   const advisorNotes=advisor?.strategies||[];
   return <section className="card span12 strategySection">
-    <div className="split"><div><div className="eyebrow">ESTRATÉGIA INDEPENDENTE</div><h3>Escolha uma estratégia para o cenário</h3><p className="muted">Somente a estratégia escolhida calcula a previsão principal, respeitando a expiração selecionada. Sem votação entre estratégias.</p></div><div className="strategyActive"><span>Estratégia ativa</span><b>{active[1]}</b></div></div>
-    <label className="vnextStrategyPicker">Estratégia responsável
+    <div className="split"><div><div className="eyebrow">ESTRATÉGIA INDEPENDENTE</div><h3>Escolha uma estratégia para o cenário</h3><p className="muted">A opção escolhida calcula a previsão, no prazo definido no card.</p></div><div className="strategyActive"><span>Estratégia ativa</span><b>{active[1]}</b></div></div>
+    <label className="vnextStrategyPicker">Estratégia ativa
       <select disabled={busy} aria-label="Selecionar estratégia independente" value={selected} onChange={e=>void act('settings',{engine:e.target.value,strategy2:'none',strategy3:'none'})}>
         {motors.map(([id,title])=><option value={id} key={id}>{title}</option>)}
       </select>
     </label>
     <p className="muted" style={{marginTop:12}}>{active[2]}</p>
-    <div className="demoDisclaimer" style={{marginTop:12}}>
-      <b>{selected==='automatic'?'Automático escolhe a estratégia do cálculo':'Estratégia escolhida manualmente'}</b>
-      <p>{selected==='automatic'
-        ?(s.lastResult?.analysis?.vnext?.forecastOwner?.switched
-          ?'Usando: '+String(s.lastResult.analysis.vnext.forecastOwner.effectiveEngine).replaceAll('_',' ')+' · prazo '+String(s.settings?.orderDurationMs/1000)+'s'
-          :'Usando a previsão geral, até haver histórico confiável para mudar.')
-        :'A estratégia escolhida permanece no controle da previsão.'}</p>
-      <details style={{marginTop:9}}>
-        <summary style={{cursor:'pointer',fontWeight:750}}>⚙ Ajustes e combinações</summary>
-        <div style={{display:'grid',gap:10,padding:'10px 4px'}}>
-          {selected==='automatic'&&<label style={{display:'block',marginTop:7}}>
-        <input type="checkbox" checked={s.settings?.autoRoutingEnabled===true} disabled={busy}
-          onChange={e=>void act('settings',{autoRoutingEnabled:e.target.checked})}/>
-        {' '}Trocar automaticamente de estratégia (teste não validado)
-      </label>}
-
-          <label><input type="checkbox" disabled={busy} checked={s.settings?.pairResearchEnabled===true}
-            onChange={e=>void act('settings',{pairResearchEnabled:e.target.checked})}/>
-            {' '}Comparar duas estratégias (pesquisa independente)
-          </label>
-          {s.settings?.pairResearchEnabled&&<label>Dupla
-            <select disabled={busy} value={s.settings?.pairResearchId||'reversal'}
-              onChange={e=>void act('settings',{pairResearchId:e.target.value})}>
-              <option value="reversal">Mean Reversion 70 + Smart Confluence 67</option>
-              <option value="levels_breakout">Suporte/Resistência 67 + Breakout 67</option>
-              <option value="retest">Mean Reversion 70 + Fibonacci Retest 70</option>
-            </select>
-          </label>}
-          {s.settings?.pairResearchEnabled&&<label>Entrada futura
-            <select disabled={busy} value={s.settings?.entryTimeMode||'fixed'}
-              onChange={e=>void act('settings',{entryTimeMode:e.target.value})}>
-              <option value="fixed">Fixa</option><option value="automatic">Automática estimada</option>
-            </select>
-          </label>}
-          {s.settings?.pairResearchEnabled&&s.settings?.entryTimeMode!=='automatic'&&
-            <label>Entrar daqui a
-              <select disabled={busy} value={Number(s.settings?.entryLeadSeconds||30)}
-                onChange={e=>void act('settings',{entryLeadSeconds:Number(e.target.value)})}>
-                {[5,10,15,30,60,120,300].map(v=><option key={v} value={v}>{v}s</option>)}
-              </select>
-            </label>}
-          {s.settings?.pairResearchEnabled&&<label>Duração independente da entrada
-            <select disabled={busy} value={Number(s.settings?.holdingSeconds||60)}
-              onChange={e=>void act('settings',{holdingSeconds:Number(e.target.value)})}>
-              {[15,30,45,60,120,180,300,600,900].map(v=><option key={v} value={v}>{v}s</option>)}
-            </select>
-          </label>}
-          <label><input type="checkbox" disabled={busy}
-            checked={s.settings?.futureSignalFilterEnabled===true}
-            onChange={e=>void act('settings',{futureSignalFilterEnabled:e.target.checked})}/>
-            {' '}Filtrar previsões: mostrar AGUARDAR sem confirmação histórica
-          </label>
-          <label><input type="checkbox" disabled={busy} checked={s.settings?.futureResearchEnabled===true}
-            onChange={e=>void act('settings',{futureResearchEnabled:e.target.checked})}/>
-            {' '}Exibir confirmação histórica da previsão
-          </label>
-          <label><input type="checkbox" disabled={busy} checked={s.settings?.strategyAdvisorEnabled===true}
-            onChange={e=>void act('settings',{strategyAdvisorEnabled:e.target.checked})}/>
-            {' '}Mostrar contexto das nove estratégias
-          </label>
-          <p>Combinações e estudos de trajetória não autorizam ordens automáticas.</p>
-        </div>
-      </details>
-    </div>
+    <p className="muted" style={{marginTop:7}}>Escolha uma opção; se forem duas estratégias, ambas participam da previsão principal. Quando discordam, aparece AGUARDAR.</p>
     <div className="demoDisclaimer">As projeções são experimentais e precisam ser verificadas em DEMO. Confiança de modelo não é porcentagem comprovada de acertos; nenhuma ordem é enviada automaticamente.</div>
   </section>
 }

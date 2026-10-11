@@ -1,4 +1,4 @@
-import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {selectedForecast,isPairedStrategy} from './unified-strategy-forecast.mjs';
 import {futureEntrySchedule} from './future-entry-schedule.mjs';
 
 // Each horizon runs the SAME user-selected engine against the SAME historical
@@ -15,7 +15,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
     Number(last?.price)||0,Array.isArray(snap.quoteHistory)?snap.quoteHistory.length:0
   ]);
-  const horizons=[...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
+  const horizons=isPairedStrategy(settings.engine)?[horizon]:[...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
   // No arbitrary delay: re-evaluate as soon as the source quote or selected
   // context changes, not every redundant 400ms worker tick.
   if(previous?.context===context&&Array.isArray(previous.rows)){
@@ -26,7 +26,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   const rows=[];
   for(const seconds of horizons){
     const model=seconds===horizon&&primary?
-      primary:singleEngineForecast({
+      primary:selectedForecast({
         settings:{...settings,orderDurationMs:seconds*1000},
         snap,now,provider:snap.provider
       });
