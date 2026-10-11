@@ -17,6 +17,8 @@ import {rankByChosenStrategies} from './strategy-entry-ranking.mjs';
 import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from './strategy-selection-guidance.mjs';
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
+import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -883,6 +885,18 @@ export class DemoTradingRuntime{
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
       const model=singleEngineForecast({settings,snap,now});
+      // Compute the same SELECTED engine for each genuinely distinct future
+      // expiration. Avoid re-running unchanged ticks, never delay new quotes.
+      const matrix=forwardHorizonMatrix({
+        settings,snap,now,primary:model,previous:this.vnextHorizonMatrix||null
+      });
+      this.vnextHorizonMatrix=matrix;
+      const horizonAudit=progressHorizonAudit({
+        previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
+        engineId:model.engineId,asset:settings.asset,
+        quoteHistory:snap.quoteHistory,now,newQuote:!matrix.reused
+      });
+      this.vnextHorizonAudit=horizonAudit;
       const previous=Array.isArray(this.vnextPending)?this.vnextPending:[];
       const outcomes=Array.isArray(this.vnextOutcomes)?this.vnextOutcomes:[];
       const eligible=previous.filter(x=>x?.targetAt>now-2000);
@@ -925,6 +939,8 @@ export class DemoTradingRuntime{
       const result={...analysis,asset:settings.asset,
         engineId:model.engineId,
         vnext:{...model,evaluation:undefined,targetAnchor,
+          horizonForecasts:matrix.rows,
+          horizonMeasurements:horizonAudit.summaries,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
         entryPlanner:{modelVersion:model.modelVersion,

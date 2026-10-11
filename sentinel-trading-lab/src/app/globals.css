@@ -1445,3 +1445,27 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextTargetCountdown.ended strong{font-size:23px!important;line-height:27px!important}
 .liveScenario .vnextTargetCountdown small{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .liveScenario .vnextFutureDirection span{min-width:0;max-width:55%;overflow:hidden;text-overflow:ellipsis}
+
+/* V13.4.66: future prediction matrix, single engine, fixed height on both
+   normal and floating mobile views. No changes to trade or model mechanics. */
+.liveScenario .vnextForwardHorizons{
+  display:grid;grid-template-rows:17px 1fr 12px;gap:5px;
+  height:160px;min-height:160px;max-height:160px;
+  margin:7px 0;padding:8px 10px;border:1px solid #9f947364;
+  background:rgba(9,28,27,.88);border-radius:10px;min-width:0;
+  contain:layout;overflow:hidden;
+}
+.liveScenario .vnextForwardHorizonsTitle{display:flex;align-items:center;gap:6px;justify-content:space-between;white-space:nowrap;min-width:0}
+.liveScenario .vnextForwardHorizonsTitle strong{font-size:10px;letter-spacing:.025em;color:#e4cc94;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.liveScenario .vnextForwardHorizonsTitle small{font-size:8px;color:#c1d1cf;flex-shrink:0}
+.liveScenario .vnextForwardHorizonsGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:4px;min-height:0}
+.liveScenario .vnextForwardHorizon{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);grid-template-rows:11px 16px;gap:1px;border-radius:6px;padding:2px 4px;background:#ffffff0c;border:1px solid #9ca6a538;min-width:0;min-height:0;overflow:hidden;align-content:center}
+.liveScenario .vnextForwardHorizon.selected{border-color:#dfbd72aa;background:#cb9d3022}
+.liveScenario .vnextForwardHorizon small{grid-column:1/-1;color:#d9cba8;font-size:8px;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;line-height:11px}
+.liveScenario .vnextForwardHorizon strong{grid-column:1;font-size:11px;font-weight:850;line-height:16px;white-space:nowrap}
+.liveScenario .vnextForwardHorizon strong.call{color:#48cfa6}
+.liveScenario .vnextForwardHorizon strong.put{color:#fa8d80}
+.liveScenario .vnextForwardHorizon strong.neutral{color:#aeb5b6}
+.liveScenario .vnextForwardHorizon span{grid-column:2;text-align:right;font-size:8px;line-height:11px;color:#cbd8d5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.liveScenario .vnextForwardHorizonsNote{font-size:8px;color:#b7c7c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:12px}
+.liveScenario .vnextTargetCountdown.ended strong{font-size:23px!important}

@@ -48,6 +48,25 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     vnext.projection:null;
   const vnextTargetProjection=vnextTargetAnchor&&vnext?.targetProjection?
     vnext.targetProjection:null;
+  // PC sends full model rows, mobile signed broadcast sends compact numeric
+  // tuples. Both are strictly from the currently selected engine and asset.
+  const rawHorizons=Array.isArray(vnext?.hf)?vnext.hf:
+    Array.isArray(vnext?.horizonForecasts)?vnext.horizonForecasts:[];
+  const vnextHorizons=matchingMarket&&vnext?.engineId===s?.settings?.engine?
+    rawHorizons.map((r:any)=>Array.isArray(r)?{
+      horizonSeconds:Number(r[0]),side:r[1]||null,projectedPrice:r[2],
+      issuedAt:Number(r[3])||0,targetAt:(Number(r[3])||0)+Number(r[0])*1000
+    }:{horizonSeconds:Number(r?.horizonSeconds),
+      side:r?.side||null,projectedPrice:r?.projectedPrice,
+      issuedAt:Number(r?.issuedAt)||0,targetAt:Number(r?.targetAt)||0})
+      .filter((r:any)=>Number.isFinite(r.horizonSeconds)&&r.horizonSeconds>0&&r.horizonSeconds<=3600):[];
+  const rawMeasurements=Array.isArray(vnext?.hm)?vnext.hm:
+    Array.isArray(vnext?.horizonMeasurements)?vnext.horizonMeasurements:[];
+  const vnextHorizonMeasurements=matchingMarket&&vnext?.engineId===s?.settings?.engine?
+    rawMeasurements.map((x:any)=>Array.isArray(x)?
+      {horizonSeconds:Number(x[0]),correct:Number(x[1]),verified:Number(x[2])}:
+      {horizonSeconds:Number(x.horizonSeconds),correct:Number(x.correct),verified:Number(x.verified)})
+      .filter((x:any)=>Number.isFinite(x.verified)&&x.verified>=0):[];
   const scenarioDeadline=Number(scenario?.deadline||0);
   const scenarioOrigin=Number(scenario?.createdAt||0);
   const scenarioContextOk=matchingMarket&&feedValidated&&
@@ -120,7 +139,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,quoteAgeAtFrame,transportAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextStatus:vnext?.computedStatus||null,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,vnextLastSettled:vnext?.lastSettled||null,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
