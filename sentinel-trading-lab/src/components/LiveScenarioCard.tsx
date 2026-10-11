@@ -212,7 +212,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // 9 fixed slots prevent changing data/selection from moving the card.
   const allFutureHorizons=[...new Set([5,10,30,60,120,300,Number(expirySeconds)])]
     .filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b).slice(0,9);
-  const futureByHorizon=new Map((m.vnextHorizons||[]).map((r:any)=>[Number(r.horizonSeconds),r]));
+  const futureByHorizon=new Map<number,any>((m.vnextHorizons||[]).map((r:any):[number,any]=>[Number(r.horizonSeconds),r]));
   const forecastHorizonStrip=vnext?<section className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Projeções de preços para os próximos períodos">
     <div className="vnextForwardHorizonsTitle"><strong>PROJEÇÕES PARA O FUTURO</strong><small>{m.fresh?'● DADOS ATUAIS':'ÚLTIMOS DADOS · ATRASADOS'}</small></div>
     <div className="vnextForwardHorizonsGrid">
