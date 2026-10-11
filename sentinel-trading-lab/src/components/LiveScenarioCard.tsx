@@ -54,40 +54,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   };
   const m=liveCardModel(s,now,averageThreshold);
   const vnext=!!s?.settings?.engine;
-  const liveForecast=m.vnextReceipt;
-  // Two INDEPENDENT display clocks: live forecast updates with every Agent
-  // calculation; the original reference clock remains auditable until expiry.
-  // Never use the fixed receipt to freeze the selected motor or its CALL/PUT indices.
-  const clockForecast=m.vnextTargetAnchor||liveForecast;
-  const forecast=clockForecast;
-  // A slow mobile packet MUST NOT erase a still-relevant prediction.
-  // Only the FRESH path may be called live or used to describe an entry.
-  // Historical display never grants entry permissions or changes the motor.
-  const forecastReadable=!!(liveForecast&&
-    Number(liveForecast.issuedAt)>0&&Number(liveForecast.issuedAt)<=now+2000&&
-    Number(liveForecast.targetAt)>now&&
-    ['CALL','PUT'].includes(String(liveForecast.side)));
-  const liveForecastValid=!!(forecastReadable&&m.fresh&&
-    now-Number(liveForecast.issuedAt)<=6000);
-  const forecastDelayed=forecastReadable&&!liveForecastValid;
-  const liveProjection=forecastReadable?m.vnextProjection:null;
+  // Duration selection is the lead time to a FUTURE entry.
+  // Only the recorded entry schedule owns the hero countdown and direction.
   const expiryChoices=[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
-  // A rolling forecast always targets an exact future instant from its
-  // original issuance. A countdown alone must never replace the deadline.
-  const forecastTargetAt=Number(clockForecast?.targetAt||0);
-  const forecastIssuedAt=Number(clockForecast?.issuedAt||0);
-  const forecastExpirySeconds=Number(clockForecast?.expirySeconds||0);
-  const forecastTimeValid=Boolean(clockForecast&&forecastTargetAt>forecastIssuedAt&&
-    forecastExpirySeconds>0&&forecastTargetAt-forecastIssuedAt===forecastExpirySeconds*1000);
-  const forecastSecondsRemaining=forecastTimeValid?Math.max(0,Math.ceil((forecastTargetAt-now)/1000)):null;
-  const forecastTargetPast=forecastTimeValid&&forecastTargetAt<=now;
-  const countdownTime=forecastSecondsRemaining===null?'—:—':forecastSecondsRemaining>=3600?String(Math.floor(forecastSecondsRemaining/3600)).padStart(2,'0')+':'+String(Math.floor(forecastSecondsRemaining%3600/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0'):String(Math.floor(forecastSecondsRemaining/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0');
-  // The headline and its countdown refer to the SAME recorded target.
-  // New rolling forecasts are displayed separately in the horizon matrix.
-  const forecastTimeLabel=forecastTimeValid?
-    (forecastTargetPast?'PREVISÃO ENCERRADA':'ALVO '+clock(forecastTargetAt)):
-    'AGUARDANDO PREVISÃO';
   const strategyAdvice=strategySelectionGuidance({
     ids:[strategy1,strategy2,strategy3],
     paused:s?.settings?.pausedReadings||{},
