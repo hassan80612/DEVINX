@@ -1,0 +1,119 @@
+name: Sentinel 13.4.70 Publish Verified Windows Agent
+on:
+  push:
+    branches: [sentinel-13470-nine-engines-structural-research-20261011]
+    paths:
+      - '.github/workflows/sentinel-1370-publish-agent.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-1370-publish-agent
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Build matching Agent 13.4.70 ZIP and EXE
+        working-directory: sentinel-trading-lab
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('agent/release.json'));
+          const p=JSON.parse(fs.readFileSync('agent/package.json'));
+          if(r.version!=='13.4.70'||p.version!==r.version)throw Error('release mismatch');
+          NODE
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const r=JSON.parse(fs.readFileSync('agent/release.json','utf8'));
+          const payload=fs.readFileSync('public/downloads/agent_payload_v88.zip');
+          const sha=crypto.createHash('sha256').update(payload).digest('hex');
+          const meta={format:'sentinel-agent-update-v1',version:r.version,build:r.build,zipSha256:sha};
+          fs.writeFileSync('public/downloads/agent-update.json',JSON.stringify(meta)+'\n');
+          NODE
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/{Sentinel-Agent-Windows.exe,agent_payload_v88.zip,agent-update.json}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.70-Verified-Agent
+          path: |
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+            sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+            sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+            sentinel-trading-lab/public/downloads/agent-update.json
+          if-no-files-found: error
+          retention-days: 7
+  smoke:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.70-Verified-Agent
+          path: candidate
+      - name: Validate actual Windows executable and embedded ZIP without installing
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Get-ChildItem -Path candidate -Recurse -Filter 'Sentinel-Agent-Windows.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Missing Windows executable'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "Embedded installer validation failed: $LASTEXITCODE"}
+  publish:
+    needs: smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.70-Verified-Agent
+          path: artifacts
+      - name: Publish tested binaries, manifest and correct console download label
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp artifacts/sentinel-trading-lab/public/downloads/{Sentinel-Agent-Windows.exe,sentinel-agent-windows.exe,agent_payload_v88.zip,agent-update.json} sentinel-trading-lab/public/downloads/
+          node - <<'NODE'
+          const fs=require('fs');
+          const path='sentinel-trading-lab/src/app/console/page.tsx';
+          let s=fs.readFileSync(path,'utf8');
+          if(!s.includes("const AVAILABLE_AGENT_VERSION='13.4.67';"))throw Error('unexpected label; cannot safely update');
+          s=s.replace("const AVAILABLE_AGENT_VERSION='13.4.67';","const AVAILABLE_AGENT_VERSION='13.4.70';");
+          s=s.replace('-future-entry-pinned-1010','-nine-independent-structure-lab-1011');
+          fs.writeFileSync(path,s);
+          NODE
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const m=JSON.parse(fs.readFileSync('sentinel-trading-lab/public/downloads/agent-update.json'));
+          const zip=fs.readFileSync('sentinel-trading-lab/public/downloads/agent_payload_v88.zip');
+          const got=crypto.createHash('sha256').update(zip).digest('hex');
+          if(m.version!=='13.4.70'||got!==m.zipSha256)throw Error('refuse to publish mismatched binary');
+          NODE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json sentinel-trading-lab/src/app/console/page.tsx
+          if git diff --cached --quiet; then echo 'Already current'; exit 0; fi
+          git commit -m 'release(sentinel): ship validated Windows Agent 13.4.70 and console label [skip ci]'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
