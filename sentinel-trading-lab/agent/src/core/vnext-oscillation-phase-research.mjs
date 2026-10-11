@@ -107,7 +107,7 @@ function candidatePeriods(h,span){
  const list=[];
  // Geometric grid includes sub-horizon, same-horizon and multi-horizon
  // rhythms while requiring >=2 cycles inside the TRAINING window.
- for(let p=8;p<=Math.min(2000,span/2.1);p*=1.3){
+ for(let p=8;p<=Math.min(2000,span/2.1);p*=1.06){
   if(p>=Math.max(8,h*.25))list.push(p);
  }
  return list;
