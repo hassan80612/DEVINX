@@ -12,7 +12,7 @@ import {historicalForwardAnalogs} from './historical-forward-analogs.mjs';
  * ensemble. Entries are informational until forward performance is measured.
  */
 export function singleEngineForecast({
- settings={},snap={},now=Date.now(),provider=snap.provider||'unknown',forecastModel='original-67'
+ settings={},snap={},now=Date.now(),provider=snap.provider||'unknown',forecastModel='original-67',adaptiveHistory=null
 }={}){
  const asset=String(settings.asset||'UNKNOWN').toUpperCase();
  const request=selectedEngineForecastRequest({settings,provider,asset,
@@ -21,7 +21,7 @@ export function singleEngineForecast({
  const quotes=Array.isArray(snap.quoteHistory)?snap.quoteHistory:[];
  const options={quoteHistory:quotes,asOf:now,selectedSeconds:seconds};
  const learned=request.engineId==='automatic'&&forecastModel==='adaptive-direct-trajectory-v1'?
-   adaptiveDirectTrajectory({quoteHistory:quotes,asOf:now,
+   adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||quotes,asOf:now,
      entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const useAdaptive=learned?.status==='adaptive-direct-trajectory';
  const modelVersion=useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
