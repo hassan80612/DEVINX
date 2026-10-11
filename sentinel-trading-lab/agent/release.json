@@ -1,12 +1,12 @@
 {
-  "version": "13.4.76",
-  "build": "13.4.76-unified-pairs-native-auto-experimental-1011",
+  "version": "13.4.77",
+  "build": "13.4.77-fixed-auto-entry-trajectory-stable-tiles-experimental-1011",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
-    "entryPolicy": "structural-reversals-v1",
+    "entryPolicy": "user-fixed-lead-or-historical-trajectory-window-independent-holding",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "nine-independent-or-three-independent-pairs-selected-directly",
-    "modelValidation": "experimental-pair-agreement-only-no-trading-orders"
+    "modelValidation": "unvalidated-experimental-entry-timing-no-winrate-improvement-claim"
   }
 }

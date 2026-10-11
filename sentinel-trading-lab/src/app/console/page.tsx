@@ -8,8 +8,8 @@ type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
 const AVAILABLE_AGENT_VERSION='13.4.70';
 const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-nine-independent-structure-lab-1011`;
-const EXPERIMENTAL_AGENT_VERSION='13.4.76';
-const EXPERIMENTAL_AGENT_URL=`/downloads/Sentinel-Agent-Experimental-${EXPERIMENTAL_AGENT_VERSION}.exe?v=unified-strategy-picker-1011`;
+const EXPERIMENTAL_AGENT_VERSION='13.4.77';
+const EXPERIMENTAL_AGENT_URL=`/downloads/Sentinel-Agent-Experimental-${EXPERIMENTAL_AGENT_VERSION}.exe?v=fixed-auto-entry-stable-tiles-1011`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
