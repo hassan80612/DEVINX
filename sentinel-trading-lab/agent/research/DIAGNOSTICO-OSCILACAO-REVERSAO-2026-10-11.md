@@ -58,13 +58,13 @@ Para estudar se 70–80% são possíveis em oscilações aleatórias, avaliamos 
 
 - Estado: x(t) = desvio do log-preço do centro, v(t-1)=incremento anterior.
 - x(t+1)=x(t)+v(t), onde v(t)=-0,08*x(t)-0,47*v(t-1)+epsilon(t), epsilon~Normal(0, 0,000013).
-- Melhor classificador possível **para esse processo** conhece a matriz exata de transição, o estado observado e a variância futura. Para decidir o sinal de x(t+2H)-x(t+H), a melhor taxa média teórica é E[Phi(|mu(x,v)|/sigmaDelta)], calculada pela distribuição gaussiana condicional. Nenhum modelo que tenha somente estas informações pode superar esse limite em expectativa.
+- Melhor classificador possível **para esse processo** conhece a matriz exata de transição, o estado observado e a variância futura. Para decidir o sinal de x(t+2H)-x(t+H), a melhor taxa média teórica, obtida analiticamente pela distribuição gaussiana estacionária, é `50% + arcsin(rho)/pi`, com `rho=sqrt(Varsinal/(Varsinal+Varruído))`. Equivale a E[Phi(|mu(x,v)|/sigmaDelta)]. Esta não é uma estimativa feita escolhendo as operações vencedoras retrospectivamente. Nenhum modelo que tenha somente estas informações pode superar esse limite em expectativa.
 
 | H | Máxima precisão condicional teórica — apenas este processo simulado |
 |---|---:|
-| 5s | 57,28% |
-| 10s | 57,85% |
-| 30s | 53,70% |
+| 5s | 57,21% |
+| 10s | 57,74% |
+| 30s | 53,67% |
 | 60s | 50,77% |
 | 120s | 50,03% |
 | 300s | 50,00% |
