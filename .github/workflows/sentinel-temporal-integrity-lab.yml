@@ -1,0 +1,26 @@
+name: Sentinel 67 Temporal Feed Integrity Research
+on:
+  push:
+    branches: [sentinel-13467-temporal-integrity-research-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/vnext-temporal-evidence-research.mjs'
+      - 'tests/sentinel-v13467-temporal-integrity.test.mjs'
+      - '.github/workflows/sentinel-temporal-integrity-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax and baseline unchanged
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/vnext-temporal-evidence-research.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs
+      - name: Identical price path at 1 Hz and 4 Hz, all nine motors, all horizons
+        run: node --test tests/sentinel-v13467-temporal-integrity.test.mjs
