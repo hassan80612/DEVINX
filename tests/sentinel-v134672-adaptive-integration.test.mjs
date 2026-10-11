@@ -98,8 +98,8 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
  assert.equal(entry[2],original.projectedEntryPrice);
  assert.equal(entry[3],original.projectedExitPrice);
 });
-test('67.1 visual components, desktop controls and expansion handlers are byte-identical',()=>{
- const expected={"sentinel-trading-lab/agent/worker/index.mjs":"25560982cf44228157a8e3825acb4de3b3f93cbb","sentinel-trading-lab/agent/worker/live-bridge.mjs":"2c7785da7c2cf50ab57790f177fbb49cc3ea9690","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"c6294ea53938b1848444e0df68881813f7441b57","sentinel-trading-lab/src/app/globals.css":"c629314d0cbc8c0aee637b4f4e73dbd54641865e","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"7633bb15ff3d7f8ff940fe80e3d74d443b6e55cf","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
+test('approved cosmetic copy and preserved desktop controls, data bridge and mobile layout match reviewed sources',()=>{
+ const expected={"sentinel-trading-lab/agent/worker/index.mjs":"25560982cf44228157a8e3825acb4de3b3f93cbb","sentinel-trading-lab/agent/worker/live-bridge.mjs":"2c7785da7c2cf50ab57790f177fbb49cc3ea9690","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"7f2df60712ab8232a6e8addf0866e7d3e2b04263","sentinel-trading-lab/src/app/globals.css":"c629314d0cbc8c0aee637b4f4e73dbd54641865e","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"874128ba0ec395e22d1cce493265c5482d57cc01","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
  for(const [path,sha] of Object.entries(expected)){
   const bytes=fs.readFileSync(new URL('../'+path,import.meta.url));
   const actual=crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0')).update(bytes).digest('hex');
