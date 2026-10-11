@@ -1,0 +1,21 @@
+name: Sentinel Oscillation Information Limit
+on:
+  push:
+    branches: [sentinel-13467-oscillation-phase-research-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/research/oscillation-information-ceiling.mjs'
+      - '.github/workflows/sentinel-oscillation-oracle-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Reproduce exact synthetic Gaussian ceiling, with assertions
+        run: node sentinel-trading-lab/agent/research/oscillation-information-ceiling.mjs
