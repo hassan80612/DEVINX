@@ -45,7 +45,7 @@ export function entryRegimeFeatures(quoteHistory,asOf,delaySeconds=30){
  if(at.some(x=>!x))return null;
  const historySeconds=Math.max(24,Math.min(900,h*2.5));
  const history=rows.filter(r=>r.ts>=last.ts-historySeconds*1000);
- if(history.length<26)return null;
+ if(history.length<22)return null;
  let realized=0,elapsed=0,path=0,maxJump=0;
  const recentCut=last.ts-Math.max(6,h*.4)*1000;
  let newestSq=0,newestElapsed=0,olderSq=0,olderElapsed=0;
