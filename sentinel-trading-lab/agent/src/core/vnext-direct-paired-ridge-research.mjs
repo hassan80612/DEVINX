@@ -60,7 +60,7 @@ function independent(rows,h){
  const sorted=rows.slice().sort((a,b)=>b.entryAt-a.entryAt);
  const picked=[];let prior=Infinity;
  for(const r of sorted){
-  if(prior-r.exitAt<Math.max(1000,Number(h)*1000))continue;
+  if(r.exitAt>prior)continue; // selected entry-to-expiry intervals must not overlap
   picked.push(r);prior=r.entryAt;
   if(picked.length>=160)break;
  }
