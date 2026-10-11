@@ -2,8 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {SCENARIO_ENGINES} from '../sentinel-trading-lab/agent/src/core/scenario-engine-catalog.mjs';
 import {futureEntrySchedule} from '../sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs';
-import {advanceAdaptiveSelectedEngineStudy} from '../sentinel-trading-lab/agent/src/core/vnext-adaptive-self-correction.mjs';
-import {progressDirectPairedStudy} from '../sentinel-trading-lab/agent/src/core/vnext-direct-paired-ridge-research.mjs';
+import {progressCausalTwoCorrectionStudy} from '../sentinel-trading-lab/agent/src/core/vnext-causal-two-corrections.mjs';
 
 const BASE=1800000000000, horizons=[5,10,30,60,120,300];
 function stream(seed,kind,length=3300){
@@ -36,6 +35,10 @@ function score(rows){
   residual:rows.filter(r=>r.residual).length,
   adaptive:rows.filter(r=>r.adaptive).length,
   direct:rows.filter(r=>r.direct).length,
+  combined:rows.filter(r=>r.combined).length,
+  combinedChanged:rows.filter(r=>r.sideOriginal!==r.sideCombined).length,
+  combinedHelp:rows.filter(r=>!r.original&&r.combined).length,
+  combinedHarm:rows.filter(r=>r.original&&!r.combined).length,
   directChanged:rows.filter(r=>r.sideOriginal!==r.sideDirect).length,
   directHelp:rows.filter(r=>!r.original&&r.direct).length,
   directHarm:rows.filter(r=>r.original&&!r.direct).length,
@@ -48,7 +51,7 @@ function experiment({kinds,seeds,hs,horizonTo,horizonFrom,step,until,evalAfter,l
  for(const type of kinds)for(const seed of seeds){
   const ticks=stream(seed,type,length);
   for(const h of hs)for(const engine of SCENARIO_ENGINES){
-   let oldStudy=null,newStudy=null;
+   let combinedStudy=null;
    for(let i=horizonFrom;i<=until;i+=step){
     const now=BASE+i*1000,quotes=ticks.slice(Math.max(0,i-historyLen),i+1);
     const plan=futureEntrySchedule({
@@ -56,13 +59,12 @@ function experiment({kinds,seeds,hs,horizonTo,horizonFrom,step,until,evalAfter,l
      snap:{provider:'iq_option',quoteTs:now,quoteHistory:quotes},
      now,delays:[h]
     })[0];
-    oldStudy=advanceAdaptiveSelectedEngineStudy({
-     previous:oldStudy,basePlan:plan,quoteHistory:quotes,now
+    combinedStudy=progressCausalTwoCorrectionStudy({
+     previous:combinedStudy,basePlan:plan,quoteHistory:quotes,now
     });
-    newStudy=progressDirectPairedStudy({
-     previous:newStudy,basePlan:plan,quoteHistory:quotes,now
-    });
+    const oldStudy=combinedStudy.residual,newStudy=combinedStudy.direct;
     assert.equal(newStudy.study.baselineSide,plan.side);
+    assert.equal(combinedStudy.combined.baselineSide,plan.side);
     if(i<evalAfter||i+2*h>=ticks.length||!plan.side)continue;
     const observed=ticks[i+h*2].price>ticks[i+h].price?'CALL':'PUT';
     answers.push({
@@ -71,7 +73,9 @@ function experiment({kinds,seeds,hs,horizonTo,horizonFrom,step,until,evalAfter,l
      residual:observed===oldStudy.candidate?.shadowSide,
      adaptive:observed===oldStudy.adaptive?.side,
      direct:observed===newStudy.study.directSide,
+     combined:observed===combinedStudy.combined.combinedSide,
      sideOriginal:plan.side,sideDirect:newStudy.study.directSide,
+     sideCombined:combinedStudy.combined.combinedSide,
      learned:newStudy.study.reason==='learned-from-matured-paired-forecast-errors',
      independent:newStudy.study.independentExamples
     });
