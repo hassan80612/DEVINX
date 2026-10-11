@@ -1,0 +1,112 @@
+name: Sentinel 13.4.78 experimental Windows Agent verified site package
+on:
+  push:
+    branches: [sentinel-1378-responsive-entry-no-extra-lead-20261011]
+    paths:
+      - '.github/workflows/sentinel-1378-experimental-agent.yml'
+      - 'sentinel-trading-lab/agent/release.json'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-1378-experimental-site
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate version and Agent source before building
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync('sentinel-trading-lab/agent/release.json'));
+          const p=JSON.parse(fs.readFileSync('sentinel-trading-lab/agent/package.json'));
+          if(r.version!=='13.4.78'||p.version!=='13.4.78'||!r.build.includes('experimental'))throw Error('experimental_release_mismatch');
+          NODE
+          find sentinel-trading-lab/agent/src/core -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --test tests/sentinel-1377-entry-mode-stability.test.mjs tests/sentinel-1376-unified-selection.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs
+      - name: Build single experimental Windows executable without modifying stable download manifest
+        working-directory: sentinel-trading-lab
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp public/downloads/install-agent-v88.ps1 agent/worker/install-agent-update.ps1
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          rm agent/worker/install-agent-update.ps1
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' \
+            -o public/downloads/Sentinel-Agent-Experimental-13.4.78.exe agent-launcher.go
+          rm sentinel_icon.syso
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Experimental-13.4.78.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/Sentinel-Agent-Experimental-13.4.78.exe public/downloads/agent_payload_v88.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.78-EXPERIMENTAL-Agent-verified
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Experimental-13.4.78.exe
+          retention-days: 7
+          if-no-files-found: error
+  smoke-windows:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.78-EXPERIMENTAL-Agent-verified
+          path: experimental
+      - name: Verify embedded ZIP and version on Windows, no installation or process changes
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Get-ChildItem experimental -Recurse -Filter 'Sentinel-Agent-Experimental-13.4.78.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Experimental executable missing'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "Installer test failed $LASTEXITCODE"}
+  commit-test-exe:
+    needs: smoke-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.78-EXPERIMENTAL-Agent-verified
+          path: experimental
+      - name: Publish only separate experimental executable to research branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=sentinel-1378-responsive-entry-no-extra-lead-20261011
+          current="$(git ls-remote origin "refs/heads/$expected" | cut -f1)"
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo 'Branch updated while building; refuse to publish a stale executable'
+            exit 1
+          fi
+          src="$(find experimental -type f -name Sentinel-Agent-Experimental-13.4.78.exe -print -quit)"
+          test -s "$src"
+          cp "$src" sentinel-trading-lab/public/downloads/Sentinel-Agent-Experimental-13.4.78.exe
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f sentinel-trading-lab/public/downloads/Sentinel-Agent-Experimental-13.4.78.exe
+          git diff --cached --quiet && exit 0
+          git commit -m 'build(sentinel): verified experimental 13.4.78 Windows installer, stable download untouched [skip ci]'
+          git push origin "HEAD:$expected"

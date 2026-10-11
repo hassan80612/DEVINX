@@ -1,12 +1,12 @@
 {
-  "version": "13.4.77",
-  "build": "13.4.77-fixed-auto-entry-trajectory-stable-tiles-experimental-1011",
+  "version": "13.4.78",
+  "build": "13.4.78-now-entry-fast-automatic-trajectory-1011-experimental",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
-    "entryPolicy": "user-fixed-lead-or-historical-trajectory-window-independent-holding",
+    "entryPolicy": "immediate-entry-or-cached-historical-entry-in-next-30s",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "nine-independent-or-three-independent-pairs-selected-directly",
-    "modelValidation": "unvalidated-experimental-entry-timing-no-winrate-improvement-claim"
+    "modelValidation": "experimental-unvalidated-live-accuracy-never-fabricate"
   }
 }
