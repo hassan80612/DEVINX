@@ -15,4 +15,4 @@ jobs:
         with:
           node-version: '24'
       - name: Verify historical paths and independent engine pair selection
-        run: node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs tests/sentinel-v1374-pairs-walkforward.test.mjs
+        run: node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs tests/sentinel-v1374-pairs-walkforward.test.mjs tests/sentinel-v1374-regime-forecast.test.mjs

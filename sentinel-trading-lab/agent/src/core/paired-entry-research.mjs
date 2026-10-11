@@ -6,6 +6,7 @@
 import {singleEngineForecast as forecast67} from './research-baseline-13467/vnext-single-engine.mjs';
 import {singleEngineForecast as forecast70} from './vnext-single-engine.mjs';
 import {historicalFuturePath,conditionalPathWindow} from './forward-path-research.mjs';
+import {marketRegimeEvidence,contextualPairDecision} from './market-regime-evidence.mjs';
 
 export const RESEARCH_PAIRS=Object.freeze([
  Object.freeze({id:'reversal',label:'Reversão e estrutura',first:{engine:'mean_reversion',version:70},second:{engine:'smart_confluence',version:67},default:true}),
@@ -43,29 +44,22 @@ export function pairedEntryResearch({settings={},snap={},now=Date.now(),mode='fi
  const leads=entryMode==='fixed'?[lead]:
   [...new Set(autoDelays.map(Number).filter(v=>v>=5&&v<=300))].sort((a,b)=>a-b);
  if(!leads.length)return {status:'no-entry-candidates',actionable:false};
+ const regime=marketRegimeEvidence({quoteHistory:snap.quoteHistory,asOf:now});
  const path=historicalFuturePath({quoteHistory:snap.quoteHistory,asOf:now,
-  horizonSeconds:Math.max(...leads)+hold});
+  horizonSeconds:Math.max(...leads)+hold,
+  requestedOffsets:[...leads,...leads.map(v=>v+hold)]});
  const alternatives=[];
  for(const delay of leads){
   const first=projectedWindow({strategy:pair.first,snap,now,leadSeconds:delay,holdingSeconds:hold,settings});
   const second=projectedWindow({strategy:pair.second,snap,now,leadSeconds:delay,holdingSeconds:hold,settings});
   const trajectory=conditionalPathWindow(path,delay,hold);
-  let side=null,decision='INSUFFICIENT_EVIDENCE';
-  if(first.side&&first.side===second.side){
-   // Two correlated models can share the same error. A trajectory with
-   // strong contrary evidence blocks the apparent agreement.
-   const contrary=trajectory.referenceSide&&trajectory.referenceSide!==first.side&&
-       trajectory.observedNeighborShare>=.66;
-   if(!contrary){side=first.side;decision='AGREEMENT_UNCALIBRATED'}
-   else decision='CONTRADICTED_BY_HISTORICAL_PATH'
-  }else if(first.side&&second.side&&first.side!==second.side){
-   // A measured-in-the-past independent path, not addition of percentages,
-   // chooses one owner only when its comparison is unusually strong.
-   if(trajectory.side&&trajectory.observedNeighborShare>=.75&&
-       (trajectory.side===first.side||trajectory.side===second.side)){
-    side=trajectory.side;decision='HISTORICAL_PATH_TIEBREAK_UNCALIBRATED'
-   }else decision='CONFLICT_ABSTAIN';
-  }
+  // A strategy cannot simply reinforce another's identical countertrend
+  // error. Evidence is classified at issuance from completed history only.
+  const adjudication=contextualPairDecision({
+    firstSide:first.side,secondSide:second.side,
+    trajectorySide:trajectory.referenceSide,
+    pathShare:trajectory.observedNeighborShare,regime});
+  let side=adjudication.side,decision=adjudication.reason;
   // A reliable future-path estimate is mandatory for automatic timing;
   // a fixed forecast remains visible as research when path history is sparse.
   if(entryMode==='automatic'&&(!trajectory.side||side!==trajectory.side)){
@@ -74,7 +68,8 @@ export function pairedEntryResearch({settings={},snap={},now=Date.now(),mode='fi
   const base=trajectory.projectedEntryPrice,exit=trajectory.projectedExitPrice;
   const logAdvantage=base>0&&exit>0?Math.abs(Math.log(exit/base)):0;
   const directionalAgreement=Number(trajectory.observedNeighborShare||0);
-  const ranking=side?logAdvantage*clamp(directionalAgreement-.5,0,1):0;
+  const pathSideMatches=trajectory.referenceSide===side;
+  const ranking=side?logAdvantage*(pathSideMatches?clamp(directionalAgreement-.5,0,1):.05):0;
   alternatives.push({pairId:pair.id,leadSeconds:delay,holdingSeconds:hold,side,decision,
    first,second,trajectory,ranking,entryAt:now+delay*1000,exitAt:now+(delay+hold)*1000});
  }
@@ -86,7 +81,7 @@ export function pairedEntryResearch({settings={},snap={},now=Date.now(),mode='fi
  return {status:selected?.side?'research-candidate':'no-qualified-forecast',
   mode:entryMode,pairId:pair.id,pairLabel:pair.label,
   selected,alternatives,referenceAt:now,holdingSeconds:hold,
-  historyStatus:path.status,historyComparisons:path.comparisons||0,
+  regime,historyStatus:path.status,historyComparisons:path.comparisons||0,
   extremeTimes:path.ready?path.extremeTimes:null,
   futurePath:path.ready?path.expectedPath:[],
   actionable:false,calibrated:false,

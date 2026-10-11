@@ -48,7 +48,7 @@ function distance(a,b){
  for(let i=0;i<5;i++){const x=(a.value[i]-b.value[i])/scales[i];sum+=x*x}
  return Math.sqrt(sum/5);
 }
-export function historicalFuturePath({quoteHistory=[],asOf=Date.now(),horizonSeconds=90,minNeighbors=8,maxNeighbors=18}={}){
+export function historicalFuturePath({quoteHistory=[],asOf=Date.now(),horizonSeconds=90,minNeighbors=8,maxNeighbors=18,requestedOffsets=[]}={}){
  const H=Number(horizonSeconds);
  if(!Number.isFinite(H)||H<5||H>1800||!Number.isFinite(Number(asOf)))
   return {status:'invalid-horizon',ready:false};
@@ -57,7 +57,11 @@ export function historicalFuturePath({quoteHistory=[],asOf=Date.now(),horizonSec
   return {status:'insufficient-complete-path-history',ready:false,historyQuotes:rows.length};
  const current=feature(rows,last.ts);
  if(!current)return {status:'insufficient-structure-history',ready:false};
- const sampleSeconds=[...new Set([0,H,...Array.from({length:20},(_,i)=>H*(i+1)/20)])].sort((a,b)=>a-b);
+ // Preserve exact planned entry/expiry timestamps. Nearest-20-grid
+ // approximations were silently shifting the future-operation window.
+ const offsets=[0,5,10,15,30,45,60,120,180,300,600,H,...requestedOffsets];
+ const sampleSeconds=[...new Set([...offsets.filter(v=>Number.isFinite(Number(v))&&v>=0&&v<=H)
+  .map(Number),...Array.from({length:20},(_,i)=>H*(i+1)/20)])].sort((a,b)=>a-b);
  const earliest=first.ts+65000,latest=last.ts-H*1000-1500;
  const strideMs=Math.max(4000,Math.min(30000,H*350));
  const candidates=[];
@@ -113,20 +117,26 @@ export function conditionalPathWindow(path,leadSeconds,holdingSeconds){
  if(!path?.ready||!(D>=0)||!(H>0)||D+H>path.horizonSeconds+1e-6)
   return {status:'unavailable',side:null,actionable:false};
  const points=path.expectedPath;
- const nearest=s=>points.reduce((a,b)=>Math.abs(a.secondsFromNow-s)<Math.abs(b.secondsFromNow-s)?a:b);
- const entry=nearest(D),exit=nearest(D+H);
- const predictedMove=Math.log(exit.projectedPrice/entry.projectedPrice);
- const eps=1e-11;
- const side=predictedMove>eps?'CALL':predictedMove< -eps?'PUT':null;
- // Directional share is a share of prior analogous outcomes, NOT win probability.
- const i=points.indexOf(entry),j=points.indexOf(exit);
- const outcomes=path._researchNeighbors.map(x=>x[j]-x[i]);
+ const i=points.findIndex(p=>Math.abs(p.secondsFromNow-D)<.001);
+ const j=points.findIndex(p=>Math.abs(p.secondsFromNow-(D+H))<.001);
+ if(i<0||j<0||j<=i)return {status:'exact-entry-or-expiry-sample-missing',
+  side:null,actionable:false};
+ const entry=points[i],exit=points[j];
+ // A median of endpoint prices minus a median of entry prices is NOT the
+ // median conditional return; it can manufacture a reversal that none of
+ // the matched trajectories experienced. Compare PAIRS from each neighbor.
+ const outcomes=path._researchNeighbors.map(x=>x[j]-x[i]).filter(Number.isFinite);
+ const median=quantile(outcomes,.5);
+ const side=median>1e-11?'CALL':median< -1e-11?'PUT':null;
  const aligned=outcomes.filter(x=>side==='CALL'?x>0:side==='PUT'?x<0:false).length;
  const agreement=outcomes.length?aligned/outcomes.length:null;
  const proposed=side&&agreement>=.66?side:null;
  return {status:proposed?'candidate':'weak-conditional-evidence',side:proposed,
   referenceSide:side,entrySeconds:D,holdingSeconds:H,
-  projectedEntryPrice:entry.projectedPrice,projectedExitPrice:exit.projectedPrice,
+  projectedEntryPrice:entry.projectedPrice,
+  projectedExitPrice:Number((entry.projectedPrice*Math.exp(median||0)).toPrecision(12)),
+  conditionalMedianLogReturn:median,conditionalLowLogReturn:quantile(outcomes,.15),
+  conditionalHighLogReturn:quantile(outcomes,.85),
   observedNeighborShare:agreement,independentNeighbors:outcomes.length,
   riskOfReversal:'unvalidated',calibrated:false,actionable:false};
 }

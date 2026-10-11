@@ -108,11 +108,23 @@ export class DemoTradingRuntime{
     }
     const candles=Array.isArray(market.candles)?market.candles.filter(c=>[c?.open,c?.high,c?.low,c?.close].every(v=>Number.isFinite(Number(v)))):[];
     const quoteHistory=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number.isFinite(Number(x?.price))&&Number(x.price)>0).slice(this.settings.engine?-2400:-900):[];
-    this.externalMarket={...market,candles,quoteHistory,quote:Number(market.quote??market.price??quoteHistory.at(-1)?.price??candles.at(-1)?.close),quoteTs:Number(market.quoteTs||market.lastFrameAt||market.lastDomAt||Date.now()),source:market.source||String(market.provider||'LIVE').toUpperCase()};
+    // SHADOW ONLY: retain a much longer span of history at 1s resolution.
+    // A 4Hz feed previously made 2,400 samples only ~10 minutes of market.
+    // No additional polling, network, file writes, or Supabase records.
+    const researchQuoteHistory=this.settings.pairResearchEnabled===true&&Array.isArray(market.quoteHistory)?(()=>{
+      const perSecond=new Map();
+      for(const q of market.quoteHistory.slice(-6800)){
+        const ts=Number(q?.ts),price=Number(q?.price);
+        if(Number.isFinite(ts)&&ts>=0&&Number.isFinite(price)&&price>0)
+          perSecond.set(Math.floor(ts/1000),{ts,price});
+      }
+      return [...perSecond.values()].sort((a,b)=>a.ts-b.ts);
+    })():[];
+    this.externalMarket={...market,candles,quoteHistory,researchQuoteHistory,quote:Number(market.quote??market.price??quoteHistory.at(-1)?.price??candles.at(-1)?.close),quoteTs:Number(market.quoteTs||market.lastFrameAt||market.lastDomAt||Date.now()),source:market.source||String(market.provider||'LIVE').toUpperCase()};
     return this
   }
   _marketSnapshot(){
-    if(this.externalMarket){const quotes=this.externalMarket.quoteHistory||[],quoteSpan=quotes.length>1?Number(quotes.at(-1).ts)-Number(quotes[0].ts):0;const verified=(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true));const historyReady=this.settings.engine?quotes.length>=15&&quoteSpan>=14000:this.externalMarket.candles?.length>=50;const ready=verified&&historyReady&&Number.isFinite(Number(this.externalMarket.quote))&&Number(this.externalMarket.quote)>0;return{candles:ready?[...this.externalMarket.candles]:[],predictionCandles:ready?[...(this.externalMarket.predictionCandles||this.externalMarket.candles)]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0),payout:Number.isFinite(Number(this.externalMarket.payout))?Number(this.externalMarket.payout):null}}
+    if(this.externalMarket){const quotes=this.externalMarket.quoteHistory||[],quoteSpan=quotes.length>1?Number(quotes.at(-1).ts)-Number(quotes[0].ts):0;const verified=(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true));const historyReady=this.settings.engine?quotes.length>=15&&quoteSpan>=14000:this.externalMarket.candles?.length>=50;const ready=verified&&historyReady&&Number.isFinite(Number(this.externalMarket.quote))&&Number(this.externalMarket.quote)>0;return{candles:ready?[...this.externalMarket.candles]:[],predictionCandles:ready?[...(this.externalMarket.predictionCandles||this.externalMarket.candles)]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],researchQuoteHistory:ready&&this.settings.pairResearchEnabled===true?[...(this.externalMarket.researchQuoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0),payout:Number.isFinite(Number(this.externalMarket.payout))?Number(this.externalMarket.payout):null}}
     if(this.settings.requireLiveBroker)return{candles:[],quoteTs:0,price:0,source:'OFFLINE',balance:null,provider:null,mode:this.settings.mode,waitingLive:true,feedValidated:false};
     return this.feed.snapshot()
   }
@@ -968,7 +980,9 @@ export class DemoTradingRuntime{
           combinedResearch=cached.result;
         }else{
           try{
-            const candidate=pairedEntryResearch({settings,snap,now,
+            const researchSnap={...snap,quoteHistory:
+              snap.researchQuoteHistory?.length>0?snap.researchQuoteHistory:snap.quoteHistory};
+            const candidate=pairedEntryResearch({settings,snap:researchSnap,now,
               mode:settings.entryTimeMode==='automatic'?'automatic':'fixed',
               pairId:settings.pairResearchId||'reversal',
               leadSeconds:Number(settings.entryLeadSeconds||30),
@@ -993,7 +1007,7 @@ export class DemoTradingRuntime{
               })),
               extremeTimes:candidate.extremeTimes,
               futurePath:candidate.futurePath,
-              historyStatus:candidate.historyStatus,
+              regime:candidate.regime,historyStatus:candidate.historyStatus,
               historyComparisons:candidate.historyComparisons,
               actionable:false,calibrated:false
             };
