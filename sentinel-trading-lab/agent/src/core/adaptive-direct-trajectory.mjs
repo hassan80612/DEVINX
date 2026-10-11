@@ -12,18 +12,23 @@ function temporalContext(quoteHistory,now){
  for(const q of Array.isArray(quoteHistory)?quoteHistory:[]){
   const ts=Number(q?.ts),p=positive(q?.price),arrival=Number(q?.receivedAt??ts);
   if(!Number.isFinite(ts)||ts<0||ts>now||!p||!Number.isFinite(arrival)||arrival>now)continue;
-  if(!known.has(ts))known.set(ts,{p,arrival});
+  const readyAt=Math.max(ts,arrival);
+  if(!known.has(ts)||known.get(ts).readyAt>readyAt)known.set(ts,{ts,p,readyAt});
  }
- const raw=[...known].sort((a,b)=>a[0]-b[0]);
- if(!raw.length||now-raw.at(-1)[0]>2500)return [];
- const end=raw.at(-1)[0],start=Math.max(raw[0][0],end-7200000);
- let j=0,series=[];
- for(let ts=start;ts<=end;ts+=1000){
-  while(j+1<raw.length&&raw[j+1][0]<=ts)j++;
-  const q=raw[j];
-  // Keep only a continuous recent context; never interpolate across outages.
-  if(!q||ts-q[0]>2500||q[1].arrival>ts+2500){series=[];continue;}
-  series.push({ts,lp:Math.log(q[1].p),quoteAt:q[0]});
+ const events=[...known.values()].sort((a,b)=>a.readyAt-b.readyAt||a.ts-b.ts);
+ if(!events.length)return [];
+ const earliest=events[0].readyAt;
+ const start=now-Math.floor(Math.min(7200000,now-earliest)/1000)*1000;
+ let j=0,quote=null,series=[];
+ for(let ts=start;ts<=now;ts+=1000){
+  // A historical feature sees only quotes already ARRIVED at that time.
+  // Later backfills cannot rewrite a previously sampled context.
+  while(j<events.length&&events[j].readyAt<=ts){
+   if(!quote||events[j].ts>quote.ts)quote=events[j];
+   j++;
+  }
+  if(!quote||ts-quote.ts>2500){series=[];continue;}
+  series.push({ts,lp:Math.log(quote.p),quoteAt:quote.ts});
  }
  return series;
 }
@@ -159,6 +164,7 @@ export function adaptiveDirectTrajectory({
   historicalExamples:samples.length,
   historySeconds:rows.at(-1).ts/1000-rows[0].ts/1000,
   latestTrainingOutcomeAt:samples.at(-1).outcomeAt,
+  latestObservedQuoteAt:rows.at(-1).quoteAt,
   validation:{examples:validationMse===null?0:validation.length,
    mse:validationMse,accuracy:validationAccuracy,
    meaning:'past chronological tuning evidence, NOT future win probability',
