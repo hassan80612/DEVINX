@@ -39,6 +39,24 @@ Teste metamórfico: gerar a MESMA curva de preços e fornecer (a) 1 tick/s e (b)
 - O arquivo não interpola preços, não retrodata ticks, mantém carimbos reais, não lê futuro e limita-se a até 4096 linhas.
 - Importante: a normalização altera os dados de entrada. Isto é **invariância técnica**, não comprovação de melhoria de CALL/PUT. A comparação direcional com cotações reais externas ou do broker é obrigatória antes de integrar.
 
+
+## Verificação EXTERNA — preço EUR/USD observado, não simulado
+
+Foi executado um benchmark com arquivo público `EURUSD-2018-01_converted.txt` de [fx_EUR_USD_tick](https://github.com/zcbmlijygrdwa/fx_EUR_USD_tick), SHA256 `ca0ce287bd3029753de6af6f29cdea1e5821d41291f93b925dd7902ebdb2812b`; 115.000 amostras de bid/ask convertidas em preço médio. A fonte afirma 1 amostra/segundo, mas **não traz UTC por linha**. A comparação criou um feed 4Hz replicando cada preço realmente observado, sem informação de preço adicional, e confrontou o histórico bruto da 67 (até 2.400 ticks) com os mesmos preços em buffer temporal (até 4.096 ticks multirresolução).
+
+- **2.007 previsões verificáveis, em 38 pontos de avaliação; 9 motores e 6 horizontes**.
+- **67 original com feed 4Hz:** 1.011 acertos, **50,37%** no experimento.
+- **Entrada inteiramente normalizada:** 928 acertos, **46,24%**; recuperou 298 erros mas estragou 381 acertos.
+- 30 segundos: 184/342 original vs 186/342 normalizado.
+- 60 segundos: **159/342** original vs 121/342 normalizado.
+- 300 segundos: **160/324** original vs 144/324 normalizado.
+- O Price Action fez 111/225 original vs 96/225 sob **normalização total**.
+- **Decisão: REJEITAR normalização geral como promoção**. Ela estabiliza a semântica temporal, mas também remove informações úteis e piora a assertividade neste proxy externo. Corrigir **a unidade temporal usada pelo Price Action** isoladamente e validar em outro conjunto.
+
+**Limitações que impedem promover essa taxa como win rate:** fonte externa de spot EUR/USD de 2018, não OTC IQ Option/Xnova; falta timestamp UTC para pausas do mercado; o aumento de densidade a 4Hz é replicação controlada, não ticks observados da corretora; várias previsões entre motores são correlacionadas e há poucos momentos independentes. Essa evidência demonstra que **nem sequer uma correção de engenharia sensata pode ser aplicada indiscriminadamente**.
+
+Registro automatizado: [GitHub Actions](https://github.com/hassan80612/DEVINX/actions/runs/38152789402), arquivo [benchmark-external-forex.mjs](../worker/benchmark-external-forex.mjs). A fonte não é redistribuída no repositório.
+
 ## O que os pesquisadores e ferramentas externas realmente oferecem
 
 - **Markov switching e mudança de regime:** statsmodels `MarkovRegression` modela média/variância dependentes de um estado latente. É referência para estimar mudança de regime probabilística, não prova de que identificaremos antecipadamente TODAS as reversões. [Statsmodels](https://www.statsmodels.org/stable/examples/notebooks/generated/markov_regression.html).
