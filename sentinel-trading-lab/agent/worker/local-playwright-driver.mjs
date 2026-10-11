@@ -1069,6 +1069,21 @@ export class LocalPlaywrightDriver{
         const gold='#d9b85f',goldSoft='#f5dda0',goldDeep='#8f6a24';
         const tone=signal==='CALL'?'#69e1b5':signal==='PUT'?'#ff8f9c':gold;
         const duration=Number(d.durationMs||60000),forecastHorizonSeconds=Math.max(30,Number(d.forecastHorizonSeconds||Math.round(Number(d.durationMs||60000)/1000))),strategy=String(d.strategy||'smart_confluence'),strategy2=String(d.strategy2||'none'),strategy3=String(d.strategy3||'none');
+        const advisor=d.vnext?.strategyAdvisor||null;
+        const allStrategyNotes={
+          automatic:'Leitura geral de cenários e trajetória futura.',
+          price_action:'Impulsos e rejeições de preço, com estrutura anterior.',
+          support_resistance:'Reações em níveis históricos já observados.',
+          trend:'Tendências persistentes; cuidado nas reversões.',
+          mean_reversion:'Lateralizações e possível retorno à média.',
+          breakout:'Rompimentos, expansão e falsos rompimentos.',
+          trendline_breakout:'Quebras de linhas de pivôs confirmados.',
+          fibonacci_retest:'Retrações e retestes após movimentos concluídos.',
+          smart_confluence:'Confirmação técnica interna, sem votos de outras estratégias.'
+        };
+        const advisorRows=Array.isArray(advisor?.strategies)?advisor.strategies:[];
+        const liveStrategyAdvice=advisorRows.find(x=>x.engineId===d.engine);
+        const generalFuture=d.vnext?.generalFutureResearch||d.vnext?.general180Research||null;
         const strategyCards=Array.isArray(d.strategyCards)?d.strategyCards:[],strategyGuidance=d.strategyGuidance||{},strategyConfluence=d.strategyConfluence||{},generalConsensus=d.generalConsensus||{},operational=d.operationalSignal||{};
         const shortWindow=duration<=60000,shortReady=!shortWindow||short.ready===true;
         const confidence=!analysisStale&&d.confidence!=null?Math.max(0,Math.min(100,Number(d.confidence))):null;
@@ -1532,6 +1547,19 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
+            <div data-sentinel-strategy-context style="padding:8px 9px;margin-top:7px;border:1px solid ${panelBorder};border-radius:8px;background:${fieldBg};font-size:10px;color:${muted};line-height:1.5">
+              <div><b style="color:${goldSoft}">Uso da estratégia:</b> ${esc(liveStrategyAdvice?.description||allStrategyNotes[d.engine]||'Contexto de mercado em observação.')}</div>
+              <div><b style="color:${goldSoft}">Prazo ${esc(duration/1000)}s:</b> ${esc(advisor?.selectedInterpretation||'Compatibilidade ainda não avaliada')}
+                · ${esc(advisor?.marketPhaseLabel||'Observação de mercado indisponível')}</div>
+              ${advisor?.recommended?'<div><b style="color:'+goldSoft+'">Sugestão experimental:</b> '+esc(advisor.recommended.name)+' · não muda sua escolha manual</div>':''}
+              <details data-sentinel-preserve-open="1" style="margin-top:5px" data-sentinel-no-drag>
+                <summary style="cursor:pointer;color:${goldSoft};padding:3px 0">Onde cada estratégia tende a ser mais útil · expandir</summary>
+                <div style="display:grid;gap:4px;padding:5px 2px">
+                  ${Object.entries(allStrategyNotes).map(([key,note])=>'<div>'+esc(key.replaceAll('_',' '))+': '+esc(note)+(advisorRows.find(x=>x.engineId===key)?.interpretation?' · '+esc(advisorRows.find(x=>x.engineId===key).interpretation):'')+'</div>').join('')}
+                  <small>Essas associações são hipóteses técnicas, não taxas de acerto calibradas.</small>
+                </div>
+              </details>
+            </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
@@ -1559,6 +1587,15 @@ export class LocalPlaywrightDriver{
               </details>
             </section>
 
+            <details data-sentinel-preserve-open="1" data-sentinel-no-drag style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;color:${goldSoft};font-size:10px">
+              <summary style="cursor:pointer;font-weight:800">PREVISÃO POR TRAJETÓRIA · EXPERIMENTAL</summary>
+              <div style="display:grid;gap:5px;margin-top:7px;color:${muted}">
+                <div>Prazo selecionado: ${esc(duration/1000)}s. ${generalFuture?'Pesquisa '+esc(generalFuture.status||'aguardando'):'Ative pesquisa de previsão futura no console para comparar trajetórias.'}</div>
+                <div>Confirmação por histórico: ${esc(generalFuture?.confirmedSide||'AGUARDAR')} · sem assertividade calibrada.</div>
+                <div>Possível topo: ${generalFuture?.possibleExtremes?.peak?.windowSeconds?esc(generalFuture.possibleExtremes.peak.windowSeconds.map(Math.round).join('–'))+'s':'janela indisponível'}; possível fundo: ${generalFuture?.possibleExtremes?.trough?.windowSeconds?esc(generalFuture.possibleExtremes.trough.windowSeconds.map(Math.round).join('–'))+'s':'janela indisponível'}</div>
+                <small>Topos e fundos são regiões de tempo estatísticas incertas. Nenhuma ordem automática é autorizada.</small>
+              </div>
+            </details>
             <details data-sentinel-vnext-horizon-matrix data-sentinel-preserve-open="1" style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
               <summary style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">

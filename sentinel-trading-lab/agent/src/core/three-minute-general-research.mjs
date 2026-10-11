@@ -1,5 +1,5 @@
 /**
- * Three-minute (180s) SHADOW forecast guard for the user-selected strategy.
+ * Selected-horizon SHADOW forecast guard for the user-selected strategy.
  * Each of Sentinel's nine independent strategies keeps its original VNext
  * model; evidence from complete analogous FUTURE paths is a second opinion.
  * Nothing here asserts a win probability or authorizes broker execution.
@@ -9,11 +9,15 @@ import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {historicalFuturePath,conditionalPathWindow} from './forward-path-research.mjs';
 export const GENERAL_FORECAST_HORIZON_SECONDS=180;
 
-export function threeMinuteGeneralResearch({
- settings={},snap={},now=Date.now(),baseline=null,precomputedPath=null
+export function generalHorizonResearch({
+ settings={},snap={},now=Date.now(),baseline=null,precomputedPath=null,
+ horizonSeconds=null
 }={}){
  const selected=selectedScenarioEngine(settings).id;
- const seconds=GENERAL_FORECAST_HORIZON_SECONDS;
+ const seconds=Number(horizonSeconds??Number(settings.orderDurationMs)/1000);
+ if(!Number.isFinite(seconds)||seconds<5||seconds>3600)return {
+  status:'invalid-horizon',horizonSeconds:seconds,confirmedSide:null,
+  actionable:false,calibrated:false};
  const original=baseline?.engineId===selected&&
      Number(baseline?.expirySeconds)===seconds?
    baseline:singleEngineForecast({settings:{...settings,engine:selected,
@@ -52,4 +56,8 @@ export function threeMinuteGeneralResearch({
   probability:null,
   qualification:'Requer amostras DEMO futuras e auditoria por prazo antes de validar.'
  };
+}
+
+export function threeMinuteGeneralResearch(args={}){
+ return generalHorizonResearch({...args,horizonSeconds:GENERAL_FORECAST_HORIZON_SECONDS});
 }
