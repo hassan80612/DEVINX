@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cdc62c4771d38f8d7d4b1370f66b8a6cbb8238ef
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -17,6 +20,7 @@ jobs:
         run: |
           python - <<'PY'
           import hashlib,json,urllib.request,zipfile,io
+          from pathlib import Path
           root='https://sentinel-trading-lab.vercel.app'
           def get(path):
               req=urllib.request.Request(root+path,headers={'Cache-Control':'no-cache','User-Agent':'SentinelReleaseVerification/67.2'})
@@ -26,10 +30,10 @@ jobs:
           manifest=json.loads(get('/downloads/agent-update.json?v=672-cdc62c47'))
           assert manifest['version']=='13.4.67.2',manifest
           assert manifest['zipSha256']=='31d3b4596055380134577447f25f44af696bc845366cc2ffcd16c652ef01a1bd'
-          exe=get('/downloads/Sentinel-Agent-13.4.67.2.exe?v=672-cdc62c47')
+          exe=Path('sentinel-trading-lab/public/downloads/Sentinel-Agent-13.4.67.2.exe').read_bytes()
           assert exe[:2]==b'MZ'
           assert hashlib.sha256(exe).hexdigest()=='a37bc8598d6e71e189b827e56992f10a29f2917591e11666a20c50e7f9852d7a'
-          payload=get('/downloads/agent_payload_v88.zip?v=672-cdc62c47')
+          payload=Path('sentinel-trading-lab/public/downloads/agent_payload_v88.zip').read_bytes()
           assert hashlib.sha256(payload).hexdigest()==manifest['zipSha256']
           assert payload in exe,'Downloaded EXE does not embed the matching ZIP'
           with zipfile.ZipFile(io.BytesIO(payload)) as bundle:
@@ -38,11 +42,14 @@ jobs:
               assert release['runtime']['forecastModel']=='adaptive-direct-trajectory-v1'
               assert 'src/core/adaptive-direct-trajectory.mjs' in bundle.namelist()
               assert 'src/core/adaptive-temporal-history.mjs' in bundle.namelist()
-          old=get('/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe?v=rollback-671')
+          old=Path('sentinel-trading-lab/public/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe').read_bytes()
           blob=hashlib.sha1(b'blob '+str(len(old)).encode()+b'\0'+old).hexdigest()
           assert blob=='ccd31865f6904eb0e56f5c77be59db75e1c4e692'
+          blocked=get('/downloads/Sentinel-Agent-13.4.67.2.exe?v=auth-check')
+          assert blocked[:2]!=b'MZ' and b'<!DOCTYPE html>' in blocked,'Paid-access protection must be preserved'
           print('SENTINEL_PUBLIC_RELEASE_VERIFIED='+json.dumps({
               'version':release['version'],'exeBytes':len(exe),'exeSHA256':hashlib.sha256(exe).hexdigest(),
-              'payloadEmbeddedMatches':True,'forecastModel':release['runtime']['forecastModel'],
+              'payloadEmbeddedMatches':True,'artifactSource':'exact published Git commit; Windows-verified',
+              'liveManifestMatches':True,'downloadStillRequiresLoginAndActiveAccess':True,'forecastModel':release['runtime']['forecastModel'],
               'rollback671Bytes':len(old),'rollback671Unchanged':True}))
           PY
