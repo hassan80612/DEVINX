@@ -12,7 +12,7 @@ const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
   {key:'Broker Connection',label:'Corretora',icon:'⇄',group:'Conexão',title:'Corretora',subtitle:'Conecte IQ Option ou Exnova no computador.'},
-  {key:'Strategies',label:'Motores',icon:'◇',group:'Análise',title:'Motores',subtitle:'Escolha apenas um motor independente de previsão.'},
+  {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia independente de previsão.'},
   {key:'Settings',label:'Conta & Agent',icon:'⚙',group:'Conta',title:'Conta & Agent',subtitle:'Licença, computadores vinculados e segurança.'},
   {key:'Membership',label:'Plano / Renovar',icon:'◈',group:'Conta',title:'Meu plano',subtitle:'Seu acesso e informações de renovação.'},
   {key:'Master Console',label:'Master',icon:'◆',group:'Admin',title:'Master Sentinel',subtitle:'Gerencie clientes, licenças, PCs e suporte remoto.'}
@@ -215,7 +215,7 @@ export default function Page(){
       const data=source==='local'&&agent.worker?await localFetch(path,method,body,commandTimeout):await cloudFetch(path,method,body);
       setS(normalizeStatus(data));setErr('');
       if(path==='mode')setNotice(body.mode==='demo'?'Conta de prática ativa.':'Modo REAL ativo para análise; execução continua manual.');
-      else if(path==='settings'&&body?.strategy)setNotice('Estratégia aplicada ao motor: '+String(body.strategy).replaceAll('_',' ')+'.');
+      else if(path==='settings'&&body?.strategy)setNotice('Estratégia selecionada: '+String(body.strategy).replaceAll('_',' ')+'.');
       else if(path.startsWith('brokers/')&&path.endsWith('/login'))setNotice('Comando enviado ao Agent. A janela controlada da corretora deve abrir no PC.');
       else setNotice('Comando aplicado.');
       setTimeout(()=>refresh(),650);setTimeout(()=>refresh(),1900);setTimeout(()=>setNotice(''),4200);return true;
@@ -283,7 +283,7 @@ function Dashboard({s,agent,account,onNavigate}:{s:Status,agent:any,account:any,
    <div className="sentinelStartSteps sentinelPcOnly">
      <article><span>01</span><strong>Agent no PC</strong><p>Instale uma vez e mantenha a conexão ativa.</p></article>
      <article><span>02</span><strong>Corretora conectada</strong><p>Confirme a conta e o ativo em análise.</p></article>
-     <article><span>03</span><strong>Suas estratégias</strong><p>Escolha os critérios para o motor principal.</p></article>
+     <article><span>03</span><strong>Suas estratégias</strong><p>Escolha os critérios para a estratégia principal.</p></article>
    </div>
  </section>
 }
@@ -389,14 +389,14 @@ function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
     ['breakout','Breakout','Estima a expansão de faixas e pressão de rompimento.'],
     ['trendline_breakout','Trendline Breakout','Projetos de linhas históricas, desvios e eventuais quebras.'],
     ['fibonacci_retest','Fibonacci Retest','Analisa swings anteriores e regiões de retração.'],
-    ['smart_confluence','Smart Confluence','Combina indicadores internos deste motor; não vota com outros motores.']
+    ['smart_confluence','Smart Confluence','Combina indicadores internos desta estratégia; não vota com outras estratégias.']
   ] as const;
   const selected=String(s.settings?.engine||'automatic');
   const active=motors.find(x=>x[0]===selected)||motors[0];
   return <section className="card span12 strategySection">
-    <div className="split"><div><div className="eyebrow">NOVO MOTOR INDEPENDENTE</div><h3>Escolha um motor para o cenário</h3><p className="muted">Somente o motor escolhido calcula a previsão principal, respeitando a expiração selecionada. Sem votação entre estratégias.</p></div><div className="strategyActive"><span>Motor em uso</span><b>{active[1]}</b></div></div>
-    <label className="vnextStrategyPicker">Motor responsável
-      <select disabled={busy} aria-label="Selecionar motor independente" value={selected} onChange={e=>void act('settings',{engine:e.target.value,strategy2:'none',strategy3:'none'})}>
+    <div className="split"><div><div className="eyebrow">ESTRATÉGIA INDEPENDENTE</div><h3>Escolha uma estratégia para o cenário</h3><p className="muted">Somente a estratégia escolhida calcula a previsão principal, respeitando a expiração selecionada. Sem votação entre estratégias.</p></div><div className="strategyActive"><span>Estratégia ativa</span><b>{active[1]}</b></div></div>
+    <label className="vnextStrategyPicker">Estratégia responsável
+      <select disabled={busy} aria-label="Selecionar estratégia independente" value={selected} onChange={e=>void act('settings',{engine:e.target.value,strategy2:'none',strategy3:'none'})}>
         {motors.map(([id,title])=><option value={id} key={id}>{title}</option>)}
       </select>
     </label>
