@@ -28,7 +28,9 @@ function firstAtOrAfter(quotes, target) {
     else high = m;
   }
   const q = quotes[low];
-  return q && q.ts - target <= MAX_OUTCOME_LAG_MS ? q : null;
+  // Late broker backfill is not a quote observable at expiry.
+  return q && q.ts - target <= MAX_OUTCOME_LAG_MS &&
+    q.receivedAt <= target + 2500 ? q : null;
 }
 
 function lastAtOrBefore(quotes, target) {
@@ -96,8 +98,6 @@ export function summarizePaired(rows) {
 
 export function qualifyPairedRows(rows, {targetPct = 70, minDays = 7,
   minComparable = 500, minMotorHorizon = 60, minRegime = 75} = {}) {
-  const by = (fn) => Object.fromEntries([...new Set(rows.map(fn))].sort()
-    .map(k => [k, summarizePaired(rows.filter(r => fn(r) === k))]));
   const days = [...new Set(rows.map(r => day(r.issuedAt)))].sort();
   const split = Math.max(1, Math.floor(days.length * 0.65));
   const heldOutDays = days.slice(split);
@@ -168,7 +168,11 @@ export async function loadPriceOnlyJournals(paths) {
       for (const v of all) {
         const ts = asNumber(v?.ts), price = asNumber(v?.price);
         if (!(ts > 0) || !(price > 0) || ts > when) continue;
-        c.quotes.set(ts, price);
+        const old = c.quotes.get(ts);
+        // Preserve FIRST arrival time. Historical backfills that arrive later
+        // must not be available to earlier forecasts (no hindsight leakage).
+        if (!old || when < old.receivedAt)
+          c.quotes.set(ts, {price, receivedAt: when});
       }
       c.events.push({ts: when});
       contexts.set(key, c);
@@ -181,7 +185,8 @@ export async function loadPriceOnlyJournals(paths) {
       provider: c.provider, asset: c.asset,
       // Sort by original quote timestamp, never by arrival order.
       quotes: [...c.quotes].sort((a, b) => a[0] - b[0])
-        .map(([ts, price]) => ({ts, price})),
+        .map(([ts, record]) => ({ts, price: record.price,
+          receivedAt: record.receivedAt})), 
       events: [...new Set(c.events.map(e => e.ts))].sort((a, b) => a - b)
     }))
   };
@@ -200,7 +205,7 @@ export function compareRecordedSeries(series, {maxIssuesPerHorizonPerDay = 70} =
         if (now + 2 * h * 1000 > lastQuoteTs) break;
         const d = day(now), issuedToday = dailyCount.get(d) || 0;
         if (issuedToday >= maxIssuesPerHorizonPerDay) continue;
-        const history = c.quotes.filter(q => q.ts <= now &&
+        const history = c.quotes.filter(q => q.ts <= now && q.receivedAt <= now &&
           q.ts >= now - Math.max(1800000, h * 8000)).slice(-2400);
         if (history.length < 100 ||
             now - history[0].ts < Math.max(120000, h * 3000)) {
