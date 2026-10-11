@@ -891,6 +891,23 @@ export class DemoTradingRuntime{
         settings,snap,now,primary:model,previous:this.vnextHorizonMatrix||null
       });
       this.vnextHorizonMatrix=matrix;
+      // One immutable planned future ENTRY per chosen lead time. The rolling
+      // engine and all matrix horizons continue refreshing independently.
+      const currentEntry=matrix.entryRows?.find(x=>
+        x.delaySeconds===model.expirySeconds&&x.engineId===model.engineId&&
+        x.asset===String(settings.asset||'UNKNOWN').toUpperCase())||null;
+      const oldEntry=this.vnextFutureEntryAnchor||null;
+      const sameEntry=oldEntry&&currentEntry&&
+        oldEntry.engineId===currentEntry.engineId&&
+        oldEntry.asset===currentEntry.asset&&
+        oldEntry.delaySeconds===currentEntry.delaySeconds&&
+        Number(oldEntry.entryAt)>now;
+      const entryAnchor=sameEntry?oldEntry:
+        currentEntry?.side?currentEntry:
+        oldEntry&&oldEntry.engineId===model.engineId&&
+          oldEntry.asset===String(settings.asset||'UNKNOWN').toUpperCase()&&
+          oldEntry.delaySeconds===model.expirySeconds&&oldEntry.entryAt>now?oldEntry:null;
+      this.vnextFutureEntryAnchor=entryAnchor;
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
         engineId:model.engineId,asset:settings.asset,
@@ -940,6 +957,9 @@ export class DemoTradingRuntime{
         engineId:model.engineId,
         vnext:{...model,evaluation:undefined,targetAnchor,
           horizonForecasts:matrix.rows,
+          futureEntryForecast:currentEntry,
+          futureEntryAnchor:entryAnchor,
+          futureEntryRows:matrix.entryRows,
           horizonMeasurements:horizonAudit.summaries,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
