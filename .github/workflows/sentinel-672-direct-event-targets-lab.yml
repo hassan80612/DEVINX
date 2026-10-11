@@ -1,0 +1,50 @@
+name: Sentinel 67.2 Direct Direction and Event Targets Research
+on:
+  push:
+    branches: [sentinel-672-direct-event-targets-lab-20261011]
+    paths: ['.github/workflows/sentinel-672-direct-event-targets-lab.yml']
+permissions:
+  contents: read
+jobs:
+  compare-frozen-direct-targets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Assert published 67.2 and installation files are untouched
+        run: |
+          git diff --exit-code 66c42ff6da4e7af7268a933b9ff83ddfe0b9be90 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/public sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/agent/src/core/adaptive-direct-trajectory.mjs sentinel-trading-lab/agent/src/core/adaptive-temporal-history.mjs sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs sentinel-trading-lab/agent/src/core/runtime.mjs
+      - name: Verify direct label boundaries, event interval, future isolation and flat data
+        run: node --test tests/sentinel-672-direct-event-targets.test.mjs
+      - name: Compare frozen synthetic streams
+        run: |
+          mkdir -p tmp/event-results
+          node scripts/sentinel-direct-event-comparison.mjs synthetic tmp/event-results/synthetic.json
+      - name: Download new independent archive dates and verify checksums
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/event-market-1s
+          for symbol in BTCUSDT ETHUSDT; do
+            for date in 2026-10-01 2026-10-02 2026-10-05 2026-10-06; do
+              filename="$symbol-1s-$date"
+              url="https://data.binance.vision/data/spot/daily/klines/$symbol/1s/$filename.zip"
+              curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url" -o "tmp/event-market-1s/$filename.zip"
+              curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url.CHECKSUM" -o "tmp/event-market-1s/$filename.zip.CHECKSUM"
+              (cd tmp/event-market-1s && sha256sum -c "$filename.zip.CHECKSUM")
+              sha256sum "tmp/event-market-1s/$filename.zip" | tee -a tmp/event-results/archive-sha256.txt
+              unzip -p "tmp/event-market-1s/$filename.zip" "$filename.csv" > "tmp/event-market-1s/$filename.csv"
+              test "$(wc -l < "tmp/event-market-1s/$filename.csv")" -gt 80000
+            done
+          done
+      - name: Direct direction, reversal, event price and event timing on frozen new real dates
+        run: node scripts/sentinel-direct-event-comparison.mjs tmp/event-market-1s tmp/event-results/external.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-direct-event-target-comparison
+          path: tmp/event-results/
+          retention-days: 14
