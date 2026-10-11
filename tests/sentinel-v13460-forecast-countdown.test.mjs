@@ -11,8 +11,8 @@ test('one clock in normal and floating mobile cards, not two overlapping clocks'
  assert.equal((s.match(/\{forecastReceipt\}/g)||[]).length,2);
  assert.match(s,/const clockForecast=m\.vnextTargetAnchor\|\|liveForecast/);
  assert.match(s,/Math\.ceil\(\(forecastTargetAt-now\)\/1000\)/);
- assert.match(s,/CONTAGEM DA RODADA/);
- assert.match(s,/HORÁRIO FIXO DA RODADA/);
+ assert.match(s,/ATÉ O ALVO PREVISTO/);
+ assert.match(s,/HORÁRIO PREVISTO/);
  assert.match(s,/ENCERRADO/);
  assert.match(s,/PROJEÇÃO AO VIVO/);
 });
