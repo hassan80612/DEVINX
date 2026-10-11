@@ -42,6 +42,13 @@ export function analystSnapshot(runtimeStatus,live){
       'referencePrice','projectedPrice'
     ]):null,
     projection:vnext.projection?take(vnext.projection,['side','callPct','putPct']):null,
+    // Compact 6-column horizon projections. One row uses 4 values:
+    // [expiry seconds, CALL/PUT/null, projectedPrice, issuedAt].
+    // The mobile calculates the target from issuedAt+expiry; no DB writes.
+    hf:Array.isArray(vnext.horizonForecasts)?vnext.horizonForecasts.slice(0,9)
+      .map(x=>[Number(x.horizonSeconds),x.side||null,
+        Number.isFinite(Number(x.projectedPrice))?Number(x.projectedPrice):null,
+        Number(x.issuedAt)||0]):[],
     targetProjection:vnext.targetProjection?take(vnext.targetProjection,['side','callPct','putPct']):null,
     lastSettled:vnext.lastSettled?take(vnext.lastSettled,['engineId','asset','side','targetAt','referencePrice','projectedPrice','settledPrice','correct','expirySeconds']):null,
     cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
@@ -85,7 +92,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
-    projection:v.projection,cards:v.cards
+    projection:v.projection,hf:v.hf,cards:v.cards
   };
   const trimmed={...snapshot,
     lastResult:{...snapshot.lastResult,analysis:{
@@ -154,6 +161,7 @@ export class LiveBridge{
       snapshot.settings?.engine,snapshot.settings?.orderDurationMs,
       snapshot.lastResult?.analysis?.vnext?.receipt?.side,
       snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
+      snapshot.lastResult?.analysis?.vnext?.hf?.map(row=>row.slice(0,3).join(',')).join(';'),
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.side,
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.at,
       op.scenarioProjection?.side,
