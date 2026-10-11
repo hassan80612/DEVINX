@@ -10,15 +10,15 @@
  */
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const weightsByEngine=Object.freeze({
- automatic:[1.2,1.3,1.1,1.1,1.3,1.1,1.0],
- price_action:[1.7,1.4,1.0,1.2,1.6,1.4,1.0],
- support_resistance:[.7,1,1,1.4,2.1,.8,1.6],
- trend:[1,1.6,1.9,1.9,.6,.6,1],
- mean_reversion:[.7,.9,.8,1.3,1.8,1.5,1.6],
- breakout:[1.2,1.6,1.0,1.5,1.6,1.3,1.1],
- trendline_breakout:[1.1,1.5,1.8,1.6,.9,.8,1],
- fibonacci_retest:[.7,1,1.0,.9,2.2,1,1.6],
- smart_confluence:[1.1,1.5,1.5,1.6,1.3,1.2,1.2]
+ automatic:[1.2,1.3,1.1,1.1,1.3,1.1,1.0,1.4],
+ price_action:[1.7,1.4,1.0,1.2,1.6,1.4,1.0,1.7],
+ support_resistance:[.7,1,1,1.4,2.1,.8,1.6,1.5],
+ trend:[1,1.6,1.9,1.9,.6,.6,1,1.6],
+ mean_reversion:[.7,.9,.8,1.3,1.8,1.5,1.6,1.8],
+ breakout:[1.2,1.6,1.0,1.5,1.6,1.3,1.1,1.5],
+ trendline_breakout:[1.1,1.5,1.8,1.6,.9,.8,1,1.4],
+ fibonacci_retest:[.7,1,1.0,.9,2.2,1,1.6,1.5],
+ smart_confluence:[1.1,1.5,1.5,1.6,1.3,1.2,1.2,1.6]
 });
 const clean=(history,now)=>{
  const known=new Map();
@@ -65,11 +65,33 @@ const features=(rows,t,h)=>{
  const position=extreme>low?(last.lp-low)/(extreme-low):.5;
  const chop=clamp(flips/Math.max(1,segment.length-2),0,1);
  const slopeChange=clamp(rates[0]-rates[1],-8,8);
- const feat=[rates[0],rates[1],rates[2],efficiency,position,chop,slopeChange];
- const regime=(rates[0]*rates[1]<0&&Math.abs(slopeChange)>.7)?'reversal':
-   efficiency<.32&&chop>.3?'oscillating':
+ // Quantize price changes into fixed-time samples before counting turns:
+ // raw tick flips are unstable when feed rate increases to 4 Hz. Turning
+ // density distinguishes one genuine inflection from many range oscillations
+ // that otherwise BOTH produce opposite short/mid slopes.
+ const sampleSeconds=Math.max(3,Math.min(6,h/8));
+ const samples=[];
+ for(let time=last.ts-Math.max(40,Math.min(180,3*h))*1000;
+     time<=last.ts;time+=sampleSeconds*1000){
+  const p=atOrBefore(rows,time);
+  if(p&&time-p.ts<=sampleSeconds*1000)samples.push(p.lp);
+ }
+ let turns=0,prior=0;
+ for(let i=1;i<samples.length;i++){
+  const sign=Math.sign(samples[i]-samples[i-1]);
+  if(sign&&prior&&sign!==prior)turns++;
+  if(sign)prior=sign;
+ }
+ const turnDensity=clamp(turns/Math.max(1,samples.length-2),0,1);
+ // We retain a CONTINUOUS turn-density feature for matching, rather than
+ // treating a regime label as a veto or switching to another motor.
+ const feat=[rates[0],rates[1],rates[2],efficiency,position,chop,slopeChange,turnDensity];
+ const probableChop=turnDensity>.23&&efficiency<.48;
+ const possibleTurn=rates[0]*rates[1]<0&&Math.abs(slopeChange)>.7;
+ const regime=probableChop?'oscillating':
+   possibleTurn&&turnDensity<=.23?'reversal':
    efficiency>.52&&rates[1]*rates[2]>0?'trending':'mixed';
- return {feat,regime,sigma,efficiency,chop};
+ return {feat,regime,sigma,efficiency,chop,turnDensity,possibleTurn};
 };
 const distance=(a,b,scale,weights)=>{
  let sum=0,total=0;
@@ -110,7 +132,7 @@ export function historicalFutureEntryAnalogs({
  const scales=current.feat.map((_,i)=>{
   const avg=candidates.reduce((n,x)=>n+x.feat[i],0)/candidates.length;
   const variance=candidates.reduce((n,x)=>n+(x.feat[i]-avg)**2,0)/candidates.length;
-  return Math.max(i===3||i===4||i===5?.15:.65,Math.sqrt(variance));
+  return Math.max([3,4,5,7].includes(i)?.15:.65,Math.sqrt(variance));
  });
  const weights=weightsByEngine[engineId]||weightsByEngine.automatic;
  const sorted=candidates.map(x=>({...x,d:distance(x.feat,current.feat,scales,weights)}))
@@ -137,6 +159,8 @@ export function historicalFutureEntryAnalogs({
   returnLog:meanReturn,dispersion,directionalAgreement,
   engineId,regime:current.regime,efficiency:current.efficiency,
   oscillation:current.chop,
+  turnDensity:current.turnDensity,
+  possibleTurn:current.possibleTurn,
   comparisonCount:candidates.length,matchedCount:selected.length,
   independentExamples:effectiveExamples,
   entryDelaySeconds:h,holdingSeconds:hold,
