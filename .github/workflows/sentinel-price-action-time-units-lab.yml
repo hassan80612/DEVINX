@@ -1,0 +1,24 @@
+name: Sentinel Price Action Time Unit Fix Research
+on:
+  push:
+    branches: [sentinel-13467-price-action-time-unit-fix-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs'
+      - 'tests/sentinel-v13467-price-action-time-units.test.mjs'
+      - '.github/workflows/sentinel-price-action-time-units-lab.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Price Action real time units and approved 67 regressions
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs
+          node --test tests/sentinel-v13467-price-action-time-units.test.mjs tests/sentinel-v13467-future-entry.test.mjs
