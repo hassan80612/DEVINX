@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {singleEngineForecast} from '../sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs';
 import {forwardHorizonMatrix,FORWARD_HORIZONS} from '../sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs';
+import {progressHorizonAudit} from '../sentinel-trading-lab/agent/src/core/forward-horizon-audit.mjs';
 import {SCENARIO_ENGINES} from '../sentinel-trading-lab/agent/src/core/scenario-engine-catalog.mjs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {analystSnapshot,fitAnalystFrame} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
@@ -102,4 +103,28 @@ test('PC and both mobile cards show one chosen expiry, prediction countdown and 
   assert.equal((mobile.match(/\{forecastReceipt\}/g)||[]).length,2);
   assert.match(model,/vnextHorizons/);
   assert.match(css,/\.liveScenario \.vnextForwardHorizons\{[\s\S]*?height:160px;min-height:160px;max-height:160px/);
+});
+
+test('future horizon outcomes are checked only against a quote at the ORIGINAL deadline',()=>{
+ const first=progressHorizonAudit({engineId:'automatic',asset,now,newQuote:true,
+  forecastRows:[{horizonSeconds:5,side:'CALL',issuedAt:now,targetAt:now+5000,
+    referencePrice:1.1,projectedPrice:1.1003}],
+  quoteHistory});
+ assert.equal(first.summaries.length,0);
+ assert.equal(first.pending.length,1);
+ const notYet=progressHorizonAudit({previous:first,engineId:'automatic',asset,
+  now:now+3000,newQuote:false,quoteHistory});
+ assert.equal(notYet.pending.length,1);
+ assert.equal(notYet.summaries.length,0);
+ const completed=progressHorizonAudit({previous:notYet,engineId:'automatic',asset,
+  now:now+5000,newQuote:false,
+  quoteHistory:[...quoteHistory,{ts:now+5000,price:1.1001}]});
+ assert.deepEqual(completed.summaries,[{horizonSeconds:5,verified:1,correct:1,draws:0}]);
+ const noFuture=progressHorizonAudit({engineId:'automatic',asset,now,newQuote:true,
+  forecastRows:[{horizonSeconds:5,side:'CALL',issuedAt:now,targetAt:now+5000,
+    referencePrice:1.1,projectedPrice:1.1003}],quoteHistory});
+ const tooLate=progressHorizonAudit({previous:noFuture,engineId:'automatic',asset,
+  now:now+8000,newQuote:false,quoteHistory:[...quoteHistory,{ts:now+8000,price:1.2000}]});
+ assert.equal(tooLate.summaries.length,0,
+   'a quote 3s after deadline must never masquerade as the actual future outcome');
 });
