@@ -1,0 +1,28 @@
+name: Sentinel 67 Independent Branching Forecast — Offline Benchmark Only
+on:
+  push:
+    branches: [sentinel-67-branching-path-offline-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/offline-branching-future-path-67.mjs'
+      - 'tests/sentinel-67-branching-future-offline.test.mjs'
+      - '.github/workflows/sentinel-67-branching-offline.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Assert production site, Agent and original 67 models byte-for-byte untouched
+        run: |
+          set -eu
+          git diff --exit-code 5c20afbef3060d00a5caa52cf0498aebff6b20c9 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/public sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/automatic-forward-model.mjs sentinel-trading-lab/agent/src/core/historical-forward-analogs.mjs sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs vercel.json
+          node --check sentinel-trading-lab/agent/src/core/offline-branching-future-path-67.mjs
+      - name: Compare 67 vs hybrid vs standalone future branching on same data
+        run: node --test tests/sentinel-67-branching-future-offline.test.mjs
