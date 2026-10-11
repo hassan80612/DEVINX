@@ -6,7 +6,7 @@ import {futureEntrySchedule} from './future-entry-schedule.mjs';
 // never from the colour/direction of the current candle or the other motors.
 export const FORWARD_HORIZONS=Object.freeze([5,10,30,60,120,300]);
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
-export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary=null,previous=null,forecastModel='original-67'}={}){
+export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary=null,previous=null,forecastModel='original-67',adaptiveHistory=null}={}){
   const selected=positive(settings.orderDurationMs)&&Number(settings.orderDurationMs)/1000;
   const horizon=selected||60;
   const quoteAt=positive(snap.quoteTs);
@@ -28,12 +28,12 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     const model=seconds===horizon&&primary?
       primary:singleEngineForecast({
         settings:{...settings,orderDurationMs:seconds*1000},
-        snap,now,provider:snap.provider,forecastModel
+        snap,now,provider:snap.provider,forecastModel,adaptiveHistory
       });
     rows.push(rowFor(model,seconds));
   }
   const entryRows=futureEntrySchedule({
-    settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel
+    settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory
   });
   return {context,rows,entryRows,computedAt:now,reused:false};
 }
