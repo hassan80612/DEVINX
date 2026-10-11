@@ -163,6 +163,9 @@ export function advanceSelectedEngineResidualStudy({
     entryAt:plan.entryAt,exitAt:plan.exitAt,
     expectedLogReturn:baselineLogReturn(plan),
     baselineSide:plan.side,shadowSide:candidate?.shadowSide||plan.side,
+    candidateLogReturn:Number.isFinite(candidate?.correctedLogReturn)?
+      candidate.correctedLogReturn:baselineLogReturn(plan),
+    scale:features.sigma*Math.sqrt(Number(plan.holdingSeconds||plan.delaySeconds||30)),
     features:features.features,regime:features.regime});
  }
  return {
