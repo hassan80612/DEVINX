@@ -97,12 +97,17 @@ export function summarizePaired(rows) {
 }
 
 export function qualifyPairedRows(rows, {targetPct = 70, minDays = 7,
-  minComparable = 500, minMotorHorizon = 60, minRegime = 75} = {}) {
+  minComparable = 500, minDistinctMarketMoments = 250,
+  minMotorHorizon = 80, minRegime = 75} = {}) {
   const days = [...new Set(rows.map(r => day(r.issuedAt)))].sort();
   const split = Math.max(1, Math.floor(days.length * 0.65));
   const heldOutDays = days.slice(split);
   const heldOut = rows.filter(r => heldOutDays.includes(day(r.issuedAt)));
   const total = summarizePaired(heldOut);
+  // Nine engines often score the same observation. Never treat all nine
+  // as nine independent market events when deciding data sufficiency.
+  const distinctMarketMoments = new Set(heldOut.map(r =>
+    r.provider + '|' + r.asset + '|' + r.issuedAt)).size;
   const byEngine = byFor(heldOut, r => r.engine);
   const byHorizon = byFor(heldOut, r => String(r.h));
   const byRegime = byFor(heldOut, r => r.regime);
@@ -114,6 +119,8 @@ export function qualifyPairedRows(rows, {targetPct = 70, minDays = 7,
     blockers.push('insufficient_independent_market_days');
   if (total.comparable < minComparable)
     blockers.push('insufficient_holdout_outcomes');
+  if (distinctMarketMoments < minDistinctMarketMoments)
+    blockers.push('insufficient_distinct_market_moments');
   if (total.rate70 == null || total.rate70 < targetPct)
     blockers.push('candidate_below_target_70pct');
   if (total.wins70 < total.wins67)
@@ -133,13 +140,14 @@ export function qualifyPairedRows(rows, {targetPct = 70, minDays = 7,
       blockers.push('unresolved_' + label + '_regression');
   }
   return {
-    targetPct, daysObserved: days.length, trainingDays: days.slice(0, split),
+    targetPct, daysObserved: days.length, distinctMarketMoments,
+    trainingDays: days.slice(0, split),
     holdoutDays: heldOutDays, method: 'chronological held-out paired broker QUOTES; future entry T+H, expiry T+2H',
     total, byEngine, byHorizon, byRegime, byEngineHorizon,
     approvedForAutomaticPromotion: false,
     eligibleForHumanReview: blockers.length === 0,
     blockers,
-    warning: 'Observações de motores/prazos sobre os mesmos preços são correlacionadas. Cotações locais NÃO são confirmações de execução ou liquidação da corretora. Nenhum resultado deve autorizar operação real automaticamente.'
+    warning: 'Observações de motores/prazos sobre os mesmos preços são correlacionadas e a contagem de instantes únicos NÃO torna horizontes sobrepostos independentes. Cotações locais NÃO são confirmações de execução ou liquidação da corretora. Nenhum resultado deve autorizar operação real automaticamente.'
   };
 }
 function byFor(rows, keyOf) {
