@@ -1,3 +1,4 @@
+import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {selectedEngineForecastRequest} from './scenario-engine-catalog.mjs';
 import {automaticForwardPrediction} from './automatic-forward-model.mjs';
 import {specialistForwardPrediction} from './specialist-forward-models.mjs';
@@ -11,7 +12,7 @@ import {historicalForwardAnalogs} from './historical-forward-analogs.mjs';
  * ensemble. Entries are informational until forward performance is measured.
  */
 export function singleEngineForecast({
- settings={},snap={},now=Date.now(),provider=snap.provider||'unknown'
+ settings={},snap={},now=Date.now(),provider=snap.provider||'unknown',forecastModel='original-67'
 }={}){
  const asset=String(settings.asset||'UNKNOWN').toUpperCase();
  const request=selectedEngineForecastRequest({settings,provider,asset,
@@ -19,13 +20,25 @@ export function singleEngineForecast({
  const seconds=request.forecastHorizonSeconds;
  const quotes=Array.isArray(snap.quoteHistory)?snap.quoteHistory:[];
  const options={quoteHistory:quotes,asOf:now,selectedSeconds:seconds};
- const computed=request.engineId==='automatic'?
+ const learned=request.engineId==='automatic'&&forecastModel==='adaptive-direct-trajectory-v1'?
+   adaptiveDirectTrajectory({quoteHistory:quotes,asOf:now,
+     entryDelaySeconds:0,holdingSeconds:seconds}):null;
+ const useAdaptive=learned?.status==='adaptive-direct-trajectory';
+ const modelVersion=useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
+ const computed=useAdaptive?{
+   status:'candidate-forward-prediction',
+   diagnostic:{referencePrice:learned.expectedPath[0].price,quoteAt:learned.latestObservedQuoteAt},
+   prediction:{side:learned.side||'NEUTRAL',projectedPrice:learned.projectedExitPrice,
+     expectedLow:learned.expectedLow,expectedHigh:learned.expectedHigh,modelConfidence:null,
+     evidence:['Trajetória futura aprendida de resultados históricos já concluídos',
+       'Entrada e vencimento calculados em tempos próprios; validação cronológica sem cotações futuras']}
+ }:request.engineId==='automatic'?
    automaticForwardPrediction(options):
    specialistForwardPrediction({...options,engineId:request.engineId});
  // Unlike pure momentum extrapolation, these independently observed outcomes
  // are prices that followed comparable PAST quote patterns by the SELECTED
  // expiration. No last/current candle direction is a decision gate.
- const analog=historicalForwardAnalogs({
+ const analog=useAdaptive?null:historicalForwardAnalogs({
    quoteHistory:quotes,asOf:now,selectedSeconds:seconds,
    engineId:request.engineId
  });
@@ -84,7 +97,7 @@ export function singleEngineForecast({
    callProbability:null,putProbability:null,rawCallProbability:null,
    modelConfidence:null,confidence:null,projectedPrice:predictedPrice,
    expectedLow:receipt.expectedLow,expectedHigh:receipt.expectedHigh,
-   currentPrice:receipt.referencePrice,modelVersion:'vnext-single-owner-v1',
+   currentPrice:receipt.referencePrice,modelVersion,
    outlookReady:true,directionReady:true,
    actionable:false,
    forecastIssuedAt:receipt.issuedAt,forecastTargetAt:receipt.targetAt,
@@ -97,7 +110,7 @@ export function singleEngineForecast({
    issuedAt:receipt.issuedAt,targetAt:receipt.targetAt,
    price:receipt.referencePrice,projectedPrice:predictedPrice,
    expectedLow:receipt.expectedLow,expectedHigh:receipt.expectedHigh,
-   engineId:request.engineId,modelVersion:'vnext-single-owner-v1',
+   engineId:request.engineId,modelVersion,
    reason:'Estimativa futura ainda não validada por operações.'
  }:null;
  const operational={
@@ -114,11 +127,12 @@ export function singleEngineForecast({
  return{
    engineId:request.engineId,engineFamily:request.engineFamily,
    expirySeconds:horizon,
-   source:'user-selected-expiry',modelVersion:'vnext-single-owner-v1',
+   source:'user-selected-expiry',modelVersion,
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
    computedStatus:computed?.status||'unavailable',receipt,cards,projection,
-   forecastFoundation:analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
-   historicalComparisons:analog?.comparisons||0,similarCases:analog?.neighbors||0,
+   forecastFoundation:useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
+   historicalComparisons:useAdaptive?learned.historicalExamples:analog?.comparisons||0,
+   similarCases:useAdaptive?learned.historicalExamples:analog?.neighbors||0,
    plan,operational,scenarioProjection,
    evaluation:evaluateForwardForecast,
    calibrationKey:request.calibrationKey,
