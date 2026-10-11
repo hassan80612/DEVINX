@@ -1,3 +1,4 @@
+import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
 import {reviewScenario,scenarioAdmission} from './scenario-review.mjs';
 import {canRenewExpiredScenario} from './scenario-renewal.mjs';
 import {scenarioInvalidation} from './scenario-invalidation.mjs';
@@ -69,7 +70,7 @@ function newPriceStructure(main,side,snap,strict=false){
 
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
-    this.forecastModel=forecastModel;
+    this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -885,12 +886,17 @@ export class DemoTradingRuntime{
       // strategy panel, 3-way confluence or release logic for this branch.
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
-      const model=singleEngineForecast({settings,snap,now,forecastModel:this.forecastModel});
+      const useAdaptive=this.forecastModel==='adaptive-direct-trajectory-v1'&&settings.engine==='automatic';
+      if(useAdaptive)this.adaptiveTemporalContext=retainAdaptiveHistory({
+        previous:this.adaptiveTemporalContext,quotes:snap.quoteHistory,now,
+        asset:settings.asset,provider:snap.provider});
+      const adaptiveHistory=useAdaptive?this.adaptiveTemporalContext.quotes:null;
+      const model=singleEngineForecast({settings,snap,now,forecastModel:this.forecastModel,adaptiveHistory});
       // Compute the same SELECTED engine for each genuinely distinct future
       // expiration. Avoid re-running unchanged ticks, never delay new quotes.
       const matrix=forwardHorizonMatrix({
         settings,snap,now,primary:model,previous:this.vnextHorizonMatrix||null,
-        forecastModel:this.forecastModel
+        forecastModel:this.forecastModel,adaptiveHistory
       });
       this.vnextHorizonMatrix=matrix;
       // One immutable planned future ENTRY per chosen lead time. The rolling
