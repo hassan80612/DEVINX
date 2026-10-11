@@ -83,9 +83,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const forecastSecondsRemaining=forecastTimeValid?Math.max(0,Math.ceil((forecastTargetAt-now)/1000)):null;
   const forecastTargetPast=forecastTimeValid&&forecastTargetAt<=now;
   const countdownTime=forecastSecondsRemaining===null?'—:—':forecastSecondsRemaining>=3600?String(Math.floor(forecastSecondsRemaining/3600)).padStart(2,'0')+':'+String(Math.floor(forecastSecondsRemaining%3600/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0'):String(Math.floor(forecastSecondsRemaining/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0');
-  const forecastTimeLabel=liveForecastValid?
-    'ALVO EM ANÁLISE '+clock(liveForecast.targetAt):
-    forecastTargetPast?'ALVO ENCERRADO':'AGUARDANDO NOVA ANÁLISE';
+  // The headline and its countdown refer to the SAME recorded target.
+  // New rolling forecasts are displayed separately in the horizon matrix.
+  const forecastTimeLabel=forecastTimeValid?
+    (forecastTargetPast?'PREVISÃO ENCERRADA':'ALVO '+clock(forecastTargetAt)):
+    'AGUARDANDO PREVISÃO';
   const strategyAdvice=strategySelectionGuidance({
     ids:[strategy1,strategy2,strategy3],
     paused:s?.settings?.pausedReadings||{},
