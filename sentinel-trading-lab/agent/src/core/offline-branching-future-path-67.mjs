@@ -137,6 +137,13 @@ export function branchingFutureForecast67({quoteHistory=[],asOf=Date.now(),
   ...x,v:x.future[j]})),'v'));
  const possible={continuation:0,reversal:0,consolidation:0},midReversalWeight={yes:0,no:0};
  for(const row of support){possible[row.branch]+=row.weight;midReversalWeight[row.midOpposed?'yes':'no']+=row.weight}
+ let upWeight=0,downWeight=0,zeroWeight=0;
+ for(const x of support){if(x.end>1e-12)upWeight+=x.weight;
+   else if(x.end< -1e-12)downWeight+=x.weight;else zeroWeight+=x.weight}
+ const directionShare={CALL:upWeight/weightSum,PUT:downWeight/weightSum,DRAW:zeroWeight/weightSum};
+ const medianCenter=medianPath.at(-1);
+ const endpointDispersionBps=Math.sqrt(support.reduce((a,x)=>
+   a+x.weight*(x.end-medianCenter)**2,0)/weightSum)*10000;
  for(const k of Object.keys(possible))possible[k]/=weightSum;
  const midReversalShare=midReversalWeight.yes/weightSum;
  const baseMove=Math.log(Number(b.projectedPrice)/Number(b.referencePrice));
@@ -161,6 +168,8 @@ export function branchingFutureForecast67({quoteHistory=[],asOf=Date.now(),
   expectedBranch:possible.continuation>=possible.reversal&&possible.continuation>=possible.consolidation?'continuation':
     possible.reversal>=possible.consolidation?'reversal':'consolidation',
   observedNeighborShare:{...possible},
+  historicalDirectionShare:directionShare,
+  neighborReturnDispersionBps:Number(endpointDispersionBps.toFixed(5)),
   midPathOppositeDirectionShare:midReversalShare,
   projectedIntermediateReversal:predictedPath.slice(0,-1).some(x=>
     Math.sign(x.price-Number(b.referencePrice))!==Math.sign(projectedPrice-Number(b.referencePrice))&&

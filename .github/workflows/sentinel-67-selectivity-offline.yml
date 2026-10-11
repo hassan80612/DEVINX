@@ -1,0 +1,27 @@
+name: Sentinel 67 Selective Forecast Research — No Deployment
+on:
+  push:
+    branches: [sentinel-67-branching-path-offline-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/offline-branching-future-path-67.mjs'
+      - 'tests/sentinel-67-selectivity-training.test.mjs'
+      - '.github/workflows/sentinel-67-selectivity-offline.yml'
+permissions:
+  contents: read
+jobs:
+  independent-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify original 67 is byte-identical, no deployment artifacts changed
+        run: |
+          set -euo pipefail
+          git diff --exit-code 5c20afbef3060d00a5caa52cf0498aebff6b20c9 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/public sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/automatic-forward-model.mjs sentinel-trading-lab/agent/src/core/historical-forward-analogs.mjs sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs
+      - name: Train selective confidence threshold using only original synthetic calibration samples
+        run: node --test tests/sentinel-67-selectivity-training.test.mjs
