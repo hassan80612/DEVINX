@@ -61,5 +61,10 @@
         "action": "deny"
       }
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "sentinel-research-*": false
+    }
+  }
 }
