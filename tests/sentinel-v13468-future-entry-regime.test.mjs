@@ -40,6 +40,9 @@ test('all 9 motors preserve their own selected-engine forecast, with future ENTR
   assert.ok(v.projectedEntryPrice>0);
   assert.ok(v.projectedExitPrice>0);
   assert.equal(v.side,v.projectedExitPrice>v.projectedEntryPrice?'CALL':'PUT');
+  assert.equal(v.side,v.baselineSide,'shadow model must not change approved CALL/PUT');
+  assert.ok(!v.candidateSide||['CALL','PUT'].includes(v.candidateSide));
+  assert.equal(v.researchOnly,true);
   assert.ok(v.historicalPairCases>0);
   assert.ok(v.independentHistoricalCases>=1);
  }
@@ -68,7 +71,7 @@ test('TRUE future entry accuracy uses a quote at t+H and quote at t+2H, not the 
  assert.equal(mid.summaries.length,0);
  const later=progressFutureEntryAudit({previous:mid,plan:p,now:now+60000,
   quoteHistory:[...quotes,{ts:now+30000,price:1.1001},{ts:now+60000,price:1.1}]});
- assert.deepEqual(later.summaries.map(x=>[x.verified,x.correct,x.draws,x.baselineVerified,x.baselineCorrect]),[[1,1,0,1,0]]);
+ assert.deepEqual(later.summaries.map(x=>[x.verified,x.correct,x.draws,x.baselineVerified,x.baselineCorrect,x.candidateVerified]),[[1,1,0,1,0,0]]);
  const repeat=progressFutureEntryAudit({previous:later,plan:p,now:now+60000,
   quoteHistory:[...quotes,{ts:now+30000,price:1.1001},{ts:now+60000,price:1.1}]});
  assert.equal(repeat.summaries[0].verified,1,'a pinned forecast must count only once');
@@ -106,4 +109,27 @@ test('PC and BOTH mobile modes remain untouched and preserve one primary entry r
  const win=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.match(win,/data-sentinel-vnext-clock/);
  assert.match(win,/const pinnedEntry=d\.vnext\?\.futureEntryAnchor/);
+});
+
+test('approved LIVE choice remains exactly 13.4.67 while candidate is measured in parallel',()=>{
+ const setting=settings('trend');
+ const result=futureEntrySchedule({settings:setting,snap,now,delays:[30],focusDelaySeconds:30})[0];
+ const entry=singleEngineForecast({settings:setting,snap,now}).receipt;
+ const exit=singleEngineForecast({settings:{...setting,orderDurationMs:60000},snap,now}).receipt;
+ assert.equal(result.projectedEntryPrice,entry.projectedPrice);
+ assert.equal(result.projectedExitPrice,exit.projectedPrice);
+ assert.equal(result.side,exit.projectedPrice>entry.projectedPrice?'CALL':'PUT');
+ assert.equal(result.side,result.baselineSide);
+ assert.ok(result.historicalPairCases>=6);
+ assert.ok(result.candidateWeight>=0&&result.candidateWeight<=.55);
+ assert.equal(result.actionable,false);
+});
+test('shadow forecast never changes a pinned approved decision or edits the PC/mobile card',()=>{
+ const plan={engineId:'automatic',asset,side:'CALL',baselineSide:'CALL',
+  candidateSide:'PUT',researchRegime:'oscillating',delaySeconds:30,
+  issuedAt:now,entryAt:now+30000,exitAt:now+60000};
+ const first=progressFutureEntryAudit({plan,now,quoteHistory:quotes});
+ const completed=progressFutureEntryAudit({plan,previous:first,now:now+60000,
+  quoteHistory:[...quotes,{ts:now+30000,price:1.1},{ts:now+60000,price:1.099}]});
+ assert.deepEqual(completed.summaries.map(x=>[x.verified,x.correct,x.candidateVerified,x.candidateCorrect]),[[1,0,1,1]]);
 });
