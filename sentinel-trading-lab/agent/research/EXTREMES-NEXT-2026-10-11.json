@@ -1,0 +1,191 @@
+{
+  "source": "64 synthetic scenarios, NOT broker data",
+  "baseline": "released 13.4.67.2 frozen",
+  "hypothesis": "32 sampled future points versus 8; same direct-return direction",
+  "directionPreservedInEveryCase": true,
+  "entryDelaySeconds": 30,
+  "toleranceSeconds": 10,
+  "base": {
+    "cases": 64,
+    "topWithin10sPct": 48.4375,
+    "bottomWithin10sPct": 48.4375,
+    "meanTopTimeErrorSeconds": 52.78125,
+    "meanBottomTimeErrorSeconds": 37.296875,
+    "meanTopPriceErrorBps": 3.6056727744832036,
+    "meanBottomPriceErrorBps": 2.6563890745748173
+  },
+  "dense": {
+    "cases": 64,
+    "topWithin10sPct": 50,
+    "bottomWithin10sPct": 51.5625,
+    "meanTopTimeErrorSeconds": 51.6875,
+    "meanBottomTimeErrorSeconds": 34.203125,
+    "meanTopPriceErrorBps": 3.6293811191334844,
+    "meanBottomPriceErrorBps": 2.4808589742164746
+  },
+  "byHolding": {
+    "30": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 62.5,
+        "bottomWithin10sPct": 56.25,
+        "meanTopTimeErrorSeconds": 10.75,
+        "meanBottomTimeErrorSeconds": 12.625,
+        "meanTopPriceErrorBps": 2.4359133141930753,
+        "meanBottomPriceErrorBps": 2.1036037500618776
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 62.5,
+        "bottomWithin10sPct": 56.25,
+        "meanTopTimeErrorSeconds": 10.375,
+        "meanBottomTimeErrorSeconds": 12.125,
+        "meanTopPriceErrorBps": 2.4964774081200916,
+        "meanBottomPriceErrorBps": 2.099053660034432
+      }
+    },
+    "60": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 50,
+        "bottomWithin10sPct": 56.25,
+        "meanTopTimeErrorSeconds": 21.4375,
+        "meanBottomTimeErrorSeconds": 20.8125,
+        "meanTopPriceErrorBps": 3.023493777313856,
+        "meanBottomPriceErrorBps": 2.349294510363993
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 50,
+        "bottomWithin10sPct": 56.25,
+        "meanTopTimeErrorSeconds": 21.625,
+        "meanBottomTimeErrorSeconds": 20.25,
+        "meanTopPriceErrorBps": 3.044582211791482,
+        "meanBottomPriceErrorBps": 2.345753953978528
+      }
+    },
+    "120": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 50,
+        "bottomWithin10sPct": 62.5,
+        "meanTopTimeErrorSeconds": 47.0625,
+        "meanBottomTimeErrorSeconds": 41.125,
+        "meanTopPriceErrorBps": 4.377325012838559,
+        "meanBottomPriceErrorBps": 2.939293693732938
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 50,
+        "bottomWithin10sPct": 62.5,
+        "meanTopTimeErrorSeconds": 45.4375,
+        "meanBottomTimeErrorSeconds": 39.5,
+        "meanTopPriceErrorBps": 4.336192337701704,
+        "meanBottomPriceErrorBps": 2.781472819679493
+      }
+    },
+    "300": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 31.25,
+        "bottomWithin10sPct": 18.75,
+        "meanTopTimeErrorSeconds": 131.875,
+        "meanBottomTimeErrorSeconds": 74.625,
+        "meanTopPriceErrorBps": 4.5859589935873215,
+        "meanBottomPriceErrorBps": 3.2333643441404583
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 37.5,
+        "bottomWithin10sPct": 31.25,
+        "meanTopTimeErrorSeconds": 129.3125,
+        "meanBottomTimeErrorSeconds": 64.9375,
+        "meanTopPriceErrorBps": 4.640272518920656,
+        "meanBottomPriceErrorBps": 2.697155463173446
+      }
+    }
+  },
+  "byRegime": {
+    "cycle": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 81.25,
+        "bottomWithin10sPct": 81.25,
+        "meanTopTimeErrorSeconds": 18.8125,
+        "meanBottomTimeErrorSeconds": 29.75,
+        "meanTopPriceErrorBps": 1.1428863914891003,
+        "meanBottomPriceErrorBps": 1.4816891026052632
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 87.5,
+        "bottomWithin10sPct": 93.75,
+        "meanTopTimeErrorSeconds": 12.25,
+        "meanBottomTimeErrorSeconds": 14.8125,
+        "meanTopPriceErrorBps": 1.2493205412263515,
+        "meanBottomPriceErrorBps": 0.8579986475112373
+      }
+    },
+    "trend": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 25,
+        "bottomWithin10sPct": 0,
+        "meanTopTimeErrorSeconds": 52.625,
+        "meanBottomTimeErrorSeconds": 65.4375,
+        "meanTopPriceErrorBps": 10.487629565252842,
+        "meanBottomPriceErrorBps": 5.854342255397691
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 25,
+        "bottomWithin10sPct": 0,
+        "meanTopTimeErrorSeconds": 52.625,
+        "meanBottomTimeErrorSeconds": 66.75,
+        "meanTopPriceErrorBps": 10.487629565252842,
+        "meanBottomPriceErrorBps": 5.8614933365582305
+      }
+    },
+    "reversal": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 56.25,
+        "bottomWithin10sPct": 87.5,
+        "meanTopTimeErrorSeconds": 78.125,
+        "meanBottomTimeErrorSeconds": 5.875,
+        "meanTopPriceErrorBps": 1.571327441315347,
+        "meanBottomPriceErrorBps": 1.7385504009369488
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 56.25,
+        "bottomWithin10sPct": 87.5,
+        "meanTopTimeErrorSeconds": 78.125,
+        "meanBottomTimeErrorSeconds": 3.3125,
+        "meanTopPriceErrorBps": 1.571327441315347,
+        "meanBottomPriceErrorBps": 1.6750005900606875
+      }
+    },
+    "volatility": {
+      "base": {
+        "cases": 16,
+        "topWithin10sPct": 31.25,
+        "bottomWithin10sPct": 25,
+        "meanTopTimeErrorSeconds": 61.5625,
+        "meanBottomTimeErrorSeconds": 48.125,
+        "meanTopPriceErrorBps": 1.2208476998755238,
+        "meanBottomPriceErrorBps": 1.5509745393593646
+      },
+      "dense": {
+        "cases": 16,
+        "topWithin10sPct": 31.25,
+        "bottomWithin10sPct": 25,
+        "meanTopTimeErrorSeconds": 63.75,
+        "meanBottomTimeErrorSeconds": 51.9375,
+        "meanTopPriceErrorBps": 1.2092469287393945,
+        "meanBottomPriceErrorBps": 1.528943322735745
+      }
+    }
+  },
+  "productionChanged": false
+}
