@@ -30,6 +30,11 @@ export function analystSnapshot(runtimeStatus,live){
     'engineId','asset','side','referencePrice','quoteReceivedAt','issuedAt',
     'expirySeconds','targetAt','projectedPrice','expectedLow','expectedHigh'
   ]):null;
+  const entryTuple=e=>e?[
+    Number(e.delaySeconds)||0,e.side||null,
+    Number(e.projectedEntryPrice)||0,Number(e.projectedExitPrice)||0,
+    Number(e.issuedAt)||0,Number(e.holdingSeconds)||0
+  ]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
     engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     computedStatus:vnext.computedStatus||'unavailable',
@@ -37,6 +42,9 @@ export function analystSnapshot(runtimeStatus,live){
     historicalComparisons:Number(vnext.historicalComparisons||0),
     outcomesVerified:Number(vnext.outcomesVerified||0),
     receipt,
+    // Future-entry direction is a DIFFERENT prediction from quote-now -> t+H.
+    ea:entryTuple(vnext.futureEntryAnchor),
+    er:Array.isArray(vnext.futureEntryRows)?vnext.futureEntryRows.slice(0,9).map(entryTuple):[],
     targetAnchor:vnext.targetAnchor?take(vnext.targetAnchor,[
       'engineId','asset','side','issuedAt','expirySeconds','targetAt',
       'referencePrice','projectedPrice'
@@ -95,6 +103,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
+    ea:v.ea,er:v.er,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
   };
   const trimmed={...snapshot,
@@ -108,7 +117,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   // without ancillary observations. A fat optional panel must not drop a quote.
   const minimal={...trimmed,lastResult:{...trimmed.lastResult,analysis:{
     ...trimmed.lastResult.analysis,
-    vnext:{...compactVnext,targetProjection:null}
+    vnext:{...compactVnext,targetProjection:null,hm:[],hf:[],er:[]}
   }}};
   return size(minimal)<=maxBytes?minimal:null;
 }
