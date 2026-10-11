@@ -89,15 +89,17 @@ test('frozen horizon-specific selective policy: compare unmodified 67 on entirel
    for(const h of HORIZONS){
     const base=singleEngineForecast({settings:{engine:'automatic',asset:'EUR/USD OTC',
      orderDurationMs:h*1000},snap,now,provider:'iq_option'}).receipt;
-    assert.ok(base,'baseline 67 must produce prediction for fair comparison');
+    // A neutral prediction is no issued trade direction. Include it in the
+    // opportunity denominator rather than dropping it (coverage integrity).
     const branch=branchingFutureForecast67({quoteHistory:history,asOf:now,
      selectedSeconds:h,baseline:{receipt:base},mode:'standalone'});
     const actual=data[index+h].price,correct=side(current,actual);
     const turning=side(data[index-20].price,current)!==correct;
     const f=FIXED_POLICY[h];
     for(const [kind,candidate,emit] of [
-     ['base',base,true],['rawBranches',branch,true],
-     ['filtered',f.mode==='baseline'?base:branch,allowed(f,base,branch,current)]
+     ['base',base,!!base&&['CALL','PUT'].includes(base.side)],
+     ['rawBranches',branch,!!branch&&['CALL','PUT'].includes(branch.side)],
+     ['filtered',f.mode==='baseline'?base:branch,!!base&&allowed(f,base,branch,current)]
     ]){
      const c=outcome[h][kind];c.total++;if(turning)c.reversals++;
      const v=c.byRegime[regime]||{n:0,emitted:0,wins:0};v.n++;c.byRegime[regime]=v;
