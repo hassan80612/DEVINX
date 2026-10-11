@@ -52,7 +52,8 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   // price outcome. Never substitute old spot->future-price CALL/PUT here.
   const entryFromTuple=(v:any)=>Array.isArray(v)?{
     delaySeconds:Number(v[0]),side:v[1]||null,
-    projectedEntryPrice:Number(v[2])||null,projectedExitPrice:Number(v[3])||null,
+    projectedEntryPrice:Number.isFinite(Number(v[2]))&&Number(v[2])>0?Number(v[2]):null,
+    projectedExitPrice:Number.isFinite(Number(v[3]))&&Number(v[3])>0?Number(v[3]):null,
     issuedAt:Number(v[4])||0,holdingSeconds:Number(v[5])||0,mode:v[6]||'fixed',
     entryAt:(Number(v[4])||0)+(Number(v[0])||0)*1000,
     exitAt:(Number(v[4])||0)+((Number(v[0])||0)+(Number(v[5])||0))*1000
@@ -61,13 +62,13 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const vnextFutureEntryAnchor=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
     Number(entryAnchor?.holdingSeconds)===horizon&&
     (entryAnchor?.mode||'fixed')===(s?.settings?.entryTimeMode==='automatic'?'automatic':'fixed')&&
-    Number(entryAnchor?.entryAt)>Number(entryAnchor?.issuedAt)&&
+    Number(entryAnchor?.entryAt)>=Number(entryAnchor?.issuedAt)&&
     ['CALL','PUT'].includes(String(entryAnchor?.side||''))?entryAnchor:null;
   const vnextFutureEntryRows=matchingMarket&&vnext?.engineId===s?.settings?.engine?
     (Array.isArray(vnext?.er)?vnext.er:
       Array.isArray(vnext?.futureEntryRows)?vnext.futureEntryRows:[])
       .map(entryFromTuple)
-      .filter((r:any)=>Number(r?.delaySeconds)>0&&Number(r.delaySeconds)<=3600):[];
+      .filter((r:any)=>Number.isFinite(Number(r?.delaySeconds))&&Number(r?.delaySeconds)>=0&&Number(r.delaySeconds)<=3600):[];
 
   // PC sends full model rows, mobile signed broadcast sends compact numeric
   // tuples. Both are strictly from the currently selected engine and asset.

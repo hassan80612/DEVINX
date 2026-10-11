@@ -1,0 +1,28 @@
+name: Sentinel 13.4.78 Future Entry Stability (PC + Mobile)
+on:
+  push:
+    branches: [sentinel-1378-responsive-entry-no-extra-lead-20261011]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax check core and overlay
+        run: |
+          find sentinel-trading-lab/agent/src/core -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - name: Test stable three-card layout and independent future-entry timing
+        run: |
+          node --test tests/sentinel-1377-entry-mode-stability.test.mjs tests/sentinel-1376-unified-selection.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs
+      - name: Typecheck web/mobile without deploying
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          ./node_modules/.bin/tsc --noEmit --pretty false

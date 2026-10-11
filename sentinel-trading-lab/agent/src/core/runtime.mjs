@@ -925,19 +925,25 @@ export class DemoTradingRuntime{
       // One immutable planned future ENTRY per chosen lead time. The rolling
       // engine and all matrix horizons continue refreshing independently.
       const currentEntry=qualified?matrix.entryRows?.find(x=>
-        x.delaySeconds===model.expirySeconds&&x.engineId===model.engineId&&
-        x.asset===String(settings.asset||'UNKNOWN').toUpperCase())||null:null;
+        x.engineId===model.engineId&&
+        x.asset===String(settings.asset||'UNKNOWN').toUpperCase()&&
+        Number(x.holdingSeconds)===Number(settings.orderDurationMs)/1000&&
+        x.mode===(settings.entryTimeMode==='automatic'?'automatic':'fixed'))||null:null;
       const oldEntry=this.vnextFutureEntryAnchor||null;
       const sameEntry=oldEntry&&currentEntry&&
         oldEntry.engineId===currentEntry.engineId&&
         oldEntry.asset===currentEntry.asset&&
         oldEntry.delaySeconds===currentEntry.delaySeconds&&
+        oldEntry.holdingSeconds===currentEntry.holdingSeconds&&
+        oldEntry.mode===currentEntry.mode&&
         Number(oldEntry.entryAt)>now;
       const entryAnchor=!qualified?null:sameEntry?oldEntry:
         currentEntry?.side?currentEntry:
         oldEntry&&oldEntry.engineId===model.engineId&&
           oldEntry.asset===String(settings.asset||'UNKNOWN').toUpperCase()&&
-          oldEntry.delaySeconds===model.expirySeconds&&oldEntry.entryAt>now?oldEntry:null;
+          Number(oldEntry.holdingSeconds)===Number(settings.orderDurationMs)/1000&&
+          oldEntry.mode===(settings.entryTimeMode==='automatic'?'automatic':'fixed')&&
+          oldEntry.entryAt>now?oldEntry:null;
       this.vnextFutureEntryAnchor=entryAnchor;
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,

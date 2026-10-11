@@ -1509,14 +1509,16 @@ export class LocalPlaywrightDriver{
           pinnedEntry.asset===visibleAsset&&
           Number(pinnedEntry.holdingSeconds)*1000===duration&&
           pinnedEntry.mode===(d.entryTimeMode==='automatic'?'automatic':'fixed')&&
-          Number(pinnedEntry.entryAt)>Number(pinnedEntry.issuedAt)&&
+          Number(pinnedEntry.entryAt)>=Number(pinnedEntry.issuedAt)&&
           ['CALL','PUT'].includes(pinnedEntry.side));
         const scheduledAt=entryPlanReady?Number(pinnedEntry.entryAt):0;
         const scheduledExit=entryPlanReady?Number(pinnedEntry.exitAt):0;
         const entryReached=entryPlanReady&&Date.now()>=scheduledAt;
         const scheduledSide=entryPlanReady?pinnedEntry.side:null;
-        const scheduledDecision=!entryPlanReady?'SEM PREVISÃO DE ENTRADA':
-          entryReached?'HORÁRIO PREVISTO ATINGIDO':
+        const scheduledDecision=!entryPlanReady?
+          (d.entryTimeMode==='automatic'?'ANALISANDO MELHOR ENTRADA':'SEM PREVISÃO'):
+          d.entryTimeMode!=='automatic'?(scheduledSide==='CALL'?'↑ CALL AGORA':'↓ PUT AGORA'):
+          entryReached?'HORÁRIO DE ENTRADA ATINGIDO':
           scheduledSide==='CALL'?'↑ CALL PREVISTO':'↓ PUT PREVISTO';
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
@@ -1554,10 +1556,10 @@ export class LocalPlaywrightDriver{
             <div data-sentinel-entry-mode style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 10px;margin-top:5px;border:1px solid ${panelBorder};border-radius:8px;min-height:39px;font-size:10px;color:${goldSoft}">
               <span style="font-weight:800">ENTRADA</span>
               <select data-sentinel-setting="entryTimeMode" title="Momento da entrada, independente da duração" style="min-width:118px;height:28px;background:${fieldBg};border:1px solid ${fieldBorder};border-radius:7px;color:${fieldInk};padding:0 6px">
-                <option value="fixed" ${d.entryTimeMode!=='automatic'?'selected':''}>Tempo fixo</option>
-                <option value="automatic" ${d.entryTimeMode==='automatic'?'selected':''}>Tempo automático</option>
+                <option value="fixed" ${d.entryTimeMode!=='automatic'?'selected':''}>Agora</option>
+                <option value="automatic" ${d.entryTimeMode==='automatic'?'selected':''}>Entrada automática</option>
               </select>
-              ${d.entryTimeMode!=='automatic'?'<span style="font-weight:750">DAQUI A</span><select data-sentinel-setting="entryLeadSeconds" style="height:28px;min-width:70px;background:'+fieldBg+';color:'+fieldInk+';border:1px solid '+fieldBorder+';border-radius:7px;padding:0 4px">'+[5,10,15,30,60,120,300].map(v=>'<option value="'+v+'" '+(Number(d.entryLeadSeconds||30)===v?'selected':'')+'>'+ (v<60?v+'s':v/60+'min')+'</option>').join('')+'</select>':'<span style="font-size:9px;color:'+muted+'">Busca uma janela no histórico</span>'}
+              <span style="font-size:9px;color:${muted}">${d.entryTimeMode==='automatic'?'Busca uma entrada nos próximos 30s':'Previsão válida para entrar agora'}</span>
             </div>
             <div data-sentinel-strategy-context style="padding:5px 9px;margin-top:5px;color:${muted};font-size:10px">
               ${d.engine==='automatic'&&d.vnext?.forecastOwner?.switched?'Automático usa '+esc(String(d.vnext.forecastOwner.effectiveEngine).replaceAll('_',' ')):
@@ -1565,18 +1567,18 @@ export class LocalPlaywrightDriver{
 
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
-              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine==='pair_reversal'?'MEAN REVERSION + SMART CONFLUENCE':d.engine==='pair_levels_breakout'?'SUPORTE/RESISTÊNCIA + BREAKOUT':d.engine==='pair_retest'?'MEAN REVERSION + FIBONACCI RETEST':d.engine||'automatic').toUpperCase()}</div>
+              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.entryTimeMode==='automatic'?'ENTRADA FUTURA':'ENTRADA AGORA'} · ${esc(d.engine==='pair_reversal'?'MEAN REVERSION + SMART CONFLUENCE':d.engine==='pair_levels_breakout'?'SUPORTE/RESISTÊNCIA + BREAKOUT':d.engine==='pair_retest'?'MEAN REVERSION + FIBONACCI RETEST':d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
               <div data-sentinel-vnext-clock data-deadline="${scheduledAt}" data-issued="${Number(pinnedEntry?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
-                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>ATÉ POSSÍVEL ENTRADA</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
+                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${d.entryTimeMode==='automatic'?'ATÉ POSSÍVEL ENTRADA':'ENTRADA AGORA'}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
                 <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">ENTRADA PREVISTA</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${entryPlanReady?esc(new Date(scheduledAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">VENCIMENTO ESTIMADO ${entryPlanReady?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):'—'}</small></div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;height:47px">
-                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO DE ENTRADA</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanReady?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
+                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${d.entryTimeMode==='automatic'?'PREÇO FUTURO DE ENTRADA':'PREÇO ATUAL'}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanReady?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO AO VENCER</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${entryPlanReady?price(pinnedEntry.projectedExitPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
-                <span style="color:${callTone}">ENTRADA EM ${entryPlanReady?Number(pinnedEntry.delaySeconds)+'s':'—'}</span>
+                <span style="color:${callTone}">${d.entryTimeMode==='automatic'?'ENTRADA EM':'ENTRADA'} ${entryPlanReady?(d.entryTimeMode==='automatic'?Number(pinnedEntry.delaySeconds)+'s':'AGORA'):'—'}</span>
                 <span style="color:${putTone}">PERÍODO APÓS ${entryPlanReady?Number(pinnedEntry.holdingSeconds)+'s':'—'}</span>
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${liveNow?'AO VIVO':'COTAÇÃO ATRASADA'}</span>
               </div>
@@ -1816,8 +1818,8 @@ export class LocalPlaywrightDriver{
             const target=Number(pane.getAttribute('data-deadline')||0);
             const issued=Number(pane.getAttribute('data-issued')||0);
             const cycleStatus=pane.querySelector('[data-sentinel-cycle-status]');
-            if(cycleStatus)cycleStatus.textContent=target>issued&&Date.now()>=target?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA';
-            let shown='—:—';
+            if(cycleStatus)cycleStatus.textContent=target>0&&issued>0&&target===issued?'ENTRADA AGORA':target>issued&&Date.now()>=target?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA';
+            let shown=target>0&&issued>0&&target===issued?'AGORA':'—:—';
             if(Number.isFinite(target)&&Number.isFinite(issued)&&target>issued&&issued>0){
               const left=Math.ceil((target-Date.now())/1000);
               if(left<=0){shown='00:00'}

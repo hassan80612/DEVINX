@@ -150,17 +150,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <select aria-label="Modo da entrada prevista" disabled={busy}
         value={s?.settings?.entryTimeMode==='automatic'?'automatic':'fixed'}
         onChange={e=>void act('settings',{entryTimeMode:e.target.value})}>
-        <option value="fixed">Tempo fixo</option>
-        <option value="automatic">Tempo automático</option>
+        <option value="fixed">Agora</option>
+        <option value="automatic">Entrada automática</option>
       </select>
     </label>
-    {s?.settings?.entryTimeMode!=='automatic'&&<label>Entrar daqui a
-      <select aria-label="Tempo fixo até a entrada" disabled={busy}
-        value={Number(s?.settings?.entryLeadSeconds||30)}
-        onChange={e=>void act('settings',{entryLeadSeconds:Number(e.target.value)})}>
-        {[5,10,15,30,60,120,300].map(v=><option value={v} key={v}>{expiryLabel(v)}</option>)}
-      </select>
-    </label>}
+
   </div>:null;
 
 
@@ -171,7 +165,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const plannedAt=Number(futureEntry?.entryAt||0);
   const plannedExit=Number(futureEntry?.exitAt||0);
   const entryPlanValid=!!(futureEntry&&['CALL','PUT'].includes(futureEntry.side)&&
-    plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
+    plannedAt>=Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
     Number(futureEntry.holdingSeconds)===Number(expirySeconds)&&
     (futureEntry.mode||'fixed')===(s?.settings?.entryTimeMode==='automatic'?'automatic':'fixed'));
   const countdownSeconds=entryPlanValid?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
@@ -179,22 +173,23 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
   const entryReached=entryPlanValid&&plannedAt<=now;
   const entryDataFresh=m.fresh;
-  const futureDecision=!entryPlanValid?'SEM PREVISÃO DE ENTRADA':
+  const futureDecision=!entryPlanValid?(s?.settings?.entryTimeMode==='automatic'?'ANALISANDO ENTRADA':'SEM PREVISÃO'):
+    s?.settings?.entryTimeMode!=='automatic'?(futureEntry.side==='CALL'?'↑ CALL AGORA':'↓ PUT AGORA'):
     entryReached?'HORÁRIO PREVISTO ATINGIDO':
     (futureEntry.side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanValid?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
-    <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO EXPERIMENTAL':'DADOS A CONFERIR'}</small></div>
+    <div className="vnextReceiptTitle"><b>{s?.settings?.entryTimeMode==='automatic'?'ENTRADA FUTURA':'ENTRADA AGORA'} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO EXPERIMENTAL':'DADOS A CONFERIR'}</small></div>
     <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{futureDecision}</strong></div>
     <div className={'vnextTargetCountdown '+(entryReached?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-      <div><small>{entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
+      <div><small>{s?.settings?.entryTimeMode==='automatic'?(entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'):'PREVISÃO ATUAL'}</small><strong>{s?.settings?.entryTimeMode==='automatic'?entryCountdown:'AGORA'}</strong></div>
       <div><small>ENTRADA PREVISTA</small><b>{entryPlanValid?clock(plannedAt):'—'}</b><span>{entryPlanValid?'Vencimento estimado '+clock(plannedExit):'Aguardando cálculo futuro'}</span></div>
     </div>
     <div className="vnextProjectionValues">
-      <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanValid?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
+      <div><small>{s?.settings?.entryTimeMode==='automatic'?'PREÇO ESTIMADO NA ENTRADA':'PREÇO ATUAL'}</small><strong>{entryPlanValid?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanValid?price(futureEntry.projectedExitPrice):'—'}</strong></div>
     </div>
     <div className="vnextProjectionBias" aria-label="Cenário de entrada futura não confirmado">
-      <span>ENTRADA EM <b>{entryPlanValid?expiryLabel(Number(futureEntry.delaySeconds)):'—'}</b></span>
+      <span>ENTRADA <b>{entryPlanValid?(s?.settings?.entryTimeMode==='automatic'?'EM '+expiryLabel(Number(futureEntry.delaySeconds)):'AGORA'):'—'}</b></span>
       <span>DURAÇÃO <b>{expiryLabel(Number(expirySeconds))}</b></span>
     </div>
     <details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes e qualidade da previsão</summary>
