@@ -49,7 +49,8 @@ const modeParams={
 // Manual selection is based only on TRAIN_SEEDS, never on final held out stream.
 const direction=(a,b)=>a<b?'CALL':a>b?'PUT':'DRAW';
 function observation(data,quoteIndex,h){
- const history=data.slice(quoteIndex-2399,quoteIndex+1),now=data[quoteIndex].ts;
+ const history=data.slice(Math.max(0,quoteIndex-2399),quoteIndex+1),now=data[quoteIndex].ts;
+ if(history.length<1400)throw Error('invalid research history slice');
  const snap={quoteHistory:history,quoteTs:now,price:data[quoteIndex].price,provider:'iq_option'};
  const original=singleEngineForecast({settings:{engine:'automatic',asset:'EUR/USD OTC',
    orderDurationMs:h*1000},snap,now,provider:snap.provider}).receipt;

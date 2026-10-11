@@ -83,7 +83,7 @@ test('frozen horizon-specific selective policy: compare unmodified 67 on entirel
  for(const regime of MODES)for(const seed of HOLDOUT_SEEDS){
   const data=generate(seed,regime);
   for(const index of INDICES){
-   const history=data.slice(index-2399,index+1),now=data[index].ts,
+   const history=data.slice(Math.max(0,index-2399),index+1),now=data[index].ts,
     current=data[index].price;
    const snap={quoteHistory:history,quoteTs:now,price:current,provider:'iq_option'};
    for(const h of HORIZONS){
