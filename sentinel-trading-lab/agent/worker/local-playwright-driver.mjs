@@ -1555,6 +1555,7 @@ export class LocalPlaywrightDriver{
                   <div>Emissão ${pinnedReceipt?esc(new Date(Number(pinnedReceipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'} · Faixa ${price(pinnedReceipt?.expectedLow)} a ${price(pinnedReceipt?.expectedHigh)} · ${n(d.vnext?.outcomesVerified,0)} resultados observados.</div>
                   <div>Motor atual: ${esc(d.vnext?.receipt?.side||'AGUARDANDO')} · última análise ${d.vnext?.receipt?.issuedAt?esc(new Date(Number(d.vnext.receipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}. Não altera a previsão fixada acima.</div>
 
+                  <div data-sentinel-horizon-evidence>CONFERÊNCIAS NO VENCIMENTO (PESQUISA): ${Array.isArray(d.vnext?.horizonMeasurements)&&d.vnext.horizonMeasurements.length?d.vnext.horizonMeasurements.map(x=>(Number(x.horizonSeconds)<60?x.horizonSeconds+'s':x.horizonSeconds/60+'m')+': '+Number(x.correct)+'/'+Number(x.verified)).join(' · '):'sem observações suficientes'}. Não equivalem a taxa de acerto calibrada.</div>
                   <div>Projeção experimental, sem taxa de acerto comprovada. Não é ordem automática.</div>
                 </div>
               </details>
