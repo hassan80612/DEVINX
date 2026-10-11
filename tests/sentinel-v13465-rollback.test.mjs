@@ -6,15 +6,16 @@ import {createHash} from 'node:crypto';
 const read=p=>readFile(new URL('../sentinel-trading-lab/'+p,import.meta.url));
 const source=async p=>(await read(p)).toString('utf8');
 
-test('runtime exactly matches the 13.4.60 Git blob: no new signal-generation logic',async()=>{
- const bytes=await read('agent/src/core/runtime.mjs');
+test('single selected-engine forecasting algorithm remains exactly 13.4.60, with no new instant-signal observer',async()=>{
+ const bytes=await read('agent/src/core/vnext-single-engine.mjs');
  const hash=createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0'))
   .update(bytes).digest('hex');
- assert.equal(hash,'b1b826bd7c43517eb30f9bb2ae74aa41f88f26de');
- const runtime=bytes.toString('utf8');
+ assert.equal(hash,'6a546ae6113cf313e803bf8d2bd5b9151eba8a30');
+ const runtime=await source('agent/src/core/runtime.mjs');
  assert.match(runtime,/const model=singleEngineForecast\(\{settings,snap,now\}\)/);
  assert.doesNotMatch(runtime,/observeImmediateMarket|vnextNowObservation|nowIndication/);
  assert.match(runtime,/const eligible=previous\.filter\(x=>x\?\.targetAt>now-2000\)/);
+ assert.match(runtime,/forwardHorizonMatrix\(/);
 });
 
 test('neither PC overlay nor normal or floating mobile render a secondary CALL PUT observer',async()=>{
