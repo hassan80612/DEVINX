@@ -65,7 +65,7 @@ jobs:
       - name: Build site preview (never promote)
         working-directory: sentinel-trading-lab
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund --package-lock=false
           npm run build
   windows-package:
     needs: [regressions,empirical-benchmark]
