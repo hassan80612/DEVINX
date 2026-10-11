@@ -159,7 +159,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
       const n=Number(value);if(![5000,10000,15000,30000,45000,60000,120000,180000,300000,600000,900000,3600000].includes(n))throw new Error('invalid_duration');
       runtime.patchSettings({orderDurationMs:n,forecastHorizonSeconds:Math.round(n/1000)},'overlay');
       runtime.requestImmediateEvaluation?.();
-    }else if(['pairResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','autoRoutingEnabled'].includes(key)){
+    }else if(['pairResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','autoRoutingEnabled','futureSignalFilterEnabled'].includes(key)){
       // Informational research switches; do not change the execution engine.
       runtime.patchSettings({[key]:value===true||String(value)==='true'},'overlay');
       runtime.requestImmediateEvaluation?.();
@@ -325,7 +325,8 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       quality:a.quality||view.signalValidation||null,
       minConfidence:view.settings?.risk?.minConfidence||74,
       futureDisplayThreshold:view.settings?.futureDisplayThreshold||70,
-      autoRoutingEnabled:view.settings?.autoRoutingEnabled!==false,
+      autoRoutingEnabled:view.settings?.autoRoutingEnabled===true,
+      futureSignalFilterEnabled:view.settings?.futureSignalFilterEnabled===true,
       pairResearchEnabled:view.settings?.pairResearchEnabled===true,
       pairResearchId:view.settings?.pairResearchId||'reversal',
       entryTimeMode:view.settings?.entryTimeMode||'fixed',

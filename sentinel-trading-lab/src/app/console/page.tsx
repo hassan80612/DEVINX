@@ -416,14 +416,15 @@ function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
           ?'Usando: '+String(s.lastResult.analysis.vnext.forecastOwner.effectiveEngine).replaceAll('_',' ')+' · prazo '+String(s.settings?.orderDurationMs/1000)+'s'
           :'Usando a previsão geral, até haver histórico confiável para mudar.')
         :'A estratégia escolhida permanece no controle da previsão.'}</p>
-      {selected==='automatic'&&<label style={{display:'block',marginTop:7}}>
-        <input type="checkbox" checked={s.settings?.autoRoutingEnabled!==false} disabled={busy}
-          onChange={e=>void act('settings',{autoRoutingEnabled:e.target.checked})}/>
-        {' '}Adequar automaticamente o cálculo ao prazo e gráfico
-      </label>}
       <details style={{marginTop:9}}>
         <summary style={{cursor:'pointer',fontWeight:750}}>⚙ Ajustes e combinações</summary>
         <div style={{display:'grid',gap:10,padding:'10px 4px'}}>
+          {selected==='automatic'&&<label style={{display:'block',marginTop:7}}>
+        <input type="checkbox" checked={s.settings?.autoRoutingEnabled===true} disabled={busy}
+          onChange={e=>void act('settings',{autoRoutingEnabled:e.target.checked})}/>
+        {' '}Trocar automaticamente de estratégia (teste não validado)
+      </label>}
+
           <label><input type="checkbox" disabled={busy} checked={s.settings?.pairResearchEnabled===true}
             onChange={e=>void act('settings',{pairResearchEnabled:e.target.checked})}/>
             {' '}Comparar duas estratégias (pesquisa independente)
@@ -455,6 +456,11 @@ function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
               {[15,30,45,60,120,180,300,600,900].map(v=><option key={v} value={v}>{v}s</option>)}
             </select>
           </label>}
+          <label><input type="checkbox" disabled={busy}
+            checked={s.settings?.futureSignalFilterEnabled===true}
+            onChange={e=>void act('settings',{futureSignalFilterEnabled:e.target.checked})}/>
+            {' '}Filtrar previsões: mostrar AGUARDAR sem confirmação histórica
+          </label>
           <label><input type="checkbox" disabled={busy} checked={s.settings?.futureResearchEnabled===true}
             onChange={e=>void act('settings',{futureResearchEnabled:e.target.checked})}/>
             {' '}Exibir confirmação histórica da previsão

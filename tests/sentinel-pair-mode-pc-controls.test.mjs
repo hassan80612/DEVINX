@@ -18,7 +18,7 @@ test('PC and console share exactly three experimental two-strategy choices',()=>
  assert.ok(worker.includes('⚙ Opções de previsão'));
  assert.ok(worker.includes('Duração da operação independente da entrada'));
  assert.ok(worker.includes('data-sentinel-preserve-open="1" data-sentinel-no-drag'));
- assert.ok(server.includes("['pairResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','autoRoutingEnabled']"));
+ assert.ok(server.includes("['pairResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled','autoRoutingEnabled','futureSignalFilterEnabled']"));
  assert.ok(server.includes("runtime.patchSettings({[key]:value===true||String(value)==='true'}"));
 });
 test('PC overlay settings map to independently validated runtime fields',()=>{

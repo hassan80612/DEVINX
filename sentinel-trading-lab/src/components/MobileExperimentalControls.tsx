@@ -60,7 +60,7 @@ export function MobileExperimentalControls({s,busy,act}:Props){
    <strong>PREVISÃO · {Number(settings.orderDurationMs||60000)/1000}s</strong>
    <div data-testid="mobile-context-guide">{using}</div>
    <div data-testid="mobile-future-path-summary">
-     {currentSide?'Histórico confirma '+currentSide:'Histórico sem confirmação'}
+     {settings.futureSignalFilterEnabled===true?(vnext.futureQualification?.confirmed||vnext.fq?.[1]?'Histórico confirmou':'AGUARDAR confirmação'):(currentSide?'Histórico confirma '+currentSide:'Histórico sem confirmação')}
      {' '}· {phase}
    </div>
    {mode==='pair'&&<div data-testid="mobile-pair-research">Dupla: {pairName} · {pairSide||'AGUARDAR'}</div>}
@@ -69,10 +69,10 @@ export function MobileExperimentalControls({s,busy,act}:Props){
      <div style={{display:'grid',gap:10,marginTop:9,minWidth:0}}>
        {selected==='automatic'&&<label style={field}>Automático escolhe a estratégia para o cálculo
          <select aria-label="Roteamento automático de estratégias" style={sel} disabled={busy}
-           value={settings.autoRoutingEnabled!==false?'true':'false'}
+           value={settings.autoRoutingEnabled===true?'true':'false'}
            onChange={e=>update({autoRoutingEnabled:e.target.value==='true'})}>
-           <option value="true">Ligado · muda o cálculo conforme o cenário</option>
-           <option value="false">Desligado · previsão geral antiga</option>
+           <option value="true">Ligado · teste não validado</option>
+           <option value="false">Desligado · previsão geral</option>
          </select>
        </label>}
        <label style={field}>Modo de estratégia
@@ -124,6 +124,14 @@ export function MobileExperimentalControls({s,busy,act}:Props){
            onChange={e=>update({strategyAdvisorMode:e.target.value})}>
            <option value="manual">Manual · minha estratégia permanece</option>
            <option value="automatic_advisory">Automático · apenas indica contexto</option>
+         </select>
+       </label>
+       <label style={field}>Filtrar previsão
+         <select aria-label="Exigir confirmação histórica para CALL e PUT" disabled={busy} style={sel}
+           value={settings.futureSignalFilterEnabled===true?'true':'false'}
+           onChange={e=>update({futureSignalFilterEnabled:e.target.value==='true'})}>
+           <option value="false">Desligado · previsão original</option>
+           <option value="true">Ligado · AGUARDAR sem confirmação</option>
          </select>
        </label>
        <label style={field}>Histórico da previsão futura

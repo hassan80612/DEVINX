@@ -1547,26 +1547,24 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
-            <div data-sentinel-strategy-context style="padding:8px 9px;margin-top:7px;border:1px solid ${panelBorder};border-radius:8px;background:${fieldBg};font-size:10px;color:${muted};line-height:1.5">
-              <div><b style="color:${goldSoft}">Uso da estratégia:</b> ${esc(liveStrategyAdvice?.description||allStrategyNotes[d.engine]||'Contexto de mercado em observação.')}</div>
-              <div><b style="color:${goldSoft}">Prazo ${esc(duration/1000)}s:</b> ${esc(advisor?.selectedInterpretation||'Compatibilidade ainda não avaliada')}
-                · ${esc(advisor?.marketPhaseLabel||'Observação de mercado indisponível')}</div>
-              ${advisor?.recommended?'<div><b style="color:'+goldSoft+'">Sugestão experimental:</b> '+esc(advisor.recommended.name)+' · não muda sua escolha manual</div>':''}
-              <details data-sentinel-preserve-open="1" style="margin-top:5px" data-sentinel-no-drag>
-                <summary style="cursor:pointer;color:${goldSoft};padding:3px 0">Onde cada estratégia tende a ser mais útil · expandir</summary>
-                <div style="display:grid;gap:4px;padding:5px 2px">
-                  ${Object.entries(allStrategyNotes).map(([key,note])=>'<div>'+esc(key.replaceAll('_',' '))+': '+esc(note)+(advisorRows.find(x=>x.engineId===key)?.interpretation?' · '+esc(advisorRows.find(x=>x.engineId===key).interpretation):'')+'</div>').join('')}
-                  <small>Essas associações são hipóteses técnicas, não taxas de acerto calibradas.</small>
-                </div>
-              </details>
+            <div data-sentinel-strategy-context style="padding:5px 9px;margin-top:5px;color:${muted};font-size:10px">
+              ${d.engine==='automatic'&&d.vnext?.forecastOwner?.switched?'Automático usa '+esc(String(d.vnext.forecastOwner.effectiveEngine).replaceAll('_',' ')):
+                d.engine==='automatic'?'Automático · previsão geral':'Estratégia manual · '+esc(String(d.engine).replaceAll('_',' '))}
+              ${d.vnext?.futureQualification?.enabled?' · '+(d.vnext.futureQualification.confirmed?'Histórico confirmado':'AGUARDAR confirmação'):''}
             </div>
             <details data-sentinel-pair-settings data-sentinel-preserve-open="1" data-sentinel-no-drag
               style="margin-top:7px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};padding:8px;color:${goldSoft};font-size:10px">
               <summary style="cursor:pointer;font-weight:850">⚙ Opções de previsão · expandir</summary>
               <label style="display:grid;gap:4px;margin-top:8px">Previsão automática
                 <select data-sentinel-setting="autoRoutingEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
-                  <option value="true" ${d.autoRoutingEnabled!==false?'selected':''}>Adapta cálculo ao gráfico</option>
-                  <option value="false" ${d.autoRoutingEnabled===false?'selected':''}>Usa previsão geral antiga</option>
+                  <option value="true" ${d.autoRoutingEnabled===true?'selected':''}>Adapta cálculo ao gráfico · teste não validado</option>
+                  <option value="false" ${d.autoRoutingEnabled!==true?'selected':''}>Padrão · mantém previsão geral</option>
+                </select>
+              </label>
+              <label style="display:grid;gap:4px;margin-top:7px">Filtrar previsão por histórico
+                <select data-sentinel-setting="futureSignalFilterEnabled" style="width:100%;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};padding:5px">
+                  <option value="false" ${d.futureSignalFilterEnabled!==true?'selected':''}>Desligado · previsão original</option>
+                  <option value="true" ${d.futureSignalFilterEnabled===true?'selected':''}>Ligado · AGUARDAR sem confirmação</option>
                 </select>
               </label>
               <div style="margin-top:8px;display:grid;gap:8px">
@@ -1651,15 +1649,6 @@ export class LocalPlaywrightDriver{
               </details>
             </section>
 
-            <details data-sentinel-preserve-open="1" data-sentinel-no-drag style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;color:${goldSoft};font-size:10px">
-              <summary style="cursor:pointer;font-weight:800">PREVISÃO POR TRAJETÓRIA · EXPERIMENTAL</summary>
-              <div style="display:grid;gap:5px;margin-top:7px;color:${muted}">
-                <div>Prazo selecionado: ${esc(duration/1000)}s. ${generalFuture?'Pesquisa '+esc(generalFuture.status||'aguardando'):'Ative pesquisa de previsão futura no console para comparar trajetórias.'}</div>
-                <div>Confirmação por histórico: ${esc(generalFuture?.confirmedSide||'AGUARDAR')} · sem assertividade calibrada.</div>
-                <div>Possível topo: ${generalFuture?.possibleExtremes?.peak?.windowSeconds?esc(generalFuture.possibleExtremes.peak.windowSeconds.map(Math.round).join('–'))+'s':'janela indisponível'}; possível fundo: ${generalFuture?.possibleExtremes?.trough?.windowSeconds?esc(generalFuture.possibleExtremes.trough.windowSeconds.map(Math.round).join('–'))+'s':'janela indisponível'}</div>
-                <small>Topos e fundos são regiões de tempo estatísticas incertas. Nenhuma ordem automática é autorizada.</small>
-              </div>
-            </details>
             <details data-sentinel-vnext-horizon-matrix data-sentinel-preserve-open="1" style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
               <summary style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">

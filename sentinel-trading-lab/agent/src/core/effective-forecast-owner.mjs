@@ -14,7 +14,7 @@ export function resolveForecastOwner({settings={},snap={},now=Date.now()}={}){
   evaluatedHorizonSeconds:Number(settings.orderDurationMs)/1000,
   requiresOutcomeValidation:true,actionable:false};
  if(selected!=='automatic')return base;
- if(settings.autoRoutingEnabled===false)return {...base,reason:'automatic-routing-disabled'};
+ if(settings.autoRoutingEnabled!==true)return {...base,reason:'automatic-routing-disabled'};
  const quotes=Array.isArray(snap.researchQuoteHistory)&&snap.researchQuoteHistory.length>0?
   snap.researchQuoteHistory:snap.quoteHistory;
  const advice=strategyHorizonAdvisor({settings:{...settings,
