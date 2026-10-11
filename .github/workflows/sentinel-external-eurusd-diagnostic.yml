@@ -1,0 +1,28 @@
+name: Sentinel 67 External Spot EURUSD Diagnostic
+on:
+  push:
+    branches: [sentinel-13467-temporal-integrity-research-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/worker/benchmark-external-forex.mjs'
+      - '.github/workflows/sentinel-external-eurusd-diagnostic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  external-market:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Load public second-sampled EURUSD bid/ask data (research only)
+        run: |
+          curl --fail --location --retry 2 --max-time 170 --output "$RUNNER_TEMP/eurusd-external.txt" 'https://raw.githubusercontent.com/zcbmlijygrdwa/fx_EUR_USD_tick/master/EURUSD-2018-01_converted.txt'
+          test "$(wc -c < "$RUNNER_TEMP/eurusd-external.txt")" -gt 1000000
+          sha256sum "$RUNNER_TEMP/eurusd-external.txt"
+      - name: Compare identical observed spot prices with 4Hz simulated refresh
+        run: |
+          node --check sentinel-trading-lab/agent/worker/benchmark-external-forex.mjs
+          node sentinel-trading-lab/agent/worker/benchmark-external-forex.mjs "$RUNNER_TEMP/eurusd-external.txt"
