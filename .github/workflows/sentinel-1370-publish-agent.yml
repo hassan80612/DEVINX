@@ -94,7 +94,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp artifacts/sentinel-trading-lab/public/downloads/{Sentinel-Agent-Windows.exe,sentinel-agent-windows.exe,agent_payload_v88.zip,agent-update.json} sentinel-trading-lab/public/downloads/
+          for f in Sentinel-Agent-Windows.exe sentinel-agent-windows.exe agent_payload_v88.zip agent-update.json; do
+            src=$(find artifacts -type f -name "$f" -print -quit)
+            test -n "$src" || { echo "Missing artifact $f"; exit 1; }
+            cp "$src" "sentinel-trading-lab/public/downloads/$f"
+          done
           node - <<'NODE'
           const fs=require('fs');
           const path='sentinel-trading-lab/src/app/console/page.tsx';
