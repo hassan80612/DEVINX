@@ -80,7 +80,12 @@ function priceAction(rows,s,h){
  const range=Math.max(...recent.map(x=>x.p))-Math.min(...recent.map(x=>x.p));
  const rejection=(Math.max(...last.map(x=>x.p))-tail(last))-(tail(last)-Math.min(...last.map(x=>x.p)));
  const rejectionPressure=range>0?clamp(rejection/range,-1,1)*s.spread*.32:0;
- const move=(currentLeg*.44+oldLeg*.16)*Math.min(h/Math.max(5,last.length),3)+rejectionPressure;
+ // The leg duration is in SECONDS, not the number of broker ticks.
+ // With 4 updates/s, last.length quadruples even for the SAME price path,
+ // silently shrinking the projected move and changing CALL/PUT decisions.
+ // Read duration only from timestamps already observed at forecast time.
+ const legSeconds=Math.max(5,(last.at(-1).ts-last[0].ts)/1000);
+ const move=(currentLeg*.44+oldLeg*.16)*Math.min(h/legSeconds,3)+rejectionPressure;
  return result(s,h,move,'Price Action: sequência de pernas e rejeições já observadas',{currentLeg,oldLeg,rejectionPressure});
 }
 function supportResistance(rows,s,h){
