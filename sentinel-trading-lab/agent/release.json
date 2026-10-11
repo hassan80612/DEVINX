@@ -1,6 +1,6 @@
 {
-  "version": "13.4.66",
-  "build": "13.4.66-multihorizon-forward-1010",
+  "version": "13.4.67",
+  "build": "13.4.67-future-entry-pinned-1010",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

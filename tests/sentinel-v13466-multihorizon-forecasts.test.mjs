@@ -93,11 +93,11 @@ test('PC and both mobile cards show one chosen expiry, prediction countdown and 
     read('src/lib/live-card-model.ts'),read('src/app/globals.css')
   ]);
   assert.match(pc,/data-sentinel-vnext-horizon-matrix/);
-  assert.match(pc,/d\.vnext\?\.horizonForecasts/);
-  assert.match(pc,/ATÉ A PREVISÃO/);
-  assert.match(pc,/PREVISÃO FIXA/);
-  assert.match(mobile,/ATÉ O ALVO PREVISTO/);
-  assert.match(mobile,/HORÁRIO PREVISTO/);
+  assert.match(pc,/d\.vnext\?\.futureEntryRows/);
+  assert.match(pc,/ATÉ POSSÍVEL ENTRADA/);
+  assert.match(pc,/VENCIMENTO ESTIMADO/);
+  assert.match(mobile,/ATÉ POSSÍVEL ENTRADA/);
+  assert.match(mobile,/ENTRADA PREVISTA/);
   assert.match(mobile,/data-testid="future-horizon-matrix"/);
   assert.equal((mobile.match(/\{forecastHorizonStrip\}/g)||[]).length,2);
   assert.equal((mobile.match(/\{forecastReceipt\}/g)||[]).length,2);

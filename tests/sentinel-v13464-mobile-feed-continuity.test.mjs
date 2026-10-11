@@ -59,11 +59,11 @@ test('normal mobile and floating mobile keep last prediction visible but label i
   read('src/components/LiveScenarioCard.tsx'),read('src/lib/live-card-model.ts'),read('src/app/console/page.tsx')
  ]);
  assert.equal((card.match(/\{forecastReceipt\}/g)||[]).length,2);
- assert.match(card,/const forecastReadable=!!\(liveForecast/);
- assert.match(card,/const liveForecastValid=!!\(forecastReadable&&m\.fresh/);
- assert.match(card,/const forecastDelayed=forecastReadable&&!liveForecastValid/);
- assert.match(card,/ÚLTIMA PREVISÃO · ATRASADA/);
- assert.match(card,/liveProjection=forecastReadable\?m\.vnextProjection:null/);
+ assert.match(card,/const futureEntry=m\.vnextFutureEntryAnchor/);
+ assert.match(card,/const entryPlanValid=!!\(futureEntry/);
+ assert.match(card,/const entryDataFresh=m\.fresh/);
+ assert.match(card,/DADOS A CONFERIR/);
+ assert.match(card,/data-testid="future-entry-decision"/);
  assert.match(card,/m\.quoteAgeAtFrame/);
  assert.match(card,/m\.transportAge/);
  assert.match(model,/const quoteFresh=quoteAt>0&&now-quoteAt<=2500/);

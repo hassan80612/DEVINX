@@ -1,4 +1,5 @@
 import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {futureEntrySchedule} from './future-entry-schedule.mjs';
 
 // Each horizon runs the SAME user-selected engine against the SAME historical
 // quote snapshot. Forecast side is derived from an expected FUTURE price,
@@ -20,7 +21,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   if(previous?.context===context&&Array.isArray(previous.rows)){
     const rows=previous.rows.map(row=>row.horizonSeconds===horizon?
       rowFor(primary,horizon):row).filter(Boolean);
-    return {context,rows,computedAt:previous.computedAt,reused:true};
+    return {context,rows,entryRows:previous.entryRows||[],computedAt:previous.computedAt,reused:true};
   }
   const rows=[];
   for(const seconds of horizons){
@@ -31,7 +32,10 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
       });
     rows.push(rowFor(model,seconds));
   }
-  return {context,rows,computedAt:now,reused:false};
+  const entryRows=futureEntrySchedule({
+    settings,snap,now,delays:horizons,knownForecasts:rows
+  });
+  return {context,rows,entryRows,computedAt:now,reused:false};
 }
 function rowFor(model,h){
   const receipt=model?.receipt;

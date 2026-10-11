@@ -54,40 +54,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   };
   const m=liveCardModel(s,now,averageThreshold);
   const vnext=!!s?.settings?.engine;
-  const liveForecast=m.vnextReceipt;
-  // Two INDEPENDENT display clocks: live forecast updates with every Agent
-  // calculation; the original reference clock remains auditable until expiry.
-  // Never use the fixed receipt to freeze the selected motor or its CALL/PUT indices.
-  const clockForecast=m.vnextTargetAnchor||liveForecast;
-  const forecast=clockForecast;
-  // A slow mobile packet MUST NOT erase a still-relevant prediction.
-  // Only the FRESH path may be called live or used to describe an entry.
-  // Historical display never grants entry permissions or changes the motor.
-  const forecastReadable=!!(liveForecast&&
-    Number(liveForecast.issuedAt)>0&&Number(liveForecast.issuedAt)<=now+2000&&
-    Number(liveForecast.targetAt)>now&&
-    ['CALL','PUT'].includes(String(liveForecast.side)));
-  const liveForecastValid=!!(forecastReadable&&m.fresh&&
-    now-Number(liveForecast.issuedAt)<=6000);
-  const forecastDelayed=forecastReadable&&!liveForecastValid;
-  const liveProjection=forecastReadable?m.vnextProjection:null;
+  // Duration selection is the lead time to a FUTURE entry.
+  // Only the recorded entry schedule owns the hero countdown and direction.
   const expiryChoices=[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
-  // A rolling forecast always targets an exact future instant from its
-  // original issuance. A countdown alone must never replace the deadline.
-  const forecastTargetAt=Number(clockForecast?.targetAt||0);
-  const forecastIssuedAt=Number(clockForecast?.issuedAt||0);
-  const forecastExpirySeconds=Number(clockForecast?.expirySeconds||0);
-  const forecastTimeValid=Boolean(clockForecast&&forecastTargetAt>forecastIssuedAt&&
-    forecastExpirySeconds>0&&forecastTargetAt-forecastIssuedAt===forecastExpirySeconds*1000);
-  const forecastSecondsRemaining=forecastTimeValid?Math.max(0,Math.ceil((forecastTargetAt-now)/1000)):null;
-  const forecastTargetPast=forecastTimeValid&&forecastTargetAt<=now;
-  const countdownTime=forecastSecondsRemaining===null?'—:—':forecastSecondsRemaining>=3600?String(Math.floor(forecastSecondsRemaining/3600)).padStart(2,'0')+':'+String(Math.floor(forecastSecondsRemaining%3600/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0'):String(Math.floor(forecastSecondsRemaining/60)).padStart(2,'0')+':'+String(forecastSecondsRemaining%60).padStart(2,'0');
-  // The headline and its countdown refer to the SAME recorded target.
-  // New rolling forecasts are displayed separately in the horizon matrix.
-  const forecastTimeLabel=forecastTimeValid?
-    (forecastTargetPast?'PREVISÃO ENCERRADA':'ALVO '+clock(forecastTargetAt)):
-    'AGUARDANDO PREVISÃO';
   const strategyAdvice=strategySelectionGuidance({
     ids:[strategy1,strategy2,strategy3],
     paused:s?.settings?.pausedReadings||{},
@@ -169,47 +139,51 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{e.name}</option>)}
       </select>
     </label>
-    <label>Prever até
-      <select aria-label="Expiração escolhida para previsão" value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
+    <label>Entrada daqui a
+      <select aria-label="Tempo até a entrada prevista" value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
   </div>:null;
 
-  // All mobile modes share these exact two permanent card nodes. Neither
-  // switching observation sides nor expiring a forecast inserts/removes a hero.
-  // 13.4.60 signal rollback: the extra three-second CALL/PUT observer
-  // and presentation-only direction alignment are intentionally removed.
-  // The selected original motor remains the sole future signal owner.
-  const forecastLabel=!forecastReadable?'EM ANÁLISE':
-    (liveForecast.side==='CALL'?'↑ CALL':'↓ PUT')+(forecastDelayed?' · ATRASADO':'');
-  const forecastReceipt=vnext?<div className={`vnextFutureReceipt ${forecastReadable&&liveForecast?.side==='CALL'?'call':forecastReadable&&liveForecast?.side==='PUT'?'put':'neutral'} ${forecastDelayed?'delayed':''}`} data-testid="future-price-projection" role="status" aria-live="off">
-    <div className="vnextReceiptTitle"><b>PROJEÇÃO FUTURA EM ANÁLISE · {(liveForecast?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{liveForecastValid?'● AO VIVO':forecastDelayed?'ÚLTIMA PREVISÃO · ATRASADA':m.quoteAge!==null?'COTAÇÃO ATRASADA':'SEM COTAÇÃO'}</small></div>
-    <div className="vnextFutureDirection"><strong>{forecastLabel}</strong><span data-testid="forecast-exact-target">{forecastTimeLabel}</span></div>
-    <div className={`vnextTargetCountdown ${forecastTargetPast?'ended':''}`} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-      <div><small>{forecastTargetPast?'ALVO ENCERRADO':'ATÉ O ALVO PREVISTO'}</small><strong>{countdownTime}</strong></div>
-      <div><small>HORÁRIO PREVISTO</small><b>{forecastTimeValid?clock(forecastTargetAt):'—'}</b><span>{forecastTimeValid?'Registrado '+(forecast?.side==='CALL'?'CALL':forecast?.side==='PUT'?'PUT':'—')+' · '+clock(forecastIssuedAt):'Aguardando previsão'}</span></div>
+
+  // Main prediction is a FUTURE entry at now + selected time, followed by
+  // a separate, explicitly shown estimated holding period.
+  // It NEVER mirrors an updated current-candle CALL/PUT.
+  const futureEntry=m.vnextFutureEntryAnchor;
+  const plannedAt=Number(futureEntry?.entryAt||0);
+  const plannedExit=Number(futureEntry?.exitAt||0);
+  const entryPlanValid=!!(futureEntry&&['CALL','PUT'].includes(futureEntry.side)&&
+    plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
+    Number(futureEntry.delaySeconds)===Number(expirySeconds));
+  const countdownSeconds=entryPlanValid?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
+  const entryCountdown=countdownSeconds===null?'—:—':
+    String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
+  const entryReached=entryPlanValid&&plannedAt<=now;
+  const entryDataFresh=m.fresh;
+  const futureDecision=!entryPlanValid?'SEM PREVISÃO DE ENTRADA':
+    entryReached?'HORÁRIO PREVISTO ATINGIDO':
+    (futureEntry.side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
+  const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanValid?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
+    <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO EXPERIMENTAL':'DADOS A CONFERIR'}</small></div>
+    <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{futureDecision}</strong></div>
+    <div className={'vnextTargetCountdown '+(entryReached?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
+      <div><small>{entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
+      <div><small>ENTRADA PREVISTA</small><b>{entryPlanValid?clock(plannedAt):'—'}</b><span>{entryPlanValid?'Vencimento estimado '+clock(plannedExit):'Aguardando cálculo futuro'}</span></div>
     </div>
     <div className="vnextProjectionValues">
-      <div><small>PREÇO AGORA / REFERÊNCIA</small><strong>{forecastReadable?price(liveForecast.referencePrice):'—'}</strong></div>
-      <div><small>PROJEÇÃO AO VIVO</small><strong>{forecastReadable?price(liveForecast.projectedPrice):'—'}</strong></div>
+      <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanValid?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
+      <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanValid?price(futureEntry.projectedExitPrice):'—'}</strong></div>
     </div>
-    <div className="vnextProjectionBias" aria-label={forecastDelayed?'Últimos percentuais recebidos; cotação atrasada, não operar': 'Índices atualizados da previsão'}>
-      <span>CALL <b>{liveProjection?.callPct==null?'—':liveProjection.callPct+'%'}</b></span>
-      <span>PUT <b>{liveProjection?.putPct==null?'—':liveProjection.putPct+'%'}</b></span>
+    <div className="vnextProjectionBias" aria-label="Cenário de entrada futura não confirmado">
+      <span>ENTRADA EM <b>{expiryLabel(Number(expirySeconds))}</b></span>
+      <span>PERÍODO APÓS <b>{expiryLabel(Number(futureEntry?.holdingSeconds||expirySeconds))}</b></span>
     </div>
-    <details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes da previsão</summary>
-      <small>Motor calculado: {liveForecast?.engineId?liveForecast.engineId.replaceAll('_',' ').toUpperCase():'AGUARDANDO'} · Último cálculo {liveForecast?.issuedAt?clock(liveForecast.issuedAt):'—'} · Referência {liveForecast?.referencePrice?price(liveForecast.referencePrice):'—'}</small>
-      <small data-testid="mobile-feed-path">Cotação PC na transmissão: {m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'} · Idade do pacote no celular: {m.transportAge===null?'sem push recente':m.transportAge+'s'}. {forecastDelayed?'Previsão retida apenas para consulta; não é entrada atual.':''}</small>
-      <small data-testid="forecast-forward-outcome-research">Conferências no vencimento (pesquisa): {(m.vnextHorizonMeasurements||[]).length?
-        m.vnextHorizonMeasurements.map((x:any)=>expiryLabel(x.horizonSeconds)+': '+x.correct+'/'+x.verified).join(' · '):
-        'ainda sem resultados suficientes'}. Não representam probabilidade calibrada de acerto.</small>
-      <small>Prazo escolhido: {expiryLabel(forecastExpirySeconds||Number(s?.settings?.orderDurationMs||60000)/1000)} · Alvo fixado {forecastTimeValid?clock(forecastTargetAt):'—'} · Alvo móvel do motor {liveForecastValid?clock(liveForecast.targetAt):'—'}</small>
-      <small>{forecast?'Faixa: '+price(forecast.expectedLow)+' a '+price(forecast.expectedHigh):'Aguardando histórico para previsão'} · {m.vnextFoundation==='historical-forward-outcomes'?'Histórico: '+m.vnextHistorical+' casos completos':'Previsão experimental, sem assertividade comprovada'}</small>
-      <div className="vnextLiveCalculation" data-testid="motor-live-refresh"><small>NOVA LEITURA DO MOTOR (INDEPENDENTE DO ALVO FIXADO)</small>
-        <span>{liveForecast&&forecast&&liveForecast.issuedAt!==forecast.issuedAt?
-          (liveForecast.side||'AGUARDANDO')+' às '+clock(liveForecast.issuedAt)+' para '+clock(liveForecast.targetAt)+' · preço '+price(liveForecast.projectedPrice):
-          'Último cálculo acompanha o mesmo alvo'}</span></div>
+    <details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes e qualidade da previsão</summary>
+      <small>{entryDataFresh?'Cotação atual recebida':'Cotação atrasada ou indisponível · não operar com dados antigos'} · estimativa não calibrada.</small>
+      <small>Motor {futureEntry?.engineId||chosenEngine} · emitida {futureEntry?.issuedAt?clock(futureEntry.issuedAt):'—'} · entrada {entryPlanValid?clock(plannedAt):'—'} · vencimento {entryPlanValid?clock(plannedExit):'—'}.</small>
+      <small data-testid="mobile-feed-path">Cotação PC: {m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'} · canal celular: {m.transportAge===null?'—':m.transportAge+'s'}.</small>
+      <small data-testid="forecast-forward-outcome-research">Resultados antigos por prazo: {(m.vnextHorizonMeasurements||[]).length?m.vnextHorizonMeasurements.map((x:any)=>expiryLabel(x.horizonSeconds)+': '+x.correct+'/'+x.verified).join(' · '):'sem resultados suficientes'}. Não medem a precisão desta entrada futura.</small>
     </details>
   </div>:null;
   // This is not a re-labelled candle: EVERY cell contains the selected
@@ -217,24 +191,26 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // 9 fixed slots prevent changing data/selection from moving the card.
   const allFutureHorizons=[...new Set([5,10,30,60,120,300,Number(expirySeconds)])]
     .filter(x=>Number.isFinite(x)&&x>0).sort((a,b)=>a-b).slice(0,9);
-  const futureByHorizon=new Map<number,any>((m.vnextHorizons||[]).map((r:any):[number,any]=>[Number(r.horizonSeconds),r]));
-  const forecastHorizonStrip=vnext?<section className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Projeções de preços para os próximos períodos">
-    <div className="vnextForwardHorizonsTitle"><strong>PROJEÇÕES PARA O FUTURO</strong><small>{m.fresh?'● DADOS ATUAIS':'ÚLTIMOS DADOS · ATRASADOS'}</small></div>
+
+  const futureByHorizon=new Map<number,any>((m.vnextFutureEntryRows||[])
+    .map((r:any):[number,any]=>[Number(r.delaySeconds),r]));
+  const forecastHorizonStrip=vnext?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
+    <summary>OUTROS HORÁRIOS FUTUROS · expandir</summary>
     <div className="vnextForwardHorizonsGrid">
       {allFutureHorizons.map(h=>{
         const r:any=futureByHorizon.get(h);
         const valid=!!(r&&['CALL','PUT'].includes(r.side)&&
-          Number(r.projectedPrice)>0&&Number(r.issuedAt)>0&&
-          Number(r.targetAt)>now&&Number(r.issuedAt)<=now+2000);
-        return <div key={h} className={`vnextForwardHorizon ${h===Number(expirySeconds)?'selected':''}`} data-horizon-seconds={h}>
-          <small>{expiryLabel(h)}{h===Number(expirySeconds)?' · ESCOLHIDO':''}</small>
+          Number(r.projectedEntryPrice)>0&&Number(r.projectedExitPrice)>0&&
+          Number(r.issuedAt)>0&&Number(r.entryAt)>now&&Number(r.issuedAt)<=now+2000);
+        return <div key={h} className={'vnextForwardHorizon '+(h===Number(expirySeconds)?'selected':'')} data-horizon-seconds={h}>
+          <small>EM {expiryLabel(h)}{h===Number(expirySeconds)?' · ESCOLHIDO':''}</small>
           <strong className={valid?(r.side==='CALL'?'call':'put'):'neutral'}>{valid?(r.side==='CALL'?'↑ CALL':'↓ PUT'):'—'}</strong>
-          <span>{valid?price(r.projectedPrice):'Sem previsão'}</span>
+          <span>{valid?price(r.projectedEntryPrice):'Sem previsão'}</span>
         </div>;
       })}
     </div>
-    <small className="vnextForwardHorizonsNote">Direção do preço em cada prazo, comparada ao preço da previsão. Não é ordem de entrada.</small>
-  </section>:null;
+    <small className="vnextForwardHorizonsNote">Entrada prevista no horário de cada célula; período posterior igual ao prazo. Experimental.</small>
+  </details>:null;
   const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings">
     <strong className="vnextReadingsHeading">TOTAIS DO MERCADO · SEM MOTOR</strong>
     <div className="vnextMobileReadingsGrid">

@@ -34,7 +34,7 @@ test('neither PC overlay nor normal or floating mobile render a secondary CALL P
  assert.equal((phone.match(/\{forecastReceipt\}/g)||[]).length,2,
    'mobile normal and floating must use the exact same selected motor forecast');
  assert.match(pc,/data-sentinel-vnext-clock/);
- assert.match(phone,/forecastDelayed/);
+ assert.match(phone,/const futureEntry=m\.vnextFutureEntryAnchor/);
  assert.match(phone,/mobile-feed-path/);
 });
 

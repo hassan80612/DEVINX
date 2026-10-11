@@ -1488,21 +1488,20 @@ export class LocalPlaywrightDriver{
         // Shared single-source prediction is pinned by the Agent itself.
         // The PC and mobile receive the SAME issuedAt/targetAt and price.
         // Live changes of direction never restart its original countdown.
-        const anchored=d.vnext?.targetAnchor||null;
-        const pinnedReceipt=anchored&&anchored.engineId===d.engine&&
-          anchored.asset===visibleAsset&&
-          Number(anchored.expirySeconds)*1000===duration&&
-          Number(anchored.issuedAt)>0&&Number(anchored.targetAt)>Number(anchored.issuedAt)?anchored:null;
-        const targetFinished=pinnedReceipt&&Number(pinnedReceipt.targetAt)<=Date.now();
-        // Current motor prediction is LIVE. Only the past reference deadline
-        // remains fixed, so that its original outcome can still be measured.
-        const liveReceipt=d.vnext?.receipt||null;
-        const liveForecastReady=!!(liveNow&&d.vnext?.engineId===d.engine&&
-          liveReceipt?.engineId===d.engine&&liveReceipt?.asset===visibleAsset&&
-          Number(liveReceipt.expirySeconds)*1000===duration&&
-          Number(liveReceipt.targetAt)>Date.now()&&
-          Date.now()-Number(liveReceipt.issuedAt)<=6000);
-        const liveProjection=liveForecastReady?d.vnext?.projection||null:null;
+        // One immutable future ENTRY schedule, not a current candle signal.
+        const pinnedEntry=d.vnext?.futureEntryAnchor||null;
+        const entryPlanReady=!!(pinnedEntry&&pinnedEntry.engineId===d.engine&&
+          pinnedEntry.asset===visibleAsset&&
+          Number(pinnedEntry.delaySeconds)*1000===duration&&
+          Number(pinnedEntry.entryAt)>Number(pinnedEntry.issuedAt)&&
+          ['CALL','PUT'].includes(pinnedEntry.side));
+        const scheduledAt=entryPlanReady?Number(pinnedEntry.entryAt):0;
+        const scheduledExit=entryPlanReady?Number(pinnedEntry.exitAt):0;
+        const entryReached=entryPlanReady&&Date.now()>=scheduledAt;
+        const scheduledSide=entryPlanReady?pinnedEntry.side:null;
+        const scheduledDecision=!entryPlanReady?'SEM PREVISÃO DE ENTRADA':
+          entryReached?'HORÁRIO PREVISTO ATINGIDO':
+          scheduledSide==='CALL'?'↑ CALL PREVISTO':'↓ PUT PREVISTO';
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -1527,55 +1526,53 @@ export class LocalPlaywrightDriver{
                   <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
                 </select>
               </label>
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">PREVER ATÉ
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ENTRADA DAQUI A
                 <select data-sentinel-setting="duration" title="Prazo da previsão selecionado por você" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   ${[5,10,15,30,45,60,120,180,300,600,900,3600].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+(v<60?v+'s':v/60+'min')+'</option>').join('')}
                 </select>
               </label>
             </div>
-            <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px 25px;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${liveForecastReady&&liveReceipt.side==='CALL'?callTone:liveForecastReady&&liveReceipt.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
-              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PROJEÇÃO FUTURA EM ANÁLISE · ${esc(d.engine||'automatic').toUpperCase()}</div>
-              <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${liveForecastReady&&liveReceipt.side==='CALL'?callTone:liveForecastReady&&liveReceipt.side==='PUT'?putTone:ink}">${liveForecastReady?(liveReceipt.side==='CALL'?'↑ CALL':'↓ PUT'):'EM ANÁLISE'}</div>
-              <div data-sentinel-vnext-clock data-deadline="${Number(pinnedReceipt?.targetAt||0)}" data-issued="${Number(pinnedReceipt?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
-                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>ATÉ A PREVISÃO</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
-                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">HORÁRIO PREVISTO</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${pinnedReceipt?esc(new Date(Number(pinnedReceipt.targetAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">PREVISÃO FIXA ${pinnedReceipt?.side||'—'} · ${pinnedReceipt?new Date(Number(pinnedReceipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false}):'—'}</small></div>
+            <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px 25px;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
+              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
+              <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
+              <div data-sentinel-vnext-clock data-deadline="${scheduledAt}" data-issued="${Number(pinnedEntry?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
+                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>ATÉ POSSÍVEL ENTRADA</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
+                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">ENTRADA PREVISTA</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${entryPlanReady?esc(new Date(scheduledAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">VENCIMENTO ESTIMADO ${entryPlanReady?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):'—'}</small></div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;height:47px">
-                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${liveNow?'PREÇO AGORA':'ÚLTIMA COTAÇÃO'}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${Number(d.price)>0?price(d.price):'—'}</b></div>
-                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PROJEÇÃO AO VIVO</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${liveForecastReady?price(liveReceipt.projectedPrice):'—'}</b></div>
+                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO DE ENTRADA</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanReady?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
+                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO AO VENCER</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${entryPlanReady?price(pinnedEntry.projectedExitPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
-                <span style="color:${callTone}">CALL ${liveProjection&&Number.isFinite(Number(liveProjection.callPct))?Math.round(Number(liveProjection.callPct))+'%':'—'}</span>
-                <span style="color:${putTone}">PUT ${liveProjection&&Number.isFinite(Number(liveProjection.putPct))?Math.round(Number(liveProjection.putPct))+'%':'—'}</span>
+                <span style="color:${callTone}">ENTRADA EM ${entryPlanReady?Number(pinnedEntry.delaySeconds)+'s':'—'}</span>
+                <span style="color:${putTone}">PERÍODO APÓS ${entryPlanReady?Number(pinnedEntry.holdingSeconds)+'s':'—'}</span>
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${liveNow?'AO VIVO':'COTAÇÃO ATRASADA'}</span>
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
-                <summary style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da previsão</summary>
+                <summary style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
                 <div style="padding:7px;display:grid;gap:6px">
-                  <div>Emissão ${pinnedReceipt?esc(new Date(Number(pinnedReceipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'} · Faixa ${price(pinnedReceipt?.expectedLow)} a ${price(pinnedReceipt?.expectedHigh)} · ${n(d.vnext?.outcomesVerified,0)} resultados observados.</div>
-                  <div>Motor atual: ${esc(d.vnext?.receipt?.side||'AGUARDANDO')} · última análise ${d.vnext?.receipt?.issuedAt?esc(new Date(Number(d.vnext.receipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}. Não altera a previsão fixada acima.</div>
-
-                  <div data-sentinel-horizon-evidence>CONFERÊNCIAS NO VENCIMENTO (PESQUISA): ${Array.isArray(d.vnext?.horizonMeasurements)&&d.vnext.horizonMeasurements.length?d.vnext.horizonMeasurements.map(x=>(Number(x.horizonSeconds)<60?x.horizonSeconds+'s':x.horizonSeconds/60+'m')+': '+Number(x.correct)+'/'+Number(x.verified)).join(' · '):'sem observações suficientes'}. Não equivalem a taxa de acerto calibrada.</div>
-                  <div>Projeção experimental, sem taxa de acerto comprovada. Não é ordem automática.</div>
+                  <div>Previsão experimental, sem assertividade validada e sem autorização automática de ordem.</div>
+                  <div>Registrada ${entryPlanReady?new Date(Number(pinnedEntry.issuedAt)).toLocaleTimeString("pt-BR",{hour12:false}):"—"} · direção imutável até a hora prevista · nova cotação não altera o registro.</div>
+                  <div>${liveNow?"Cotação recebida":"Cotação desatualizada ou indisponível"} · NÃO representa oportunidade confirmada de operação.</div>
+                  <div data-sentinel-horizon-evidence>Conferências históricas de projeção de preço não validam esta previsão de entrada futura.</div>
                 </div>
               </details>
             </section>
 
-            <section data-sentinel-vnext-horizon-matrix style="display:grid;grid-template-rows:17px 1fr 11px;gap:5px;min-height:149px;max-height:149px;height:149px;overflow:hidden;margin-top:9px;padding:8px 10px;border:1px solid ${panelBorder};border-radius:10px;background:${fieldBg};contain:layout">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;overflow:hidden;white-space:nowrap"><b style="font-size:10px;color:${goldSoft}">PREVISÕES FUTURAS · ${esc(d.engine||'automatic').toUpperCase()}</b><small style="font-size:9px;color:${muted}">${liveNow?'COTAÇÃO ATUAL':'DADOS ATRASADOS'}</small></div>
-              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:4px;min-height:0">
-              ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((a,b)=>a-b).slice(0,9).map(h=>{
-                const item=(Array.isArray(d.vnext?.horizonForecasts)?d.vnext.horizonForecasts:[]).find(x=>Number(x.horizonSeconds)===h);
-                const valid=!!(item&&['CALL','PUT'].includes(item.side)&&Number(item.projectedPrice)>0&&
-                  Number(item.issuedAt)>0&&Number(item.issuedAt)<=Date.now()+2000&&Number(item.targetAt)>Date.now());
-                const mark=valid?(item.side==='CALL'?'↑ CALL':'↓ PUT'):'—';
-                const tone=valid?(item.side==='CALL'?callTone:putTone):muted;
+            <details data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
+              <summary style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">
+              ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((x,y)=>x-y).slice(0,9).map(h=>{
+                const item=(Array.isArray(d.vnext?.futureEntryRows)?d.vnext.futureEntryRows:[]).find(x=>Number(x.delaySeconds)===h);
+                const valid=!!(item&&['CALL','PUT'].includes(item.side)&&
+                  Number(item.projectedEntryPrice)>0&&Number(item.projectedExitPrice)>0&&
+                  Number(item.issuedAt)>0&&Number(item.entryAt)>Date.now());
                 const label=h<60?h+'s':h%60===0?h/60+'m':h+'s';
-                return '<div data-sentinel-horizon="'+h+'" style="display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);grid-template-rows:11px 15px;gap:1px;min-width:0;overflow:hidden;align-content:center;background:rgba(0,0,0,.1);border:1px solid '+(h*1000===duration?goldSoft:panelBorder)+';border-radius:6px;padding:2px 5px"><small style="grid-column:1/-1;font-size:8px;color:'+muted+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+label+(h*1000===duration?' · SELECIONADO':'')+'</small><b style="font-size:12px;line-height:15px;color:'+tone+';white-space:nowrap">'+mark+'</b><span style="grid-column:2;text-align:right;font-size:8px;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(valid?price(item.projectedPrice):'Sem previsão')+'</span></div>'
+                return '<div data-sentinel-horizon="'+h+'" style="min-width:0;padding:5px;border:1px solid '+(h*1000===duration?goldSoft:panelBorder)+';border-radius:6px"><small style="font-size:9px;white-space:nowrap">EM '+label+'</small><b style="display:block;color:'+(valid?(item.side==='CALL'?callTone:putTone):muted)+';font-size:12px">'+(valid?(item.side==='CALL'?'↑ CALL':'↓ PUT'):'—')+'</b><small style="font-size:8px;color:'+ink+'">'+(valid?price(item.projectedEntryPrice):'Sem previsão')+'</small></div>';
               }).join('')}
               </div>
-              <small style="font-size:8px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Direção futura por período, sem ordem automática. Seleção define o alvo principal.</small>
-            </section>
+              <small style="font-size:8px;color:${muted}">Previsões experimentais para possíveis entradas posteriores. Sem autorização de operação.</small>
+            </details>
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
@@ -1782,7 +1779,7 @@ export class LocalPlaywrightDriver{
             const target=Number(pane.getAttribute('data-deadline')||0);
             const issued=Number(pane.getAttribute('data-issued')||0);
             const cycleStatus=pane.querySelector('[data-sentinel-cycle-status]');
-            if(cycleStatus)cycleStatus.textContent=target>issued&&Date.now()>=target?'ENCERRADO':'ATÉ A PREVISÃO';
+            if(cycleStatus)cycleStatus.textContent=target>issued&&Date.now()>=target?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA';
             let shown='—:—';
             if(Number.isFinite(target)&&Number.isFinite(issued)&&target>issued&&issued>0){
               const left=Math.ceil((target-Date.now())/1000);
