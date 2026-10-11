@@ -135,3 +135,21 @@ test('exact 67.1 versus independent learned trajectory over six horizons and new
  console.log('SENTINEL_671_ADAPTIVE_DIRECT='+JSON.stringify(report));
  assert.equal(total.n,768);
 });
+
+test('late backfill arriving only at issue cannot invent a long observable history',()=>{
+ const rows=generate(310079,'cycle',2401),now=rows.at(-1).ts;
+ const delayed=rows.map(q=>({...q,receivedAt:now}));
+ const r=adaptiveDirectTrajectory({quoteHistory:delayed,asOf:now,
+  entryDelaySeconds:30,holdingSeconds:30});
+ assert.equal(r.side,null);
+ assert.equal(r.status,'insufficient-completed-context');
+});
+test('the reference price is a quote actually available at issue',()=>{
+ const rows=generate(310091,'trend',2401),now=rows.at(-1).ts;
+ const received=rows.map(q=>({...q,receivedAt:q.ts+500}));
+ const r=adaptiveDirectTrajectory({quoteHistory:received,asOf:now,
+  entryDelaySeconds:30,holdingSeconds:30});
+ assert.equal(r.status,'adaptive-direct-trajectory');
+ assert.equal(r.latestObservedQuoteAt,now-1000);
+ assert.ok(Math.abs(r.expectedPath[0].price-rows.at(-2).price)<1e-10);
+});
