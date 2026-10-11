@@ -1469,3 +1469,11 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextForwardHorizon span{grid-column:2;text-align:right;font-size:8px;line-height:11px;color:#cbd8d5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .liveScenario .vnextForwardHorizonsNote{font-size:8px;color:#b7c7c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:12px}
 .liveScenario .vnextTargetCountdown.ended strong{font-size:23px!important}
+
+/* Sentinel 13.4.67 — other entry horizons closed by default, never
+   push the main scheduled decision off a phone/floating card. */
+.liveScenario .vnextForwardHorizons:not([open]){display:block;height:38px!important;min-height:38px!important;max-height:38px!important;padding:7px 10px!important;overflow:hidden!important}
+.liveScenario .vnextForwardHorizons[open]{display:grid;grid-template-rows:16px 1fr 12px;height:160px!important;min-height:160px!important;max-height:160px!important}
+.liveScenario .vnextForwardHorizons>summary{font-size:10px;line-height:21px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e4cc94;cursor:pointer}
+.liveScenario .vnextForwardHorizons[open]>summary{line-height:16px}
+.liveScenario .vnextFutureDirection strong{font-size:clamp(15px,4vw,20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
