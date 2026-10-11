@@ -16,7 +16,7 @@ test('67.1 rollback baseline is immutable while the new release opts into a sepa
  assert.match(active,/forecastModel='original-67'/);
  assert.match(active,/forecastModel==='adaptive-direct-trajectory-v1'/);
  const runtime=await source('agent/src/core/runtime.mjs');
- assert.match(runtime,/const model=singleEngineForecast\(\{settings,snap,now(?:,forecastModel:this\.forecastModel)?\}\)/);
+ assert.match(runtime,/const model=singleEngineForecast\(\{settings,snap,now(?:,forecastModel:this\.forecastModel(?:,adaptiveHistory)?)?\}\)/);
  assert.doesNotMatch(runtime,/observeImmediateMarket|vnextNowObservation|nowIndication/);
  assert.match(runtime,/const eligible=previous\.filter\(x=>x\?\.targetAt>now-2000\)/);
  assert.match(runtime,/forwardHorizonMatrix\(/);
