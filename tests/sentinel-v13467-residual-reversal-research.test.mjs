@@ -24,7 +24,7 @@ test('regime description excludes future quotes and detects range activity',()=>
  const a=entryRegimeFeatures(sample,at);
  const poisoned=[...sample,{ts:at+30000,price:0.1},{ts:at+60000,price:100}];
  assert.deepEqual(entryRegimeFeatures(poisoned,at),a);
- assert.equal(a.features.length,10);
+ assert.equal(a.features.length,12);
  assert.ok(a.turning>=0&&a.turning<=1);
 });
 test('an observed 30-second entry and 30-second settlement creates one true residual, AFTER expiry',()=>{
