@@ -6,6 +6,8 @@ on:
       - 'sentinel-trading-lab/agent/src/core/vnext-direct-paired-ridge-research.mjs'
       - 'tests/sentinel-v13467-direct-paired-ridge.test.mjs'
       - 'tests/sentinel-v13467-direct-paired-compare.test.mjs'
+      - 'sentinel-trading-lab/agent/src/core/vnext-causal-two-corrections.mjs'
+      - 'tests/sentinel-v13467-causal-two-corrections.test.mjs'
       - '.github/workflows/sentinel-direct-paired-ridge-research.yml'
   workflow_dispatch:
 permissions:
@@ -22,7 +24,8 @@ jobs:
       - name: Syntax, original version regression and strict causality
         run: |
           node --check sentinel-trading-lab/agent/src/core/vnext-direct-paired-ridge-research.mjs
-          node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-direct-paired-ridge.test.mjs
+          node --check sentinel-trading-lab/agent/src/core/vnext-causal-two-corrections.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-direct-paired-ridge.test.mjs tests/sentinel-v13467-causal-two-corrections.test.mjs
   comparison:
     runs-on: ubuntu-latest
     needs: safety
