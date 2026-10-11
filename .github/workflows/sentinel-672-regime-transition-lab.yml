@@ -1,0 +1,49 @@
+name: Sentinel 67.2 Regime Transition Isolated Research
+on:
+  push:
+    branches: [sentinel-672-regime-transition-lab-20261011]
+    paths: ['.github/workflows/sentinel-672-regime-transition-lab.yml']
+permissions:
+  contents: read
+jobs:
+  compare-frozen-hypotheses:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Assert published forecasting, controls, installer and website untouched
+        run: |
+          git diff --exit-code 66c42ff6da4e7af7268a933b9ff83ddfe0b9be90 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/public sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/agent/src/core/adaptive-direct-trajectory.mjs sentinel-trading-lab/agent/src/core/adaptive-temporal-history.mjs sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs sentinel-trading-lab/agent/src/core/runtime.mjs
+      - name: Causal context, exact baseline and purged validation contracts
+        run: node --test tests/sentinel-672-regime-transition.test.mjs
+      - name: Frozen unseen synthetic streams and changing regimes
+        run: |
+          mkdir -p tmp/regime-results
+          node scripts/sentinel-regime-transition-comparison.mjs synthetic tmp/regime-results/synthetic.json
+      - name: Verify independent archived real one-second prices
+        run: |
+          set -euo pipefail
+          mkdir -p tmp/regime-market-1s
+          for symbol in BTCUSDT ETHUSDT; do
+            for date in 2026-10-03 2026-10-04 2026-10-07 2026-10-08; do
+              filename="$symbol-1s-$date"
+              url="https://data.binance.vision/data/spot/daily/klines/$symbol/1s/$filename.zip"
+              curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url" -o "tmp/regime-market-1s/$filename.zip"
+              curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url.CHECKSUM" -o "tmp/regime-market-1s/$filename.zip.CHECKSUM"
+              (cd tmp/regime-market-1s && sha256sum -c "$filename.zip.CHECKSUM")
+              unzip -p "tmp/regime-market-1s/$filename.zip" "$filename.csv" > "tmp/regime-market-1s/$filename.csv"
+              test "$(wc -l < "tmp/regime-market-1s/$filename.csv")" -gt 80000
+            done
+          done
+      - name: Same-time paired-return and top-bottom comparison on new real market archives
+        run: node scripts/sentinel-regime-transition-comparison.mjs tmp/regime-market-1s tmp/regime-results/external.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-regime-transition-results
+          path: tmp/regime-results/
+          retention-days: 14
