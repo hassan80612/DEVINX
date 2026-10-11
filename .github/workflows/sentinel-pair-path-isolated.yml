@@ -8,11 +8,16 @@ permissions:
 jobs:
   test-isolated-forecast:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - name: Verify historical paths and independent engine pair selection
-        run: node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs tests/sentinel-v1374-pairs-walkforward.test.mjs tests/sentinel-v1374-regime-forecast.test.mjs tests/sentinel-180s-all-strategies.test.mjs tests/sentinel-180s-holdout.test.mjs tests/sentinel-3min-global-shadow.test.mjs tests/sentinel-adaptive-strategy-advisor.test.mjs
+        run: node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs tests/sentinel-v1374-pairs-walkforward.test.mjs tests/sentinel-v1374-regime-forecast.test.mjs tests/sentinel-180s-all-strategies.test.mjs tests/sentinel-180s-holdout.test.mjs tests/sentinel-3min-global-shadow.test.mjs tests/sentinel-adaptive-strategy-advisor.test.mjs tests/sentinel-pair-mode-pc-controls.test.mjs tests/sentinel-mobile-research-parity.test.mjs
+      - name: Type-check experimental PC and mobile TypeScript without deploying
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund --no-package-lock
+          ./node_modules/.bin/tsc --noEmit --pretty false

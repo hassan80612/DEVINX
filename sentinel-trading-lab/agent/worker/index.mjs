@@ -159,6 +159,23 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
       const n=Number(value);if(![5000,10000,15000,30000,45000,60000,120000,180000,300000,600000,900000,3600000].includes(n))throw new Error('invalid_duration');
       runtime.patchSettings({orderDurationMs:n,forecastHorizonSeconds:Math.round(n/1000)},'overlay');
       runtime.requestImmediateEvaluation?.();
+    }else if(['pairResearchEnabled','futureResearchEnabled','strategyAdvisorEnabled'].includes(key)){
+      // Informational research switches; do not change the execution engine.
+      runtime.patchSettings({[key]:value===true||String(value)==='true'},'overlay');
+      runtime.requestImmediateEvaluation?.();
+    }else if(key==='pairResearchId'){
+      if(!['reversal','levels_breakout','retest'].includes(String(value)))throw new Error('invalid_research_pair');
+      runtime.patchSettings({pairResearchId:String(value)},'overlay');runtime.requestImmediateEvaluation?.();
+    }else if(key==='strategyAdvisorMode'){
+      if(!['manual','automatic_advisory'].includes(String(value)))throw new Error('invalid_advisor_mode');
+      runtime.patchSettings({strategyAdvisorMode:String(value)},'overlay');runtime.requestImmediateEvaluation?.();
+    }else if(key==='entryTimeMode'){
+      if(!['fixed','automatic'].includes(String(value)))throw new Error('invalid_entry_time_mode');
+      runtime.patchSettings({entryTimeMode:String(value)},'overlay');runtime.requestImmediateEvaluation?.();
+    }else if(key==='entryLeadSeconds'||key==='holdingSeconds'){
+      const allowed=key==='entryLeadSeconds'?[5,10,15,30,60,120,300]:[15,30,45,60,120,180,300,600,900];
+      const n=Number(value);if(!allowed.includes(n))throw new Error('invalid_research_time');
+      runtime.patchSettings({[key]:n},'overlay');runtime.requestImmediateEvaluation?.();
     }else if(key==='forecastHorizon'){
       const n=Math.round(Number(value));if(![30,60,120,300,600,900,3600].includes(n))throw new Error('invalid_forecast_horizon');
       runtime.patchSettings({forecastHorizonSeconds:n},'overlay');
@@ -308,6 +325,14 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       quality:a.quality||view.signalValidation||null,
       minConfidence:view.settings?.risk?.minConfidence||74,
       futureDisplayThreshold:view.settings?.futureDisplayThreshold||70,
+      pairResearchEnabled:view.settings?.pairResearchEnabled===true,
+      pairResearchId:view.settings?.pairResearchId||'reversal',
+      entryTimeMode:view.settings?.entryTimeMode||'fixed',
+      entryLeadSeconds:Number(view.settings?.entryLeadSeconds||30),
+      holdingSeconds:Number(view.settings?.holdingSeconds||60),
+      futureResearchEnabled:view.settings?.futureResearchEnabled===true,
+      strategyAdvisorEnabled:view.settings?.strategyAdvisorEnabled===true,
+      strategyAdvisorMode:view.settings?.strategyAdvisorMode||'manual',
       pausedReadings:view.settings?.pausedReadings||{},
       reasons:a.reasons||view.lastResult?.reasons||[],
       metrics:m,

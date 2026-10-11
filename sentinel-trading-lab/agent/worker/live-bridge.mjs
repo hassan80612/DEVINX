@@ -35,7 +35,24 @@ export function analystSnapshot(runtimeStatus,live){
     Number(e.projectedEntryPrice)||0,Number(e.projectedExitPrice)||0,
     Number(e.issuedAt)||0,Number(e.holdingSeconds)||0
   ]:null;
+  const advisor=vnext.strategyAdvisor||null;
+  const forward=vnext.generalFutureResearch||vnext.general180Research||null;
+  const combo=vnext.combinedResearch||null;
+  // Minimal, read-only research cards. No trajectories, neighbor paths,
+  // training history or invented calibrated accuracy via the live socket.
+  const sa=advisor?[
+    advisor.marketPhaseLabel||null,advisor.selectedInterpretation||null,
+    advisor.recommended?.name||null,advisor.chartContext||null]:null;
+  const fp=forward?[
+    Number(forward.horizonSeconds)||0,forward.confirmedSide||null,
+    forward.status||null,forward.possibleExtremes?.peak?.windowSeconds||null,
+    forward.possibleExtremes?.trough?.windowSeconds||null]:null;
+  const tp=combo?[
+    combo.pairId||null,combo.status||null,combo.selected?.side||null,
+    Number(combo.selected?.entryAt)||0,Number(combo.selected?.exitAt)||0,
+    combo.event||null]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
+    ...(sa?{sa}:{}),...(fp?{fp}:{}),...(tp?{tp}:{}),
     engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     computedStatus:vnext.computedStatus||'unavailable',
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
@@ -76,7 +93,18 @@ export function analystSnapshot(runtimeStatus,live){
     v:1,at:Date.now(),seq:0,agentVersion:String(runtimeStatus?.agentVersion||''),
     state:runtimeStatus?.state,killSwitch:runtimeStatus?.killSwitch,masterFrozen:runtimeStatus?.masterFrozen,
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
-    settings:{engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
+    settings:{
+      engine:runtimeStatus?.settings?.engine||null,
+      orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000),
+      pairResearchEnabled:runtimeStatus?.settings?.pairResearchEnabled===true,
+      pairResearchId:runtimeStatus?.settings?.pairResearchId||'reversal',
+      futureResearchEnabled:runtimeStatus?.settings?.futureResearchEnabled===true,
+      strategyAdvisorEnabled:runtimeStatus?.settings?.strategyAdvisorEnabled===true,
+      strategyAdvisorMode:runtimeStatus?.settings?.strategyAdvisorMode||'manual',
+      entryTimeMode:runtimeStatus?.settings?.entryTimeMode||'fixed',
+      entryLeadSeconds:Number(runtimeStatus?.settings?.entryLeadSeconds||30),
+      holdingSeconds:Number(runtimeStatus?.settings?.holdingSeconds||60)
+    },
     liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null},
     feed:{price:live?.quote??null,quoteTs:liveQuoteAt},
     lastResult:{asset:result.asset||asset,analysis:{
@@ -104,7 +132,8 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
     engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
     ea:v.ea,er:v.er,
-    projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
+    projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards,
+    sa:v.sa,fp:v.fp,tp:v.tp
   };
   const trimmed={...snapshot,
     lastResult:{...snapshot.lastResult,analysis:{
@@ -117,7 +146,9 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   // without ancillary observations. A fat optional panel must not drop a quote.
   const minimal={...trimmed,lastResult:{...trimmed.lastResult,analysis:{
     ...trimmed.lastResult.analysis,
-    vnext:{...compactVnext,targetProjection:null,hm:[],hf:[],er:[]}
+    vnext:{...compactVnext,targetProjection:null,hm:[],hf:[],er:[],
+      // Direction + choice summaries stay after less important horizon rows.
+      sa:v.sa,fp:v.fp,tp:v.tp}
   }}};
   return size(minimal)<=maxBytes?minimal:null;
 }
@@ -171,6 +202,10 @@ export class LiveBridge{
       // broker quote arrived. The old dedup ignored all three, so the phone
       // could appear stuck until its next whole-state cloud poll.
       snapshot.settings?.engine,snapshot.settings?.orderDurationMs,
+      snapshot.settings?.pairResearchEnabled,snapshot.settings?.pairResearchId,
+      snapshot.settings?.futureResearchEnabled,snapshot.settings?.strategyAdvisorEnabled,
+      snapshot.settings?.strategyAdvisorMode,snapshot.settings?.entryTimeMode,
+      snapshot.settings?.entryLeadSeconds,snapshot.settings?.holdingSeconds,
       snapshot.lastResult?.analysis?.vnext?.receipt?.side,
       snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
       snapshot.lastResult?.analysis?.vnext?.hf?.map(row=>row.slice(0,3).join(',')).join(';'),
