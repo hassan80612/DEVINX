@@ -48,6 +48,26 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     vnext.projection:null;
   const vnextTargetProjection=vnextTargetAnchor&&vnext?.targetProjection?
     vnext.targetProjection:null;
+  // Forecast that predicts a potential ENTRY in H seconds and a later
+  // price outcome. Never substitute old spot->future-price CALL/PUT here.
+  const entryFromTuple=(v:any)=>Array.isArray(v)?{
+    delaySeconds:Number(v[0]),side:v[1]||null,
+    projectedEntryPrice:Number(v[2])||null,projectedExitPrice:Number(v[3])||null,
+    issuedAt:Number(v[4])||0,holdingSeconds:Number(v[5])||0,
+    entryAt:(Number(v[4])||0)+(Number(v[0])||0)*1000,
+    exitAt:(Number(v[4])||0)+((Number(v[0])||0)+(Number(v[5])||0))*1000
+  }:v;
+  const entryAnchor=entryFromTuple(vnext?.ea||vnext?.futureEntryAnchor);
+  const vnextFutureEntryAnchor=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
+    Number(entryAnchor?.delaySeconds)===horizon&&
+    Number(entryAnchor?.entryAt)>Number(entryAnchor?.issuedAt)&&
+    ['CALL','PUT'].includes(String(entryAnchor?.side||''))?entryAnchor:null;
+  const vnextFutureEntryRows=matchingMarket&&vnext?.engineId===s?.settings?.engine?
+    (Array.isArray(vnext?.er)?vnext.er:
+      Array.isArray(vnext?.futureEntryRows)?vnext.futureEntryRows:[])
+      .map(entryFromTuple)
+      .filter((r:any)=>Number(r?.delaySeconds)>0&&Number(r.delaySeconds)<=3600):[];
+
   // PC sends full model rows, mobile signed broadcast sends compact numeric
   // tuples. Both are strictly from the currently selected engine and asset.
   const rawHorizons=Array.isArray(vnext?.hf)?vnext.hf:
@@ -139,7 +159,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,quoteAgeAtFrame,transportAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextStatus:vnext?.computedStatus||null,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextFutureEntryAnchor,vnextFutureEntryRows,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,vnextLastSettled:vnext?.lastSettled||null,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
