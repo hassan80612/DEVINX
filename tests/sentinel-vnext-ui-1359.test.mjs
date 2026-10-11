@@ -19,7 +19,7 @@ test('desktop Agent selects only one motor and displays the target price/time ra
  const v=s.slice(s.indexOf('const nextHtml=d.engine?'),s.indexOf('const nextHtml=d.engine?')+18000);
  assert.match(v,/data-sentinel-setting="engine"/);
  assert.match(v,/data-sentinel-setting="duration"/);
- assert.match(v,/PROJEÇÃO AO VIVO/);
+ assert.match(v,/PREÇO FUTURO AO VENCER/);
  assert.match(v,/ENTRADA FUTURA/);
  assert.match(v,/Projeção experimental/);
  assert.doesNotMatch(v,/Estratégia 1/);
