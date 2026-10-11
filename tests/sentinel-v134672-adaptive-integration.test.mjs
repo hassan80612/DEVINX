@@ -1,0 +1,110 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
+import {singleEngineForecast} from '../sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs';
+import {futureEntrySchedule} from '../sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs';
+import {forwardHorizonMatrix} from '../sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs';
+import {adaptiveDirectTrajectory} from '../sentinel-trading-lab/agent/src/core/adaptive-direct-trajectory.mjs';
+import {analystSnapshot,fitAnalystFrame} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
+const MODEL='adaptive-direct-trajectory-v1',now=1800000000000,asset='EUR/USD OTC';
+const history=Array.from({length:2400},(_,i)=>({
+ ts:now-(2399-i)*1000,
+ price:1.1+Math.sin(i/19)*.00016+Math.sin(i/47)*.00007+i*.00000003
+}));
+const snap={quoteHistory:history,quoteTs:now,price:history.at(-1).price,provider:'iq_option'};
+const settings={engine:'automatic',asset,orderDurationMs:30000};
+const release=JSON.parse(fs.readFileSync(new URL('../sentinel-trading-lab/agent/release.json',import.meta.url)));
+test('release activates the tested new model through actual Worker runtime options',()=>{
+ assert.equal(release.version,'13.4.67.2');
+ assert.equal(release.runtime.forecastModel,MODEL);
+ const runtime=new DemoTradingRuntime({...release.runtime,enableVNext:true});
+ runtime.patchSettings({...settings,forecastHorizonSeconds:30});
+ assert.equal(runtime.forecastModel,MODEL);
+ const g=runtime._signalValidationGate({analysis:{},snap,settings:runtime.settings,now});
+ const direct=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
+  entryDelaySeconds:30,holdingSeconds:30});
+ const plan=g.analysis.vnext.futureEntryForecast;
+ assert.equal(plan.modelVersion,MODEL);
+ assert.equal(plan.side,direct.side);
+ assert.equal(plan.projectedEntryPrice,direct.projectedEntryPrice);
+ assert.equal(plan.projectedExitPrice,direct.projectedExitPrice);
+ assert.equal(g.analysis.vnext.futureEntryAnchor.entryAt,now+30000);
+ assert.equal(g.analysis.operationalSignal.actionable,false);
+ assert.equal(g.allowed,false);
+});
+test('new current-to-horizon price projection is not mixed with old historical analogs',()=>{
+ const r=singleEngineForecast({settings,snap,now,forecastModel:MODEL});
+ const direct=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
+  entryDelaySeconds:0,holdingSeconds:30});
+ assert.equal(r.modelVersion,MODEL);
+ assert.equal(r.receipt.projectedPrice,direct.projectedExitPrice);
+ assert.equal(r.forecastFoundation,'adaptive-direct-trajectory');
+ assert.equal(r.receipt.targetAt,now+30000);
+});
+test('all live future-entry horizons run the direct model on exactly the same chosen times',()=>{
+ const matrix=forwardHorizonMatrix({settings,snap,now,forecastModel:MODEL});
+ for(const row of matrix.entryRows){
+  const r=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
+   entryDelaySeconds:row.delaySeconds,holdingSeconds:row.delaySeconds});
+  assert.equal(row.modelVersion,MODEL);
+  assert.equal(row.side,r.side);
+  assert.equal(row.entryAt,now+row.delaySeconds*1000);
+  assert.equal(row.exitAt,now+row.delaySeconds*2000);
+  assert.equal(row.projectedExitPrice,r.projectedExitPrice);
+ }
+ const old=forwardHorizonMatrix({settings,snap,now});
+ const switched=forwardHorizonMatrix({settings,snap,now,previous:old,forecastModel:MODEL});
+ assert.equal(switched.reused,false,'cache from original model must not hide new predictions');
+});
+test('selected specialist motors retain original behavior, even in the new release',()=>{
+ for(const engine of ['trend','mean_reversion','price_action','support_resistance','breakout',
+  'trendline_breakout','fibonacci_retest','smart_confluence']){
+  const own={...settings,engine};
+  assert.deepEqual(singleEngineForecast({settings:own,snap,now,forecastModel:MODEL}),
+   singleEngineForecast({settings:own,snap,now}));
+  assert.deepEqual(futureEntrySchedule({settings:own,snap,now,forecastModel:MODEL}),
+   futureEntrySchedule({settings:own,snap,now}));
+ }
+});
+test('short-history fallback keeps original 67 functionality rather than mixing endpoint models',()=>{
+ const short={...snap,quoteHistory:history.slice(-60)};
+ assert.deepEqual(futureEntrySchedule({settings,snap:short,now,forecastModel:MODEL}),
+  futureEntrySchedule({settings,snap:short,now}));
+ assert.equal(singleEngineForecast({settings,snap:short,now,forecastModel:MODEL}).modelVersion,
+  'vnext-single-owner-v1');
+});
+test('same fixed entry clock and signed compact mobile frame carry the new PC prediction',()=>{
+ const runtime=new DemoTradingRuntime({...release.runtime,enableVNext:true});
+ runtime.patchSettings({...settings,forecastHorizonSeconds:30});
+ const g=runtime._signalValidationGate({analysis:{},snap,settings:runtime.settings,now});
+ const original=g.analysis.vnext.futureEntryAnchor;
+ const q={ts:now+1000,price:snap.price-.0001};
+ const changed={...snap,quoteTs:q.ts,price:q.price,quoteHistory:[...history.slice(1),q]};
+ const next=runtime._signalValidationGate({analysis:{},snap:changed,settings:runtime.settings,now:q.ts});
+ assert.deepEqual(next.analysis.vnext.futureEntryAnchor,original);
+ const frame=analystSnapshot({settings:runtime.settings,agentVersion:release.version,state:'running',
+  lastEvalMs:q.ts,lastResult:{asset,analysis:next.analysis}},{
+  symbol:asset,validatedSymbol:asset,lastQuoteAt:q.ts,quote:q.price,
+  assetValidated:true,analysisFeedValidated:true});
+ const fitted=fitAnalystFrame(frame);
+ assert.ok(fitted);
+ assert.ok(Buffer.byteLength(JSON.stringify(fitted))+73<=3000);
+ assert.equal(fitted.agentVersion,'13.4.67.2');
+ const entry=fitted.lastResult.analysis.vnext.ea;
+ assert.equal(entry[0],30);assert.equal(entry[1],original.side);
+ assert.equal(entry[2],original.projectedEntryPrice);
+ assert.equal(entry[3],original.projectedExitPrice);
+});
+test('67.1 visual components, desktop controls and expansion handlers are byte-identical',()=>{
+ const expected={"sentinel-trading-lab/agent/worker/index.mjs":"25560982cf44228157a8e3825acb4de3b3f93cbb","sentinel-trading-lab/agent/worker/live-bridge.mjs":"2c7785da7c2cf50ab57790f177fbb49cc3ea9690","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"c6294ea53938b1848444e0df68881813f7441b57","sentinel-trading-lab/src/app/globals.css":"c629314d0cbc8c0aee637b4f4e73dbd54641865e","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"7633bb15ff3d7f8ff940fe80e3d74d443b6e55cf","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
+ for(const [path,sha] of Object.entries(expected)){
+  const bytes=fs.readFileSync(new URL('../'+path,import.meta.url));
+  const actual=crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0')).update(bytes).digest('hex');
+  assert.equal(actual,sha,path);
+ }
+ const page=fs.readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
+ assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.2'"));
+ assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.2.exe'));
+});
