@@ -149,6 +149,10 @@ function supportResistance(rows,s,h){
  const distanceLow=support?(current-support.l)/Math.max(s.spread,1e-10):Infinity;
  const hitHigh=resistance?priorTouches(rows,resistance.l,s.current.ts,600000):0;
  const hitLow=support?priorTouches(rows,support.l,s.current.ts,600000):0;
+ // A level with multiple separated reactions is more meaningful than an
+ // arbitrary extreme observed once. Do not read tick density as touches.
+ const highReliability=resistance?clamp(hitHigh/3,.2,1):0;
+ const lowReliability=support?clamp(hitLow/3,.2,1):0;
  // Level influence decreases continuously with distance. Crossing a level
  // is treated as a different structural reaction from touching it.
  const pressureHigh=resistance? -Math.exp(-Math.abs(distanceHigh)*1.2)*
@@ -156,7 +160,8 @@ function supportResistance(rows,s,h){
  const pressureLow=support? Math.exp(-Math.abs(distanceLow)*1.2)*
   clamp(.65+Math.log1p(hitLow)*.2,.5,1.25)*(distanceLow>=0?1:-.38):0;
  const continuation=slope.b*h*(.15+.15*slope.r2);
- const move=(pressureHigh+pressureLow)*s.spread*.65+continuation;
+ const move=(pressureHigh*highReliability+pressureLow*lowReliability)*
+  s.spread*.65+continuation;
  return result(s,h,move,'Suporte/Resistência: pivôs confirmados, toques e distância aos níveis',
   {confirmedHighs:highs.length,confirmedLows:lows.length,
    priorHighTouches:hitHigh,priorLowTouches:hitLow,distanceHigh,distanceLow});
@@ -172,13 +177,18 @@ function breakout(rows,s,h){
  const vol=localVolatilityChange(rows,now,h);
  const last=rows.filter(x=>x.ts>=now-Math.max(4,Math.min(22,h*.23))*1000);
  const crossedHigh=last.some(x=>x.l>hi),crossedLow=last.some(x=>x.l<lo);
- const failedHigh=crossedHigh&&p<hi?Math.max(0,
+ // A simple one-tick slip back across the boundary is NOT a confirmed
+ // failed break. Require meaningful return *inside* the prior range.
+ const failedHigh=crossedHigh&&p<hi-.12*s.spread?Math.max(0,
   (Math.max(...last.map(x=>x.l))-hi)/Math.max(s.spread,1e-10)):0;
- const failedLow=crossedLow&&p>lo?Math.max(0,
+ const failedLow=crossedLow&&p>lo+.12*s.spread?Math.max(0,
   (lo-Math.min(...last.map(x=>x.l)))/Math.max(s.spread,1e-10)):0;
  const displacement=p>hi?(p-hi)/Math.max(s.spread,1e-10):
   p<lo?(p-lo)/Math.max(s.spread,1e-10):0;
- const breakoutStrength=clamp(Math.abs(displacement)*Math.sqrt(vol.ratio),0,1.9);
+ // A genuine continuation requires expansion outside a prior range; inside
+ // range the strong breakout impulse is not inferred from the last candle.
+ const expansion=clamp((vol.ratio-.85)/.6,0,1);
+ const breakoutStrength=clamp(Math.abs(displacement)*Math.sqrt(vol.ratio),0,1.9)*expansion;
  const pressure=short.b*h*(.18+.26*short.r2);
  const follow=Math.sign(displacement)*s.spread*breakoutStrength*.48;
  const failed=s.spread*(clamp(failedLow,0,2)-clamp(failedHigh,0,2))*.72;
@@ -211,16 +221,26 @@ function trendlineBreakout(rows,s,h){
  if(!upper&&!lower)return result(s,h,trend.b*h*.25,
   'Trendline Breakout: aguardando dois pivôs confirmados da mesma direção',
   {confirmedHighs:highs.length,confirmedLows:lows.length});
+ // A line distance is not a line BREAK. The 13.4.70 model mistakenly
+ // treated standing anywhere above/below either boundary as breakout evidence.
+ // Use the actual last confirmed crossing relative to the line at its OWN time.
+ const lookbackMs=Math.max(4000,Math.min(30000,h*250));
+ const prior=rows.filter(q=>q.ts<=s.current.ts-lookbackMs).at(-1);
+ const lineAt=(line,ts)=>line.level-line.slope*(s.current.ts-ts)/1000;
  const upperDistance=upper?(p-upper.level)/Math.max(s.spread,1e-10):0;
  const lowerDistance=lower?(p-lower.level)/Math.max(s.spread,1e-10):0;
- const upperPressure=upper?clamp(upperDistance,-2,2)*s.spread*.32:0;
- const lowerPressure=lower?clamp(lowerDistance,-2,2)*s.spread*.32:0;
+ const crossedUpper=!!(prior&&upper&&prior.l<=lineAt(upper,prior.ts)&&p>upper.level);
+ const crossedLower=!!(prior&&lower&&prior.l>=lineAt(lower,prior.ts)&&p<lower.level);
+ const upperPressure=crossedUpper?
+   clamp(upperDistance,0,2)*s.spread*.32:0;
+ const lowerPressure=crossedLower?
+   clamp(lowerDistance,-2,0)*s.spread*.32:0;
  const continuation=trend.b*h*.45*Math.max(.15,trend.r2);
  const move=continuation+upperPressure+lowerPressure;
  return result(s,h,move,'Trendline Breakout: linhas de pivôs históricos confirmados',
   {confirmedHighs:highs.length,confirmedLows:lows.length,
    upperSlope:upper?.slope??null,lowerSlope:lower?.slope??null,
-   upperDistance,lowerDistance});
+   upperDistance,lowerDistance,crossedUpper,crossedLower});
 }
 function fibonacciRetest(rows,s,h){
  const pivots=priorConfirmedPivots(rows,s.current.ts,{
