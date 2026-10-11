@@ -1,0 +1,116 @@
+name: Sentinel 13.4.73 DEMO-only Local Quote Recorder
+on:
+  push:
+    branches: [sentinel-1373-demo-local-quote-consent-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'tests/sentinel-v1373-demo-quote-privacy.test.mjs'
+      - '.github/workflows/sentinel-1373-demo-recorder.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-1373-demo-recording
+  cancel-in-progress: false
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify DEMO-only privacy, REAL/UNKNOWN rejection, and no pre-existing engine regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check sentinel-trading-lab/agent/worker/demo-quote-recorder.mjs
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --test tests/sentinel-v1373-demo-quote-privacy.test.mjs
+          node --test tests/sentinel-v13470-nine-engines-integrity.test.mjs tests/sentinel-v13467-future-entry.test.mjs
+  package:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Build isolated self-contained Windows DEMO recorder (do NOT alter public updater)
+        shell: bash
+        working-directory: sentinel-trading-lab
+        run: |
+          set -euo pipefail
+          mkdir -p preview-bin
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const r=JSON.parse(fs.readFileSync('agent/release.json'));
+          const p=JSON.parse(fs.readFileSync('agent/package.json'));
+          if(r.version!=='13.4.73'||p.version!=='13.4.73'||r.runtime.demoQuoteCollection!==true)
+            throw Error('unexpected DEMO recorder identity');
+          const auto=JSON.parse(fs.readFileSync('public/downloads/agent-update.json'));
+          if(auto.version!=='13.4.70')throw Error('refusing to alter automatic public update');
+          NODE
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o preview-bin/Sentinel-Agent-DEMO-13.4.73.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          test "$(stat -c%s preview-bin/Sentinel-Agent-DEMO-13.4.73.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum preview-bin/Sentinel-Agent-DEMO-13.4.73.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.73-DEMO-Recorder-Candidate
+          path: sentinel-trading-lab/preview-bin/Sentinel-Agent-DEMO-13.4.73.exe
+          if-no-files-found: error
+          retention-days: 7
+  windows-smoke:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.73-DEMO-Recorder-Candidate
+          path: candidate
+      - name: Validate embedded Windows Agent 13.4.73 without modifying computer
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Get-ChildItem -Path candidate -Recurse -Filter 'Sentinel-Agent-DEMO-13.4.73.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Missing DEMO candidate EXE'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "DEMO embedded Agent verification failed: $LASTEXITCODE"}
+  publish-isolated:
+    needs: windows-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.73-DEMO-Recorder-Candidate
+          path: candidate
+      - name: Publish isolated branch-only DEMO installer, never change 13.4.70 manifest or production domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=$(find candidate -type f -name 'Sentinel-Agent-DEMO-13.4.73.exe' -print -quit)
+          test -n "$src" || { echo 'Missing EXE in downloaded artifact'; exit 1; }
+          dest=sentinel-trading-lab/public/downloads/Sentinel-Agent-DEMO-13.4.73.exe
+          cp "$src" "$dest"
+          test "$(node -p "require('./sentinel-trading-lab/public/downloads/agent-update.json').version")" = "13.4.70"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f "$dest"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'build(sentinel): add isolated DEMO recorder EXE after Windows smoke [skip ci]'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
