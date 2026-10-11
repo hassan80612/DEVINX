@@ -1,0 +1,31 @@
+name: Sentinel 13.4.72 Isolated Motor Benchmark
+on:
+  push:
+    branches: [sentinel-1372-motor-specific-internal-validation-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/**'
+      - 'tests/sentinel-v1372-motor-regressions.test.mjs'
+      - '.github/workflows/sentinel-1372-motor-benchmark.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax of changed models and archived baselines
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs
+          node --check sentinel-trading-lab/agent/src/core/engine-structure-metrics.mjs
+          node --check tests/sentinel-v1372-motor-regressions.test.mjs
+      - name: Chronological original and unseen synthetic scenarios (67 / 70 / 72)
+        run: node --test tests/sentinel-v1372-motor-regressions.test.mjs
+      - name: Check existing safety and future-entry contracts
+        run: |
+          node --test tests/sentinel-v13470-nine-engines-integrity.test.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs
