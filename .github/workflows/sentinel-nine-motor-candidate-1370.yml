@@ -1,0 +1,136 @@
+name: Sentinel 13.4.70 Nine-Motor Candidate Qualification
+on:
+  push:
+    branches: [sentinel-13470-nine-engines-structural-research-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'tests/sentinel-v13470-nine-engines-integrity.test.mjs'
+      - 'tests/sentinel-v13470-nine-engine-walkforward.test.mjs'
+      - '.github/workflows/sentinel-nine-motor-candidate-1370.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-nine-motor-1370
+  cancel-in-progress: true
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check all model syntax and historical contract tests
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent/src/core -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test \
+            tests/sentinel-single-engine-contract-1359.test.mjs \
+            tests/sentinel-expiry-driven-1359.test.mjs \
+            tests/sentinel-forward-forecast-proof-1359.test.mjs \
+            tests/sentinel-automatic-forward-model-1359.test.mjs \
+            tests/sentinel-specialist-motors-1359.test.mjs \
+            tests/sentinel-vnext-runtime-1359.test.mjs \
+            tests/sentinel-vnext-ui-1359.test.mjs \
+            tests/sentinel-independent-reversal-coexist.test.mjs \
+            tests/sentinel-v13460-mobile-realtime-regression.test.mjs \
+            tests/sentinel-v13460-forecast-countdown.test.mjs \
+            tests/sentinel-v13460-cards-outcomes.test.mjs \
+            tests/sentinel-v13464-mobile-feed-continuity.test.mjs \
+            tests/sentinel-v13465-rollback.test.mjs \
+            tests/sentinel-v13466-multihorizon-forecasts.test.mjs \
+            tests/sentinel-v13467-future-entry.test.mjs \
+            tests/sentinel-v13470-nine-engines-integrity.test.mjs \
+            tests/sentinel-live-bridge.test.mjs
+  empirical-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Same-timestamp, all motor × horizon baseline versus candidate test
+        run: node --test tests/sentinel-v13470-nine-engine-walkforward.test.mjs
+  website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build site preview (never promote)
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --no-audit --no-fund --package-lock=false
+          npm run build
+  windows-package:
+    needs: [regressions,empirical-benchmark]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Produce isolated 13.4.70 candidate, never overwrite production downloads
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p preview-bin
+          # The Go launcher EMBEDS public/downloads/agent_payload_v88.zip.
+          # Do not build a new preview ZIP at a different path while leaving
+          # the embedded ZIP at the old 13.4.67 version.
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          cp public/downloads/agent_payload_v88.zip preview-bin/agent_payload_v88.zip
+          node --input-type=module - <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const release=JSON.parse(fs.readFileSync('agent/release.json'));
+          const pkg=JSON.parse(fs.readFileSync('agent/package.json'));
+          if(release.version!=='13.4.70'||pkg.version!==release.version)throw Error('candidate_release_mismatch');
+          const zipSha256=crypto.createHash('sha256').update(fs.readFileSync('preview-bin/agent_payload_v88.zip')).digest('hex');
+          fs.writeFileSync('preview-bin/agent-update.json',JSON.stringify({
+            format:'sentinel-agent-update-v1',version:release.version,build:release.build,zipSha256,
+            productionPromotionAllowed:false,rollbackBase:'13.4.67'
+          })+'\n');
+          NODE
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o preview-bin/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          test "$(stat -c%s preview-bin/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s preview-bin/agent_payload_v88.zip)"
+          sha256sum preview-bin/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.70-Candidate-NOT-Published
+          path: sentinel-trading-lab/preview-bin/*
+          if-no-files-found: error
+          retention-days: 14
+  windows-smoke:
+    needs: windows-package
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.70-Candidate-NOT-Published
+          path: candidate
+      - name: Verify EXE, contained ZIP, and installer logic without installation
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Get-ChildItem -Path 'candidate' -Recurse -Filter 'Sentinel-Agent-Windows.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Candidate EXE missing'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "Windows smoke failed: $LASTEXITCODE"}

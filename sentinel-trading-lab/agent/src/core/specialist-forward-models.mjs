@@ -1,3 +1,4 @@
+import {timedSlope,localVolatilityChange,priorConfirmedPivots,meanReversionAr1,priorTouches} from './engine-structure-metrics.mjs';
 /**
  * Specialized, SINGLE-OWNER, quote-history price forecasts.
  * Every model estimates its own future price endpoint. None calls another
@@ -60,85 +61,227 @@ function result(stats,h,move,reason,extra={}){
 }
 const required=rows=>rows.length>=15&&rows.at(-1).ts-rows[0].ts>=14000;
 function trend(rows,s,h){
- const fast=s.slope(Math.max(5,Math.min(25,h/2)))??0,mid=s.slope(Math.max(20,Math.min(100,h)))??fast,long=s.slope(Math.max(45,Math.min(300,3*h)))??mid;
- const persistence=s.eff*.8+.15;
- const move=(fast*.22+mid*.43+long*.35)*h*persistence;
- return result(s,h,move,'Trend Following: inclinação histórica e persistência',{fast,mid,long,persistence});
+ // Keep trend following distinct: regress slope + R² strength and
+ // deceleration, rather than extrapolate the last candle's sign.
+ const short=timedSlope(rows,Math.max(12,Math.min(75,h*.7)),s.current.ts);
+ const medium=timedSlope(rows,Math.max(35,Math.min(260,h*1.6)),s.current.ts);
+ const long=timedSlope(rows,Math.max(90,Math.min(650,h*4)),s.current.ts);
+ const vol=localVolatilityChange(rows,s.current.ts,h);
+ const persistence=clamp(.18+.55*medium.r2+.22*long.r2,0,.95);
+ const trendSlope=(.28*short.b+.46*medium.b+.26*long.b)*persistence;
+ const deceleration=clamp(short.change,-s.perSqrt*.5,s.perSqrt*.5);
+ const shockScale=clamp(1/Math.sqrt(vol.ratio),.45,1.3);
+ const horizonScale=65*(1-Math.exp(-h/65))+.08*h;
+ const move=(trendSlope+.22*deceleration)*horizonScale*shockScale;
+ return result(s,h,move,'Trend Following: regressão temporal, força R², desaceleração e volatilidade local',
+  {slope:trendSlope,r2Short:short.r2,r2Medium:medium.r2,
+   r2Long:long.r2,deceleration,volatilityRatio:vol.ratio});
 }
 function meanReversion(rows,s,h){
- const last=Math.log(s.p),pull=s.mean-last;
- const speed=clamp(.13+Math.sqrt(s.variance)/Math.max(s.spread,.000001)*.12,.08,.5);
- const move=pull*(1-Math.exp(-h/Math.max(10,80*(1-speed))))*(1-.42*s.eff);
- return result(s,h,move,'Mean Reversion: retorno estatístico ao centro anterior',{historicalMean:Math.exp(s.mean),speed});
+ // The OU half-life is estimated on 2-second log-price samples. An
+ // indiscriminate pull to a rolling average is NOT evidence of reversion.
+ const fit=meanReversionAr1(rows,s.current.ts,{
+  lookbackSeconds:Math.max(90,Math.min(950,h*4))
+ });
+ const p=Math.log(s.p),trend=timedSlope(rows,Math.max(30,Math.min(230,h*1.2)),s.current.ts);
+ const historicalMean=s.mean;
+ let pull=historicalMean-p,halfLifeSeconds=null,ouStrength=0;
+ if(fit?.stable&&Number.isFinite(fit.equilibrium)){
+  const range=Math.max(1e-8,fit.high-fit.low);
+  const equilibrium=clamp(fit.equilibrium,fit.low-range*.25,fit.high+range*.25);
+  halfLifeSeconds=fit.halfLifeSeconds;
+  // A stable in-range OU fit contributes by its estimated mean-reverting
+  // lifetime. It cannot magically reverse a sustained high-R² trend.
+  ouStrength=clamp(fit.fit*(1-trend.r2*.45),0,1);
+  const ouMove=(equilibrium-p)*(1-Math.pow(fit.phi,h/2));
+  pull=ouMove*ouStrength+(historicalMean-p)*
+    (1-Math.exp(-h/Math.max(20,h*1.1)))*(1-ouStrength)*.3;
+ }else{
+  pull=(historicalMean-p)*(1-Math.exp(-h/Math.max(20,h*.85)))*.24;
+ }
+ const move=pull*(1-.42*trend.r2);
+ return result(s,h,move,'Mean Reversion: meia-vida OU estimada, equilíbrio e desvio real',{phi:fit?.phi??null,
+  halfLifeSeconds,ouStrength,trendR2:trend.r2,historicalMean:Math.exp(historicalMean)});
 }
 function priceAction(rows,s,h){
- const recent=rows.filter(x=>x.ts>=s.current.ts-Math.max(25,h)*1000);
- const split=Math.max(4,Math.floor(recent.length/3));
- const last=recent.slice(-split),previous=recent.slice(-2*split,-split);
- const head=(arr)=>arr[0]?.p||s.p,tail=(arr)=>arr.at(-1)?.p||s.p;
- const currentLeg=Math.log(tail(last)/head(last)),oldLeg=Math.log(tail(previous)/head(previous));
- const range=Math.max(...recent.map(x=>x.p))-Math.min(...recent.map(x=>x.p));
- const rejection=(Math.max(...last.map(x=>x.p))-tail(last))-(tail(last)-Math.min(...last.map(x=>x.p)));
- const rejectionPressure=range>0?clamp(rejection/range,-1,1)*s.spread*.32:0;
- const move=(currentLeg*.44+oldLeg*.16)*Math.min(h/Math.max(5,last.length),3)+rejectionPressure;
- return result(s,h,move,'Price Action: sequência de pernas e rejeições já observadas',{currentLeg,oldLeg,rejectionPressure});
+ // A pivot must be CONFIRMED before issue time. Compare two completed
+ // legs and the unfinished leg, not two arbitrary fractions of tick count.
+ const recent=rows.filter(x=>x.ts>=s.current.ts-Math.max(95,Math.min(900,h*5))*1000);
+ const pivots=priorConfirmedPivots(recent,s.current.ts,{
+  lookbackSeconds:Math.max(95,Math.min(900,h*5)),
+  confirmSeconds:Math.max(2,Math.min(8,h/12)),
+  minimumProminence:s.perSqrt*Math.sqrt(Math.min(h,45))*.1
+ });
+ const last=pivots.at(-1),prior=pivots.at(-2),before=pivots.at(-3);
+ const slope=timedSlope(rows,Math.max(22,Math.min(100,h)),s.current.ts);
+ const completedLeg=last&&prior?last.l-prior.l:0;
+ const olderLeg=prior&&before?prior.l-before.l:0;
+ const ongoingLeg=last?Math.log(s.p)-last.l:0;
+ const currentVsLeg=last&&prior?clamp(
+  ongoingLeg/Math.max(s.spread*.35,Math.abs(completedLeg)),-2,2):0;
+ const rejection=last?(last.kind==='high'?-1:1)*
+  clamp(1-Math.abs(ongoingLeg)/Math.max(s.spread,.0000001),0,1):0;
+ const legSlope=last&&prior?completedLeg/
+  Math.max(3,(last.ts-prior.ts)/1000):slope.b;
+ const move=(.32*slope.b+.22*legSlope)*h*
+    (.3+.7*slope.r2)+rejection*s.spread*.22+
+    currentVsLeg*s.spread*.08;
+ return result(s,h,move,'Price Action: pernas confirmadas, rejeição de pivô e continuidade',
+  {confirmedPivots:pivots.length,ongoingLeg,completedLeg,olderLeg,rejection});
 }
 function supportResistance(rows,s,h){
- const pastRows=rows.filter(x=>x.ts<=s.current.ts-2000&&x.ts>=s.current.ts-180000);
- if(pastRows.length<10)return result(s,h,0,'Sem histórico suficiente de níveis');
- const lo=Math.min(...pastRows.map(x=>x.p)),hi=Math.max(...pastRows.map(x=>x.p));
- const range=Math.max(hi-lo,s.p*.0000001);
- const highPosition=(s.p-lo)/range,mid=s.slope(Math.max(15,h))??0;
- const boundary=highPosition>.85?-(highPosition-.85)/.15:highPosition<.15?(.15-highPosition)/.15:0;
- const continuation=mid*h*s.eff*.35;
- const move=boundary*s.spread*.75+continuation;
- return result(s,h,move,'Suporte/Resistência: distâncias de extremos históricos',{support:lo,resistance:hi,highPosition});
+ const pivots=priorConfirmedPivots(rows,s.current.ts,{
+  lookbackSeconds:Math.max(180,Math.min(1050,h*5)),
+  confirmSeconds:Math.max(2,Math.min(9,h/14)),
+  minimumProminence:s.perSqrt*Math.sqrt(Math.max(3,h))*.09
+ });
+ const current=Math.log(s.p);
+ const highs=pivots.filter(x=>x.kind==='high'),lows=pivots.filter(x=>x.kind==='low');
+ const resistance=highs.slice().sort((a,b)=>Math.abs(a.l-current)-Math.abs(b.l-current))[0];
+ const support=lows.slice().sort((a,b)=>Math.abs(a.l-current)-Math.abs(b.l-current))[0];
+ const slope=timedSlope(rows,Math.max(22,Math.min(180,h)),s.current.ts);
+ if(!resistance&&!support){
+  const move=slope.b*h*.12;
+  return result(s,h,move,'Suporte/Resistência: sem pivôs anteriores suficientes',
+   {confirmedHighs:0,confirmedLows:0});
+ }
+ const distanceHigh=resistance?(resistance.l-current)/Math.max(s.spread,1e-10):Infinity;
+ const distanceLow=support?(current-support.l)/Math.max(s.spread,1e-10):Infinity;
+ const hitHigh=resistance?priorTouches(rows,resistance.l,s.current.ts,600000):0;
+ const hitLow=support?priorTouches(rows,support.l,s.current.ts,600000):0;
+ // Level influence decreases continuously with distance. Crossing a level
+ // is treated as a different structural reaction from touching it.
+ const pressureHigh=resistance? -Math.exp(-Math.abs(distanceHigh)*1.2)*
+  clamp(.65+Math.log1p(hitHigh)*.2,.5,1.25)*(distanceHigh>=0?1:-.38):0;
+ const pressureLow=support? Math.exp(-Math.abs(distanceLow)*1.2)*
+  clamp(.65+Math.log1p(hitLow)*.2,.5,1.25)*(distanceLow>=0?1:-.38):0;
+ const continuation=slope.b*h*(.15+.15*slope.r2);
+ const move=(pressureHigh+pressureLow)*s.spread*.65+continuation;
+ return result(s,h,move,'Suporte/Resistência: pivôs confirmados, toques e distância aos níveis',
+  {confirmedHighs:highs.length,confirmedLows:lows.length,
+   priorHighTouches:hitHigh,priorLowTouches:hitLow,distanceHigh,distanceLow});
 }
 function breakout(rows,s,h){
- const long=rows.filter(x=>x.ts>=s.current.ts-160000&&x.ts<=s.current.ts-2000);
- const prior=long.filter(x=>x.ts>=s.current.ts-65000);
- if(prior.length<15)return result(s,h,0,'Sem faixa prévia suficiente para breakout');
- const hi=Math.max(...prior.map(x=>x.p)),lo=Math.min(...prior.map(x=>x.p)),width=(hi-lo)/s.p;
- const slope=s.slope(20)??0;
- const pressure=clamp(slope*h,-s.spread,s.spread);
- const compression=clamp(s.spread/Math.max(width,1e-12),.1,2);
- const proximity= s.p>=hi?1:s.p<=lo?-1:clamp(((s.p-lo)/(hi-lo||1)-.5)*2,-1,1);
- const move=(pressure*.52+proximity*s.spread*.36)*compression;
- return result(s,h,move,'Breakout: compressão de faixa passada e pressão na borda',{rangeLow:lo,rangeHigh:hi,compression,proximity});
+ const now=s.current.ts;
+ const prior=rows.filter(x=>x.ts>=now-Math.max(95,Math.min(420,h*3))*1000
+  &&x.ts<=now-Math.max(3,Math.min(16,h*.17))*1000);
+ if(prior.length<15)return result(s,h,0,'Breakout: sem intervalo anterior suficiente');
+ const hi=Math.max(...prior.map(x=>x.l)),lo=Math.min(...prior.map(x=>x.l));
+ const p=Math.log(s.p),width=Math.max(1e-10,hi-lo);
+ const short=timedSlope(rows,Math.max(9,Math.min(35,h*.35)),now);
+ const vol=localVolatilityChange(rows,now,h);
+ const last=rows.filter(x=>x.ts>=now-Math.max(4,Math.min(22,h*.23))*1000);
+ const crossedHigh=last.some(x=>x.l>hi),crossedLow=last.some(x=>x.l<lo);
+ const failedHigh=crossedHigh&&p<hi?Math.max(0,
+  (Math.max(...last.map(x=>x.l))-hi)/Math.max(s.spread,1e-10)):0;
+ const failedLow=crossedLow&&p>lo?Math.max(0,
+  (lo-Math.min(...last.map(x=>x.l)))/Math.max(s.spread,1e-10)):0;
+ const displacement=p>hi?(p-hi)/Math.max(s.spread,1e-10):
+  p<lo?(p-lo)/Math.max(s.spread,1e-10):0;
+ const breakoutStrength=clamp(Math.abs(displacement)*Math.sqrt(vol.ratio),0,1.9);
+ const pressure=short.b*h*(.18+.26*short.r2);
+ const follow=Math.sign(displacement)*s.spread*breakoutStrength*.48;
+ const failed=s.spread*(clamp(failedLow,0,2)-clamp(failedHigh,0,2))*.72;
+ const move=follow+failed+pressure*.5;
+ return result(s,h,move,'Breakout: compressão/expansão e retorno ao intervalo após rompimento',
+  {rangeWidth:width,displacement,failedHigh,failedLow,volatilityRatio:vol.ratio});
 }
 function trendlineBreakout(rows,s,h){
- const samples=rows.filter(x=>x.ts>=s.current.ts-240000);
- if(samples.length<15)return result(s,h,0,'Linha de tendência indisponível');
- const chunks=[];for(let i=0;i<samples.length;i+=Math.max(3,Math.floor(samples.length/20))){const a=samples.slice(i,i+Math.max(3,Math.floor(samples.length/20)));if(a.length)chunks.push(a.at(-1))}
- const line=regress(chunks),level=Math.exp(line.fit((s.current.ts-samples[0].ts)/1000));
- const breakPressure=(Math.log(s.p/level))*clamp(h/60,.1,1);
- const trendPressure=line.b*h*.55;
- const move=trendPressure+breakPressure*.28;
- return result(s,h,move,'Trendline Breakout: regressão de pivôs históricos e desvio da linha',{lineLevel:level,lineSlope:line.b});
+ const pivots=priorConfirmedPivots(rows,s.current.ts,{
+  lookbackSeconds:Math.max(170,Math.min(1300,h*5)),
+  confirmSeconds:Math.max(3,Math.min(15,h/10)),
+  minimumProminence:s.perSqrt*Math.sqrt(Math.max(h,4))*.12
+ });
+ const highs=pivots.filter(x=>x.kind==='high');
+ const lows=pivots.filter(x=>x.kind==='low');
+ const fitPivots=pivotRows=>{
+  if(pivotRows.length<2)return null;
+  const pts=pivotRows.slice(-5).map(x=>({ts:x.ts,l:x.l}));
+  // Two-or-more pivot points are sufficient for a trendline OLS
+  const o=pts[0].ts;let sx=0,sy=0,sxx=0,sxy=0;
+  for(const q of pts){let x=(q.ts-o)/1000;sx+=x;sy+=q.l;sxx+=x*x;sxy+=x*q.l}
+  const n=pts.length,den=n*sxx-sx*sx;
+  const b=den>0?(n*sxy-sx*sy)/den:0;
+  const a=(sy-b*sx)/n;
+  return {slope:b,level:a+b*(s.current.ts-o)/1000};
+ };
+ const upper=fitPivots(highs),lower=fitPivots(lows);
+ const p=Math.log(s.p);
+ const trend=timedSlope(rows,Math.max(30,Math.min(220,h)),s.current.ts);
+ if(!upper&&!lower)return result(s,h,trend.b*h*.25,
+  'Trendline Breakout: aguardando dois pivôs confirmados da mesma direção',
+  {confirmedHighs:highs.length,confirmedLows:lows.length});
+ const upperDistance=upper?(p-upper.level)/Math.max(s.spread,1e-10):0;
+ const lowerDistance=lower?(p-lower.level)/Math.max(s.spread,1e-10):0;
+ const upperPressure=upper?clamp(upperDistance,-2,2)*s.spread*.32:0;
+ const lowerPressure=lower?clamp(lowerDistance,-2,2)*s.spread*.32:0;
+ const continuation=trend.b*h*.45*Math.max(.15,trend.r2);
+ const move=continuation+upperPressure+lowerPressure;
+ return result(s,h,move,'Trendline Breakout: linhas de pivôs históricos confirmados',
+  {confirmedHighs:highs.length,confirmedLows:lows.length,
+   upperSlope:upper?.slope??null,lowerSlope:lower?.slope??null,
+   upperDistance,lowerDistance});
 }
 function fibonacciRetest(rows,s,h){
- const prior=rows.filter(x=>x.ts>=s.current.ts-300000&&x.ts<s.current.ts-1000);
- if(prior.length<20)return result(s,h,0,'Sem swing anterior suficiente para Fibonacci');
- const lo=Math.min(...prior.map(x=>x.p)),hi=Math.max(...prior.map(x=>x.p)),span=hi-lo;
- if(span<=0)return result(s,h,0,'Swing sem amplitude');
- const up=prior[0].p<=prior.at(-1).p,retrace=(up?hi-s.p:s.p-lo)/span;
- const bands=[.236,.382,.5,.618,.786],closest=bands.reduce((a,b)=>Math.abs(b-retrace)<Math.abs(a-retrace)?b:a,bands[0]);
- const near=clamp(1-Math.abs(retrace-closest)/.2,0,1);
- const direction=up?1:-1;
- const slope=s.slope(20)??0;
- const move=direction*near*s.spread*.52+slope*h*.22;
- return result(s,h,move,'Fibonacci Retest: retração do último swing passado',{swingLow:lo,swingHigh:hi,retrace,nearestRatio:closest});
+ const pivots=priorConfirmedPivots(rows,s.current.ts,{
+  lookbackSeconds:Math.max(170,Math.min(1200,h*5)),
+  confirmSeconds:Math.max(3,Math.min(12,h/10)),
+  minimumProminence:s.perSqrt*Math.sqrt(Math.max(h,5))*.17
+ });
+ const end=pivots.at(-1),start=pivots.at(-2);
+ const trend=timedSlope(rows,Math.max(20,Math.min(160,h)),s.current.ts);
+ if(!end||!start||start.kind===end.kind){
+  return result(s,h,trend.b*h*.12,
+   'Fibonacci Retest: swing anterior ainda não confirmado',
+   {confirmedPivots:pivots.length});
+ }
+ const span=Math.abs(end.l-start.l),current=Math.log(s.p);
+ if(span<Math.max(s.perSqrt*Math.sqrt(h)*.25,1e-10))
+  return result(s,h,trend.b*h*.12,'Fibonacci Retest: swing sem amplitude significativa',
+   {confirmedPivots:pivots.length});
+ const up=end.l>start.l, retrace=(up?end.l-current:current-end.l)/span;
+ const ratios=[.236,.382,.5,.618,.786],nearest=ratios.reduce((a,b)=>
+  Math.abs(retrace-b)<Math.abs(retrace-a)?b:a,ratios[0]);
+ // A Fibonacci zone is relevant only after a CONFIRMED leg has actually
+ // retraced. It is not a forced bounce whenever price is near 0.618.
+ const proximity=clamp(1-Math.abs(nearest-retrace)/.12,0,1);
+ const rejection=clamp((up?1:-1)*trend.b*h/Math.max(s.spread,1e-10),-1,1);
+ const retestStrength=proximity*clamp(.5+.45*rejection,0,1);
+ const continuation=(up?1:-1)*s.spread*retestStrength*.45;
+ const move=continuation+trend.b*h*.26;
+ return result(s,h,move,'Fibonacci Retest: swing confirmado, retração e direção da reação',
+  {confirmedPivots:pivots.length,nearestRatio:nearest,retrace,proximity,rejection});
 }
 function smartConfluence(rows,s,h){
- // Confluence here is INTRA-engine analytical evidence, never a vote
- // between strategy motors.
- const rShort=s.slope(Math.min(20,Math.max(5,h/3)))??0;
- const rLong=s.slope(Math.max(30,Math.min(180,h*1.5)))??rShort;
- const meanPull=s.mean-Math.log(s.p);
- const drift=(rShort*.36+rLong*.64)*h*(.2+.6*s.eff);
- const reversion=meanPull*clamp(1-s.eff,0,1)*.24;
- const move=drift+reversion;
- return result(s,h,move,'Smart Confluence: evidências próprias de estrutura, regime e média',{drift,reversion});
+ // Intra-engine evidence only. Uses its own trend, mean and rejection
+ // estimates; never imports any of the eight other motors' predictions.
+ const trend=timedSlope(rows,Math.max(25,Math.min(230,h*1.8)),s.current.ts);
+ const ar=meanReversionAr1(rows,s.current.ts,{
+  lookbackSeconds:Math.max(90,Math.min(850,h*4))
+ });
+ const vol=localVolatilityChange(rows,s.current.ts,h);
+ const pivots=priorConfirmedPivots(rows,s.current.ts,{
+  lookbackSeconds:Math.max(110,Math.min(720,h*3)),
+  confirmSeconds:Math.max(2,Math.min(8,h/12)),
+  minimumProminence:s.perSqrt*Math.sqrt(h)*.11
+ });
+ const pivot=pivots.at(-1);
+ const p=Math.log(s.p);
+ const trendMove=trend.b*(65*(1-Math.exp(-h/65))+.15*h)*trend.r2;
+ const equilibrium=ar?.stable&&ar.equilibrium>=ar.low-.25*(ar.high-ar.low)
+  &&ar.equilibrium<=ar.high+.25*(ar.high-ar.low)?
+  ar.equilibrium:s.mean;
+ const meanMove=(equilibrium-p)*clamp(ar?.stable?1-Math.pow(ar.phi,h/2):h/120,0,1);
+ const pivotDistance=pivot?(p-pivot.l)/Math.max(s.spread,1e-10):0;
+ const rejection=pivot?(pivot.kind==='high'?-1:1)*
+  s.spread*.22*Math.exp(-Math.abs(pivotDistance)):0;
+ const trendMix=clamp(.22+.6*trend.r2,0,1);
+ const reversionMix=clamp((1-trend.r2)*.38,0,.38);
+ const volatilityScaling=clamp(1/Math.sqrt(vol.ratio),.5,1.2);
+ const move=(trendMove*trendMix+meanMove*reversionMix+rejection)*volatilityScaling;
+ return result(s,h,move,'Smart Confluence: R², equilíbrio estatístico, pivôs e volatilidade próprios',
+  {trendR2:trend.r2,volatilityRatio:vol.ratio,arPhi:ar?.phi??null,
+   pivots:pivots.length,trendContribution:trendMove,reversionContribution:meanMove});
 }
 export const SPECIALIST_FORECASTS=Object.freeze({
  trend,mean_reversion:meanReversion,price_action:priceAction,
