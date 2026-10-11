@@ -1,6 +1,6 @@
 {
   "version": "13.4.67.2",
-  "build": "13.4.67.2-adaptive-direct-forecast-1011",
+  "build": "13.4.67.2-strategy-copy-1011",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
