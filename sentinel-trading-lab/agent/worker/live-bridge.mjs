@@ -49,6 +49,9 @@ export function analystSnapshot(runtimeStatus,live){
       .map(x=>[Number(x.horizonSeconds),x.side||null,
         Number.isFinite(Number(x.projectedPrice))?Number(x.projectedPrice):null,
         Number(x.issuedAt)||0]):[],
+    // Observed outcomes are research evidence, not calibrated probabilities.
+    hm:Array.isArray(vnext.horizonMeasurements)?vnext.horizonMeasurements.slice(0,9)
+      .map(x=>[Number(x.horizonSeconds),Number(x.correct)||0,Number(x.verified)||0]):[],
     targetProjection:vnext.targetProjection?take(vnext.targetProjection,['side','callPct','putPct']):null,
     lastSettled:vnext.lastSettled?take(vnext.lastSettled,['engineId','asset','side','targetAt','referencePrice','projectedPrice','settledPrice','correct','expirySeconds']):null,
     cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
@@ -92,7 +95,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
-    projection:v.projection,hf:v.hf,cards:v.cards
+    projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
   };
   const trimmed={...snapshot,
     lastResult:{...snapshot.lastResult,analysis:{
