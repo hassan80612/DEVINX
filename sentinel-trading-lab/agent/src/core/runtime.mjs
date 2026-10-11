@@ -19,6 +19,7 @@ import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
+import {progressFutureEntryAudit} from './future-entry-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -908,6 +909,12 @@ export class DemoTradingRuntime{
           oldEntry.asset===String(settings.asset||'UNKNOWN').toUpperCase()&&
           oldEntry.delaySeconds===model.expirySeconds&&oldEntry.entryAt>now?oldEntry:null;
       this.vnextFutureEntryAnchor=entryAnchor;
+      // True entry-to-expiry outcome research, separate from the legacy
+      // now-to-H horizon audit. Keep it entirely in Agent memory.
+      this.vnextFutureEntryAudit=progressFutureEntryAudit({
+        previous:this.vnextFutureEntryAudit||null,
+        plan:entryAnchor,quoteHistory:snap.quoteHistory,now
+      });
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
         engineId:model.engineId,asset:settings.asset,
@@ -960,6 +967,7 @@ export class DemoTradingRuntime{
           futureEntryForecast:currentEntry,
           futureEntryAnchor:entryAnchor,
           futureEntryRows:matrix.entryRows,
+          futureEntryMeasurements:this.vnextFutureEntryAudit.summaries,
           horizonMeasurements:horizonAudit.summaries,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
           outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},

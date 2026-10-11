@@ -33,7 +33,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     rows.push(rowFor(model,seconds));
   }
   const entryRows=futureEntrySchedule({
-    settings,snap,now,delays:horizons,knownForecasts:rows
+    settings,snap,now,delays:horizons,knownForecasts:rows,focusDelaySeconds:horizon
   });
   return {context,rows,entryRows,computedAt:now,reused:false};
 }

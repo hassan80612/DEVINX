@@ -40,7 +40,14 @@ test('scheduled entry uses TWO forecasts from same selected motor, not the spot-
  const entry=singleEngineForecast({settings,snap,now}).receipt;
  const exit=singleEngineForecast({settings:{...settings,orderDurationMs:60000},snap,now}).receipt;
  assert.equal(plan.projectedEntryPrice,entry?.projectedPrice??null);
- assert.equal(plan.projectedExitPrice,exit?.projectedPrice??null);
+ // The 13.4.68 engine may adjust the later endpoint using strictly
+ // past, paired t+H->t+2H evidence. The older endpoint remains the baseline.
+ if(plan.historicalPairCases>0){
+   assert.ok(plan.projectedExitPrice>0);
+   assert.equal(plan.side,plan.projectedExitPrice>plan.projectedEntryPrice?'CALL':'PUT');
+   assert.equal(plan.baselineSide,
+     exit.projectedPrice>entry.projectedPrice?'CALL':'PUT');
+ }else assert.equal(plan.projectedExitPrice,exit?.projectedPrice??null);
  assert.equal(plan.entryAt,now+30000);
  assert.equal(plan.exitAt,now+60000);
 });
