@@ -1,0 +1,109 @@
+name: Sentinel 13.4.67.1 Panels-Only Agent Repair
+on:
+  push:
+    branches: [sentinel-13467-expand-hotfix-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/worker/local-playwright-driver.mjs'
+      - 'sentinel-trading-lab/agent/release.json'
+      - 'sentinel-trading-lab/agent/package.json'
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - 'tests/sentinel-13467-overlay-expand-hotfix.test.mjs'
+      - '.github/workflows/sentinel-13467-expand-hotfix.yml'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-13467-expand-hotfix
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Prove original 67 forecasting code is byte-identical
+        run: |
+          set -euo pipefail
+          git diff --quiet 5c20afbef3060d00a5caa52cf0498aebff6b20c9 HEAD -- sentinel-trading-lab/agent/src/core
+          test "$(node -p "require('./sentinel-trading-lab/agent/release.json').version")" = "13.4.67.1"
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - name: Verify native summary interactions and DOM patch against actual overlay code
+        run: |
+          npm install --prefix tests --no-save --no-package-lock --ignore-scripts --no-audit --no-fund jsdom@26.1.0
+          node --test tests/sentinel-13467-overlay-expand-hotfix.test.mjs tests/sentinel-v13467-future-entry.test.mjs
+      - name: Build separate Agent 67.1 without replacing 67 or its auto-updater
+        working-directory: sentinel-trading-lab
+        run: |
+          set -euo pipefail
+          rm -f public/downloads/agent_payload_v88.zip
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe agent-launcher.go
+          rm sentinel_icon.syso
+          test "$(stat -c%s public/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.67.1-panels-only-agent
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe
+          retention-days: 10
+          if-no-files-found: error
+  verify-windows:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.67.1-panels-only-agent
+          path: verify
+      - name: Test embedded payload without changing an existing Agent
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Get-ChildItem verify -Recurse -Filter 'Sentinel-Agent-13.4.67.1-Paineis.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Agent hotfix missing'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "Installer verify failed: $LASTEXITCODE"}
+  publish-file:
+    needs: verify-windows
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.67.1-panels-only-agent
+          path: candidate
+      - name: Add only separate verified repair installer, leave original 67 intact
+        run: |
+          set -euo pipefail
+          branch=sentinel-13467-expand-hotfix-20261011
+          if [ "$(git ls-remote origin "refs/heads/$branch" | cut -f1)" != "$GITHUB_SHA" ]; then
+            echo 'Branch changed during build; refuse stale file'
+            exit 1
+          fi
+          binary="$(find candidate -type f -name Sentinel-Agent-13.4.67.1-Paineis.exe -print -quit)"
+          test -s "$binary"
+          cp "$binary" sentinel-trading-lab/public/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f sentinel-trading-lab/public/downloads/Sentinel-Agent-13.4.67.1-Paineis.exe
+          git diff --cached --quiet && exit 0
+          git commit -m 'build(sentinel): verified 13.4.67.1 panels-only installer, original 67 unchanged [skip ci]'
+          git push origin "HEAD:$branch"

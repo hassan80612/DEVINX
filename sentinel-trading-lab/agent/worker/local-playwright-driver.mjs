@@ -1024,7 +1024,7 @@ export class LocalPlaywrightDriver{
           const stop=()=>{if(!drag)return;const moved=drag.active;drag=null;if(moved)try{const r=el.getBoundingClientRect();localStorage.setItem('sentinel-overlay-pos-v1',JSON.stringify({x:r.left,y:r.top}))}catch{}};
           el.addEventListener('pointerdown',ev=>{
             if(ev.button!=null&&ev.button!==0)return;
-            if(ev.target?.closest?.('button,select,input,textarea,a,label,[contenteditable="true"],[data-sentinel-no-drag]'))return;
+            if(ev.target?.closest?.('button,select,input,textarea,a,label,summary,details,[contenteditable="true"],[data-sentinel-no-drag]'))return;
             const r=el.getBoundingClientRect();
             if(ev.clientX>=r.right-12)return;
             drag={dx:ev.clientX-r.left,dy:ev.clientY-r.top,startX:ev.clientX,startY:ev.clientY,active:false,pointerId:ev.pointerId};
@@ -1044,7 +1044,7 @@ export class LocalPlaywrightDriver{
           });
           el.addEventListener('pointerup',stop);el.addEventListener('pointercancel',stop);
           el.addEventListener('keydown',ev=>{
-            if(ev.target?.closest?.('button,select,input,textarea,[contenteditable="true"]'))return;
+            if(ev.target?.closest?.('button,select,input,textarea,summary,details,[contenteditable="true"]'))return;
             const line=Math.max(52,Math.round(el.clientHeight*.10)),page=Math.max(140,Math.round(el.clientHeight*.78));
             let handled=true;
             if(ev.key==='ArrowDown')el.scrollBy({top:line,behavior:'smooth'});
@@ -1532,7 +1532,7 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
-            <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px 25px;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
+            <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
               <div data-sentinel-vnext-clock data-deadline="${scheduledAt}" data-issued="${Number(pinnedEntry?.issuedAt||0)}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
@@ -1549,7 +1549,7 @@ export class LocalPlaywrightDriver{
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${liveNow?'AO VIVO':'COTAÇÃO ATRASADA'}</span>
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
-                <summary style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
+                <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
                 <div style="padding:7px;display:grid;gap:6px">
                   <div>Previsão experimental, sem assertividade validada e sem autorização automática de ordem.</div>
                   <div>Registrada ${entryPlanReady?new Date(Number(pinnedEntry.issuedAt)).toLocaleTimeString("pt-BR",{hour12:false}):"—"} · direção imutável até a hora prevista · nova cotação não altera o registro.</div>
@@ -1559,8 +1559,8 @@ export class LocalPlaywrightDriver{
               </details>
             </section>
 
-            <details data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
-              <summary style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
+            <details data-sentinel-preserve-open="1" data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
+              <summary data-sentinel-no-drag="1" style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">
               ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((x,y)=>x-y).slice(0,9).map(h=>{
                 const item=(Array.isArray(d.vnext?.futureEntryRows)?d.vnext.futureEntryRows:[]).find(x=>Number(x.delaySeconds)===h);

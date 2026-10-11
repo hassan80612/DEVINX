@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67",
-  "build": "13.4.67-future-entry-pinned-1010",
+  "version": "13.4.67.1",
+  "build": "13.4.67.1-expand-panels-ui-only-1011",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
