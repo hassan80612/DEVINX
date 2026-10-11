@@ -23,7 +23,9 @@ test('new desktop has restored three light CALL PUT cards but old strategy voter
  const s=await readFile(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const start=s.indexOf('const nextHtml=d.engine?');
  assert.ok(start>=0);
- const view=s.slice(start,start+14000);
+ // Multi-horizon table sits before the three totals; inspect the entire
+ // VNext section instead of truncating the test in the middle of its label.
+ const view=s.slice(start,start+18000);
  assert.match(view,/TOTAIS · LEITURAS AO VIVO/);
  assert.match(view,/d\.vnext\?\.cards/);
  assert.match(view,/TOTAIS · LEITURAS AO VIVO/);
