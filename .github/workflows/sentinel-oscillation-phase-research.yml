@@ -1,0 +1,36 @@
+name: Sentinel 13.4.67 Phase / Oscillation Research
+on:
+  push:
+    branches: [sentinel-13467-oscillation-phase-research-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/vnext-oscillation-phase-research.mjs'
+      - 'tests/sentinel-v13467-oscillation-phase.test.mjs'
+      - 'tests/sentinel-v13467-phase-horizon-benchmark.test.mjs'
+      - '.github/workflows/sentinel-oscillation-phase-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax, no future-leakage, all user horizons, original 67 contracts
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/vnext-oscillation-phase-research.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-oscillation-phase.test.mjs
+  heldout:
+    needs: integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Original versus phase-aware on seven market regimes, nine engines and six durations
+        run: node --test tests/sentinel-v13467-phase-horizon-benchmark.test.mjs
