@@ -6,6 +6,7 @@ on:
       - 'sentinel-trading-lab/agent/src/core/vnext-residual-reversal-research.mjs'
       - 'tests/sentinel-v13467-residual-reversal-research.test.mjs'
       - 'tests/sentinel-v13467-residual-walkforward.test.mjs'
+      - 'tests/sentinel-v13467-residual-stress.test.mjs'
       - '.github/workflows/sentinel-residual-correction-research.yml'
   workflow_dispatch:
 permissions:
@@ -25,3 +26,5 @@ jobs:
           node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-residual-reversal-research.test.mjs
       - name: Chronological HELD-OUT synthetic benchmark (no claim of live accuracy)
         run: node --test tests/sentinel-v13467-residual-walkforward.test.mjs
+      - name: Additional untouched stress regimes with sudden volatility shifts
+        run: node --test tests/sentinel-v13467-residual-stress.test.mjs
