@@ -69,5 +69,5 @@ test('normal mobile and floating mobile keep last prediction visible but label i
  assert.match(model,/const quoteFresh=quoteAt>0&&now-quoteAt<=2500/);
  assert.match(model,/const transportAge=s\?\.liveTransport==='push'/);
  assert.match(page,/liveQuoteAgeAtFrame:Number\(payload\.liveBroker\?\.lastQuoteAt\)>0/);
- assert.match(card,/const observation=liveForecastValid&&observed\?\.side===liveForecast\.side/);
+ assert.doesNotMatch(card,/vnextNowObservation|instantObservation|opposingObserved/);
 });

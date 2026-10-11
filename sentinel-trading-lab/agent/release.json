@@ -1,6 +1,6 @@
 {
-  "version": "13.4.64",
-  "build": "13.4.64-mobile-feed-continuity-1010",
+  "version": "13.4.65",
+  "build": "13.4.65-signal-rollback-to-13460-1010",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

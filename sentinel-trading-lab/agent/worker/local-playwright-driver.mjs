@@ -1503,19 +1503,6 @@ export class LocalPlaywrightDriver{
           Number(liveReceipt.targetAt)>Date.now()&&
           Date.now()-Number(liveReceipt.issuedAt)<=6000);
         const liveProjection=liveForecastReady?d.vnext?.projection||null:null;
-        const liveObservation=d.vnext?.nowIndication||null;
-        const observationPresent=!!(liveObservation&&liveNow&&
-          d.vnext?.engineId===d.engine&&
-          liveObservation.asset===visibleAsset&&
-          ['CALL','PUT'].includes(liveObservation.side)&&
-          Number(liveObservation.expiresAt)>Date.now());
-        // Presentation-only scenario alignment. Never filter or delay motor.
-        const observationFresh=!!(observationPresent&&liveForecastReady&&
-          liveObservation.side===liveReceipt.side&&
-          Number(liveObservation.at)>=Number(pinnedReceipt?.issuedAt||0)&&
-          Number(liveObservation.at)<=Number(pinnedReceipt?.targetAt||Infinity));
-        const observationOpposing=!!(observationPresent&&liveForecastReady&&
-          liveObservation.side!==liveReceipt.side);
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -1546,12 +1533,6 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
-            <div data-sentinel-card="immediate-market-observation" style="display:grid;grid-template-rows:13px 24px 16px 16px;gap:2px;height:88px;max-height:88px;overflow:hidden;margin-top:7px;padding:7px 10px;border:1px solid ${panelBorder};border-left:3px solid ${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):goldSoft};border-radius:9px;background:${fieldBg}">
-              <small style="font-size:9px;font-weight:850;color:${goldSoft};white-space:nowrap">LEITURA AGORA <span style="color:${muted};font-weight:600">· só quando alinhada à projeção</span></small>
-              <b style="font-size:17px;line-height:24px;white-space:nowrap;color:${observationFresh?(liveObservation.side==='CALL'?callTone:putTone):ink}">${observationFresh?(liveObservation.side==='CALL'?'↑ CALL':'↓ PUT'):'—'}</b>
-              <small style="display:block;font-size:10px;line-height:16px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${observationFresh?(liveObservation.kind==='support-reaction'?'Reação no suporte':liveObservation.kind==='resistance-reaction'?'Reação na resistência':liveObservation.kind==='resistance-break'?'Rompimento de resistência':'Rompimento de suporte')+' · '+price(liveObservation.price)+' · '+new Date(Number(liveObservation.at)).toLocaleTimeString('pt-BR',{hour12:false}):observationOpposing?'Movimento contrário · aguardando alinhamento':'Sem reação alinhada ao cenário'}</small>
-              <small style="display:block;font-size:9px;line-height:16px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${observationFresh?'Prazo '+(duration<60000?duration/1000+'s':duration/60000+'min')+' · alvo teórico '+new Date(Number(liveObservation.targetAt||0)).toLocaleTimeString('pt-BR',{hour12:false}):'Leitura apenas quando acompanha a projeção futura'}</small>
-            </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px 25px;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${liveForecastReady&&liveReceipt.side==='CALL'?callTone:liveForecastReady&&liveReceipt.side==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PROJEÇÃO FUTURA EM ANÁLISE · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${liveForecastReady&&liveReceipt.side==='CALL'?callTone:liveForecastReady&&liveReceipt.side==='PUT'?putTone:ink}">${liveForecastReady?(liveReceipt.side==='CALL'?'↑ CALL':'↓ PUT'):'EM ANÁLISE'}</div>
@@ -1569,11 +1550,11 @@ export class LocalPlaywrightDriver{
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${liveNow?'AO VIVO':'COTAÇÃO ATRASADA'}</span>
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
-                <summary style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes e resultados</summary>
+                <summary style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da previsão</summary>
                 <div style="padding:7px;display:grid;gap:6px">
                   <div>Emissão ${pinnedReceipt?esc(new Date(Number(pinnedReceipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'} · Faixa ${price(pinnedReceipt?.expectedLow)} a ${price(pinnedReceipt?.expectedHigh)} · ${n(d.vnext?.outcomesVerified,0)} resultados observados.</div>
                   <div>Motor atual: ${esc(d.vnext?.receipt?.side||'AGUARDANDO')} · última análise ${d.vnext?.receipt?.issuedAt?esc(new Date(Number(d.vnext.receipt.issuedAt)).toLocaleTimeString('pt-BR',{hour12:false})):'—'}. Não altera a previsão fixada acima.</div>
-                  <div data-sentinel-card="last-future-outcome">${d.vnext?.lastSettled&&d.vnext.lastSettled.engineId===d.engine?'Último resultado: '+(d.vnext.lastSettled.correct?'direção acertou':'direção não acertou')+' · referência '+price(d.vnext.lastSettled.referencePrice)+' · projetado '+price(d.vnext.lastSettled.projectedPrice)+' · observado '+price(d.vnext.lastSettled.settledPrice):'Aguardando resultado verificado no vencimento'}</div>
+
                   <div>Projeção experimental, sem taxa de acerto comprovada. Não é ordem automática.</div>
                 </div>
               </details>

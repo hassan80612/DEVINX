@@ -43,7 +43,6 @@ export function analystSnapshot(runtimeStatus,live){
     ]):null,
     projection:vnext.projection?take(vnext.projection,['side','callPct','putPct']):null,
     targetProjection:vnext.targetProjection?take(vnext.targetProjection,['side','callPct','putPct']):null,
-    nowIndication:vnext.nowIndication?take(vnext.nowIndication,['asset','side','kind','at','price','level','expiresAt','expirySeconds','targetAt']):null,
     lastSettled:vnext.lastSettled?take(vnext.lastSettled,['engineId','asset','side','targetAt','referencePrice','projectedPrice','settledPrice','correct','expirySeconds']):null,
     cards:Array.isArray(vnext.cards)?vnext.cards.slice(0,3)
       .map(c=>take(c,['id','side','callPct','putPct'])):[]
@@ -86,7 +85,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
-    projection:v.projection,nowIndication:v.nowIndication,cards:v.cards
+    projection:v.projection,cards:v.cards
   };
   const trimmed={...snapshot,
     lastResult:{...snapshot.lastResult,analysis:{
@@ -99,7 +98,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   // without ancillary observations. A fat optional panel must not drop a quote.
   const minimal={...trimmed,lastResult:{...trimmed.lastResult,analysis:{
     ...trimmed.lastResult.analysis,
-    vnext:{...compactVnext,nowIndication:null}
+    vnext:{...compactVnext,targetProjection:null}
   }}};
   return size(minimal)<=maxBytes?minimal:null;
 }
