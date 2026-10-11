@@ -1,0 +1,21 @@
+name: Sentinel two-strategy offline research (no publish)
+on:
+  push:
+    branches: [sentinel-two-strategy-internal-only-20261011]
+    paths:
+      - 'tests/sentinel-two-strategy-internal-benchmark.test.mjs'
+      - '.github/workflows/sentinel-two-strategy-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Offline 67+70 pair prediction comparison using chronological simulated paths only
+        run: node --test tests/sentinel-two-strategy-internal-benchmark.test.mjs
