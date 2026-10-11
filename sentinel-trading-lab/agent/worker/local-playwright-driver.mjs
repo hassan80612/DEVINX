@@ -1559,21 +1559,20 @@ export class LocalPlaywrightDriver{
               </details>
             </section>
 
-            <section data-sentinel-vnext-horizon-matrix style="display:grid;grid-template-rows:17px 1fr 11px;gap:5px;min-height:149px;max-height:149px;height:149px;overflow:hidden;margin-top:9px;padding:8px 10px;border:1px solid ${panelBorder};border-radius:10px;background:${fieldBg};contain:layout">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;overflow:hidden;white-space:nowrap"><b style="font-size:10px;color:${goldSoft}">PREVISÕES FUTURAS · ${esc(d.engine||'automatic').toUpperCase()}</b><small style="font-size:9px;color:${muted}">${liveNow?'COTAÇÃO ATUAL':'DADOS ATRASADOS'}</small></div>
-              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));gap:4px;min-height:0">
-              ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((a,b)=>a-b).slice(0,9).map(h=>{
-                const item=(Array.isArray(d.vnext?.horizonForecasts)?d.vnext.horizonForecasts:[]).find(x=>Number(x.horizonSeconds)===h);
-                const valid=!!(item&&['CALL','PUT'].includes(item.side)&&Number(item.projectedPrice)>0&&
-                  Number(item.issuedAt)>0&&Number(item.issuedAt)<=Date.now()+2000&&Number(item.targetAt)>Date.now());
-                const mark=valid?(item.side==='CALL'?'↑ CALL':'↓ PUT'):'—';
-                const tone=valid?(item.side==='CALL'?callTone:putTone):muted;
+            <details data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
+              <summary style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
+              <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">
+              ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((x,y)=>x-y).slice(0,9).map(h=>{
+                const item=(Array.isArray(d.vnext?.futureEntryRows)?d.vnext.futureEntryRows:[]).find(x=>Number(x.delaySeconds)===h);
+                const valid=!!(item&&['CALL','PUT'].includes(item.side)&&
+                  Number(item.projectedEntryPrice)>0&&Number(item.projectedExitPrice)>0&&
+                  Number(item.issuedAt)>0&&Number(item.entryAt)>Date.now());
                 const label=h<60?h+'s':h%60===0?h/60+'m':h+'s';
-                return '<div data-sentinel-horizon="'+h+'" style="display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);grid-template-rows:11px 15px;gap:1px;min-width:0;overflow:hidden;align-content:center;background:rgba(0,0,0,.1);border:1px solid '+(h*1000===duration?goldSoft:panelBorder)+';border-radius:6px;padding:2px 5px"><small style="grid-column:1/-1;font-size:8px;color:'+muted+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+label+(h*1000===duration?' · SELECIONADO':'')+'</small><b style="font-size:12px;line-height:15px;color:'+tone+';white-space:nowrap">'+mark+'</b><span style="grid-column:2;text-align:right;font-size:8px;color:'+ink+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(valid?price(item.projectedPrice):'Sem previsão')+'</span></div>'
+                return '<div data-sentinel-horizon="'+h+'" style="min-width:0;padding:5px;border:1px solid '+(h*1000===duration?goldSoft:panelBorder)+';border-radius:6px"><small style="font-size:9px;white-space:nowrap">EM '+label+'</small><b style="display:block;color:'+(valid?(item.side==='CALL'?callTone:putTone):muted)+';font-size:12px">'+(valid?(item.side==='CALL'?'↑ CALL':'↓ PUT'):'—')+'</b><small style="font-size:8px;color:'+ink+'">'+(valid?price(item.projectedEntryPrice):'Sem previsão')+'</small></div>';
               }).join('')}
               </div>
-              <small style="font-size:8px;color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Direção futura por período, sem ordem automática. Seleção define o alvo principal.</small>
-            </section>
+              <small style="font-size:8px;color:${muted}">Previsões experimentais para possíveis entradas posteriores. Sem autorização de operação.</small>
+            </details>
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
