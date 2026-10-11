@@ -1,12 +1,13 @@
 {
-  "version": "13.4.67.1",
-  "build": "13.4.67.1-expand-panels-ui-only-1011",
+  "version": "13.4.67.2",
+  "build": "13.4.67.2-adaptive-direct-forecast-1011",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "research-preview-manual-only"
+    "modelValidation": "research-preview-manual-only",
+    "forecastModel": "adaptive-direct-trajectory-v1"
   }
 }
