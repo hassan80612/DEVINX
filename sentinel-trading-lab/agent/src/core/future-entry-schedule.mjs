@@ -61,24 +61,31 @@ export function futureEntrySchedule({
       const contribution=observed?Math.min(.55,
         observed.independentExamples/(observed.independentExamples+7))*
         (.45+.55*observed.directionalAgreement):0;
-      const relative=consistent?
+      // SHADOW ONLY. Diverse synthetic walk-forward regimes showed an
+      // improvement on reversals but a deterioration in noisy/choppy markets.
+      // NEVER promote this unvalidated candidate to the live CALL/PUT.
+      const candidateReturn=consistent?
         baselineReturn*(1-contribution)+(observed?.returnLog||0)*contribution:0;
+      const relative=baselineReturn??0;
       const side=!consistent||Math.abs(relative)<=1e-10?null:
         relative>0?'CALL':'PUT';
+      const candidateSide=!consistent||Math.abs(candidateReturn)<=1e-10?null:
+        candidateReturn>0?'CALL':'PUT';
       return {
         engineId,asset,delaySeconds,holdingSeconds,side,
         issuedAt:consistent?issuedAt:null,
         entryAt:consistent?issuedAt+delaySeconds*1000:null,
         exitAt:consistent?issuedAt+(delaySeconds+holdingSeconds)*1000:null,
         projectedEntryPrice:consistent?entryPrice:null,
-        // Internal consistency: displayed exit price must agree with the
-        // actual future-entry direction calculated above, not with the old
-        // independently projected 2H endpoint.
-        projectedExitPrice:consistent?
-          Number((entryPrice*Math.exp(relative)).toPrecision(12)):null,
+        // LIVE OUTPUT remains exactly the previously approved 13.4.67
+        // selected motor forecast until a chronological DEMO comparison
+        // demonstrates a reproducible advantage from the research model.
+        projectedExitPrice:consistent?exitPrice:null,
         baselineSide:baselineReturn===null||Math.abs(baselineReturn)<=1e-10?null:
           baselineReturn>0?'CALL':'PUT',
         expectedLogReturn:consistent?relative:null,
+        candidateSide, candidateLogReturn:consistent?candidateReturn:null,
+        candidateWeight:contribution,
         researchRegime:observed?.regime||'unclassified',
         historicalPairCases:observed?.comparisonCount||0,
         independentHistoricalCases:observed?.independentExamples||0,
