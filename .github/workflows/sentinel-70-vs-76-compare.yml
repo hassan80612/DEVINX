@@ -1,0 +1,30 @@
+name: Sentinel 13.4.70 vs 13.4.76 Same-Market Benchmark
+on:
+  push:
+    branches: [sentinel-1376-unified-strategy-simple-20261011]
+    paths:
+      - '.github/workflows/sentinel-70-vs-76-compare.yml'
+      - 'tests/sentinel-70-vs-76-direct.test.mjs'
+permissions:
+  contents: read
+jobs:
+  direct-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - name: Checkout frozen 13.4.76 experiment
+        uses: actions/checkout@v4
+      - name: Checkout actual 13.4.70 release in independent source directory
+        uses: actions/checkout@v4
+        with:
+          ref: 51412ef8383b2d08a2c8795db76ce1ceb691d9f5
+          path: baseline70
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Compare locked versions on identical synthetic market paths
+        run: |
+          test -f baseline70/sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs
+          test -f sentinel-trading-lab/agent/src/core/unified-strategy-forecast.mjs
+          node --test tests/sentinel-70-vs-76-direct.test.mjs
