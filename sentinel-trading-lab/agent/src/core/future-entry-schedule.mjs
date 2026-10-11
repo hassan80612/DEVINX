@@ -11,7 +11,7 @@ const num=x=>Number.isFinite(Number(x))?Number(x):null;
 const valid=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
 
 export function futureEntrySchedule({
-  settings={},snap={},now=Date.now(),delays=[30],knownForecasts=[],forecastModel='original-67'
+  settings={},snap={},now=Date.now(),delays=[30],knownForecasts=[],forecastModel='original-67',adaptiveHistory=null
 }={}){
   const engineId=String(settings.engine||'automatic');
   const asset=String(settings.asset||'UNKNOWN').toUpperCase();
@@ -41,7 +41,7 @@ export function futureEntrySchedule({
       if(forecastModel==='adaptive-direct-trajectory-v1'&&engineId==='automatic'){
         const quoteAt=Number(snap.quoteTs);
         const learned=quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500?
-          adaptiveDirectTrajectory({quoteHistory:snap.quoteHistory,asOf:now,
+          adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,
             entryDelaySeconds:delaySeconds,holdingSeconds}):null;
         if(learned?.status==='adaptive-direct-trajectory'&&learned.side){
           return {engineId,asset,delaySeconds,holdingSeconds,side:learned.side,
