@@ -8,11 +8,11 @@ permissions:
 jobs:
   test-isolated-forecast:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - name: Verify historical paths and independent engine pair selection
-        run: node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs
+        run: node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs tests/sentinel-v1374-pairs-walkforward.test.mjs
