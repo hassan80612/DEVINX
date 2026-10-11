@@ -8,7 +8,7 @@ test('mobile compact and full card contain the SAME selected single engine and f
  assert.match(s,/const forecastReceipt=vnext/);
  assert.ok((s.match(/\{engineSettings\}/g)||[]).length===2);
  assert.ok((s.match(/\{forecastReceipt\}/g)||[]).length===2);
- assert.match(s,/Motor responsável pelo cenário/);
+ assert.match(s,/Estratégia responsável pelo cenário/);
  assert.match(s,/Tempo até a entrada prevista/);
  assert.match(s,/PREÇO ESTIMADO AO VENCER/);
  assert.match(s,/ENTRADA PREVISTA/);
@@ -21,7 +21,7 @@ test('desktop Agent selects only one motor and displays the target price/time ra
  assert.match(v,/data-sentinel-setting="duration"/);
  assert.match(v,/PREÇO FUTURO AO VENCER/);
  assert.match(v,/ENTRADA FUTURA/);
- assert.match(v,/Previsão experimental/);
+ assert.doesNotMatch(v,/experimental/i);
  assert.doesNotMatch(v,/Estratégia 1/);
  assert.doesNotMatch(v,/Estratégia 2/);
  assert.doesNotMatch(v,/Estratégia 3/);
@@ -30,7 +30,7 @@ test('site Strategies page no longer configures three independent slots',async()
  const s=await source('src/app/console/page.tsx');
  const block=s.slice(s.indexOf('function Strategies('),s.indexOf('function Risk('));
  assert.match(block,/engine:e\.target\.value/);
- assert.match(block,/Somente o motor escolhido/);
+ assert.match(block,/A estratégia escolhida/);
  assert.doesNotMatch(block,/strategygrid/);
 });
 test('overlay Worker supports Blitz 5s and never silently changes expiry from broker reads',async()=>{
