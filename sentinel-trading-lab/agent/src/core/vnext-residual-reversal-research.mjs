@@ -186,6 +186,7 @@ export function advanceSelectedEngineResidualStudy({
     delaySeconds:plan.delaySeconds,issuedAt:plan.issuedAt,
     entryAt:plan.entryAt,exitAt:plan.exitAt,
     expectedLogReturn:baselineLogReturn(plan),
+    rawCorrection:Number(candidate?.correction)||0,
     baselineSide:plan.side,shadowSide:candidate?.shadowSide||plan.side,
     features:features.features,regime:features.regime});
  }
