@@ -1,3 +1,4 @@
+import {timedSlope,localVolatilityChange,meanReversionAr1,priorConfirmedPivots} from './engine-structure-metrics.mjs';
 /**
  * AUTOMÁTICO VNext — independent forward-price research prototype.
  *
@@ -90,7 +91,45 @@ export function automaticForwardPrediction({quoteHistory=[],asOf=Date.now(),sele
   const nearResistance=resistance!==null&&p>=resistance-uncertainty*.4&&latestSlope<mediumSlope;
   const nearSupport=support!==null&&p<=support+uncertainty*.4&&latestSlope>mediumSlope;
   const levelPressure=(nearResistance?-1:nearSupport?1:0)*uncertainty*.14*(1-efficiency);
-  const rawExpected=trendProjection+meanReversion+levelPressure;
+  // AUTOMATIC remains its own regime forecast. No other motor's output is
+  // consulted. Add information missing from the old heuristic: measured
+  // R² persistence, fast slope deceleration, OU half-life and volatility
+  // change, using only completed historical quote samples.
+  const logRows=quotes.map(q=>({ts:q.ts,l:Math.log(q.price)}));
+  const regressionShort=timedSlope(logRows,
+    Math.max(12,Math.min(90,horizon*.6)),last.ts);
+  const regressionLong=timedSlope(logRows,
+    Math.max(55,Math.min(480,horizon*2.5)),last.ts);
+  const volatilityChange=localVolatilityChange(logRows,last.ts,horizon);
+  const ar=meanReversionAr1(logRows,last.ts,{
+    lookbackSeconds:Math.max(110,Math.min(850,horizon*4))
+  });
+  const pivots=priorConfirmedPivots(logRows,last.ts,{
+    lookbackSeconds:Math.max(95,Math.min(620,horizon*3)),
+    confirmSeconds:Math.max(2,Math.min(9,horizon/12)),
+    minimumProminence:sigma*Math.sqrt(horizon)*.1
+  });
+  const recentPivot=pivots.at(-1);
+  const regimePersistence=clamp(
+    .25+.42*regressionLong.r2+.22*regressionShort.r2,.15,.89);
+  const acceleration=clamp(regressionShort.change,
+    -sigma*.35,sigma*.35);
+  const trendReassessment=(regressionLong.b*horizon*.18+
+    acceleration*horizon*.1)*regimePersistence;
+  const stableAr=ar?.stable&&ar.equilibrium>=ar.low-.2*(ar.high-ar.low)&&
+    ar.equilibrium<=ar.high+.2*(ar.high-ar.low);
+  const meanReassessment=stableAr?
+    (ar.equilibrium-lp)*(1-Math.pow(ar.phi,horizon/2))*
+    clamp((1-regressionLong.r2)*ar.fit,0,1)*.3:0;
+  const distanceToPivot=recentPivot?Math.abs(lp-recentPivot.l)/uncertainty:Infinity;
+  const pivotPressure=recentPivot?(
+    recentPivot.kind==='high'?-1:1)*
+    uncertainty*.12*Math.exp(-distanceToPivot):0;
+  const volatilityScaling=clamp(
+    1/Math.sqrt(volatilityChange.ratio),.5,1.25);
+  const rawExpected=(trendProjection+trendReassessment+
+    meanReversion+meanReassessment+levelPressure+pivotPressure)*
+    volatilityScaling;
   // Numerical stability is NOT an entry gate; it prevents unrealistic
   // exponential extrapolations from short-term noisy derivatives.
   const bounded=clamp(rawExpected,-3*uncertainty,3*uncertainty);
@@ -112,7 +151,10 @@ export function automaticForwardPrediction({quoteHistory=[],asOf=Date.now(),sele
         'history-only price slopes at '+rounded(windowShort,5)+'s / '+rounded(windowMid,5)+'s / '+rounded(windowLong,5)+'s',
         'price-path efficiency '+rounded(efficiency,5)+' ('+regime+')',
         nearResistance?'approaching previously observed resistance':nearSupport?'approaching previously observed support':'no special nearby level pressure',
-        'realized 1s volatility '+rounded(sigma,5)+'; projected '+horizon+'s'
+        'realized 1s volatility '+rounded(sigma,5)+'; projected '+horizon+'s',
+        'automatic regime: R2 '+rounded(regressionLong.r2,3)+
+         ', vol shift '+rounded(volatilityChange.ratio,3)+
+         ', confirmed pivots '+pivots.length
       ]
     },
     diagnostic:{
