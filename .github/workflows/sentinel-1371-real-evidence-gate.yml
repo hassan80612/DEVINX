@@ -1,0 +1,31 @@
+name: Sentinel 13.4.71 Real-Quote Qualification Research
+on:
+  push:
+    branches:
+      - sentinel-1371-real-evidence-gate-20261011
+    paths:
+      - 'sentinel-trading-lab/agent/worker/qualify-future-entry.mjs'
+      - 'tests/sentinel-v1371-real-qualification.test.mjs'
+      - '.github/workflows/sentinel-1371-real-evidence-gate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evidence-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax + no-fabricated-win and late-tick contract
+        run: |
+          node --check sentinel-trading-lab/agent/worker/qualify-future-entry.mjs
+          node --test tests/sentinel-v1371-real-qualification.test.mjs
+      - name: Verify zero-broker-data case is rejected, not portrayed as 70 percent
+        run: |
+          if node sentinel-trading-lab/agent/worker/qualify-future-entry.mjs; then
+            echo "Expected missing-real-data qualification to fail"
+            exit 1
+          fi
