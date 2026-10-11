@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: '24'
       - name: Real model baseline vs adapted automatic on unseen synthetic paths
-        run: node --test tests/sentinel-1375-effective-routing.test.mjs
+        run: node --test tests/sentinel-1375-effective-routing.test.mjs tests/sentinel-1375-filter-benchmark.test.mjs
       - name: Regression tests for PC/mobile and three pair modes
         run: |
           node --test tests/sentinel-v1374-pairs-future-path.test.mjs tests/sentinel-v1374-runtime-gated-pair.test.mjs tests/sentinel-overlay-pc-disclosures-v1374.test.mjs tests/sentinel-adaptive-strategy-advisor.test.mjs tests/sentinel-pair-mode-pc-controls.test.mjs tests/sentinel-mobile-research-parity.test.mjs tests/sentinel-3min-global-shadow.test.mjs
