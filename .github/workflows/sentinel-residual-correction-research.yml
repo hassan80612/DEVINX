@@ -1,0 +1,30 @@
+name: Sentinel 13.4.67 Residual Correction Research
+on:
+  push:
+    branches: [sentinel-13467-residual-reversal-lab-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/vnext-residual-reversal-research.mjs'
+      - 'tests/sentinel-v13467-residual-reversal-research.test.mjs'
+      - 'tests/sentinel-v13467-residual-walkforward.test.mjs'
+      - 'tests/sentinel-v13467-residual-stress.test.mjs'
+      - '.github/workflows/sentinel-residual-correction-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check syntax and original 13.4.67 contracts
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/vnext-residual-reversal-research.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-residual-reversal-research.test.mjs
+      - name: Chronological HELD-OUT synthetic benchmark (no claim of live accuracy)
+        run: node --test tests/sentinel-v13467-residual-walkforward.test.mjs
+      - name: Additional untouched stress regimes with sudden volatility shifts
+        run: node --test tests/sentinel-v13467-residual-stress.test.mjs
