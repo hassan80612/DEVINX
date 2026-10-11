@@ -1779,7 +1779,7 @@ export class LocalPlaywrightDriver{
             const target=Number(pane.getAttribute('data-deadline')||0);
             const issued=Number(pane.getAttribute('data-issued')||0);
             const cycleStatus=pane.querySelector('[data-sentinel-cycle-status]');
-            if(cycleStatus)cycleStatus.textContent=target>issued&&Date.now()>=target?'ENCERRADO':'ATÉ A PREVISÃO';
+            if(cycleStatus)cycleStatus.textContent=target>issued&&Date.now()>=target?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA';
             let shown='—:—';
             if(Number.isFinite(target)&&Number.isFinite(issued)&&target>issued&&issued>0){
               const left=Math.ceil((target-Date.now())/1000);
