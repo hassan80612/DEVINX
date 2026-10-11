@@ -8,8 +8,8 @@ type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
 const AVAILABLE_AGENT_VERSION='13.4.70';
 const AGENT_DOWNLOAD_URL=`/downloads/sentinel-agent-windows.exe?v=${AVAILABLE_AGENT_VERSION}-nine-independent-structure-lab-1011`;
-const EXPERIMENTAL_AGENT_VERSION='13.4.75';
-const EXPERIMENTAL_AGENT_URL=`/downloads/Sentinel-Agent-Experimental-${EXPERIMENTAL_AGENT_VERSION}.exe?v=qualified-future-compact-1011`;
+const EXPERIMENTAL_AGENT_VERSION='13.4.76';
+const EXPERIMENTAL_AGENT_URL=`/downloads/Sentinel-Agent-Experimental-${EXPERIMENTAL_AGENT_VERSION}.exe?v=unified-strategy-picker-1011`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
@@ -273,7 +273,7 @@ function Dashboard({s,agent,account,onNavigate}:{s:Status,agent:any,account:any,
        <div className="sentinelPcOnly">{allowed?<a className="secondary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">Baixar Agent V{AVAILABLE_AGENT_VERSION} · estável</a>:<button className="secondary" type="button" onClick={()=>onNavigate('Membership')}>Ver acesso</button>}</div>
        {allowed&&<div className="sentinelPcOnly"><a className="secondary linkbtn" href={EXPERIMENTAL_AGENT_URL} download={`Sentinel-Agent-Experimental-${EXPERIMENTAL_AGENT_VERSION}.exe`}>Testar Agent V{EXPERIMENTAL_AGENT_VERSION} · experimental</a></div>}
      </div>
-     {allowed&&<p style={{maxWidth:680,fontSize:12,opacity:.84}}>O teste de combinações de duas estratégias, histórico de trajetórias e card do celular exige instalar o Agent experimental no PC. Os controles começam desligados. O instalador da versão 13.4.70 permanece disponível para retorno. Não é uma assertividade validada nem autoriza operações automáticas.</p>}
+     {allowed&&<p style={{maxWidth:680,fontSize:12,opacity:.84}}>As nove estratégias e as três opções com duas estratégias estão juntas em Estratégia ativa. Para testar no PC, instale o Agent experimental. A versão estável 13.4.70 continua disponível; as previsões ainda não têm assertividade validada.</p>}
      <div className="sentinelStartQuick" aria-label="Estado do Sentinel">
        <div><small>ANALISTA</small><strong>{started?'ANALISANDO':s?.state==='paused'?'PAUSADO':'AGUARDANDO'}</strong></div>
        <div><small>ATIVO</small><strong>{symbol}</strong></div>

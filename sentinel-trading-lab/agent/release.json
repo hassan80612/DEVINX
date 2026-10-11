@@ -1,12 +1,12 @@
 {
-  "version": "13.4.75",
-  "build": "13.4.75-qualified-future-clean-cards-experimental-1011",
+  "version": "13.4.76",
+  "build": "13.4.76-single-strategy-picker-native-auto-pair-forecast-1011",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
-    "engineArchitecture": "nine-independent-three-pairs-qualified-future",
-    "modelValidation": "experimental-historical-confirmation-abstain-not-winrate"
+    "engineArchitecture": "nine-independent-or-three-independent-pairs-selected-directly",
+    "modelValidation": "experimental-pair-agreement-only-no-trading-orders"
   }
 }
