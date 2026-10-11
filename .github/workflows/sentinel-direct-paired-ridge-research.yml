@@ -1,0 +1,39 @@
+name: Sentinel 13.4.67 Clean Direct Paired Forecast Research
+on:
+  push:
+    branches: [sentinel-13467-direct-paired-ridge-research-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/vnext-direct-paired-ridge-research.mjs'
+      - 'tests/sentinel-v13467-direct-paired-ridge.test.mjs'
+      - 'tests/sentinel-v13467-direct-paired-compare.test.mjs'
+      - 'sentinel-trading-lab/agent/src/core/vnext-causal-two-corrections.mjs'
+      - 'tests/sentinel-v13467-causal-two-corrections.test.mjs'
+      - '.github/workflows/sentinel-direct-paired-ridge-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax, original version regression and strict causality
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/vnext-direct-paired-ridge-research.mjs
+          node --check sentinel-trading-lab/agent/src/core/vnext-causal-two-corrections.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-direct-paired-ridge.test.mjs tests/sentinel-v13467-causal-two-corrections.test.mjs
+  comparison:
+    runs-on: ubuntu-latest
+    needs: safety
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: ALL selected engines and horizons - short and long stress test
+        run: node --test tests/sentinel-v13467-direct-paired-compare.test.mjs

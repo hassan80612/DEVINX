@@ -1,0 +1,29 @@
+name: Sentinel 13.4.67 Adaptive All Horizons Research
+on:
+  push:
+    branches: [sentinel-13467-adaptive-self-correction-lab-20261011]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/vnext-residual-reversal-research.mjs'
+      - 'sentinel-trading-lab/agent/src/core/vnext-adaptive-self-correction.mjs'
+      - 'tests/sentinel-v13467-adaptive-all-horizons.test.mjs'
+      - 'tests/sentinel-v13467-residual-reversal-research.test.mjs'
+      - '.github/workflows/sentinel-adaptive-all-horizons-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Regression and original 13.4.67 preservation
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/vnext-residual-reversal-research.mjs
+          node --check sentinel-trading-lab/agent/src/core/vnext-adaptive-self-correction.mjs
+          node --test tests/sentinel-v13467-future-entry.test.mjs tests/sentinel-v13467-residual-reversal-research.test.mjs
+      - name: Nine selected engines over all six durations, chronological held-out simulation
+        run: node --test tests/sentinel-v13467-adaptive-all-horizons.test.mjs
