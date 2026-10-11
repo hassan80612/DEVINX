@@ -4,7 +4,7 @@ import {futureEntrySchedule} from './future-entry-schedule.mjs';
 // Each horizon runs the SAME user-selected engine against the SAME historical
 // quote snapshot. Forecast side is derived from an expected FUTURE price,
 // never from the colour/direction of the current candle or the other motors.
-export const FORWARD_HORIZONS=Object.freeze([5,10,30,60,120,300]);
+export const FORWARD_HORIZONS=Object.freeze([5,10,30,60,120,180,300]);
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
 export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary=null,previous=null}={}){
   const selected=positive(settings.orderDurationMs)&&Number(settings.orderDurationMs)/1000;
