@@ -5,6 +5,7 @@ on:
     paths:
       - 'sentinel-trading-lab/agent/src/core/offline-branching-future-path-67.mjs'
       - 'tests/sentinel-67-selectivity-training.test.mjs'
+      - 'tests/sentinel-67-selectivity-holdout.test.mjs'
       - '.github/workflows/sentinel-67-selectivity-offline.yml'
 permissions:
   contents: read
@@ -24,4 +25,4 @@ jobs:
           set -euo pipefail
           git diff --exit-code 5c20afbef3060d00a5caa52cf0498aebff6b20c9 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/public sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/automatic-forward-model.mjs sentinel-trading-lab/agent/src/core/historical-forward-analogs.mjs sentinel-trading-lab/agent/src/core/specialist-forward-models.mjs
       - name: Train selective confidence threshold using only original synthetic calibration samples
-        run: node --test tests/sentinel-67-selectivity-training.test.mjs
+        run: node --test tests/sentinel-67-selectivity-training.test.mjs tests/sentinel-67-selectivity-holdout.test.mjs
