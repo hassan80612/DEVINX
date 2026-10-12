@@ -22,7 +22,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
   const ts=Number(q?.ts),p=Number(q?.price),received=Number(q?.receivedAt??q?.ts);
   if(!Number.isFinite(ts)||!valid(p)||ts>now||received>now||!Number.isFinite(received))continue;
   const earlier=unique.get(ts);
-  if(!earlier||received<earlier.receivedAt)unique.set(ts,{ts,p,receivedAt:received});
+  if(received<=ts+8000&&(!earlier||received<earlier.receivedAt))unique.set(ts,{ts,p,receivedAt:received});
  }
  const rows=[...unique.values()].sort((a,b)=>a.ts-b.ts);
  if(rows.length<12||now-rows.at(-1).ts>2500)return blank('waiting-fresh-quote');
@@ -33,27 +33,50 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  const lookup=t=>{
   let lo=0,hi=rows.length-1,i=-1;
   while(lo<=hi){const m=(lo+hi)>>1;if(rows[m].ts<=t){i=m;lo=m+1;}else hi=m-1;}
-  return i>=0&&t-rows[i].ts<=8000?rows[i].p:null;
+  return i>=0&&t-rows[i].ts<=8000&&rows[i].receivedAt<=t?rows[i].p:null;
  };
  const last=lookup(anchor);
  if(!last)return blank('waiting-completed-observation');
  // Historical windows are descriptive FEATURES, never permission gates.
- const recentLag=h<=15?10:h<=120?15:30;
- const middleLag=h<=15?30:h<=120?45:90;
- const longLag=h<=15?60:h<=120?90:180;
+ // Timeframe is an input to the FEATURES and the future TARGET. No shared
+ // fixed "5s vs 1m" model, 30s candle proxy or UI-only timer conversion.
+ const recentLag=clamp(Math.round(6+h*.7),8,150);
+ const middleLag=clamp(Math.round(20+h*1.6),recentLag+12,600);
+ const longLag=clamp(Math.round(35+h*3.6),middleLag+20,1200);
  const lag=[recentLag,middleLag,longLag],oldest=rows[0].ts;
- const volatility=t=>{
-  let begin=0,end=rows.length-1;
-  while(begin<rows.length&&rows[begin].ts<t-120000)begin++;
-  let sum=0,span=0,past=null;
-  for(let i=begin;i<rows.length&&rows[i].ts<=t;i++){
-   const q=rows[i];
-   if(past){const dt=(q.ts-past.ts)/1000;
-    if(dt>0&&dt<=8){sum+=Math.log(q.p/past.p)**2;span+=dt;}
+ // Historical sigma is cached once, not re-scanned for hundreds of
+ // examples on each market update. Remove future-arrival contamination by
+ // measuring at an 8s-known boundary, matching the observed quote tolerance.
+ const prefixSq=[0],prefixSeconds=[0];
+ for(let i=0;i<rows.length;i++){
+  let square=0,dt=0;
+  if(i>0){
+   const seconds=(rows[i].ts-rows[i-1].ts)/1000;
+   if(seconds>0&&seconds<=8){
+    const change=Math.log(rows[i].p/rows[i-1].p);
+    square=change*change;dt=seconds;
    }
-   past=q;
   }
-  return span>=12&&sum>0?Math.sqrt(sum/span):null;
+  prefixSq.push(prefixSq.at(-1)+square);
+  prefixSeconds.push(prefixSeconds.at(-1)+dt);
+ }
+ const indexAt=t=>{
+  let lo=0,hi=rows.length-1,out=-1;
+  while(lo<=hi){const mid=(lo+hi)>>1;
+   if(rows[mid].ts<=t){out=mid;lo=mid+1;}else hi=mid-1;
+  }
+  return out;
+ };
+ const volatility=t=>{
+  const end=indexAt(t-8000);
+  if(end<1)return null;
+  let lo=0,hi=end,start=end;
+  while(lo<=hi){const mid=(lo+hi)>>1;
+   if(rows[mid].ts>=t-120000){start=mid;hi=mid-1;}else lo=mid+1;
+  }
+  const duration=prefixSeconds[end+1]-prefixSeconds[start+1];
+  const sum=prefixSq[end+1]-prefixSq[start+1];
+  return duration>=12&&sum>0?Math.sqrt(sum/duration):null;
  };
  const features=t=>{
   const p=lookup(t),sigma=volatility(t);
@@ -146,6 +169,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  const accepted=support&&robust&&specific&&validated;
  const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
   historicalExamples:historic.length,similarExamples:projection.examples,
+  featureLagsSeconds:lag,analysisLeadSeconds:h,holdingSeconds:hold,
   historicalAgreement:projection.agreement,validationExamples:tested,
   validationCorrect:hits,scenarioAt:anchor};
  if(!accepted)return result;
