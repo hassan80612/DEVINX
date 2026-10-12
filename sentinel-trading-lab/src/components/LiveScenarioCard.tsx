@@ -25,7 +25,23 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[strategy1,setStrategy1]=useState(String(s?.settings?.strategy||'smart_confluence'));
   const[strategy2,setStrategy2]=useState(String(s?.settings?.strategy2||'none'));
   const[strategy3,setStrategy3]=useState(String(s?.settings?.strategy3||'none'));
-  useEffect(()=>{const id=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(id)},[]);
+  useEffect(()=>{
+    let timer:ReturnType<typeof setInterval>|null=null;
+    const update=()=>setNow(Date.now());
+    const syncVisibility=()=>{
+      if(timer){clearInterval(timer);timer=null}
+      if(document.visibilityState==='visible'){
+        update();
+        timer=setInterval(update,1000);
+      }
+    };
+    document.addEventListener('visibilitychange',syncVisibility);
+    syncVisibility();
+    return()=>{
+      document.removeEventListener('visibilitychange',syncVisibility);
+      if(timer)clearInterval(timer);
+    };
+  },[]);
   useEffect(()=>{
     if(!settingsEditing.current){setChosenEngine(String(s?.settings?.engine||'automatic'));setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
     // Remote status refreshes must not overwrite a value the user is typing.

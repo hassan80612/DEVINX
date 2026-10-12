@@ -46,10 +46,12 @@ export function watchSignedLiveAnalyst(topic:string,signingKey:string,onMessage:
   };
   const schedule=()=>{
     if(closed)return;
-    retry=setTimeout(()=>{retry=null;connect()},Math.min(30000,1500*2**Math.min(4,attempt++)));
+    // Recover quickly after mobile network hand-offs, but keep exponential
+    // backoff to avoid a reconnect storm if Supabase is unavailable.
+    retry=setTimeout(()=>{retry=null;connect()},Math.min(9000,1500*2**Math.min(4,attempt++)));
   };
   const connect=()=>{
-    if(closed)return;
+    if(closed||ws)return;
     let sock:WebSocket;try{sock=new WebSocket(endpoint)}catch{schedule();return}
     ws=sock;ref=0;
     sock.onopen=()=>{
@@ -68,7 +70,15 @@ export function watchSignedLiveAnalyst(topic:string,signingKey:string,onMessage:
     sock.onerror=()=>{try{sock.close()}catch{}};
     sock.onclose=()=>{if(ws!==sock)return;ws=null;cleanup();schedule()};
   };
-  const visibility=()=>{if(document.visibilityState==='visible')void announce()};
+  const visibility=()=>{
+    if(document.visibilityState!=='visible'||closed)return;
+    // Android may suspend the socket while the display is off. On return,
+    // reconnect now instead of waiting for the old exponential timeout.
+    if(!ws){
+      if(retry){clearTimeout(retry);retry=null}
+      connect();
+    }else void announce();
+  };
   document.addEventListener('visibilitychange',visibility);
   connect();
   return()=>{
