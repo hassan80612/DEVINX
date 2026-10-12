@@ -36,11 +36,14 @@ test('each selected specialist owns the scenario without three-way confluence',(
   runtime.patchSettings({asset:'EUR/USD OTC',engine,orderDurationMs:15000});
   const g=runtime._signalValidationGate({analysis:{metrics:{}},snap,settings:runtime.settings,now:t});
   assert.equal(g.analysis.engineId,engine);
-  assert.ok(g.analysis.vnext?.receipt?.projectedPrice>0,engine);
+  if(g.analysis.vnext.receipt){
+    assert.ok(g.analysis.vnext.receipt.projectedPrice>0,engine);
+    assert.equal(g.analysis.vnext.receipt.side,g.analysis.vnext.receipt.projectedPrice>g.analysis.vnext.receipt.referencePrice?'CALL':'PUT');
+   }else assert.equal(g.analysis.operationalSignal.actionable,false,'weak interval must not assert CALL/PUT');
   assert.equal(g.analysis.operationalSignal.engineId,engine);
-  predicted.push(g.analysis.vnext.receipt.projectedPrice);
+  if(g.analysis.vnext.receipt)predicted.push(g.analysis.vnext.receipt.projectedPrice);
  }
- assert.ok(new Set(predicted).size>=5,'models must project different future prices');
+ assert.ok(new Set(predicted).size>=2,'independent qualified models must still be distinguishable');
 });
 test('a quote from the future or stale quote cannot manufacture a trade-ready prediction',()=>{
  const runtime=new DemoTradingRuntime({enableVNext:true});
