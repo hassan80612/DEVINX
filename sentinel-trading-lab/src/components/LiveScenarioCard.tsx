@@ -41,13 +41,13 @@ function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waiti
   const entryCountdown=countdownSeconds===null?'—:—':
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
   const direction=!pinned?'SEM PREVISÃO DE ENTRADA':
-    expired?'PREVISÃO ENCERRADA · AGUARDANDO NOVA':
+    expired?'SEM PREVISÃO DE ENTRADA':
     entryReached?'HORÁRIO PREVISTO ATINGIDO':
     (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   return <>
     <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
     <div className={'vnextTargetCountdown '+(entryReached||expired?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-      <div><small>{expired?'AGUARDANDO NOVA PREVISÃO':entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
+      <div><small>{entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
       <div><small>ENTRADA PREVISTA</small><b>{pinned&&!expired?clock(plannedAt):'—'}</b><span>{!expired&&pinned?'Vencimento estimado '+clock(plannedExit):(waitingReason||'Aguardando cálculo futuro')}</span></div>
     </div>
   </>;
