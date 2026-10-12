@@ -2,6 +2,7 @@ import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
+import {coherentInterval,observedNoise} from './forward-direction-quality.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -58,12 +59,12 @@ function continuousFutureEntrySchedule({
         const learned=selected&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500?
           adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,
             entryDelaySeconds:delaySeconds,holdingSeconds,historicalQuoteGapMs}):null;
-        if(learned?.status==='adaptive-direct-trajectory'&&learned.side){
+        if(learned?.status==='adaptive-direct-trajectory'){
           return {engineId,asset,delaySeconds,holdingSeconds,side:learned.side,
             issuedAt:learned.issuedAt,entryAt:learned.entryAt,exitAt:learned.exitAt,
             projectedEntryPrice:learned.projectedEntryPrice,
             projectedExitPrice:learned.projectedExitPrice,
-            status:'forecast',actionable:false,calibrated:false,
+            status:learned.side?'forecast':'low-directional-edge',actionable:false,calibrated:false,
             modelVersion:learned.modelVersion,expectedPath:learned.expectedPath,
             expectedLow:learned.expectedLow,expectedHigh:learned.expectedHigh};
         }
@@ -113,7 +114,18 @@ export function futureEntrySchedule(input={}){
  }
  const continuous=continuousFutureEntrySchedule({...input,
    settings:{...settings,forecastMode:'continuous'},
-   historicalQuoteGapMs:2500,selectiveLeadSeconds:null
+   historicalQuoteGapMs:2500,selectiveLeadSeconds:chosen
  });
- return continuous;
+ // The original adaptive motor and fallback may not agree internally:
+ // CALL/PUT is only valid when it points from its OWN entry to exit prices.
+ // A price move smaller than normal observed noise remains informational.
+ return continuous.map(row=>{
+   if(!['CALL','PUT'].includes(row?.side))return row;
+   const noise=observedNoise({quotes:input.adaptiveHistory||input.snap?.quoteHistory||[],
+     now:input.now??Date.now(),horizonSeconds:row.holdingSeconds});
+   const check=coherentInterval({entryPrice:row.projectedEntryPrice,
+     exitPrice:row.projectedExitPrice,side:row.side,noise});
+   return check.qualified?row:{...row,side:null,
+     status:check.reason,actionable:false,calibrated:false};
+ });
 }
