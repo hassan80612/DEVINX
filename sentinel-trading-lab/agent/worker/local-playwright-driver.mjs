@@ -1497,10 +1497,9 @@ export class LocalPlaywrightDriver{
           ['CALL','PUT'].includes(pinnedEntry.side));
         const scheduledAt=entryPlanReady?Number(pinnedEntry.entryAt):0;
         const scheduledExit=entryPlanReady?Number(pinnedEntry.exitAt):0;
-        const entryReached=entryPlanReady&&Date.now()>=scheduledAt;
-        const scheduledSide=entryPlanReady?pinnedEntry.side:null;
-        const scheduledDecision=!entryPlanReady?'SEM PREVISÃO DE ENTRADA':
-          entryReached?'HORÁRIO PREVISTO ATINGIDO':
+        const entryPlanActive=entryPlanReady&&scheduledAt>Date.now();
+        const scheduledSide=entryPlanActive?pinnedEntry.side:null;
+        const scheduledDecision=!entryPlanActive?'SEM PREVISÃO DE ENTRADA':
           scheduledSide==='CALL'?'↑ CALL PREVISTO':'↓ PUT PREVISTO';
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
@@ -1784,16 +1783,18 @@ export class LocalPlaywrightDriver{
             const target=Number(pane.getAttribute('data-deadline')||0);
             const issued=Number(pane.getAttribute('data-issued')||0);
             const cycleStatus=pane.querySelector('[data-sentinel-cycle-status]');
-            if(cycleStatus)cycleStatus.textContent=target>issued&&Date.now()>=target?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA';
+            const active=Number.isFinite(target)&&Number.isFinite(issued)&&issued>0&&target>issued&&target>Date.now();
+            if(cycleStatus)cycleStatus.textContent='ATÉ POSSÍVEL ENTRADA';
+            const decision=pane.closest('[data-sentinel-card="vnext"]')?.querySelector('[data-sentinel-scenario-action]');
+            // A finished receipt is no longer an active prediction. Never
+            // freeze the computer at 00:00 while the next observation arrives.
+            if(!active&&decision)decision.textContent='SEM PREVISÃO DE ENTRADA';
             let shown='—:—';
-            if(Number.isFinite(target)&&Number.isFinite(issued)&&target>issued&&issued>0){
-              const left=Math.ceil((target-Date.now())/1000);
-              if(left<=0){shown='00:00'}
-              else{
-                const pad=n=>String(n).padStart(2,'0');
-                shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
-                value.style.fontSize='';
-              }
+            if(active){
+              const left=Math.max(1,Math.ceil((target-Date.now())/1000));
+              const pad=n=>String(n).padStart(2,'0');
+              shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
+              value.style.fontSize='';
             }
             if(value.textContent!==shown)value.textContent=shown;
           };
