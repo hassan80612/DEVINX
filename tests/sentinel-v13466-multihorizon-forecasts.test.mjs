@@ -96,7 +96,7 @@ test('PC and both mobile cards show one chosen expiry, prediction countdown and 
   assert.match(pc,/d\.vnext\?\.futureEntryRows/);
   assert.match(pc,/ATÉ ENTRADA CALCULADA|JANELA ABERTA/);
   assert.match(pc,/VENCIMENTO ESTIMADO/);
-  assert.match(mobile,/ATÉ POSSÍVEL ENTRADA/);
+  assert.match(mobile,/ATÉ ENTRADA CALCULADA|JANELA ABERTA/);
   assert.match(mobile,/ENTRADA PREVISTA/);
   assert.match(mobile,/data-testid="future-horizon-matrix"/);
   assert.equal((mobile.match(/\{forecastHorizonStrip\}/g)||[]).length,2);
