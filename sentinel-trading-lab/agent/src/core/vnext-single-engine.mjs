@@ -39,8 +39,13 @@ export function singleEngineForecast({
    adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||quotes,asOf:now,
      entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const useAdaptive=learned?.status==='adaptive-direct-trajectory';
- const modelVersion=autonomous?'selective-autonomous-market-v1':selective?'selective-interval-v1':useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
- const computed=autonomous?automaticForwardPrediction(options):selective?{
+ const modelVersion=autonomous?'selective-historical-outcomes-v2':selective?'selective-interval-v1':useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
+ // The selective decision belongs only to the HISTORICAL future-entry
+ // estimator (T+H to T+2H). Never show the unrelated trend extrapolator
+ // (now to T+H) as a second CALL/PUT in the same selective card.
+ const computed=autonomous?{status:'selective-historical-analysis',
+   diagnostic:{referencePrice:quotes.at(-1)?.price,quoteAt:snap.quoteTs},
+   prediction:null}:selective?{
    status:selective.status,
    diagnostic:{referencePrice:selective.expectedPath?.[0]?.price,quoteAt:selective.latestObservedQuoteAt},
    prediction:selective.qualified?{side:selective.side,projectedPrice:selective.projectedExitPrice,
@@ -171,7 +176,7 @@ export function singleEngineForecast({
    source:'user-selected-expiry',modelVersion,
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
    computedStatus:computed?.status||'unavailable',receipt,cards,projection,
-   forecastFoundation:autonomous?'autonomous-selective-market':selective?'selective-interval-v1':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
+   forecastFoundation:autonomous?'selective-historical-outcomes':selective?'selective-interval-v1':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
    historicalComparisons:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.comparisons||0,
    similarCases:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.neighbors||0,
    plan,operational,scenarioProjection,
