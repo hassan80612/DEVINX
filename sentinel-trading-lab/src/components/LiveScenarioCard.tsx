@@ -35,19 +35,19 @@ function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waiti
   const pinned=valid&&issuedAt>0&&plannedAt>issuedAt;
   // Receipt has expired: never leave a stale CALL/PUT and zero countdown pinned.
   // Clear locally without requesting broker data or restarting the analyst.
-  const expired=pinned&&now-plannedAt>=400;
-  const entryReached=pinned&&plannedAt<=now&&!expired;
-  const countdownSeconds=pinned&&!expired?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
+  // The PC owns issuedAt and entryAt; the phone NEVER restarts the deadline
+  // or adds a presentation grace period. Once expired, the old forecast is
+  // unavailable until the Agent produces a genuine new candidate.
+  const expired=pinned&&now>=plannedAt;
+  const countdownSeconds=pinned&&!expired?Math.max(1,Math.ceil((plannedAt-now)/1000)):null;
   const entryCountdown=countdownSeconds===null?'—:—':
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
-  const direction=!pinned?'SEM PREVISÃO DE ENTRADA':
-    expired?'SEM PREVISÃO DE ENTRADA':
-    entryReached?'HORÁRIO PREVISTO ATINGIDO':
+  const direction=!pinned||expired?'SEM PREVISÃO DE ENTRADA':
     (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   return <>
     <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
-    <div className={'vnextTargetCountdown '+(entryReached||expired?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-      <div><small>{entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
+    <div className={'vnextTargetCountdown '+(expired?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
+      <div><small>ATÉ POSSÍVEL ENTRADA</small><strong>{entryCountdown}</strong></div>
       <div><small>ENTRADA PREVISTA</small><b>{pinned&&!expired?clock(plannedAt):'—'}</b><span>{!expired&&pinned?'Vencimento estimado '+clock(plannedExit):(waitingReason||'Aguardando cálculo futuro')}</span></div>
     </div>
   </>;
