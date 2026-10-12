@@ -3,6 +3,7 @@ import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} fro
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
 import {coherentInterval,observedNoise} from './forward-direction-quality.mjs';
+import {planEntryWindow} from './entry-window-planner.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -94,6 +95,66 @@ function continuousFutureEntrySchedule({
       };
     });
 }
+// An ACTUAL forward price-path is fitted ONCE, then sampled at different
+// candidate entry instants within the chosen opportunity window. The
+// selected motor is preserved; unqualified specialists use only their own
+// lightweight price estimator. No extra broker requests, DB writes or trades.
+function continuousWindow({input,settings,chosen}){
+ const snap=input.snap||{},now=input.now??Date.now();
+ const asset=String(settings.asset||'UNKNOWN').toUpperCase();
+ const engineId=String(settings.engine||'automatic');
+ const history=input.adaptiveHistory||snap.quoteHistory||[];
+ const noise=observedNoise({quotes:history,now,horizonSeconds:chosen});
+ const quoteAt=Number(snap.quoteTs);
+ if(!(quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500))
+  return planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
+   engineId,asset,evaluateLead:()=>null});
+ let path=null;
+ if(engineId==='automatic'&&
+   ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(input.forecastModel)){
+   const learned=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
+    entryDelaySeconds:chosen,holdingSeconds:chosen,historicalQuoteGapMs:2500});
+   if(learned.status==='adaptive-direct-trajectory'&&Array.isArray(learned.expectedPath))
+    path=learned.expectedPath;
+ }
+ const priceAt=seconds=>{
+   if(!path)return null;
+   const points=path.filter(x=>Number(x.price)>0&&Number(x.secondsFromNow)>=0)
+     .sort((a,b)=>a.secondsFromNow-b.secondsFromNow);
+   if(!points.length||seconds>points.at(-1).secondsFromNow)return null;
+   const exact=points.find(x=>x.secondsFromNow===seconds);
+   if(exact)return Number(exact.price);
+   let a=null,b=null;
+   for(let i=0;i<points.length-1;i++)if(points[i].secondsFromNow<=seconds&&
+    points[i+1].secondsFromNow>=seconds){a=points[i];b=points[i+1];break;}
+   if(!a||!b||a.secondsFromNow===b.secondsFromNow)return null;
+   const fraction=(seconds-a.secondsFromNow)/(b.secondsFromNow-a.secondsFromNow);
+   return Math.exp(Math.log(a.price)*(1-fraction)+Math.log(b.price)*fraction);
+ };
+ const forecastCache=new Map();
+ const projectedAt=seconds=>{
+  if(path)return priceAt(seconds);
+  if(forecastCache.has(seconds))return forecastCache.get(seconds);
+  const forecast=singleEngineForecast({settings:{...settings,forecastMode:'continuous',
+    orderDurationMs:seconds*1000},snap,now,forecastModel:'original-67',
+    adaptiveHistory:history});
+  const price=Number(forecast.receipt?.projectedPrice)||null;
+  forecastCache.set(seconds,price);
+  return price;
+ };
+ return planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
+  engineId,asset,forecastMode:'continuous',
+  evaluateLead:seconds=>{
+   const first=projectedAt(seconds),last=projectedAt(seconds+chosen);
+   if(!(first>0&&last>0))return null;
+   const check=coherentInterval({entryPrice:first,exitPrice:last,noise,
+     noiseFraction:.15});
+   if(!check.qualified)return null;
+   return {side:check.side,projectedEntryPrice:first,projectedExitPrice:last,
+    selectionStrength:Math.min(3,Math.abs(check.relativeMove)/
+      Math.max(noise||1e-12,1e-12))};
+  }});
+}
 export function futureEntrySchedule(input={}){
  const legacy=input.settings?.engine==='selective_forecast';
  const settings=legacy?{...input.settings,engine:'automatic',forecastMode:'selective'}:input.settings||{};
@@ -102,20 +163,38 @@ export function futureEntrySchedule(input={}){
  // Selective has its OWN causal estimator, no motor vote and no bar gate.
  // Preserve settings.engine as the user preference for switching back to
  // Contínua, and as the transport identity used by existing PC/mobile cards.
+ const requested=[...new Set((input.delays||[chosen]).map(Number).filter(h=>h>0&&h<=3600))];
  if(inSelective){
    const snap=input.snap||{},at=input.now??Date.now();
-   return [...new Set((input.delays||[chosen]).map(Number).filter(x=>x===chosen))]
-     .map(delaySeconds=>autonomousSelectiveEntry({
-       quoteHistory:input.adaptiveHistory||snap.quoteHistory||[],now:at,
-       quoteTs:snap.quoteTs,delaySeconds,holdingSeconds:delaySeconds,
-       asset:String(settings.asset||'UNKNOWN').toUpperCase(),
-       engineId:String(settings.engine||'automatic')
-     }));
+   // All candidates use the same completed historical state but DIFFERENT
+   // observed entry->expiry outcomes. Three candles are descriptive only.
+   return requested.filter(h=>h===chosen).map(h=>planEntryWindow({
+     windowSeconds:h,holdingSeconds:h,now:at,engineId:String(settings.engine||'automatic'),
+     asset:String(settings.asset||'UNKNOWN').toUpperCase(),forecastMode:'selective',
+     evaluateLead:seconds=>{
+       const p=autonomousSelectiveEntry({quoteHistory:input.adaptiveHistory||
+         snap.quoteHistory||[],now:at,quoteTs:snap.quoteTs,
+         delaySeconds:seconds,holdingSeconds:h,
+         asset:String(settings.asset||'UNKNOWN').toUpperCase(),
+         engineId:String(settings.engine||'automatic')});
+       if(!p?.side)return null;
+       const reliability=p.validationExamples>=6?
+        p.validationCorrect/Math.max(1,p.validationExamples):.5;
+       return {...p,selectionStrength:
+         Math.max(.01,p.historicalAgreement*.7+reliability*.3)};
+     }
+   }));
  }
- const continuous=continuousFutureEntrySchedule({...input,
+ // Only the chosen timeframe scans entry moments. Auxiliary projections
+ // remain display-only and do not force repeated costly learned fits.
+ const others=continuousFutureEntrySchedule({...input,
+   delays:requested.filter(h=>h!==chosen),
    settings:{...settings,forecastMode:'continuous'},
    historicalQuoteGapMs:2500,selectiveLeadSeconds:chosen
  });
+ const chosenForecast=requested.includes(chosen)?
+   [continuousWindow({input,settings,chosen})]:[];
+ const continuous=[...others,...chosenForecast].sort((a,b)=>a.delaySeconds-b.delaySeconds);
  // The original adaptive motor and fallback may not agree internally:
  // CALL/PUT is only valid when it points from its OWN entry to exit prices.
  // A price move smaller than normal observed noise remains informational.
