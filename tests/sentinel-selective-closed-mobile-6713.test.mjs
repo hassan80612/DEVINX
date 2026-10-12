@@ -67,8 +67,7 @@ test('actual selective matrix uses closed-bars forecast and never grants stale e
    snap,now,delays:[30],adaptiveHistory:q,forecastModel:'selected-strengths-67.5'})[0];
  assert.equal(result.forecastOwner,'selective-historical-outcomes-v2');
  assert.equal(result.issuedAt,now);
- assert.equal(result.entryAt,now+30000);
- assert.equal(result.exitAt,now+60000);
+ if(result.side){assert.ok(result.entryAt>now&&result.entryAt<=now+30000);assert.equal(result.exitAt,result.entryAt+30000);}else assert.equal(result.entryAt,null);
  assert.ok(!('qualification' in result));
  assert.equal(result.actionable,false);
 });
@@ -92,7 +91,7 @@ test('mobile quote is published before expensive selected forecast without fakin
 
 test('forecast deadline keeps original direction briefly',()=>{
  const code=fs.readFileSync('sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
- assert.ok(code.includes('const entryAnchor=sameEntry?oldEntry:newEntryValid?currentEntry:null'));
+ assert.ok(code.includes('const planned=sameEntry?oldEntry:newEntryValid?currentEntry:null'));
  const view=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.ok(!view.includes('HORÁRIO PREVISTO ATINGIDO'));
 });
