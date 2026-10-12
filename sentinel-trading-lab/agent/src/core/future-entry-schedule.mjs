@@ -1,7 +1,7 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
-import {selectiveClosedEntry} from './selective-closed-entry.mjs';
+import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -41,20 +41,6 @@ function continuousFutureEntrySchedule({
   return [...new Set(delays.map(Number).filter(h=>h>0&&h<=3600))]
     .sort((a,b)=>a-b).map(delaySeconds=>{
       const holdingSeconds=delaySeconds;
-      if(selectiveLeadSeconds!=null&&Number(selectiveLeadSeconds)===delaySeconds){
-        // Selected selective horizon uses three COMPLETED bars as the input
-        // anchor. The in-progress candle cannot flip its decision every tick.
-        const result=selectiveClosedEntry({quoteHistory:adaptiveHistory||snap.quoteHistory||[],
-          now,delaySeconds,holdingSeconds,engineId,forecastModel,asset,provider:snap.provider,
-          currentQuoteAt:snap.quoteTs,currentPrice:snap.price});
-        return {engineId,asset,delaySeconds,holdingSeconds,side:result.side,
-          issuedAt:now,entryAt:now+delaySeconds*1000,
-          exitAt:now+(delaySeconds+holdingSeconds)*1000,
-          projectedEntryPrice:result.projectedEntryPrice,
-          projectedExitPrice:result.projectedExitPrice,
-          status:result.status,actionable:false,calibrated:false,
-          modelVersion:result.modelVersion||'selective-closed-bar-v1'};
-      }
       if(engineId==='selective_forecast'){
         const forecast=selectiveIntervalForecast({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,entryDelaySeconds:delaySeconds,holdingSeconds});
         return {engineId,asset,delaySeconds,holdingSeconds,side:forecast.side,
@@ -112,17 +98,22 @@ export function futureEntrySchedule(input={}){
  const settings=legacy?{...input.settings,engine:'automatic',forecastMode:'selective'}:input.settings||{};
  const inSelective=settings.forecastMode==='selective';
  const chosen=Number(settings.orderDurationMs||60000)/1000;
+ // Selective has its OWN causal estimator, no motor vote and no bar gate.
+ // Preserve settings.engine as the user preference for switching back to
+ // Contínua, and as the transport identity used by existing PC/mobile cards.
+ if(inSelective){
+   const snap=input.snap||{},at=input.now??Date.now();
+   return [...new Set((input.delays||[chosen]).map(Number).filter(x=>x===chosen))]
+     .map(delaySeconds=>autonomousSelectiveEntry({
+       quoteHistory:input.adaptiveHistory||snap.quoteHistory||[],now:at,
+       quoteTs:snap.quoteTs,delaySeconds,holdingSeconds:delaySeconds,
+       asset:String(settings.asset||'UNKNOWN').toUpperCase(),
+       engineId:String(settings.engine||'automatic')
+     }));
+ }
  const continuous=continuousFutureEntrySchedule({...input,
    settings:{...settings,forecastMode:'continuous'},
-   historicalQuoteGapMs:inSelective?8000:2500,
-   selectiveLeadSeconds:inSelective?chosen:null
+   historicalQuoteGapMs:2500,selectiveLeadSeconds:null
  });
- if(settings.forecastMode!=='selective')return continuous;
- const asOf=input.now??Date.now();
- const evidence=selectiveEvidence({quoteHistory:input.adaptiveHistory||input.snap?.quoteHistory||[],asOf,selectedSeconds:chosen});
- // One closed-bar observation set for the selected interval, no historical
- // regression or unnecessary 12-minute preparation. No new broker polling.
- return continuous.map(forecast=>qualifyStrategyInterval({
-   forecast,asOf,evidence,checkLong:false
- }));
+ return continuous;
 }
