@@ -194,6 +194,8 @@ export class LiveBridge{
       snapshot.lastResult?.analysis?.vnext?.ea?.[9],
       snapshot.lastResult?.analysis?.vnext?.ea?.[10],
       snapshot.lastResult?.analysis?.vnext?.ow?.[0],
+      snapshot.lastResult?.analysis?.vnext?.ow?.[1],
+      snapshot.lastResult?.analysis?.vnext?.ow?.[2],
       snapshot.lastResult?.analysis?.vnext?.hf?.map(row=>row.slice(0,3).join(',')).join(';'),
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.side,
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.at,
