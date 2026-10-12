@@ -1768,8 +1768,8 @@ export class LocalPlaywrightDriver{
             if(next.nodeType!==Node.ELEMENT_NODE)continue;
             // Preserve the editor and its live DOM/options while focused;
             // update every other part of the overlay in the same frame.
-            if((current===focused||el.dataset.selectLock==='1')&&
-              current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))continue;
+            if(current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')&&
+              (current===focused||el.dataset.selectLock==='1'))continue;
             for(const attr of [...current.attributes])if(!next.hasAttribute(attr.name)&&!(attr.name==='open'&&current.matches?.('details[data-sentinel-preserve-open]')))current.removeAttribute(attr.name);
             for(const attr of [...next.attributes])if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
             reconcile(current,next);
