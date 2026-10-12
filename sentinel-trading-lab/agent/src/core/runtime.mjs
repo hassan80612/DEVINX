@@ -915,14 +915,13 @@ export class DemoTradingRuntime{
         oldEntry.asset===currentEntry.asset&&
         oldEntry.delaySeconds===currentEntry.delaySeconds&&
         Number(oldEntry.entryAt)>now;
-      // Keep the established future entry visible for three seconds AFTER
-      // its real deadline. The phone can then observe the exact moment rather
-      // than receiving an already replaced countdown. Never treat this
-      // presentation receipt as a broker order or extend entry eligibility.
+      // The expiring countdown must not mask the next selected forecast.
+      // Allow only the current render frame to show "time reached", and
+      // never use an expired receipt as permission for a broker entry.
       const entryReached=oldEntry&&oldEntry.engineId===model.engineId&&
         oldEntry.asset===String(settings.asset||'UNKNOWN').toUpperCase()&&
         oldEntry.delaySeconds===model.expirySeconds&&
-        Number(oldEntry.entryAt)<=now&&now-Number(oldEntry.entryAt)<3000;
+        Number(oldEntry.entryAt)<=now&&now-Number(oldEntry.entryAt)<400;
       const entryAnchor=entryReached?oldEntry:sameEntry?oldEntry:
         currentEntry?.side?currentEntry:
         oldEntry&&oldEntry.engineId===model.engineId&&
