@@ -23,7 +23,6 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
   status:'scanning-entry-window',actionable:false,calibrated:false};
  if(!offsets.length)return {...base,status:'invalid-window'};
  let best=null;
- const qualified=[];
  for(const seconds of offsets){
   const c=evaluateLead(seconds);
   const p1=Number(c?.projectedEntryPrice),p2=Number(c?.projectedExitPrice);
@@ -32,22 +31,15 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
    (p2>p1?'CALL':p2<p1?'PUT':null)!==side)continue;
   const raw=Number(c.selectionStrength);
   if(!Number.isFinite(raw)||raw<=0)continue;
+  // Score comes from OWN past observations or OWN selected motor projected
+  // excursion, with a very small tie preference for earlier valid entry.
+  // No fixed seconds, forced direction, or redefinition of holding time.
   const score=raw-.018*seconds/windowSeconds;
-  const row={...c,score,seconds};
-  qualified.push(row);
-  // Keep the SAME selected entry offset and directional motor as v67.21;
-  // never choose the opposite side merely to create more opportunities.
-  if(!best||row.score>best.score)best=row;
+  if(!best||score>best.score){
+   best={...c,score,seconds};
+  }
  }
  if(!best)return base;
- // Only ABSTAIN when multiple mutually contradictory future-entry instants
- // have strong support. All admitted signals are BIT-FOR-BIT identical to
- // the original 67.21 planner. No extra forecasts or waiting timers.
- const agreeing=qualified.filter(x=>x.side===best.side);
- const opposing=qualified.filter(x=>x.side!==best.side);
- const weight=rows=>rows.reduce((n,x)=>n+Number(x.selectionStrength||0),0);
- if(opposing.length>=2&&
-  (agreeing.length===1||weight(opposing)>=weight(agreeing)*.75))return base;
  return {...base,status:'forecast',side:best.side,
   entryOffsetSeconds:best.seconds,
   entryAt:now+best.seconds*1000,
