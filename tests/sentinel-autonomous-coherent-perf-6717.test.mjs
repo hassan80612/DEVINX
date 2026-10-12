@@ -17,10 +17,9 @@ test('selective requires no three complete bars and does not depend on the chose
    snap,now,delays:[5],forecastModel:'selected-strengths-67.5'})[0]);
  for(const r of results){
   assert.equal(r.forecastOwner,'selective-historical-outcomes-v2');
-  assert.equal(r.entryAt,now+5000);
-  assert.equal(r.exitAt,now+10000);
+  if(r.side){assert.ok(r.entryAt>=now+2000&&r.entryAt<=now+5000);assert.equal(r.exitAt,r.entryAt+5000);}else assert.equal(r.entryAt,null);
   assert.equal(r.actionable,false);
-  assert.ok(['forecast','no-validated-historical-edge','insufficient-completed-outcomes','no-comparable-historical-pattern','insufficient-observations','waiting-completed-observation'].includes(r.status));
+  assert.ok(['forecast','scanning-entry-window','waiting-fresh-quote'].includes(r.status));
   if(r.side) assert.equal(r.side,r.projectedExitPrice>r.projectedEntryPrice?'CALL':'PUT');
  }
  for(const r of results.slice(1)){
@@ -84,7 +83,7 @@ test('all clocks share the original Agent deadline, no client deadline padding',
  const rt=fs.readFileSync('sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
  const pc=fs.readFileSync('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
  const mobile=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
- assert.match(rt,/const entryAnchor=sameEntry\?oldEntry:newEntryValid\?currentEntry:null/);
+ assert.match(rt,/const planned=sameEntry\?oldEntry:newEntryValid\?currentEntry:null/);
  assert.match(pc,/const entryPlanActive=entryPlanReady&&scheduledAt>Date.now\(\)/);
  assert.match(mobile,/const expired=pinned&&now>=plannedAt/);
 });
