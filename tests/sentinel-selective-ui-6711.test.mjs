@@ -43,7 +43,7 @@ test('frontend clears the reached forecast and blocks stale remote settings snap
  assert.match(card,/const expired=pinned&&now-plannedAt>3000/);
  assert.match(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
  assert.match(card,/entryPlanDisplayable=entryPlanValid&&plannedAt\+3000>now/);
- assert.match(card,/Cotação já atrasada no PC/);
+ assert.match(card,/Aguardando cotação atual/);
  assert.match(page,/const pendingSettingsRef=useRef/);
  assert.match(page,/settings:reconcileSettings\(/);
  assert.match(page,/return reconcileStatus\(data\)/);
