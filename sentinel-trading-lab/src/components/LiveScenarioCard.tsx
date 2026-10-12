@@ -199,8 +199,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   };
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
     <label>Estratégia do cenário
-      <select aria-label="Estratégia responsável pelo cenário" value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
-        {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{e.name}</option>)}
+      <select aria-label="Estratégia responsável pelo cenário" value={chosenEngine} disabled={busy||forecastMode==='selective'} onChange={e=>void changeEngine(e.target.value)}>
+        {forecastMode==='selective'?<option value={chosenEngine}>Seletiva Autônoma</option>:
+          SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{e.name}</option>)}
       </select>
     </label>
     <label>Previsão
