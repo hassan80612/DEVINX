@@ -32,18 +32,19 @@ function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid}:{
       if(timer)clearInterval(timer);
     };
   },[]);
-  const entryReached=valid&&plannedAt<=now;
-  const countdownSeconds=valid?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
+  const pinned=valid&&issuedAt>0&&plannedAt>issuedAt;
+  const entryReached=pinned&&plannedAt<=now;
+  const countdownSeconds=pinned?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
   const entryCountdown=countdownSeconds===null?'—:—':
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
-  const direction=!valid?'SEM PREVISÃO DE ENTRADA':
+  const direction=!pinned?'SEM PREVISÃO DE ENTRADA':
     entryReached?'HORÁRIO PREVISTO ATINGIDO':
     (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   return <>
     <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
     <div className={'vnextTargetCountdown '+(entryReached?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
       <div><small>{entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
-      <div><small>ENTRADA PREVISTA</small><b>{valid?clock(plannedAt):'—'}</b><span>{valid?'Vencimento estimado '+clock(plannedExit):'Aguardando cálculo futuro'}</span></div>
+      <div><small>ENTRADA PREVISTA</small><b>{pinned?clock(plannedAt):'—'}</b><span>{pinned?'Vencimento estimado '+clock(plannedExit):'Aguardando cálculo futuro'}</span></div>
     </div>
   </>;
 }
