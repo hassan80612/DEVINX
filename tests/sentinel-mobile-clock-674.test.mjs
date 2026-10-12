@@ -43,7 +43,7 @@ test('mobile countdown advances locally, without triggering full card render for
  const card=await read('src/components/LiveScenarioCard.tsx');
  assert.match(card,/function MobileFutureEntryClock\(/);
  assert.match(card,/timer=setInterval\(update,200\)/);
- assert.match(card,/const countdownSeconds=pinned&&!expired\?Math\.max\(0,Math\.ceil\(\(plannedAt-now\)\/1000\)\):null/);
+ assert.match(card,/const countdownSeconds=pinned&&!expired\?Math\.max\(1,Math\.ceil\(\(plannedAt-now\)\/1000\)\):null/);
  assert.match(card,/<MobileFutureEntryClock plannedAt=\{plannedAt\}/);
  assert.equal((card.match(/data-testid="forecast-countdown-clock"/g)||[]).length,1);
  assert.equal((card.match(/\{forecastReceipt\}/g)||[]).length,2,'same forecast in standard and floating card');
