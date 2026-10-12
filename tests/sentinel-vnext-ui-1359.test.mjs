@@ -11,7 +11,7 @@ test('mobile compact and full card contain the SAME selected single engine and f
  assert.match(s,/Estratégia responsável pelo cenário/);
  assert.match(s,/Tempo até a entrada prevista/);
  assert.match(s,/PREÇO ESTIMADO AO VENCER/);
- assert.match(s,/ENTRADA PREVISTA/);
+ assert.match(s,/MOMENTO DE ENTRADA/);
  assert.match(s,/!vnext&&<details className="liveSettings"/);
 });
 test('desktop Agent selects only one motor and displays the target price/time rather than 3-strategy cards',async()=>{
