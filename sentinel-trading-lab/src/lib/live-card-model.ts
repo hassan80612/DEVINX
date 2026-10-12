@@ -56,9 +56,15 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     issuedAt:Number(v[4])||0,holdingSeconds:Number(v[5])||0,
     entryAt:Number(v[6])||((Number(v[4])||0)+(Number(v[0])||0)*1000),
     exitAt:Number(v[7])||((Number(v[4])||0)+((Number(v[0])||0)+(Number(v[5])||0))*1000),
-    entryReadyNow:v[8]===1
+    entryReadyNow:v[8]===1,phase:v[9]||'open',entryTriggeredAt:Number(v[10])||null
   }:v;
   const entryAnchor=entryFromTuple(vnext?.ea||vnext?.futureEntryAnchor);
+  const rawWindow=vnext?.ow||vnext?.opportunityWindow;
+  const vnextOpportunityWindow=Array.isArray(rawWindow)?{
+    phase:rawWindow[0],windowStartedAt:Number(rawWindow[1]),
+    windowEndsAt:Number(rawWindow[2]),entryAt:Number(rawWindow[3]),
+    reason:String(rawWindow[4]||'')
+  }:rawWindow||null;
   const vnextFutureEntryAnchor=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
     Number(entryAnchor?.delaySeconds)===horizon&&
     Number(entryAnchor?.entryAt)>Number(entryAnchor?.issuedAt)&&
@@ -160,7 +166,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,quoteAgeAtFrame,transportAge,state,side,tone,scenarioTone,scenarioInactive,
-    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextFutureEntryAnchor,vnextFutureEntryRows,vnextStatus:vnext?.computedStatus||null,
+    selectedEngine:s?.settings?.engine||null,vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextFutureEntryAnchor,vnextFutureEntryRows,vnextOpportunityWindow,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,vnextLastSettled:vnext?.lastSettled||null,
     displayScenarioSide,displayScenarioStale,displayScenarioRemaining,displayScenarioState,displayScenarioPreliminary,
