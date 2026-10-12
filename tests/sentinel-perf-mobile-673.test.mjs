@@ -32,7 +32,7 @@ test('old/reordered mobile packets cannot block the status recovery path',async(
   const reject=source.indexOf('if(nextEval<prevEval)return previous;');
   const confirmed=source.indexOf('liveFrameAt.current=Date.now();',reject);
   assert.ok(reject>=0&&confirmed>reject);
-  assert.match(source,/if\(Number\(payload\.liveBroker\?\.lastQuoteAt\|\|0\)<prevPriceAt-250\)return previous/);
+  assert.match(source,/liveBroker:olderQuote\?previous.liveBroker/);
 });
 
 test('hidden mobile card stops clock updates without modifying prediction math',async()=>{

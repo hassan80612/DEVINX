@@ -7,7 +7,7 @@ export class SignedLiveBridge extends LiveBridge{
   constructor(topic,secret,options={}){
     super(topic,options);
     if(!/^[a-f0-9]{64}$/.test(secret))throw new Error('live_signing_key_missing');
-    this.secret=secret;this.verifiedViewerAt=0;this.lastPublishedQuoteAt=0;
+    this.secret=secret;this.verifiedViewerAt=0;this.lastPublishedQuoteAt=0;this.onViewer=options.onViewer;
   }
   mac(input){return createHmac('sha256',Buffer.from(this.secret,'hex')).update(input).digest('hex')}
   verifyViewer(payload){
@@ -21,11 +21,13 @@ export class SignedLiveBridge extends LiveBridge{
     const socket=this.socket;
     socket?.addEventListener('message',e=>{
       let msg;try{msg=JSON.parse(String(e.data))}catch{return}
-      if(msg.topic===this.topic&&msg.event==='broadcast'&&msg.payload?.event==='viewer'&&this.joined&&this.verifyViewer(msg.payload?.payload))this.verifiedViewerAt=this.clock();
+      if(msg.topic===this.topic&&msg.event==='broadcast'&&msg.payload?.event==='viewer'&&this.joined&&this.verifyViewer(msg.payload?.payload)){
+        this.verifiedViewerAt=this.clock();this.onViewer?.();
+      }
     });
   }
   hasViewer(){return this.joined&&this.clock()-this.verifiedViewerAt<16000}
-  publish(snapshot){
+  publish(snapshot,{urgent=false}={}){
     const a=snapshot?.lastResult?.analysis||{},op=a.operationalSignal||{},gc=a.generalConsensus||{};
     const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
     // A NEW broker quote is actionable information on 30s/60s expiries,
@@ -39,7 +41,7 @@ export class SignedLiveBridge extends LiveBridge{
       scenario.side,scenario.status,scenario.closed,scenario.deadline,
       alert.side,alert.trigger,alert.testing,op.subanalyst?.status,
       op.state,op.side,op.ready,op.actionable,op.activeUntil,
-      snapshot?.settings?.engine,snapshot?.settings?.orderDurationMs,
+      snapshot?.settings?.forecastMode,snapshot?.settings?.engine,snapshot?.settings?.orderDurationMs,
       a.vnext?.engineId,a.vnext?.receipt?.side,
       // Refresh future-entry countdown urgently when the pinned clock rolls.
       a.vnext?.ea?.[4],a.vnext?.ea?.[0],a.vnext?.ea?.[1],
@@ -48,10 +50,10 @@ export class SignedLiveBridge extends LiveBridge{
     const changed=signal!==this.lastSignalKey;
     const quoteAt=Number(snapshot?.liveBroker?.lastQuoteAt||snapshot?.feed?.quoteTs||0);
     const newQuote=Number.isFinite(quoteAt)&&quoteAt>this.lastPublishedQuoteAt;
-    if(!changed&&!newQuote&&this.clock()-this.lastSentAt<4000)return false;
+    if(!urgent&&!changed&&!newQuote&&this.clock()-this.lastSentAt<4000)return false;
     // Never delay a fresh CALL/PUT, reversal test, cancellation or scenario
     // review behind the four-second unchanged-quote optimization.
-    const published=super.publish(snapshot,{urgent:changed&&!!this.lastSignalKey});
+    const published=super.publish(snapshot,{urgent:urgent||(changed&&!!this.lastSignalKey)});
     if(published){this.lastSignalKey=signal;this.lastPublishedQuoteAt=Math.max(this.lastPublishedQuoteAt,quoteAt);}
     return published;
   }
