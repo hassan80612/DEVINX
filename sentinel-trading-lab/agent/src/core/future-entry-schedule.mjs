@@ -215,3 +215,48 @@ export function futureEntrySchedule(input={}){
      status:check.reason,actionable:false,calibrated:false};
  });
 }
+
+/**
+ * Confirm the ORIGINAL scheduled entry at its real market timestamp. This
+ * evaluates t=now -> t+expiry using the selected mode's estimator; it NEVER
+ * chooses a new offset or modifies the original window's CALL/PUT.
+ */
+export function confirmWindowEntry({
+ settings={},snap={},now=Date.now(),adaptiveHistory=null,
+ forecastModel='original-67'
+}={}){
+ const H=Number(settings.orderDurationMs||0)/1000;
+ const quotes=adaptiveHistory||snap.quoteHistory||[];
+ if(!(H>=5&&H<=3600)||!(Number(snap.quoteTs)>0&&
+  Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500))
+  return {side:null,status:'waiting-fresh-quote'};
+ if(settings.forecastMode==='selective'){
+  return autonomousSelectiveEntry({quoteHistory:quotes,now,quoteTs:snap.quoteTs,
+    delaySeconds:0,holdingSeconds:H,
+    asset:String(settings.asset||'UNKNOWN').toUpperCase(),
+    engineId:String(settings.engine||'automatic')});
+ }
+ const engineId=String(settings.engine||'automatic');
+ if(engineId==='automatic'&&
+   ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(forecastModel)){
+  const learned=adaptiveDirectTrajectory({quoteHistory:quotes,asOf:now,
+   entryDelaySeconds:0,holdingSeconds:H,historicalQuoteGapMs:2500});
+  if(learned.status==='adaptive-direct-trajectory'){
+   const check=coherentInterval({entryPrice:learned.projectedEntryPrice,
+    exitPrice:learned.projectedExitPrice,side:learned.side,
+    noise:observedNoise({quotes,now,horizonSeconds:H})});
+   return check.qualified?learned:{...learned,side:null,status:check.reason};
+  }
+ }
+ const estimated=singleEngineForecast({settings:{...settings,forecastMode:'continuous'},
+   snap,now,forecastModel:engineId==='automatic'?'original-67':forecastModel,
+   adaptiveHistory:quotes});
+ const receipt=estimated.receipt;
+ if(!receipt)return {side:null,status:'no-directional-evidence'};
+ const noise=observedNoise({quotes,now,horizonSeconds:H});
+ const checked=coherentInterval({entryPrice:receipt.referencePrice,
+   exitPrice:receipt.projectedPrice,side:receipt.side,noise});
+ return {...checked,side:checked.qualified?receipt.side:null,
+  projectedEntryPrice:receipt.referencePrice,
+  projectedExitPrice:receipt.projectedPrice};
+}
