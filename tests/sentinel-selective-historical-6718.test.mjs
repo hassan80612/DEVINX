@@ -48,8 +48,10 @@ test('the first 30s and delayed 30-to-60s outcomes are different research target
 });
 test('no look-ahead from future quotes or late backfills; no fabricated side when feed is stale',()=>{
  const q=quotes(1500),reference=evalFor(q,30,30);
- const polluted=evalFor([...q,{ts:now+1000,price:100000,receivedAt:now+1000},
-  {ts:now-200000,price:.000001,receivedAt:now+9000}],30,30);
+ const polluted=autonomousSelectiveEntry({quoteHistory:[...q,
+  {ts:now+1000,price:100000,receivedAt:now+1000},
+  {ts:now-200000,price:.000001,receivedAt:now+9000}],
+  now,quoteTs:now,delaySeconds:30,holdingSeconds:30,asset,engineId:'automatic'});
  assert.deepEqual(polluted,reference);
  const stale=autonomousSelectiveEntry({quoteHistory:q,now:now+4000,
   quoteTs:now,delaySeconds:30,holdingSeconds:30,asset});
