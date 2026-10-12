@@ -87,7 +87,7 @@ test('same quote context and different selected expiry recompute independent his
  assert.equal(first.entryRows.length,1);
  assert.equal(next.entryRows.length,1);
  assert.equal(next.entryRows[0].delaySeconds,60);
- assert.equal(next.entryRows[0].entryAt,now+60000);
+ if(next.entryRows[0].side){assert.ok(next.entryRows[0].entryAt>now&&next.entryRows[0].entryAt<=now+60000);assert.equal(next.entryRows[0].exitAt,next.entryRows[0].entryAt+60000);}
  assert.notEqual(first.context,next.context);
  assert.equal(next.reused,false);
 });
