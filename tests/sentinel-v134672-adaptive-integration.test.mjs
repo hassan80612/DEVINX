@@ -97,7 +97,7 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
 });
 test('approved performance changes and preserved desktop controls, data bridge and mobile layout match reviewed sources',()=>{
  // 67.11 preserves the reviewed browser, desktop, bridge and layout sources; selective mode intentionally hides customer-facing technical details; layout geometry and desktop controls remain unchanged.
- const expected={"sentinel-trading-lab/agent/worker/live-bridge.mjs":"922081aad99fa1cc7514f72ab9f5dcf5679adc05","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"0791a7c42bf542b24ba02112b449d6f2f6fcab84","sentinel-trading-lab/src/app/globals.css":"bfcf8831245db1dde5d7ce87cbbe2b6c35c857a9","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"635c37fdddf1a26a2410461beabc8e7bb5eead04","sentinel-trading-lab/src/lib/live-card-model.ts":"3882f30f565feba1e799c72a4f81c781792ca1ad"};
+ const expected={"sentinel-trading-lab/agent/worker/live-bridge.mjs":"406cea810512f65fa3ed598028afc4be7d0a37a1","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"4bbe037df08fa0a43dcaec1bc5d7818f28449d5c","sentinel-trading-lab/src/app/globals.css":"bfcf8831245db1dde5d7ce87cbbe2b6c35c857a9","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"abf39a34c1a8d77d54ed7013d577cadff3e65f40","sentinel-trading-lab/src/lib/live-card-model.ts":"877f11aa167627f7353c804f0571e25906127770"};
  const worker=fs.readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  assert.match(worker,/onViewer:\(\)=>\{void publishLiveFrame\(\)\}/);
  assert.match(worker,/liveBridge\.publish\(analystSnapshot\(snapshot,chosen\.m\),\{urgent\}\)/);
