@@ -52,7 +52,7 @@ test('PC overlay immediately receives changed Agent entry, even with an open sel
  assert.doesNotMatch(overlay,/if\(el.dataset.selectLock==='1'\|\|\(focused/);
  assert.match(overlay,/current===focused\|\|el.dataset.selectLock==='1'/);
  assert.match(overlay,/const entryPlanActive=entryPlanReady&&\(scheduledAt>Date.now\(\)\|\|entryMoment\)/);
- assert.match(overlay,/if\(!active&&decision\)decision.textContent='JANELA ABERTA/);
+ assert.match(overlay,/if\(!active&&decision\)/);assert.match(overlay,/phase==='cancelled'\?'JANELA CANCELADA'/);
  assert.doesNotMatch(overlay,/HORÁRIO PREVISTO ATINGIDO/);
 });
 test('phone uses natural local time from the exact original entry, never a 400ms grace or a fabricated restart',()=>{
