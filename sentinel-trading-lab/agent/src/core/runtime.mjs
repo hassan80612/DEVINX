@@ -963,12 +963,13 @@ export class DemoTradingRuntime{
       // window a subsequent prediction cannot rewrite side, entryAt or expiry.
       // An opposite signal invalidates it, never substitutes a new one.
       const entryDue=currentWindow?.phase==='open'&&
-        now>=currentWindow.entryAt&&now<=currentWindow.entryAt+1500;
+        now>=Number(currentWindow.entryAt)&&now<Number(currentWindow.windowEndsAt);
       // A locked window still receives market evidence for its ORIGINAL
       // entry time. No new entry point, direction or countdown is emitted.
       // Refit only on NEW source quotes, except at the actual deadline.
-      const shouldRecheck=currentWindow?.phase==='open'&&quoteFresh&&
-        (entryDue||Number(snap.quoteTs)>this.vnextWindowCheckedQuoteAt);
+      const shouldRecheck=entryDue&&quoteFresh&&
+        Number(snap.quoteTs)>=Number(currentWindow.entryAt)&&
+        Number(snap.quoteTs)>this.vnextWindowCheckedQuoteAt;
       const confirmation=shouldRecheck?
         confirmWindowEntry({settings,snap,now,adaptiveHistory,
           forecastModel:this.forecastModel,entryAt:currentWindow.entryAt}):null;
