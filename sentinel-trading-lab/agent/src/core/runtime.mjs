@@ -915,18 +915,11 @@ export class DemoTradingRuntime{
         oldEntry.asset===currentEntry.asset&&
         oldEntry.delaySeconds===currentEntry.delaySeconds&&
         Number(oldEntry.entryAt)>now;
-      // The expiring countdown must not mask the next selected forecast.
-      // Allow only the current render frame to show "time reached", and
-      // never use an expired receipt as permission for a broker entry.
-      const entryReached=oldEntry&&oldEntry.engineId===model.engineId&&
-        oldEntry.asset===String(settings.asset||'UNKNOWN').toUpperCase()&&
-        oldEntry.delaySeconds===model.expirySeconds&&
-        Number(oldEntry.entryAt)<=now&&now-Number(oldEntry.entryAt)<400;
-      const entryAnchor=entryReached?oldEntry:sameEntry?oldEntry:
-        currentEntry?.side?currentEntry:
-        oldEntry&&oldEntry.engineId===model.engineId&&
-          oldEntry.asset===String(settings.asset||'UNKNOWN').toUpperCase()&&
-          oldEntry.delaySeconds===model.expirySeconds&&oldEntry.entryAt>now?oldEntry:null;
+      // At the EXACT expiry, move to a NEW observed forecast or clear it.
+      // No "time reached" receipt may pin the next countdown or cause a
+      // newly calculated forecast to appear already several seconds late.
+      // A currently active forecast remains immutable until that expiry.
+      const entryAnchor=sameEntry?oldEntry:currentEntry?.side?currentEntry:null;
       this.vnextFutureEntryAnchor=entryAnchor;
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
