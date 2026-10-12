@@ -10,7 +10,7 @@ const snap={quoteHistory:quotes,quoteTs:now,price:quotes.at(-1).price,provider:'
 const input=engine=>({settings:{engine,asset:'TEST',orderDurationMs:60000},snap,now});
 test('release selects exactly the tested automatic, breakout and fibonacci candidates',()=>{
  const release=JSON.parse(fs.readFileSync('sentinel-trading-lab/agent/release.json'));
- assert.equal(release.version,'13.4.67.12');assert.equal(release.runtime.forecastModel,model);
+ assert.equal(release.version,'13.4.67.13');assert.equal(release.runtime.forecastModel,model);
  for(const [engine,expected] of [['automatic','structure-context-v2'],['breakout','specialist-structure-v2'],['fibonacci_retest','specialist-structure-v2']]){
   assert.deepEqual(singleEngineForecast({...input(engine),forecastModel:model}),singleEngineForecast({...input(engine),forecastModel:expected}));
  }
