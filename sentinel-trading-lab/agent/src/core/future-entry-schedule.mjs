@@ -12,7 +12,8 @@ const num=x=>Number.isFinite(Number(x))?Number(x):null;
 const valid=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
 
 function continuousFutureEntrySchedule({
-  settings={},snap={},now=Date.now(),delays=[30],knownForecasts=[],forecastModel='original-67',adaptiveHistory=null
+  settings={},snap={},now=Date.now(),delays=[30],knownForecasts=[],forecastModel='original-67',adaptiveHistory=null,
+  historicalQuoteGapMs=2500,selectiveLeadSeconds=null
 }={}){
   const engineId=String(settings.engine||'automatic');
   const asset=String(settings.asset||'UNKNOWN').toUpperCase();
@@ -49,9 +50,13 @@ function continuousFutureEntrySchedule({
       }
       if((forecastModel==='adaptive-direct-trajectory-v1'||forecastModel==='selected-strengths-67.5')&&engineId==='automatic'){
         const quoteAt=Number(snap.quoteTs);
-        const learned=quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500?
+        // Fit the historical trajectory ONLY for the user-selected selective
+        // horizon. Auxiliary horizons remain displayed using the unchanged
+        // original-67 fallback; they must not block the live result.
+        const selected=selectiveLeadSeconds==null||Number(selectiveLeadSeconds)===delaySeconds;
+        const learned=selected&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500?
           adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,
-            entryDelaySeconds:delaySeconds,holdingSeconds}):null;
+            entryDelaySeconds:delaySeconds,holdingSeconds,historicalQuoteGapMs}):null;
         if(learned?.status==='adaptive-direct-trajectory'&&learned.side){
           return {engineId,asset,delaySeconds,holdingSeconds,side:learned.side,
             issuedAt:learned.issuedAt,entryAt:learned.entryAt,exitAt:learned.exitAt,
@@ -90,14 +95,19 @@ function continuousFutureEntrySchedule({
 export function futureEntrySchedule(input={}){
  const legacy=input.settings?.engine==='selective_forecast';
  const settings=legacy?{...input.settings,engine:'automatic',forecastMode:'selective'}:input.settings||{};
- const continuous=continuousFutureEntrySchedule({...input,settings:{...settings,forecastMode:'continuous'}});
+ const inSelective=settings.forecastMode==='selective';
+ const chosen=Number(settings.orderDurationMs||60000)/1000;
+ const continuous=continuousFutureEntrySchedule({...input,
+   settings:{...settings,forecastMode:'continuous'},
+   historicalQuoteGapMs:inSelective?8000:2500,
+   selectiveLeadSeconds:inSelective?chosen:null
+ });
  if(settings.forecastMode!=='selective')return continuous;
  const asOf=input.now??Date.now();
  const evidence=selectiveEvidence({quoteHistory:input.adaptiveHistory||input.snap?.quoteHistory||[],asOf});
  // Long-history regression is CPU intensive; it is relevant ONLY to the
  // selected entry. Other displayed horizons use the already-computed
  // three-completed-bar evidence, preventing analysis from starving live ticks.
- const chosen=Number(settings.orderDurationMs||60000)/1000;
  return continuous.map(forecast=>qualifyStrategyInterval({
    forecast,asOf,evidence,checkLong:Number(forecast.delaySeconds)===chosen
  }));
