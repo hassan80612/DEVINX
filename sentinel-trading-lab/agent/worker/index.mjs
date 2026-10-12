@@ -279,7 +279,13 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       activeProvider,runtime.settings.asset,runtime.settings.engine,runtime.settings.forecastMode,runtime.settings.orderDurationMs,
       pendingScenario.side,pendingScenario.status,pendingScenario.closed,
       pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
-      pendingOp.actionable,pendingOp.activeUntil
+      pendingOp.actionable,pendingOp.activeUntil,
+      // A new future entry is a FIRST-CLASS decision change, not a
+      // once-per-second cosmetic refresh. Deliver the new PC deadline
+      // on the same evaluated frame used by the mobile signed broadcast.
+      runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.issuedAt,
+      runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.entryAt,
+      runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.side
     ].join('|');
     if(overlayFastKey!==lastOverlayProbeKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayProbeKey=overlayFastKey;
@@ -297,7 +303,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const quoteStale=!(liveTs>0)||Date.now()-liveTs>effectiveQuoteFreshnessMs;
     const op=a.operationalSignal||{},scenario=op.scenario||{},
       overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,
-        op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil].join('|');
+        op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,
+        a.vnext?.futureEntryAnchor?.issuedAt,
+        a.vnext?.futureEntryAnchor?.entryAt,
+        a.vnext?.futureEntryAnchor?.side].join('|');
     const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey;
     if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayTimingKey=overlayTimingKey;
