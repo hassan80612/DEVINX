@@ -1493,24 +1493,28 @@ export class LocalPlaywrightDriver{
         // Live changes of direction never restart its original countdown.
         // One immutable future ENTRY schedule, not a current candle signal.
         const pinnedEntry=d.vnext?.futureEntryAnchor||null;
-        const opportunityPhase=d.vnext?.opportunityWindow?.phase||null;
+        const windowState=d.vnext?.opportunityWindow||null;
+        const opportunityPhase=windowState?.phase||null;
+        const windowDeadline=Number(windowState?.windowEndsAt||0);
+        const windowStart=Number(windowState?.windowStartedAt||0);
+        const windowRunning=windowDeadline>Date.now()&&windowStart>0;
         const entryPlanReady=!!(pinnedEntry&&pinnedEntry.engineId===d.engine&&
           pinnedEntry.asset===visibleAsset&&
           Number(pinnedEntry.delaySeconds)*1000===duration&&
-          Number(pinnedEntry.entryAt)>Number(pinnedEntry.issuedAt)&&
           ['CALL','PUT'].includes(pinnedEntry.side));
+        const triggeredAt=Number(pinnedEntry?.entryTriggeredAt||0);
+        const entryMoment=entryPlanReady&&opportunityPhase==='fired'&&liveNow&&
+          triggeredAt>0&&Date.now()>=triggeredAt&&Date.now()<=triggeredAt+1500;
+        const entryPlanActive=entryPlanReady&&windowRunning;
+        const scheduledSide=entryPlanActive?pinnedEntry.side:null;
         const scheduledAt=entryPlanReady?Number(pinnedEntry.entryAt):0;
         const scheduledExit=entryPlanReady?Number(pinnedEntry.exitAt):0;
-        const entryMoment=entryPlanReady&&pinnedEntry.entryReadyNow===true&&liveNow&&
-          Date.now()>=scheduledAt&&Date.now()<=scheduledAt+1500;
-        const entryPlanActive=entryPlanReady&&(scheduledAt>Date.now()||entryMoment);
-        const scheduledSide=entryPlanActive?pinnedEntry.side:null;
         const scheduledDecision=entryMoment?
           ('ENTRADA AGORA · '+(scheduledSide==='CALL'?'↑ CALL':'↓ PUT')):
-          opportunityPhase==='cancelled'?'JANELA CANCELADA':
+          opportunityPhase==='cancelled'?'JANELA SEM ENTRADA':
           opportunityPhase==='fired'?'ENTRADA JÁ SINALIZADA':
-          !entryPlanActive?'JANELA ABERTA · ANALISANDO':
-          scheduledSide==='CALL'?'↑ CALL PREVISTO':'↓ PUT PREVISTO';
+          opportunityPhase==='open'?(scheduledSide==='CALL'?'↑ CALL · JANELA ABERTA':'↓ PUT · JANELA ABERTA'):
+          'JANELA ABERTA · ANALISANDO';
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
@@ -1550,16 +1554,16 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
-              <div data-sentinel-vnext-clock data-deadline="${scheduledAt}" data-issued="${Number(pinnedEntry?.issuedAt||0)}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${scheduledSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
+              <div data-sentinel-vnext-clock data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${scheduledSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>ATÉ ENTRADA CALCULADA</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
-                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">ENTRADA PREVISTA</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${entryPlanActive?esc(new Date(scheduledAt).toLocaleTimeString('pt-BR',{hour12:false})):'—'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">VENCIMENTO ESTIMADO ${entryPlanActive?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):'—'}</small></div>
+                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">MOMENTO DE ENTRADA</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(triggeredAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">VENCIMENTO ${opportunityPhase==='fired'&&scheduledExit?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):'após a entrada'}</small></div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;height:47px">
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO DE ENTRADA</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO AO VENCER</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedExitPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
-                <span style="color:${callTone}">JANELA ${durationText} · PONTO ${entryPlanReady?Number(pinnedEntry.entryOffsetSeconds??Math.round((scheduledAt-Number(pinnedEntry.issuedAt))/1000))+'s':'—'}</span>
+                <span style="color:${callTone}">JANELA ${durationText} · ENTRADA ${opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE'}</span>
                 <span style="color:${putTone}">PERÍODO APÓS ${entryPlanReady?Number(pinnedEntry.holdingSeconds)+'s':'—'}</span>
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${esc(liveNow?(d.forecastMode==='selective'&&!entryPlanReady?d.vnext?.futureEntryForecast?.reason||'ANALISANDO':'AO VIVO'):'COTAÇÃO ATRASADA')}</span>
               </div>
@@ -1802,9 +1806,10 @@ export class LocalPlaywrightDriver{
             const issued=Number(pane.getAttribute('data-issued')||0);
             const cycleStatus=pane.querySelector('[data-sentinel-cycle-status]');
             const nowClock=Date.now();
+            const firedAt=Number(pane.getAttribute('data-triggered-at')||0);
             const verifiedNow=pane.getAttribute('data-entry-ready')==='1'&&
               pane.getAttribute('data-live-quote')==='1'&&
-              target>issued&&nowClock>=target&&nowClock<=target+1500;
+              firedAt>0&&nowClock>=firedAt&&nowClock<=firedAt+1500;
             const active=Number.isFinite(target)&&Number.isFinite(issued)&&issued>0&&
               target>issued&&(target>nowClock||verifiedNow);
             if(cycleStatus)cycleStatus.textContent=verifiedNow?'MOMENTO CONFIRMADO':'ATÉ ENTRADA CALCULADA';
@@ -1813,7 +1818,7 @@ export class LocalPlaywrightDriver{
             // freeze the computer at 00:00 while the next observation arrives.
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
-              decision.textContent=phase==='cancelled'?'JANELA CANCELADA':
+              decision.textContent=phase==='cancelled'?'JANELA SEM ENTRADA':
                 phase==='fired'?'ENTRADA JÁ SINALIZADA':'JANELA ABERTA · ANALISANDO';
             }
             if(verifiedNow&&decision){
@@ -1821,13 +1826,14 @@ export class LocalPlaywrightDriver{
               decision.textContent='ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT');
             }
             let shown='—:—';
-            if(active&&!verifiedNow){
+            if(active){
               const left=Math.max(1,Math.ceil((target-Date.now())/1000));
               const pad=n=>String(n).padStart(2,'0');
               shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
               value.style.fontSize='';
             }
-            if(verifiedNow)shown='AGORA';
+            // The FULL opportunity clock always counts to its original deadline;
+            // ENTRADA AGORA is a one-off signal, not the clock itself.
             if(value.textContent!==shown)value.textContent=shown;
           };
           el.__sentinelTargetClockTick=tickTargetClock;
