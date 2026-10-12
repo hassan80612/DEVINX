@@ -1,6 +1,7 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
+import {selectiveClosedEntry} from './selective-closed-entry.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -40,6 +41,20 @@ function continuousFutureEntrySchedule({
   return [...new Set(delays.map(Number).filter(h=>h>0&&h<=3600))]
     .sort((a,b)=>a-b).map(delaySeconds=>{
       const holdingSeconds=delaySeconds;
+      if(selectiveLeadSeconds!=null&&Number(selectiveLeadSeconds)===delaySeconds){
+        // Selected selective horizon uses three COMPLETED bars as the input
+        // anchor. The in-progress candle cannot flip its decision every tick.
+        const result=selectiveClosedEntry({quoteHistory:adaptiveHistory||snap.quoteHistory||[],
+          now,delaySeconds,holdingSeconds,engineId,forecastModel,asset,provider:snap.provider,
+          currentQuoteAt:snap.quoteTs,currentPrice:snap.price});
+        return {engineId,asset,delaySeconds,holdingSeconds,side:result.side,
+          issuedAt:now,entryAt:now+delaySeconds*1000,
+          exitAt:now+(delaySeconds+holdingSeconds)*1000,
+          projectedEntryPrice:result.projectedEntryPrice,
+          projectedExitPrice:result.projectedExitPrice,
+          status:result.status,actionable:false,calibrated:false,
+          modelVersion:result.modelVersion||'selective-closed-bar-v1'};
+      }
       if(engineId==='selective_forecast'){
         const forecast=selectiveIntervalForecast({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,entryDelaySeconds:delaySeconds,holdingSeconds});
         return {engineId,asset,delaySeconds,holdingSeconds,side:forecast.side,
