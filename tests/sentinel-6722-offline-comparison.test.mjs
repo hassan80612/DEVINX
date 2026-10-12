@@ -155,12 +155,14 @@ test('OFFLINE benchmark: baseline 67.21 versus candidate on independently genera
  for(const regime of regimes)for(const seed of seeds){
   const rows=generate(seed,regime);
   for(const index of indices)for(const h of horizons){
-   const now=rows[index].ts,history=rows.slice(index-2300,index+1),snap={quoteHistory:history,price:rows[index].price,quoteTs:now};
+   const now=rows[index].ts,history=rows.slice(Math.max(0,index-2300),index+1),snap={quoteHistory:history,price:rows[index].price,quoteTs:now};
    const noise=observedNoise({quotes:history,now,horizonSeconds:h});
    let path=null;
-   const learned=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
-    entryDelaySeconds:h,holdingSeconds:h});
-   if(learned.status==='adaptive-direct-trajectory'&&Array.isArray(learned.expectedPath))path=learned.expectedPath;
+   if(mode==='continuous'){
+    const learned=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
+     entryDelaySeconds:h,holdingSeconds:h});
+    if(learned.status==='adaptive-direct-trajectory'&&Array.isArray(learned.expectedPath))path=learned.expectedPath;
+   }
    const cached=new Map();
    const evaluateLead=lead=>{
     if(cached.has(lead))return cached.get(lead);
