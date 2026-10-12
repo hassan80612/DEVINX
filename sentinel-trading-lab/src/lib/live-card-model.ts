@@ -54,8 +54,9 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
     delaySeconds:Number(v[0]),side:v[1]||null,
     projectedEntryPrice:Number(v[2])||null,projectedExitPrice:Number(v[3])||null,
     issuedAt:Number(v[4])||0,holdingSeconds:Number(v[5])||0,
-    entryAt:(Number(v[4])||0)+(Number(v[0])||0)*1000,
-    exitAt:(Number(v[4])||0)+((Number(v[0])||0)+(Number(v[5])||0))*1000
+    entryAt:Number(v[6])||((Number(v[4])||0)+(Number(v[0])||0)*1000),
+    exitAt:Number(v[7])||((Number(v[4])||0)+((Number(v[0])||0)+(Number(v[5])||0))*1000),
+    entryReadyNow:v[8]===1
   }:v;
   const entryAnchor=entryFromTuple(vnext?.ea||vnext?.futureEntryAnchor);
   const vnextFutureEntryAnchor=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
