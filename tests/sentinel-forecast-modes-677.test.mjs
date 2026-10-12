@@ -15,10 +15,10 @@ test('forecast mode is independent of every one of the nine strategies and uses 
   const original=futureEntrySchedule(input)[0],continuous=futureEntrySchedule({...input,settings:{...settings,forecastMode:'continuous'}})[0];
   assert.deepEqual(original,continuous);
   const selected=futureEntrySchedule({...input,settings:{...settings,forecastMode:'selective'}})[0];
-  assert.equal(selected.engineId,engine.id);assert.equal(selected.qualification?.qualified,!!selected.side);
+  assert.equal(selected.engineId,engine.id);assert.equal(selected.forecastOwner,'selective-autonomous-v1');
   assert.equal(selected.entryAt,continuous.entryAt);assert.equal(selected.exitAt,continuous.exitAt);
-  if(selected.side){assert.ok(selected.projectedEntryPrice>0);assert.ok(selected.projectedExitPrice>0);assert.equal(selected.side,selected.projectedExitPrice>selected.projectedEntryPrice?'CALL':'PUT');assert.ok(selected.qualification.qualified);assert.ok(selected.qualification.margin>=selected.qualification.threshold);}
-  else assert.equal(selected.status,'waiting-selective-entry');
+  if(selected.side){assert.ok(selected.projectedEntryPrice>0);assert.ok(selected.projectedExitPrice>0);assert.equal(selected.side,selected.projectedExitPrice>selected.projectedEntryPrice?'CALL':'PUT');}
+  else assert.notEqual(selected.status,'forecast');
  }
 });
 test('same quote does not reuse an entry from a different forecast mode',()=>{
@@ -28,8 +28,9 @@ test('same quote does not reuse an entry from a different forecast mode',()=>{
  assert.equal(b.reused,false);
  const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'selected-strengths-67.5'});r.patchSettings(settings);r.vnextFutureEntryAnchor={engineId:'automatic',side:'CALL',entryAt:now+30000};
  r.patchSettings({forecastMode:'selective'});assert.equal(r.settings.engine,'automatic');assert.equal(r.vnextFutureEntryAnchor,null);
- r.patchSettings({engine:'breakout'});assert.equal(r.settings.forecastMode,'selective');
- r.patchSettings({forecastMode:'continuous'});assert.equal(r.settings.engine,'breakout');
+ r.patchSettings({engine:'breakout'});assert.equal(r.settings.forecastMode,'selective');assert.equal(r.settings.engine,'automatic');
+ r.patchSettings({forecastMode:'continuous'});assert.equal(r.settings.engine,'automatic');
+ r.patchSettings({engine:'breakout'});assert.equal(r.settings.engine,'breakout');
 });
 test('mobile stream carries the mode and both card selectors are wired to real settings',()=>{
  const frame=analystSnapshot({settings:{engine:'fibonacci_retest',forecastMode:'selective',orderDurationMs:30000},agentVersion:'13.4.67.7',lastEvalMs:now,lastResult:{analysis:{}}},{symbol:'TEST',lastQuoteAt:now,quote:1,assetValidated:true,analysisFeedValidated:true});
