@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {liveCardModel} from '../lib/live-card-model';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {SCENARIO_ENGINES} from '../../agent/src/core/scenario-engine-catalog.mjs';
@@ -9,6 +9,45 @@ const STRATEGIES=[['smart_confluence','Smart Confluence'],['price_action','Price
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
 const seconds=(n:number|null)=>n===null?'—':n+'s';
+// Dedicated local timer: it never waits for a WebSocket packet or forces
+// the full analyst card to recalculate on every countdown tick.
+function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid}:{
+  plannedAt:number,plannedExit:number,issuedAt:number,side:string|null,valid:boolean
+}){
+  const[now,setNow]=useState(()=>Date.now());
+  useEffect(()=>{
+    let timer:ReturnType<typeof setInterval>|null=null;
+    const update=()=>setNow(Date.now());
+    const syncVisibility=()=>{
+      if(timer){clearInterval(timer);timer=null}
+      if(document.visibilityState==='visible'){
+        update();
+        timer=setInterval(update,200);
+      }
+    };
+    document.addEventListener('visibilitychange',syncVisibility);
+    syncVisibility();
+    return()=>{
+      document.removeEventListener('visibilitychange',syncVisibility);
+      if(timer)clearInterval(timer);
+    };
+  },[]);
+  const entryReached=valid&&plannedAt<=now;
+  const countdownSeconds=valid?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
+  const entryCountdown=countdownSeconds===null?'—:—':
+    String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
+  const direction=!valid?'SEM PREVISÃO DE ENTRADA':
+    entryReached?'HORÁRIO PREVISTO ATINGIDO':
+    (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
+  return <>
+    <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
+    <div className={'vnextTargetCountdown '+(entryReached?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
+      <div><small>{entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
+      <div><small>ENTRADA PREVISTA</small><b>{valid?clock(plannedAt):'—'}</b><span>{valid?'Vencimento estimado '+clock(plannedExit):'Aguardando cálculo futuro'}</span></div>
+    </div>
+  </>;
+}
+
 export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[now,setNow]=useState(()=>Date.now());
   const[recordedSignal,setRecordedSignal]=useState<{asset:string,side:string,price:number,at:number}|null>(null);
@@ -74,11 +113,14 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // Only the recorded entry schedule owns the hero countdown and direction.
   const expiryChoices=[5,10,15,30,45,60,120,180,300,600,900,3600];
   const expiryLabel=(seconds:number)=>seconds<60?seconds+'s':seconds%60===0?seconds/60+'min':seconds+'s';
-  const strategyAdvice=strategySelectionGuidance({
+  const pausedReadings=s?.settings?.pausedReadings;
+  const strategyCards=s?.lastResult?.analysis?.strategyCards;
+  // Price ticks and clock ticks do not change these strategy selections.
+  const strategyAdvice=useMemo(()=>strategySelectionGuidance({
     ids:[strategy1,strategy2,strategy3],
-    paused:s?.settings?.pausedReadings||{},
-    cards:s?.lastResult?.analysis?.strategyCards||[]
-  });
+    paused:pausedReadings||{},
+    cards:strategyCards||[]
+  }),[strategy1,strategy2,strategy3,pausedReadings,strategyCards]);
   // A signal freezes its ACTUAL broker quote at creation. Subsequent live
   // quotes never overwrite it. Cache only in the open page; no DB logging.
   const incoming=m.lastSignal;
@@ -172,21 +214,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const entryPlanValid=!!(futureEntry&&['CALL','PUT'].includes(futureEntry.side)&&
     plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
     Number(futureEntry.delaySeconds)===Number(expirySeconds));
-  const countdownSeconds=entryPlanValid?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
-  const entryCountdown=countdownSeconds===null?'—:—':
-    String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
-  const entryReached=entryPlanValid&&plannedAt<=now;
   const entryDataFresh=m.fresh;
-  const futureDecision=!entryPlanValid?'SEM PREVISÃO DE ENTRADA':
-    entryReached?'HORÁRIO PREVISTO ATINGIDO':
-    (futureEntry.side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanValid?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{futureDecision}</strong></div>
-    <div className={'vnextTargetCountdown '+(entryReached?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-      <div><small>{entryReached?'HORÁRIO ATINGIDO':'ATÉ POSSÍVEL ENTRADA'}</small><strong>{entryCountdown}</strong></div>
-      <div><small>ENTRADA PREVISTA</small><b>{entryPlanValid?clock(plannedAt):'—'}</b><span>{entryPlanValid?'Vencimento estimado '+clock(plannedExit):'Aguardando cálculo futuro'}</span></div>
-    </div>
+    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanValid?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanValid?price(futureEntry.projectedExitPrice):'—'}</strong></div>
