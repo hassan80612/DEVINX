@@ -13,7 +13,7 @@ test('one clock in normal and floating mobile cards, not two overlapping clocks'
  assert.match(s,/Math\.ceil\(\(plannedAt-now\)\/1000\)/);
  assert.match(s,/ATÉ POSSÍVEL ENTRADA/);
  assert.match(s,/ENTRADA PREVISTA/);
- assert.match(s,/HORÁRIO PREVISTO ATINGIDO/);
+ assert.doesNotMatch(s,/HORÁRIO PREVISTO ATINGIDO/);
  assert.match(s,/PREÇO ESTIMADO AO VENCER/);
 });
 test('Agent independently pins display clock to original forecast without gating its live model',async()=>{
@@ -33,6 +33,6 @@ test('Windows PC countdown ticks locally without extra analysis, broker polling 
  assert.match(s,/const tickTargetClock=\(\)=>/);
  assert.match(s,/target-Date\.now\(\)/);
  assert.match(s,/window\.setInterval\(\(\)=>/);
- assert.match(s,/shown='00:00'/);
+ assert.match(s,/shown='—:—'/);
  assert.match(s,/data-sentinel-cycle-status/);
 });
