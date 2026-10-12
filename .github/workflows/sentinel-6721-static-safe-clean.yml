@@ -1,0 +1,48 @@
+name: Sentinel 67.21 Retained Behavior - Maintenance Only
+on:
+  push:
+    branches: [maintenance/sentinel-6721-safe-clean-20261012]
+permissions:
+  contents: read
+jobs:
+  verify-no-production-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify current agent, safety checks and retired binary compatibility
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import fs from 'node:fs';
+          const base='sentinel-trading-lab';
+          const rel=JSON.parse(fs.readFileSync(base+'/agent/release.json','utf8'));
+          const manifest=JSON.parse(fs.readFileSync(base+'/public/downloads/agent-update.json','utf8'));
+          const src=fs.readFileSync(base+'/src/app/console/page.tsx','utf8');
+          assert.equal(rel.version,'13.4.67.21');
+          assert.equal(manifest.version,'13.4.67.21');
+          assert.match(src,/AVAILABLE_AGENT_VERSION='13\\.4\\.67\\.21'/);
+          for(const p of ['Sentinel-Agent-13.4.67.21.exe','Sentinel-Agent-13.4.67.20.exe',
+              'Sentinel-Agent-13.4.67.19.exe','Sentinel-Agent-13.4.67.18.exe',
+              'Sentinel-Agent-13.4.67.1-Paineis.exe','Sentinel-Agent-Windows.exe',
+              'sentinel-agent-windows.exe','agent_payload_v88.zip'])
+            assert.ok(fs.existsSync(base+'/public/downloads/'+p),'missing '+p);
+          const {default:config}=await import('./sentinel-trading-lab/next.config.mjs');
+          const redirects=await config.redirects();
+          assert.equal(redirects.length,15);
+          for(const r of redirects){
+            assert.equal(r.permanent,false);
+            assert.equal(r.destination,'/downloads/Sentinel-Agent-13.4.67.21.exe');
+            assert.ok(!fs.existsSync(base+'/public'+r.source),'retired file still bundled: '+r.source);
+          }
+          NODE
+      - name: Existing core/PC/mobile behavior tests
+        run: node --test tests/sentinel-single-opportunity-6720.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs tests/sentinel-entry-window-6719.test.mjs
+      - name: Build unchanged 67.21 web console with cleanup redirects
+        run: |
+          cd sentinel-trading-lab
+          npm install --no-package-lock
+          npm run build
