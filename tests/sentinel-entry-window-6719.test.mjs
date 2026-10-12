@@ -5,8 +5,6 @@ import {entryOffsets,planEntryWindow} from '../sentinel-trading-lab/agent/src/co
 import {futureEntrySchedule} from '../sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs';
 import {forwardHorizonMatrix} from '../sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
-import {analystSnapshot} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
-import {liveCardModel} from '../sentinel-trading-lab/src/lib/live-card-model.ts';
 const now=1800000003500;
 const quotes=Array.from({length:2501},(_,i)=>({
  ts:now-(2500-i)*1000,price:1.1+.0006*Math.sin(i*.06)+.00012*Math.cos(i*.19)
