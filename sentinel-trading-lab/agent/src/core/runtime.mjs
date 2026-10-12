@@ -943,7 +943,9 @@ export class DemoTradingRuntime{
       // expiration. Avoid re-running unchanged ticks, never delay new quotes.
       const matrix=forwardHorizonMatrix({
         settings,snap,now,primary:model,previous:this.vnextHorizonMatrix||null,
-        forecastModel:this.forecastModel,adaptiveHistory
+        forecastModel:this.forecastModel,adaptiveHistory,
+        activeWindow:this.vnextWindowState?.context===opportunityContext(settings)&&
+          now<this.vnextWindowState.windowEndsAt?this.vnextWindowState:null
       });
       this.vnextHorizonMatrix=matrix;
       // One immutable planned future ENTRY per chosen lead time. The rolling
@@ -996,7 +998,8 @@ export class DemoTradingRuntime{
       }
       const entryAnchor=nextWindow?.phase==='open'||nextWindow?.phase==='fired'?
         {...nextWindow,entryReadyNow:nextWindow.phase==='fired'&&
-           Number(nextWindow.entryTriggeredAt)===now}:null;
+           now-Number(nextWindow.entryTriggeredAt)>=0&&
+           now-Number(nextWindow.entryTriggeredAt)<=1500&&quoteFresh}:null;
       this.vnextFutureEntryAnchor=entryAnchor;
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
