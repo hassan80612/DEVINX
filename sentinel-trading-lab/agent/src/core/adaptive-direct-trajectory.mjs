@@ -7,7 +7,7 @@
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const positive=n=>Number.isFinite(Number(n))&&Number(n)>0?Number(n):null;
 const round=n=>Number(n.toPrecision(12));
-function temporalContext(quoteHistory,now){
+function temporalContext(quoteHistory,now,maxHistoricalQuoteGapMs=2500){
  const known=new Map();
  for(const q of Array.isArray(quoteHistory)?quoteHistory:[]){
   const ts=Number(q?.ts),p=positive(q?.price),arrival=Number(q?.receivedAt??ts);
@@ -27,7 +27,10 @@ function temporalContext(quoteHistory,now){
    if(!quote||events[j].ts>quote.ts)quote=events[j];
    j++;
   }
-  if(!quote||ts-quote.ts>2500){series=[];continue;}
+  // Build causal historical samples from previously OBSERVED prices. A known
+  // past quote remains the latest known value until the next actual update.
+  // Never apply this sampling tolerance to current/live trade permission.
+  if(!quote||ts-quote.ts>maxHistoricalQuoteGapMs){series=[];continue;}
   series.push({ts,lp:Math.log(quote.p),quoteAt:quote.ts});
  }
  return series;
@@ -72,7 +75,8 @@ function fit(samples,penalty,halfLife,targets){
  return solve(a,b);
 }
 export function adaptiveDirectTrajectory({
- quoteHistory=[],asOf=Date.now(),entryDelaySeconds=30,holdingSeconds=30
+ quoteHistory=[],asOf=Date.now(),entryDelaySeconds=30,holdingSeconds=30,
+ historicalQuoteGapMs=2500
 }={}){
  const now=Number(asOf),lead=Number(entryDelaySeconds),hold=Number(holdingSeconds);
  const empty=status=>({status,side:null,issuedAt:now,
@@ -81,7 +85,8 @@ export function adaptiveDirectTrajectory({
   actionable:false,calibrated:false,modelConfidence:null});
  if(!Number.isFinite(now)||!Number.isInteger(lead)||lead<0||
     !Number.isInteger(hold)||hold<1||lead+hold>1800)return empty('invalid-interval');
- const rows=temporalContext(quoteHistory,now),n=rows.length;
+ const maxHistoricalGap=Math.min(8000,Math.max(2500,Number(historicalQuoteGapMs)||2500));
+ const rows=temporalContext(quoteHistory,now,maxHistoricalGap),n=rows.length;
  const endOffset=lead+hold;
  const maxLag=Math.min(600,Math.max(180,hold*2));
  if(n<maxLag+endOffset+40)return empty('insufficient-completed-context');
