@@ -11,7 +11,7 @@ test('one clock in normal and floating mobile cards, not two overlapping clocks'
  assert.equal((s.match(/\{forecastReceipt\}/g)||[]).length,2);
  assert.match(s,/const futureEntry=m\.vnextFutureEntryAnchor/);
  assert.match(s,/Math\.ceil\(\(plannedAt-now\)\/1000\)/);
- assert.match(s,/ATÉ POSSÍVEL ENTRADA/);
+ assert.match(s,/ATÉ ENTRADA CALCULADA|JANELA ABERTA/);
  assert.match(s,/ENTRADA PREVISTA/);
  assert.doesNotMatch(s,/HORÁRIO PREVISTO ATINGIDO/);
  assert.match(s,/PREÇO ESTIMADO AO VENCER/);
