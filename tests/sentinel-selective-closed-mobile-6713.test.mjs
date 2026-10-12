@@ -96,3 +96,12 @@ test('forecast deadline keeps original direction briefly',()=>{
  const view=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.ok(view.includes('HORÁRIO PREVISTO ATINGIDO'));
 });
+
+test('selective customers see no future technical details but continuous mode retains them',()=>{
+ const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
+ assert.ok(card.includes("{forecastMode!=='selective'&&<details className=\"vnextForecastDetails\""));
+ assert.ok(card.includes("const forecastHorizonStrip=vnext&&forecastMode!=='selective'?<details"));
+ assert.ok(card.includes("m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'"));
+ assert.ok(card.includes('data-testid="forecast-countdown-clock"'));
+ assert.ok(card.includes('data-testid="future-price-projection"'));
+});
