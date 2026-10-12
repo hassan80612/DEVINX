@@ -24,7 +24,7 @@ jobs:
           const src=fs.readFileSync(base+'/src/app/console/page.tsx','utf8');
           assert.equal(rel.version,'13.4.67.21');
           assert.equal(manifest.version,'13.4.67.21');
-          assert.match(src,/AVAILABLE_AGENT_VERSION='13\\.4\\.67\\.21'/);
+          assert.ok(src.includes("const AVAILABLE_AGENT_VERSION='13.4.67.21';"));
           for(const p of ['Sentinel-Agent-13.4.67.21.exe','Sentinel-Agent-13.4.67.20.exe',
               'Sentinel-Agent-13.4.67.19.exe','Sentinel-Agent-13.4.67.18.exe',
               'Sentinel-Agent-13.4.67.1-Paineis.exe','Sentinel-Agent-Windows.exe',
