@@ -29,8 +29,8 @@ test('a forming candle alone, stale quote, or interrupted history cannot trigger
 });
 test('future-entry scheduler only qualifies forecasts from the selected strategy and verified history',()=>{
  const src=fs.readFileSync('sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs','utf8');
- assert.match(src,/const evidence=selectiveEvidence\(/);
- assert.match(src,/continuous.map\(forecast=>qualifyStrategyInterval\(\{/);
+ assert.match(src,/autonomousSelectiveEntry\(/);
+ assert.doesNotMatch(src,/continuous.map\(forecast=>qualifyStrategyInterval\(\{/);
 });
 test('mobile accepts newer evaluations without rolling its last broker price backward',()=>{
  const source=fs.readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
