@@ -60,7 +60,7 @@ test('the mobile 0:00 receipt is dismissed in under one second, and normal layou
  const engine=fs.readFileSync('sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
  assert.match(c,/const expired=pinned&&now>=plannedAt&&!currentMoment/);
  assert.match(c,/entryPlanDisplayable=entryPlanValid&&\(plannedAt>now\|\|entryMoment\)/);
- assert.match(engine,/const newEntryValid=freshQuote&&currentEntry/);
+ assert.match(engine,/const nextWindow=evolveOpportunity/);
  assert.match(c,/forecastMode!=='selective'&&<details className="vnextForecastDetails"/);
  assert.doesNotMatch(c,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
 });
