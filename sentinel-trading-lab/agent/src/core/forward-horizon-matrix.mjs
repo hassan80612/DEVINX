@@ -29,7 +29,12 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     const model=seconds===horizon&&primary?
       primary:singleEngineForecast({
         settings:{...settings,orderDurationMs:seconds*1000},
-        snap,now,provider:snap.provider,forecastModel,adaptiveHistory
+        snap,now,provider:snap.provider,
+        // The selected forecast remains unchanged. During selective analysis,
+        // auxiliary chart slots use the original lightweight estimator instead
+        // of repeating six structural regressions on every broker quote.
+        forecastModel:settings.forecastMode==='selective'?'original-67':forecastModel,
+        adaptiveHistory
       });
     rows.push(rowFor(model,seconds));
   }
