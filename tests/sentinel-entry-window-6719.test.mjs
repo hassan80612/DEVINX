@@ -76,8 +76,8 @@ test('old planned entry may be confirmed ONLY by a fresh independently matched m
  assert.match(raw,/confirmWindowEntry/);
  const contract=fs.readFileSync('sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs','utf8');
  assert.match(contract,/confirmation\?\.side===old.side/);
- assert.match(contract,/now>old.entryAt\+1500/);
- assert.match(contract,/Number\(quoteAt\)>=old.entryAt-1000/);
+ assert.match(contract,/now<old.entryAt/);
+ assert.match(contract,/Number\(quoteAt\)<old.entryAt/);
 });
 test('PC/mobile get EXACT Agent timestamp and entry-now requires renewed quote',()=>{
  const bridge=fs.readFileSync('sentinel-trading-lab/agent/worker/live-bridge.mjs','utf8');
