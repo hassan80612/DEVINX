@@ -72,7 +72,7 @@ function newPriceStructure(main,side,snap,strict=false){
 
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
-    this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowOutcomes=[];
+    this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -811,6 +811,7 @@ export class DemoTradingRuntime{
         patch.asset!==this.settings.asset);
     if(changedForecastContext){
       this.vnextWindowState=null;
+      this.vnextWindowCheckedQuoteAt=0;
       this.vnextFutureEntryAnchor=null;
       this.vnextHorizonMatrix=null;
       this.vnextTargetAnchor=null;
@@ -963,9 +964,15 @@ export class DemoTradingRuntime{
       // An opposite signal invalidates it, never substitutes a new one.
       const entryDue=currentWindow?.phase==='open'&&
         now>=currentWindow.entryAt&&now<=currentWindow.entryAt+1500;
-      const confirmation=entryDue&&quoteFresh?
+      // A locked window still receives market evidence for its ORIGINAL
+      // entry time. No new entry point, direction or countdown is emitted.
+      // Refit only on NEW source quotes, except at the actual deadline.
+      const shouldRecheck=currentWindow?.phase==='open'&&quoteFresh&&
+        (entryDue||Number(snap.quoteTs)>this.vnextWindowCheckedQuoteAt);
+      const confirmation=shouldRecheck?
         confirmWindowEntry({settings,snap,now,adaptiveHistory,
-          forecastModel:this.forecastModel}):null;
+          forecastModel:this.forecastModel,entryAt:currentWindow.entryAt}):null;
+      if(shouldRecheck)this.vnextWindowCheckedQuoteAt=Number(snap.quoteTs);
       const nextWindow=evolveOpportunity({
         previous:this.vnextWindowState,candidate:currentEntry,settings,
         now,quoteAt:snap.quoteTs,confirmation
