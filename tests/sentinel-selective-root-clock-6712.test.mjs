@@ -56,6 +56,6 @@ test('mobile count must use original PC target timestamp, never a new 30-second 
  const c=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  const part=c.slice(c.indexOf('function MobileFutureEntryClock'),c.indexOf('export function LiveScenarioCard'));
  assert.match(part,/Math\.ceil\(\(plannedAt-now\)\/1000\)/);
- assert.match(part,/const expired=pinned&&now-plannedAt>3000/);
+ assert.match(part,/const expired=pinned&&now-plannedAt>=400/);
  assert.doesNotMatch(part,/setNow\(plannedAt/);
 });
