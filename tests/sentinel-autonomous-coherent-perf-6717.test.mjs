@@ -16,11 +16,11 @@ test('selective requires no three complete bars and does not depend on the chose
   futureEntrySchedule({settings:{engine,forecastMode:'selective',asset:'TEST',orderDurationMs:5000},
    snap,now,delays:[5],forecastModel:'selected-strengths-67.5'})[0]);
  for(const r of results){
-  assert.equal(r.forecastOwner,'selective-autonomous-v1');
+  assert.equal(r.forecastOwner,'selective-historical-outcomes-v2');
   assert.equal(r.entryAt,now+5000);
   assert.equal(r.exitAt,now+10000);
   assert.equal(r.actionable,false);
-  assert.ok(['forecast','low-directional-edge','insufficient-projection'].includes(r.status));
+  assert.ok(['forecast','no-validated-historical-edge','insufficient-completed-outcomes','no-comparable-historical-pattern','insufficient-observations','waiting-completed-observation'].includes(r.status));
   if(r.side) assert.equal(r.side,r.projectedExitPrice>r.projectedEntryPrice?'CALL':'PUT');
  }
  for(const r of results.slice(1)){
