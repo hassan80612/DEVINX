@@ -18,7 +18,7 @@ const snap={quoteHistory:history,quoteTs:now,price:history.at(-1).price,provider
 const settings={engine:'automatic',asset,orderDurationMs:30000};
 const release=JSON.parse(fs.readFileSync(new URL('../sentinel-trading-lab/agent/release.json',import.meta.url)));
 test('release activates the tested new model through actual Worker runtime options',()=>{
- assert.equal(release.version,'13.4.67.13');
+ assert.equal(release.version,'13.4.67.14');
  assert.equal(release.runtime.forecastModel,'selected-strengths-67.5');
  const runtime=new DemoTradingRuntime({...release.runtime,enableVNext:true});
  runtime.patchSettings({...settings,forecastHorizonSeconds:30});
@@ -92,7 +92,7 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
  const fitted=fitAnalystFrame(frame);
  assert.ok(fitted);
  assert.ok(Buffer.byteLength(JSON.stringify(fitted))+73<=3000);
- assert.equal(fitted.agentVersion,'13.4.67.13');
+ assert.equal(fitted.agentVersion,'13.4.67.14');
  const entry=fitted.lastResult.analysis.vnext.ea;
  assert.equal(entry[0],30);assert.equal(entry[1],original.side);
  assert.equal(entry[2],original.projectedEntryPrice);
@@ -100,7 +100,7 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
 });
 test('approved performance changes and preserved desktop controls, data bridge and mobile layout match reviewed sources',()=>{
  // 67.11 preserves the reviewed browser, desktop, bridge and layout sources; selective mode intentionally hides customer-facing technical details; layout geometry and desktop controls remain unchanged.
- const expected={"sentinel-trading-lab/agent/worker/live-bridge.mjs":"6745b831dbab9a14f83d7ad99752d4c95aa9d508","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"3959ae81db30bb59f9819a3ddc73c68cbcecdc66","sentinel-trading-lab/src/app/globals.css":"bfcf8831245db1dde5d7ce87cbbe2b6c35c857a9","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"5cf5a35a72fb7efba48309516e973399d3c16da0","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
+ const expected={"sentinel-trading-lab/agent/worker/live-bridge.mjs":"6745b831dbab9a14f83d7ad99752d4c95aa9d508","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"3959ae81db30bb59f9819a3ddc73c68cbcecdc66","sentinel-trading-lab/src/app/globals.css":"bfcf8831245db1dde5d7ce87cbbe2b6c35c857a9","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"46e8ff9159949ae98632ae40a1b061456d9b5b9e","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
  const worker=fs.readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  assert.match(worker,/onViewer:\(\)=>\{void publishLiveFrame\(\)\}/);
  assert.match(worker,/liveBridge\.publish\(analystSnapshot\(snapshot,chosen\.m\),\{urgent\}\)/);
@@ -110,8 +110,8 @@ test('approved performance changes and preserved desktop controls, data bridge a
   assert.equal(actual,sha,path);
  }
  const page=fs.readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
- assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.13'"));
- assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.13.exe'));
+ assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.14'"));
+ assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.14.exe'));
 });
 
 test('dense feed retains time context for 300s model, without expanding mobile or old-card data',()=>{
