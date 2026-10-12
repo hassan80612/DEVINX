@@ -1,0 +1,83 @@
+name: Sentinel 67.2 Purged Tuning Comparison
+on:
+  push:
+    branches: [sentinel-672-purged-tuning-lab-20261012]
+    paths: ['.github/workflows/sentinel-672-purged-tuning-lab.yml']
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Assert published runtime, UI, downloads and version are untouched
+        run: |
+          git diff --exit-code 66c42ff6da4e7af7268a933b9ff83ddfe0b9be90 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/public sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/agent/src/core/adaptive-direct-trajectory.mjs sentinel-trading-lab/agent/src/core/adaptive-temporal-history.mjs sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs sentinel-trading-lab/agent/src/core/runtime.mjs
+      - run: node --test tests/sentinel-672-purged-tuning.test.mjs
+  comparison:
+    needs: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: synthetic-a
+            source: synthetic
+            shard: '0'
+            symbol: ''
+          - label: synthetic-b
+            source: synthetic
+            shard: '1'
+            symbol: ''
+          - label: btc
+            source: external
+            shard: ''
+            symbol: BTCUSDT
+          - label: eth
+            source: external
+            shard: ''
+            symbol: ETHUSDT
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: mkdir -p tmp/tuning-results tmp/tuning-market-1s
+      - name: Verify independent new real archives
+        if: matrix.source == 'external'
+        env:
+          MARKET_SYMBOL: ${{ matrix.symbol }}
+        run: |
+          set -euo pipefail
+          for date in 2026-09-19 2026-09-20 2026-09-21 2026-09-22; do
+            filename="$MARKET_SYMBOL-1s-$date"
+            url="https://data.binance.vision/data/spot/daily/klines/$MARKET_SYMBOL/1s/$filename.zip"
+            curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url" -o "tmp/tuning-market-1s/$filename.zip"
+            curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url.CHECKSUM" -o "tmp/tuning-market-1s/$filename.zip.CHECKSUM"
+            (cd tmp/tuning-market-1s && sha256sum -c "$filename.zip.CHECKSUM")
+            sha256sum "tmp/tuning-market-1s/$filename.zip" | tee -a tmp/tuning-results/archive-sha256.txt
+            unzip -p "tmp/tuning-market-1s/$filename.zip" "$filename.csv" > "tmp/tuning-market-1s/$filename.csv"
+            test "$(wc -l < "tmp/tuning-market-1s/$filename.csv")" -gt 80000
+          done
+      - name: Compare parameter selection without suppressing forecasts
+        env:
+          DATA_SOURCE: ${{ matrix.source }}
+          SYNTHETIC_SHARD: ${{ matrix.shard }}
+        run: |
+          if [ "$DATA_SOURCE" = "synthetic" ]; then
+            node scripts/sentinel-purged-tuning-comparison.mjs synthetic tmp/tuning-results/result.json "$SYNTHETIC_SHARD"
+          else
+            node scripts/sentinel-purged-tuning-comparison.mjs tmp/tuning-market-1s tmp/tuning-results/result.json
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: purged-tuning-shard-${{ matrix.label }}
+          path: tmp/tuning-results/
+          retention-days: 14
