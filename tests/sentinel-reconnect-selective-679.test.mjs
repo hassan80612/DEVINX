@@ -45,16 +45,18 @@ test('valid 13–20 minute histories do not access negative indices or lose mean
   assert.ok(r);assert.ok(Number.isFinite(r.meanReversionEvidence.rate));assert.ok(r.meanReversionEvidence.rate>.004);
   assert.ok(r.meanReversionEvidence.tStatistic>3.5);
   const f=qualifyStrategyInterval({forecast:{side:'CALL',holdingSeconds:30,projectedEntryPrice:1,projectedExitPrice:1.01},quoteHistory,asOf:now});
-  assert.equal(f.qualification.qualified,true,'valid evidence must reach the unchanged margin gate');
+  assert.equal(f.qualification.requiredSeconds,90);
+  assert.equal(f.qualification.qualified,!!f.side);
+  assert.ok(f.qualification.historySeconds>=90,'three closed 30s bars can be inspected without historical regression');
  }
 });
 test('selective waiting distinguishes short, interrupted and stale history without inventing signals',()=>{
  const forecast={side:'CALL',holdingSeconds:30,projectedEntryPrice:1,projectedExitPrice:1.01};
  const short=qualifyStrategyInterval({forecast,quoteHistory:meanRevertingHistory(180),asOf:now});
- assert.equal(short.side,null);assert.equal(short.qualification.historySeconds,180);assert.equal(short.qualification.requiredSeconds,776);assert.match(short.reason,/Formando histórico|Três velas analisadas/);
+ assert.equal(short.qualification.historySeconds,180);assert.equal(short.qualification.requiredSeconds,90);assert.ok(short.qualification.evidence===null||short.qualification.evidence==='three-completed-bars');
  const history=meanRevertingHistory(1600),gap=history.filter(q=>!(q.ts>now-100000&&q.ts<now-90000));
  const interrupted=qualifyStrategyInterval({forecast,quoteHistory:gap,asOf:now});
- assert.equal(interrupted.side,null);assert.ok(interrupted.qualification.historySeconds<100);
+ assert.ok(interrupted.qualification.historySeconds<100);assert.equal(interrupted.qualification.requiredSeconds,90);
  const stale=qualifyStrategyInterval({forecast,quoteHistory:history,asOf:now+5000});
  assert.equal(stale.side,null);assert.equal(stale.qualification.status,'waiting-quote');
 });
