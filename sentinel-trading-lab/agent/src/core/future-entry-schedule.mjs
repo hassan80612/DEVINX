@@ -107,8 +107,8 @@ function continuousWindow({input,settings,chosen}){
  const noise=observedNoise({quotes:history,now,horizonSeconds:chosen});
  const quoteAt=Number(snap.quoteTs);
  if(!(quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500))
-  return planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
-   engineId,asset,evaluateLead:()=>null});
+  return {...planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
+   engineId,asset,evaluateLead:()=>null}),status:'waiting-fresh-quote'};
  let path=null;
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(input.forecastModel)){
@@ -168,7 +168,10 @@ export function futureEntrySchedule(input={}){
    const snap=input.snap||{},at=input.now??Date.now();
    // All candidates use the same completed historical state but DIFFERENT
    // observed entry->expiry outcomes. Three candles are descriptive only.
-   return requested.filter(h=>h===chosen).map(h=>planEntryWindow({
+   return requested.filter(h=>h===chosen).map(h=>{
+     const fresh=Number(snap.quoteTs)>0&&Number(snap.quoteTs)<=at&&
+       at-Number(snap.quoteTs)<=2500;
+     const result=planEntryWindow({
      windowSeconds:h,holdingSeconds:h,now:at,engineId:String(settings.engine||'automatic'),
      asset:String(settings.asset||'UNKNOWN').toUpperCase(),forecastMode:'selective',
      evaluateLead:seconds=>{
@@ -183,7 +186,11 @@ export function futureEntrySchedule(input={}){
        return {...p,selectionStrength:
          Math.max(.01,p.historicalAgreement*.7+reliability*.3)};
      }
-   }));
+   });
+   return fresh?result:{...result,side:null,entryAt:null,exitAt:null,
+     entryOffsetSeconds:null,projectedEntryPrice:null,
+     projectedExitPrice:null,status:'waiting-fresh-quote'};
+   });
  }
  // Only the chosen timeframe scans entry moments. Auxiliary projections
  // remain display-only and do not force repeated costly learned fits.
