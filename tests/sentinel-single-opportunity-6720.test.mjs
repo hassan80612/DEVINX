@@ -99,7 +99,7 @@ test('PC and mobile have explicit terminal phase and realtime fire event; runtim
  assert.match(pc,/JANELA CANCELADA/);
  assert.match(mobile,/JANELA CANCELADA/);
  const runtime=new DemoTradingRuntime({enableVNext:true});
- runtime.vnextWindowState=locked;
+ runtime.vnextWindowState=evolve(null,candidate('CALL'),now);
  runtime.patchSettings({orderDurationMs:60000});
  assert.equal(runtime.vnextWindowState,null);
 });
