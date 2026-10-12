@@ -11,50 +11,43 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 // Dedicated local timer: it never waits for a WebSocket packet or forces
 // the full analyst card to recalculate on every countdown tick.
-function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waitingReason,readyNow,phase}:{
-  plannedAt:number,plannedExit:number,issuedAt:number,side:string|null,valid:boolean,waitingReason?:string,readyNow?:boolean,phase?:string
+function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedExit,side,phase,readyNow,holdingSeconds}:{
+ windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedExit:number,
+ side:string|null,phase:string|null,readyNow:boolean,holdingSeconds:number
 }){
-  const[now,setNow]=useState(()=>Date.now());
-  useEffect(()=>{
-    let timer:ReturnType<typeof setInterval>|null=null;
-    const update=()=>setNow(Date.now());
-    const syncVisibility=()=>{
-      if(timer){clearInterval(timer);timer=null}
-      if(document.visibilityState==='visible'){
-        update();
-        timer=setInterval(update,200);
-      }
-    };
-    document.addEventListener('visibilitychange',syncVisibility);
-    syncVisibility();
-    return()=>{
-      document.removeEventListener('visibilitychange',syncVisibility);
-      if(timer)clearInterval(timer);
-    };
-  },[]);
-  const pinned=valid&&issuedAt>0&&plannedAt>issuedAt;
-  // Receipt has expired: never leave a stale CALL/PUT and zero countdown pinned.
-  // Clear locally without requesting broker data or restarting the analyst.
-  // The PC owns issuedAt and entryAt; the phone NEVER restarts the deadline
-  // or adds a presentation grace period. Once expired, the old forecast is
-  // unavailable until the Agent produces a genuine new candidate.
-  const currentMoment=!!(pinned&&readyNow&&now>=plannedAt&&now<=plannedAt+1500);
-  const expired=pinned&&now>=plannedAt&&!currentMoment;
-  const countdownSeconds=pinned&&!expired&&!currentMoment?Math.max(1,Math.ceil((plannedAt-now)/1000)):null;
-  const entryCountdown=countdownSeconds===null?'—:—':
-    String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
-  const direction=currentMoment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
-    phase==='cancelled'?'JANELA CANCELADA':
-    phase==='fired'?'ENTRADA JÁ SINALIZADA':
-    !pinned||expired?'JANELA ABERTA · ANALISANDO':
-    (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
-  return <>
-    <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
-    <div className={'vnextTargetCountdown '+(expired?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-      <div><small>{currentMoment?'MOMENTO CONFIRMADO':pinned?'ATÉ ENTRADA CALCULADA':'JANELA ABERTA'}</small><strong>{currentMoment?'AGORA':entryCountdown}</strong></div>
-      <div><small>ENTRADA PREVISTA</small><b>{pinned&&!expired?clock(plannedAt):'—'}</b><span>{!expired&&pinned?'Vencimento estimado '+clock(plannedExit):(waitingReason||'Procurando momento dentro do prazo')}</span></div>
-    </div>
-  </>;
+ const [now,setNow]=useState(()=>Date.now());
+ useEffect(()=>{
+  let timer:ReturnType<typeof setInterval>|null=null;
+  const update=()=>setNow(Date.now());
+  const syncVisibility=()=>{
+   if(timer){clearInterval(timer);timer=null}
+   if(document.visibilityState==='visible'){update();timer=setInterval(update,200)}
+  };
+  document.addEventListener('visibilitychange',syncVisibility);
+  syncVisibility();
+  return()=>{document.removeEventListener('visibilitychange',syncVisibility);if(timer)clearInterval(timer)};
+ },[]);
+ const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt;
+ const moment=running&&readyNow&&entryTriggeredAt>0&&now>=entryTriggeredAt&&now<=entryTriggeredAt+1500;
+ const seconds=running?Math.max(1,Math.ceil((windowEndsAt-now)/1000)):null;
+ const countdown=seconds==null?'—:—':
+  String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+ const direction=moment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
+  phase==='cancelled'?'JANELA SEM ENTRADA':
+  phase==='fired'?'ENTRADA JÁ SINALIZADA':
+  phase==='open'&&side?(side==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA':
+  running?'JANELA ABERTA · ANALISANDO':'AGUARDANDO PRÓXIMA JANELA';
+ return <>
+  <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
+  <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
+   <div><small>{moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA'}</small><strong>{countdown}</strong></div>
+   <div><small>MOMENTO DE ENTRADA</small>
+    <b>{phase==='fired'&&entryTriggeredAt?clock(entryTriggeredAt):'AGUARDANDO'}</b>
+    <span>{phase==='fired'&&plannedExit>0?'Vencimento '+clock(plannedExit):
+      'Prazo após entrada '+holdingSeconds+'s'}</span>
+   </div>
+  </div>
+ </>;
 }
 
 export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
@@ -232,7 +225,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
     Number(futureEntry.delaySeconds)===Number(expirySeconds));
   const entryDataFresh=m.fresh;
-  const entryMoment=entryPlanValid&&futureEntry?.entryReadyNow===true&&now>=plannedAt&&now<=plannedAt+1500&&m.fresh;
+  const entryTriggeredAt=Number(futureEntry?.entryTriggeredAt||0);
+  const entryMoment=entryPlanValid&&futureEntry?.entryReadyNow===true&&entryTriggeredAt>0&&
+    now>=entryTriggeredAt&&now<=entryTriggeredAt+1500&&m.fresh;
   const entryPlanDisplayable=entryPlanValid&&(plannedAt>now||entryMoment);
   // Classify the existing PC timestamp separately from mobile transport delay.
   // Only the Agent grants entry; these messages are diagnostics, not signals.
@@ -242,13 +237,13 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     (m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'):undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid} readyNow={entryMoment} phase={opportunityPhase||undefined} waitingReason={selectiveWaitingReason}/>
+    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} readyNow={entryMoment} holdingSeconds={Number(expirySeconds)}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
     </div>
     <div className="vnextProjectionBias" aria-label="Cenário de entrada futura não confirmado">
-      <span>JANELA <b>{expiryLabel(Number(expirySeconds))}</b></span><span>PONTO <b>{futureEntry?.entryOffsetSeconds!=null?futureEntry.entryOffsetSeconds+'s':entryPlanValid?Math.round((plannedAt-futureEntry.issuedAt)/1000)+'s':'—'}</b></span>
+      <span>JANELA <b>{expiryLabel(Number(expirySeconds))}</b></span><span>ENTRADA <b>{opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE'}</b></span>
       <span>PERÍODO APÓS <b>{expiryLabel(Number(futureEntry?.holdingSeconds||expirySeconds))}</b></span>
     </div>
     {forecastMode!=='selective'&&<details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes e qualidade da previsão</summary>
