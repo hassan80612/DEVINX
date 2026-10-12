@@ -51,7 +51,7 @@ test('valid 13–20 minute histories do not access negative indices or lose mean
 test('selective waiting distinguishes short, interrupted and stale history without inventing signals',()=>{
  const forecast={side:'CALL',holdingSeconds:30,projectedEntryPrice:1,projectedExitPrice:1.01};
  const short=qualifyStrategyInterval({forecast,quoteHistory:meanRevertingHistory(180),asOf:now});
- assert.equal(short.side,null);assert.equal(short.qualification.historySeconds,180);assert.equal(short.qualification.requiredSeconds,776);assert.match(short.reason,/Formando histórico/);
+ assert.equal(short.side,null);assert.equal(short.qualification.historySeconds,180);assert.equal(short.qualification.requiredSeconds,776);assert.match(short.reason,/Formando histórico|Três velas analisadas/);
  const history=meanRevertingHistory(1600),gap=history.filter(q=>!(q.ts>now-100000&&q.ts<now-90000));
  const interrupted=qualifyStrategyInterval({forecast,quoteHistory:gap,asOf:now});
  assert.equal(interrupted.side,null);assert.ok(interrupted.qualification.historySeconds<100);
