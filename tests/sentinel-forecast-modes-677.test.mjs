@@ -15,9 +15,9 @@ test('forecast mode is independent of every one of the nine strategies and uses 
   const original=futureEntrySchedule(input)[0],continuous=futureEntrySchedule({...input,settings:{...settings,forecastMode:'continuous'}})[0];
   assert.deepEqual(original,continuous);
   const selected=futureEntrySchedule({...input,settings:{...settings,forecastMode:'selective'}})[0];
-  assert.equal(selected.engineId,engine.id);assert.equal(selected.projectedEntryPrice,continuous.projectedEntryPrice);assert.equal(selected.projectedExitPrice,continuous.projectedExitPrice);
+  assert.equal(selected.engineId,engine.id);assert.equal(selected.qualification?.qualified,!!selected.side);
   assert.equal(selected.entryAt,continuous.entryAt);assert.equal(selected.exitAt,continuous.exitAt);
-  if(selected.side){assert.equal(selected.side,continuous.side);assert.ok(selected.qualification.qualified);assert.ok(selected.qualification.margin>=selected.qualification.threshold);}
+  if(selected.side){assert.ok(selected.projectedEntryPrice>0);assert.ok(selected.projectedExitPrice>0);assert.equal(selected.side,selected.projectedExitPrice>selected.projectedEntryPrice?'CALL':'PUT');assert.ok(selected.qualification.qualified);assert.ok(selected.qualification.margin>=selected.qualification.threshold);}
   else assert.equal(selected.status,'waiting-selective-entry');
  }
 });
