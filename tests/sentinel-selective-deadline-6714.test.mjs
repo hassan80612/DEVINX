@@ -11,7 +11,7 @@ const q=Array.from({length:80},(_,i)=>({
 test('mobile card has no indefinitely stuck expired-plan wording and uses original target timestamp',()=>{
  const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.doesNotMatch(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
- assert.match(card,/const expired=pinned&&now-plannedAt>3000/);
+ assert.match(card,/const expired=pinned&&now-plannedAt>=400/);
  assert.match(card,/countdownSeconds=pinned&&!expired\?Math\.max\(0,Math\.ceil\(\(plannedAt-now\)\/1000\)\):null/);
  assert.match(card,/expired\?'SEM PREVISÃO DE ENTRADA'/);
 });
