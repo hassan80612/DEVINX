@@ -51,14 +51,14 @@ test('PC overlay immediately receives changed Agent entry, even with an open sel
  assert.match(pc,/a.vnext\?\.futureEntryAnchor\?\.entryAt/);
  assert.doesNotMatch(overlay,/if\(el.dataset.selectLock==='1'\|\|\(focused/);
  assert.match(overlay,/current===focused\|\|el.dataset.selectLock==='1'/);
- assert.match(overlay,/const entryPlanActive=entryPlanReady&&\(scheduledAt>Date.now\(\)\|\|entryMoment\)/);
- assert.match(overlay,/if\(!active&&decision\)/);assert.match(overlay,/phase==='cancelled'\?'JANELA CANCELADA'/);
+ assert.match(overlay,/const entryPlanActive=entryPlanReady&&windowRunning/);
+ assert.match(overlay,/if\(!active&&decision\)/);assert.match(overlay,/phase==='cancelled'\?'JANELA SEM ENTRADA'/);
  assert.doesNotMatch(overlay,/HORÁRIO PREVISTO ATINGIDO/);
 });
 test('phone uses natural local time from the exact original entry, never a 400ms grace or a fabricated restart',()=>{
  const phone=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
- assert.match(phone,/const expired=pinned&&now>=plannedAt&&!currentMoment/);
- assert.match(phone,/Math\.ceil\(\(plannedAt-now\)\/1000\)/);
+ assert.match(phone,/const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt/);
+ assert.match(phone,/Math\.ceil\(\(windowEndsAt-now\)\/1000\)/);
  assert.doesNotMatch(phone,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
  assert.doesNotMatch(phone,/HORÁRIO PREVISTO ATINGIDO/);
  assert.doesNotMatch(phone,/now-plannedAt>=400/);
