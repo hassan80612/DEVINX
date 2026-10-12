@@ -1,0 +1,207 @@
+/**
+ * Independent direct future-interval predictor.
+ * Learns a shared trajectory and paired ENTRY->EXPIRY return from fully
+ * completed historical examples. Tuning is chronological and purged.
+ * Research only: inspect repeated-outcome tuning without production changes.
+ */
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const positive=n=>Number.isFinite(Number(n))&&Number(n)>0?Number(n):null;
+const round=n=>Number(n.toPrecision(12));
+function temporalContext(quoteHistory,now){
+ const known=new Map();
+ for(const q of Array.isArray(quoteHistory)?quoteHistory:[]){
+  const ts=Number(q?.ts),p=positive(q?.price),arrival=Number(q?.receivedAt??ts);
+  if(!Number.isFinite(ts)||ts<0||ts>now||!p||!Number.isFinite(arrival)||arrival>now)continue;
+  const readyAt=Math.max(ts,arrival);
+  if(!known.has(ts)||known.get(ts).readyAt>readyAt)known.set(ts,{ts,p,readyAt});
+ }
+ const events=[...known.values()].sort((a,b)=>a.readyAt-b.readyAt||a.ts-b.ts);
+ if(!events.length)return [];
+ const earliest=events[0].readyAt;
+ const start=now-Math.floor(Math.min(7200000,now-earliest)/1000)*1000;
+ let j=0,quote=null,series=[];
+ for(let ts=start;ts<=now;ts+=1000){
+  // A historical feature sees only quotes already ARRIVED at that time.
+  // Later backfills cannot rewrite a previously sampled context.
+  while(j<events.length&&events[j].readyAt<=ts){
+   if(!quote||events[j].ts>quote.ts)quote=events[j];
+   j++;
+  }
+  if(!quote||ts-quote.ts>2500){series=[];continue;}
+  series.push({ts,lp:Math.log(quote.p),quoteAt:quote.ts});
+ }
+ return series;
+}
+function solve(a,b){
+ const n=a.length,m=b[0].length;
+ const matrix=a.map((row,i)=>[...row,...b[i]]);
+ for(let k=0;k<n;k++){
+  let best=k;
+  for(let i=k+1;i<n;i++)if(Math.abs(matrix[i][k])>Math.abs(matrix[best][k]))best=i;
+  if(Math.abs(matrix[best][k])<1e-12)return null;
+  [matrix[k],matrix[best]]=[matrix[best],matrix[k]];
+  const d=matrix[k][k];
+  for(let j=k;j<n+m;j++)matrix[k][j]/=d;
+  for(let i=0;i<n;i++){
+   if(i===k)continue;const f=matrix[i][k];
+   if(!f)continue;
+   for(let j=k;j<n+m;j++)matrix[i][j]-=f*matrix[k][j];
+  }
+ }
+ return matrix.map(row=>row.slice(n));
+}
+const dot=(x,w)=>Array.from({length:w[0].length},(_,k)=>
+ x.reduce((sum,v,j)=>sum+v*w[j][k],0));
+function fit(samples,penalty,halfLife,targets){
+ const p=samples[0].x.length,last=samples.at(-1).i;
+ const a=Array.from({length:p},()=>Array(p).fill(0));
+ const b=Array.from({length:p},()=>Array(targets).fill(0));
+ let weightSum=0;
+ for(const s of samples){
+  const weight=halfLife===Infinity?1:Math.exp(-Math.LN2*(last-s.i)/halfLife);
+  weightSum+=weight;
+  for(let j=0;j<p;j++){
+   for(let k=0;k<=j;k++)a[j][k]+=weight*s.x[j]*s.x[k];
+   for(let k=0;k<targets;k++)b[j][k]+=weight*s.x[j]*s.y[k];
+  }
+ }
+ for(let j=0;j<p;j++){
+  for(let k=j+1;k<p;k++)a[j][k]=a[k][j];
+  a[j][j]+=j===0?1e-8:penalty*weightSum;
+ }
+ return solve(a,b);
+}
+export function purgedTuningTrajectory({
+ quoteHistory=[],asOf=Date.now(),entryDelaySeconds=30,holdingSeconds=30,tuningMode="nonOverlap"
+}={}){
+ const now=Number(asOf),lead=Number(entryDelaySeconds),hold=Number(holdingSeconds);
+ const empty=status=>({status,side:null,issuedAt:now,
+  entryAt:now+lead*1000,exitAt:now+(lead+hold)*1000,
+  entryDelaySeconds:lead,holdingSeconds:hold,expectedPath:[],
+  actionable:false,calibrated:false,modelConfidence:null});
+ if(!Number.isFinite(now)||!Number.isInteger(lead)||lead<0||
+    !Number.isInteger(hold)||hold<1||lead+hold>1800)return empty('invalid-interval');
+ const rows=temporalContext(quoteHistory,now),n=rows.length;
+ const endOffset=lead+hold;
+ const maxLag=Math.min(600,Math.max(180,hold*2));
+ if(n<maxLag+endOffset+40)return empty('insufficient-completed-context');
+ const lp=rows.map(q=>q.lp),ret=lp.map((v,i)=>i?v-lp[i-1]:0);
+ const sq=[0],abs=[0];
+ for(const r of ret){sq.push(sq.at(-1)+r*r);abs.push(abs.at(-1)+Math.abs(r));}
+ const sigma=(i,w)=>Math.sqrt(Math.max((sq[i+1]-sq[Math.max(0,i+1-w)])/w,1e-15));
+ const lags=[...new Set([2,5,10,15,30,60,90,120,180,240,300,450,600,
+  Math.max(1,Math.round(hold/4)),Math.max(1,Math.round(hold/2)),hold,
+  Math.round(hold*1.5),hold*2].filter(v=>v<=maxLag))].sort((a,b)=>a-b);
+ const features=i=>{
+  const s=sigma(i,90),scale=s*Math.sqrt(hold);
+  let low=Infinity,high=-Infinity;
+  for(let j=i-180;j<=i;j++){low=Math.min(low,lp[j]);high=Math.max(high,lp[j]);}
+  const width=high-low;
+  const movement=abs[i+1]-abs[i-89];
+  const x=[1,...lags.map(lag=>clamp((lp[i]-lp[i-lag])/(s*Math.sqrt(lag)),-15,15)),
+   clamp((lp[i]-2*lp[i-30]+lp[i-60])/(s*Math.sqrt(30)),-15,15),
+   width>1e-12?2*(lp[i]-low)/width-1:0,
+   movement>1e-12?Math.abs(lp[i]-lp[i-90])/movement:0,
+   clamp(Math.log((sigma(i,30)+1e-12)/(sigma(i,180)+1e-12)),-4,4)];
+  return {x,scale};
+ };
+ const offsets=[...new Set([lead,endOffset,
+  ...Array.from({length:8},(_,j)=>Math.max(1,Math.round(endOffset*(j+1)/8)))])]
+  .sort((a,b)=>a-b);
+ const targetCount=offsets.length+1,pairedIndex=targetCount-1;
+ const stride=Math.max(2,Math.round(hold/10)),samples=[];
+ for(let i=maxLag;i+endOffset<n;i+=stride){
+  const f=features(i);
+  const y=offsets.map(k=>(lp[i+k]-lp[i])/f.scale);
+  y.push((lp[i+endOffset]-lp[i+lead])/f.scale);
+  // Every sampled feature and target is observable no later than issue time.
+  samples.push({i,x:f.x,y,outcomeAt:rows[i+endOffset].ts});
+ }
+ if(samples.length<12)return empty('insufficient-completed-examples');
+
+ const separated=values=>{
+  const result=[];
+  for(const s of values)if(!result.length||s.i>result.at(-1).i+endOffset)result.push(s);
+  return result;
+ };
+ const split=Math.floor(samples.length*.75),nominalValidation=samples.slice(split);
+ const validation=separated(nominalValidation);
+ const validationStart=validation[0]?.i;
+ const training=samples.slice(0,split).filter(s=>s.i+endOffset<validationStart);
+ const defaults={penalty:tuningMode==='fixed2'?2:.2,halfLife:Math.max(900,hold*6)};
+ let chosen=defaults,validationMse=null,validationAccuracy=null,validationCount=0;
+ let evidence=[];
+ const minimumTraining=Math.max(24,samples[0].x.length),minimumValidation=24;
+ if(tuningMode==='nonOverlap'&&training.length>=minimumTraining&&validation.length>=minimumValidation)
+  evidence=[{training,validation}];
+ if(tuningMode==='walkDirection'){
+  const boundaries=[.5,.7,1];
+  for(let k=0;k<2;k++){
+   const begin=Math.floor(samples.length*boundaries[k]),end=Math.floor(samples.length*boundaries[k+1]);
+   const val=separated(samples.slice(begin,end)),first=val[0]?.i;
+   const train=samples.slice(0,begin).filter(s=>s.i+endOffset<first);
+   if(train.length>=minimumTraining&&val.length)evidence.push({training:train,validation:val});
+  }
+  // Independence across the entire validation schedule, including fold boundary.
+  const all=separated(evidence.flatMap(e=>e.validation));
+  const keep=new Set(all.map(s=>s.i));
+  evidence=evidence.map(e=>({...e,validation:e.validation.filter(s=>keep.has(s.i))})).filter(e=>e.validation.length);
+  if(evidence.reduce((n,e)=>n+e.validation.length,0)<minimumValidation)evidence=[];
+ }
+ if(evidence.length){
+  let bestError=Infinity,bestHits=-1;
+  const grid=[defaults,...[Math.max(300,hold*2),Math.max(900,hold*6),Infinity]
+   .flatMap(halfLife=>[.02,.2,2].map(penalty=>({penalty,halfLife})))];
+  for(const config of grid){
+   let error=0,hits=0,count=0,directional=0;
+   for(const e of evidence){
+    const w=fit(e.training,config.penalty,config.halfLife,targetCount);if(!w)continue;
+    for(const s of e.validation){
+     const predicted=dot(s.x,w)[pairedIndex],truth=s.y[pairedIndex];error+=(predicted-truth)**2;count++;
+     if(truth!==0){directional++;if((predicted>0&&truth>0)||(predicted<0&&truth<0))hits++;}
+    }
+   }
+   if(!count)continue;
+   error/=count;const accuracy=directional?hits/directional:0;
+   const better=tuningMode==='walkDirection'?(accuracy>bestHits+1e-12||(Math.abs(accuracy-bestHits)<=1e-12&&error<bestError-1e-12)):error<bestError-1e-12;
+   if(better){bestError=error;bestHits=accuracy;chosen=config;validationMse=error;
+    validationAccuracy=accuracy;validationCount=count;}
+  }
+ }
+ const evidenceTrace=evidence.map(e=>({trainExamples:e.training.length,trainLatestOutcomeAt:e.training.at(-1).outcomeAt,
+  validationIssues:e.validation.map(s=>rows[s.i].ts),validationOutcomes:e.validation.map(s=>s.outcomeAt)}));
+ const coefficients=fit(samples,chosen.penalty,chosen.halfLife,targetCount);
+ if(!coefficients)return empty('singular-context');
+ const current=features(n-1),estimates=dot(current.x,coefficients);
+ if(estimates.some(v=>!Number.isFinite(v)))return empty('nonfinite-prediction');
+ const base=lp.at(-1),entryIndex=offsets.indexOf(lead),exitIndex=offsets.indexOf(endOffset);
+ const entryMove=estimates[entryIndex]*current.scale;
+ const exitMove=estimates[exitIndex]*current.scale;
+ const pairedMove=estimates[pairedIndex]*current.scale;
+ const projectedEntryPrice=round(Math.exp(base+entryMove));
+ const projectedExitPrice=round(Math.exp(base+exitMove));
+ const expectedPath=[{secondsFromNow:0,price:round(Math.exp(base))},
+  ...offsets.filter(k=>k>0).map(k=>({secondsFromNow:k,
+   price:round(Math.exp(base+estimates[offsets.indexOf(k)]*current.scale))}))];
+ const sortedPath=expectedPath.slice().sort((a,b)=>a.secondsFromNow-b.secondsFromNow);
+ return {status:'adaptive-direct-trajectory',side:pairedMove>1e-12?'CALL':pairedMove< -1e-12?'PUT':null,
+  issuedAt:now,entryAt:now+lead*1000,exitAt:now+endOffset*1000,
+  entryDelaySeconds:lead,holdingSeconds:hold,projectedEntryPrice,projectedExitPrice,
+  expectedPairedLogReturn:pairedMove,expectedPath:sortedPath,
+  expectedLow:Math.min(...sortedPath.map(x=>x.price)),
+  expectedHigh:Math.max(...sortedPath.map(x=>x.price)),
+  historicalExamples:samples.length,
+  historySeconds:rows.at(-1).ts/1000-rows[0].ts/1000,
+  latestTrainingOutcomeAt:samples.at(-1).outcomeAt,
+  latestObservedQuoteAt:rows.at(-1).quoteAt,
+  validation:{examples:validationCount,
+   mse:validationMse,accuracy:validationAccuracy,
+   meaning:'past chronological tuning evidence, NOT future win probability',
+   purgedTrainingOutcomes:true},
+  fitted:{penalty:chosen.penalty,halfLifeSeconds:chosen.halfLife===Infinity?null:chosen.halfLife,
+   features:current.x.length,targets:targetCount},
+  actionable:false,calibrated:false,modelConfidence:null,
+  modelVersion:'purged-tuning-research-v1',researchOnly:true,tuningMode,
+  tuningDiagnostics:{nominalValidationExamples:nominalValidation.length,nonOverlappingValidationExamples:validation.length,
+   selectionPerformed:validationCount>0,evidenceTrace,fullFutureIntervalSeconds:endOffset}};
+}
