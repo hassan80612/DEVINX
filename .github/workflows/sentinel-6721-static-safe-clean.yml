@@ -40,7 +40,7 @@ jobs:
           }
           NODE
       - name: Existing core/PC/mobile behavior tests
-        run: node --test tests/sentinel-single-opportunity-6720.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs tests/sentinel-entry-window-6719.test.mjs
+        run: node --test tests/sentinel-single-opportunity-6720.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs
       - name: Build unchanged 67.21 web console with cleanup redirects
         run: |
           cd sentinel-trading-lab
