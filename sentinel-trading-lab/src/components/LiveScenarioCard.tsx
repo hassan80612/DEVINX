@@ -61,6 +61,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[horizon,setHorizon]=useState(String(s?.settings?.forecastHorizonSeconds||60));
   const[expirySeconds,setExpirySeconds]=useState(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
   const[threshold,setThreshold]=useState(String(s?.settings?.futureDisplayThreshold||70));
+  const[forecastMode,setForecastMode]=useState(String(s?.settings?.forecastMode||'continuous'));
   const[chosenEngine,setChosenEngine]=useState(String(s?.settings?.engine||'automatic'));
   const[strategy1,setStrategy1]=useState(String(s?.settings?.strategy||'smart_confluence'));
   const[strategy2,setStrategy2]=useState(String(s?.settings?.strategy2||'none'));
@@ -83,10 +84,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     };
   },[]);
   useEffect(()=>{
-    if(!settingsEditing.current){setChosenEngine(String(s?.settings?.engine||'automatic'));setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
+    if(!settingsEditing.current){setForecastMode(String(s?.settings?.forecastMode||'continuous'));setChosenEngine(String(s?.settings?.engine||'automatic'));setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
     // Remote status refreshes must not overwrite a value the user is typing.
     if(!thresholdEditing.current)setThreshold(String(s?.settings?.futureDisplayThreshold||70));
-  },[s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.engine,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3]);
+  },[s?.settings?.forecastMode,s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.engine,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3]);
   const onAverageChange=(raw:string)=>{
     const draft=raw.replace(/\D/g,'').slice(0,2);
     setAverageInput(draft);
@@ -196,6 +197,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <label>Estratégia do cenário
       <select aria-label="Estratégia responsável pelo cenário" value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{e.name}</option>)}
+      </select>
+    </label>
+    <label>Previsão
+      <select aria-label="Modo de previsão" value={forecastMode} disabled={busy} onChange={e=>{setForecastMode(e.target.value);void act('settings',{forecastMode:e.target.value})}}>
+        <option value="continuous">Contínua</option><option value="selective">Seletiva</option>
       </select>
     </label>
     <label>Entrada daqui a

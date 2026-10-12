@@ -18,7 +18,6 @@ export const SCENARIO_ENGINES=Object.freeze([
   {id:'trendline_breakout',name:'Trendline Breakout',family:'trendline',description:'Linhas de pivôs já confirmados e projeção de quebra',research:'swing-trendline-forecast'},
   {id:'fibonacci_retest',name:'Fibonacci Retest',family:'retracement',description:'Pernas estruturais e regiões de retração, não a vela atual',research:'prior-swing-retracement'},
   {id:'smart_confluence',name:'Smart Confluence',family:'native-confluence',description:'Leitura técnica própria multievidência, com indicadores internos da estratégia',research:'single-engine-evidence-fusion'},
-  {id:'selective_forecast',name:'Previsão seletiva',family:'selective',description:'Previsão do intervalo da entrada futura com qualificação histórica e margem sobre volatilidade',research:'qualified-forward-entry-interval'},
 ].map(o=>Object.freeze(o)));
 const BY_ID=new Map(SCENARIO_ENGINES.map(engine=>[engine.id,engine]));
 export function selectedScenarioEngine(settings={}){

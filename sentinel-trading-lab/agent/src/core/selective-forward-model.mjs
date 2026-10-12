@@ -1,5 +1,18 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {structureForecast} from './automatic-structure-forecast.mjs';
+export function qualifyStrategyInterval({forecast,quoteHistory=[],asOf=Date.now()}={}){
+ const h=Number(forecast?.holdingSeconds),known=quoteHistory.filter(q=>Number(q.ts)<=asOf&&Number(q.receivedAt??q.ts)<=asOf);
+ const structure=structureForecast({quoteHistory:known,asOf,selectedSeconds:h});
+ const historicalEvidence=!!structure?.cycle||(structure?.meanReversionEvidence.rate>.004&&structure?.meanReversionEvidence.tStatistic>3.5);
+ const recent=known.filter(q=>Number(q.ts)>=asOf-180000).sort((a,b)=>a.ts-b.ts);let square=0,seconds=0;
+ for(let i=1;i<recent.length;i++){const dt=(recent[i].ts-recent[i-1].ts)/1000;if(dt>0&&dt<=10&&recent[i].price>0&&recent[i-1].price>0){square+=Math.log(recent[i].price/recent[i-1].price)**2;seconds+=dt;}}
+ const sigma=seconds?Math.sqrt(square/seconds):0,threshold=h<=30?1:h<=60?1.5:h<=180?.5:1;
+ const margin=forecast?.projectedEntryPrice>0&&forecast?.projectedExitPrice>0&&sigma>0?Math.abs(Math.log(forecast.projectedExitPrice/forecast.projectedEntryPrice))/(sigma*Math.sqrt(h)):0;
+ const qualified=['CALL','PUT'].includes(forecast?.side)&&historicalEvidence&&margin>=threshold;
+ return {...forecast,forecastMode:'selective',rawSide:forecast?.side||null,side:qualified?forecast.side:null,
+   status:qualified?'forecast':'waiting-selective-entry',qualification:{qualified,historicalEvidence,margin,threshold},
+   reason:qualified?'Entrada futura qualificada.':'Aguardando entrada futura qualificada.'};
+}
 // Own interval forecast. Selection uses information known at issuance, never
 // the outcome; model confidence remains uncalibrated and is not a win rate.
 export function selectiveIntervalForecast({quoteHistory=[],asOf=Date.now(),entryDelaySeconds=0,holdingSeconds=30}={}){

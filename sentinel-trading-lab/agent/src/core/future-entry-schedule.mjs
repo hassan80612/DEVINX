@@ -1,5 +1,5 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
-import {selectiveIntervalForecast} from './selective-forward-model.mjs';
+import {selectiveIntervalForecast,qualifyStrategyInterval} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
@@ -11,7 +11,7 @@ import {singleEngineForecast} from './vnext-single-engine.mjs';
 const num=x=>Number.isFinite(Number(x))?Number(x):null;
 const valid=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
 
-export function futureEntrySchedule({
+function continuousFutureEntrySchedule({
   settings={},snap={},now=Date.now(),delays=[30],knownForecasts=[],forecastModel='original-67',adaptiveHistory=null
 }={}){
   const engineId=String(settings.engine||'automatic');
@@ -86,4 +86,11 @@ export function futureEntrySchedule({
         actionable:false,calibrated:false
       };
     });
+}
+export function futureEntrySchedule(input={}){
+ const legacy=input.settings?.engine==='selective_forecast';
+ const settings=legacy?{...input.settings,engine:'automatic',forecastMode:'selective'}:input.settings||{};
+ const continuous=continuousFutureEntrySchedule({...input,settings:{...settings,forecastMode:'continuous'}});
+ if(settings.forecastMode!=='selective')return continuous;
+ return continuous.map(forecast=>qualifyStrategyInterval({forecast,quoteHistory:input.adaptiveHistory||input.snap?.quoteHistory||[],asOf:input.now??Date.now()}));
 }

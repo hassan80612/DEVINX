@@ -1512,11 +1512,10 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">↻ Leitura</button>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(95px,.7fr);gap:9px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
+            <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.85fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ESTRATÉGIA ATIVA
                 <select data-sentinel-setting="engine" title="Estratégia responsável pela previsão" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   <option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>
-                  <option value="selective_forecast" ${d.engine==='selective_forecast'?'selected':''}>Previsão seletiva</option>
                   <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
                   <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>Suporte e Resistência</option>
                   <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
@@ -1525,6 +1524,11 @@ export class LocalPlaywrightDriver{
                   <option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
                   <option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
                   <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
+                </select>
+              </label>
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">PREVISÃO
+                <select data-sentinel-setting="forecastMode" style="width:100%;min-width:0;height:35px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:10px">
+                  <option value="continuous" ${d.forecastMode!=='selective'?'selected':''}>Contínua</option><option value="selective" ${d.forecastMode==='selective'?'selected':''}>Seletiva</option>
                 </select>
               </label>
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ENTRADA DAQUI A

@@ -1477,3 +1477,7 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextForwardHorizons>summary{font-size:10px;line-height:21px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e4cc94;cursor:pointer}
 .liveScenario .vnextForwardHorizons[open]>summary{line-height:16px}
 .liveScenario .vnextFutureDirection strong{font-size:clamp(15px,4vw,20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* Strategy, forecast mode and entry time stay on one compact row. */
+.vnextEngineToolbar,.liveScenarioCompact .vnextEngineToolbar{grid-template-columns:minmax(0,1.3fr) minmax(0,.85fr) minmax(0,.85fr)}
+@media(max-width:700px){.vnextEngineToolbar,.liveScenarioCompact .vnextEngineToolbar{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr) minmax(0,.8fr);gap:5px}.vnextEngineToolbar label{font-size:9px}.vnextEngineToolbar select{padding:0 4px!important;font-size:10px!important}}

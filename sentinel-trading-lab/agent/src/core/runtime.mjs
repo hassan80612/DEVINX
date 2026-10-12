@@ -785,6 +785,11 @@ export class DemoTradingRuntime{
   async unfreeze(actor='master'){if(actor!=='master')throw new Error('master_required');this.masterFrozen=false;this.audit.write({actorId:actor,actorRole:'master',action:'bot.unfreeze'});return this.status()}
   setMode(mode,actor='user'){if(!['demo','real'].includes(mode))throw new Error('invalid_mode');this.settings.mode=mode;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'mode.change',metadata:{mode}});return this.status()}
   patchSettings(patch={},actor='user'){
+    if(patch.engine==='selective_forecast')patch={...patch,engine:'automatic',forecastMode:'selective'};
+    if(Object.prototype.hasOwnProperty.call(patch,'forecastMode')){
+      if(!['continuous','selective'].includes(patch.forecastMode))throw new Error('invalid_forecast_mode');
+      if(patch.forecastMode!==this.settings.forecastMode){this.vnextFutureEntryAnchor=null;this.vnextHorizonMatrix=null;}
+    }
     // Manual-only policy: legacy clients cannot re-arm automated broker orders.
     if(patch?.demoAutopilot===true)throw new Error('autopilot_disabled_manual_only');
     this.settings.demoAutopilot=false;
@@ -886,7 +891,7 @@ export class DemoTradingRuntime{
       // strategy panel, 3-way confluence or release logic for this branch.
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
-      const useAdaptive=settings.engine==='selective_forecast'||(this.forecastModel==='adaptive-direct-trajectory-v1'||this.forecastModel==='selected-strengths-67.5')&&settings.engine==='automatic';
+      const useAdaptive=settings.forecastMode==='selective'||(this.forecastModel==='adaptive-direct-trajectory-v1'||this.forecastModel==='selected-strengths-67.5')&&settings.engine==='automatic';
       if(useAdaptive)this.adaptiveTemporalContext=retainAdaptiveHistory({
         previous:this.adaptiveTemporalContext,quotes:snap.quoteHistory,now,
         asset:settings.asset,provider:snap.provider});

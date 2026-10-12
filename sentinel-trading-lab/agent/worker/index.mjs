@@ -73,7 +73,7 @@ async function publishLiveFrame(){
   const liveForecast=runtime.lastResult?.analysis?.vnext?.receipt||null;
   const mobileEntry=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor||null;
   // A NEW pinned future-entry clock must bypass routine quote pacing.
-  const decisionKey=[runtime.settings.asset,runtime.settings.engine,runtime.settings.orderDurationMs,
+  const decisionKey=[runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
     liveForecast?.side,mobileEntry?.issuedAt,mobileEntry?.entryAt,mobileEntry?.side,
     scenario.side,scenario.status,scenario.closed,
     op.side,op.state,op.ready,op.actionable,op.activeUntil,
@@ -147,6 +147,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
+    if(key==='forecastMode'){runtime.patchSettings({forecastMode:String(value)},'overlay');runtime.requestImmediateEvaluation?.();await saveState();return{ok:true};}
     if(key==='engine'){
       const allowed=['automatic','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
       if(!allowed.includes(String(value)))throw new Error('invalid_engine');
@@ -265,7 +266,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const pendingOp=runtime.lastResult?.analysis?.operationalSignal||{};
     const pendingScenario=pendingOp.scenario||{};
     const overlayFastKey=[
-      activeProvider,runtime.settings.asset,
+      activeProvider,runtime.settings.asset,runtime.settings.engine,runtime.settings.forecastMode,runtime.settings.orderDurationMs,
       pendingScenario.side,pendingScenario.status,pendingScenario.closed,
       pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
       pendingOp.actionable,pendingOp.activeUntil
@@ -302,7 +303,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       screenCandidateSymbol:view.liveBroker?.screenCandidateSymbol||null,
       marketStatus:view.liveBroker?.marketStatus||null,
       marketReason:view.liveBroker?.marketReason||null,
-      engine:view.settings?.engine||null,
+      engine:view.settings?.engine||null,forecastMode:view.settings?.forecastMode||'continuous',
        vnext:a.vnext||null,
        strategy:view.settings?.strategy||'smart_confluence',
       strategy2:view.settings?.strategy2||'none',

@@ -12,7 +12,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   const quoteAt=positive(snap.quoteTs);
   const last=Array.isArray(snap.quoteHistory)?snap.quoteHistory.at(-1):null;
   const context=JSON.stringify([
-    forecastModel,settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
+    forecastModel,settings.forecastMode||'continuous',settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
     adaptiveHistory?.length||0,Number(adaptiveHistory?.[0]?.ts)||0,
     Number(last?.price)||0,Array.isArray(snap.quoteHistory)?snap.quoteHistory.length:0
   ]);
