@@ -119,11 +119,10 @@ export function futureEntrySchedule(input={}){
  });
  if(settings.forecastMode!=='selective')return continuous;
  const asOf=input.now??Date.now();
- const evidence=selectiveEvidence({quoteHistory:input.adaptiveHistory||input.snap?.quoteHistory||[],asOf});
- // Long-history regression is CPU intensive; it is relevant ONLY to the
- // selected entry. Other displayed horizons use the already-computed
- // three-completed-bar evidence, preventing analysis from starving live ticks.
+ const evidence=selectiveEvidence({quoteHistory:input.adaptiveHistory||input.snap?.quoteHistory||[],asOf,selectedSeconds:chosen});
+ // One closed-bar observation set for the selected interval, no historical
+ // regression or unnecessary 12-minute preparation. No new broker polling.
  return continuous.map(forecast=>qualifyStrategyInterval({
-   forecast,asOf,evidence,checkLong:Number(forecast.delaySeconds)===chosen
+   forecast,asOf,evidence,checkLong:false
  }));
 }
