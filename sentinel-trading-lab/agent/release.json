@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.20",
-  "build": "13.4.67.20-single-locked-window-1012",
+  "version": "13.4.67.21",
+  "build": "13.4.67.21-mobile-pc-realtime-parity-1012",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
