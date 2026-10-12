@@ -953,7 +953,9 @@ export class DemoTradingRuntime{
         oldEntry.engineId===currentEntry.engineId&&
         oldEntry.asset===currentEntry.asset&&
         oldEntry.delaySeconds===currentEntry.delaySeconds&&
-        Number(oldEntry.entryAt)>now;
+        oldEntry.side===currentEntry.side&&
+        ['CALL','PUT'].includes(currentEntry.side)&&
+        Number(oldEntry.entryAt)+1500>now;
       // The matrix may legitimately reuse its last result while the market
       // quote is unchanged. Never promote an already expired cached row into
       // a new "active" entry after the previous deadline has passed.
@@ -966,7 +968,16 @@ export class DemoTradingRuntime{
         Number(currentEntry.entryAt)>Number(currentEntry.issuedAt);
       // The current receipt remains immutable up to its target. At expiry
       // switch to a genuinely new prediction or clear both displays.
-      const entryAnchor=sameEntry?oldEntry:newEntryValid?currentEntry:null;
+      const planned=sameEntry?oldEntry:newEntryValid?currentEntry:null;
+      // Time passing alone NEVER authorizes an entry. The Agent must have
+      // independently recalculated the SAME direction on a fresh quote
+      // observed at the actual entry instant, inside a strictly short window.
+      const due=planned&&now>=Number(planned.entryAt)&&
+        now<=Number(planned.entryAt)+1500;
+      const entryReadyNow=!!(due&&freshQuote&&sameEntry&&
+        Number(snap.quoteTs)>=Number(planned.entryAt)-1000);
+      const entryAnchor=planned?{...planned,entryReadyNow,
+        status:entryReadyNow?'entry-moment':'forecast'}:null;
       this.vnextFutureEntryAnchor=entryAnchor;
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
