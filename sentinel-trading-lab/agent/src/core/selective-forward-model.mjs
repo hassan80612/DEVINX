@@ -34,8 +34,10 @@ export function selectiveEvidence({quoteHistory=[],asOf=Date.now()}={}){
    return bar.length>=3&&Number(bar[0].ts)-begin<=8000&&
      end-Number(bar.at(-1).ts)<=8000&&Number(bar.at(-1).ts)-Number(bar[0].ts)>=14000;
  });
- const ready=quoteAge>=0&&quoteAge<=2500&&seconds>=60&&sigma>0&&
-   barsCovered&&prices.every(p=>p>0);
+ // Completed-candle evidence is historical and must not vanish between two
+ // genuine broker ticks. Live quote eligibility stays at <=2.5s in the
+ // separate qualification gate below; this never authorizes a stale entry.
+ const ready=seconds>=60&&sigma>0&&barsCovered&&prices.every(p=>p>0);
  const moves=ready?prices.slice(1).map((p,i)=>Math.log(p/prices[i])):[];
  const total=moves.reduce((a,b)=>a+b,0),direction=total>0?'CALL':total<0?'PUT':null;
  const agreeing=moves.filter(x=>direction==='CALL'?x>0:x<0).length;
