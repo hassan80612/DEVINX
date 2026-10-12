@@ -71,8 +71,11 @@ async function publishLiveFrame(){
   const op=runtime.lastResult?.analysis?.operationalSignal||{};
   const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
   const liveForecast=runtime.lastResult?.analysis?.vnext?.receipt||null;
+  const mobileEntry=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor||null;
+  // A NEW pinned future-entry clock must bypass routine quote pacing.
   const decisionKey=[runtime.settings.asset,runtime.settings.engine,runtime.settings.orderDurationMs,
-    liveForecast?.side,scenario.side,scenario.status,scenario.closed,
+    liveForecast?.side,mobileEntry?.issuedAt,mobileEntry?.entryAt,mobileEntry?.side,
+    scenario.side,scenario.status,scenario.closed,
     op.side,op.state,op.ready,op.actionable,op.activeUntil,
     alert.side,alert.trigger,alert.testing,op.subanalyst?.status].join('|');
   const urgent=decisionKey!==lastLiveSentDecisionKey;

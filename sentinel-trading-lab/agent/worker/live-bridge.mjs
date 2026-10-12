@@ -173,6 +173,8 @@ export class LiveBridge{
       snapshot.settings?.engine,snapshot.settings?.orderDurationMs,
       snapshot.lastResult?.analysis?.vnext?.receipt?.side,
       snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
+      snapshot.lastResult?.analysis?.vnext?.ea?.[4],
+      snapshot.lastResult?.analysis?.vnext?.ea?.[1],
       snapshot.lastResult?.analysis?.vnext?.hf?.map(row=>row.slice(0,3).join(',')).join(';'),
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.side,
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.at,
