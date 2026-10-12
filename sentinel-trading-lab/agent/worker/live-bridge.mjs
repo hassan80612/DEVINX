@@ -34,7 +34,8 @@ export function analystSnapshot(runtimeStatus,live){
     Number(e.delaySeconds)||0,e.side||null,
     Number(e.projectedEntryPrice)||0,Number(e.projectedExitPrice)||0,
     Number(e.issuedAt)||0,Number(e.holdingSeconds)||0,
-    Number(e.entryAt)||0,Number(e.exitAt)||0,e.entryReadyNow===true?1:0
+    Number(e.entryAt)||0,Number(e.exitAt)||0,e.entryReadyNow===true?1:0,
+    e.phase||'open',Number(e.entryTriggeredAt)||0
   ]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
     engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
@@ -45,6 +46,13 @@ export function analystSnapshot(runtimeStatus,live){
     receipt,
     // Future-entry direction is a DIFFERENT prediction from quote-now -> t+H.
     ea:entryTuple(vnext.futureEntryAnchor),
+    ow:vnext.opportunityWindow?[
+      vnext.opportunityWindow.phase||null,
+      Number(vnext.opportunityWindow.windowStartedAt)||0,
+      Number(vnext.opportunityWindow.windowEndsAt)||0,
+      Number(vnext.opportunityWindow.entryAt)||0,
+      String(vnext.opportunityWindow.reason||'').slice(0,45)
+    ]:null,
     fq:vnext.futureEntryForecast?.forecastMode==='selective'?String(vnext.futureEntryForecast.reason||'').slice(0,180):null,
     er:Array.isArray(vnext.futureEntryRows)?vnext.futureEntryRows.slice(0,9).map(entryTuple):[],
     targetAnchor:vnext.targetAnchor?take(vnext.targetAnchor,[
@@ -105,7 +113,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
-    ea:v.ea,er:v.er,fq:v.fq,
+    ea:v.ea,ow:v.ow,er:v.er,fq:v.fq,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
   };
   const trimmed={...snapshot,
@@ -182,6 +190,10 @@ export class LiveBridge{
       snapshot.lastResult?.analysis?.vnext?.receipt?.issuedAt,
       snapshot.lastResult?.analysis?.vnext?.ea?.[4],
       snapshot.lastResult?.analysis?.vnext?.ea?.[1],
+      snapshot.lastResult?.analysis?.vnext?.ea?.[8],
+      snapshot.lastResult?.analysis?.vnext?.ea?.[9],
+      snapshot.lastResult?.analysis?.vnext?.ea?.[10],
+      snapshot.lastResult?.analysis?.vnext?.ow?.[0],
       snapshot.lastResult?.analysis?.vnext?.hf?.map(row=>row.slice(0,3).join(',')).join(';'),
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.side,
       snapshot.lastResult?.analysis?.vnext?.nowIndication?.at,
