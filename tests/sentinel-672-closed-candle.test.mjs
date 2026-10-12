@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {closedCandleContext,retainClosedCandleHistory} from '../sentinel-trading-lab/agent/src/core/closed-candle-context.mjs';
 import {closedCandleTrajectory} from '../sentinel-trading-lab/agent/src/core/closed-candle-trajectory.mjs';
+import {contextualCandleTrajectory} from '../sentinel-trading-lab/agent/src/core/contextual-candle-trajectory.mjs';
 const T=1800000000000;
 const bar=(i,p=60)=>({from:T+i*p*1000,to:T+(i+1)*p*1000,
  receivedAt:T+(i+1)*p*1000,open:100+i,high:102+i,low:99+i,close:101+i});
@@ -70,4 +71,20 @@ test('future ticks and bars cannot contaminate prediction at an earlier issue ti
  const a=closedCandleTrajectory({...options,quoteHistory:rows,candles});
  const b=closedCandleTrajectory({...options,quoteHistory:rows.filter(q=>q.ts<=now),candles:candles.filter(c=>c.to<=now)});
  assert.deepEqual(a,b);assert.equal(a.modelConfidence,null);assert.equal(a.actionable,false);
+});
+test('contextual strategy requires three closed bars and reads their wicks even with identical current quotes',()=>{
+ const {rows,candles}=fixture(),now=T+3500000;
+ const options={quoteHistory:rows,candles,candleSeconds:60,asOf:now,entryDelaySeconds:30,holdingSeconds:60};
+ const a=contextualCandleTrajectory(options);
+ assert.equal(a.status,'contextual-candle-trajectory');
+ assert.equal(contextualCandleTrajectory({...options,candles:[]}).side,null);
+ const latest=candles.filter(c=>c.to<=now).at(-1);
+ const b=contextualCandleTrajectory({...options,candles:candles.map(c=>c.from===latest.from?{...c,high:c.high*1.05}:c)});
+ assert.notDeepEqual(a.candleContext.x,b.candleContext.x);
+ assert.notEqual(a.expectedPairedLogReturn,b.expectedPairedLogReturn);
+ assert.equal(a.side,a.projectedExitPrice>a.projectedEntryPrice?'CALL':'PUT');
+ const c=contextualCandleTrajectory({...options,quoteHistory:rows.filter(q=>q.ts<=now),candles:candles.filter(c=>c.to<=now)});
+ assert.deepEqual(a,c);
+ const d=contextualCandleTrajectory({...options,candles:candles.map(c=>c.to>now?{...c,high:1e12}:c)});
+ assert.deepEqual(a,d);
 });
