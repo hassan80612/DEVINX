@@ -1,0 +1,36 @@
+name: Sentinel 67.22 Internal Research Only
+on:
+  push:
+    branches: [research/sentinel-entry-quality-6722-20261012]
+    paths:
+      - 'sentinel-trading-lab/agent/src/core/entry-window-planner.mjs'
+      - 'sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs'
+      - 'tests/sentinel-6722-offline-comparison.test.mjs'
+      - 'tests/fixtures/sentinel-entry-planner-baseline-6721.mjs'
+      - 'tests/fixtures/sentinel-window-baseline-6721.mjs'
+      - '.github/workflows/sentinel-entry-quality-internal-6722.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-6722-internal-only
+  cancel-in-progress: true
+jobs:
+  compare-no-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Source syntax checks
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/entry-window-planner.mjs
+          node --check sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs
+          node --check tests/sentinel-6722-offline-comparison.test.mjs
+      - name: Candidate and EXACT baseline comparison on synthetic historical paths
+        run: |
+          node --test tests/sentinel-6722-offline-comparison.test.mjs
+      - name: Existing window, selective and quality regressions
+        run: |
+          node --test tests/sentinel-single-opportunity-6720.test.mjs tests/sentinel-selective-historical-6718.test.mjs tests/sentinel-independent-forward-quality.test.mjs
