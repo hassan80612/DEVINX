@@ -1,3 +1,4 @@
+# Verified trend warmup and actual mobile receiver regression.
 # VNext release: regenerate embedded agent and checksum from the exact source commit.
 # Rebuild verified final Agent with the stable-clock regression fixed.
 name: Sentinel Windows 13.4.67.8 Future Prediction and Mobile Delivery

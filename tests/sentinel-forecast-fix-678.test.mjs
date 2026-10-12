@@ -33,3 +33,17 @@ test('mobile accepts new evaluation independently of quote timestamp without rew
  assert.match(page,/liveBroker:olderQuote\?previous.liveBroker/);
  assert.match(page,/feed:olderQuote\?previous.feed/);
 });
+
+test('actual mobile receiver renders a new clock even when a concurrent poll has a newer price',()=>{
+ const source=fs.readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
+ const start=source.indexOf('setS((previous:Status|null)=>{',source.indexOf('return watchSignedLiveAnalyst'));
+ const body=source.slice(start+'setS((previous:Status|null)=>{'.length,source.indexOf('\n      });',start));
+ const receive=new Function('previous','payload','topic','liveFrameAt',body);
+ const previous={liveTopic:'test',lastEvalMs:now,liveBroker:{lastQuoteAt:now+1000,quote:103},feed:{price:103},lastResult:{analysis:{vnext:{ea:[30,'CALL',101,102,now-30000,30]}}}};
+ const payload={at:now+500,lastEvalMs:now+500,liveBroker:{lastQuoteAt:now,quote:102},lastResult:{analysis:{vnext:{ea:[30,'PUT',102,101,now,30]}}}};
+ const result=receive(previous,payload,'test',{current:0});
+ assert.equal(result.lastResult.analysis.vnext.ea[4],now);
+ assert.equal(result.liveBroker.quote,103);
+ assert.equal(result.feed.price,103);
+ assert.equal(receive(previous,{...payload,lastEvalMs:now-1},'test',{current:0}),previous);
+});
