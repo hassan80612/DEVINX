@@ -8,6 +8,7 @@ import {historicalForwardAnalogs} from './historical-forward-analogs.mjs';
 import {structureForecast} from './automatic-structure-forecast.mjs';
 import {specialistStructurePrediction} from './specialist-structure-models.mjs';
 import {selectiveIntervalForecast} from './selective-forward-model.mjs';
+import {coherentInterval,observedNoise} from './forward-direction-quality.mjs';
 
 /**
  * VNext main-scenario signal adapter. Computes only the selected motor;
@@ -23,22 +24,23 @@ export function singleEngineForecast({
  const seconds=request.forecastHorizonSeconds;
  const quotes=Array.isArray(snap.quoteHistory)?snap.quoteHistory:[];
  const options={quoteHistory:quotes,asOf:now,selectedSeconds:seconds};
- const selective=request.engineId==='selective_forecast'?selectiveIntervalForecast({quoteHistory:adaptiveHistory||quotes,asOf:now,entryDelaySeconds:0,holdingSeconds:seconds}):null;
- const selectedStrengths=forecastModel==='selected-strengths-67.5';
+ const autonomous=settings.forecastMode==='selective';
+ const selective=!autonomous&&request.engineId==='selective_forecast'?selectiveIntervalForecast({quoteHistory:adaptiveHistory||quotes,asOf:now,entryDelaySeconds:0,holdingSeconds:seconds}):null;
+ const selectedStrengths=!autonomous&&forecastModel==='selected-strengths-67.5';
  const selectedSpecialist=selectedStrengths&&['breakout','fibonacci_retest'].includes(request.engineId);
- const specialistCandidate=request.engineId!=='automatic'&&(forecastModel==='specialist-structure-v2'||selectedSpecialist)?
+ const specialistCandidate=!autonomous&&request.engineId!=='automatic'&&(forecastModel==='specialist-structure-v2'||selectedSpecialist)?
    specialistStructurePrediction({...options,engineId:request.engineId}):null;
  const useSpecialist=!!specialistCandidate?.prediction;
- const structure=request.engineId==='automatic'&&(forecastModel==='structure-context-v2'||selectedStrengths)?
+ const structure=!autonomous&&request.engineId==='automatic'&&(forecastModel==='structure-context-v2'||selectedStrengths)?
    structureForecast(options):null;
  const useStructure=!!structure&&(!!structure.cycle||
    (structure.meanReversionEvidence.rate>.004&&structure.meanReversionEvidence.tStatistic>3.5));
- const learned=request.engineId==='automatic'&&forecastModel==='adaptive-direct-trajectory-v1'?
+ const learned=!autonomous&&request.engineId==='automatic'&&forecastModel==='adaptive-direct-trajectory-v1'?
    adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||quotes,asOf:now,
      entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const useAdaptive=learned?.status==='adaptive-direct-trajectory';
- const modelVersion=selective?'selective-interval-v1':useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
- const computed=selective?{
+ const modelVersion=autonomous?'selective-autonomous-market-v1':selective?'selective-interval-v1':useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
+ const computed=autonomous?automaticForwardPrediction(options):selective?{
    status:selective.status,
    diagnostic:{referencePrice:selective.expectedPath?.[0]?.price,quoteAt:selective.latestObservedQuoteAt},
    prediction:selective.qualified?{side:selective.side,projectedPrice:selective.projectedExitPrice,
@@ -66,7 +68,7 @@ export function singleEngineForecast({
  // Unlike pure momentum extrapolation, these independently observed outcomes
  // are prices that followed comparable PAST quote patterns by the SELECTED
  // expiration. No last/current candle direction is a decision gate.
- const analog=selective||useAdaptive||useStructure?null:historicalForwardAnalogs({
+ const analog=autonomous||selective||useAdaptive||useStructure?null:historicalForwardAnalogs({
    quoteHistory:quotes,asOf:now,selectedSeconds:seconds,
    engineId:request.engineId
  });
@@ -99,6 +101,16 @@ export function singleEngineForecast({
        ]
      };
    }
+ }
+ // The current market-context display must not assert an almost-zero
+ // directional move as a meaningful CALL/PUT. The same check also verifies
+ // that the side agrees with its projected price.
+ if(forecastPrediction){
+   const base=Number(computed?.diagnostic?.referencePrice||quotes.at(-1)?.price);
+   const noise=observedNoise({quotes:adaptiveHistory||quotes,now,horizonSeconds:seconds});
+   const coherence=coherentInterval({entryPrice:base,
+     exitPrice:forecastPrediction.projectedPrice,side:forecastPrediction.side,noise});
+   if(!coherence.qualified)forecastPrediction=null;
  }
  const freshQuote=Number(snap.quoteTs)>0&&Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500;
  const recentQuote=quotes.filter(q=>Number(q.ts)<=now).at(-1);
@@ -159,7 +171,7 @@ export function singleEngineForecast({
    source:'user-selected-expiry',modelVersion,
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
    computedStatus:computed?.status||'unavailable',receipt,cards,projection,
-   forecastFoundation:selective?'selective-interval-v1':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
+   forecastFoundation:autonomous?'autonomous-selective-market':selective?'selective-interval-v1':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
    historicalComparisons:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.comparisons||0,
    similarCases:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.neighbors||0,
    plan,operational,scenarioProjection,
