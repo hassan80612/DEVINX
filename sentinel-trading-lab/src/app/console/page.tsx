@@ -6,8 +6,8 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.67.18';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.18.exe?v=historical-targets-1012`;
+const AVAILABLE_AGENT_VERSION='13.4.67.19';
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.19.exe?v=adaptive-entry-window-1012`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
