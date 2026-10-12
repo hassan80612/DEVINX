@@ -12,7 +12,7 @@ test('mobile card has no indefinitely stuck expired-plan wording and uses origin
  const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.doesNotMatch(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
  assert.match(card,/const expired=pinned&&now>=plannedAt/);
- assert.match(card,/countdownSeconds=pinned&&!expired\?Math\.max\(1,Math\.ceil\(\(plannedAt-now\)\/1000\)\):null/);
+ assert.match(card,/countdownSeconds=pinned&&!expired&&!currentMoment\?Math\.max\(1,Math\.ceil\(\(plannedAt-now\)\/1000\)\):null/);
  assert.match(card,/expired\?'SEM PREVISÃO DE ENTRADA'/);
 });
 test('same-quote cache cannot freeze an expired selected entry with a fresh broker quote',()=>{
