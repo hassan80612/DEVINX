@@ -16,7 +16,7 @@ export function selectiveClosedEntry({
 }={}){
  const empty=(status)=>({side:null,status,projectedEntryPrice:null,projectedExitPrice:null});
  const delay=Number(delaySeconds),hold=Number(holdingSeconds);
- if(!Number.isInteger(delay)||!Number.isInteger(hold)||delay<1||hold<1)return empty('invalid-interval');
+ if(!Number.isInteger(delay)||!Number.isInteger(hold)||delay<1||hold<1||delay>3600||hold>3600)return empty('invalid-interval');
  const closedAt=Math.floor(now/30000)*30000,elapsedMs=now-closedAt;
  // Observe only prices actually available before the selected historical cut.
  const known=quoteHistory.filter(q=>Number.isFinite(Number(q?.ts))&&Number(q.ts)<=closedAt&&
@@ -43,13 +43,15 @@ export function selectiveClosedEntry({
  // Unlike using the quote NOW to predict the current candle, start from the
  // last COMPLETED bar and translate lead time by actual elapsed seconds.
  const futureLead=delay+Math.round(elapsedMs/1000);
- if(futureLead+hold>1800)return empty('invalid-interval');
+ // The learned predictor supports up to 1800s in total; longer user-
+ // selected horizons retain the completed-bar original forecast fallback.
+ if(futureLead+hold>7230)return empty('invalid-interval');
  const historyKey=[String(provider),String(asset),engineId,forecastModel,
    closedAt,futureLead,hold,known.length,at,Number(last.price)].join('|');
  let result=limited.get(historyKey);
  if(!result){
    let learned=null;
-   if(engineId==='automatic'&&(forecastModel==='selected-strengths-67.5'||
+   if(engineId==='automatic'&&futureLead+hold<=1800&&(forecastModel==='selected-strengths-67.5'||
       forecastModel==='adaptive-direct-trajectory-v1')){
      learned=adaptiveDirectTrajectory({quoteHistory:known,asOf:closedAt,
        entryDelaySeconds:futureLead,holdingSeconds:hold,historicalQuoteGapMs:8000});
