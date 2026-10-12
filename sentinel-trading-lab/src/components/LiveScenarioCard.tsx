@@ -11,8 +11,8 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 // Dedicated local timer: it never waits for a WebSocket packet or forces
 // the full analyst card to recalculate on every countdown tick.
-function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waitingReason,readyNow}:{
-  plannedAt:number,plannedExit:number,issuedAt:number,side:string|null,valid:boolean,waitingReason?:string,readyNow?:boolean
+function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waitingReason,readyNow,phase}:{
+  plannedAt:number,plannedExit:number,issuedAt:number,side:string|null,valid:boolean,waitingReason?:string,readyNow?:boolean,phase?:string
 }){
   const[now,setNow]=useState(()=>Date.now());
   useEffect(()=>{
@@ -44,6 +44,8 @@ function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waiti
   const entryCountdown=countdownSeconds===null?'—:—':
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
   const direction=currentMoment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
+    phase==='cancelled'?'JANELA CANCELADA':
+    phase==='fired'?'ENTRADA JÁ SINALIZADA':
     !pinned||expired?'JANELA ABERTA · ANALISANDO':
     (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   return <>
@@ -223,6 +225,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   // a separate, explicitly shown estimated holding period.
   // It NEVER mirrors an updated current-candle CALL/PUT.
   const futureEntry=m.vnextFutureEntryAnchor;
+  const opportunityPhase=m.vnextOpportunityWindow?.phase||null;
   const plannedAt=Number(futureEntry?.entryAt||0);
   const plannedExit=Number(futureEntry?.exitAt||0);
   const entryPlanValid=!!(futureEntry&&['CALL','PUT'].includes(futureEntry.side)&&
@@ -239,7 +242,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     (m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'):undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid} readyNow={entryMoment} waitingReason={selectiveWaitingReason}/>
+    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid} readyNow={entryMoment} phase={opportunityPhase||undefined} waitingReason={selectiveWaitingReason}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
