@@ -97,7 +97,7 @@ const livePublishTimer=setInterval(()=>{void publishLiveFrame()},220);
 livePublishTimer.unref?.();
 let localCockpitLeaseUntil=0;
 const localCockpitLeaseValid=()=>Date.now()<localCockpitLeaseUntil&&!!activeProvider&&brokers[activeProvider]?.connected===true;
-let lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastPersistAt=0,lastMarketSyncAt=0;
+let lastBrokerMaintainAt=0,lastOverlayAt=0,lastOverlayTimingKey='',lastOverlayProbeKey='',lastPersistAt=0,lastMarketSyncAt=0;
 const realtimeQuotes=new LatestQuoteScheduler({isBusy:()=>busy,isRunning:()=>runtime.stateName==='running',evaluate:async()=>{
   syncRuntimeMarket();lastMarketSyncAt=Date.now();runtime.requestImmediateEvaluation?.();await loop();
 }});
@@ -256,7 +256,20 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   void publishLiveFrame();
   if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
   if(activeProvider){
-    const view=await runtime.status();
+    // A full status() rebuild includes research summaries, broker metadata and
+    // trade aggregates. Keep it OUT of the 400ms quote-analysis loop unless an
+    // overlay actually needs painting or its operational state has changed.
+    const pendingOp=runtime.lastResult?.analysis?.operationalSignal||{};
+    const pendingScenario=pendingOp.scenario||{};
+    const overlayFastKey=[
+      activeProvider,runtime.settings.asset,
+      pendingScenario.side,pendingScenario.status,pendingScenario.closed,
+      pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
+      pendingOp.actionable,pendingOp.activeUntil
+    ].join('|');
+    if(overlayFastKey!==lastOverlayProbeKey||Date.now()-lastOverlayAt>=1000){
+      lastOverlayProbeKey=overlayFastKey;
+      const view=await runtime.status();
     const brokerSwitching=String(view.liveBroker?.marketStatus||'').toLowerCase()==='switching'&&!view.liveBroker?.uiSymbol&&!view.liveBroker?.symbol;
     const currentAsset=brokerSwitching?'SINCRONIZANDO':(view.liveBroker?.uiSymbol||view.liveBroker?.symbol||view.settings?.asset||'—');
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
@@ -328,6 +341,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       executionReady:view.autopilot?.eligible===true,
       agentVersion:VERSION
     },{urgent:urgentOverlay});
+    }
     }
   }
   if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}
