@@ -25,10 +25,10 @@ test('isolated contradictory peak cannot override several consistent candidate i
  const old=basePlan({now:t,windowSeconds:30,holdingSeconds:30,evaluateLead:makeLead});
  const next=newPlan({now:t,windowSeconds:30,holdingSeconds:30,evaluateLead:makeLead});
  assert.equal(old.side,'CALL');
- assert.equal(next.side,'PUT');
+ assert.equal(next.side,null,'conflicting offsets must abstain instead of manufacturing PUT');
  assert.equal(next.windowEndsAt,old.windowEndsAt);
- assert.equal(next.exitAt-next.entryAt,30000);
- assert.ok(next.entryAt<t+30000);
+ assert.equal(next.entryAt,null);
+ assert.equal(next.status,'scanning-entry-window');
 });
 
 test('equal/conflicting directional evidence abstains instead of flickering',()=>{
@@ -148,7 +148,7 @@ function summarize(x){
 
 test('OFFLINE benchmark: baseline 67.21 versus candidate on independently generated 30s/60s market histories',()=>{
  const buckets={};
- const seeds=[410021,410039,410047];
+ const seeds=[410173,410207,410219,410231];
  const regimes=['trend','range','cycle','reversal','false_breakout','random'];
  const modes=['continuous','selective'],horizons=[30,60],indices=[2250,2800];
  for(const mode of modes)for(const h of horizons)buckets[mode+'_'+h]=counters();
@@ -191,11 +191,15 @@ test('OFFLINE benchmark: baseline 67.21 versus candidate on independently genera
    assert.equal(candidate.windowEndsAt,original.windowEndsAt);
    assert.equal(candidate.actionable,false);
    if(candidate.side)assert.equal(candidate.side,candidate.projectedExitPrice>candidate.projectedEntryPrice?'CALL':'PUT');
+   if(candidate.side){
+    assert.equal(candidate.side,original.side,'surviving direction must remain exactly baseline');
+    assert.equal(candidate.entryAt,original.entryAt,'surviving entry instant must remain exactly baseline');
+   }
    collect(buckets[mode+'_'+h],original,candidate,rows,index,h);
   }
  }
  const report={version:'67.21 exact frozen planner versus unpublished 67.22 research',
-  source:'SYNTHETIC market paths; NOT broker results or proven hit probability',
+  source:'UNSEEN SYNTHETIC holdout paths; NOT broker results or proven hit probability',
   seeds,regimes,expirationSeconds:horizons,modeledPayout:0.8,
   windowsPerConfiguration:seeds.length*regimes.length*indices.length,
   byModeAndExpiry:Object.fromEntries(Object.entries(buckets).map(([k,v])=>[k,summarize(v)]))};
