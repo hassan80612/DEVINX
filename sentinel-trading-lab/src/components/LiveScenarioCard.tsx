@@ -229,15 +229,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const entryPlanDisplayable=entryPlanValid&&plannedAt+3000>now;
   // Classify the existing PC timestamp separately from mobile transport delay.
   // Only the Agent grants entry; these messages are diagnostics, not signals.
+  // Selective customers see only an honest, concise pending state.
+  // Internal quote/qualification diagnostics stay in the engine, not the card.
   const selectiveWaitingReason=forecastMode==='selective'?
-    !m.quoteFresh?(
-      m.quoteAgeAtFrame!==null&&m.quoteAgeAtFrame>=3?
-      'Cotação já atrasada no PC ('+m.quoteAgeAtFrame+'s); aguardando preço recente.':
-      m.transportAge!==null&&m.transportAge>=3?
-      'Canal celular atrasado ('+m.transportAge+'s); confira a leitura no PC.':
-      'Cotação desatualizada; aguarde dados recentes.'):
-      (s?.lastResult?.analysis?.vnext?.fq||s?.lastResult?.analysis?.vnext?.futureEntryForecast?.reason||'Aguardando confirmação da Seletiva.')
-    :undefined;
+    (m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'):undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
     <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid} waitingReason={selectiveWaitingReason}/>
@@ -249,12 +244,12 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <span>ENTRADA EM <b>{expiryLabel(Number(expirySeconds))}</b></span>
       <span>PERÍODO APÓS <b>{expiryLabel(Number(futureEntry?.holdingSeconds||expirySeconds))}</b></span>
     </div>
-    <details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes e qualidade da previsão</summary>
+    {forecastMode!=='selective'&&<details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes e qualidade da previsão</summary>
       <small>{entryDataFresh?'Cotação atual recebida':'Cotação atrasada ou indisponível · não operar com dados antigos'}.</small>
       <small>Estratégia {futureEntry?.engineId||chosenEngine} · emitida {futureEntry?.issuedAt?clock(futureEntry.issuedAt):'—'} · entrada {entryPlanValid?clock(plannedAt):'—'} · vencimento {entryPlanValid?clock(plannedExit):'—'}.</small>
       <small data-testid="mobile-feed-path">Cotação PC: {m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'} · canal celular: {m.transportAge===null?'—':m.transportAge+'s'}.</small>
       <small data-testid="forecast-forward-outcome-research">Resultados antigos por prazo: {(m.vnextHorizonMeasurements||[]).length?m.vnextHorizonMeasurements.map((x:any)=>expiryLabel(x.horizonSeconds)+': '+x.correct+'/'+x.verified).join(' · '):'sem resultados suficientes'}.</small>
-    </details>
+    </details>}
   </div>:null;
   // This is not a re-labelled candle: EVERY cell contains the selected
   // motor's actual forecast calculated at that particular future expiry.
@@ -264,7 +259,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
 
   const futureByHorizon=new Map<number,any>((m.vnextFutureEntryRows||[])
     .map((r:any):[number,any]=>[Number(r.delaySeconds),r]));
-  const forecastHorizonStrip=vnext?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
+  const forecastHorizonStrip=vnext&&forecastMode!=='selective'?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
     <summary>OUTROS HORÁRIOS FUTUROS · expandir</summary>
     <div className="vnextForwardHorizonsGrid">
       {allFutureHorizons.map(h=>{
