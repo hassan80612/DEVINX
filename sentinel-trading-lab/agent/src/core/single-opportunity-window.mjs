@@ -48,7 +48,27 @@ export function evolveOpportunity({
     (confirmation.projectedExitPrice>confirmation.projectedEntryPrice?
       'CALL':confirmation.projectedExitPrice<confirmation.projectedEntryPrice?
       'PUT':null)===old.side;
-  if(!verified)return {...old,entryReadyNow:false,reason:'looking-for-entry'};
+  if(!verified){
+   // A single contradictory reading is NOT an opposite entry. Require two
+   // distinct, fresh broker quotes, each checked by the original selected
+   // engine after the planned entry time, before cancelling the window.
+   // The original CALL/PUT and countdown stay unchanged; never reverse.
+   const opposite=isSide(confirmation?.side)&&confirmation.side!==old.side&&
+     Number(confirmation?.projectedEntryPrice)>0&&
+     Number(confirmation?.projectedExitPrice)>0&&
+     (confirmation.projectedExitPrice>confirmation.projectedEntryPrice?
+       'CALL':confirmation.projectedExitPrice<confirmation.projectedEntryPrice?
+       'PUT':null)===confirmation.side;
+   if(opposite&&Number(quoteAt)>Number(old.lastContraryQuoteAt||0)){
+    const n=Math.min(2,Number(old.contraryCount||0)+1);
+    if(n>=2)return {...old,phase:'cancelled',reason:'confirmed-opposite-twice',
+      entryReadyNow:false,cancelledAt:now,contraryCount:n,lastContraryQuoteAt:quoteAt};
+    return {...old,entryReadyNow:false,reason:'rechecking-direction',
+      contraryCount:n,lastContraryQuoteAt:quoteAt};
+   }
+   return {...old,entryReadyNow:false,reason:'looking-for-entry',
+     contraryCount:opposite?Number(old.contraryCount||0):0};
+  }
   return {...old,phase:'fired',entryReadyNow:true,entryTriggeredAt:now,
     plannedEntryAt:old.entryAt,entryAt:now,exitAt:now+H*1000,
     reason:'confirmed',confirmedEntryPrice:Number(confirmation.projectedEntryPrice)};
