@@ -32,17 +32,17 @@ test('sparse observation never bypasses current quote freshness or disagreement'
 test('six optional horizons never recalculate heavy historical evidence for all horizons',()=>{
  const src=fs.readFileSync('sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs','utf8');
  assert.match(src,/const chosen=Number\(settings.orderDurationMs\|\|60000\)\/1000/);
- assert.match(src,/checkLong:Number\(forecast.delaySeconds\)===chosen/);
+ assert.match(src,/checkLong:false/);
  const selective=fs.readFileSync('sentinel-trading-lab/agent/src/core/selective-forward-model.mjs','utf8');
- assert.match(selective,/if\(checkLong&&ctx.quoteAge<=2500/);
+ assert.doesNotMatch(selective,/requiredSeconds=Math.max\(720/);
  assert.match(selective,/ctx.quoteAge>=0&&ctx.quoteAge<=2500/);
 });
 test('frontend clears the reached forecast and blocks stale remote settings snapshots',()=>{
  const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  const page=fs.readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
- assert.match(card,/const expired=pinned&&now-plannedAt>3000/);
+ assert.match(card,/const expired=pinned&&now-plannedAt>=400/);
  assert.doesNotMatch(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
- assert.match(card,/entryPlanDisplayable=entryPlanValid&&plannedAt\+3000>now/);
+ assert.match(card,/entryPlanDisplayable=entryPlanValid&&plannedAt>now/);
  assert.match(card,/Aguardando cotação atual/);
  assert.match(page,/const pendingSettingsRef=useRef/);
  assert.match(page,/settings:reconcileSettings\(/);
