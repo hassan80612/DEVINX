@@ -72,11 +72,14 @@ async function publishLiveFrame(){
   const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
   const liveForecast=runtime.lastResult?.analysis?.vnext?.receipt||null;
   const mobileEntry=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor||null;
+  const pcWindow=runtime.lastResult?.analysis?.vnext?.opportunityWindow||null;
+  // The start/end of EVERY PC window is a first-class real-time transition,
+  // even when both old and new windows are still in 'scanning' phase.
   // A NEW pinned future-entry clock must bypass routine quote pacing.
   const decisionKey=[runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
     liveForecast?.side,mobileEntry?.issuedAt,mobileEntry?.entryAt,mobileEntry?.side,
     mobileEntry?.phase,mobileEntry?.entryTriggeredAt,
-    runtime.lastResult?.analysis?.vnext?.opportunityWindow?.phase,
+    pcWindow?.phase,pcWindow?.windowStartedAt,pcWindow?.windowEndsAt,
     scenario.side,scenario.status,scenario.closed,
     op.side,op.state,op.ready,op.actionable,op.activeUntil,
     alert.side,alert.trigger,alert.testing,op.subanalyst?.status].join('|');
