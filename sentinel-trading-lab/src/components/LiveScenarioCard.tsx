@@ -35,7 +35,7 @@ function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waiti
   const pinned=valid&&issuedAt>0&&plannedAt>issuedAt;
   // Receipt has expired: never leave a stale CALL/PUT and zero countdown pinned.
   // Clear locally without requesting broker data or restarting the analyst.
-  const expired=pinned&&now-plannedAt>3000;
+  const expired=pinned&&now-plannedAt>=400;
   const entryReached=pinned&&plannedAt<=now&&!expired;
   const countdownSeconds=pinned&&!expired?Math.max(0,Math.ceil((plannedAt-now)/1000)):null;
   const entryCountdown=countdownSeconds===null?'—:—':
@@ -226,7 +226,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
     Number(futureEntry.delaySeconds)===Number(expirySeconds));
   const entryDataFresh=m.fresh;
-  const entryPlanDisplayable=entryPlanValid&&plannedAt+3000>now;
+  const entryPlanDisplayable=entryPlanValid&&plannedAt>now;
   // Classify the existing PC timestamp separately from mobile transport delay.
   // Only the Agent grants entry; these messages are diagnostics, not signals.
   // Selective customers see only an honest, concise pending state.
