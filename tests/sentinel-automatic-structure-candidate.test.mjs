@@ -28,13 +28,14 @@ test('opt-in adapter owns exact horizon and keeps original fallback/default inta
   const explicit=singleEngineForecast({settings,snap,now,forecastModel:'original-67'});
   assert.deepEqual(normal,explicit);
   const result=singleEngineForecast({settings,snap,now,forecastModel:'structure-context-v2'});
-  assert.equal(result.receipt.targetAt,now+60000);
+  if(result.receipt){assert.equal(result.receipt.targetAt,now+60000);assert.equal(result.receipt.side,result.receipt.projectedPrice>result.receipt.referencePrice?'CALL':'PUT');}
+  else assert.equal(result.operational.actionable,false,'weak projection may not be promoted to a signal');
   if(kind==='trend')assert.deepEqual(result,normal);
   else{
    const raw=structureForecast({quoteHistory:qs,asOf:now,selectedSeconds:60});
    assert.equal(result.modelVersion,'structure-context-v2');
-   assert.equal(result.receipt.side,raw.side);
-   assert.equal(result.receipt.projectedPrice,raw.projectedPrice);
+   if(result.receipt){assert.equal(result.receipt.side,raw.side);assert.equal(result.receipt.projectedPrice,raw.projectedPrice);}
+   else assert.equal(result.operational.actionable,false);
   }
  }
 });
