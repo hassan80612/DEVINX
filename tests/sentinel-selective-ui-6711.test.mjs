@@ -26,7 +26,7 @@ test('sparse observation never bypasses current quote freshness or disagreement'
  assert.equal(stale.side,null);assert.equal(stale.qualification.status,'waiting-quote');
  const contrary=qualifyStrategyInterval({forecast:{...forecast,side:'PUT'},quoteHistory:q,asOf:now});
  assert.equal(contrary.side,null);
- const missing=q.filter(x=>x.ts<now-80000||x.ts>now-65000);
+ const missing=q.filter(x=>x.ts<=now-61000||x.ts>=now-29000);
  assert.equal(selectiveEvidence({quoteHistory:missing,asOf:now}).earlyReady,false);
 });
 test('six optional horizons never recalculate heavy historical evidence for all horizons',()=>{

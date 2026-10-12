@@ -99,8 +99,8 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
  assert.equal(entry[3],original.projectedExitPrice);
 });
 test('approved performance changes and preserved desktop controls, data bridge and mobile layout match reviewed sources',()=>{
- // 67.9 changes only reconnect handling and selective wait feedback in these reviewed files.
- const expected={"sentinel-trading-lab/agent/worker/live-bridge.mjs":"6745b831dbab9a14f83d7ad99752d4c95aa9d508","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"3959ae81db30bb59f9819a3ddc73c68cbcecdc66","sentinel-trading-lab/src/app/globals.css":"bfcf8831245db1dde5d7ce87cbbe2b6c35c857a9","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"fc3553cadfcddd892e354d1399ad4e607b7d0a2f","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
+ // 67.11 preserves the reviewed browser, desktop, bridge and layout sources; only the mobile card clock/notice changes.
+ const expected={"sentinel-trading-lab/agent/worker/live-bridge.mjs":"6745b831dbab9a14f83d7ad99752d4c95aa9d508","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"3959ae81db30bb59f9819a3ddc73c68cbcecdc66","sentinel-trading-lab/src/app/globals.css":"bfcf8831245db1dde5d7ce87cbbe2b6c35c857a9","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"aab40b92af99ec27120d324122f0d1abdb36b0c4","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
  const worker=fs.readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
  assert.match(worker,/onViewer:\(\)=>\{void publishLiveFrame\(\)\}/);
  assert.match(worker,/liveBridge\.publish\(analystSnapshot\(snapshot,chosen\.m\),\{urgent\}\)/);

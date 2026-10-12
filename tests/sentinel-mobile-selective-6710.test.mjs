@@ -37,15 +37,15 @@ test('mobile accepts newer evaluations without rolling its last broker price bac
  const start=source.indexOf('setS((previous:Status|null)=>{',source.indexOf('return watchSignedLiveAnalyst'));
  assert.ok(start>0);
  const body=source.slice(start+'setS((previous:Status|null)=>{'.length,source.indexOf('\n      });',start));
- const receive=new Function('previous','payload','topic','liveFrameAt',body);
+ const receive=new Function('previous','payload','topic','liveFrameAt','reconcileSettings',body);
  const previous={liveTopic:'test',lastEvalMs:now,liveBroker:{lastQuoteAt:now+1000,quote:103},
    feed:{price:103},lastResult:{analysis:{vnext:{ea:[15,'CALL',101,102,now-6000,15]}}}};
  const payload={at:now+500,lastEvalMs:now+500,liveBroker:{lastQuoteAt:now,quote:102},
    lastResult:{analysis:{vnext:{ea:[15,'PUT',102,101,now,15]}}}};
- const out=receive(previous,payload,'test',{current:0});
+ const out=receive(previous,payload,'test',{current:0},x=>x);
  assert.equal(out.lastResult.analysis.vnext.ea[4],now);
  assert.equal(out.liveBroker.quote,103);assert.equal(out.feed.price,103);
- assert.equal(receive(previous,{...payload,lastEvalMs:now-1},'test',{current:0}),previous);
+ assert.equal(receive(previous,{...payload,lastEvalMs:now-1},'test',{current:0},x=>x),previous);
 });
 class Socket{
  constructor(){this.events={};this.sent=[];this.readyState=1}
