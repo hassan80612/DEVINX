@@ -94,10 +94,10 @@ test('PC and both mobile cards show one chosen expiry, prediction countdown and 
   ]);
   assert.match(pc,/data-sentinel-vnext-horizon-matrix/);
   assert.match(pc,/d\.vnext\?\.futureEntryRows/);
-  assert.match(pc,/ATÉ ENTRADA CALCULADA|JANELA ABERTA/);
-  assert.match(pc,/VENCIMENTO ESTIMADO/);
-  assert.match(mobile,/ATÉ ENTRADA CALCULADA|JANELA ABERTA/);
-  assert.match(mobile,/ENTRADA PREVISTA/);
+  assert.match(pc,/TEMPO RESTANTE DA JANELA|JANELA ABERTA/);
+  assert.match(pc,/VENCIMENTO/);
+  assert.match(mobile,/TEMPO RESTANTE DA JANELA|JANELA ABERTA/);
+  assert.match(mobile,/MOMENTO DE ENTRADA/);
   assert.match(mobile,/data-testid="future-horizon-matrix"/);
   assert.equal((mobile.match(/\{forecastHorizonStrip\}/g)||[]).length,2);
   assert.equal((mobile.match(/\{forecastReceipt\}/g)||[]).length,2);
