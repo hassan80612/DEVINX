@@ -1479,7 +1479,10 @@ export class LocalPlaywrightDriver{
 
         const currentAction=el.querySelector('[data-sentinel-scenario-action]'),currentStatus=el.querySelector('[data-sentinel-scenario-status]');
         if(currentAction)currentAction.textContent=entryActionLabel;if(currentStatus)currentStatus.textContent=entryStatusLabel;
-        const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;if(el.dataset.selectLock==='1'||(focused&&el.contains(focused)&&focused.matches?.('select,input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')))return;
+        // Editing a setting must freeze ONLY that input, not the entire forecast
+        // panel. Previously an open dropdown could block countdown rollover
+        // and fresh Agent decisions for an unbounded amount of time.
+        const rootNode=el.getRootNode?.(),focused=rootNode?.activeElement||document.activeElement;
 
         
         const stableScrollTop=el.scrollTop;
@@ -1763,6 +1766,10 @@ export class LocalPlaywrightDriver{
               if(current.nodeValue!==next.nodeValue)current.nodeValue=next.nodeValue;continue
             }
             if(next.nodeType!==Node.ELEMENT_NODE)continue;
+            // Preserve the editor and its live DOM/options while focused;
+            // update every other part of the overlay in the same frame.
+            if((current===focused||el.dataset.selectLock==='1')&&
+              current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))continue;
             for(const attr of [...current.attributes])if(!next.hasAttribute(attr.name)&&!(attr.name==='open'&&current.matches?.('details[data-sentinel-preserve-open]')))current.removeAttribute(attr.name);
             for(const attr of [...next.attributes])if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
             reconcile(current,next);
