@@ -34,10 +34,10 @@ test('closed selective direction does not flip when current forming candle flick
 test('realized closed candle movement changes the forecast base without seeing a future quote',()=>{
  const original=data(),extra={ts:AT+16000,price:original.at(-1).price*1.03};
  const base=selectiveClosedEntry(input(original));
- const future=selectiveClosedEntry(input([...original,extra]));
+ const future=selectiveClosedEntry(input([...original,extra],original.at(-1).price));
  assert.deepEqual(future,base);
  const arrivingLate={ts:AT-12000,price:original.at(-1).price*100,receivedAt:AT+8000};
- const late=selectiveClosedEntry(input([...original,arrivingLate]));
+ const late=selectiveClosedEntry(input([...original,arrivingLate],original.at(-1).price));
  assert.deepEqual(late,base);
 });
 test('live short shock cannot reuse a stale closed-candle signal',()=>{
