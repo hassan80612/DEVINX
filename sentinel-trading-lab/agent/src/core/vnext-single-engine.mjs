@@ -5,6 +5,8 @@ import {specialistForwardPrediction} from './specialist-forward-models.mjs';
 import {recordForwardForecast,evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {historicalForwardAnalogs} from './historical-forward-analogs.mjs';
+import {structureForecast} from './automatic-structure-forecast.mjs';
+import {specialistStructurePrediction} from './specialist-structure-models.mjs';
 
 /**
  * VNext main-scenario signal adapter. Computes only the selected motor;
@@ -20,12 +22,29 @@ export function singleEngineForecast({
  const seconds=request.forecastHorizonSeconds;
  const quotes=Array.isArray(snap.quoteHistory)?snap.quoteHistory:[];
  const options={quoteHistory:quotes,asOf:now,selectedSeconds:seconds};
+ const selectedStrengths=forecastModel==='selected-strengths-67.5';
+ const selectedSpecialist=selectedStrengths&&['breakout','fibonacci_retest'].includes(request.engineId);
+ const specialistCandidate=request.engineId!=='automatic'&&(forecastModel==='specialist-structure-v2'||selectedSpecialist)?
+   specialistStructurePrediction({...options,engineId:request.engineId}):null;
+ const useSpecialist=!!specialistCandidate?.prediction;
+ const structure=request.engineId==='automatic'&&(forecastModel==='structure-context-v2'||selectedStrengths)?
+   structureForecast(options):null;
+ const useStructure=!!structure&&(!!structure.cycle||
+   (structure.meanReversionEvidence.rate>.004&&structure.meanReversionEvidence.tStatistic>3.5));
  const learned=request.engineId==='automatic'&&forecastModel==='adaptive-direct-trajectory-v1'?
    adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||quotes,asOf:now,
      entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const useAdaptive=learned?.status==='adaptive-direct-trajectory';
- const modelVersion=useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
- const computed=useAdaptive?{
+ const modelVersion=useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
+ const computed=useStructure?{
+   status:'candidate-forward-prediction',
+   diagnostic:{referencePrice:structure.referencePrice,quoteAt:structure.latestTrainingOutcomeAt},
+   prediction:{side:structure.side,projectedPrice:structure.projectedPrice,
+     expectedLow:structure.expectedLow,expectedHigh:structure.expectedHigh,modelConfidence:null,
+     evidence:['Histórico concluído: '+structure.trainingExamples+' exemplos para o prazo exato '+seconds+'s',
+       structure.cycle?'Ciclo validado em trecho histórico posterior ao ajuste':'Retorno à média sustentado pelo histórico',
+       'Regressão regularizada, três janelas anteriores e validação cronológica; não é taxa de acerto real']}
+ }:useAdaptive?{
    status:'candidate-forward-prediction',
    diagnostic:{referencePrice:learned.expectedPath[0].price,quoteAt:learned.latestObservedQuoteAt},
    prediction:{side:learned.side||'NEUTRAL',projectedPrice:learned.projectedExitPrice,
@@ -34,11 +53,12 @@ export function singleEngineForecast({
        'Entrada e vencimento calculados em tempos próprios; validação cronológica sem cotações futuras']}
  }:request.engineId==='automatic'?
    automaticForwardPrediction(options):
-   specialistForwardPrediction({...options,engineId:request.engineId});
+   useSpecialist?specialistCandidate:
+     specialistForwardPrediction({...options,engineId:request.engineId});
  // Unlike pure momentum extrapolation, these independently observed outcomes
  // are prices that followed comparable PAST quote patterns by the SELECTED
  // expiration. No last/current candle direction is a decision gate.
- const analog=useAdaptive?null:historicalForwardAnalogs({
+ const analog=useAdaptive||useStructure?null:historicalForwardAnalogs({
    quoteHistory:quotes,asOf:now,selectedSeconds:seconds,
    engineId:request.engineId
  });
@@ -130,9 +150,9 @@ export function singleEngineForecast({
    source:'user-selected-expiry',modelVersion,
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
    computedStatus:computed?.status||'unavailable',receipt,cards,projection,
-   forecastFoundation:useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
-   historicalComparisons:useAdaptive?learned.historicalExamples:analog?.comparisons||0,
-   similarCases:useAdaptive?learned.historicalExamples:analog?.neighbors||0,
+   forecastFoundation:useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
+   historicalComparisons:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.comparisons||0,
+   similarCases:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.neighbors||0,
    plan,operational,scenarioProjection,
    evaluation:evaluateForwardForecast,
    calibrationKey:request.calibrationKey,

@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.4",
-  "build": "13.4.67.4-mobile-clock-1012",
+  "version": "13.4.67.5",
+  "build": "13.4.67.5-selected-strengths-1012",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -8,6 +8,6 @@
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
     "modelValidation": "research-preview-manual-only",
-    "forecastModel": "adaptive-direct-trajectory-v1"
+    "forecastModel": "selected-strengths-67.5"
   }
 }

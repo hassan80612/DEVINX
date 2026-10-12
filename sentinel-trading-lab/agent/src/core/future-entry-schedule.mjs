@@ -26,7 +26,7 @@ export function futureEntrySchedule({
     if(cached.has(seconds))return cached.get(seconds);
     const forecast=singleEngineForecast({settings:{
       ...settings,orderDurationMs:seconds*1000
-    },snap,now,provider:snap.provider});
+    },snap,now,provider:snap.provider,forecastModel,adaptiveHistory});
     const r=forecast.receipt?{
       horizonSeconds:seconds,side:forecast.receipt.side,
       projectedPrice:forecast.receipt.projectedPrice,
@@ -38,7 +38,7 @@ export function futureEntrySchedule({
   return [...new Set(delays.map(Number).filter(h=>h>0&&h<=3600))]
     .sort((a,b)=>a-b).map(delaySeconds=>{
       const holdingSeconds=delaySeconds;
-      if(forecastModel==='adaptive-direct-trajectory-v1'&&engineId==='automatic'){
+      if((forecastModel==='adaptive-direct-trajectory-v1'||forecastModel==='selected-strengths-67.5')&&engineId==='automatic'){
         const quoteAt=Number(snap.quoteTs);
         const learned=quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500?
           adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,

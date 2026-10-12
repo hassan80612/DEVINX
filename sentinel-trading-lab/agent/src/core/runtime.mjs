@@ -886,7 +886,7 @@ export class DemoTradingRuntime{
       // strategy panel, 3-way confluence or release logic for this branch.
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
-      const useAdaptive=this.forecastModel==='adaptive-direct-trajectory-v1'&&settings.engine==='automatic';
+      const useAdaptive=(this.forecastModel==='adaptive-direct-trajectory-v1'||this.forecastModel==='selected-strengths-67.5')&&settings.engine==='automatic';
       if(useAdaptive)this.adaptiveTemporalContext=retainAdaptiveHistory({
         previous:this.adaptiveTemporalContext,quotes:snap.quoteHistory,now,
         asset:settings.asset,provider:snap.provider});

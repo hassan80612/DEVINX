@@ -18,11 +18,11 @@ const snap={quoteHistory:history,quoteTs:now,price:history.at(-1).price,provider
 const settings={engine:'automatic',asset,orderDurationMs:30000};
 const release=JSON.parse(fs.readFileSync(new URL('../sentinel-trading-lab/agent/release.json',import.meta.url)));
 test('release activates the tested new model through actual Worker runtime options',()=>{
- assert.equal(release.version,'13.4.67.4');
- assert.equal(release.runtime.forecastModel,MODEL);
+ assert.equal(release.version,'13.4.67.5');
+ assert.equal(release.runtime.forecastModel,'selected-strengths-67.5');
  const runtime=new DemoTradingRuntime({...release.runtime,enableVNext:true});
  runtime.patchSettings({...settings,forecastHorizonSeconds:30});
- assert.equal(runtime.forecastModel,MODEL);
+ assert.equal(runtime.forecastModel,'selected-strengths-67.5');
  const g=runtime._signalValidationGate({analysis:{},snap,settings:runtime.settings,now});
  const direct=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
   entryDelaySeconds:30,holdingSeconds:30});
@@ -92,7 +92,7 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
  const fitted=fitAnalystFrame(frame);
  assert.ok(fitted);
  assert.ok(Buffer.byteLength(JSON.stringify(fitted))+73<=3000);
- assert.equal(fitted.agentVersion,'13.4.67.4');
+ assert.equal(fitted.agentVersion,'13.4.67.5');
  const entry=fitted.lastResult.analysis.vnext.ea;
  assert.equal(entry[0],30);assert.equal(entry[1],original.side);
  assert.equal(entry[2],original.projectedEntryPrice);
@@ -106,8 +106,8 @@ test('approved performance changes and preserved desktop controls, data bridge a
   assert.equal(actual,sha,path);
  }
  const page=fs.readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
- assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.4'"));
- assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.4.exe'));
+ assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.5'"));
+ assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.5.exe'));
 });
 
 test('dense feed retains time context for 300s model, without expanding mobile or old-card data',()=>{
