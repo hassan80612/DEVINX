@@ -7,7 +7,7 @@ export function entryOffsets(windowSeconds){
  if(!Number.isInteger(h)||h<5||h>3600)return [];
  return [...new Set([Math.min(h,Math.max(2,Math.ceil(h*.08))),
    Math.max(2,Math.round(h*.24)),Math.max(2,Math.round(h*.48)),
-   Math.max(2,Math.round(h*.72)),Math.max(2,Math.round(h*.90))])]
+   Math.max(2,Math.round(h*.72)),Math.max(2,Math.round(h*.96))])]
    .filter(x=>x<=h).sort((a,b)=>a-b);
 }
 export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
@@ -32,31 +32,22 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
    (p2>p1?'CALL':p2<p1?'PUT':null)!==side)continue;
   const raw=Number(c.selectionStrength);
   if(!Number.isFinite(raw)||raw<=0)continue;
-  // A confirmed forecast must leave time for the PC to evaluate its real
-  // quote inside the ORIGINAL window. No forced early entry.
-  const reserve=Math.max(1,Math.min(2,windowSeconds*.05));
-  if(windowSeconds-seconds<reserve)continue;
   const score=raw-.018*seconds/windowSeconds;
-  qualified.push({...c,score,seconds});
+  const row={...c,score,seconds};
+  qualified.push(row);
+  // Keep the SAME selected entry offset and directional motor as v67.21;
+  // never choose the opposite side merely to create more opportunities.
+  if(!best||row.score>best.score)best=row;
  }
- // A solitary strong CALL must not beat several independent PUT entry
- // offsets by magnitude alone (or vice versa). Require stable direction
- // across the window whenever BOTH directions are projected.
- const call=qualified.filter(x=>x.side==='CALL');
- const put=qualified.filter(x=>x.side==='PUT');
- let selectable=qualified;
- if(call.length&&put.length){
-  const majority=call.length>put.length?call:put.length>call.length?put:null;
-  const minority=majority===call?put:call;
-  const weight=x=>x.reduce((sum,r)=>sum+Math.max(0,r.selectionStrength),0);
-  // At least two lead instants must agree, with nontrivial aggregate
-  // directional evidence; otherwise admit NO opportunity this cycle.
-  if(!majority||majority.length<2||
-     weight(majority)<weight(minority)*1.25)return base;
-  selectable=majority;
- }
- for(const c of selectable)if(!best||c.score>best.score)best=c;
  if(!best)return base;
+ // Only ABSTAIN when multiple mutually contradictory future-entry instants
+ // have strong support. All admitted signals are BIT-FOR-BIT identical to
+ // the original 67.21 planner. No extra forecasts or waiting timers.
+ const agreeing=qualified.filter(x=>x.side===best.side);
+ const opposing=qualified.filter(x=>x.side!==best.side);
+ const weight=rows=>rows.reduce((n,x)=>n+Number(x.selectionStrength||0),0);
+ if(opposing.length>=2&&
+  (agreeing.length===1||weight(opposing)>=weight(agreeing)*.75))return base;
  return {...base,status:'forecast',side:best.side,
   entryOffsetSeconds:best.seconds,
   entryAt:now+best.seconds*1000,
