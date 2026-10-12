@@ -94,5 +94,5 @@ test('forecast deadline keeps original direction briefly',()=>{
  const code=fs.readFileSync('sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
  assert.ok(code.includes('const entryAnchor=entryReached?oldEntry:sameEntry'));
  const view=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
- assert.ok(view.includes('HORÁRIO ATINGIDO'));
+ assert.ok(view.includes('HORÁRIO PREVISTO ATINGIDO'));
 });
