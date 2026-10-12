@@ -76,7 +76,7 @@ test('PC and both mobile layouts take CALL/PUT from pinned future ENTRY only and
  assert.match(mobile,/data-testid="future-entry-decision"/);
  assert.match(mobile,/ATÉ POSSÍVEL ENTRADA/);
  assert.equal((mobile.match(/\{forecastReceipt\}/g)||[]).length,2);
- assert.match(mobile,/forecastHorizonStrip=vnext\?<details/);
+ assert.match(mobile,/forecastHorizonStrip=vnext&&forecastMode!=='selective'\?<details/);
  assert.equal((mobile.match(/\{forecastHorizonStrip\}/g)||[]).length,2);
  assert.match(model,/vnextFutureEntryAnchor/);
  assert.match(bridge,/ea:entryTuple\(vnext\.futureEntryAnchor\)/);
