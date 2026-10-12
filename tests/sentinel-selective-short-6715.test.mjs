@@ -31,7 +31,7 @@ test('selected future forecast never waits 12 minutes for 5s, 30s or 60s',()=>{
    asset:'EUR/USD',orderDurationMs:h*1000},snap,now,delays:[h],
    adaptiveHistory:q,forecastModel:'selected-strengths-67.5'})[0];
   assert.equal(r.forecastOwner,'selective-historical-outcomes-v2');
-  assert.ok(['forecast','no-validated-historical-edge','insufficient-completed-outcomes','no-comparable-historical-pattern','insufficient-observations','waiting-completed-observation'].includes(r.status));
+  assert.ok(['forecast','scanning-entry-window','waiting-fresh-quote'].includes(r.status));
   assert.ok(!('qualification' in r));
   assert.ok(r.reason===undefined||!r.reason.includes('12min'));
  }
