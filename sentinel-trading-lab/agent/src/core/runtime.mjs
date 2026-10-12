@@ -792,9 +792,33 @@ export class DemoTradingRuntime{
       patch.forecastMode!=='continuous'&&Object.prototype.hasOwnProperty.call(patch,'engine')){
       patch={...patch};delete patch.engine;
     }
-    if(Object.prototype.hasOwnProperty.call(patch,'forecastMode')){
-      if(!['continuous','selective'].includes(patch.forecastMode))throw new Error('invalid_forecast_mode');
-      if(patch.forecastMode!==this.settings.forecastMode){this.vnextFutureEntryAnchor=null;this.vnextHorizonMatrix=null;}
+    if(Object.prototype.hasOwnProperty.call(patch,'forecastMode')&&
+      !['continuous','selective'].includes(patch.forecastMode))throw new Error('invalid_forecast_mode');
+    // Every selected expiry describes a DIFFERENT future interval. A changed
+    // expiry or mode invalidates the complete previous projection atomically
+    // before either PC or mobile can display another frame. Observed market
+    // percentages and broker quotes are independent and remain available.
+    const changedForecastContext=
+      (Object.prototype.hasOwnProperty.call(patch,'forecastMode')&&
+        patch.forecastMode!==this.settings.forecastMode)||
+      (Object.prototype.hasOwnProperty.call(patch,'orderDurationMs')&&
+        Number(patch.orderDurationMs)!==Number(this.settings.orderDurationMs))||
+      (Object.prototype.hasOwnProperty.call(patch,'engine')&&
+        patch.engine!==this.settings.engine)||
+      (Object.prototype.hasOwnProperty.call(patch,'asset')&&
+        patch.asset!==this.settings.asset);
+    if(changedForecastContext){
+      this.vnextFutureEntryAnchor=null;
+      this.vnextHorizonMatrix=null;
+      this.vnextTargetAnchor=null;
+      this.vnextTargetProjection=null;
+      this.vnextHorizonAudit=null;
+      const old=this.lastResult?.analysis;
+      if(old?.vnext)this.lastResult={...this.lastResult,analysis:{...old,vnext:{
+        ...old.vnext,receipt:null,targetAnchor:null,targetProjection:null,
+        futureEntryAnchor:null,futureEntryForecast:null,futureEntryRows:[],
+        horizonForecasts:[]}}};
+      this.nextEvalMs=0;
     }
     // Manual-only policy: legacy clients cannot re-arm automated broker orders.
     if(patch?.demoAutopilot===true)throw new Error('autopilot_disabled_manual_only');
