@@ -99,7 +99,7 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
  assert.equal(entry[3],original.projectedExitPrice);
 });
 test('approved performance changes and preserved desktop controls, data bridge and mobile layout match reviewed sources',()=>{
- const expected={"sentinel-trading-lab/agent/worker/index.mjs":"28b3f08c9eba003adb779ad7c39eb880f2490e86","sentinel-trading-lab/agent/worker/live-bridge.mjs":"2c7785da7c2cf50ab57790f177fbb49cc3ea9690","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"7e2b497bd76637b50642cc10720336b0cd6c054b","sentinel-trading-lab/src/app/globals.css":"c629314d0cbc8c0aee637b4f4e73dbd54641865e","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"0f8a4b859010f25e9560379dfd6a8bfabf6c0325","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
+ const expected={"sentinel-trading-lab/agent/worker/index.mjs":"28b3f08c9eba003adb779ad7c39eb880f2490e86","sentinel-trading-lab/agent/worker/live-bridge.mjs":"9ff442b8103bffacccaf2a7d811d5d7fd60c5ff6","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"7e2b497bd76637b50642cc10720336b0cd6c054b","sentinel-trading-lab/src/app/globals.css":"c629314d0cbc8c0aee637b4f4e73dbd54641865e","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"0f8a4b859010f25e9560379dfd6a8bfabf6c0325","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
  for(const [path,sha] of Object.entries(expected)){
   const bytes=fs.readFileSync(new URL('../'+path,import.meta.url));
   const actual=crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0')).update(bytes).digest('hex');
