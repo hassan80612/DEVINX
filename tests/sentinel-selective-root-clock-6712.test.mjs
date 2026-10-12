@@ -42,15 +42,15 @@ test('the selective live gate still refuses stale prices even after long histori
    snap:{quoteHistory:q,quoteTs:now-4000,provider:'research'},adaptiveHistory:q,now:now+4000,
    forecastModel:'selected-strengths-67.5',delays:[30]})[0];
  assert.equal(selected.side,null);
- assert.equal(selected.qualification.status,'waiting-quote');
+ assert.equal(selected.status,'waiting-fresh-quote');
 });
 test('main selective prediction is preserved while auxiliary horizons cannot trigger heavy fits',()=>{
  const f=fs.readFileSync('sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs','utf8');
  const m=fs.readFileSync('sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs','utf8');
- assert.match(f,/historicalQuoteGapMs:inSelective\?8000:2500/);
- assert.match(f,/selectiveLeadSeconds:inSelective\?chosen:null/);
- assert.match(f,/const selected=selectiveLeadSeconds==null\|\|Number\(selectiveLeadSeconds\)===delaySeconds/);
- assert.match(m,/forecastModel:settings.forecastMode==='selective'\?'original-67':forecastModel/);
+ assert.match(f,/autonomousSelectiveEntry/);
+ assert.match(f,/selectiveLeadSeconds:chosen/);
+ assert.match(m,/settings.forecastMode==='selective'\?\[horizon\]/);
+ assert.match(m,/forecastModel:seconds===horizon\?forecastModel:'original-67'/);
 });
 test('mobile count must use original PC target timestamp, never a new 30-second clock',()=>{
  const c=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
