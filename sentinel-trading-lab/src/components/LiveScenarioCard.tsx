@@ -35,7 +35,11 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  const cycle=validWindow?Math.max(0,Math.floor((now-windowStartedAt)/period)):0;
  const awaitingNextFrame=validWindow&&cycle>0;
  const recentStream=liveFrameAt>0&&now>=liveFrameAt&&now-liveFrameAt<3000;
- const running=validWindow&&(!awaitingNextFrame||recentStream);
+ // A bounded handoff only: do not invent repeated windows if the Agent
+ // becomes stuck while the socket continues sending old snapshots.
+ const bridgeRollover=awaitingNextFrame&&cycle===1&&
+  now>=windowEndsAt&&now-windowEndsAt<3000&&recentStream;
+ const running=validWindow&&(!awaitingNextFrame||bridgeRollover);
  const displayedEnd=validWindow?windowEndsAt+cycle*period:0;
  // Match the PC overlay: a confirmed Agent timestamp and recent broker
  // quote, not the transient entryReadyNow latch from one evaluation.
@@ -46,7 +50,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  const countdown=seconds==null?'—:—':
   String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
  const direction=moment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
-  awaitingNextFrame?(recentStream?'NOVA JANELA · AGUARDANDO LEITURA':'SINCRONIZANDO COM O PC'):
+  awaitingNextFrame?(bridgeRollover?'NOVA JANELA · AGUARDANDO LEITURA':'SINCRONIZANDO COM O PC'):
   phase==='cancelled'?'JANELA SEM ENTRADA':
   phase==='fired'?'ENTRADA JÁ SINALIZADA':
   phase==='open'&&side?(side==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA':
