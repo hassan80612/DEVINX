@@ -6,10 +6,11 @@ import {futureEntrySchedule} from './future-entry-schedule.mjs';
 // never from the colour/direction of the current candle or the other motors.
 export const FORWARD_HORIZONS=Object.freeze([5,10,30,60,120,300]);
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0?Number(x):null;
-export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary=null,previous=null,forecastModel='original-67',adaptiveHistory=null}={}){
+export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary=null,previous=null,forecastModel='original-67',adaptiveHistory=null,activeWindow=null}={}){
   const selected=positive(settings.orderDurationMs)&&Number(settings.orderDurationMs)/1000;
   const horizon=selected||60;
   const quoteAt=positive(snap.quoteTs);
+  const locked=activeWindow?.phase&&now<Number(activeWindow.windowEndsAt)&&['open','fired','cancelled'].includes(activeWindow.phase)?activeWindow:null;
   const last=Array.isArray(snap.quoteHistory)?snap.quoteHistory.at(-1):null;
   const context=JSON.stringify([
     forecastModel,settings.forecastMode||'continuous',settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
@@ -32,7 +33,8 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     // actual deadline. Re-evaluate the chosen entry at the deadline using
     // only a currently fresh broker quote and the existing selected model.
     // No fictitious ticks, timer-based trade permission or broker reads.
-    const expired=Number(scheduled?.entryAt)>0&&Number(scheduled.entryAt)<=now;
+    const expired=!locked&&Number(scheduled?.entryAt)>0&&Number(scheduled.entryAt)<=now;
+    if(locked)return {context,rows,entryRows:[locked],computedAt:previous.computedAt,reused:true};
     if(!expired||!(quoteAt>0&&now>=quoteAt&&now-quoteAt<=2500)){
       return {context,rows,entryRows:previous.entryRows||[],computedAt:previous.computedAt,reused:true};
     }
@@ -55,7 +57,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
       });
     rows.push(rowFor(model,seconds));
   }
-  const entryRows=futureEntrySchedule({
+  const entryRows=locked?[locked]:futureEntrySchedule({
     settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory
   });
   return {context,rows,entryRows,computedAt:now,reused:false};
