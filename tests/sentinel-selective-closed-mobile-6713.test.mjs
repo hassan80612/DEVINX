@@ -65,7 +65,7 @@ test('actual selective matrix uses closed-bars forecast and never grants stale e
  const result=futureEntrySchedule({settings:{forecastMode:'selective',engine:'automatic',
      asset:'EUR/USD',orderDurationMs:30000},
    snap,now,delays:[30],adaptiveHistory:q,forecastModel:'selected-strengths-67.5'})[0];
- assert.equal(result.forecastOwner,'selective-autonomous-v1');
+ assert.equal(result.forecastOwner,'selective-historical-outcomes-v2');
  assert.equal(result.issuedAt,now);
  assert.equal(result.entryAt,now+30000);
  assert.equal(result.exitAt,now+60000);
