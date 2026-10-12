@@ -10,19 +10,30 @@ export function selectiveEvidence({quoteHistory=[],asOf=Date.now()}={}){
  const last=known.at(-1),quoteAge=last?asOf-Number(last.ts):Infinity;
  let start=known.length?known.length-1:0;
  while(start>0&&Number(known[start].ts)-Number(known[start-1].ts)<=2500)start--;
+ // Keep the exact uninterrupted count for the long evidence model.
  const historySeconds=last?Math.max(1,Math.floor((Number(last.ts)-Number(known[start].ts))/1000)+1):0;
  const recent=known.filter(q=>Number(q.ts)>=asOf-180000);
  let squared=0,seconds=0;
  for(let i=1;i<recent.length;i++){
   const dt=(Number(recent[i].ts)-Number(recent[i-1].ts))/1000;
-  if(dt>0&&dt<=2.5){squared+=Math.log(Number(recent[i].price)/Number(recent[i-1].price))**2;seconds+=dt;}
+  // Actual observed returns, standardized by elapsed seconds: no made-up ticks.
+  if(dt>0&&dt<=10){squared+=Math.log(Number(recent[i].price)/Number(recent[i-1].price))**2;seconds+=dt;}
  }
  const sigma=seconds>0?Math.sqrt(squared/seconds):0;
  const closedAt=Math.floor(asOf/30000)*30000;
  const endpoint=at=>{const q=known.findLast(p=>Number(p.ts)<=at);
-  return q&&at-Number(q.ts)<=2500?Number(q.price):null;};
- const prices=[3,2,1,0].map(x=>endpoint(closedAt-x*30000));
- const ready=quoteAge>=0&&quoteAge<=2500&&historySeconds>=100&&seconds>=70&&sigma>0&&prices.every(p=>p>0);
+  return q&&at-Number(q.ts)<=8000?Number(q.price):null;};
+ const boundaries=[3,2,1,0].map(x=>closedAt-x*30000);
+ const prices=boundaries.map(endpoint);
+ // Three completed 30s periods need real updates throughout EACH interval.
+ // Brokerage quotes arriving every 3–7s remain valid historical observations.
+ const barsCovered=boundaries.slice(1).every((end,i)=>{
+   const begin=boundaries[i],bar=known.filter(q=>Number(q.ts)>begin&&Number(q.ts)<=end);
+   return bar.length>=3&&Number(bar[0].ts)-begin<=8000&&
+     end-Number(bar.at(-1).ts)<=8000&&Number(bar.at(-1).ts)-Number(bar[0].ts)>=14000;
+ });
+ const ready=quoteAge>=0&&quoteAge<=2500&&seconds>=60&&sigma>0&&
+   barsCovered&&prices.every(p=>p>0);
  const moves=ready?prices.slice(1).map((p,i)=>Math.log(p/prices[i])):[];
  const total=moves.reduce((a,b)=>a+b,0),direction=total>0?'CALL':total<0?'PUT':null;
  const agreeing=moves.filter(x=>direction==='CALL'?x>0:x<0).length;
@@ -32,14 +43,14 @@ export function selectiveEvidence({quoteHistory=[],asOf=Date.now()}={}){
  return {known,sigma,historySeconds,quoteAge,earlyReady:ready,earlyTrend,earlyDirection:earlyTrend?direction:null,
    earlyStrength:normalized,longByHorizon:new Map()};
 }
-export function qualifyStrategyInterval({forecast,quoteHistory=[],asOf=Date.now(),evidence=null}={}){
+export function qualifyStrategyInterval({forecast,quoteHistory=[],asOf=Date.now(),evidence=null,checkLong=true}={}){
  const h=Number(forecast?.holdingSeconds);
  const ctx=evidence||selectiveEvidence({quoteHistory,asOf});
  const requiredSeconds=Math.max(720+h,601+h+29*Math.max(5,Math.floor(h/6)));
  const diagnostics={status:ctx.quoteAge>2500?'waiting-quote':'waiting-history',
    historySeconds:ctx.historySeconds,requiredSeconds};
  let structure=null;
- if(ctx.quoteAge<=2500&&Number.isFinite(h)&&h>0&&ctx.historySeconds>=requiredSeconds){
+ if(checkLong&&ctx.quoteAge<=2500&&Number.isFinite(h)&&h>0&&ctx.historySeconds>=requiredSeconds){
   if(ctx.longByHorizon.has(h)){
    const cached=ctx.longByHorizon.get(h);structure=cached.structure;Object.assign(diagnostics,cached.diagnostics);
   }else{
@@ -60,8 +71,10 @@ export function qualifyStrategyInterval({forecast,quoteHistory=[],asOf=Date.now(
  return {...forecast,forecastMode:'selective',rawSide:forecast?.side||null,side:qualified?forecast.side:null,
    status:qualified?'forecast':'waiting-selective-entry',
    qualification:{qualified,historicalEvidence,margin,threshold,evidence:earlyAligned?'three-completed-bars':structural?'historical-structure':null,...diagnostics},
-   reason:qualified?'Entrada futura qualificada.':earlyAligned&&margin<threshold?
-     'Padrão curto confirmado, aguardando margem de projeção.':
+   reason:qualified?'Entrada futura qualificada.':ctx.quoteAge>2500?
+     'Aguardando cotação atual do PC.':!['CALL','PUT'].includes(forecast?.side)?
+     'Estratégia ainda sem previsão calculada para este intervalo.':earlyAligned&&margin<threshold?
+     'Três velas fechadas confirmadas; projeção abaixo da margem seletiva.':
      qualificationReason({qualified,historicalEvidence,margin,threshold,diagnostics})};
 }
 // Own interval forecast. Selection uses information known at issuance, never

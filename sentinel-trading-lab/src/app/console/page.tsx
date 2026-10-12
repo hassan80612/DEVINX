@@ -6,8 +6,8 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.67.10';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.10.exe?v=selective-mobile-1012`;
+const AVAILABLE_AGENT_VERSION='13.4.67.11';
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.11.exe?v=selective-ui-1012`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
@@ -80,6 +80,21 @@ export default function Page(){
   const[tab,setTab]=useState('Dashboard');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
   const remotePolledAt=useRef(0);
   const liveFrameAt=useRef(0);
+  // Reconcile an in-flight user selection with delayed Agent status/broadcast.
+  // This only retains display settings; it never overrides actual Agent signals.
+  const pendingSettingsRef=useRef<{values:Record<string,any>,until:number}|null>(null);
+  const reconcileSettings=useCallback((serverSettings:any)=>{
+    const pending=pendingSettingsRef.current;
+    if(!pending)return serverSettings;
+    if(Date.now()>pending.until){pendingSettingsRef.current=null;return serverSettings;}
+    const incoming=serverSettings&&typeof serverSettings==='object'?serverSettings:{};
+    if(Object.entries(pending.values).every(([k,v])=>incoming[k]===v)){
+      pendingSettingsRef.current=null;return incoming;
+    }
+    return {...incoming,...pending.values};
+  },[]);
+  const reconcileStatus=useCallback((data:Status)=>data?
+    {...data,settings:reconcileSettings(data.settings)}:data,[reconcileSettings]);
   const isMaster=account?.profile?.role==='master';const agentAccess=isMaster||account?.profile?.access_active===true;const visibleTabs=tabDefs.filter(x=>x.key!=='Master Console'||isMaster);
   const refreshMe=useCallback(async()=>{try{const r=await fetch('/api/auth/me',{cache:'no-store'});const j=await r.json();if(r.ok&&j.ok)setAccount(j);else if(r.status===401)window.location.href='/login'}catch{}},[]);
   const refresh=useCallback(async()=>{
@@ -95,7 +110,7 @@ export default function Page(){
       const [mhResult,localResult]=mobile?await Promise.allSettled([Promise.reject(new Error('remote_mobile')),Promise.reject(new Error('remote_mobile'))]):await Promise.allSettled([managerFetch('health','GET',undefined,1200),localFetch('status','GET',undefined,1500)]);
       const mh=mhResult.status==='fulfilled'?mhResult.value:null;
       if(localResult.status==='fulfilled'){
-        const data=normalizeStatus(localResult.value);setS(data);setSource('local');setErr('');
+        const data=normalizeStatus(localResult.value);setS(reconcileStatus(data));setSource('local');setErr('');
         setAgent((v:any)=>({...v,process:true,worker:true,remote:false,version:data.agentVersion||v.version,lastSeen:Date.now(),pairingCode:data.remoteRelay?.pairingCode||null,paired:data.remoteRelay?.paired}));
         if(data.remoteRelay?.paired===false&&data.remoteRelay?.pairingCode)setPairCode((v:string)=>v||String(data.remoteRelay.pairingCode).toUpperCase());
         return
@@ -117,7 +132,7 @@ export default function Page(){
              ((previous?.liveStreamAt&&Date.now()-Number(previous.liveStreamAt)<5000&&
                Number(previous.lastEvalMs||0)>=Number(data.lastEvalMs||0))||
               prevQuote>cloudQuote))return previous;
-          return data;
+          return reconcileStatus(data);
         });
         setSource('remote');const online=!!data?.remote?.online;
         setAgent((v:any)=>({...v,remote:online,process:online,worker:online,paired:true,version:data.agentVersion||v.version}));
@@ -139,7 +154,7 @@ export default function Page(){
         }
       }
     }finally{refreshBusy.current=false}
-  },[]);
+  },[reconcileStatus]);
   // Supabase Broadcast carries only temporary numeric analyst snapshots; it
   // never writes quote history to Postgres. Every session still authenticates
   // using the existing remote status route before learning the random channel.
@@ -167,8 +182,8 @@ export default function Page(){
           // Motor and expiration can change on the PC between the expensive
           // authenticated status polls. The signed live packet must update
           // both so the mobile card immediately follows the actual motor.
-          settings:{...(previous.settings||{}),
-            ...(payload.settings||{})},
+          settings:reconcileSettings({...(previous.settings||{}),
+            ...(payload.settings||{})}),
           // The live packet is intentionally compact. Preserve all other
           // diagnostic/strategy fields from the slower complete snapshot.
           lastResult:{
@@ -186,7 +201,7 @@ export default function Page(){
         };
       });
     });
-  },[s?.liveTopic,s?.liveSignatureKey,source]);
+  },[s?.liveTopic,s?.liveSignatureKey,source,reconcileSettings]);
   // Compact mode affects presentation only: no new feeds, timers, or Supabase subscriptions.
   useEffect(()=>{try{setCompactAnalyst(new URLSearchParams(window.location.search).get('compact')==='1')}catch{}},[]);
   useEffect(()=>{try{const requested=new URLSearchParams(window.location.search).get('tab');if(requested&&tabDefs.some(t=>t.key===requested))setTab(requested)}catch{}},[]);
@@ -208,7 +223,10 @@ export default function Page(){
     const previous=s;
     setBusy(true);setErr('');
     if(path==='mode'&&body?.mode)setS((v:Status|null)=>v?{...v,mode:body.mode}:v);
-    if(path==='settings'&&body&&typeof body==='object')setS((v:Status|null)=>v?{...v,settings:{...(v.settings||{}),...body}}:v);
+    if(path==='settings'&&body&&typeof body==='object'){
+      pendingSettingsRef.current={values:{...(pendingSettingsRef.current?.values||{}),...body},until:Date.now()+45000};
+      setS((v:Status|null)=>v?{...v,settings:{...(v.settings||{}),...body}}:v);
+    }
     if(path==='mode')setNotice(body.mode==='demo'?'Mudando para conta de prática…':'Mudando para REAL…');
     else if(path==='settings'&&body?.strategy)setNotice('Ativando estratégia…');
     else if(path.startsWith('brokers/')&&path.endsWith('/login'))setNotice('Abrindo a corretora no PC…');
@@ -217,13 +235,14 @@ export default function Page(){
       const method=path==='settings'?'PATCH':'POST';
       const commandTimeout=path.startsWith('brokers/')&&path.endsWith('/login')?30000:2200;
       const data=source==='local'&&agent.worker?await localFetch(path,method,body,commandTimeout):await cloudFetch(path,method,body);
-      setS(normalizeStatus(data));setErr('');
+      setS(reconcileStatus(normalizeStatus(data)));setErr('');
       if(path==='mode')setNotice(body.mode==='demo'?'Conta de prática ativa.':'Modo REAL ativo para análise; execução continua manual.');
       else if(path==='settings'&&body?.strategy)setNotice('Estratégia aplicada: '+String(body.strategy).replaceAll('_',' ')+'.');
       else if(path.startsWith('brokers/')&&path.endsWith('/login'))setNotice('Comando enviado ao Agent. A janela controlada da corretora deve abrir no PC.');
       else setNotice('Comando aplicado.');
       setTimeout(()=>refresh(),650);setTimeout(()=>refresh(),1900);setTimeout(()=>setNotice(''),4200);return true;
     }catch(e:any){
+      if(path==='settings')pendingSettingsRef.current=null;
       setS(previous);setNotice('');setErr(friendlyError(e));setTimeout(()=>refresh(),300);return false;
     }finally{setBusy(false)}
   };
