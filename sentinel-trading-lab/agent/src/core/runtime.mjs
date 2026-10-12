@@ -19,6 +19,8 @@ import {STRATEGY_LABELS,strategySelectionGuidance,chosenStrategiesPermit} from '
 import {pathEvidence,PathResearch} from './path-intelligence.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
+import {confirmWindowEntry} from './future-entry-schedule.mjs';
+import {evolveOpportunity,opportunityContext} from './single-opportunity-window.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
@@ -70,7 +72,7 @@ function newPriceStructure(main,side,snap,strict=false){
 
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
-    this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;
+    this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
@@ -808,6 +810,7 @@ export class DemoTradingRuntime{
       (Object.prototype.hasOwnProperty.call(patch,'asset')&&
         patch.asset!==this.settings.asset);
     if(changedForecastContext){
+      this.vnextWindowState=null;
       this.vnextFutureEntryAnchor=null;
       this.vnextHorizonMatrix=null;
       this.vnextTargetAnchor=null;
@@ -948,36 +951,52 @@ export class DemoTradingRuntime{
       const currentEntry=matrix.entryRows?.find(x=>
         x.delaySeconds===model.expirySeconds&&x.engineId===model.engineId&&
         x.asset===String(settings.asset||'UNKNOWN').toUpperCase())||null;
-      const oldEntry=this.vnextFutureEntryAnchor||null;
-      const sameEntry=oldEntry&&currentEntry&&
-        oldEntry.engineId===currentEntry.engineId&&
-        oldEntry.asset===currentEntry.asset&&
-        oldEntry.delaySeconds===currentEntry.delaySeconds&&
-        oldEntry.side===currentEntry.side&&
-        ['CALL','PUT'].includes(currentEntry.side)&&
-        Number(oldEntry.entryAt)+1500>now;
-      // The matrix may legitimately reuse its last result while the market
-      // quote is unchanged. Never promote an already expired cached row into
-      // a new "active" entry after the previous deadline has passed.
-      const freshQuote=Number(snap.quoteTs)>0&&now>=Number(snap.quoteTs)&&
-        now-Number(snap.quoteTs)<=2500;
-      const newEntryValid=freshQuote&&currentEntry&&
-        ['CALL','PUT'].includes(currentEntry.side)&&
-        Number(currentEntry.issuedAt)>0&&Number(currentEntry.issuedAt)<=now&&
-        Number(currentEntry.entryAt)>now&&
-        Number(currentEntry.entryAt)>Number(currentEntry.issuedAt);
-      // The current receipt remains immutable up to its target. At expiry
-      // switch to a genuinely new prediction or clear both displays.
-      const planned=sameEntry?oldEntry:newEntryValid?currentEntry:null;
-      // Time passing alone NEVER authorizes an entry. The Agent must have
-      // independently recalculated the SAME direction on a fresh quote
-      // observed at the actual entry instant, inside a strictly short window.
-      const due=planned&&now>=Number(planned.entryAt)&&
-        now<=Number(planned.entryAt)+1500;
-      const entryReadyNow=!!(due&&freshQuote&&sameEntry&&
-        Number(snap.quoteTs)>=Number(planned.entryAt)-1000);
-      const entryAnchor=planned?{...planned,entryReadyNow,
-        status:entryReadyNow?'entry-moment':'forecast'}:null;
+      const currentWindow=this.vnextWindowState?.context===
+        opportunityContext(settings)&&now<this.vnextWindowState.windowEndsAt?
+        this.vnextWindowState:null;
+      const quoteFresh=Number(snap.quoteTs)>0&&
+        Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500;
+      // A window opens ONCE for an eligible CALL or PUT. During this H-second
+      // window a subsequent prediction cannot rewrite side, entryAt or expiry.
+      // An opposite signal invalidates it, never substitutes a new one.
+      const entryDue=currentWindow?.phase==='open'&&
+        now>=currentWindow.entryAt&&now<=currentWindow.entryAt+1500;
+      const confirmation=entryDue&&quoteFresh?
+        confirmWindowEntry({settings,snap,now,adaptiveHistory,
+          forecastModel:this.forecastModel}):null;
+      const nextWindow=evolveOpportunity({
+        previous:this.vnextWindowState,candidate:currentEntry,settings,
+        now,quoteAt:snap.quoteTs,confirmation
+      });
+      // Persist only the window state, not a duplicate or retriggerable
+      // "now" forecast. A cancelled/fired window remains terminal until its
+      // original deadline, even if the rolling forecast changes direction.
+      const oldPhase=this.vnextWindowState?.phase;
+      this.vnextWindowState=nextWindow;
+      if(nextWindow?.phase==='fired'&&oldPhase!=='fired'){
+        this.vnextWindowOutcomes.push({
+          windowId:nextWindow.openedAt,asset:nextWindow.asset,
+          engineId:nextWindow.engineId,forecastMode:settings.forecastMode||'continuous',
+          periodSeconds:nextWindow.holdingSeconds,side:nextWindow.side,
+          entryAt:nextWindow.entryAt,exitAt:nextWindow.exitAt,
+          entryPrice:Number(snap.price)||null,verified:false
+        });
+        this.vnextWindowOutcomes=this.vnextWindowOutcomes.slice(-350);
+      }
+      // Market QUOTES, not broker settlement. Score entry->expiry only when
+      // the matching actual exit observation arrives. No invented win rates.
+      for(const outcome of this.vnextWindowOutcomes){
+        if(outcome.verified||outcome.exitAt>now)continue;
+        const q=(snap.quoteHistory||[]).find(q=>
+          Number(q.ts)>=outcome.exitAt&&Number(q.ts)<=outcome.exitAt+1000);
+        if(!q||!(outcome.entryPrice>0))continue;
+        outcome.verified=true;outcome.observedExitPrice=Number(q.price);
+        outcome.correct=outcome.observedExitPrice===outcome.entryPrice?null:
+          (outcome.observedExitPrice>outcome.entryPrice?'CALL':'PUT')===outcome.side;
+      }
+      const entryAnchor=nextWindow?.phase==='open'||nextWindow?.phase==='fired'?
+        {...nextWindow,entryReadyNow:nextWindow.phase==='fired'&&
+           Number(nextWindow.entryTriggeredAt)===now}:null;
       this.vnextFutureEntryAnchor=entryAnchor;
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
@@ -1029,11 +1048,18 @@ export class DemoTradingRuntime{
         vnext:{...model,evaluation:undefined,targetAnchor,
           horizonForecasts:matrix.rows,
           futureEntryForecast:currentEntry,
+          opportunityWindow:nextWindow?{
+            phase:nextWindow.phase,reason:nextWindow.reason,
+            windowStartedAt:nextWindow.windowStartedAt,
+            windowEndsAt:nextWindow.windowEndsAt,
+            entryAt:nextWindow.entryAt,side:nextWindow.side
+          }:null,
           futureEntryAnchor:entryAnchor,
           futureEntryRows:matrix.entryRows,
           horizonMeasurements:horizonAudit.summaries,
           targetProjection:targetAnchor?this.vnextTargetProjection||null:null,
-          outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length},
+          outcomesVerified:this.vnextOutcomes.filter(x=>x.engineId===model.engineId&&x.expirySeconds===model.expirySeconds).length,
+          windowOutcomes:this.vnextWindowOutcomes.filter(x=>x.verified&&x.periodSeconds===model.expirySeconds).length},
         entryPlanner:{modelVersion:model.modelVersion,
           defaultHorizonSeconds:model.expirySeconds,
           horizons:model.plan?{[String(model.expirySeconds)]:model.plan}:{}},
