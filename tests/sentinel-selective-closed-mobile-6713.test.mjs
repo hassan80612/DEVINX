@@ -72,6 +72,14 @@ test('actual selective matrix uses closed-bars forecast and never grants stale e
  assert.ok(result.qualification);
  assert.equal(result.actionable,false);
 });
+test('all existing 15-minute and 60-minute options keep a completed-bar model',()=>{
+ const q=data(),p=q.at(-1).price;
+ for(const h of [900,3600]){
+   const projected=selectiveClosedEntry({...input(q,p),delaySeconds:h,holdingSeconds:h});
+   assert.notEqual(projected.status,'invalid-interval');
+   assert.ok(Number.isFinite(projected.projectedEntryPrice)||projected.projectedEntryPrice===null);
+ }
+});
 test('mobile quote is published before expensive selected forecast without faking a fresh signal',()=>{
  const w=fs.readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');
  const handler=w.slice(w.indexOf('driver.setMarketUpdateHandler?.('),w.indexOf('async function ensureLocalCockpitBroker'));
