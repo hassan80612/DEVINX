@@ -75,6 +75,8 @@ async function publishLiveFrame(){
   // A NEW pinned future-entry clock must bypass routine quote pacing.
   const decisionKey=[runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
     liveForecast?.side,mobileEntry?.issuedAt,mobileEntry?.entryAt,mobileEntry?.side,
+    mobileEntry?.phase,mobileEntry?.entryTriggeredAt,
+    runtime.lastResult?.analysis?.vnext?.opportunityWindow?.phase,
     scenario.side,scenario.status,scenario.closed,
     op.side,op.state,op.ready,op.actionable,op.activeUntil,
     alert.side,alert.trigger,alert.testing,op.subanalyst?.status].join('|');
@@ -285,7 +287,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       // on the same evaluated frame used by the mobile signed broadcast.
       runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.issuedAt,
       runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.entryAt,
-      runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.side
+      runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.side,
+      runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.phase,
+      runtime.lastResult?.analysis?.vnext?.opportunityWindow?.phase
     ].join('|');
     if(overlayFastKey!==lastOverlayProbeKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayProbeKey=overlayFastKey;
@@ -306,7 +310,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
         op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,
         a.vnext?.futureEntryAnchor?.issuedAt,
         a.vnext?.futureEntryAnchor?.entryAt,
-        a.vnext?.futureEntryAnchor?.side].join('|');
+        a.vnext?.futureEntryAnchor?.side,
+        a.vnext?.futureEntryAnchor?.phase,
+        a.vnext?.opportunityWindow?.phase].join('|');
     const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey;
     if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayTimingKey=overlayTimingKey;
