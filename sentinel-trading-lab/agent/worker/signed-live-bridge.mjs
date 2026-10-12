@@ -48,6 +48,7 @@ export class SignedLiveBridge extends LiveBridge{
       a.vnext?.engineId,a.vnext?.receipt?.side,
       // Refresh future-entry countdown urgently when the pinned clock rolls.
       a.vnext?.ea?.[4],a.vnext?.ea?.[0],a.vnext?.ea?.[1],
+      a.vnext?.ow?.[0],a.vnext?.ow?.[1],a.vnext?.ow?.[2],
       snapshot?.killSwitch,snapshot?.masterFrozen
     ]);
     const changed=signal!==this.lastSignalKey;
