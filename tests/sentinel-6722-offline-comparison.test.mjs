@@ -14,7 +14,7 @@ const proposed=(side,at,offset=12)=>({side,issuedAt:at,entryAt:at+offset*1000,ex
  projectedEntryPrice:1.1,projectedExitPrice:side==='CALL'?1.2:1.0,delaySeconds:30,holdingSeconds:30});
 const at=(previous,candidate,t,confirmation,quoteAt=t,settings=SET)=>newEvolve({previous,candidate,now:t,quoteAt,settings,confirmation});
 
-test('isolated contradictory peak cannot override several consistent candidate instants',()=>{
+test('reject failed optimization and preserve exact original lead selection',()=>{
  const t=EPOCH;
  const makeLead=seconds=>{
   const side=seconds===14?'CALL':'PUT';
@@ -25,23 +25,19 @@ test('isolated contradictory peak cannot override several consistent candidate i
  const old=basePlan({now:t,windowSeconds:30,holdingSeconds:30,evaluateLead:makeLead});
  const next=newPlan({now:t,windowSeconds:30,holdingSeconds:30,evaluateLead:makeLead});
  assert.equal(old.side,'CALL');
- assert.equal(next.side,null,'conflicting offsets must abstain instead of manufacturing PUT');
- assert.equal(next.windowEndsAt,old.windowEndsAt);
- assert.equal(next.entryAt,null);
- assert.equal(next.status,'scanning-entry-window');
+ assert.deepEqual(next,old,'original opportunity and timing must be fully preserved');
+ assert.deepEqual(newOffsets(30),baseOffsets(30));
 });
 
-test('equal/conflicting directional evidence abstains instead of flickering',()=>{
+test('mixed forecasts keep unchanged original scoring; no unproven veto remains',()=>{
  const t=EPOCH;
  const makeLead=x=>({side:x===3||x===7?'CALL':'PUT',
   projectedEntryPrice:1.1,projectedExitPrice:x===3||x===7?1.101:1.099,
   selectionStrength:1});
- // New 30s offsets: 3,7,14,22,27. 2 CALL vs 3 PUT is an eligible
- // majority; oppose it with equally strong 2 CALL / 2 PUT / 1 neutral.
- const tied=x=>x===27?null:makeLead(x);
- const result=newPlan({now:t,windowSeconds:30,holdingSeconds:30,evaluateLead:tied});
- assert.equal(result.side,null);
- assert.equal(result.status,'scanning-entry-window');
+ const tied=x=>x===29?null:makeLead(x);
+ const input={now:t,windowSeconds:30,holdingSeconds:30,evaluateLead:tied};
+ const original=basePlan(input),result=newPlan(input);
+ assert.deepEqual(result,original);
 });
 
 test('two different genuine opposite confirmations cancel; neither flip nor repeat',()=>{
@@ -50,6 +46,11 @@ test('two different genuine opposite confirmations cancel; neither flip nor repe
  assert.equal(first.phase,'open');
  assert.equal(first.side,'CALL');
  const opposite={side:'PUT',projectedEntryPrice:1.1,projectedExitPrice:1.09};
+ const baseline=baseEvolve({previous:baseEvolve({candidate:proposed('CALL',t),now:t,quoteAt:t,settings:SET}),
+  candidate:null,settings:SET,now:t+12000,quoteAt:t+12000,confirmation:opposite});
+ const originalAfter=baseEvolve({previous:baseline,candidate:null,settings:SET,now:t+12800,
+  quoteAt:t+12800,confirmation:opposite});
+ assert.equal(originalAfter.phase,'open','the original has no repeated opposite cancellation');
  const a=at(first,null,t+12000,opposite);
  assert.equal(a.phase,'open');assert.equal(a.side,'CALL');
  const sameQuote=at(a,null,t+12400,opposite,t+12000);
