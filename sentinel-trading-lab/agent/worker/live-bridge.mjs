@@ -44,6 +44,7 @@ export function analystSnapshot(runtimeStatus,live){
     receipt,
     // Future-entry direction is a DIFFERENT prediction from quote-now -> t+H.
     ea:entryTuple(vnext.futureEntryAnchor),
+    fq:vnext.futureEntryForecast?.forecastMode==='selective'?String(vnext.futureEntryForecast.reason||'').slice(0,180):null,
     er:Array.isArray(vnext.futureEntryRows)?vnext.futureEntryRows.slice(0,9).map(entryTuple):[],
     targetAnchor:vnext.targetAnchor?take(vnext.targetAnchor,[
       'engineId','asset','side','issuedAt','expirySeconds','targetAt',
@@ -103,7 +104,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
-    ea:v.ea,er:v.er,
+    ea:v.ea,er:v.er,fq:v.fq,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
   };
   const trimmed={...snapshot,
@@ -125,29 +126,34 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
 export class LiveBridge{
   constructor(topic,{WebSocketClass=globalThis.WebSocket,minIntervalMs=1100,clock=()=>Date.now()}={}){
     this.topic=topic;this.socket=null;this.WebSocketClass=WebSocketClass;this.minIntervalMs=Math.max(1000,minIntervalMs);
-    this.clock=clock;this.joined=false;this.viewerAt=0;this.lastSentAt=0;this.lastFingerprint='';this.seq=0;this.timer=null;this.heartbeat=null;this.stopped=false;this.attempt=0;
+    this.clock=clock;this.joined=false;this.joinRef=null;this.viewerAt=0;this.lastSentAt=0;this.lastFingerprint='';this.seq=0;this.timer=null;this.heartbeat=null;this.stopped=false;this.attempt=0;
   }
   send(event,payload,topic=this.topic){
     if(this.socket?.readyState!==1)return false;
-    try{this.socket.send(JSON.stringify({topic,event,payload,ref:String(++this.seq),join_ref:topic===this.topic?'1':null}));return true}catch{return false}
+    try{this.socket.send(JSON.stringify({topic,event,payload,ref:String(++this.seq),join_ref:topic===this.topic?this.joinRef:null}));return true}catch{return false}
   }
   start(){
     if(this.stopped||!this.WebSocketClass||this.socket)return;
     const socket=new this.WebSocketClass(wsUrl);this.socket=socket;this.joined=false;
     socket.addEventListener('open',()=>{
+      if(this.socket!==socket||this.stopped)return;
+      // Frame sequence stays monotonic across reconnects. The join reference
+      // belongs to this connection, not to the first-ever message.
+      this.joinRef=String(this.seq+1);
       this.send('phx_join',{config:{broadcast:{ack:false,self:false},presence:{enabled:false},private:false}});
       this.heartbeat=setInterval(()=>this.send('heartbeat',{},'phoenix'),25000);
       this.heartbeat.unref?.();
     });
     socket.addEventListener('message',event=>{
+      if(this.socket!==socket||this.stopped)return;
       let msg;try{msg=JSON.parse(String(event.data))}catch{return}
       if(msg?.topic!==this.topic)return;
-      if(msg.event==='phx_reply'&&msg.ref==='1'){if(msg.payload?.status==='ok'){this.joined=true;this.attempt=0}else{try{socket.close()}catch{}}}
+      if(msg.event==='phx_reply'&&msg.ref===this.joinRef){if(msg.payload?.status==='ok'){this.joined=true;this.attempt=0;this.lastFingerprint=''}else{try{socket.close()}catch{}}}
       if(msg.event==='broadcast'&&msg.payload?.event==='viewer'&&this.joined)this.viewerAt=this.clock();
     });
     const done=()=>{
       if(this.socket!==socket)return;
-      this.socket=null;this.joined=false;this.viewerAt=0;
+      this.socket=null;this.joined=false;this.joinRef=null;this.viewerAt=0;
       clearInterval(this.heartbeat);this.heartbeat=null;
       if(!this.stopped){
         const delay=Math.min(30000,1500*Math.pow(2,Math.min(4,this.attempt++)));

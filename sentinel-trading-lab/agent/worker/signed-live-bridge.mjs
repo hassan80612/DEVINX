@@ -17,9 +17,12 @@ export class SignedLiveBridge extends LiveBridge{
     return timingSafeEqual(a,b);
   }
   start(){
+    if(this.stopped||!this.WebSocketClass||this.socket)return;
+    this.verifiedViewerAt=0;
     super.start();
     const socket=this.socket;
     socket?.addEventListener('message',e=>{
+      if(this.socket!==socket||this.stopped)return;
       let msg;try{msg=JSON.parse(String(e.data))}catch{return}
       if(msg.topic===this.topic&&msg.event==='broadcast'&&msg.payload?.event==='viewer'&&this.joined&&this.verifyViewer(msg.payload?.payload))this.verifiedViewerAt=this.clock();
     });

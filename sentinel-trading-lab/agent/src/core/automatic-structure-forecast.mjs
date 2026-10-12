@@ -24,12 +24,14 @@ function cycleProjection(lp,h){
  return models.sort((a,b)=>b.quality*b.explained-a.quality*a.explained)[0]||null;
 }
 function fit(rows,penalty,halfLife){const n=rows[0].x.length,a=Array.from({length:n},()=>Array(n).fill(0)),b=Array(n).fill(0);let total=0;const end=rows.at(-1).i;for(const r of rows){const w=Math.exp(-Math.LN2*(end-r.i)/halfLife);total+=w;for(let j=0;j<n;j++){b[j]+=w*r.x[j]*r.y;for(let k=0;k<=j;k++)a[j][k]+=w*r.x[j]*r.x[k];}}for(let j=0;j<n;j++){for(let k=j+1;k<n;k++)a[j][k]=a[k][j];a[j][j]+=(j===0?1e-8:penalty*total);}return solve(a,b);}
-export function structureForecast({quoteHistory=[],asOf,selectedSeconds=60}={}){
+export function structureForecast({quoteHistory=[],asOf,selectedSeconds=60,diagnostics=null}={}){
  const h=Number(selectedSeconds),seen=new Map();for(const q of quoteHistory){const ts=Number(q.ts),p=Number(q.price),arr=Number(q.receivedAt??ts);if(ts<=asOf&&arr<=asOf&&Number.isFinite(ts)&&p>0&&Number.isFinite(p)&&Number.isFinite(arr)){const item={ts,p,readyAt:Math.max(ts,arr)};if(!seen.has(ts)||item.readyAt<seen.get(ts).readyAt)seen.set(ts,item);}}
+ if(diagnostics)Object.assign(diagnostics,{status:'waiting-history',historySeconds:0,requiredSeconds:Math.max(720+h,601+h+29*Math.max(5,Math.floor(h/6)))});
  const events=[...seen.values()].sort((a,b)=>a.readyAt-b.readyAt||a.ts-b.ts);if(!events.length||!(h>0))return null;
  // Features at a past anchor see only quotes that had ARRIVED by that anchor.
  const lp=[];let j=0,latest=null;const end=Math.floor(asOf/1000)*1000;for(let t=Math.ceil(events[0].readyAt/1000)*1000;t<=end;t+=1000){while(j<events.length&&events[j].readyAt<=t){const e=events[j++];if(!latest||e.ts>latest.ts)latest=e;}if(!latest||t-latest.ts>2500){lp.length=0;continue;}lp.push(Math.log(latest.p));}
- if(!latest||asOf-latest.ts>2500)return null;const last=[latest.ts,latest.p];
+ if(diagnostics)diagnostics.historySeconds=lp.length;
+ if(!latest||asOf-latest.ts>2500){if(diagnostics)diagnostics.status='waiting-quote';return null;}const last=[latest.ts,latest.p];
  const n=lp.length,lag=600;if(n<lag+h+120)return null;
  const sum=[0],sq=[0],absolute=[0];for(let i=0;i<n;i++){const r=i?lp[i]-lp[i-1]:0;sum.push(sum.at(-1)+lp[i]);sq.push(sq.at(-1)+r*r);absolute.push(absolute.at(-1)+Math.abs(r));}
  const sigma=i=>Math.sqrt(Math.max(1e-14,(sq[i+1]-sq[i-119])/120));
@@ -38,8 +40,9 @@ export function structureForecast({quoteHistory=[],asOf,selectedSeconds=60}={}){
  if(samples.length<30)return null;const split=Math.floor(samples.length*.7),validation=samples.slice(split),first=validation[0].i,train=samples.slice(0,split).filter(r=>r.i+h<first);
  let choice={penalty:1,halfLife:1200},loss=Infinity;
  if(train.length>=24&&validation.length>=8)for(const penalty of [.1,1,10])for(const halfLife of [600,1800]){const beta=fit(train,penalty,halfLife);if(!beta)continue;const error=validation.reduce((v,r)=>v+Math.min(25,(dot(r.x,beta)-r.y)**2),0)/validation.length;if(error<loss){loss=error;choice={penalty,halfLife};}}
- let sx=0,sy=0,sxx=0,sxy=0;const start=n-1200;for(let i=start;i<n-1;i++){sx+=lp[i];sy+=lp[i+1]-lp[i];sxx+=lp[i]*lp[i];sxy+=lp[i]*(lp[i+1]-lp[i]);}const count=n-start-1,denom=sxx-sx*sx/count,slope=denom>0?(sxy-sx*sy/count)/denom:0,intercept=sy/count-slope*sx/count;let residual=0;for(let i=start;i<n-1;i++)residual+=(lp[i+1]-lp[i]-intercept-slope*lp[i])**2;const slopeSE=denom>0?Math.sqrt(residual/(count-2)/denom):Infinity;const meanReversionEvidence={rate:-slope,tStatistic:slopeSE>0?-slope/slopeSE:0};
+ let sx=0,sy=0,sxx=0,sxy=0;const start=Math.max(0,n-1200);for(let i=start;i<n-1;i++){sx+=lp[i];sy+=lp[i+1]-lp[i];sxx+=lp[i]*lp[i];sxy+=lp[i]*(lp[i+1]-lp[i]);}const count=n-start-1,denom=sxx-sx*sx/count,slope=denom>0?(sxy-sx*sy/count)/denom:0,intercept=sy/count-slope*sx/count;let residual=0;for(let i=start;i<n-1;i++)residual+=(lp[i+1]-lp[i]-intercept-slope*lp[i])**2;const slopeSE=denom>0?Math.sqrt(residual/(count-2)/denom):Infinity;const meanReversionEvidence={rate:-slope,tStatistic:slopeSE>0?-slope/slopeSE:0};
  const beta=fit(samples,choice.penalty,choice.halfLife);if(!beta)return null;const f=features(n-1),cycle=cycleProjection(lp,h),direct=clamp(dot(f.x,beta),-4,4)*f.scale;
+ if(diagnostics)diagnostics.status='ready';
  const weight=cycle?clamp(cycle.quality,0,.8):0,move=clamp((direct*(1-weight)+(cycle?.move||0)*weight)/f.scale,-4,4)*f.scale,price=last[1]*Math.exp(move);
  return {side:move>=0?'CALL':'PUT',projectedPrice:price,expectedLow:last[1]*Math.exp(move-1.5*f.scale),expectedHigh:last[1]*Math.exp(move+1.5*f.scale),referencePrice:last[1],issuedAt:asOf,targetAt:asOf+h*1000,choice,cycle,meanReversionEvidence,cycleWeight:weight,trainingExamples:samples.length,latestTrainingOutcomeAt:last[0],historySeconds:n,validationLoss:Number.isFinite(loss)?loss:null};
 }

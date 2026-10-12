@@ -1551,10 +1551,11 @@ export class LocalPlaywrightDriver{
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
                 <span style="color:${callTone}">ENTRADA EM ${entryPlanReady?Number(pinnedEntry.delaySeconds)+'s':'—'}</span>
                 <span style="color:${putTone}">PERÍODO APÓS ${entryPlanReady?Number(pinnedEntry.holdingSeconds)+'s':'—'}</span>
-                <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${liveNow?'AO VIVO':'COTAÇÃO ATRASADA'}</span>
+                <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${esc(liveNow?(d.forecastMode==='selective'&&!entryPlanReady?d.vnext?.futureEntryForecast?.reason||'ANALISANDO':'AO VIVO'):'COTAÇÃO ATRASADA')}</span>
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
                 <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
+                 ${d.forecastMode==='selective'&&!entryPlanReady?`<div style="padding:5px 6px;white-space:normal">${esc(d.vnext?.futureEntryForecast?.reason||'Analisando histórico.')}</div>`:''}
                 <div style="padding:7px;display:grid;gap:6px">
                   <div>Registrada ${entryPlanReady?new Date(Number(pinnedEntry.issuedAt)).toLocaleTimeString("pt-BR",{hour12:false}):"—"} · direção imutável até a hora prevista · nova cotação não altera o registro.</div>
                   <div>${liveNow?"Cotação recebida":"Cotação desatualizada ou indisponível"}.</div>
