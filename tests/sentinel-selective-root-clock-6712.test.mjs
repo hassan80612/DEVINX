@@ -55,7 +55,7 @@ test('main selective prediction is preserved while auxiliary horizons cannot tri
 test('mobile count must use original PC target timestamp, never a new 30-second clock',()=>{
  const c=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  const part=c.slice(c.indexOf('function MobileFutureEntryClock'),c.indexOf('export function LiveScenarioCard'));
- assert.match(part,/Math\.ceil\(\(plannedAt-now\)\/1000\)/);
- assert.match(part,/const expired=pinned&&now>=plannedAt/);
+ assert.match(part,/Math\.ceil\(\(windowEndsAt-now\)\/1000\)/);
+ assert.match(part,/const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt/);
  assert.doesNotMatch(part,/setNow\(plannedAt/);
 });
