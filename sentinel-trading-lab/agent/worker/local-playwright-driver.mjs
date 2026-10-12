@@ -1516,8 +1516,9 @@ export class LocalPlaywrightDriver{
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.85fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ESTRATÉGIA ATIVA
-                <select data-sentinel-setting="engine" title="Estratégia responsável pela previsão" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
-                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>
+                <select data-sentinel-setting="engine" ${d.forecastMode==='selective'?'disabled':''} title="${d.forecastMode==='selective'?'Seletiva autônoma: estratégias não participam':'Estratégia responsável pela previsão'}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+                  ${d.forecastMode==='selective'?'<option value="'+esc(d.engine||'automatic')+'" selected>Seletiva Autônoma</option>':''}
+                  ${d.forecastMode==='selective'?'':`<option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>`}
                   <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
                   <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>Suporte e Resistência</option>
                   <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
@@ -1525,7 +1526,7 @@ export class LocalPlaywrightDriver{
                   <option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>
                   <option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
                   <option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
-                  <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
+                  ${d.forecastMode==='selective'?'':`<option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>`}
                 </select>
               </label>
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">PREVISÃO
@@ -1557,7 +1558,7 @@ export class LocalPlaywrightDriver{
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
                 <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
-                 ${d.forecastMode==='selective'&&!entryPlanReady?`<div style="padding:5px 6px;white-space:normal">${esc(d.vnext?.futureEntryForecast?.reason||'Analisando histórico.')}</div>`:''}
+                 
                 <div style="padding:7px;display:grid;gap:6px">
                   <div>Registrada ${entryPlanReady?new Date(Number(pinnedEntry.issuedAt)).toLocaleTimeString("pt-BR",{hour12:false}):"—"} · direção imutável até a hora prevista · nova cotação não altera o registro.</div>
                   <div>${liveNow?"Cotação recebida":"Cotação desatualizada ou indisponível"}.</div>
@@ -1566,7 +1567,7 @@ export class LocalPlaywrightDriver{
               </details>
             </section>
 
-            <details data-sentinel-preserve-open="1" data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
+            ${d.forecastMode==='selective'?'':`<details data-sentinel-preserve-open="1" data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
               <summary data-sentinel-no-drag="1" style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">
               ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((x,y)=>x-y).slice(0,9).map(h=>{
@@ -1579,13 +1580,16 @@ export class LocalPlaywrightDriver{
               }).join('')}
               </div>
               <small style="font-size:8px;color:${muted}">Projeções para os próximos horários de entrada.</small>
-            </details>
+            </details>`}
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
               ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
                 const value=c?.callPct==null?NaN:Number(c.callPct),other=c?.putPct==null?NaN:Number(c.putPct);
-                const fresh=Number.isFinite(value)&&Number.isFinite(other)&&liveNow&&d.vnext?.engineId===d.engine&&d.vnext?.receipt?.engineId===d.engine&&Math.round(Number(d.vnext?.receipt?.expirySeconds)*1000)===duration;
+                // These percentages are measured from OBSERVED prices; they must
+                // never freeze when the independent future estimator has no
+                // receipt yet (e.g. first seconds after starting the Agent).
+                const fresh=Number.isFinite(value)&&Number.isFinite(other)&&liveNow&&d.vnext?.engineId===d.engine;
                 const side=fresh?esc(c.side):'AGUARDAR';
                 const color=fresh&&value>other?callTone:fresh&&other>value?putTone:ink;
                 return '<div data-sentinel-summary="'+esc(c.id||'')+'" style="padding:10px 9px;border:1px solid '+panelBorder+';background:'+panelBg+';border-radius:11px;min-width:0;box-shadow:'+panelShadow+'">'+
