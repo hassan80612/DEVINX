@@ -1,0 +1,11 @@
+# Three closed candles — frozen comparison (2026-10-12 UTC)
+
+User requirement: the forecast cannot decide from current candle strength alone; it must read at least three earlier candles. This candidate reads exactly three contiguous CLOSED chart bars, including bodies, upper/lower rejection wicks, high/low progression, acceleration and range expansion. It does not use the forming bar in directional features or newly completed training labels. Current quote anchors output prices. One learned trajectory supplies direction, entry/exit prices and sampled extrema.
+
+Chart period is explicit and independent of holding/entry delay. The frozen real archive comparison uses 60-second chart bars and evaluates BOTH now-to-expiry and future-entry-to-expiry at 5, 10, 30, 60, 120 and 300 seconds. Native OHLC is aggregated from full 1-second OHLC archives, not only closes. No archive future is in features or training outcomes. Arrival timestamps are required; live memory freezes first observed closed OHLC and cannot treat later bulk history as observed at its original close. Fewer than three usable bars yields no invented signal.
+
+Comparator 67.1: 431bd6ffc276015a6581e0d6ba7a56c244de72e9. Published 67.2: 66c42ff6da4e7af7268a933b9ff83ddfe0b9be90. Neither is modified. Synthetic seeds 1310033, 1310051, 1310077, 1310099; ten predefined regimes; issues 1850 and 4700 seconds. Unseen real dates 2026-09-15 and 2026-09-16, BTCUSDT and ETHUSDT; quotes sampled at 1s close availability, issued every 1800 seconds. Draws not wins; coverage, reversal direction, horizon, source and sampled extreme timing reported. This is Binance spot, not execution evidence on IQ Option/Exnova.
+
+Ridge fitting and chronological parameter selection retained from published model; only feature source and final training cutoff change. Nine regularization/recency settings are selected on chronologically purged completed targets. This does not imply statistically independent validation cases. No further parameter tuning on these reported archives. Three candles do not guarantee higher accuracy.
+
+Production, version numbers, UI, functions, downloads, mobile and specialists remain unchanged pending measured improvement. No automatic publication.
