@@ -9,7 +9,9 @@ export function selectiveEvidence({quoteHistory=[],asOf=Date.now()}={}){
    .sort((a,b)=>Number(a.ts)-Number(b.ts));
  const last=known.at(-1),quoteAge=last?asOf-Number(last.ts):Infinity;
  let start=known.length?known.length-1:0;
- while(start>0&&Number(known[start].ts)-Number(known[start-1].ts)<=2500)start--;
+ // Same causal 8s historical tolerance as the learned selective estimator.
+ // This counts OBSERVED historical quotes only. Live entry freshness remains 2.5s.
+ while(start>0&&Number(known[start].ts)-Number(known[start-1].ts)<=8000)start--;
  // Keep the exact uninterrupted count for the long evidence model.
  const historySeconds=last?Math.max(1,Math.floor((Number(last.ts)-Number(known[start].ts))/1000)+1):0;
  const recent=known.filter(q=>Number(q.ts)>=asOf-180000);
@@ -55,7 +57,7 @@ export function qualifyStrategyInterval({forecast,quoteHistory=[],asOf=Date.now(
    const cached=ctx.longByHorizon.get(h);structure=cached.structure;Object.assign(diagnostics,cached.diagnostics);
   }else{
    const longDiagnostic={};
-   structure=structureForecast({quoteHistory:ctx.known,asOf,selectedSeconds:h,diagnostics:longDiagnostic});
+   structure=structureForecast({quoteHistory:ctx.known,asOf,selectedSeconds:h,diagnostics:longDiagnostic,historicalQuoteGapMs:8000});
    Object.assign(diagnostics,longDiagnostic);
    ctx.longByHorizon.set(h,{structure,diagnostics:longDiagnostic});
   }
