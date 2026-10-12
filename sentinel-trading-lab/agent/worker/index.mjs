@@ -107,7 +107,13 @@ const realtimeQuotes=new LatestQuoteScheduler({isBusy:()=>busy,isRunning:()=>run
 driver.setMarketUpdateHandler?.((provider,event={})=>{
   if(provider!==activeProvider)return;
   if(event.assetChanged===true){syncRuntimeMarket();runtime.requestImmediateEvaluation?.();}
-  if(runtime.stateName==='running')realtimeQuotes.request();
+  if(runtime.stateName==='running'){
+    // Send the observed quote immediately, BEFORE the potentially expensive
+    // forecast evaluation. The existing receipt still keeps its real timestamp.
+    // This does not create a signal, read the broker twice, or write to the DB.
+    void publishLiveFrame();
+    realtimeQuotes.request();
+  }
 });
 async function ensureLocalCockpitBroker(provider){
   assertLicensedAccess();
@@ -253,6 +259,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   }
   if(activeProvider&&brokers[activeProvider]?.connected&&Date.now()-lastBrokerMaintainAt>=2500){lastBrokerMaintainAt=Date.now();scheduleBrokerMaintenance(activeProvider)}
   const loopNow=Date.now();if(!lastMarketSyncAt||loopNow-lastMarketSyncAt>=700){lastMarketSyncAt=loopNow;syncRuntimeMarket()}
+  // Keep remote viewers fed with genuine broker ticks even when the selected
+  // forecast itself takes longer to compute. The post-analysis broadcast below
+  // will send any new qualified decision as soon as it exists.
+  void publishLiveFrame();
   await runtime.tick(loopNow,{skipStatus:true});
   // Deliver a confirmed decision as soon as the engine finishes its quote
   // analysis, before broker overlay rendering or expensive status work.
