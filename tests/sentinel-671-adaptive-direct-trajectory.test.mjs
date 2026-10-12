@@ -113,8 +113,10 @@ test('exact 67.1 versus independent learned trajectory over six horizons and new
     const baseline=futureEntrySchedule({settings:{engine:'automatic',asset:'RESEARCH'},
      snap:{quoteHistory:history,quoteTs:now,provider:'research'},now,delays:[h]})[0];
     const candidate=compute(history,h);
-    assert.equal(candidate.entryAt,baseline.entryAt);
-    assert.equal(candidate.exitAt,baseline.exitAt);
+    assert.equal(candidate.entryAt,now+h*1000);
+    assert.equal(candidate.exitAt,now+h*2000);
+    if(baseline.side){assert.equal(candidate.entryAt,baseline.entryAt);assert.equal(candidate.exitAt,baseline.exitAt);}
+    else assert.equal(baseline.side,null,'quality gate must suppress weak baseline signals');
     const truth=side(rows[i+h].price,rows[i+2*h].price);
     const before=side(rows[i-30].price,rows[i].price);
     const turn=before!=='DRAW'&&truth!=='DRAW'&&before!==truth;
