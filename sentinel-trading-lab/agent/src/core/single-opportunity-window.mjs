@@ -15,9 +15,26 @@ export function evolveOpportunity({
  const key=opportunityContext(settings),H=Number(settings.orderDurationMs)/1000;
  const fresh=Number(quoteAt)>0&&Number(quoteAt)<=now&&now-Number(quoteAt)<=2500;
  const old=previous?.context===key?previous:null;
- // The window ends at ORIGINAL signal issuance + selected duration,
- // irrespective of the computed entry offset or a later quote.
+ // Fixed windows run even without a CALL/PUT candidate. The clock is
+ // independent from the prediction: scanning, open, cancelled and fired
+ // occupy the SAME original H-second interval.
+ if(!(H>=5&&H<=3600))return null;
+ const validCandidate=()=>fresh&&isSide(candidate?.side)&&
+   Number(candidate.issuedAt)<=now&&Number(candidate.entryAt)>now&&
+   Number(candidate.exitAt)===Number(candidate.entryAt)+H*1000&&
+   Number(candidate.projectedEntryPrice)>0&&Number(candidate.projectedExitPrice)>0&&
+   (candidate.projectedExitPrice>candidate.projectedEntryPrice?'CALL':
+     candidate.projectedExitPrice<candidate.projectedEntryPrice?'PUT':null)===candidate.side;
  if(old&&now<old.windowEndsAt){
+  if(old.phase==='scanning'){
+   // Candidate must fit INSIDE the already-open fixed window; do not
+   // extend the window to the candidate's newly calculated deadline.
+   if(validCandidate()&&Number(candidate.entryAt)<=old.windowEndsAt)
+    return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
+     openedAt:old.windowStartedAt,windowStartedAt:old.windowStartedAt,
+     windowEndsAt:old.windowEndsAt,entryReadyNow:false,entryTriggeredAt:null};
+   return {...old,entryReadyNow:false};
+  }
   if(old.phase!=='open')return {...old,entryReadyNow:false};
   if(!fresh)return {...old,phase:'cancelled',reason:'feed-stale',
    cancelledAt:now,side:null,entryReadyNow:false};
@@ -44,17 +61,19 @@ export function evolveOpportunity({
   return {...old,phase:'fired',entryReadyNow:true,entryTriggeredAt:now,
     reason:'confirmed',confirmedEntryPrice:Number(confirmation.projectedEntryPrice)};
  }
- // Don't open a window without a fresh observation and an internally
- // coherent, measurable conditional future price path.
- if(!fresh||!isSide(candidate?.side)||!(H>=5&&H<=3600)||
-   Number(candidate.issuedAt)>now||Number(candidate.entryAt)<=now||
-   Number(candidate.entryAt)>now+H*1000||
-   Number(candidate.exitAt)!==Number(candidate.entryAt)+H*1000||
-   Number(candidate.projectedEntryPrice)<=0||Number(candidate.projectedExitPrice)<=0||
-   (candidate.projectedExitPrice>candidate.projectedEntryPrice?'CALL':
-    candidate.projectedExitPrice<candidate.projectedEntryPrice?'PUT':null)!==candidate.side)
-  return null;
- return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
-  openedAt:now,windowStartedAt:now,windowEndsAt:now+H*1000,
-  entryReadyNow:false,entryTriggeredAt:null};
+ // Advance the fixed H-second cycle once, never restart on each tick.
+ const started=old?.windowEndsAt?
+   old.windowEndsAt+Math.floor(Math.max(0,now-old.windowEndsAt)/(H*1000))*H*1000:
+   now;
+ const end=started+H*1000;
+ if(validCandidate()&&Number(candidate.entryAt)<=end)
+  return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
+   openedAt:started,windowStartedAt:started,windowEndsAt:end,
+   entryReadyNow:false,entryTriggeredAt:null};
+ return {context:key,phase:'scanning',reason:fresh?'scanning':'waiting-fresh-quote',
+  engineId:String(settings.engine||'automatic'),
+  asset:String(settings.asset||'UNKNOWN').toUpperCase(),
+  forecastMode:String(settings.forecastMode||'continuous'),delaySeconds:H,
+  holdingSeconds:H,issuedAt:started,windowStartedAt:started,windowEndsAt:end,
+  entryAt:null,exitAt:null,side:null,entryReadyNow:false,entryTriggeredAt:null};
 }
