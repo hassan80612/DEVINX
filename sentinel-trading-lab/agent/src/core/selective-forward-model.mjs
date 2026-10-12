@@ -73,8 +73,15 @@ export function qualifyStrategyInterval({forecast,quoteHistory=[],asOf=Date.now(
    qualification:{qualified,historicalEvidence,margin,threshold,evidence:earlyAligned?'three-completed-bars':structural?'historical-structure':null,...diagnostics},
    reason:qualified?'Entrada futura qualificada.':ctx.quoteAge>2500?
      'Aguardando cotação atual do PC.':!['CALL','PUT'].includes(forecast?.side)?
-     'Estratégia ainda sem previsão calculada para este intervalo.':earlyAligned&&margin<threshold?
-     'Três velas fechadas confirmadas; projeção abaixo da margem seletiva.':
+     'Estratégia ainda sem previsão calculada para este intervalo.':
+     !ctx.earlyReady&&diagnostics.status==='waiting-history'?
+     'Aguardando cotações reais nas três velas de 30s.':
+     ctx.earlyReady&&!ctx.earlyTrend&&diagnostics.status==='waiting-history'?
+     'Três velas analisadas: direção histórica ainda não confirmada.':
+     ctx.earlyTrend&&!earlyAligned&&diagnostics.status==='waiting-history'?
+     'Três velas divergem da estratégia escolhida.':
+     earlyAligned&&margin<threshold?
+     'Três velas confirmadas, mas projeção abaixo da margem seletiva.':
      qualificationReason({qualified,historicalEvidence,margin,threshold,diagnostics})};
 }
 // Own interval forecast. Selection uses information known at issuance, never
