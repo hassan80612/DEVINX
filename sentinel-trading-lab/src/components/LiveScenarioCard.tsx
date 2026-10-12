@@ -11,9 +11,9 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 // Dedicated local timer: it never waits for a WebSocket packet or forces
 // the full analyst card to recalculate on every countdown tick.
-function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedExit,side,phase,readyNow,holdingSeconds}:{
+function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedExit,side,phase,quoteAt,liveFrameAt,holdingSeconds}:{
  windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedExit:number,
- side:string|null,phase:string|null,readyNow:boolean,holdingSeconds:number
+ side:string|null,phase:string|null,quoteAt:number,liveFrameAt:number,holdingSeconds:number
 }){
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{
@@ -27,12 +27,26 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
   syncVisibility();
   return()=>{document.removeEventListener('visibilitychange',syncVisibility);if(timer)clearInterval(timer)};
  },[]);
- const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt;
- const moment=running&&readyNow&&entryTriggeredAt>0&&now>=entryTriggeredAt&&now<=entryTriggeredAt+1500;
- const seconds=running?Math.max(1,Math.ceil((windowEndsAt-now)/1000)):null;
+ // The Agent owns the original immutable cycle boundaries. The phone may
+ // advance that same clock at the boundary while the next signed frame is
+ // in transit, but must never fabricate an entry or direction.
+ const period=windowEndsAt-windowStartedAt;
+ const validWindow=windowStartedAt>0&&period>=5000&&period<=3600000&&now>=windowStartedAt;
+ const cycle=validWindow?Math.max(0,Math.floor((now-windowStartedAt)/period)):0;
+ const awaitingNextFrame=validWindow&&cycle>0;
+ const recentStream=liveFrameAt>0&&now>=liveFrameAt&&now-liveFrameAt<3000;
+ const running=validWindow&&(!awaitingNextFrame||recentStream);
+ const displayedEnd=validWindow?windowEndsAt+cycle*period:0;
+ // Match the PC overlay: a confirmed Agent timestamp and recent broker
+ // quote, not the transient entryReadyNow latch from one evaluation.
+ const moment=running&&!awaitingNextFrame&&phase==='fired'&&
+  (side==='CALL'||side==='PUT')&&quoteAt>0&&now>=quoteAt&&now-quoteAt<3500&&
+  entryTriggeredAt>0&&now>=entryTriggeredAt&&now<=entryTriggeredAt+1500;
+ const seconds=running?Math.max(1,Math.ceil((displayedEnd-now)/1000)):null;
  const countdown=seconds==null?'—:—':
   String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
  const direction=moment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
+  awaitingNextFrame?(recentStream?'NOVA JANELA · AGUARDANDO LEITURA':'SINCRONIZANDO COM O PC'):
   phase==='cancelled'?'JANELA SEM ENTRADA':
   phase==='fired'?'ENTRADA JÁ SINALIZADA':
   phase==='open'&&side?(side==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA':
@@ -42,8 +56,8 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
    <div><small>{moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA'}</small><strong>{countdown}</strong></div>
    <div><small>MOMENTO DE ENTRADA</small>
-    <b>{phase==='fired'&&entryTriggeredAt?clock(entryTriggeredAt):'AGUARDANDO'}</b>
-    <span>{phase==='fired'&&plannedExit>0?'Vencimento '+clock(plannedExit):
+    <b>{!awaitingNextFrame&&phase==='fired'&&entryTriggeredAt?clock(entryTriggeredAt):'AGUARDANDO'}</b>
+    <span>{!awaitingNextFrame&&phase==='fired'&&plannedExit>0?'Vencimento '+clock(plannedExit):
       'Prazo após entrada '+holdingSeconds+'s'}</span>
    </div>
   </div>
@@ -226,8 +240,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     Number(futureEntry.delaySeconds)===Number(expirySeconds));
   const entryDataFresh=m.fresh;
   const entryTriggeredAt=Number(futureEntry?.entryTriggeredAt||0);
-  const entryMoment=entryPlanValid&&futureEntry?.entryReadyNow===true&&entryTriggeredAt>0&&
-    now>=entryTriggeredAt&&now<=entryTriggeredAt+1500&&m.fresh;
+  // Same PC timestamp/quote freshness rules as the mobile clock. A
+  // short-lived entryReadyNow latch cannot make the phone skip CALL/PUT AGORA.
+  const entryMoment=entryPlanValid&&opportunityPhase==='fired'&&m.online&&m.running&&
+    Number(m.quoteAt)>0&&now>=Number(m.quoteAt)&&now-Number(m.quoteAt)<3500&&
+    entryTriggeredAt>0&&now>=entryTriggeredAt&&now<=entryTriggeredAt+1500;
   const entryPlanDisplayable=entryPlanValid&&(plannedAt>now||entryMoment);
   // Classify the existing PC timestamp separately from mobile transport delay.
   // Only the Agent grants entry; these messages are diagnostics, not signals.
@@ -237,7 +254,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     (m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'):undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} readyNow={entryMoment} holdingSeconds={Number(expirySeconds)}/>
+    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} liveFrameAt={Number(s?.liveStreamAt||0)} holdingSeconds={Number(expirySeconds)}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
