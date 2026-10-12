@@ -1516,6 +1516,7 @@ export class LocalPlaywrightDriver{
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ESTRATÉGIA ATIVA
                 <select data-sentinel-setting="engine" title="Estratégia responsável pela previsão" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   <option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>
+                  <option value="selective_forecast" ${d.engine==='selective_forecast'?'selected':''}>Previsão seletiva</option>
                   <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
                   <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>Suporte e Resistência</option>
                   <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>

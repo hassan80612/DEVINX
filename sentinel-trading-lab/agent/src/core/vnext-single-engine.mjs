@@ -7,6 +7,7 @@ import {lightweightDashboard} from './vnext-market-cards.mjs';
 import {historicalForwardAnalogs} from './historical-forward-analogs.mjs';
 import {structureForecast} from './automatic-structure-forecast.mjs';
 import {specialistStructurePrediction} from './specialist-structure-models.mjs';
+import {selectiveIntervalForecast} from './selective-forward-model.mjs';
 
 /**
  * VNext main-scenario signal adapter. Computes only the selected motor;
@@ -22,6 +23,7 @@ export function singleEngineForecast({
  const seconds=request.forecastHorizonSeconds;
  const quotes=Array.isArray(snap.quoteHistory)?snap.quoteHistory:[];
  const options={quoteHistory:quotes,asOf:now,selectedSeconds:seconds};
+ const selective=request.engineId==='selective_forecast'?selectiveIntervalForecast({quoteHistory:adaptiveHistory||quotes,asOf:now,entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const selectedStrengths=forecastModel==='selected-strengths-67.5';
  const selectedSpecialist=selectedStrengths&&['breakout','fibonacci_retest'].includes(request.engineId);
  const specialistCandidate=request.engineId!=='automatic'&&(forecastModel==='specialist-structure-v2'||selectedSpecialist)?
@@ -35,8 +37,14 @@ export function singleEngineForecast({
    adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||quotes,asOf:now,
      entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const useAdaptive=learned?.status==='adaptive-direct-trajectory';
- const modelVersion=useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
- const computed=useStructure?{
+ const modelVersion=selective?'selective-interval-v1':useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
+ const computed=selective?{
+   status:selective.status,
+   diagnostic:{referencePrice:selective.expectedPath?.[0]?.price,quoteAt:selective.latestObservedQuoteAt},
+   prediction:selective.qualified?{side:selective.side,projectedPrice:selective.projectedExitPrice,
+     expectedLow:selective.expectedLow,expectedHigh:selective.expectedHigh,modelConfidence:null,
+     evidence:[selective.reason,'Margem sobre volatilidade e resultados históricos concluídos']}:null
+ }:useStructure?{
    status:'candidate-forward-prediction',
    diagnostic:{referencePrice:structure.referencePrice,quoteAt:structure.latestTrainingOutcomeAt},
    prediction:{side:structure.side,projectedPrice:structure.projectedPrice,
@@ -58,7 +66,7 @@ export function singleEngineForecast({
  // Unlike pure momentum extrapolation, these independently observed outcomes
  // are prices that followed comparable PAST quote patterns by the SELECTED
  // expiration. No last/current candle direction is a decision gate.
- const analog=useAdaptive||useStructure?null:historicalForwardAnalogs({
+ const analog=selective||useAdaptive||useStructure?null:historicalForwardAnalogs({
    quoteHistory:quotes,asOf:now,selectedSeconds:seconds,
    engineId:request.engineId
  });
@@ -141,6 +149,7 @@ export function singleEngineForecast({
    scenario:null,scenarioProjection,
    reason:receipt?'Projeção '+side+' até '+new Date(receipt.targetAt).toISOString()+
      ' · preço esperado '+(predictedPrice??'—')+' · projeção futura.':
+     request.engineId==='selective_forecast'?'Aguardando entrada futura qualificada pela previsão seletiva.':
      'Aguardando cotações válidas para previsão '+horizon+'s.',
    engineId:request.engineId,experimental:true
  };
@@ -150,7 +159,7 @@ export function singleEngineForecast({
    source:'user-selected-expiry',modelVersion,
    timestamp:now,price:quotePrice,quoteAgeMs:now-Number(snap.quoteTs||0),
    computedStatus:computed?.status||'unavailable',receipt,cards,projection,
-   forecastFoundation:useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
+   forecastFoundation:selective?'selective-interval-v1':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory':analog?'historical-forward-outcomes':'extrapolation-pending-outcomes',
    historicalComparisons:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.comparisons||0,
    similarCases:useStructure?structure.trainingExamples:useAdaptive?learned.historicalExamples:analog?.neighbors||0,
    plan,operational,scenarioProjection,

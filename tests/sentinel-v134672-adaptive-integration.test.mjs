@@ -18,7 +18,7 @@ const snap={quoteHistory:history,quoteTs:now,price:history.at(-1).price,provider
 const settings={engine:'automatic',asset,orderDurationMs:30000};
 const release=JSON.parse(fs.readFileSync(new URL('../sentinel-trading-lab/agent/release.json',import.meta.url)));
 test('release activates the tested new model through actual Worker runtime options',()=>{
- assert.equal(release.version,'13.4.67.5');
+ assert.equal(release.version,'13.4.67.6');
  assert.equal(release.runtime.forecastModel,'selected-strengths-67.5');
  const runtime=new DemoTradingRuntime({...release.runtime,enableVNext:true});
  runtime.patchSettings({...settings,forecastHorizonSeconds:30});
@@ -92,22 +92,22 @@ test('same fixed entry clock and signed compact mobile frame carry the new PC pr
  const fitted=fitAnalystFrame(frame);
  assert.ok(fitted);
  assert.ok(Buffer.byteLength(JSON.stringify(fitted))+73<=3000);
- assert.equal(fitted.agentVersion,'13.4.67.5');
+ assert.equal(fitted.agentVersion,'13.4.67.6');
  const entry=fitted.lastResult.analysis.vnext.ea;
  assert.equal(entry[0],30);assert.equal(entry[1],original.side);
  assert.equal(entry[2],original.projectedEntryPrice);
  assert.equal(entry[3],original.projectedExitPrice);
 });
 test('approved performance changes and preserved desktop controls, data bridge and mobile layout match reviewed sources',()=>{
- const expected={"sentinel-trading-lab/agent/worker/index.mjs":"28b3f08c9eba003adb779ad7c39eb880f2490e86","sentinel-trading-lab/agent/worker/live-bridge.mjs":"9ff442b8103bffacccaf2a7d811d5d7fd60c5ff6","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"7e2b497bd76637b50642cc10720336b0cd6c054b","sentinel-trading-lab/src/app/globals.css":"c629314d0cbc8c0aee637b4f4e73dbd54641865e","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"0f8a4b859010f25e9560379dfd6a8bfabf6c0325","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
+ const expected={"sentinel-trading-lab/agent/worker/index.mjs":"28b3f08c9eba003adb779ad7c39eb880f2490e86","sentinel-trading-lab/agent/worker/live-bridge.mjs":"9ff442b8103bffacccaf2a7d811d5d7fd60c5ff6","sentinel-trading-lab/agent/worker/local-playwright-driver.mjs":"7fce37e7f7c84575483836f976bf4b021ed7b888","sentinel-trading-lab/src/app/globals.css":"c629314d0cbc8c0aee637b4f4e73dbd54641865e","sentinel-trading-lab/src/components/LiveScenarioCard.tsx":"0f8a4b859010f25e9560379dfd6a8bfabf6c0325","sentinel-trading-lab/src/lib/live-card-model.ts":"8ea2a89438eebb5e41e447cbae925cea6432cdf2"};
  for(const [path,sha] of Object.entries(expected)){
   const bytes=fs.readFileSync(new URL('../'+path,import.meta.url));
   const actual=crypto.createHash('sha1').update(Buffer.from('blob '+bytes.length+'\0')).update(bytes).digest('hex');
   assert.equal(actual,sha,path);
  }
  const page=fs.readFileSync(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
- assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.5'"));
- assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.5.exe'));
+ assert.ok(page.includes("AVAILABLE_AGENT_VERSION='13.4.67.6'"));
+ assert.ok(page.includes('/downloads/Sentinel-Agent-13.4.67.6.exe'));
 });
 
 test('dense feed retains time context for 300s model, without expanding mobile or old-card data',()=>{

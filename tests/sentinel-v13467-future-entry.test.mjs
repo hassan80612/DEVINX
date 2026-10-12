@@ -30,7 +30,7 @@ test('every selected motor computes scheduled ENTRY at H and later outcome at 2H
      assert.equal(plan.actionable,false);
      assert.equal(plan.calibrated,false);
      assert.ok(plan.projectedEntryPrice>0);
-   }else assert.equal(plan.status,'insufficient-future-evidence');
+   }else assert.equal(plan.status,selected.id==='selective_forecast'?'waiting-selective-entry':'insufficient-future-evidence');
  }
 });
 test('scheduled entry uses TWO forecasts from same selected motor, not the spot-to-entry bias',()=>{

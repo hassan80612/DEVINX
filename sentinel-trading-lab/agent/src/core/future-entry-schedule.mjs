@@ -1,4 +1,5 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
+import {selectiveIntervalForecast} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
@@ -38,6 +39,14 @@ export function futureEntrySchedule({
   return [...new Set(delays.map(Number).filter(h=>h>0&&h<=3600))]
     .sort((a,b)=>a-b).map(delaySeconds=>{
       const holdingSeconds=delaySeconds;
+      if(engineId==='selective_forecast'){
+        const forecast=selectiveIntervalForecast({quoteHistory:adaptiveHistory||snap.quoteHistory,asOf:now,entryDelaySeconds:delaySeconds,holdingSeconds});
+        return {engineId,asset,delaySeconds,holdingSeconds,side:forecast.side,
+          issuedAt:now,entryAt:now+delaySeconds*1000,exitAt:now+(delaySeconds+holdingSeconds)*1000,
+          projectedEntryPrice:forecast.projectedEntryPrice??null,projectedExitPrice:forecast.projectedExitPrice??null,
+          status:forecast.status,actionable:false,calibrated:false,modelVersion:forecast.modelVersion,
+          qualification:forecast.qualification,reason:forecast.reason};
+      }
       if((forecastModel==='adaptive-direct-trajectory-v1'||forecastModel==='selected-strengths-67.5')&&engineId==='automatic'){
         const quoteAt=Number(snap.quoteTs);
         const learned=quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500?

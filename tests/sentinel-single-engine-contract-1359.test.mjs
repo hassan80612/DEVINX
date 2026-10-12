@@ -27,7 +27,7 @@ test('engine forecast identity is isolated by broker/asset/horizon/expiration',(
 test('all current strategies remain available as selectable independent engines',()=>{
  assert.deepEqual(SCENARIO_ENGINES.map(x=>x.id),[
  'automatic','price_action','support_resistance','trend','mean_reversion','breakout',
- 'trendline_breakout','fibonacci_retest','smart_confluence']);
+ 'trendline_breakout','fibonacci_retest','smart_confluence','selective_forecast']);
 });
 
 test('every selected motor projects the chosen expiration, never stale 1m forecast',()=>{
