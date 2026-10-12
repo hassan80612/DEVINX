@@ -921,11 +921,20 @@ export class DemoTradingRuntime{
       // strategy panel, 3-way confluence or release logic for this branch.
       // Keep quotes moving live, but never call a research forecast a
       // historically validated CALL/PUT NOW.
-      const useAdaptive=settings.forecastMode==='selective'||(this.forecastModel==='adaptive-direct-trajectory-v1'||this.forecastModel==='selected-strengths-67.5')&&settings.engine==='automatic';
-      if(useAdaptive)this.adaptiveTemporalContext=retainAdaptiveHistory({
-        previous:this.adaptiveTemporalContext,quotes:snap.quoteHistory,now,
-        asset:settings.asset,provider:snap.provider});
-      const adaptiveHistory=useAdaptive?this.adaptiveTemporalContext.quotes:null;
+      // Keep one small real, in-memory observation history while ANY VNext
+      // mode is running. Switching Contínua -> Seletiva uses already-seen
+      // quotes immediately, instead of starting another artificial wait.
+      // Do no retention work on unchanged ticks. No broker polling/storage.
+      const contextKey=String(snap.provider)+'|'+String(settings.asset).toUpperCase();
+      const lastObservedAt=Number(snap.quoteHistory?.at(-1)?.ts||snap.quoteTs||0);
+      if(this.adaptiveTemporalContext?.key!==contextKey||
+         Number(this.adaptiveTemporalContext?.lastObservedAt)!==lastObservedAt){
+        this.adaptiveTemporalContext=retainAdaptiveHistory({
+          previous:this.adaptiveTemporalContext,quotes:snap.quoteHistory,now,
+          asset:settings.asset,provider:snap.provider});
+        this.adaptiveTemporalContext.lastObservedAt=lastObservedAt;
+      }
+      const adaptiveHistory=this.adaptiveTemporalContext?.quotes||[];
       const model=singleEngineForecast({settings,snap,now,forecastModel:this.forecastModel,adaptiveHistory});
       // Compute the same SELECTED engine for each genuinely distinct future
       // expiration. Avoid re-running unchanged ticks, never delay new quotes.
