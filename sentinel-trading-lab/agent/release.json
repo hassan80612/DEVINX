@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.18",
-  "build": "13.4.67.18-historical-targets-1012",
+  "version": "13.4.67.19",
+  "build": "13.4.67.19-adaptive-entry-window-1012",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
