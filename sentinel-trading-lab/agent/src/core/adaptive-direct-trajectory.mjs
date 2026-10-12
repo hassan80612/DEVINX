@@ -160,7 +160,14 @@ export function adaptiveDirectTrajectory({
   ...offsets.filter(k=>k>0).map(k=>({secondsFromNow:k,
    price:round(Math.exp(base+estimates[offsets.indexOf(k)]*current.scale))}))];
  const sortedPath=expectedPath.slice().sort((a,b)=>a.secondsFromNow-b.secondsFromNow);
- return {status:'adaptive-direct-trajectory',side:pairedMove>1e-12?'CALL':pairedMove< -1e-12?'PUT':null,
+ // Pair-model direction and both displayed future prices MUST agree. The
+ // old version could report CALL while its OWN prices predicted a decline.
+ const intervalMove=Math.log(projectedExitPrice/projectedEntryPrice);
+ const consistent=(pairedMove>0&&intervalMove>0)||(pairedMove<0&&intervalMove<0);
+ const noise=Math.max(1e-12,current.scale);
+ const edge=Math.min(Math.abs(pairedMove),Math.abs(intervalMove));
+ const side=consistent&&edge>=noise*.15?(intervalMove>0?'CALL':'PUT'):null;
+ return {status:'adaptive-direct-trajectory',side,
   issuedAt:now,entryAt:now+lead*1000,exitAt:now+endOffset*1000,
   entryDelaySeconds:lead,holdingSeconds:hold,projectedEntryPrice,projectedExitPrice,
   expectedPairedLogReturn:pairedMove,expectedPath:sortedPath,
