@@ -40,7 +40,7 @@ test('six optional horizons never recalculate heavy historical evidence for all 
 test('frontend clears the reached forecast and blocks stale remote settings snapshots',()=>{
  const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  const page=fs.readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
- assert.match(card,/const expired=pinned&&now>=plannedAt&&!currentMoment/);
+ assert.match(card,/const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt/);
  assert.doesNotMatch(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
  assert.match(card,/entryPlanDisplayable=entryPlanValid&&\(plannedAt>now\|\|entryMoment\)/);
  assert.match(card,/Aguardando cotação atual/);
