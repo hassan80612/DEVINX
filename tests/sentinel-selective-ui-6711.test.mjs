@@ -16,7 +16,7 @@ test('actual sparse 4s quotes qualify three CLOSED bars without pretending 13min
  const e=selectiveEvidence({quoteHistory:q,asOf:now});
  assert.equal(e.earlyReady,true);
  assert.equal(e.earlyDirection,'CALL');
- assert.ok(e.historySeconds<100);
+ assert.ok(e.historySeconds>=160,'real 4s history remains continuous with the 8s tolerance');
  const result=qualifyStrategyInterval({forecast,quoteHistory:q,asOf:now});
  assert.equal(result.side,'CALL');
  assert.equal(result.qualification.evidence,'three-completed-bars');
