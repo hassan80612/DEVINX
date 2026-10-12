@@ -17,7 +17,9 @@ export function selectiveClosedEntry({
  const empty=(status)=>({side:null,status,projectedEntryPrice:null,projectedExitPrice:null});
  const delay=Number(delaySeconds),hold=Number(holdingSeconds);
  if(!Number.isInteger(delay)||!Number.isInteger(hold)||delay<1||hold<1||delay>3600||hold>3600)return empty('invalid-interval');
- const closedAt=Math.floor(now/30000)*30000,elapsedMs=now-closedAt;
+ const closedBarSeconds=Math.max(10,Math.min(30,Math.round(delay)));
+ const closedAt=Math.floor(now/(closedBarSeconds*1000))*closedBarSeconds*1000,
+   elapsedMs=now-closedAt;
  // Observe only prices actually available before the selected historical cut.
  const known=quoteHistory.filter(q=>Number.isFinite(Number(q?.ts))&&Number(q.ts)<=closedAt&&
    Number(q.receivedAt??q.ts)<=closedAt&&positive(q.price)!==null)
