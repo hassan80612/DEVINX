@@ -72,10 +72,12 @@ test('old planned entry may be confirmed ONLY by a fresh independently matched m
  const rt=new DemoTradingRuntime({enableVNext:true,forecastModel:'selected-strengths-67.5'});
  rt.patchSettings({engine:'automatic',asset:'TEST',forecastMode:'selective',orderDurationMs:30000});
  const raw=fs.readFileSync('sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
- assert.match(raw,/oldEntry.side===currentEntry.side/);
- assert.match(raw,/Number\(snap.quoteTs\)>=Number\(planned.entryAt\)-1000/);
- assert.match(raw,/entryReadyNow:\s*true|entryReadyNow,\s*status:/);
- assert.match(raw,/Number\(oldEntry.entryAt\)\+1500>now/);
+ assert.match(raw,/const nextWindow=evolveOpportunity/);
+ assert.match(raw,/confirmWindowEntry/);
+ const contract=fs.readFileSync('sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs','utf8');
+ assert.match(contract,/confirmation\?\.side===old.side/);
+ assert.match(contract,/now>old.entryAt\+1500/);
+ assert.match(contract,/Number\(quoteAt\)>=old.entryAt-1000/);
 });
 test('PC/mobile get EXACT Agent timestamp and entry-now requires renewed quote',()=>{
  const bridge=fs.readFileSync('sentinel-trading-lab/agent/worker/live-bridge.mjs','utf8');
