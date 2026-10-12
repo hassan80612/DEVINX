@@ -66,7 +66,7 @@ test('PC and both mobile layouts take CALL/PUT from pinned future ENTRY only and
    read('agent/worker/live-bridge.mjs')
  ]);
  assert.match(pc,/const pinnedEntry=d\.vnext\?\.futureEntryAnchor/);
- assert.match(pc,/data-deadline="\$\{scheduledAt\}"/);
+ assert.match(pc,/data-deadline="\$\{windowDeadline\}"/);
  assert.match(pc,/ATÉ ENTRADA CALCULADA|JANELA ABERTA/);
  assert.match(pc,/scheduledDecision/);
  assert.doesNotMatch(pc,/const liveForecastReady=/);
