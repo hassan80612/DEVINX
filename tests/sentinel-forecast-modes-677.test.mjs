@@ -16,7 +16,9 @@ test('forecast mode is independent of every one of the nine strategies and uses 
   assert.deepEqual(original,continuous);
   const selected=futureEntrySchedule({...input,settings:{...settings,forecastMode:'selective'}})[0];
   assert.equal(selected.engineId,engine.id);assert.equal(selected.forecastOwner,'selective-historical-outcomes-v2');
-  assert.equal(selected.entryAt,continuous.entryAt);assert.equal(selected.exitAt,continuous.exitAt);
+  assert.equal(selected.holdingSeconds,h);assert.equal(continuous.holdingSeconds,h);
+  assert.equal(selected.windowEndsAt,now+h*1000);assert.equal(continuous.windowEndsAt,now+h*1000);
+  if(selected.side){assert.ok(selected.entryAt>now&&selected.entryAt<=now+h*1000);assert.equal(selected.exitAt,selected.entryAt+h*1000);}
   if(selected.side){assert.ok(selected.projectedEntryPrice>0);assert.ok(selected.projectedExitPrice>0);assert.equal(selected.side,selected.projectedExitPrice>selected.projectedEntryPrice?'CALL':'PUT');}
   else assert.notEqual(selected.status,'forecast');
  }
