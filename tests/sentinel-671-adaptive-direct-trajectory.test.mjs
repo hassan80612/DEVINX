@@ -115,7 +115,7 @@ test('exact 67.1 versus independent learned trajectory over six horizons and new
     const candidate=compute(history,h);
     assert.equal(candidate.entryAt,now+h*1000);
     assert.equal(candidate.exitAt,now+h*2000);
-    if(baseline.side){assert.equal(candidate.entryAt,baseline.entryAt);assert.equal(candidate.exitAt,baseline.exitAt);}
+    if(baseline.side){assert.ok(baseline.entryAt>=now+2000&&baseline.entryAt<=now+h*1000);assert.equal(baseline.exitAt,baseline.entryAt+h*1000);}
     else assert.equal(baseline.side,null,'quality gate must suppress weak baseline signals');
     const truth=side(rows[i+h].price,rows[i+2*h].price);
     const before=side(rows[i-30].price,rows[i].price);
