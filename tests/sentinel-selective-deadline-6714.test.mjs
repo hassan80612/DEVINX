@@ -11,9 +11,9 @@ const q=Array.from({length:80},(_,i)=>({
 test('mobile card has no indefinitely stuck expired-plan wording and uses original target timestamp',()=>{
  const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.doesNotMatch(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
- assert.match(card,/const expired=pinned&&now>=plannedAt&&!currentMoment/);
- assert.match(card,/countdownSeconds=pinned&&!expired&&!currentMoment\?Math\.max\(1,Math\.ceil\(\(plannedAt-now\)\/1000\)\):null/);
- assert.match(card,/!pinned\|\|expired\?'JANELA ABERTA/);
+ assert.match(card,/const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt/);
+ assert.match(card,/const seconds=running\?Math\.max\(1,Math\.ceil\(\(windowEndsAt-now\)\/1000\)\):null/);
+ assert.match(card,/running\?'JANELA ABERTA/);
 });
 test('same-quote cache cannot freeze an expired selected entry with a fresh broker quote',()=>{
  const snap={quoteHistory:q,quoteTs:now,price:q.at(-1).price,provider:'test'};
