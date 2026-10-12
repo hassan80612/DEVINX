@@ -14,7 +14,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
   entryAt:now+h*1000,exitAt:now+(h+hold)*1000,side:null,
   projectedEntryPrice:null,projectedExitPrice:null,status,
   forecastOwner:'selective-historical-outcomes-v2',actionable:false,calibrated:false});
- if(!Number.isInteger(h)||h<1||h>3600||!Number.isInteger(hold)||hold<1||hold>3600)
+ if(!Number.isInteger(h)||h<0||h>3600||!Number.isInteger(hold)||hold<1||hold>3600)
   return blank('invalid-interval');
  if(!(at>0&&at<=now&&now-at<=2500))return blank('waiting-fresh-quote');
  const unique=new Map();
@@ -28,8 +28,12 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  if(rows.length<12||now-rows.at(-1).ts>2500)return blank('waiting-fresh-quote');
  // A decision is anchored to the last completed observation interval.
  // The CURRENT partially forming bar/tick cannot flip it in milliseconds.
- const grid=h<=15?10000:h<=120?15000:30000;
+ const effectiveH=Math.max(h,hold);
+ const grid=effectiveH<=15?10000:effectiveH<=120?15000:30000;
  const anchor=Math.floor(now/grid)*grid;
+ // A closed observation may be several seconds old; train against the
+ // ACTUAL future entry timestamp, not the older feature anchor.
+ const elapsedMs=now-anchor;
  const lookup=t=>{
   let lo=0,hi=rows.length-1,i=-1;
   while(lo<=hi){const m=(lo+hi)>>1;if(rows[m].ts<=t){i=m;lo=m+1;}else hi=m-1;}
@@ -40,9 +44,9 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  // Historical windows are descriptive FEATURES, never permission gates.
  // Timeframe is an input to the FEATURES and the future TARGET. No shared
  // fixed "5s vs 1m" model, 30s candle proxy or UI-only timer conversion.
- const recentLag=clamp(Math.round(6+h*.3),8,90);
- const middleLag=clamp(Math.round(15+h*.65),recentLag+10,300);
- const longLag=clamp(Math.round(30+h*1.3),middleLag+15,600);
+ const recentLag=clamp(Math.round(6+effectiveH*.3),8,90);
+ const middleLag=clamp(Math.round(15+effectiveH*.65),recentLag+10,300);
+ const longLag=clamp(Math.round(30+effectiveH*1.3),middleLag+15,600);
  const lag=[recentLag,middleLag,longLag],oldest=rows[0].ts;
  // Historical sigma is cached once, not re-scanned for hundreds of
  // examples on each market update. Remove future-arrival contamination by
@@ -94,13 +98,14 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  };
  const live=features(anchor);
  if(!live)return blank('insufficient-observations');
- const stride=Math.max(3,Math.min(18,Math.round(h/5)));
+ const stride=Math.max(3,Math.min(18,Math.round(effectiveH/5)));
  const historic=[];
  // Every example must have FINISHED both entry and expiry before the
  // current anchor. A missing or interrupted quote is never backfilled.
- for(let t=anchor-(h+hold)*1000;t>=oldest+Math.max(longLag,middleLag*2)*1000&&historic.length<240;
+ for(let t=anchor-elapsedMs-(h+hold)*1000;t>=oldest+Math.max(longLag,middleLag*2)*1000&&historic.length<240;
   t-=stride*1000){
-  const x=features(t),entry=lookup(t+h*1000),exit=lookup(t+(h+hold)*1000);
+  const x=features(t),entry=lookup(t+elapsedMs+h*1000),
+   exit=lookup(t+elapsedMs+(h+hold)*1000);
   if(!x||!entry||!exit)continue;
   const scaled=x.sigma*Math.sqrt(hold);
   if(!(scaled>0))continue;
@@ -155,7 +160,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
   const order=historic.slice().reverse(),split=Math.floor(order.length*.76);
   for(let i=split;i<order.length;i++){
    const example=order[i];
-   const past=order.slice(0,i).filter(x=>x.at+(h+hold)*1000<=example.at);
+   const past=order.slice(0,i).filter(x=>x.at+elapsedMs+(h+hold)*1000<=example.at);
    if(past.length<12)continue;
    const predicted=select(example,past);
    if(!predicted||predicted.agreement<.68)continue;
@@ -170,6 +175,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
   historicalExamples:historic.length,similarExamples:projection.examples,
   featureLagsSeconds:lag,analysisLeadSeconds:h,holdingSeconds:hold,
+  featureAnchorAt:anchor,decisionAt:now,anchorOffsetSeconds:elapsedMs/1000,
   historicalAgreement:projection.agreement,validationExamples:tested,
   validationCorrect:hits,scenarioAt:anchor};
  if(!accepted)return result;
