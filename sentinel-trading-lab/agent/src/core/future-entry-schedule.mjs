@@ -223,40 +223,46 @@ export function futureEntrySchedule(input={}){
  */
 export function confirmWindowEntry({
  settings={},snap={},now=Date.now(),adaptiveHistory=null,
- forecastModel='original-67'
+ forecastModel='original-67',entryAt=now
 }={}){
  const H=Number(settings.orderDurationMs||0)/1000;
+ const lead=Math.max(0,Math.ceil((Number(entryAt)-now)/1000));
  const quotes=adaptiveHistory||snap.quoteHistory||[];
  if(!(H>=5&&H<=3600)||!(Number(snap.quoteTs)>0&&
   Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500))
   return {side:null,status:'waiting-fresh-quote'};
  if(settings.forecastMode==='selective'){
   return autonomousSelectiveEntry({quoteHistory:quotes,now,quoteTs:snap.quoteTs,
-    delaySeconds:0,holdingSeconds:H,
+    delaySeconds:lead,holdingSeconds:H,
     asset:String(settings.asset||'UNKNOWN').toUpperCase(),
     engineId:String(settings.engine||'automatic')});
  }
  const engineId=String(settings.engine||'automatic');
+ const noise=observedNoise({quotes,now,horizonSeconds:H});
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(forecastModel)){
   const learned=adaptiveDirectTrajectory({quoteHistory:quotes,asOf:now,
-   entryDelaySeconds:0,holdingSeconds:H,historicalQuoteGapMs:2500});
+   entryDelaySeconds:lead,holdingSeconds:H,historicalQuoteGapMs:2500});
   if(learned.status==='adaptive-direct-trajectory'){
    const check=coherentInterval({entryPrice:learned.projectedEntryPrice,
-    exitPrice:learned.projectedExitPrice,side:learned.side,
-    noise:observedNoise({quotes,now,horizonSeconds:H})});
+    exitPrice:learned.projectedExitPrice,side:learned.side,noise});
    return check.qualified?learned:{...learned,side:null,status:check.reason};
   }
  }
- const estimated=singleEngineForecast({settings:{...settings,forecastMode:'continuous'},
-   snap,now,forecastModel:engineId==='automatic'?'original-67':forecastModel,
-   adaptiveHistory:quotes});
- const receipt=estimated.receipt;
- if(!receipt)return {side:null,status:'no-directional-evidence'};
- const noise=observedNoise({quotes,now,horizonSeconds:H});
- const checked=coherentInterval({entryPrice:receipt.referencePrice,
-   exitPrice:receipt.projectedPrice,side:receipt.side,noise});
- return {...checked,side:checked.qualified?receipt.side:null,
-  projectedEntryPrice:receipt.referencePrice,
-  projectedExitPrice:receipt.projectedPrice};
+ // Fallback and specialists use their OWN selected motor at both actual
+ // timestamps. Never substitute the direction of the current candle.
+ const forecastAt=seconds=>{
+   if(seconds===0)return {projectedPrice:Number(snap.price),issuedAt:now};
+   const model=singleEngineForecast({settings:{...settings,
+     forecastMode:'continuous',orderDurationMs:seconds*1000},snap,now,
+     forecastModel:engineId==='automatic'?'original-67':forecastModel,
+     adaptiveHistory:quotes});
+   return model.receipt;
+ };
+ const first=forecastAt(lead),last=forecastAt(lead+H);
+ const check=coherentInterval({entryPrice:first?.projectedPrice,
+   exitPrice:last?.projectedPrice,noise});
+ return {...check,side:check.qualified?check.side:null,
+  projectedEntryPrice:Number(first?.projectedPrice)||null,
+  projectedExitPrice:Number(last?.projectedPrice)||null};
 }
