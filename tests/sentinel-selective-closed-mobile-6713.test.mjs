@@ -91,7 +91,7 @@ test('mobile quote is published before expensive selected forecast without fakin
 
 test('forecast deadline keeps original direction briefly',()=>{
  const code=fs.readFileSync('sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
- assert.ok(code.includes('const planned=sameEntry?oldEntry:newEntryValid?currentEntry:null'));
+ assert.ok(code.includes('const nextWindow=evolveOpportunity'));
  const view=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.ok(!view.includes('HORÁRIO PREVISTO ATINGIDO'));
 });
