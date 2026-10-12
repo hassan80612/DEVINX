@@ -40,9 +40,9 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  // Historical windows are descriptive FEATURES, never permission gates.
  // Timeframe is an input to the FEATURES and the future TARGET. No shared
  // fixed "5s vs 1m" model, 30s candle proxy or UI-only timer conversion.
- const recentLag=clamp(Math.round(6+h*.7),8,150);
- const middleLag=clamp(Math.round(20+h*1.6),recentLag+12,600);
- const longLag=clamp(Math.round(35+h*3.6),middleLag+20,1200);
+ const recentLag=clamp(Math.round(6+h*.3),8,90);
+ const middleLag=clamp(Math.round(15+h*.65),recentLag+10,300);
+ const longLag=clamp(Math.round(30+h*1.3),middleLag+15,600);
  const lag=[recentLag,middleLag,longLag],oldest=rows[0].ts;
  // Historical sigma is cached once, not re-scanned for hundreds of
  // examples on each market update. Remove future-arrival contamination by
@@ -94,11 +94,11 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  };
  const live=features(anchor);
  if(!live)return blank('insufficient-observations');
- const stride=Math.max(5,Math.min(30,Math.round(h/3)));
+ const stride=Math.max(3,Math.min(18,Math.round(h/5)));
  const historic=[];
  // Every example must have FINISHED both entry and expiry before the
  // current anchor. A missing or interrupted quote is never backfilled.
- for(let t=anchor-(h+hold)*1000;t>=oldest+longLag*2000&&historic.length<240;
+ for(let t=anchor-(h+hold)*1000;t>=oldest+Math.max(longLag,middleLag*2)*1000&&historic.length<240;
   t-=stride*1000){
   const x=features(t),entry=lookup(t+h*1000),exit=lookup(t+(h+hold)*1000);
   if(!x||!entry||!exit)continue;
