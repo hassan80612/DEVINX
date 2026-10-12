@@ -41,7 +41,7 @@ test('frontend clears the reached forecast and blocks stale remote settings snap
  const card=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  const page=fs.readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
  assert.match(card,/const expired=pinned&&now-plannedAt>3000/);
- assert.match(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
+ assert.doesNotMatch(card,/PREVISÃO ENCERRADA · AGUARDANDO NOVA/);
  assert.match(card,/entryPlanDisplayable=entryPlanValid&&plannedAt\+3000>now/);
  assert.match(card,/Aguardando cotação atual/);
  assert.match(page,/const pendingSettingsRef=useRef/);
