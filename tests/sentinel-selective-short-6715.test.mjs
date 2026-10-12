@@ -58,7 +58,7 @@ test('forming current candle cannot invert a completed 10s selective prediction'
 test('the mobile 0:00 receipt is dismissed in under one second, and normal layout is unchanged',()=>{
  const c=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  const engine=fs.readFileSync('sentinel-trading-lab/agent/src/core/runtime.mjs','utf8');
- assert.match(c,/const expired=pinned&&now>=plannedAt&&!currentMoment/);
+ assert.match(c,/const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt/);
  assert.match(c,/entryPlanDisplayable=entryPlanValid&&\(plannedAt>now\|\|entryMoment\)/);
  assert.match(engine,/const nextWindow=evolveOpportunity/);
  assert.match(c,/forecastMode!=='selective'&&<details className="vnextForecastDetails"/);
