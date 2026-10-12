@@ -6,8 +6,8 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.67.9';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.9.exe?v=reconnect-selective-1012`;
+const AVAILABLE_AGENT_VERSION='13.4.67.10';
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.10.exe?v=selective-mobile-1012`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
@@ -152,7 +152,9 @@ export default function Page(){
         if(!previous||String(previous.liveTopic||'')!==topic)return previous;
         // Ignore out-of-order events across remote status snapshots.
         const prevPriceAt=Number(previous.liveBroker?.lastQuoteAt||0);
-        if(Number(payload.liveBroker?.lastQuoteAt||0)<prevPriceAt-250)return previous;
+        // An updated strategy evaluation may use a quote older than a concurrent
+        // full-status response. Accept that evaluation, but never rewind price.
+        const olderQuote=Number(payload.liveBroker?.lastQuoteAt||0)<prevPriceAt-250;
         const prevEval=Number(previous.lastEvalMs||0),nextEval=Number(payload.lastEvalMs||0);
         if(nextEval<prevEval)return previous;
         // Only an accepted, current frame keeps the fast channel healthy.
@@ -173,8 +175,8 @@ export default function Page(){
             ...(previous.lastResult||{}),...payload.lastResult,
             analysis:{...(previous.lastResult?.analysis||{}),...(payload.lastResult?.analysis||{})}
           },
-          liveBroker:{...(previous.liveBroker||{}),...payload.liveBroker},
-          feed:{...(previous.feed||{}),...payload.feed},
+          liveBroker:olderQuote?previous.liveBroker:{...(previous.liveBroker||{}),...payload.liveBroker},
+          feed:olderQuote?previous.feed:{...(previous.feed||{}),...payload.feed},
           // Both values are derived from the signed frame. No extra API or
           // Supabase writes; distinguish an old PC quote from a delayed socket.
           liveQuoteAgeAtFrame:Number(payload.liveBroker?.lastQuoteAt)>0?

@@ -1,5 +1,5 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
-import {selectiveIntervalForecast,qualifyStrategyInterval} from './selective-forward-model.mjs';
+import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
@@ -92,5 +92,7 @@ export function futureEntrySchedule(input={}){
  const settings=legacy?{...input.settings,engine:'automatic',forecastMode:'selective'}:input.settings||{};
  const continuous=continuousFutureEntrySchedule({...input,settings:{...settings,forecastMode:'continuous'}});
  if(settings.forecastMode!=='selective')return continuous;
- return continuous.map(forecast=>qualifyStrategyInterval({forecast,quoteHistory:input.adaptiveHistory||input.snap?.quoteHistory||[],asOf:input.now??Date.now()}));
+ const asOf=input.now??Date.now();
+ const evidence=selectiveEvidence({quoteHistory:input.adaptiveHistory||input.snap?.quoteHistory||[],asOf});
+ return continuous.map(forecast=>qualifyStrategyInterval({forecast,asOf,evidence}));
 }

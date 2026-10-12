@@ -61,7 +61,7 @@ const remoteRelay=new SentinelRemoteRelay({version:VERSION});await remoteRelay.i
 // reveal it. No Supabase database record is written per live quotation.
 const liveTopic='realtime:sentinel-'+randomBytes(24).toString('hex');
 const liveSignatureKey=randomBytes(32).toString('hex');
-const liveBridge=new SignedLiveBridge(liveTopic,liveSignatureKey);
+const liveBridge=new SignedLiveBridge(liveTopic,liveSignatureKey,{onViewer:()=>{void publishLiveFrame()}});
 liveBridge.start();
 let livePublishBusy=false,lastLiveSentDecisionKey='';
 async function publishLiveFrame(){
@@ -92,7 +92,7 @@ async function publishLiveFrame(){
       settings:runtime.settings,lastEvalMs:runtime.lastEvalMs,
       lastResult:runtime.lastResult
     };
-    if(liveBridge.publish(analystSnapshot(snapshot,chosen.m)))
+    if(liveBridge.publish(analystSnapshot(snapshot,chosen.m),{urgent}))
       lastLiveSentDecisionKey=decisionKey;
   }catch{}finally{livePublishBusy=false}
 }
