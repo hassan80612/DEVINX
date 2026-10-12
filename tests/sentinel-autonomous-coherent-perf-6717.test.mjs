@@ -84,6 +84,6 @@ test('all clocks share the original Agent deadline, no client deadline padding',
  const pc=fs.readFileSync('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
  const mobile=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.match(rt,/const nextWindow=evolveOpportunity/);
- assert.match(pc,/const entryPlanActive=entryPlanReady&&\(scheduledAt>Date.now\(\)\|\|entryMoment\)/);
- assert.match(mobile,/const expired=pinned&&now>=plannedAt&&!currentMoment/);
+ assert.match(pc,/const entryPlanActive=entryPlanReady&&windowRunning/);
+ assert.match(mobile,/const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt/);
 });
