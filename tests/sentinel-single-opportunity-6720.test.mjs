@@ -21,13 +21,14 @@ test('CALL opens exactly one immutable 30s window; PUT or competing entry time c
  assert.equal(same.side,'CALL');
  assert.equal(same.entryAt,now+14000);
  assert.equal(same.exitAt,now+44000);
- const cancelled=evolve(same,candidate('PUT',3),now+2000);
- assert.equal(cancelled.phase,'cancelled');
- assert.equal(cancelled.side,null);
- const noRearm=evolve(cancelled,candidate('PUT'),now+2500);
- assert.equal(noRearm.phase,'cancelled');
+ const unchanged=evolve(same,candidate('PUT',3),now+2000);
+ assert.equal(unchanged.phase,'open');
+ assert.equal(unchanged.side,'CALL');
+ const noRearm=evolve(unchanged,candidate('PUT'),now+2500);
+ assert.equal(noRearm.phase,'open');
+ assert.equal(noRearm.side,'CALL');
  assert.equal(noRearm.windowEndsAt,now+30000);
- const newWindow=evolve(cancelled,{...candidate('PUT'),issuedAt:now+31000,
+ const newWindow=evolve(noRearm,{...candidate('PUT'),issuedAt:now+31000,
   entryAt:now+34000,exitAt:now+64000},now+31000);
  assert.equal(newWindow.phase,'open');
  assert.equal(newWindow.side,'PUT');
@@ -45,26 +46,39 @@ test('when entry time arrives, a new quote and matching forward outcome can fire
  assert.equal(again.phase,'fired');
  assert.equal(again.entryReadyNow,false);
  assert.equal(again.entryTriggeredAt,now+14100);
- assert.equal(again.entryAt,now+14000);
+ assert.equal(again.entryAt,now+14100);
+ assert.equal(again.exitAt,now+44100);
 });
-test('expired confirmation and opposite outcome CANCEL, never issue an entry',()=>{
+test('opposite predictions, missed target and stale quotes never flip or restart a running window',()=>{
  const first=evolve(null,candidate('CALL'),now);
  const wrong=evolve(first,null,now+14020,
   {side:'PUT',projectedEntryPrice:1.1,projectedExitPrice:1.09});
- assert.equal(wrong.phase,'cancelled');
- assert.equal(wrong.side,null);
- assert.equal(evolve(wrong,candidate('CALL'),now+15000).phase,'cancelled');
- const missed=evolve(first,candidate('CALL'),now+16000,
-  {side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11});
- assert.equal(missed.phase,'cancelled');
- assert.equal(missed.reason,'entry-missed');
+ assert.equal(wrong.phase,'open');
+ assert.equal(wrong.side,'CALL');
+ const missed=evolve(wrong,candidate('PUT'),now+16000,
+  {side:null,projectedEntryPrice:1.1,projectedExitPrice:1.1});
+ assert.equal(missed.phase,'open');
+ assert.equal(missed.windowEndsAt,now+30000);
+ const stale=evolve(missed,candidate('PUT'),now+19000,null,now+100);
+ assert.equal(stale.phase,'open');
+ assert.equal(stale.side,'CALL');
+ const expired=evolve(stale,null,now+30500,null,now+100);
+ assert.equal(expired.phase,'scanning');
+ assert.equal(expired.side,null);
+ assert.equal(expired.windowStartedAt,now+30000);
+ assert.equal(expired.windowEndsAt,now+60000);
 });
-test('stale quotes cancel an existing signal without starting an opposite one',()=>{
- const first=evolve(null,candidate('CALL'),now);
- const cancelled=evolve(first,candidate('PUT'),now+5000,null,now+100);
- assert.equal(cancelled.phase,'cancelled');
- assert.equal(cancelled.reason,'feed-stale');
- assert.equal(evolve(null,candidate('CALL'),now+5000,null,now+100),null);
+test('even without any prediction, the same 30-second countdown runs uninterrupted',()=>{
+ const opened=evolve(null,null,now);
+ assert.equal(opened.phase,'scanning');
+ assert.equal(opened.windowEndsAt,now+30000);
+ const next=evolve(opened,null,now+27000);
+ assert.equal(next.windowStartedAt,now);
+ assert.equal(next.windowEndsAt,now+30000);
+ const after=evolve(next,null,now+30010);
+ assert.equal(after.phase,'scanning');
+ assert.equal(after.windowStartedAt,now+30000);
+ assert.equal(after.windowEndsAt,now+60000);
 });
 test('mode and duration are part of independent window identities',()=>{
  const first=evolve(null,candidate('CALL'),now);
@@ -96,9 +110,12 @@ test('PC and mobile have explicit terminal phase and realtime fire event; runtim
  assert.match(rt,/windowOutcomes:/);
  assert.match(live,/opportunityWindow\.phase/);
  assert.match(worker,/mobileEntry\?\.phase/);
- assert.match(pc,/JANELA CANCELADA/);
- assert.match(mobile,/JANELA CANCELADA/);
+ assert.match(pc,/JANELA SEM ENTRADA/);
+ assert.match(pc,/data-deadline="\$\{windowDeadline\}"/);
+ assert.match(mobile,/JANELA SEM ENTRADA/);
+ assert.match(mobile,/TEMPO RESTANTE DA JANELA/);
  const runtime=new DemoTradingRuntime({enableVNext:true});
+ runtime.patchSettings({orderDurationMs:30000});
  runtime.vnextWindowState=evolve(null,candidate('CALL'),now);
  runtime.patchSettings({orderDurationMs:60000});
  assert.equal(runtime.vnextWindowState,null);
