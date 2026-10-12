@@ -88,7 +88,7 @@ export default function Page(){
     // use an 8s fallback rather than a flood of duplicate requests.
     const lastCloudPollAge=Date.now()-remotePolledAt.current;
     const streaming=Date.now()-liveFrameAt.current<8000;
-    if(remotePolledAt.current>0&&lastCloudPollAge<(streaming?45000:8000))return;
+    if(remotePolledAt.current>0&&lastCloudPollAge<(streaming?45000:6000))return;
     if(refreshBusy.current)return;refreshBusy.current=true;
     try{
       const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -148,7 +148,6 @@ export default function Page(){
     const key=source==='remote'?String(s?.liveSignatureKey||''):'';
     if(!/^realtime:sentinel-[0-9a-f]{48}$/.test(topic)||!/^[0-9a-f]{64}$/.test(key))return;
     return watchSignedLiveAnalyst(topic,key,payload=>{
-      liveFrameAt.current=Date.now();
       setS((previous:Status|null)=>{
         if(!previous||String(previous.liveTopic||'')!==topic)return previous;
         // Ignore out-of-order events across remote status snapshots.
@@ -156,6 +155,9 @@ export default function Page(){
         if(Number(payload.liveBroker?.lastQuoteAt||0)<prevPriceAt-250)return previous;
         const prevEval=Number(previous.lastEvalMs||0),nextEval=Number(payload.lastEvalMs||0);
         if(nextEval<prevEval)return previous;
+        // Only an accepted, current frame keeps the fast channel healthy.
+        // Obsolete frames must not suppress the authenticated status fallback.
+        liveFrameAt.current=Date.now();
         return {...previous,
           state:payload.state,
           killSwitch:payload.killSwitch,masterFrozen:payload.masterFrozen,
