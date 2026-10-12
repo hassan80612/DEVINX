@@ -34,12 +34,14 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  const validWindow=windowStartedAt>0&&period>=5000&&period<=3600000&&now>=windowStartedAt;
  const cycle=validWindow?Math.max(0,Math.floor((now-windowStartedAt)/period)):0;
  const awaitingNextFrame=validWindow&&cycle>0;
- const recentStream=liveFrameAt>0&&now>=liveFrameAt&&now-liveFrameAt<3000;
- // A bounded handoff only: do not invent repeated windows if the Agent
- // becomes stuck while the socket continues sending old snapshots.
- const bridgeRollover=awaitingNextFrame&&cycle===1&&
-  now>=windowEndsAt&&now-windowEndsAt<3000&&recentStream;
- const running=validWindow&&(!awaitingNextFrame||bridgeRollover);
+ // The Agent fixes the ORIGINAL start/deadline and the cycle length.
+ // Carry only the numeric countdown through one network handoff; a slow
+ // Broadcast must never make the phone begin a 30s PC cycle at 25s.
+ // Never infer CALL/PUT or a confirmed entry during that handoff.
+ const streamingRecent=liveFrameAt>0&&now>=liveFrameAt&&now-liveFrameAt<12000;
+ const syncedRollover=awaitingNextFrame&&cycle===1&&streamingRecent&&
+  now-windowEndsAt<12000;
+ const running=validWindow&&(!awaitingNextFrame||syncedRollover);
  const displayedEnd=validWindow?windowEndsAt+cycle*period:0;
  // Match the PC overlay: a confirmed Agent timestamp and recent broker
  // quote, not the transient entryReadyNow latch from one evaluation.
@@ -50,7 +52,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  const countdown=seconds==null?'—:—':
   String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
  const direction=moment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
-  awaitingNextFrame?(bridgeRollover?'NOVA JANELA · AGUARDANDO LEITURA':'SINCRONIZANDO COM O PC'):
+  awaitingNextFrame?(syncedRollover?'NOVA JANELA · AGUARDANDO LEITURA':'SINCRONIZANDO COM O PC'):
   phase==='cancelled'?'JANELA SEM ENTRADA':
   phase==='fired'?'ENTRADA JÁ SINALIZADA':
   phase==='open'&&side?(side==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA':
