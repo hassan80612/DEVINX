@@ -1,46 +1,162 @@
-import {automaticForwardPrediction} from './automatic-forward-model.mjs';
+// Seletiva: search OBSERVED, completed outcomes for similar earlier
+// market states. Entirely independent of the selected strategy, the live
+// candle's direction and the automatic trend extrapolator.
+// All forecasts are informational; neither confidence nor outcomes here
+// represent broker win rates or permission for an order.
+const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+const valid=n=>Number.isFinite(Number(n))&&Number(n)>0;
+const round=n=>Number(n.toPrecision(12));
 
-// Independent interval estimate: compare the predicted price at the actual
-// future ENTRY with the predicted price at its actual EXIT. No strategy votes,
-// fixed candle-count gate or invented observations. Never authorizes a trade.
 export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySeconds=30,
  holdingSeconds=delaySeconds,quoteTs=0,asset='UNKNOWN',engineId='automatic'}={}){
  const h=Number(delaySeconds),hold=Number(holdingSeconds),at=Number(quoteTs);
- const blank=(status)=>({engineId,asset,delaySeconds:h,holdingSeconds:hold,issuedAt:now,
+ const blank=status=>({engineId,asset,delaySeconds:h,holdingSeconds:hold,issuedAt:now,
   entryAt:now+h*1000,exitAt:now+(h+hold)*1000,side:null,
   projectedEntryPrice:null,projectedExitPrice:null,status,
-  forecastOwner:'selective-autonomous-v1',actionable:false,calibrated:false});
- if(!(Number.isInteger(h)&&h>=1&&h<=3600&&Number.isInteger(hold)&&hold>=1&&hold<=3600))
-   return blank('invalid-interval');
+  forecastOwner:'selective-historical-outcomes-v2',actionable:false,calibrated:false});
+ if(!Number.isInteger(h)||h<1||h>3600||!Number.isInteger(hold)||hold<1||hold>3600)
+  return blank('invalid-interval');
  if(!(at>0&&at<=now&&now-at<=2500))return blank('waiting-fresh-quote');
- const recent=quoteHistory.filter(q=>Number(q?.ts)<=now&&Number(q?.receivedAt??q?.ts)<=now&&
-  Number(q?.price)>0&&Number.isFinite(Number(q?.ts))).sort((a,b)=>a.ts-b.ts);
- const latest=recent.at(-1);
- if(!latest||now-Number(latest.ts)>2500)return blank('waiting-fresh-quote');
- // A small but genuine observation window is enough to start. It is not a
- // count of three fully closed bars; longer history remains available.
- const observed=recent.filter(q=>Number(q.ts)>=now-180000);
- if(observed.length<8||Number(latest.ts)-Number(observed[0].ts)<15000)
-   return blank('insufficient-observations');
- let sum=0,duration=0;
- for(let i=1;i<observed.length;i++){
-  const dt=(Number(observed[i].ts)-Number(observed[i-1].ts))/1000;
-  if(dt<=0||dt>8)continue;
-  const move=Math.log(Number(observed[i].price)/Number(observed[i-1].price));
-  sum+=move*move;duration+=dt;
+ const unique=new Map();
+ for(const q of quoteHistory){
+  const ts=Number(q?.ts),p=Number(q?.price),received=Number(q?.receivedAt??q?.ts);
+  if(!Number.isFinite(ts)||!valid(p)||ts>now||received>now||!Number.isFinite(received))continue;
+  const earlier=unique.get(ts);
+  if(!earlier||received<earlier.receivedAt)unique.set(ts,{ts,p,receivedAt:received});
  }
- if(duration<12||sum<=0)return blank('insufficient-volatility');
- const sigma=Math.sqrt(sum/duration);
- const entry=automaticForwardPrediction({quoteHistory:observed,asOf:now,selectedSeconds:h});
- const exit=automaticForwardPrediction({quoteHistory:observed,asOf:now,selectedSeconds:h+hold});
- const p1=Number(entry?.prediction?.projectedPrice),p2=Number(exit?.prediction?.projectedPrice);
- if(!(p1>0&&p2>0))return blank('insufficient-projection');
- const change=Math.log(p2/p1),noise=sigma*Math.sqrt(hold);
- // Modest noise floor, not a simulated confidence / hit-rate. This avoids
- // filling the card with directions smaller than typical observed variation.
- const minMove=Math.max(1e-12,noise*.2);
- const side=change>=minMove?'CALL':change<=-minMove?'PUT':null;
- return {...blank(side?'forecast':'low-directional-edge'),side,
-  projectedEntryPrice:p1,projectedExitPrice:p2,
-  evidenceSeconds:duration,signalToNoise:Math.abs(change)/Math.max(noise,1e-12)};
+ const rows=[...unique.values()].sort((a,b)=>a.ts-b.ts);
+ if(rows.length<12||now-rows.at(-1).ts>2500)return blank('waiting-fresh-quote');
+ // A decision is anchored to the last completed observation interval.
+ // The CURRENT partially forming bar/tick cannot flip it in milliseconds.
+ const grid=h<=15?10000:h<=120?15000:30000;
+ const anchor=Math.floor(now/grid)*grid;
+ const lookup=t=>{
+  let lo=0,hi=rows.length-1,i=-1;
+  while(lo<=hi){const m=(lo+hi)>>1;if(rows[m].ts<=t){i=m;lo=m+1;}else hi=m-1;}
+  return i>=0&&t-rows[i].ts<=8000?rows[i].p:null;
+ };
+ const last=lookup(anchor);
+ if(!last)return blank('waiting-completed-observation');
+ // Historical windows are descriptive FEATURES, never permission gates.
+ const recentLag=h<=15?10:h<=120?15:30;
+ const middleLag=h<=15?30:h<=120?45:90;
+ const longLag=h<=15?60:h<=120?90:180;
+ const lag=[recentLag,middleLag,longLag],oldest=rows[0].ts;
+ const volatility=t=>{
+  let begin=0,end=rows.length-1;
+  while(begin<rows.length&&rows[begin].ts<t-120000)begin++;
+  let sum=0,span=0,past=null;
+  for(let i=begin;i<rows.length&&rows[i].ts<=t;i++){
+   const q=rows[i];
+   if(past){const dt=(q.ts-past.ts)/1000;
+    if(dt>0&&dt<=8){sum+=Math.log(q.p/past.p)**2;span+=dt;}
+   }
+   past=q;
+  }
+  return span>=12&&sum>0?Math.sqrt(sum/span):null;
+ };
+ const features=t=>{
+  const p=lookup(t),sigma=volatility(t);
+  if(!p||!sigma)return null;
+  const before=lag.map(l=>lookup(t-l*1000));
+  const prior=lookup(t-middleLag*2000);
+  if(before.some(x=>!x)||!prior)return null;
+  const logp=Math.log(p),moves=before.map((x,i)=>
+    clamp(Math.log(p/x)/(sigma*Math.sqrt(lag[i])),-5,5));
+  const acceleration=clamp((logp-2*Math.log(before[1])+Math.log(prior))/
+    (sigma*Math.sqrt(middleLag*2)),-5,5);
+  // Normalized position in the previous short range, a reversal/exhaustion
+  // feature. No future observations or selected-strategy inputs.
+  return {p,sigma,vector:[...moves,acceleration]};
+ };
+ const live=features(anchor);
+ if(!live)return blank('insufficient-observations');
+ const stride=Math.max(5,Math.min(30,Math.round(h/3)));
+ const historic=[];
+ // Every example must have FINISHED both entry and expiry before the
+ // current anchor. A missing or interrupted quote is never backfilled.
+ for(let t=anchor-(h+hold)*1000;t>=oldest+longLag*2000&&historic.length<240;
+  t-=stride*1000){
+  const x=features(t),entry=lookup(t+h*1000),exit=lookup(t+(h+hold)*1000);
+  if(!x||!entry||!exit)continue;
+  const scaled=x.sigma*Math.sqrt(hold);
+  if(!(scaled>0))continue;
+  historic.push({at:t,vector:x.vector,
+   entryMove:Math.log(entry/x.p)/scaled,
+   exitMove:Math.log(exit/x.p)/scaled,
+   paired:(Math.log(exit/entry))/scaled});
+ }
+ if(historic.length<12)return blank('insufficient-completed-outcomes');
+ const weights=[1.0,1.1,1.0,.65];
+ const select=(query,pool)=>{
+  const matches=pool.map(e=>{
+   let distance=0;
+   for(let i=0;i<weights.length;i++)
+    distance+=weights[i]*(query.vector[i]-e.vector[i])**2;
+   return {...e,distance};
+  }).filter(x=>x.distance<=4).sort((a,b)=>a.distance-b.distance)
+   .slice(0,Math.min(13,Math.max(7,Math.ceil(pool.length*.15))));
+  if(matches.length<7)return null;
+  let w=0,up=0,mEntry=0,mExit=0,mPair=0,variance=0;
+  for(const m of matches){
+   const wt=1/(.5+m.distance);
+   w+=wt;if(m.paired>0)up+=wt;
+   mEntry+=wt*m.entryMove;mExit+=wt*m.exitMove;mPair+=wt*m.paired;
+  }
+  const mean=mPair/w,callShare=up/w;
+  for(const m of matches){
+   const wt=1/(.5+m.distance);
+   variance+=wt*(m.paired-mean)**2;
+  }
+  const side=mean>0?'CALL':mean<0?'PUT':null;
+  return {side,mean,callShare,agreement:side==='CALL'?callShare:1-callShare,
+   dispersion:Math.sqrt(variance/w),entry:mEntry/w,exit:mExit/w,
+   examples:matches.length};
+ };
+ const projection=select(live,historic);
+ if(!projection)return blank('no-comparable-historical-pattern');
+ const base=historic.filter(x=>x.paired!==0);
+ const baseCall=base.filter(x=>x.paired>0).length/Math.max(1,base.length);
+ const baseAgreement=projection.side==='CALL'?baseCall:1-baseCall;
+ // A majority alone is NOT evidence: require historical pattern strength,
+ // plus either clear uplift versus unconditional drift or a strong edge.
+ const support=projection.agreement>=.68;
+ const lift=projection.agreement-baseAgreement;
+ const effect=Math.abs(projection.mean);
+ const robust=effect>=.24&&effect>=projection.dispersion*.25;
+ const specific=lift>=.06||(projection.agreement>=.79&&effect>=.55);
+ // Chronological shadow validation, when enough completed cases exist.
+ // Does not read broker settlement and never claims a calibrated win rate.
+ let tested=0,hits=0;
+ if(historic.length>=35){
+  const order=historic.slice().reverse(),split=Math.floor(order.length*.76);
+  for(let i=split;i<order.length;i++){
+   const example=order[i];
+   const past=order.slice(0,i).filter(x=>x.at+(h+hold)*1000<=example.at);
+   if(past.length<12)continue;
+   const predicted=select(example,past);
+   if(!predicted||predicted.agreement<.68)continue;
+   tested++;
+   if((predicted.side==='CALL'&&example.paired>0)||
+      (predicted.side==='PUT'&&example.paired<0))hits++;
+  }
+ }
+ // Do not learn permission from a demonstrably losing held-out period.
+ const validated=tested<6||hits/tested>=.46;
+ const accepted=support&&robust&&specific&&validated;
+ const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
+  historicalExamples:historic.length,similarExamples:projection.examples,
+  historicalAgreement:projection.agreement,validationExamples:tested,
+  validationCorrect:hits,scenarioAt:anchor};
+ if(!accepted)return result;
+ const scale=live.sigma*Math.sqrt(hold);
+ // Entry and expiry have separate historical outcome labels. Project their
+ // levels from the same completed anchor, then verify the paired sign.
+ const projectedEntryPrice=round(live.p*Math.exp(projection.entry*scale));
+ const projectedExitPrice=round(live.p*Math.exp(projection.exit*scale));
+ const diff=Math.log(projectedExitPrice/projectedEntryPrice);
+ if(!(Math.abs(diff)>scale*.18)||Math.sign(diff)!==Math.sign(projection.mean))
+  return {...result,status:'incoherent-conditional-path'};
+ return {...result,status:'forecast',side:diff>0?'CALL':'PUT',
+  projectedEntryPrice,projectedExitPrice};
 }
