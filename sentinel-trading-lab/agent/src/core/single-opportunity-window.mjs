@@ -22,7 +22,8 @@ export function evolveOpportunity({
   if(!fresh)return {...old,phase:'cancelled',reason:'feed-stale',
    cancelledAt:now,side:null,entryReadyNow:false};
   if(now<old.entryAt){
-   if(isSide(candidate?.side)&&candidate.side!==old.side)
+   if((isSide(candidate?.side)&&candidate.side!==old.side)||
+      (isSide(confirmation?.side)&&confirmation.side!==old.side))
     return {...old,phase:'cancelled',reason:'reversal-before-entry',
      cancelledAt:now,side:null,entryReadyNow:false};
    return {...old,entryReadyNow:false};
