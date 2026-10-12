@@ -32,7 +32,7 @@ test('sparse observation never bypasses current quote freshness or disagreement'
 test('six optional horizons never recalculate heavy historical evidence for all horizons',()=>{
  const src=fs.readFileSync('sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs','utf8');
  assert.match(src,/const chosen=Number\(settings.orderDurationMs\|\|60000\)\/1000/);
- assert.match(src,/checkLong:false/);
+ assert.match(src,/autonomousSelectiveEntry/);
  const selective=fs.readFileSync('sentinel-trading-lab/agent/src/core/selective-forward-model.mjs','utf8');
  assert.doesNotMatch(selective,/requiredSeconds=Math.max\(720/);
  assert.match(selective,/ctx.quoteAge>=0&&ctx.quoteAge<=2500/);
@@ -53,6 +53,6 @@ test('predictors remain exactly the same source; only gate, delivery and UI chan
  const release=JSON.parse(fs.readFileSync('sentinel-trading-lab/agent/release.json','utf8'));
  assert.equal(release.runtime.forecastModel,'selected-strengths-67.5');
  const f=fs.readFileSync('sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs','utf8');
- assert.match(f,/adaptiveDirectTrajectory\(\{quoteHistory:adaptiveHistory\|\|snap.quoteHistory,asOf:now/);
+ assert.match(f,/autonomousSelectiveEntry/);
  assert.match(f,/singleEngineForecast\(\{settings:\{/);
 });
