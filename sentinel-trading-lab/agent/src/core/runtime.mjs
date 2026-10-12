@@ -915,11 +915,19 @@ export class DemoTradingRuntime{
         oldEntry.asset===currentEntry.asset&&
         oldEntry.delaySeconds===currentEntry.delaySeconds&&
         Number(oldEntry.entryAt)>now;
-      // At the EXACT expiry, move to a NEW observed forecast or clear it.
-      // No "time reached" receipt may pin the next countdown or cause a
-      // newly calculated forecast to appear already several seconds late.
-      // A currently active forecast remains immutable until that expiry.
-      const entryAnchor=sameEntry?oldEntry:currentEntry?.side?currentEntry:null;
+      // The matrix may legitimately reuse its last result while the market
+      // quote is unchanged. Never promote an already expired cached row into
+      // a new "active" entry after the previous deadline has passed.
+      const freshQuote=Number(snap.quoteTs)>0&&now>=Number(snap.quoteTs)&&
+        now-Number(snap.quoteTs)<=2500;
+      const newEntryValid=freshQuote&&currentEntry&&
+        ['CALL','PUT'].includes(currentEntry.side)&&
+        Number(currentEntry.issuedAt)>0&&Number(currentEntry.issuedAt)<=now&&
+        Number(currentEntry.entryAt)>now&&
+        Number(currentEntry.entryAt)>Number(currentEntry.issuedAt);
+      // The current receipt remains immutable up to its target. At expiry
+      // switch to a genuinely new prediction or clear both displays.
+      const entryAnchor=sameEntry?oldEntry:newEntryValid?currentEntry:null;
       this.vnextFutureEntryAnchor=entryAnchor;
       const horizonAudit=progressHorizonAudit({
         previous:this.vnextHorizonAudit||null,forecastRows:matrix.rows,
