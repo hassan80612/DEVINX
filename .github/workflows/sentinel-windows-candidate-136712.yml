@@ -20,6 +20,7 @@ on:
       - 'tests/sentinel-perf-mobile-673.test.mjs'
       - 'tests/sentinel-mobile-clock-674.test.mjs'
       - 'tests/sentinel-selective-root-clock-6712.test.mjs'
+      - 'tests/sentinel-reconnect-selective-679.test.mjs'
       - 'tests/sentinel-v134672-adaptive-integration.test.mjs'
       - 'sentinel-trading-lab/agent-launcher.go'
       - 'sentinel-trading-lab/public/downloads/install-agent-v88.ps1'
