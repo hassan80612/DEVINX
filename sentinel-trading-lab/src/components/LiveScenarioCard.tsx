@@ -42,7 +42,7 @@ function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waiti
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
   const direction=!pinned?'SEM PREVISÃO DE ENTRADA':
     expired?'PREVISÃO ENCERRADA · AGUARDANDO NOVA':
-    entryReached?'HORÁRIO PREVISTO ATINGIDO':
+    entryReached?((side==='CALL'?'↑ CALL':'↓ PUT')+' · HORÁRIO ATINGIDO'):
     (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   return <>
     <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
@@ -240,7 +240,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     :undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid} waitingReason={selectiveWaitingReason}/>
+    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid&&(plannedAt>now||m.fresh)} waitingReason={selectiveWaitingReason}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
