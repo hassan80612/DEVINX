@@ -11,8 +11,8 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 // Dedicated local timer: it never waits for a WebSocket packet or forces
 // the full analyst card to recalculate on every countdown tick.
-function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waitingReason}:{
-  plannedAt:number,plannedExit:number,issuedAt:number,side:string|null,valid:boolean,waitingReason?:string
+function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waitingReason,readyNow}:{
+  plannedAt:number,plannedExit:number,issuedAt:number,side:string|null,valid:boolean,waitingReason?:string,readyNow?:boolean
 }){
   const[now,setNow]=useState(()=>Date.now());
   useEffect(()=>{
@@ -38,17 +38,19 @@ function MobileFutureEntryClock({plannedAt,plannedExit,issuedAt,side,valid,waiti
   // The PC owns issuedAt and entryAt; the phone NEVER restarts the deadline
   // or adds a presentation grace period. Once expired, the old forecast is
   // unavailable until the Agent produces a genuine new candidate.
-  const expired=pinned&&now>=plannedAt;
-  const countdownSeconds=pinned&&!expired?Math.max(1,Math.ceil((plannedAt-now)/1000)):null;
+  const currentMoment=!!(pinned&&readyNow&&now>=plannedAt&&now<=plannedAt+1500);
+  const expired=pinned&&now>=plannedAt&&!currentMoment;
+  const countdownSeconds=pinned&&!expired&&!currentMoment?Math.max(1,Math.ceil((plannedAt-now)/1000)):null;
   const entryCountdown=countdownSeconds===null?'—:—':
     String(Math.floor(countdownSeconds/60)).padStart(2,'0')+':'+String(countdownSeconds%60).padStart(2,'0');
-  const direction=!pinned||expired?'SEM PREVISÃO DE ENTRADA':
+  const direction=currentMoment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
+    !pinned||expired?'JANELA ABERTA · ANALISANDO':
     (side==='CALL'?'↑ CALL':'↓ PUT')+' PREVISTO';
   return <>
     <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
     <div className={'vnextTargetCountdown '+(expired?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-      <div><small>ATÉ POSSÍVEL ENTRADA</small><strong>{entryCountdown}</strong></div>
-      <div><small>ENTRADA PREVISTA</small><b>{pinned&&!expired?clock(plannedAt):'—'}</b><span>{!expired&&pinned?'Vencimento estimado '+clock(plannedExit):(waitingReason||'Aguardando cálculo futuro')}</span></div>
+      <div><small>{currentMoment?'MOMENTO CONFIRMADO':pinned?'ATÉ ENTRADA CALCULADA':'JANELA ABERTA'}</small><strong>{currentMoment?'AGORA':entryCountdown}</strong></div>
+      <div><small>ENTRADA PREVISTA</small><b>{pinned&&!expired?clock(plannedAt):'—'}</b><span>{!expired&&pinned?'Vencimento estimado '+clock(plannedExit):(waitingReason||'Procurando momento dentro do prazo')}</span></div>
     </div>
   </>;
 }
@@ -227,7 +229,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
     Number(futureEntry.delaySeconds)===Number(expirySeconds));
   const entryDataFresh=m.fresh;
-  const entryPlanDisplayable=entryPlanValid&&plannedAt>now;
+  const entryMoment=entryPlanValid&&futureEntry?.entryReadyNow===true&&now>=plannedAt&&now<=plannedAt+1500&&m.fresh;
+  const entryPlanDisplayable=entryPlanValid&&(plannedAt>now||entryMoment);
   // Classify the existing PC timestamp separately from mobile transport delay.
   // Only the Agent grants entry; these messages are diagnostics, not signals.
   // Selective customers see only an honest, concise pending state.
@@ -236,13 +239,13 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     (m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'):undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid} waitingReason={selectiveWaitingReason}/>
+    <MobileFutureEntryClock plannedAt={plannedAt} plannedExit={plannedExit} issuedAt={Number(futureEntry?.issuedAt||0)} side={futureEntry?.side||null} valid={entryPlanValid} readyNow={entryMoment} waitingReason={selectiveWaitingReason}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
     </div>
     <div className="vnextProjectionBias" aria-label="Cenário de entrada futura não confirmado">
-      <span>ENTRADA EM <b>{expiryLabel(Number(expirySeconds))}</b></span>
+      <span>JANELA <b>{expiryLabel(Number(expirySeconds))}</b></span><span>PONTO <b>{futureEntry?.entryOffsetSeconds!=null?futureEntry.entryOffsetSeconds+'s':entryPlanValid?Math.round((plannedAt-futureEntry.issuedAt)/1000)+'s':'—'}</b></span>
       <span>PERÍODO APÓS <b>{expiryLabel(Number(futureEntry?.holdingSeconds||expirySeconds))}</b></span>
     </div>
     {forecastMode!=='selective'&&<details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>Detalhes e qualidade da previsão</summary>
