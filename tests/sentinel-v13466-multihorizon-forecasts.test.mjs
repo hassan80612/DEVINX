@@ -94,7 +94,7 @@ test('PC and both mobile cards show one chosen expiry, prediction countdown and 
   ]);
   assert.match(pc,/data-sentinel-vnext-horizon-matrix/);
   assert.match(pc,/d\.vnext\?\.futureEntryRows/);
-  assert.match(pc,/ATÉ POSSÍVEL ENTRADA/);
+  assert.match(pc,/ATÉ ENTRADA CALCULADA|JANELA ABERTA/);
   assert.match(pc,/VENCIMENTO ESTIMADO/);
   assert.match(mobile,/ATÉ POSSÍVEL ENTRADA/);
   assert.match(mobile,/ENTRADA PREVISTA/);
