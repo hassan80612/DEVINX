@@ -43,8 +43,8 @@ test('mobile countdown advances locally, without triggering full card render for
  const card=await read('src/components/LiveScenarioCard.tsx');
  assert.match(card,/function MobileFutureEntryClock\(/);
  assert.match(card,/timer=setInterval\(update,200\)/);
- assert.match(card,/const countdownSeconds=pinned&&!expired&&!currentMoment\?Math\.max\(1,Math\.ceil\(\(plannedAt-now\)\/1000\)\):null/);
- assert.match(card,/<MobileFutureEntryClock plannedAt=\{plannedAt\}/);
+ assert.match(card,/const seconds=running\?Math\.max\(1,Math\.ceil\(\(windowEndsAt-now\)\/1000\)\):null/);
+ assert.match(card,/<MobileFutureEntryClock windowEndsAt=\{Number\(m\.vnextOpportunityWindow\?\.windowEndsAt\|\|0\)\}/);
  assert.equal((card.match(/data-testid="forecast-countdown-clock"/g)||[]).length,1);
  assert.equal((card.match(/\{forecastReceipt\}/g)||[]).length,2,'same forecast in standard and floating card');
  assert.match(card,/document\.visibilityState==='visible'/);
