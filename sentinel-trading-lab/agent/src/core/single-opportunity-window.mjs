@@ -27,38 +27,30 @@ export function evolveOpportunity({
      candidate.projectedExitPrice<candidate.projectedEntryPrice?'PUT':null)===candidate.side;
  if(old&&now<old.windowEndsAt){
   if(old.phase==='scanning'){
-   // Candidate must fit INSIDE the already-open fixed window; do not
-   // extend the window to the candidate's newly calculated deadline.
+   // A directional opportunity can be admitted once in this window.
+   // A new candidate can NEVER extend the already running countdown.
    if(validCandidate()&&Number(candidate.entryAt)<=old.windowEndsAt)
-    return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
+    return {...candidate,context:key,phase:'open',reason:'awaiting-entry',
      openedAt:old.windowStartedAt,windowStartedAt:old.windowStartedAt,
      windowEndsAt:old.windowEndsAt,entryReadyNow:false,entryTriggeredAt:null};
    return {...old,entryReadyNow:false};
   }
+  // No second CALL NOW, PUT NOW, or opposite-direction replacement, even
+  // if the continuous market analysis keeps changing underneath.
   if(old.phase!=='open')return {...old,entryReadyNow:false};
-  if(!fresh)return {...old,phase:'cancelled',reason:'feed-stale',
-   cancelledAt:now,side:null,entryReadyNow:false};
-  if(now<old.entryAt){
-   if((isSide(candidate?.side)&&candidate.side!==old.side)||
-      (isSide(confirmation?.side)&&confirmation.side!==old.side))
-    return {...old,phase:'cancelled',reason:'reversal-before-entry',
-     cancelledAt:now,side:null,entryReadyNow:false};
+  // Wait for a GENUINE fresh quote AT/AFTER the chosen moment. A failed
+  // confirmation does not restart, flip, or end the countdown.
+  if(!fresh||now<old.entryAt||Number(quoteAt)<old.entryAt)
    return {...old,entryReadyNow:false};
-  }
-  // No timer-only authorization. Require a NEW quote at the scheduled
-  // moment and a dedicated prediction of the NEXT holding interval.
-  if(now>old.entryAt+1500)return {...old,phase:'cancelled',
-    cancelledAt:now,reason:'entry-missed',side:null,entryReadyNow:false};
   const verified=confirmation?.side===old.side&&
-    Number(quoteAt)>=old.entryAt-1000&&
     Number(confirmation?.projectedEntryPrice)>0&&
     Number(confirmation?.projectedExitPrice)>0&&
     (confirmation.projectedExitPrice>confirmation.projectedEntryPrice?
       'CALL':confirmation.projectedExitPrice<confirmation.projectedEntryPrice?
       'PUT':null)===old.side;
-  if(!verified)return {...old,phase:'cancelled',cancelledAt:now,
-    reason:'entry-not-confirmed',side:null,entryReadyNow:false};
+  if(!verified)return {...old,entryReadyNow:false,reason:'looking-for-entry'};
   return {...old,phase:'fired',entryReadyNow:true,entryTriggeredAt:now,
+    plannedEntryAt:old.entryAt,entryAt:now,exitAt:now+H*1000,
     reason:'confirmed',confirmedEntryPrice:Number(confirmation.projectedEntryPrice)};
  }
  // Advance the fixed H-second cycle once, never restart on each tick.
