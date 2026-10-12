@@ -65,11 +65,11 @@ test('actual selective matrix uses closed-bars forecast and never grants stale e
  const result=futureEntrySchedule({settings:{forecastMode:'selective',engine:'automatic',
      asset:'EUR/USD',orderDurationMs:30000},
    snap,now,delays:[30],adaptiveHistory:q,forecastModel:'selected-strengths-67.5'})[0];
- assert.equal(result.modelVersion,'adaptive-direct-trajectory-v1');
+ assert.equal(result.forecastOwner,'selective-autonomous-v1');
  assert.equal(result.issuedAt,now);
  assert.equal(result.entryAt,now+30000);
  assert.equal(result.exitAt,now+60000);
- assert.ok(result.qualification);
+ assert.ok(!('qualification' in result));
  assert.equal(result.actionable,false);
 });
 test('all existing 15-minute and 60-minute options keep a completed-bar model',()=>{
