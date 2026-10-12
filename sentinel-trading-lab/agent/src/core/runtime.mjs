@@ -786,6 +786,12 @@ export class DemoTradingRuntime{
   setMode(mode,actor='user'){if(!['demo','real'].includes(mode))throw new Error('invalid_mode');this.settings.mode=mode;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'mode.change',metadata:{mode}});return this.status()}
   patchSettings(patch={},actor='user'){
     if(patch.engine==='selective_forecast')patch={...patch,engine:'automatic',forecastMode:'selective'};
+    // In selective mode the saved engine is kept ONLY for restoration
+    // to continuous. No setting change can enroll it into the analyst.
+    if(this.settings.forecastMode==='selective'&&
+      patch.forecastMode!=='continuous'&&Object.prototype.hasOwnProperty.call(patch,'engine')){
+      patch={...patch};delete patch.engine;
+    }
     if(Object.prototype.hasOwnProperty.call(patch,'forecastMode')){
       if(!['continuous','selective'].includes(patch.forecastMode))throw new Error('invalid_forecast_mode');
       if(patch.forecastMode!==this.settings.forecastMode){this.vnextFutureEntryAnchor=null;this.vnextHorizonMatrix=null;}
