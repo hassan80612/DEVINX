@@ -24,12 +24,13 @@ function cycleProjection(lp,h){
  return models.sort((a,b)=>b.quality*b.explained-a.quality*a.explained)[0]||null;
 }
 function fit(rows,penalty,halfLife){const n=rows[0].x.length,a=Array.from({length:n},()=>Array(n).fill(0)),b=Array(n).fill(0);let total=0;const end=rows.at(-1).i;for(const r of rows){const w=Math.exp(-Math.LN2*(end-r.i)/halfLife);total+=w;for(let j=0;j<n;j++){b[j]+=w*r.x[j]*r.y;for(let k=0;k<=j;k++)a[j][k]+=w*r.x[j]*r.x[k];}}for(let j=0;j<n;j++){for(let k=j+1;k<n;k++)a[j][k]=a[k][j];a[j][j]+=(j===0?1e-8:penalty*total);}return solve(a,b);}
-export function structureForecast({quoteHistory=[],asOf,selectedSeconds=60,diagnostics=null}={}){
+export function structureForecast({quoteHistory=[],asOf,selectedSeconds=60,diagnostics=null,historicalQuoteGapMs=2500}={}){
+ const historicalGap=Math.max(2500,Math.min(8000,Number(historicalQuoteGapMs)||2500));
  const h=Number(selectedSeconds),seen=new Map();for(const q of quoteHistory){const ts=Number(q.ts),p=Number(q.price),arr=Number(q.receivedAt??ts);if(ts<=asOf&&arr<=asOf&&Number.isFinite(ts)&&p>0&&Number.isFinite(p)&&Number.isFinite(arr)){const item={ts,p,readyAt:Math.max(ts,arr)};if(!seen.has(ts)||item.readyAt<seen.get(ts).readyAt)seen.set(ts,item);}}
  if(diagnostics)Object.assign(diagnostics,{status:'waiting-history',historySeconds:0,requiredSeconds:Math.max(720+h,601+h+29*Math.max(5,Math.floor(h/6)))});
  const events=[...seen.values()].sort((a,b)=>a.readyAt-b.readyAt||a.ts-b.ts);if(!events.length||!(h>0))return null;
  // Features at a past anchor see only quotes that had ARRIVED by that anchor.
- const lp=[];let j=0,latest=null;const end=Math.floor(asOf/1000)*1000;for(let t=Math.ceil(events[0].readyAt/1000)*1000;t<=end;t+=1000){while(j<events.length&&events[j].readyAt<=t){const e=events[j++];if(!latest||e.ts>latest.ts)latest=e;}if(!latest||t-latest.ts>2500){lp.length=0;continue;}lp.push(Math.log(latest.p));}
+ const lp=[];let j=0,latest=null;const end=Math.floor(asOf/1000)*1000;for(let t=Math.ceil(events[0].readyAt/1000)*1000;t<=end;t+=1000){while(j<events.length&&events[j].readyAt<=t){const e=events[j++];if(!latest||e.ts>latest.ts)latest=e;}if(!latest||t-latest.ts>historicalGap){lp.length=0;continue;}lp.push(Math.log(latest.p));}
  if(diagnostics)diagnostics.historySeconds=lp.length;
  if(!latest||asOf-latest.ts>2500){if(diagnostics)diagnostics.status='waiting-quote';return null;}const last=[latest.ts,latest.p];
  const n=lp.length,lag=600;if(n<lag+h+120)return null;
