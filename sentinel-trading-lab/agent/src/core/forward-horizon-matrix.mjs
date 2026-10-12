@@ -16,7 +16,12 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     adaptiveHistory?.length||0,Number(adaptiveHistory?.[0]?.ts)||0,
     Number(last?.price)||0,Array.isArray(snap.quoteHistory)?snap.quoteHistory.length:0
   ]);
-  const horizons=[...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
+  // The autonomous selective panel has no auxiliary horizon matrix.
+  // In continuous mode fit the expensive learned model for the selected
+  // lead only. Optional secondary slots use the same selected strategy's
+  // inexpensive baseline instead of refitting 6-8 models per broker tick.
+  const horizons=settings.forecastMode==='selective'?[horizon]:
+    [...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
   // No arbitrary delay: re-evaluate as soon as the source quote or selected
   // context changes, not every redundant 400ms worker tick.
   if(previous?.context===context&&Array.isArray(previous.rows)){
@@ -45,7 +50,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
         // The selected forecast remains unchanged. During selective analysis,
         // auxiliary chart slots use the original lightweight estimator instead
         // of repeating six structural regressions on every broker quote.
-        forecastModel:settings.forecastMode==='selective'?'original-67':forecastModel,
+        forecastModel:seconds===horizon?forecastModel:'original-67',
         adaptiveHistory
       });
     rows.push(rowFor(model,seconds));
