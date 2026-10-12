@@ -1,0 +1,29 @@
+# Three closed candles: implemented, compared, not published
+
+The user's diagnosis exposed a missing representation: published 67.2 already reads historical quote returns, but many features end at the current quote and it does not explicitly represent the last three closed broker candles. That is different from proving the old strategy depends only on a single candle.
+
+Implemented two separate pure candidates. `closed-candle-trajectory.mjs` reads exactly three contiguous CLOSED native OHLC bars; current quote is solely the price anchor, and training finishes at the latest closed bar. `contextual-candle-trajectory.mjs` jointly reads mandatory closed-bar OHLC structure and the published temporal quote features, plus chart phase. The latter addresses the actual requirement: consider at least three previous candles before interpreting recent movement, rather than remove all recent movement. Both predict one internally coherent price trajectory for direction and both entry/exit endpoints. Sampled extremes are still estimates on the projected path, not guaranteed future maxima/minima.
+
+Closed structure includes each body, upper/lower wick, range and close position; adjacent high/low progression and gaps; three-bar net movement, body acceleration and range expansion. Bar boundaries and chart period are explicit and independent of selected expiry. The chart may be 5, 10, 30, 60 or 300 seconds in the contract tests; the frozen archive comparison uses 60-second chart bars. Fewer than three valid closed contiguous bars cannot produce a candidate signal. Both strategy variants react to changes in preceding OHLC even with identical current quotes. Contextual movement can react to fresh quotes; only the closed-only variant promises current-price invariance.
+
+`retainClosedCandleHistory` freezes the first CLOSED observation and actual arrival, isolates provider/asset/chart period, rejects forming candles, and prevents later history from being treated as visible at its historical close. An initial bulk historical snapshot therefore does not create retrospectively observable training examples. The core candidate requires that adapter (or explicitly observable archive inputs) for live use. This branch does NOT wire either candidate into production runtime or activate them.
+
+## Comparison
+
+Same inputs, issue times and six horizons (5,10,30,60,120,300 seconds) for original 67.1, current 67.2 and each candidate. Both now->expiry and scheduled entry->expiry are scored. Archived BTCUSDT/ETHUSDT spot OHLC, Sept 15–16, 2026, verified ZIP checksums; 2,208 forecasts and 97 draws. Draws are never wins, all models have 100% forecast coverage. Four synthetic seeds in ten predefined regimes yield another 960 forecasts. Both candidates were frozen before any external results were inspected; the contextual follow-up was proposed after observing the closed-only synthetic regression. The external set is an evaluation comparison, not a fresh confirmatory set after selecting between these variants. The samples and six horizons are correlated; small changes are not proof of a persistent edge.
+
+| Dataset | Original 67.1 | Published 67.2 | Closed only | Closed context + recent movement |
+|---|---:|---:|---:|---:|
+| External, all cases | 48.82% (1078/2208) | 47.78% (1055/2208) | 48.19% (1064/2208) | 48.51% (1071/2208) |
+| External, excluding draws | 51.07% | 49.98% | 50.40% | 50.73% |
+| Synthetic, all cases | 73.13% (702/960) | 75.10% (721/960) | 65.73% (631/960) | 73.54% (706/960) |
+
+Contextual candidate versus published 67.2: +16 external wins (+0.73 percentage points), BTC unchanged and ETH +16. Immediate forecasts: 49.55% -> 49.64% (+1 win in 1104); scheduled future entry: 46.01% -> 47.37% (+15 wins in 1104). Reversal direction: 48.18% -> 50.00% (+19 wins in 1046). It remains below original 67.1 on total external accuracy and loses 15 synthetic wins versus published 67.2. In current-movement/closed-trio conflict cases, contextual wins are 290 vs published 294; explicit representation alone did not solve that failure condition. Sampled top timing within ±10s: 24.80% -> 26.90%; bottom: 25.41% -> 25.88% (1472 external horizons >=30s). These figures are Binance spot comparisons, not the user's reported ~53% and not broker execution win rates.
+
+Closed-only future entry rises 46.01% -> 49.73% externally but immediate forecasts fall 49.55% -> 46.65%, and synthetic results regress sharply. Selecting only its strongest subcase after seeing results would need a new independent evaluation; no such selective replacement is published.
+
+## Verification and decision
+
+Eight focused contracts pass: exclude forming OHLC, changing prior wicks changes contextual estimates, exact closing boundary across chart periods, gaps/delays/invalid bars rejected, first-observation immutability, provider/asset/period reset, no future-data contamination, and coherent entry/exit/direction. CI verifies byte-for-byte preservation of published runtime/UI/mobile/download/version/worker files and original adaptive code. First workflow (7 earlier contracts + three dataset jobs) passed: https://github.com/hassan80612/DEVINX/actions/runs/38189957060 . Contextual workflow (8 contracts + three dataset jobs) passed: https://github.com/hassan80612/DEVINX/actions/runs/38190079727 . JSON reports in this folder include source/horizon/mode/regime breakdowns; Actions artifacts include individual decisions and archive checksums.
+
+Decision: retain the explicit three-candle implementation as reviewable research; do not replace published 67.2 given mixed accuracy and no broker evidence. Original 67.1 commit 431bd6ffc276015a6581e0d6ba7a56c244de72e9 and published 67.2 commit 66c42ff6da4e7af7268a933b9ff83ddfe0b9be90 remain untouched. No desktop/mobile layout, functions, licensing, installer, version or production deployment was changed. No guaranteed accuracy or significant improvement claim.
