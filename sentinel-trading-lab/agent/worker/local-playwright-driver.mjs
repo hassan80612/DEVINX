@@ -1519,13 +1519,13 @@ export class LocalPlaywrightDriver{
                 <select data-sentinel-setting="engine" ${d.forecastMode==='selective'?'disabled':''} title="${d.forecastMode==='selective'?'Seletiva autônoma: estratégias não participam':'Estratégia responsável pela previsão'}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   ${d.forecastMode==='selective'?'<option value="'+esc(d.engine||'automatic')+'" selected>Seletiva Autônoma</option>':''}
                   ${d.forecastMode==='selective'?'':`<option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>`}
-                  <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
-                  <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>Suporte e Resistência</option>
-                  <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
-                  <option value="mean_reversion" ${d.engine==='mean_reversion'?'selected':''}>Mean Reversion</option>
-                  <option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>
-                  <option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
-                  <option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
+                  ${d.forecastMode==='selective'?'':`<option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>`}
+                  ${d.forecastMode==='selective'?'':`<option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>Suporte e Resistência</option>`}
+                  ${d.forecastMode==='selective'?'':`<option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>`}
+                  ${d.forecastMode==='selective'?'':`<option value="mean_reversion" ${d.engine==='mean_reversion'?'selected':''}>Mean Reversion</option>`}
+                  ${d.forecastMode==='selective'?'':`<option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>`}
+                  ${d.forecastMode==='selective'?'':`<option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>`}
+                  ${d.forecastMode==='selective'?'':`<option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>`}
                   ${d.forecastMode==='selective'?'':`<option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>`}
                 </select>
               </label>
