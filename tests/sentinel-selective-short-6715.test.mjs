@@ -30,9 +30,9 @@ test('selected future forecast never waits 12 minutes for 5s, 30s or 60s',()=>{
   const r=futureEntrySchedule({settings:{engine:'automatic',forecastMode:'selective',
    asset:'EUR/USD',orderDurationMs:h*1000},snap,now,delays:[h],
    adaptiveHistory:q,forecastModel:'selected-strengths-67.5'})[0];
-  assert.equal(r.qualification.requiredSeconds,Math.max(10,Math.min(30,h))*3);
-  assert.ok(['forecast','waiting-selective-entry'].includes(r.status));
-  assert.ok(r.qualification.historySeconds<751);
+  assert.equal(r.forecastOwner,'selective-autonomous-v1');
+  assert.ok(['forecast','low-directional-edge','insufficient-projection'].includes(r.status));
+  assert.ok(!('qualification' in r));
   assert.ok(r.reason===undefined||!r.reason.includes('12min'));
  }
 });
