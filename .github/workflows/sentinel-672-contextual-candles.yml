@@ -1,0 +1,86 @@
+name: Sentinel 67.2 Contextual Closed Candles Comparison
+on:
+  push:
+    branches: [sentinel-672-three-closed-candles-20261012]
+    paths: ['.github/workflows/sentinel-672-contextual-candles.yml']
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Assert published runtime, UI, downloads and version are untouched
+        run: |
+          git diff --exit-code 66c42ff6da4e7af7268a933b9ff83ddfe0b9be90 HEAD -- sentinel-trading-lab/src sentinel-trading-lab/public sentinel-trading-lab/agent/worker sentinel-trading-lab/agent/release.json sentinel-trading-lab/agent/package.json sentinel-trading-lab/agent/src/core/adaptive-direct-trajectory.mjs sentinel-trading-lab/agent/src/core/adaptive-temporal-history.mjs sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs sentinel-trading-lab/agent/src/core/forward-horizon-matrix.mjs sentinel-trading-lab/agent/src/core/runtime.mjs
+      - run: node --test tests/sentinel-672-closed-candle.test.mjs
+  comparison:
+    needs: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: synthetic-a
+            source: synthetic
+            shard: '0'
+            symbol: ''
+          - label: btc
+            source: external
+            shard: ''
+            symbol: BTCUSDT
+          - label: eth
+            source: external
+            shard: ''
+            symbol: ETHUSDT
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract the exact preserved 67.1 core
+        run: |
+          mkdir -p tmp/closed-671
+          git archive 431bd6ffc276015a6581e0d6ba7a56c244de72e9 sentinel-trading-lab/agent/src/core | tar -x -C tmp/closed-671
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: mkdir -p tmp/closed-results tmp/closed-market-1s
+      - name: Verify independent new real archives
+        if: matrix.source == 'external'
+        env:
+          MARKET_SYMBOL: ${{ matrix.symbol }}
+        run: |
+          set -euo pipefail
+          for date in 2026-09-15 2026-09-16; do
+            filename="$MARKET_SYMBOL-1s-$date"
+            url="https://data.binance.vision/data/spot/daily/klines/$MARKET_SYMBOL/1s/$filename.zip"
+            curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url" -o "tmp/closed-market-1s/$filename.zip"
+            curl -fLsS --retry 3 --connect-timeout 15 --max-time 95 "$url.CHECKSUM" -o "tmp/closed-market-1s/$filename.zip.CHECKSUM"
+            (cd tmp/closed-market-1s && sha256sum -c "$filename.zip.CHECKSUM")
+            sha256sum "tmp/closed-market-1s/$filename.zip" | tee -a tmp/closed-results/archive-sha256.txt
+            unzip -p "tmp/closed-market-1s/$filename.zip" "$filename.csv" > "tmp/closed-market-1s/$filename.csv"
+            test "$(wc -l < "tmp/closed-market-1s/$filename.csv")" -gt 80000
+          done
+      - name: Compare closed-bar structure on both forecast intervals
+        env:
+          SENTINEL_671_CORE: tmp/closed-671/sentinel-trading-lab/agent/src/core
+          DATA_SOURCE: ${{ matrix.source }}
+          SYNTHETIC_SHARD: ${{ matrix.shard }}
+        run: |
+          if [ "$DATA_SOURCE" = "synthetic" ]; then
+            node scripts/sentinel-contextual-candle-comparison.mjs synthetic tmp/closed-results/result.json "$SYNTHETIC_SHARD"
+          else
+            node scripts/sentinel-contextual-candle-comparison.mjs tmp/closed-market-1s tmp/closed-results/result.json
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contextual-candle-shard-${{ matrix.label }}
+          path: tmp/closed-results/
+          retention-days: 14
