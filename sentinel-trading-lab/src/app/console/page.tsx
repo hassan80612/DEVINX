@@ -9,7 +9,7 @@ import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedPcOpportunity
 type Status=any;
 // Website version and installed Windows Agent are distinct releases.
 // 67.31 website and Windows Agent candidate. Continuous forecast core unchanged.
-const WEB_RELEASE_VERSION='67.31';
+const WEB_RELEASE_VERSION='67.31.1';
 const AVAILABLE_AGENT_VERSION='13.4.67.31';
 const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.31.exe?v=locale-broker-clock-6731`;
 const tabDefs=[
