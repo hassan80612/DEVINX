@@ -3,9 +3,21 @@ import {mkdir,rm} from 'node:fs/promises';
 import {resolve, join} from 'node:path';
 import {spawn} from 'node:child_process';
 import {scenarioViewFromRuntime} from './scenario-view.mjs';
+import {translations} from '../src/core/ui-texts.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 
+// Presentation only. These short labels add no broker requests or forecast work.
+const PC_UI_KEYS=['Claro','Escuro','↻ Leitura','ESTRATÉGIA ATIVA','PREVISÃO',
+ 'ENTRADA DAQUI A','Contínua','Seletiva','Seletiva Autônoma',
+ 'ENTRADA FUTURA','ATÉ ENTRADA CALCULADA','MOMENTO DE ENTRADA',
+ 'VENCIMENTO','PREÇO FUTURO DE ENTRADA','PREÇO FUTURO AO VENCER',
+ 'JANELA','ENTRADA','PERÍODO APÓS','AO VIVO','COTAÇÃO ATRASADA',
+ 'Detalhes da entrada futura','Projeção registrada para o horário e prazo selecionados.',
+ 'OUTROS HORÁRIOS FUTUROS · expandir','Detalhes técnicos','Combinação:',
+ 'Cotação recebida','Cotação desatualizada ou indisponível','após a entrada',
+ 'SINALIZADA','EM ANÁLISE','● COTAÇÃO AO VIVO','● AGUARDANDO FEED'];
+const PC_UI_EN=Object.freeze(Object.fromEntries(PC_UI_KEYS.map(k=>[k,translations.en[k]||k])));
 const PROVIDERS={
   iq_option:{url:'https://iqoption.com/pt',tradeUrl:'https://iqoption.com/traderoom',domain:'iqoption.com',wsDomain:'iqoption.com',label:'IQ Option'},
   exnova:{url:'https://exnova.com/pt/',tradeUrl:'https://exnova.com/traderoom',domain:'exnova.com',wsDomain:'ws.trade.exnova.com',label:'Exnova'}
@@ -981,6 +993,7 @@ export class LocalPlaywrightDriver{
     try{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
+      payload.uiTranslations=PC_UI_EN;
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
@@ -1068,6 +1081,8 @@ export class LocalPlaywrightDriver{
         }
 
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        const uiLang=(()=>{try{return localStorage.getItem('sentinel-ui-language')==='en'?'en':'pt'}catch{return 'pt'}})();
+        const tr=k=>uiLang==='en'?(d.uiTranslations?.[k]||k):k;
         const n=(v,dg=0)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{},short=m.shortModel||{};
         const analysisTransient=d.analysisTransient===true,analysisStale=d.analysisStale===true;
@@ -1411,6 +1426,14 @@ export class LocalPlaywrightDriver{
           el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))el.dataset.selectLock='1'},true);
           el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
+            const languageSelect=ev.target?.closest?.('[data-sentinel-ui-language]');
+            if(languageSelect){
+              const next=languageSelect.value==='en'?'en':'pt';
+              try{localStorage.setItem('sentinel-ui-language',next)}catch{}
+              el.dataset.selectLock='0';
+              queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));
+              return;
+            }
             const tt=ev.target?.closest?.('[data-sentinel-total-threshold]');
             if(tt){
               const kind=String(tt.getAttribute('data-sentinel-total-threshold')||''),value=Math.max(50,Math.min(95,Math.round(Number(tt.value)||60)));
@@ -1533,13 +1556,17 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
               <div style="display:grid;gap:3px"><strong style="color:${goldSoft};font-size:15px;letter-spacing:.035em">SENTINEL <span style="font-size:11px;color:${muted}">V${esc(d.agentVersion||'13.4.60')}</span></strong><small style="color:${muted};font-size:10px">${esc(visibleAsset)} · ${liveNow?'● COTAÇÃO AO VIVO':'● AGUARDANDO FEED'} · ${runtimeLabel}</small></div>
               <div style="display:flex;gap:4px;align-items:center">
-                <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">Claro</button>
-                <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">Escuro</button>
-                <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">↻ Leitura</button>
+                <select data-sentinel-ui-language aria-label="Language / Idioma" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:5px 6px;max-width:75px;font-size:10px">
+                  <option value="pt" ${uiLang==='pt'?'selected':''}>PT</option>
+                  <option value="en" ${uiLang==='en'?'selected':''}>EN</option>
+                </select>
+                <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Claro')}</button>
+                <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Escuro')}</button>
+                <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
               </div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.85fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ESTRATÉGIA ATIVA
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
                 <select data-sentinel-setting="engine" ${d.forecastMode==='selective'?'disabled':''} title="${d.forecastMode==='selective'?'Seletiva autônoma: estratégias não participam':'Estratégia responsável pela previsão'}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   ${d.forecastMode==='selective'?'<option value="'+esc(d.engine||'automatic')+'" selected>Seletiva Autônoma</option>':''}
                   ${d.forecastMode==='selective'?'':`<option value="automatic" ${d.engine==='automatic'?'selected':''}>Automático Sentinel</option>`}
@@ -1553,27 +1580,27 @@ export class LocalPlaywrightDriver{
                   ${d.forecastMode==='selective'?'':`<option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>`}
                 </select>
               </label>
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">PREVISÃO
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('PREVISÃO')}
                 <select data-sentinel-setting="forecastMode" style="width:100%;min-width:0;height:35px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:10px">
-                  <option value="continuous" ${d.forecastMode!=='selective'?'selected':''}>Contínua</option><option value="selective" ${d.forecastMode==='selective'?'selected':''}>Seletiva</option>
+                  <option value="continuous" ${d.forecastMode!=='selective'?'selected':''}>${tr('Contínua')}</option><option value="selective" ${d.forecastMode==='selective'?'selected':''}>${tr('Seletiva')}</option>
                 </select>
               </label>
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">ENTRADA DAQUI A
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ENTRADA DAQUI A')}
                 <select data-sentinel-setting="duration" title="Prazo da previsão selecionado por você" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   ${[5,10,15,30,45,60,120,180,300,600,900,3600].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+(v<60?v+'s':v/60+'min')+'</option>').join('')}
                 </select>
               </label>
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
-              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
+              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tr('ENTRADA FUTURA')} · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
               <div data-sentinel-vnext-clock data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
-                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>ATÉ ENTRADA CALCULADA</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
-                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">MOMENTO DE ENTRADA</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(triggeredAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">VENCIMENTO ${opportunityPhase==='fired'&&scheduledExit?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):'após a entrada'}</small></div>
+                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr('ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
+                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">${tr('MOMENTO DE ENTRADA')}</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(triggeredAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">${tr('VENCIMENTO')} ${opportunityPhase==='fired'&&scheduledExit?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):'após a entrada'}</small></div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;height:47px">
-                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO DE ENTRADA</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
-                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">PREÇO FUTURO AO VENCER</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedExitPrice):'—'}</b></div>
+                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${tr('PREÇO FUTURO DE ENTRADA')}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
+                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${tr('PREÇO FUTURO AO VENCER')}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedExitPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
                 <span style="color:${callTone}">JANELA ${durationText} · ENTRADA ${opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE'}</span>
@@ -1581,18 +1608,18 @@ export class LocalPlaywrightDriver{
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${esc(liveNow?'AO VIVO':'COTAÇÃO ATRASADA')}</span>
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
-                <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
+                <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">${tr('Detalhes da entrada futura')}</summary>
                  
                 <div style="padding:7px;display:grid;gap:6px">
                   <div>Registrada ${entryPlanReady?new Date(Number(pinnedEntry.issuedAt)).toLocaleTimeString("pt-BR",{hour12:false}):"—"} · ponto de entrada escolhido dentro da janela; cancelado se a direção deixar de ser confirmada.</div>
                   <div>${liveNow?"Cotação recebida":"Cotação desatualizada ou indisponível"}.</div>
-                  <div data-sentinel-horizon-evidence>Projeção registrada para o horário e prazo selecionados.</div>
+                  <div data-sentinel-horizon-evidence>${tr('Projeção registrada para o horário e prazo selecionados.')}</div>
                 </div>
               </details>
             </section>
 
             <details data-sentinel-preserve-open="1" data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
-              <summary data-sentinel-no-drag="1" style="font-weight:800;cursor:pointer">OUTROS HORÁRIOS FUTUROS · expandir</summary>
+              <summary data-sentinel-no-drag="1" style="font-weight:800;cursor:pointer">${tr('OUTROS HORÁRIOS FUTUROS · expandir')}</summary>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">
               ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((x,y)=>x-y).slice(0,9).map(h=>{
                 const item=(Array.isArray(d.vnext?.futureEntryRows)?d.vnext.futureEntryRows:[]).find(x=>Number(x.delaySeconds)===h);
@@ -1767,12 +1794,12 @@ export class LocalPlaywrightDriver{
               <label><span style="display:block;font-size:9.5px;font-weight:800;color:${muted};margin:0 0 3px 2px">Estratégia 2</span><select data-sentinel-setting="strategy2" style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9.5px;font-weight:700"><option value="none" ${strategy2==='none'?'selected':''}>Não selecionada</option><option value="smart_confluence" ${strategy2==='smart_confluence'?'selected':''}>Smart Confluence</option><option value="price_action" ${strategy2==='price_action'?'selected':''}>Price Action</option><option value="trendline_breakout" ${strategy2==='trendline_breakout'?'selected':''}>Trendline Breakout</option><option value="support_resistance" ${strategy2==='support_resistance'?'selected':''}>Suporte / Resistência</option><option value="fibonacci_retest" ${strategy2==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option><option value="trend" ${strategy2==='trend'?'selected':''}>Trend Following</option><option value="mean_reversion" ${strategy2==='mean_reversion'?'selected':''}>Mean Reversion</option><option value="breakout" ${strategy2==='breakout'?'selected':''}>Breakout</option></select></label>
               <label><span style="display:block;font-size:9.5px;font-weight:800;color:${muted};margin:0 0 3px 2px">Estratégia 3</span><select data-sentinel-setting="strategy3" style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9.5px;font-weight:700"><option value="none" ${strategy3==='none'?'selected':''}>Não selecionada</option><option value="smart_confluence" ${strategy3==='smart_confluence'?'selected':''}>Smart Confluence</option><option value="price_action" ${strategy3==='price_action'?'selected':''}>Price Action</option><option value="trendline_breakout" ${strategy3==='trendline_breakout'?'selected':''}>Trendline Breakout</option><option value="support_resistance" ${strategy3==='support_resistance'?'selected':''}>Suporte / Resistência</option><option value="fibonacci_retest" ${strategy3==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option><option value="trend" ${strategy3==='trend'?'selected':''}>Trend Following</option><option value="mean_reversion" ${strategy3==='mean_reversion'?'selected':''}>Mean Reversion</option><option value="breakout" ${strategy3==='breakout'?'selected':''}>Breakout</option></select></label>
             </div>
-            <div data-sentinel-strategy-advice role="note" style="margin-top:7px;padding:5px 7px;border-left:2px solid ${strategyGuidance.level==='conflict'?putTone:goldSoft};color:${strategyGuidance.level==='conflict'?putTone:muted};font-size:10px;line-height:1.35"><b>Combinação:</b> ${esc(strategyGuidance.message||'Escolha estratégias diferentes para comparar leituras.')} <span style="color:${subtle}">· ${esc(strategyGuidance.recommendation||'Sugestão: Price Action + Suporte/Resistência + Trend Following.')}</span></div>
+            <div data-sentinel-strategy-advice role="note" style="margin-top:7px;padding:5px 7px;border-left:2px solid ${strategyGuidance.level==='conflict'?putTone:goldSoft};color:${strategyGuidance.level==='conflict'?putTone:muted};font-size:10px;line-height:1.35"><b>${tr('Combinação:')}</b> ${esc(strategyGuidance.message||'Escolha estratégias diferentes para comparar leituras.')} <span style="color:${subtle}">· ${esc(strategyGuidance.recommendation||'Sugestão: Price Action + Suporte/Resistência + Trend Following.')}</span></div>
             <div style="margin-top:6px;font-size:9.5px;color:${subtle}">Os 3 cards superiores de força da vela foram mantidos. As estratégias abaixo são calculadas separadamente.</div>
           </div>
 
           <div style="margin-top:7px">
-            <button data-sentinel-toggle="details" style="width:100%;border:0;background:transparent;color:${muted};padding:6px 2px;display:flex;justify-content:space-between;cursor:pointer;font-size:9.5px;font-weight:800"><span>Detalhes técnicos</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span></button>
+            <button data-sentinel-toggle="details" style="width:100%;border:0;background:transparent;color:${muted};padding:6px 2px;display:flex;justify-content:space-between;cursor:pointer;font-size:9.5px;font-weight:800"><span>${tr('Detalhes técnicos')}</span><span data-sentinel-arrow>${detailsOpen?'⌃':'⌄'}</span></button>
             <div data-sentinel-section="details" style="display:${detailsOpen?'block':'none'};padding:6px 7px;border-radius:8px;background:rgba(255,255,255,.022);font-size:9.5px;color:${ink}"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px 7px"><div>CALL score <b>${n(buy,0)} pts</b></div><div>PUT score <b>${n(sell,0)} pts</b></div><div>Diferença <b>${n(q.technicalEdge,0)} pts</b></div><div>EMA9 <b>${n(m.fast,5)}</b></div><div>EMA21 <b>${n(m.slow,5)}</b></div><div>RSI <b>${n(m.rsi,1)}</b></div><div>MACD <b>${n(m.macd?.histogram,5)}</b></div><div>ESTOC <b>${n(m.stoch,1)}</b></div><div>ATR <b>${n(m.atr,5)}</b></div></div><div style="margin-top:5px;color:${muted}">${reasons}</div></div>
           </div>
 
