@@ -1,4 +1,4 @@
-name: Sentinel 67.21 Fixed PC Window (Safe Candidate)
+name: Sentinel 67.22 Fixed PC Window (Safe Candidate)
 on:
   push:
     branches: [fix/sentinel-continuous-real-window-20261012]
@@ -15,7 +15,7 @@ jobs:
           node-version: '24'
       - name: Confirm untouched Agent release and parse modified files
         run: |
-          node -e "if(require('./sentinel-trading-lab/agent/release.json').version!=='13.4.67.21')process.exit(1)"
+          node -e "if(require('./sentinel-trading-lab/agent/release.json').version!=='13.4.67.22')process.exit(1)"
           node --check sentinel-trading-lab/agent/worker/index.mjs
           node --check sentinel-trading-lab/agent/src/core/entry-window-planner.mjs
           node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
