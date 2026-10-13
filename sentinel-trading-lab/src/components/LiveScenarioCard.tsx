@@ -311,7 +311,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <span className="mobileScenarioContext">{t(mobileDirection?'Gatilho de preço confirmado pelo PC':mobileScenarioDirection?m.displayScenarioStale?'COTAÇÃO ATRASADA · SEM ENTRADA':m.displayScenarioPreliminary?'PROJEÇÃO FUTURA · AGUARDE CONFIRMAÇÃO':'ANALISANDO · AGUARDE CONFIRMAÇÃO':'Nenhuma entrada confirmada')}</span>
       <small className="mobileEntryWindow">{m.entrySide?t('Entrada válida por ')+m.entryRemaining+'s':t(m.displayScenarioStale?'Aguardando atualização do preço · não entre':mobileScenarioDirection?'Preparando leitura · aguardando gatilho':m.fresh?'Analisando o preço · aguarde':'Aguardando cotação e análise atuais')}</small>
     </div>
-    <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>{t("CENÁRIO PRINCIPAL")}</small><strong>{mobileScenarioDirection?tt(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:t('CENÁRIO')} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
+    <div className={`compactScenario ${mobileScenarioDirection?(mobileScenarioDirection==='CALL'?'call':'put'):'neutral'} ${m.displayScenarioStale?'stale-preview':''}`}><div><small>{t("CENÁRIO PRINCIPAL")}</small><strong>{mobileScenarioDirection?t(m.displayScenarioPreliminary?'PROJEÇÃO ':'CENÁRIO ')+mobileScenarioDirection:t('CENÁRIO')} · {m.displayScenarioState}</strong></div>{scenarioClock}</div>
     </>}
     {forecastReceipt}
     {forecastHorizonStrip}
