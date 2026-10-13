@@ -31,7 +31,7 @@ test('translations affect UI only, never the core trade decision or candle clock
  assert.doesNotMatch(web,/sentinelText|translations|locale/);
  assert.match(pc,/const tr=k=>uiLang==='en'\?\(d\.uiTranslations\?\.\[k\]\|\|k\):k/);
  assert.match(mobile,/const direction=t\(view\.label\);/);
- assert.match(website,/<LanguageSwitcher\/>/);
+ assert.match(website,/<LanguageSwitcher(?:\s|\/>)/);
  const essential=['JANELA ABERTA · AGUARDE','ATÉ ENTRADA CALCULADA','PRONTIDÃO DE ENTRADA','TOTAL ESTRATÉGIAS','ENTRADA FUTURA','CENÁRIO FUTURO POR PRAZO'];
  for(const key of essential)assert.notEqual(sentinelText('en',key),key,key);
 });
