@@ -1206,7 +1206,7 @@ export class LocalPlaywrightDriver{
         }
 
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-        const uiLang=(()=>{try{return localStorage.getItem('sentinel-ui-language')==='en'?'en':'pt'}catch{return 'pt'}})();
+        const uiLang=String(d.uiLanguage||'pt')==='en'?'en':'pt';
         const tr=k=>uiLang==='en'?(d.uiTranslations?.[k]||k):k;
         const n=(v,dg=0)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{},short=m.shortModel||{};
@@ -1554,7 +1554,8 @@ export class LocalPlaywrightDriver{
             const languageSelect=ev.target?.closest?.('[data-sentinel-ui-language]');
             if(languageSelect){
               const next=languageSelect.value==='en'?'en':'pt';
-              try{localStorage.setItem('sentinel-ui-language',next)}catch{}
+              window.__sentinelLastOverlayData.uiLanguage=next;
+              void sendAction({action:'setting',key:'uiLanguage',value:next});
               el.dataset.selectLock='0';
               queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));
               return;
