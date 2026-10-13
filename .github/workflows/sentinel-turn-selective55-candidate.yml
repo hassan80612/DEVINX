@@ -30,6 +30,12 @@ jobs:
       - name: New 55 percent, reversal and timing regressions
         run: |
           node --test --test-reporter=spec tests/sentinel-turn-awareness-selective55-candidate.test.mjs
+      - name: Verify bilingual UI and untouched entry-now behavior
+        run: node --test --test-reporter=spec tests/sentinel-ui-i18n-6726-candidate.test.mjs
+      - name: Build Sentinel website without deploying
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
       - name: Typecheck Sentinel website and mobile components
         run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
       - name: Benchmark selective work against original 67.26
