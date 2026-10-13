@@ -88,3 +88,33 @@
 .marketOption:hover,.marketOption:focus-visible{color:#f7e6b9;background:#a88b4920}
 .marketActive{color:#0b201a;background:#e5c87b;box-shadow:0 4px 18px #bf984a40}
 @media(max-width:440px){.plansMarketChooser{gap:4px;padding:4px}.marketOption,.marketActive{font-size:11px;padding:10px 6px;min-height:44px}}
+
+
+/* 67.31 compact landing: the offer and its price are visible without a long scroll. */
+.hero{margin-top:12px;margin-bottom:24px;padding-top:28px;padding-bottom:22px;min-height:0;gap:32px}
+.hero h1{font-size:clamp(36px,4.5vw,62px);margin:17px 0;line-height:1.06}
+.hero .lead{font-size:clamp(14px,1.2vw,16px);line-height:1.48}
+.compactOffer{margin-top:19px;padding:14px 18px;border:1px solid #b5a06a80;border-radius:15px;background:#102e2e;display:grid;gap:5px;max-width:430px}
+.compactOffer small{font-size:10px;letter-spacing:.12em;font-weight:850;color:#e7ca87}
+.compactOffer strong{font-size:34px;color:#f4dfa9;letter-spacing:-.05em}
+.compactOffer span{font-size:12px;color:#bed5c9}
+.compactOffer p{margin:0;font-size:11px;color:#b0c9be}
+.compactBenefits{display:flex;flex-wrap:wrap;gap:7px;margin-top:17px}
+.compactBenefits span{border:1px solid #36594c;background:#0c2c2a;border-radius:30px;padding:7px 11px;color:#b9e4d4;font-size:11px;font-weight:700}
+.hero .actions{margin-top:18px}
+.preview{transform:none;padding:17px}
+.previewAsset{margin:17px 0 12px}
+.previewReversal{padding:12px;margin-top:8px}
+.previewBottom{margin-top:11px}
+.footer{padding-top:20px;padding-bottom:25px}
+@media(max-width:700px){
+ .hero{padding-top:12px;margin:6px auto 21px;gap:17px}
+ .hero h1{font-size:clamp(32px,8.5vw,43px);margin:12px 0}
+ .compactOffer{padding:10px 13px;margin-top:12px}
+ .compactOffer strong{font-size:30px}
+ .compactBenefits{margin-top:11px}
+ .compactBenefits span{font-size:10px;padding:6px 8px}
+ .preview{padding:12px}
+ .previewAsset{margin:12px 0}
+ .footer{padding-top:15px;padding-bottom:20px}
+}
