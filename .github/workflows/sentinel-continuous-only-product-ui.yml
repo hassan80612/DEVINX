@@ -1,0 +1,41 @@
+name: Sentinel continuous-only product UI candidate
+on:
+  push:
+    branches:
+      - fix/sentinel-6728-continuous-only-i18n-20261013
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: Check Agent JS
+        run: |
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --check sentinel-trading-lab/agent/src/core/marketing-messages.mjs
+      - name: Regression and localized product UI tests
+        run: |
+          node --test \
+            tests/sentinel-6728-continuous-only-ui.test.mjs \
+            tests/sentinel-turn-awareness-selective55-candidate.test.mjs \
+            tests/sentinel-6727-i18n-coverage.test.mjs \
+            tests/sentinel-source-event-pc-mobile-6722.test.mjs \
+            tests/sentinel-mobile-low-latency-1357.test.mjs \
+            tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs
+      - name: Typecheck website
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
+      - name: Build website without deployment
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
