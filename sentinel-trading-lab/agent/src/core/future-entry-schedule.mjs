@@ -163,8 +163,6 @@ function continuousWindow({input,settings,chosen}){
    const check=coherentInterval({entryPrice:first,exitPrice:last,noise,
      noiseFraction:.15});
    if(!check.qualified)return null;
-   // Review the existing projected side; do not manufacture a countertrade.
-   if(oppositeTurnPressure({quoteHistory:history,now,quoteTs:Number(snap.quoteTs),side:check.side}).blocked)return null;
    return {side:check.side,projectedEntryPrice:first,projectedExitPrice:last,
     selectionStrength:Math.min(3,Math.abs(check.relativeMove)/
       Math.max(noise||1e-12,1e-12))};
@@ -282,9 +280,7 @@ export function confirmWindowEntry({
   if(learned.status==='adaptive-direct-trajectory'){
    const check=coherentInterval({entryPrice:learned.projectedEntryPrice,
     exitPrice:learned.projectedExitPrice,side:learned.side,noise});
-   return check.qualified&&!oppositeTurnPressure({quoteHistory:quotes,now,
-     quoteTs:snap.quoteTs,side:check.side}).blocked?
-     learned:{...learned,side:null,status:check.qualified?'counterpressure-before-entry':check.reason};
+   return check.qualified?learned:{...learned,side:null,status:check.reason};
   }
  }
  // Fallback and specialists use their OWN selected motor at both actual
@@ -300,10 +296,7 @@ export function confirmWindowEntry({
  const first=forecastAt(lead),last=forecastAt(lead+H);
  const check=coherentInterval({entryPrice:first?.projectedPrice,
    exitPrice:last?.projectedPrice,noise});
- const turning=check.qualified&&oppositeTurnPressure({quoteHistory:quotes,now,
-   quoteTs:snap.quoteTs,side:check.side}).blocked;
- return {...check,side:check.qualified&&!turning?check.side:null,
-  reason:turning?'counterpressure-before-entry':check.reason,
+ return {...check,side:check.qualified?check.side:null,
   projectedEntryPrice:Number(first?.projectedPrice)||null,
   projectedExitPrice:Number(last?.projectedPrice)||null};
 }
