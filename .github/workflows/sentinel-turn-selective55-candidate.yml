@@ -1,4 +1,4 @@
-name: Sentinel candidate — turn pressure, 55% and entry latency
+name: Sentinel candidate - 55 percent, reversal and latency audit
 on:
   push:
     branches:
@@ -12,24 +12,50 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - name: Install
         run: npm ci --ignore-scripts
-      - name: Verify syntax
+      - name: Verify syntax of changed runtime code
         run: |
           node --check sentinel-trading-lab/agent/src/core/turn-pressure.mjs
           node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
           node --check sentinel-trading-lab/agent/src/core/selective-autonomous.mjs
           node --check sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs
-      - name: Regression suite without broker or deployment
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - name: New 55 percent, reversal and timing regressions
         run: |
-          node --test \
-            tests/sentinel-turn-awareness-selective55-candidate.test.mjs \
-            tests/sentinel-selective-live-6726.test.mjs \
-            tests/sentinel-selective-historical-6718.test.mjs \
-            tests/sentinel-continuous-real-window-6721.test.mjs \
-            tests/sentinel-single-opportunity-6720.test.mjs \
-            tests/sentinel-selective-deadline-6714.test.mjs \
+          node --test --test-reporter=spec tests/sentinel-turn-awareness-selective55-candidate.test.mjs
+      - name: Compare existing integration failures against unmodified 67.26
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            tests/sentinel-selective-live-6726.test.mjs
+            tests/sentinel-selective-historical-6718.test.mjs
+            tests/sentinel-continuous-real-window-6721.test.mjs
+            tests/sentinel-single-opportunity-6720.test.mjs
+            tests/sentinel-selective-deadline-6714.test.mjs
             tests/sentinel-entry-window-6719.test.mjs
+            tests/sentinel-mobile-canonical-window-6723.test.mjs
+            tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs
+            tests/sentinel-live-bridge.test.mjs
+          )
+          original=$(git rev-parse HEAD)
+          node --test --test-concurrency=2 --test-reporter=tap "${files[@]}" > candidate.tap 2>&1 || true
+          git checkout --detach 7cd0e7315fd7b6a59ad82142ffc8db7491c902ca
+          node --test --test-concurrency=2 --test-reporter=tap "${files[@]}" > baseline.tap 2>&1 || true
+          git checkout --detach "$original"
+          for p in candidate baseline; do
+            grep '^not ok [0-9]* - ' "$p.tap" | sed -E 's/^not ok [0-9]+ - //' | sort -u > "$p.fail" || true
+            echo "$p existing test failures: $(wc -l < "$p.fail")"
+            sed -n '/^# tests /,/^# duration_ms /p' "$p.tap" | tail -n 9
+          done
+          comm -13 baseline.fail candidate.fail > new.fail || true
+          echo "New regressions vs 67.26: $(wc -l < new.fail)"
+          cat new.fail
+          test ! -s new.fail
