@@ -81,7 +81,7 @@ function normalizeStatus(data:any){
 
 export default function Page(){
   const {t,language}=useSentinelLocale();
-  const languageSyncRef=useRef('');
+
   const[tab,setTab]=useState('Market Analysis');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
   const remotePolledAt=useRef(0);
   const liveFrameAt=useRef(0);
@@ -256,16 +256,34 @@ export default function Page(){
       setS(previous);setNotice('');setErr(friendlyError(e));setTimeout(()=>refresh(),300);return false;
     }finally{setBusy(false)}
   };
-  // A visitor may have chosen English before signing in. Synchronize it
-  // ONCE per connected Agent/version/language, not on each quote or poll.
+  // Language belongs to the SITE, including the PC overlay inside the
+  // broker. Deliver it through the existing Agent command (no new market
+  // polling, subscriptions or strategy resets).
+  // A failed remote command must NOT silently suppress all future attempts.
   useEffect(()=>{
     if(!s||!agent.worker||s.settings?.uiLanguage===language)return;
-    const key=[source,s.agentVersion||agent.version||'',language].join('|');
-    if(languageSyncRef.current===key)return;
-    languageSyncRef.current=key;
-    const patch={uiLanguage:language};
-    void (source==='local'?localFetch('settings','PATCH',patch,2200):
-      cloudFetch('settings','PATCH',patch)).catch(()=>{});
+    let disposed=false;
+    let retryTimer:ReturnType<typeof setTimeout>|null=null;
+    let attempts=0;
+    const sync=async()=>{
+      attempts++;
+      try{
+        const update={uiLanguage:language};
+        const result=source==='local'?
+          await localFetch('settings','PATCH',update,2200):
+          await cloudFetch('settings','PATCH',update);
+        if(disposed)return;
+        // A remote ACK is authoritative; reflect the chosen locale without
+        // waiting for the slower cloud status poll. Never touch entry windows.
+        if(result?.settings?.uiLanguage===language)
+          setS((old:Status|null)=>old?{...old,settings:{...(old.settings||{}),uiLanguage:language}}:old);
+        else if(attempts<4)retryTimer=setTimeout(sync,5000);
+      }catch{
+        if(!disposed&&attempts<4)retryTimer=setTimeout(sync,Math.min(12000,3500*attempts));
+      }
+    };
+    void sync();
+    return()=>{disposed=true;if(retryTimer)clearTimeout(retryTimer)};
   },[language,source,agent.worker,agent.version,s?.agentVersion,s?.settings?.uiLanguage]);
   const agentCommand=async(action:'restart'|'exit')=>{if(source!=='local'){setErr('Reiniciar/desligar o Agent exige acesso ao PC. Pelo celular você controla o Bot: iniciar, pausar, parar e Kill Switch.');return}setBusy(true);try{await managerFetch(action,'POST',{});if(action==='exit'){setAgent({process:false,worker:false});setSource('remote')}setTimeout(refresh,700);setErr('')}catch(e:any){setErr(`Agent: ${String(e?.message||e)}`)}finally{setBusy(false)}};
   const claimPair=async()=>{if(!pairCode.trim())return;setBusy(true);const send=async(replaceExisting=false)=>{const r=await fetch('/api/devices/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:pairCode,replaceExisting})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'Falha ao vincular PC');return j};try{let j:any;try{j=await send(false)}catch(e:any){if(String(e?.message||e)==='limite_de_pcs'){const ok=window.confirm('Esta conta já atingiu o limite de computadores. Substituir o PC antigo por este novo computador?');if(!ok)throw e;j=await send(true)}else throw e}setPairCode('');setErr('');setNotice(j?.replaced?'Novo computador vinculado. O PC antigo foi substituído.':'Computador vinculado com sucesso.');setTimeout(refresh,300);setTimeout(()=>setNotice(''),4200)}catch(e:any){setErr(friendlyError(e))}finally{setBusy(false)}};
@@ -280,7 +298,7 @@ export default function Page(){
   return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/favicon.ico" alt="Sentinel"/></div><div><span>SENTINEL</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups" aria-label={t('Navegação')}><div className="navGroup">{visibleTabs.map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div></nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':t('CONTA')}</div><span>{account?.user?.email||'Sentinel'} · {t(source==='local'?'PC local':'PC remoto')}</span></div></aside>
     <main className="main"><header className="topbar"><div className="pageHeading"><div className="topBrand"><img src="/favicon.ico" alt="Sentinel"/><span>Sentinel Trading Lab</span></div><div className="eyebrow">{t('PAINEL SENTINEL')} · WEB {WEB_RELEASE_VERSION}</div><h1>{t(current.title)}</h1><p>{t(current.subtitle)}</p></div><div className="topactions">
         <div className="runtimeBadges"><span className="privateBadge">🔒 {account?.profile?.role==='master'?'MASTER':t('PRIVADO')}</span><Pill tone={agent.process?'good':'neutral'}>{t(agent.process?'AGENT ONLINE':'AGENT OFF')}</Pill><Pill tone={agent.worker?'good':'neutral'}>{t(agent.worker?'WORKER ONLINE':'WORKER OFF')}</Pill><Pill tone={String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='demo'?'good':String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='real'?'bad':'neutral'}>{t('CONTA')} {t(modeLabel(s?.liveBroker?.mode||s?.mode||'—'))}</Pill><Pill tone={s?.state==='error'?'bad':s?.state==='running'?'good':'neutral'}>{t(String(s?.state||'offline').toUpperCase())}</Pill></div>
-        <div className="topUtility"><LanguageSwitcher onLanguageChange={next=>{void act('settings',{uiLanguage:next})}}/><button className="themeToggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} title={t("Alternar tema")} aria-label={t("Alternar tema")}>{theme==='light'?t('Escuro'):t('Claro')}</button><button className="kill" disabled={busy||!s} onClick={()=>window.confirm('Ativar KILL SWITCH e parar imediatamente?')&&act('control/kill')}>KILL SWITCH</button><button className="secondary logoutBtn" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST'});window.location.replace('/')}}>{t('Sair')}</button></div>
+        <div className="topUtility"><LanguageSwitcher/><button className="themeToggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} title={t("Alternar tema")} aria-label={t("Alternar tema")}>{theme==='light'?t('Escuro'):t('Claro')}</button><button className="kill" disabled={busy||!s} onClick={()=>window.confirm('Ativar KILL SWITCH e parar imediatamente?')&&act('control/kill')}>KILL SWITCH</button><button className="secondary logoutBtn" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST'});window.location.replace('/')}}>{t('Sair')}</button></div>
       </div></header>
       {!agent.process&&<div className="agentbanner"><div className="agentIcon">!</div><div className="agentText"><b>{t('Vincule o PC à sua conta Sentinel')}</b><span>{t('Instale o Agent no PC que ficará ligado com IQ Option/Exnova. No ícone S ao lado do relógio aparecerá um código SNTL. Digite aqui uma vez.')}</span><div className="pairInline"><input value={pairCode} onChange={e=>setPairCode(e.target.value.toUpperCase())} placeholder="SNTL-XXXX-XXXX"/><button className="primary" disabled={busy||!pairCode} onClick={claimPair}>{t('Vincular PC')}</button></div></div><div className="agentActions sentinelPcOnly">{agentAccess?<a className="secondary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{t('Baixar Agent V')} {AVAILABLE_AGENT_VERSION}</a>:<button className="secondary" disabled title="O Agent é liberado após a compra ser confirmada nesta conta.">Agent V{AVAILABLE_AGENT_VERSION} · {t('Compra necessária')}</button>}<button className="primary" onClick={()=>setTab('Settings')}>{t('Minha conta')}</button></div></div>}
       {agent.process&&!agent.worker&&source==='local'&&<div className="alert"><b>{t('Agent aberto, worker parado.')}</b> <button className="secondary" disabled={busy} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button></div>}
