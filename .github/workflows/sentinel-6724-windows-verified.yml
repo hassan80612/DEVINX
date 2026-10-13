@@ -1,11 +1,11 @@
 name: Sentinel 67.24 Windows Candidate (based on stable 67.21)
 on:
   push:
-    branches: [fix/sentinel-6724-lightweight-agent-parity-20261013]
+    branches: [fix/sentinel-6723-mobile-clock-pc-time-20261013]
     paths:
       - 'sentinel-trading-lab/agent/**'
       - 'sentinel-trading-lab/agent-launcher.go'
-      - 'tests/sentinel-lightweight-overlay-no-broker-freeze-6724.test.mjs'
+      - 'tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs'
       - 'tests/sentinel-source-event-pc-mobile-6722.test.mjs'
       - 'tests/sentinel-pc-mobile-signed-clock-6724.test.mjs'
       - 'sentinel-trading-lab/src/lib/signed-live-analyst-channel.ts'
@@ -43,9 +43,8 @@ jobs:
           node --check sentinel-trading-lab/agent/worker/index.mjs
           node --check sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
           node --check sentinel-trading-lab/agent/worker/signed-live-bridge.mjs
-          node --test tests/sentinel-pc-mobile-signed-clock-6724.test.mjs
           node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
-          node --test tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-continuous-real-window-6721.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-v13460-mobile-realtime-regression.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6724.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs
+          node --test tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-continuous-real-window-6721.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-v13460-mobile-realtime-regression.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs
       - name: Create checksum-verified Windows payload and executable
         shell: bash
         run: |
@@ -106,7 +105,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: fix/sentinel-6724-lightweight-agent-parity-20261013
+          ref: fix/sentinel-6723-mobile-clock-pc-time-20261013
           fetch-depth: 0
       - uses: actions/download-artifact@v4
         with:
@@ -116,7 +115,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          branch=fix/sentinel-6724-lightweight-agent-parity-20261013
+          branch=fix/sentinel-6723-mobile-clock-pc-time-20261013
           if [ "$(git ls-remote origin "refs/heads/$branch" | cut -f1)" != "$GITHUB_SHA" ]; then
             echo 'Candidate source changed during Windows verification'
             exit 1
