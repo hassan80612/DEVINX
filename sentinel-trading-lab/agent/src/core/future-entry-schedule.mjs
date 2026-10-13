@@ -214,7 +214,7 @@ export function futureEntrySchedule(input={}){
        if(!p?.side)return null;
        if(oppositeTurnPressure({quoteHistory:input.adaptiveHistory||snap.quoteHistory||[],
          now:at,quoteTs:snap.quoteTs,side:p.side}).blocked)return null;
-       const reliability=p.validationExamples>=6?
+       const reliability=p.validationExamples>=4?
         p.validationCorrect/Math.max(1,p.validationExamples):.5;
        return {...p,selectionStrength:
          Math.max(.01,p.historicalAgreement*.7+reliability*.3)};
