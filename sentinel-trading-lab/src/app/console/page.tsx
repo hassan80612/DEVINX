@@ -3,7 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
 import {LiveScenarioCard} from '../../components/LiveScenarioCard';
 import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
-import {acceptSignedPcFrame,keepSignedViewOverCloud} from '../../lib/signed-pc-window-order.mjs';
+import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedPcOpportunity,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
@@ -124,16 +124,11 @@ export default function Page(){
         const data=normalizeStatus(await cloudFetch('status'));
         remotePolledAt.current=Date.now();
         setS((previous:Status|null)=>{
-          // A verified PC broadcast is the source of the visible opportunity.
-          // Cloud polls are fallbacks, not competing card-state generators.
+          // An occasional incomplete cloud status is not an instruction
+          // from the PC to clear its currently displayed opportunity.
+          // Preserve the authenticated clock calibration across polls too.
           if(keepSignedViewOverCloud(previous,data))return previous;
-          const oldStart=Number(previous?.lastResult?.analysis?.vnext?.ow?.[1]||
-            previous?.lastResult?.analysis?.vnext?.opportunityWindow?.windowStartedAt||0);
-          const cloudStart=Number(data?.lastResult?.analysis?.vnext?.ow?.[1]||
-            data?.lastResult?.analysis?.vnext?.opportunityWindow?.windowStartedAt||0);
-          if(previous?.liveTopic&&previous.liveTopic===data.liveTopic&&
-             oldStart>0&&cloudStart>0&&cloudStart<oldStart&&data.remote?.online!==false)return previous;
-          return reconcileStatus(data);
+          return reconcileStatus(reconcileCloudPcOpportunity(previous,data));
         });
         setSource('remote');const online=!!data?.remote?.online;
         setAgent((v:any)=>({...v,remote:online,process:online,worker:online,paired:true,version:data.agentVersion||v.version}));
@@ -167,39 +162,43 @@ export default function Page(){
       setS((previous:Status|null)=>{
         if(!previous||String(previous.liveTopic||'')!==topic)return previous;
         // Ignore out-of-order events across remote status snapshots.
+        // Compact PC packets may momentarily omit a window at rollover.
+        // Reuse only the last already-confirmed PC window while retaining
+        // fresh quotes; the next window must still originate from the Agent.
+        const pcFrame=reconcileSignedPcOpportunity(previous,payload);
         const prevPriceAt=Number(previous.liveBroker?.lastQuoteAt||0);
         // An updated strategy evaluation may use a quote older than a concurrent
         // full-status response. Accept that evaluation, but never rewind price.
-        const olderQuote=Number(payload.liveBroker?.lastQuoteAt||0)<prevPriceAt-250;
-        const prevEval=Number(previous.lastEvalMs||0),nextEval=Number(payload.lastEvalMs||0);
+        const olderQuote=Number(pcFrame.liveBroker?.lastQuoteAt||0)<prevPriceAt-250;
+        const prevEval=Number(previous.lastEvalMs||0),nextEval=Number(pcFrame.lastEvalMs||0);
         // Every accepted signed frame comes from the PC. Do not discard its
         // fired/open transition because a cloud status has a newer quote.
         // Also never move backwards to a previous opportunity window.
-        if(!acceptSignedPcFrame(previous,payload))return previous;
+        if(!acceptSignedPcFrame(previous,pcFrame))return previous;
         // Only an accepted, current frame keeps the fast channel healthy.
         // Obsolete frames must not suppress the authenticated status fallback.
         liveFrameAt.current=Date.now();
         return {...previous,
-          state:payload.state,
-          killSwitch:payload.killSwitch,masterFrozen:payload.masterFrozen,
+          state:pcFrame.state,
+          killSwitch:pcFrame.killSwitch,masterFrozen:pcFrame.masterFrozen,
           lastEvalMs:Math.max(prevEval,nextEval),
           // Motor and expiration can change on the PC between the expensive
           // authenticated status polls. The signed live packet must update
           // both so the mobile card immediately follows the actual motor.
           settings:reconcileSettings({...(previous.settings||{}),
-            ...(payload.settings||{})}),
+            ...(pcFrame.settings||{})}),
           // The live packet is intentionally compact. Preserve all other
           // diagnostic/strategy fields from the slower complete snapshot.
           lastResult:{
-            ...(previous.lastResult||{}),...payload.lastResult,
-            analysis:{...(previous.lastResult?.analysis||{}),...(payload.lastResult?.analysis||{})}
+            ...(previous.lastResult||{}),...pcFrame.lastResult,
+            analysis:{...(previous.lastResult?.analysis||{}),...(pcFrame.lastResult?.analysis||{})}
           },
-          liveBroker:olderQuote?previous.liveBroker:{...(previous.liveBroker||{}),...payload.liveBroker},
-          feed:olderQuote?previous.feed:{...(previous.feed||{}),...payload.feed},
+          liveBroker:olderQuote?previous.liveBroker:{...(previous.liveBroker||{}),...pcFrame.liveBroker},
+          feed:olderQuote?previous.feed:{...(previous.feed||{}),...pcFrame.feed},
           // Both values are derived from the signed frame. No extra API or
           // Supabase writes; distinguish an old PC quote from a delayed socket.
-          liveQuoteAgeAtFrame:Number(payload.liveBroker?.lastQuoteAt)>0?
-            Math.max(0,Number(payload.at)-Number(payload.liveBroker.lastQuoteAt)):null,
+          liveQuoteAgeAtFrame:Number(pcFrame.liveBroker?.lastQuoteAt)>0?
+            Math.max(0,Number(pcFrame.at)-Number(pcFrame.liveBroker.lastQuoteAt)):null,
           liveStreamAt:Date.now(),liveTransport:'push',
           remote:{...(previous.remote||{}),online:true}
         };
