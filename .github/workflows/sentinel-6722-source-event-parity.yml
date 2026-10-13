@@ -1,0 +1,28 @@
+name: Sentinel 67.22 PC Mobile Same Source Candidate
+on:
+  push:
+    branches: [fix/sentinel-6722-pc-mobile-event-source-20261013]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Ensure exact stable release unchanged and parse source
+        run: |
+          node -e "if(require('./sentinel-trading-lab/agent/release.json').version!=='13.4.67.22')process.exit(1)"
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/live-bridge.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - name: Test real event transitions and preserved mobile synchronization
+        run: |
+          node --test tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs tests/sentinel-continuous-real-window-6721.test.mjs
+      - name: Build site for unchanged mobile interface
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+          npm run build

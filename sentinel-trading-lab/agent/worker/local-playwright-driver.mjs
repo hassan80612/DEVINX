@@ -1507,13 +1507,17 @@ export class LocalPlaywrightDriver{
           triggeredAt>0&&Date.now()>=triggeredAt&&Date.now()<=triggeredAt+1500;
         const entryPlanActive=entryPlanReady&&windowRunning;
         const scheduledSide=entryPlanActive?pinnedEntry.side:null;
+        // A confirmed trigger always carries its OWN side, even if the 30s
+        // deadline has elapsed during rendering. Never default a missing
+        // CALL/PUT to PUT: the phone already receives the Agent's true side.
+        const confirmedSide=entryPlanReady?pinnedEntry.side:null;
         const scheduledAt=entryPlanReady?Number(pinnedEntry.entryAt):0;
         const scheduledExit=entryPlanReady?Number(pinnedEntry.exitAt):0;
-        const scheduledDecision=entryMoment?
-          ('ENTRADA AGORA · '+(scheduledSide==='CALL'?'↑ CALL':'↓ PUT')):
+        const scheduledDecision=entryMoment&&confirmedSide?
+          ('ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT')):
           opportunityPhase==='cancelled'?'JANELA SEM ENTRADA':
           opportunityPhase==='fired'?'ENTRADA JÁ SINALIZADA':
-          opportunityPhase==='open'?(scheduledSide==='CALL'?'↑ CALL · JANELA ABERTA':'↓ PUT · JANELA ABERTA'):
+          opportunityPhase==='open'&&scheduledSide?(scheduledSide==='CALL'?'↑ CALL · JANELA ABERTA':'↓ PUT · JANELA ABERTA'):
           'JANELA ABERTA · ANALISANDO';
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">
@@ -1554,7 +1558,7 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">ENTRADA FUTURA · ${esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(scheduledDecision)}</div>
-              <div data-sentinel-vnext-clock data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${scheduledSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
+              <div data-sentinel-vnext-clock data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>ATÉ ENTRADA CALCULADA</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong></div>
                 <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">MOMENTO DE ENTRADA</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(triggeredAt).toLocaleTimeString('pt-BR',{hour12:false})):'AGUARDANDO'}</b><small style="font-size:9px;color:${muted};white-space:nowrap">VENCIMENTO ${opportunityPhase==='fired'&&scheduledExit?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):'após a entrada'}</small></div>
               </div>
@@ -1823,7 +1827,8 @@ export class LocalPlaywrightDriver{
             }
             if(verifiedNow&&decision){
               const side=String(pane.getAttribute('data-side')||'');
-              decision.textContent='ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT');
+              decision.textContent=side==='CALL'?'ENTRADA AGORA · ↑ CALL':
+                 side==='PUT'?'ENTRADA AGORA · ↓ PUT':'JANELA ABERTA · ANALISANDO';
             }
             let shown='—:—';
             if(active){

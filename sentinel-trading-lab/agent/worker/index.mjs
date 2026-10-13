@@ -63,7 +63,7 @@ const liveTopic='realtime:sentinel-'+randomBytes(24).toString('hex');
 const liveSignatureKey=randomBytes(32).toString('hex');
 const liveBridge=new SignedLiveBridge(liveTopic,liveSignatureKey,{onViewer:()=>{void publishLiveFrame()}});
 liveBridge.start();
-let livePublishBusy=false,lastLiveSentDecisionKey='';
+let livePublishBusy=false,lastLiveSentDecisionKey='',lastLiveSourceEventKey='';
 async function publishLiveFrame(){
   if(livePublishBusy||!liveBridge.hasViewer()||runtime.stateName!=='running')return;
   // Inspect only the already-computed local state. No extra analysis, broker
@@ -84,7 +84,16 @@ async function publishLiveFrame(){
     op.side,op.state,op.ready,op.actionable,op.activeUntil,
     alert.side,alert.trigger,alert.testing,op.subanalyst?.status].join('|');
   const urgent=decisionKey!==lastLiveSentDecisionKey;
-  if(Date.now()-liveBridge.lastSentAt<(urgent?500:1100))return;
+  // Phase/immutable boundary/confirmed trigger are source events, not quote
+  // refreshes. Deliver these without a second half-second wait. Everything
+  // else retains the original pacing and 3000-byte bound.
+  const sourceEventKey=[
+    runtime.settings.asset,runtime.settings.forecastMode,runtime.settings.engine,runtime.settings.orderDurationMs,
+    pcWindow?.phase,pcWindow?.windowStartedAt,pcWindow?.windowEndsAt,
+    mobileEntry?.entryTriggeredAt,mobileEntry?.phase
+  ].join('|');
+  const sourceEvent=sourceEventKey!==lastLiveSourceEventKey;
+  if(Date.now()-liveBridge.lastSentAt<(sourceEvent?0:urgent?500:1100))return;
   livePublishBusy=true;
   try{
     const chosen=chooseLive();if(!chosen?.m)return;
@@ -97,8 +106,10 @@ async function publishLiveFrame(){
       settings:runtime.settings,lastEvalMs:runtime.lastEvalMs,
       lastResult:runtime.lastResult
     };
-    if(liveBridge.publish(analystSnapshot(snapshot,chosen.m),{urgent}))
+    if(liveBridge.publish(analystSnapshot(snapshot,chosen.m),{urgent,sourceEvent})){
       lastLiveSentDecisionKey=decisionKey;
+      lastLiveSourceEventKey=sourceEventKey;
+    }
   }catch{}finally{livePublishBusy=false}
 }
 const livePublishTimer=setInterval(()=>{void publishLiveFrame()},220);
