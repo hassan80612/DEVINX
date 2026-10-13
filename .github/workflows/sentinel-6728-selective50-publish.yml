@@ -1,0 +1,170 @@
+name: Sentinel 67.28 Selective 50 + full i18n verified release
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/sentinel-6728-selective50-i18n-20261013]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - 'tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs'
+      - 'tests/sentinel-source-event-pc-mobile-6722.test.mjs'
+      - 'tests/sentinel-pc-mobile-signed-clock-6724.test.mjs'
+      - 'sentinel-trading-lab/src/lib/signed-live-analyst-channel.ts'
+      - 'sentinel-trading-lab/src/lib/pc-clock-sync.mjs'
+      - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
+      - 'sentinel-trading-lab/src/lib/pc-authoritative-window.mjs'
+      - 'sentinel-trading-lab/src/lib/pc-authoritative-window.d.mts'
+      - 'tests/sentinel-continuous-real-window-6721.test.mjs'
+      - '.github/workflows/sentinel-6728-selective50-publish.yml'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-6728-selective50
+  cancel-in-progress: true
+jobs:
+  source-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Syntax and focused functional regressions
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/selective-autonomous.mjs
+          node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --test tests/sentinel-selective50-warmup-6728.test.mjs tests/sentinel-turn-awareness-selective55-candidate.test.mjs tests/sentinel-6727-i18n-coverage.test.mjs tests/sentinel-ui-i18n-6726-candidate.test.mjs tests/sentinel-selective-live-6726.test.mjs tests/sentinel-selective-historical-6718.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs tests/sentinel-mobile-low-latency-1357.test.mjs
+      - name: Next production build
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
+      - name: Site typecheck
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
+  package:
+    needs: source-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Confirm exact release metadata and source behavior
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const r=require('./sentinel-trading-lab/agent/release.json');
+          const p=require('./sentinel-trading-lab/agent/package.json');
+          if(r.version!=='13.4.67.28'||r.version!==p.version)throw Error('version mismatch');
+          NODE
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
+          node --check sentinel-trading-lab/agent/worker/signed-live-bridge.mjs
+          node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
+          node --test tests/sentinel-selective50-warmup-6728.test.mjs tests/sentinel-turn-awareness-selective55-candidate.test.mjs tests/sentinel-ui-i18n-6726-candidate.test.mjs tests/sentinel-selective-live-6726.test.mjs tests/sentinel-selective-historical-6718.test.mjs tests/sentinel-autonomous-coherent-perf-6717.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-continuous-real-window-6721.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-v13460-mobile-realtime-regression.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs
+      - name: Create checksum-verified Windows payload and executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const release=JSON.parse(fs.readFileSync('agent/release.json','utf8'));
+          const zipSha256=crypto.createHash('sha256').update(fs.readFileSync('public/downloads/agent_payload_v88.zip')).digest('hex');
+          fs.writeFileSync('public/downloads/agent-update.json',JSON.stringify({format:'sentinel-agent-update-v1',version:release.version,build:release.build,zipSha256})+'\n');
+          NODE
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/Sentinel-Agent-13.4.67.28.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/{agent_payload_v88.zip,Sentinel-Agent-Windows.exe}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.67.28-Windows-Verified
+          path: |
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+            sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.4.67.28.exe
+            sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+            sentinel-trading-lab/public/downloads/agent-update.json
+          if-no-files-found: error
+          retention-days: 14
+  windows-smoke:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.67.28-Windows-Verified
+          path: candidate
+      - name: Verify Windows installer and embedded code without installing
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Get-ChildItem candidate -Recurse -Filter 'Sentinel-Agent-Windows.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Missing installer'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "Windows embedded-agent verification failed: $LASTEXITCODE"}
+
+  publish-candidate-installer:
+    needs: [package, windows-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.67.28-Windows-Verified
+          path: candidate
+      - name: Publish only verified 67.28 install assets to candidate branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=release/sentinel-6728-selective50-i18n-20261013
+          actual="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [ "$actual" != "$GITHUB_SHA" ]; then
+            echo "Candidate changed after Windows verification; refuse to overwrite newer work"
+            exit 1
+          fi
+          for file in Sentinel-Agent-Windows.exe sentinel-agent-windows.exe Sentinel-Agent-13.4.67.28.exe agent_payload_v88.zip agent-update.json; do
+            test -s "candidate/$file"
+            cp "candidate/$file" "sentinel-trading-lab/public/downloads/$file"
+          done
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const root='sentinel-trading-lab/public/downloads/';
+          const manifest=JSON.parse(fs.readFileSync(root+'agent-update.json','utf8'));
+          const expected=crypto.createHash('sha256').update(fs.readFileSync(root+'agent_payload_v88.zip')).digest('hex');
+          if(manifest.version!=='13.4.67.28'||manifest.zipSha256!==expected)throw Error('Release mismatch');
+          NODE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f sentinel-trading-lab/public/downloads/{Sentinel-Agent-Windows.exe,sentinel-agent-windows.exe,Sentinel-Agent-13.4.67.28.exe,agent_payload_v88.zip,agent-update.json}
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'build(sentinel): deliver checksum verified 67.28 installer for DEMO [skip ci] [skip deploy]'
+          git push origin HEAD:$branch
