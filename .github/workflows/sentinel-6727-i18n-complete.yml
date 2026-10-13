@@ -1,0 +1,32 @@
+name: Sentinel 67.27 PT-EN completeness candidate
+on:
+  push:
+    branches:
+      - fix/sentinel-6727-i18n-complete-20261013
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  locale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Syntax and bilingual audit
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/ui-texts.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --test tests/sentinel-6727-i18n-coverage.test.mjs tests/sentinel-ui-i18n-6726-candidate.test.mjs
+      - name: Full web build
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
+      - name: Typecheck UI
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
+      - name: Critical PC phone regressions
+        run: node --test tests/sentinel-turn-awareness-selective55-candidate.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs tests/sentinel-mobile-low-latency-1357.test.mjs tests/sentinel-selective-live-6726.test.mjs
