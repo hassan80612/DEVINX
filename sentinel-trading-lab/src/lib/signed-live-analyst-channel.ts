@@ -1,5 +1,6 @@
 import {SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY} from './supabase-config';
 import {pcClockSample,pcClockNow} from './pc-clock-sync.mjs';
+import {analystWireV1} from './analyst-wire-v1.mjs';
 
 export type SignedAnalystFrame={
   v:number,at:number,seq:number,sig:string,state:string,killSwitch?:boolean,masterFrozen?:boolean,
@@ -57,7 +58,12 @@ export function watchSignedLiveAnalyst(topic:string,signingKey:string,onMessage:
        !frame.liveBroker?.symbol||!frame.lastResult?.asset||!/^[a-f0-9]{64}$/.test(String(frame.sig||'')))return;
     const k=await keyPromise;if(!k||closed||!joined)return;
     const unsigned:any={...frame};delete unsigned.sig;
-    const ok=await crypto.subtle.verify('HMAC',k,bytes(frame.sig),encoder.encode(JSON.stringify(unsigned))).catch(()=>false);
+    // Realtime preserves JSON values, not object insertion order. Verify the
+    // original v1 wire representation, retaining EVERY received field.
+    const wire=analystWireV1(unsigned);
+    let ok=await crypto.subtle.verify('HMAC',k,bytes(frame.sig),encoder.encode(wire)).catch(()=>false);
+    const original=JSON.stringify(unsigned);
+    if(!ok&&original!==wire)ok=await crypto.subtle.verify('HMAC',k,bytes(frame.sig),encoder.encode(original)).catch(()=>false);
     if(!ok||frame.seq<=sequence||closed||!joined)return;
     sequence=frame.seq;onMessage(frame);
   };
