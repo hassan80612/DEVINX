@@ -56,8 +56,8 @@ test('PC locale comes from the site and no duplicate language selector remains',
  assert.equal(sentinelText('en','155 ativos detectados'),'155 assets detected');
 });
 test('language chooses exactly one visible price and route in landing and checkout',()=>{
- assert.match(homepage,/intl\?'US\\$ 50':'R\\$ 280'/);
- assert.match(plan,/international\?'US\\$ 50':'R\\$ 280'/);
+ assert.match(homepage,/intl\?'US\$ 50':'R\$ 280'/);
+ assert.match(plan,/international\?'US\$ 50':'R\$ 280'/);
  assert.match(plan,/data-currency=\{international\?'USD':'BRL'\}/);
  assert.doesNotMatch(plan,/plansMarketChooser/);
  const pricing=load('sentinel-trading-lab/src/lib/commercial.ts');
