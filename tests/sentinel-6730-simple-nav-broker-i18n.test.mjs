@@ -29,7 +29,10 @@ test('Broker and Strategies use centralized bilingual labels and visible status'
  assert.match(consoleUi,/\{t\(busy\?'Processando…'/);
  assert.match(consoleUi,/const status=b\.validated\?t\('LEITURA'\)/);
  const keys=['Navegação','PAINEL SENTINEL','Alternar tema','Escuro','Claro','Estratégia responsável','Selecionar estratégia','Saldo lido','Fonte do saldo','Ativos lidos','Última candle','Cotação','Candles','Feed validado','Sessão detectada e conectada.','Abrir / conectar corretora','Trazer corretora para frente','Conta REAL','Novo computador detectado'];
- for(const key of keys)assert.ok(translations.en[key]&&sentinelText('en',key)!==key,key);
+ for(const key of keys){
+   assert.ok(translations.en[key],key);
+   if(!['Candles','Agent'].includes(key))assert.notEqual(sentinelText('en',key),key,key);
+ }
 });
 test('never change a single market decision, window, clock or live bridge to fix navigation',()=>{
  const paths=[
