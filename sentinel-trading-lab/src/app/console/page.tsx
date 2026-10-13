@@ -7,6 +7,7 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedPcOpportunity,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
 
 type Status=any;
+// DEMO release candidate 67.27, Windows installer checksum-verified. Original CALL/PUT timing unchanged.
 // Informative web release number; the connected PC reports its own actual version.
 const AVAILABLE_AGENT_VERSION='13.4.67.27';
 const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.27.exe?v=turn-awareness-demo-1013`;
