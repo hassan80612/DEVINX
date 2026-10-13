@@ -145,7 +145,14 @@ const PC_UI_KEYS=[
  "Estratégia responsável pela previsão"
 ];
 // Use the entire single-source dictionary: the prior short allowlist left dynamic overlay labels untranslated.
-const PC_UI_EN=translations.en;
+const PC_UI_EN=Object.freeze(Object.fromEntries([...new Set([...PC_UI_KEYS,
+  'Relógio atual','Sincronizado com a corretora','Relógio da corretora indisponível',
+  'TEMPO DA CORRETORA','ATÉ FECHAR COMPRA','MOMENTO CONFIRMADO',
+  'ENTRADA AGORA · ↑ CALL','ENTRADA AGORA · ↓ PUT',
+  'JANELA ABERTA','JANELA SEM ENTRADA','ENTRADA JÁ SINALIZADA',
+  'ENTRADA AGORA','● COTAÇÃO AO VIVO','COTAÇÃO AO VIVO',
+  'Tempo REAL · AGORA','FORÇA ATUAL','SESSÃO CONECTADA','ATIVO'
+ ])].map(k=>[k,translations.en[k]||k])));
 const PROVIDERS={
   iq_option:{url:'https://iqoption.com/pt',tradeUrl:'https://iqoption.com/traderoom',domain:'iqoption.com',wsDomain:'iqoption.com',label:'IQ Option'},
   exnova:{url:'https://exnova.com/pt/',tradeUrl:'https://exnova.com/traderoom',domain:'exnova.com',wsDomain:'ws.trade.exnova.com',label:'Exnova'}
