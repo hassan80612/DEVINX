@@ -46,8 +46,8 @@ export const marketingMessages=Object.freeze({
     "en": "An analysis workspace to monitor market scenarios, identify possible reversals and see CALL/PUT signals more clearly. The Agent runs on your PC; the card follows you on your phone."
   },
   "home.hero.primary": {
-    "pt": "Conhecer o plano · US$ 50",
-    "en": "Explore the plan · US$ 50"
+    "pt": "Ver planos e preços",
+    "en": "View plans and prices"
   },
   "home.hero.secondary": {
     "pt": "Já tenho conta · Entrar",
@@ -246,12 +246,12 @@ export const marketingMessages=Object.freeze({
     "en": "Your Sentinel plan."
   },
   "home.pricing.description": {
-    "pt": "Acesso por 30 dias: US$ 50. Renove com uma nova compra antes do vencimento; não há cobrança automática. Confira os detalhes no checkout oficial da Kiwify.",
-    "en": "30-day access: US$ 50. Renew with a new purchase before expiration; there is no automatic charge. See details at the official Kiwify checkout."
+    "pt": "Brasil: R$ 280 por 30 dias. Outros países: US$ 50 por 30 dias. Renovação manual, sem cobrança automática. Escolha sua região e confira os detalhes no checkout oficial da Kiwify.",
+    "en": "Brazil: R$ 280 for 30 days. International: US$ 50 for 30 days. Manual renewal, no automatic charge. Choose your purchase region and review the details at the official Kiwify checkout."
   },
   "home.pricing.price": {
-    "pt": "ACESSO DE 30 DIAS · US$ 50",
-    "en": "30-DAY ACCESS · US$ 50"
+    "pt": "BRASIL R$ 280 · EXTERIOR US$ 50",
+    "en": "BRAZIL R$ 280 · INTERNATIONAL US$ 50"
   },
   "home.pricing.action": {
     "pt": "Ver plano e acesso ↗",
