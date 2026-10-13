@@ -13,6 +13,45 @@ export function validateSelectiveHistory({tested=0,hits=0,minExamples=4,minRate=
    correct>=0&&correct<=n&&correct/n>=minRate;
 }
 
+// Selected and auxiliary horizons frequently share the same quote snapshot.
+// Clean and score incoming ticks only ONCE for that snapshot, not 5-11 times
+// per analysis. Weak keys free history when the runtime replaces the buffer.
+const quotePrepares=new WeakMap();
+function preparedSelectiveQuotes(quoteHistory,now){
+ const input=Array.isArray(quoteHistory)?quoteHistory:[];
+ const last=input.at(-1)||{},first=input[0]||{};
+ const cached=quotePrepares.get(input);
+ if(cached&&cached.now===now&&cached.count===input.length&&
+    cached.lastTs===last.ts&&cached.lastPrice===last.price&&
+    cached.firstTs===first.ts&&cached.firstPrice===first.price)return cached;
+ const unique=new Map();
+ for(const q of input){
+  const ts=Number(q?.ts),p=Number(q?.price),received=Number(q?.receivedAt??q?.ts);
+  if(!Number.isFinite(ts)||!valid(p)||ts>now||received>now||!Number.isFinite(received))continue;
+  const earlier=unique.get(ts);
+  if(received<=ts+8000&&(!earlier||received<earlier.receivedAt))
+    unique.set(ts,{ts,p,receivedAt:received});
+ }
+ const rows=[...unique.values()].sort((a,b)=>a.ts-b.ts);
+ const prefixSq=[0],prefixSeconds=[0];
+ for(let i=0;i<rows.length;i++){
+  let square=0,dt=0;
+  if(i>0){
+   const seconds=(rows[i].ts-rows[i-1].ts)/1000;
+   if(seconds>0&&seconds<=8){
+    const change=Math.log(rows[i].p/rows[i-1].p);
+    square=change*change;dt=seconds;
+   }
+  }
+  prefixSq.push(prefixSq.at(-1)+square);
+  prefixSeconds.push(prefixSeconds.at(-1)+dt);
+ }
+ const result={rows,prefixSq,prefixSeconds,now,count:input.length,
+  lastTs:last.ts,lastPrice:last.price,firstTs:first.ts,firstPrice:first.price};
+ quotePrepares.set(input,result);
+ return result;
+}
+
 export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySeconds=30,
  holdingSeconds=delaySeconds,quoteTs=0,asset='UNKNOWN',engineId='automatic'}={}){
  const h=Number(delaySeconds),hold=Number(holdingSeconds),at=Number(quoteTs);
@@ -23,14 +62,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  if(!Number.isInteger(h)||h<0||h>3600||!Number.isInteger(hold)||hold<1||hold>3600)
   return blank('invalid-interval');
  if(!(at>0&&at<=now&&now-at<=2500))return blank('waiting-fresh-quote');
- const unique=new Map();
- for(const q of quoteHistory){
-  const ts=Number(q?.ts),p=Number(q?.price),received=Number(q?.receivedAt??q?.ts);
-  if(!Number.isFinite(ts)||!valid(p)||ts>now||received>now||!Number.isFinite(received))continue;
-  const earlier=unique.get(ts);
-  if(received<=ts+8000&&(!earlier||received<earlier.receivedAt))unique.set(ts,{ts,p,receivedAt:received});
- }
- const rows=[...unique.values()].sort((a,b)=>a.ts-b.ts);
+ const rows=preparedSelectiveQuotes(quoteHistory,now).rows;
  if(rows.length<12||now-rows.at(-1).ts>2500)return blank('waiting-fresh-quote');
  // Match the history against the market observed NOW. Freezing features at
  // a 10/15/30-second grid hid retracements from entry confirmation. Stability
@@ -56,19 +88,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  // Historical sigma is cached once, not re-scanned for hundreds of
  // examples on each market update. Remove future-arrival contamination by
  // measuring at an 8s-known boundary, matching the observed quote tolerance.
- const prefixSq=[0],prefixSeconds=[0];
- for(let i=0;i<rows.length;i++){
-  let square=0,dt=0;
-  if(i>0){
-   const seconds=(rows[i].ts-rows[i-1].ts)/1000;
-   if(seconds>0&&seconds<=8){
-    const change=Math.log(rows[i].p/rows[i-1].p);
-    square=change*change;dt=seconds;
-   }
-  }
-  prefixSq.push(prefixSq.at(-1)+square);
-  prefixSeconds.push(prefixSeconds.at(-1)+dt);
- }
+ const {prefixSq,prefixSeconds}=preparedSelectiveQuotes(quoteHistory,now);
  const indexAt=t=>{
   let lo=0,hi=rows.length-1,out=-1;
   while(lo<=hi){const mid=(lo+hi)>>1;
