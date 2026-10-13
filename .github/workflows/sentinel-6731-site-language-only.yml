@@ -1,0 +1,38 @@
+name: Sentinel WEB 67.31.1 Language-only Regression
+on:
+  push:
+    branches: [fix/sentinel-6731-broker-language-and-sync-20261013]
+    paths:
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - 'sentinel-trading-lab/agent/src/core/ui-texts.mjs'
+      - 'tests/sentinel-6731-language-site-broker-fixed.test.mjs'
+      - '.github/workflows/sentinel-6731-site-language-only.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-web-67311-language
+  cancel-in-progress: true
+jobs:
+  web-language:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Validate broker diagnostics and untouched analyst code
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/ui-texts.mjs
+          node --test tests/sentinel-6731-language-site-broker-fixed.test.mjs tests/sentinel-6731-dual-clock-pricing-i18n.test.mjs tests/sentinel-6728-continuous-only-ui.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs
+      - name: Build the website
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
+      - name: Typecheck
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
