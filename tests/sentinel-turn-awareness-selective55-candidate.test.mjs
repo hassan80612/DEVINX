@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {oppositeTurnPressure} from '../sentinel-trading-lab/agent/src/core/turn-pressure.mjs';
+import {validateSelectiveHistory} from '../sentinel-trading-lab/agent/src/core/selective-autonomous.mjs';
 import {evolveOpportunity} from '../sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs';
 const now=1900000000000,settings={asset:'TEST',engine:'automatic',forecastMode:'selective',orderDurationMs:30000};
 const sample=fn=>Array.from({length:31},(_,i)=>({ts:now-(30-i)*1000,price:Math.exp(fn(i))}));
@@ -58,5 +59,14 @@ test('the two modes use the same counterturn check and Seletiva validates at 55 
  assert.match(f,/if\(inSelective\)/);
  assert.match(f,/function continuousWindow/);
  assert.match(f,/if\(settings.forecastMode==='selective'\)/);
- assert.match(s,/const validated=tested<6\|\|hits\/tested>=\.55;/);
+ assert.match(s,/validateSelectiveHistory\(\{tested,hits\}\)/);
+});
+
+test('55 percent means >=4 genuine validations, never a zero-sample pass',()=>{
+ for(const [tested,hits,valid] of [
+   [0,0,false],[1,1,false],[3,3,false],[4,2,false],
+   [4,3,true],[5,3,true],[5,2,false],[6,3,false],
+   [7,4,true],[10,5,false],[10,6,true]]){
+   assert.equal(validateSelectiveHistory({tested,hits}),valid,`n=${tested}, hits=${hits}`);
+ }
 });
