@@ -304,7 +304,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   evaluationPerformance.averageMs=Math.round(evaluationPerformance.averageMs?
     evaluationPerformance.averageMs*.8+tickElapsed*.2:tickElapsed);
   if(tickElapsed>500)evaluationPerformance.slowCount++;
-  const liveQuoteAt=Number(chooseLive()?.m?.lastQuoteAt||0);
+  const liveQuoteAt=Number(runtime.externalMarket?.lastQuoteAt||0);
   evaluationPerformance.lastQuoteToDecisionAgeMs=liveQuoteAt>0?
     Math.max(0,Date.now()-liveQuoteAt):null;
   const fired=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor;
