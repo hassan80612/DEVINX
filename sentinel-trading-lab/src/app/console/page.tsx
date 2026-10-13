@@ -205,7 +205,7 @@ export default function Page(){
         };
       });
     },(offsetMs:number,rttMs:number)=>{
-      setS(previous=>previous?.liveTopic===topic?
+      setS((previous:Status|null)=>previous?.liveTopic===topic?
         {...previous,pcClockOffsetMs:offsetMs,pcClockRttMs:rttMs}:previous);
     });
   },[s?.liveTopic,s?.liveSignatureKey,source,reconcileSettings]);
