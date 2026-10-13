@@ -27,10 +27,10 @@ export function T({children}:{children:string}){
  const trimmed=children.trim();
  return <>{children.startsWith(' ')?' ':''}{t(trimmed)}{children.endsWith(' ')?' ':''}</>;
 }
-export function LanguageSwitcher(){
+export function LanguageSwitcher({onLanguageChange}:{onLanguageChange?:(language:Lang)=>void}={}){
  const {language,setLanguage}=useSentinelLocale();
  return <select aria-label={language==='pt'?'Idioma':'Language'} value={language}
-   onChange={e=>setLanguage(sentinelLanguage(e.target.value))}
+   onChange={e=>{const next=sentinelLanguage(e.target.value);setLanguage(next);onLanguageChange?.(next)}}
    style={{padding:'7px 9px',border:'1px solid currentColor',borderRadius:8,
      color:'inherit',background:'transparent',fontSize:12,fontWeight:700,maxWidth:120}}>
    <option value="pt" style={{color:'#181818'}}>Português</option>
