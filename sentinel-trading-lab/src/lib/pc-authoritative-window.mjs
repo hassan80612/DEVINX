@@ -17,7 +17,11 @@ export function pcAuthoritativeWindow({
     time>=tick&&time-tick<3500&&triggered>0&&
     time>=triggered&&time<=triggered+1500;
   const active=withinDeadline||enterNow;
-  const remainingSeconds=active?Math.max(1,Math.ceil((end-time)/1000)):null;
+  // The PC's old countdown may have just reached its real deadline while
+  // the next authenticated frame is in flight. Display 00:00, never a
+  // blinking --:--/phantom second cycle. The next timer still requires a
+  // newly supplied PC windowStartedAt.
+  const remainingSeconds=valid?Math.max(0,Math.ceil((end-time)/1000)):null;
   let label;
   if(enterNow)label='ENTRADA AGORA · '+(direction==='CALL'?'↑ CALL':'↓ PUT');
   else if(!valid)label='';
