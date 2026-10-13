@@ -25,7 +25,14 @@ export class SignedLiveBridge extends LiveBridge{
       if(this.socket!==socket||this.stopped)return;
       let msg;try{msg=JSON.parse(String(e.data))}catch{return}
       if(msg.topic===this.topic&&msg.event==='broadcast'&&msg.payload?.event==='viewer'&&this.joined&&this.verifyViewer(msg.payload?.payload)){
-       this.verifiedViewerAt=this.clock();this.onViewer?.();
+       this.verifiedViewerAt=this.clock();
+        // Signed echo on the SAME live socket: measures phone-vs-PC time
+        // without querying the broker or running another prediction.
+        const viewerAt=Number(msg.payload.payload.at);
+        const pcAt=this.clock();
+        this.send('broadcast',{type:'broadcast',event:'clock-sync',
+          payload:{viewerAt,pcAt,sig:this.mac(this.topic+'|clock-sync|'+viewerAt+'|'+pcAt)}});
+        this.onViewer?.();
       }
     });
   }
