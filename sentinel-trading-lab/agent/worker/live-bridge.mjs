@@ -129,7 +129,31 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
     ...trimmed.lastResult.analysis,
     vnext:{...compactVnext,targetProjection:null,hm:[],hf:[],er:[]}
   }}};
-  return size(minimal)<=maxBytes?minimal:null;
+  if(size(minimal)<=maxBytes)return minimal;
+  // A saturated optional card must never block the one-shot entry receipt
+  // from reaching the phone. Preserve the authoritative PC window, selected
+  // CALL/PUT trigger and the broker quote, dropping display-only extras.
+  const critical={
+    v:snapshot.v,at:snapshot.at,seq:snapshot.seq,
+    agentVersion:snapshot.agentVersion,state:snapshot.state,
+    settings:snapshot.settings,
+    liveBroker:{
+      symbol:snapshot.liveBroker?.symbol,
+      validatedSymbol:snapshot.liveBroker?.validatedSymbol,
+      assetValidated:snapshot.liveBroker?.assetValidated,
+      analysisFeedValidated:snapshot.liveBroker?.analysisFeedValidated,
+      lastQuoteAt:snapshot.liveBroker?.lastQuoteAt,
+      quote:snapshot.liveBroker?.quote
+    },
+    feed:snapshot.feed,
+    lastResult:{asset:snapshot.lastResult?.asset,analysis:{
+      operationalSignal:{side:op.side||'WAIT',state:op.state||'ANALISANDO',
+        ready:op.ready===true,actionable:op.actionable===true},
+      vnext:{engineId:v.engineId,expirySeconds:v.expirySeconds,
+        receipt:v.receipt,ea:v.ea,ow:v.ow,er:[],hf:[],hm:[],cards:[]}
+    }}
+  };
+  return size(critical)<=maxBytes?critical:null;
 }
 
 export class LiveBridge{
