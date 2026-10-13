@@ -47,7 +47,7 @@ test('clock mode is display-only: cannot reset prediction, broker or windows',()
 });
 test('PC locale comes from the site and no duplicate language selector remains',()=>{
  assert.doesNotMatch(driver,/data-sentinel-ui-language/);
- assert.match(driver,/const PC_UI_EN=translations\.en/);
+ assert.match(driver,/const PC_UI_EN=Object\.freeze\(Object\.fromEntries/);
  assert.match(driver,/tr\(scheduledDecision\)/);
  assert.match(driver,/decision\.textContent=tr\(/);
  for(const key of ['JANELA ABERTA · AGUARDE','COTAÇÃO AO VIVO','FORÇA ATUAL','TOTAL MERCADO','Saldo lido','Ativos lidos']){
