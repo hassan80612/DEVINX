@@ -24,7 +24,8 @@ export function useSentinelLocale(){
 }
 export function T({children}:{children:string}){
  const {t}=useSentinelLocale();
- return <>{t(children)}</>;
+ const trimmed=children.trim();
+ return <>{children.startsWith(' ')?' ':''}{t(trimmed)}{children.endsWith(' ')?' ':''}</>;
 }
 export function LanguageSwitcher(){
  const {language,setLanguage}=useSentinelLocale();
