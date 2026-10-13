@@ -19,6 +19,9 @@ export function acceptSignedPcFrame(previous,incoming){
  const old=pcWindowInfo(previous),next=pcWindowInfo(incoming);
  const sameContext=old.engine===next.engine&&old.duration===next.duration&&old.asset===next.asset;
  const prevEval=Number(previous.lastEvalMs||0),nextEval=Number(incoming.lastEvalMs||0);
+ // A fresh authenticated PC opportunity is authoritative even when the
+ // initial cloud snapshot has a newer ordinary quote but NO window yet.
+ if(next.start>0&&old.start===0)return true;
  if(sameContext&&next.start>0&&old.start>0){
   if(next.start<old.start)return false;
   if(next.start===old.start){
