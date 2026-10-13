@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.28",
-  "build": "13.4.67.28-selective50-complete-i18n-release",
+  "version": "13.4.67.29",
+  "build": "13.4.67.29-continuous-only-multilingual-ui-release",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
