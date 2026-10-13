@@ -44,7 +44,7 @@ test('English locale is propagated through an independent Agent UI setting',()=>
  assert.match(agent,/uiLanguage:view\.settings\?\.uiLanguage\|\|'pt'/);
  assert.match(browser,/String\(d\.uiLanguage\|\|'pt'\)/);
  assert.doesNotMatch(browser,/data-sentinel-ui-language/);
- assert.match(browser,/const PC_UI_EN=translations\.en/);
+ assert.match(browser,/const PC_UI_EN=Object\.freeze\(Object\.fromEntries/);
 });
 test('marketing semantic ids have PT and EN translations and no literal PT fallback',()=>{
  const page=read('sentinel-trading-lab/src/app/page.tsx');
