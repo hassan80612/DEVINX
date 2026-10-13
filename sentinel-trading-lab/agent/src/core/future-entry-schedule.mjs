@@ -4,6 +4,7 @@ import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
 import {coherentInterval,observedNoise} from './forward-direction-quality.mjs';
 import {planEntryWindow} from './entry-window-planner.mjs';
+import {oppositeTurnPressure} from './turn-pressure.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -162,6 +163,8 @@ function continuousWindow({input,settings,chosen}){
    const check=coherentInterval({entryPrice:first,exitPrice:last,noise,
      noiseFraction:.15});
    if(!check.qualified)return null;
+   // Review the existing projected side; do not manufacture a countertrade.
+   if(oppositeTurnPressure({quoteHistory:history,now,quoteTs,side:check.side}).blocked)return null;
    return {side:check.side,projectedEntryPrice:first,projectedExitPrice:last,
     selectionStrength:Math.min(3,Math.abs(check.relativeMove)/
       Math.max(noise||1e-12,1e-12))};
@@ -209,6 +212,8 @@ export function futureEntrySchedule(input={}){
          asset:String(settings.asset||'UNKNOWN').toUpperCase(),
          engineId:String(settings.engine||'automatic')});
        if(!p?.side)return null;
+       if(oppositeTurnPressure({quoteHistory:input.adaptiveHistory||snap.quoteHistory||[],
+         now:at,quoteTs:snap.quoteTs,side:p.side}).blocked)return null;
        const reliability=p.validationExamples>=6?
         p.validationCorrect/Math.max(1,p.validationExamples):.5;
        return {...p,selectionStrength:
@@ -260,10 +265,13 @@ export function confirmWindowEntry({
   Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500))
   return {side:null,status:'waiting-fresh-quote'};
  if(settings.forecastMode==='selective'){
-  return autonomousSelectiveEntry({quoteHistory:quotes,now,quoteTs:snap.quoteTs,
+  const forecast=autonomousSelectiveEntry({quoteHistory:quotes,now,quoteTs:snap.quoteTs,
     delaySeconds:lead,holdingSeconds:H,
     asset:String(settings.asset||'UNKNOWN').toUpperCase(),
     engineId:String(settings.engine||'automatic')});
+  return forecast.side&&oppositeTurnPressure({quoteHistory:quotes,now,
+    quoteTs:snap.quoteTs,side:forecast.side}).blocked?
+    {...forecast,side:null,status:'counterpressure-before-entry'}:forecast;
  }
  const engineId=String(settings.engine||'automatic');
  const noise=observedNoise({quotes,now,horizonSeconds:H});
@@ -274,7 +282,9 @@ export function confirmWindowEntry({
   if(learned.status==='adaptive-direct-trajectory'){
    const check=coherentInterval({entryPrice:learned.projectedEntryPrice,
     exitPrice:learned.projectedExitPrice,side:learned.side,noise});
-   return check.qualified?learned:{...learned,side:null,status:check.reason};
+   return check.qualified&&!oppositeTurnPressure({quoteHistory:quotes,now,
+     quoteTs:snap.quoteTs,side:check.side}).blocked?
+     learned:{...learned,side:null,status:check.qualified?'counterpressure-before-entry':check.reason};
   }
  }
  // Fallback and specialists use their OWN selected motor at both actual
@@ -290,7 +300,10 @@ export function confirmWindowEntry({
  const first=forecastAt(lead),last=forecastAt(lead+H);
  const check=coherentInterval({entryPrice:first?.projectedPrice,
    exitPrice:last?.projectedPrice,noise});
- return {...check,side:check.qualified?check.side:null,
+ const turning=check.qualified&&oppositeTurnPressure({quoteHistory:quotes,now,
+   quoteTs:snap.quoteTs,side:check.side}).blocked;
+ return {...check,side:check.qualified&&!turning?check.side:null,
+  reason:turning?'counterpressure-before-entry':check.reason,
   projectedEntryPrice:Number(first?.projectedPrice)||null,
   projectedExitPrice:Number(last?.projectedPrice)||null};
 }
