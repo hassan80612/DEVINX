@@ -18,6 +18,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedExit:number,
  side:string|null,phase:string|null,quoteAt:number,pcClockOffsetMs:number|null,holdingSeconds:number
 }){
+ const {t}=useSentinelLocale();
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{
   let timer:ReturnType<typeof setInterval>|null=null;
