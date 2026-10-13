@@ -6,6 +6,7 @@ on:
       - 'sentinel-trading-lab/src/app/console/page.tsx'
       - 'sentinel-trading-lab/agent/src/core/ui-texts.mjs'
       - 'tests/sentinel-6731-language-site-broker-fixed.test.mjs'
+      - 'tests/sentinel-6728-continuous-only-ui.test.mjs'
       - '.github/workflows/sentinel-6731-site-language-only.yml'
   workflow_dispatch:
 permissions:
