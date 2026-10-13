@@ -30,6 +30,8 @@ jobs:
       - name: New 55 percent, reversal and timing regressions
         run: |
           node --test --test-reporter=spec tests/sentinel-turn-awareness-selective55-candidate.test.mjs
+      - name: Typecheck Sentinel website and mobile components
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
       - name: Benchmark selective work against original 67.26
         shell: bash
         run: |
