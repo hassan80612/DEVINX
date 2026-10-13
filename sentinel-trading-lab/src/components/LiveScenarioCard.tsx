@@ -13,8 +13,8 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 // Dedicated local timer: it never waits for a WebSocket packet or forces
 // the full analyst card to recalculate on every countdown tick.
-function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedExit,side,phase,quoteAt,pcClockOffsetMs,holdingSeconds}:{
- windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedExit:number,
+function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedEntryAt,plannedExit,side,phase,quoteAt,pcClockOffsetMs,holdingSeconds}:{
+ windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedEntryAt:number,plannedExit:number,
  side:string|null,phase:string|null,quoteAt:number,pcClockOffsetMs:number|null,holdingSeconds:number
 }){
  const [now,setNow]=useState(()=>Date.now());
@@ -31,7 +31,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  },[]);
  // Exactly the recorded PC opportunity state, not a new local scenario.
  // No cycle derivation: only an actual new Agent deadline begins another window.
- const view=pcAuthoritativeWindow({windowStartedAt,windowEndsAt,phase,side,entryTriggeredAt,quoteAt,now:pcClockNow(now,pcClockOffsetMs)});
+ const view=pcAuthoritativeWindow({windowStartedAt,windowEndsAt,phase,side,entryTriggeredAt,plannedEntryAt,quoteAt,now:pcClockNow(now,pcClockOffsetMs)});
  const running=view.active;
  const moment=view.enterNow;
  const seconds=view.remainingSeconds;
@@ -236,7 +236,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const entryPlanDisplayable=entryPlanValid&&(plannedAt>now||entryMoment);
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)}/>
+    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedEntryAt={plannedAt} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
