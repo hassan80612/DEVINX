@@ -292,7 +292,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.entryAt,
       runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.side,
       runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.phase,
-      runtime.lastResult?.analysis?.vnext?.opportunityWindow?.phase
+      runtime.lastResult?.analysis?.vnext?.opportunityWindow?.phase,
+       runtime.lastResult?.analysis?.vnext?.opportunityWindow?.windowStartedAt,
+       runtime.lastResult?.analysis?.vnext?.opportunityWindow?.windowEndsAt,
+       runtime.lastResult?.analysis?.vnext?.futureEntryAnchor?.entryTriggeredAt
     ].join('|');
     if(overlayFastKey!==lastOverlayProbeKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayProbeKey=overlayFastKey;
@@ -315,7 +318,10 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
         a.vnext?.futureEntryAnchor?.entryAt,
         a.vnext?.futureEntryAnchor?.side,
         a.vnext?.futureEntryAnchor?.phase,
-        a.vnext?.opportunityWindow?.phase].join('|');
+        a.vnext?.opportunityWindow?.phase,
+        a.vnext?.opportunityWindow?.windowStartedAt,
+        a.vnext?.opportunityWindow?.windowEndsAt,
+        a.vnext?.futureEntryAnchor?.entryTriggeredAt].join('|');
     const urgentOverlay=overlayTimingKey!==lastOverlayTimingKey;
     if(overlayTimingKey!==lastOverlayTimingKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayTimingKey=overlayTimingKey;

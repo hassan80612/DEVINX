@@ -142,8 +142,20 @@ function continuousWindow({input,settings,chosen}){
   forecastCache.set(seconds,price);
   return price;
  };
+ // In Contínua the 30s/60s opportunity is anchored by evolveOpportunity.
+ // A new quote may update the candidate, but cannot move its original end.
+ // Require one normal source-quote interval to confirm before that deadline.
+ // Seletiva retains its independent estimator and countdown unchanged.
+ const window= input.activeWindow?.phase==='scanning'&&
+   input.activeWindow?.context?input.activeWindow:null;
+ const recentTicks=history.slice(-20).map(x=>Number(x.ts)).filter(Number.isFinite);
+ const gaps=recentTicks.slice(1).map((x,i)=>x-recentTicks[i]).filter(n=>n>0&&n<=4000).sort((a,b)=>a-b);
+ const typicalGap=gaps.length?gaps[Math.floor(gaps.length/2)]:1000;
+ const confirmationQuoteGapMs=window?Math.max(200,Math.min(1500,typicalGap)):0;
  return planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
   engineId,asset,forecastMode:'continuous',
+  realWindowEndsAt:window?Number(window.windowEndsAt):null,
+  confirmationQuoteGapMs,
   evaluateLead:seconds=>{
    const first=projectedAt(seconds),last=projectedAt(seconds+chosen);
    if(!(first>0&&last>0))return null;

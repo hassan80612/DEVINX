@@ -12,11 +12,18 @@ export function entryOffsets(windowSeconds){
 }
 export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
  now=Date.now(),engineId='automatic',asset='UNKNOWN',forecastMode='continuous',
+ // The currently running fixed opportunity, when supplied, is the true
+ // deadline. Do not plan an entry in a new floating now+H interval.
+ realWindowEndsAt=null,confirmationQuoteGapMs=0,
  evaluateLead=()=>null}={}){
- const offsets=entryOffsets(windowSeconds);
+ const deadline=Number(realWindowEndsAt);
+ const headroom=Math.max(0,Number(confirmationQuoteGapMs)||0);
+ const remainingMs=deadline>now?deadline-now-headroom:realWindowEndsAt==null?windowSeconds*1000:0;
+ const eligibleSeconds=Math.min(windowSeconds,Math.floor(remainingMs/1000));
+ const offsets=entryOffsets(eligibleSeconds);
  const base={engineId,asset,delaySeconds:windowSeconds,holdingSeconds,
   issuedAt:now,entryAt:null,exitAt:null,entryOffsetSeconds:null,
-  windowStartedAt:now,windowEndsAt:now+windowSeconds*1000,
+  windowStartedAt:now,windowEndsAt:deadline>now?deadline:now+windowSeconds*1000,
   projectedEntryPrice:null,projectedExitPrice:null,side:null,
   forecastOwner:forecastMode==='selective'?'selective-historical-outcomes-v2':
     'continuous-selected-engine-window-v1',

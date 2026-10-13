@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {liveCardModel} from '../lib/live-card-model';
+import {pcAuthoritativeWindow} from '../lib/pc-authoritative-window.mjs';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {SCENARIO_ENGINES} from '../../agent/src/core/scenario-engine-catalog.mjs';
 
@@ -27,43 +28,22 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
   syncVisibility();
   return()=>{document.removeEventListener('visibilitychange',syncVisibility);if(timer)clearInterval(timer)};
  },[]);
- // The Agent owns the original immutable cycle boundaries. The phone may
- // advance that same clock at the boundary while the next signed frame is
- // in transit, but must never fabricate an entry or direction.
- const period=windowEndsAt-windowStartedAt;
- const validWindow=windowStartedAt>0&&period>=5000&&period<=3600000&&now>=windowStartedAt;
- const cycle=validWindow?Math.max(0,Math.floor((now-windowStartedAt)/period)):0;
- const awaitingNextFrame=validWindow&&cycle>0;
- // The Agent fixes the ORIGINAL start/deadline and the cycle length.
- // Carry only the numeric countdown through one network handoff; a slow
- // Broadcast must never make the phone begin a 30s PC cycle at 25s.
- // Never infer CALL/PUT or a confirmed entry during that handoff.
- const streamingRecent=liveFrameAt>0&&now>=liveFrameAt&&now-liveFrameAt<12000;
- const syncedRollover=awaitingNextFrame&&cycle===1&&streamingRecent&&
-  now-windowEndsAt<12000;
- const running=validWindow&&(!awaitingNextFrame||syncedRollover);
- const displayedEnd=validWindow?windowEndsAt+cycle*period:0;
- // Match the PC overlay: a confirmed Agent timestamp and recent broker
- // quote, not the transient entryReadyNow latch from one evaluation.
- const moment=running&&!awaitingNextFrame&&phase==='fired'&&
-  (side==='CALL'||side==='PUT')&&quoteAt>0&&now>=quoteAt&&now-quoteAt<3500&&
-  entryTriggeredAt>0&&now>=entryTriggeredAt&&now<=entryTriggeredAt+1500;
- const seconds=running?Math.max(1,Math.ceil((displayedEnd-now)/1000)):null;
+ // Exactly the recorded PC opportunity state, not a new local scenario.
+ // No cycle derivation: only an actual new Agent deadline begins another window.
+ const view=pcAuthoritativeWindow({windowStartedAt,windowEndsAt,phase,side,entryTriggeredAt,quoteAt,now});
+ const running=view.active;
+ const moment=view.enterNow;
+ const seconds=view.remainingSeconds;
  const countdown=seconds==null?'—:—':
   String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
- const direction=moment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
-  awaitingNextFrame?(syncedRollover?'NOVA JANELA · AGUARDANDO LEITURA':'SINCRONIZANDO COM O PC'):
-  phase==='cancelled'?'JANELA SEM ENTRADA':
-  phase==='fired'?'ENTRADA JÁ SINALIZADA':
-  phase==='open'&&side?(side==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA':
-  running?'JANELA ABERTA · ANALISANDO':'AGUARDANDO PRÓXIMA JANELA';
+ const direction=view.label;
  return <>
   <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
    <div><small>{moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA'}</small><strong>{countdown}</strong></div>
    <div><small>MOMENTO DE ENTRADA</small>
-    <b>{!awaitingNextFrame&&phase==='fired'&&entryTriggeredAt?clock(entryTriggeredAt):'AGUARDANDO'}</b>
-    <span>{!awaitingNextFrame&&phase==='fired'&&plannedExit>0?'Vencimento '+clock(plannedExit):
+    <b>{phase==='fired'&&entryTriggeredAt?clock(entryTriggeredAt):'AGUARDANDO'}</b>
+    <span>{phase==='fired'&&plannedExit>0?'Vencimento '+clock(plannedExit):
       'Prazo após entrada '+holdingSeconds+'s'}</span>
    </div>
   </div>
