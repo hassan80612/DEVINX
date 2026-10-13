@@ -54,7 +54,7 @@ test('on-time confirmation still triggers exactly once',()=>{
    confirmation:{side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11}});
  assert.equal(duplicate.phase,'fired');assert.equal(duplicate.entryReadyNow,false);
 });
-test('the two modes use the same counterturn check and Seletiva validates at 55 percent',()=>{
+test('the two modes use the same counterturn check and Seletiva validates at 50 percent',()=>{
  const f=fs.readFileSync('sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs','utf8');
  const s=fs.readFileSync('sentinel-trading-lab/agent/src/core/selective-autonomous.mjs','utf8');
  assert.match(f,/oppositeTurnPressure/);
@@ -64,11 +64,11 @@ test('the two modes use the same counterturn check and Seletiva validates at 55 
  assert.match(s,/validateSelectiveHistory\(\{tested,hits\}\)/);
 });
 
-test('55 percent means >=4 genuine validations, never a zero-sample pass',()=>{
+test('50 percent means >=4 genuine validations, never a zero-sample pass',()=>{
  for(const [tested,hits,valid] of [
-   [0,0,false],[1,1,false],[3,3,false],[4,2,false],
-   [4,3,true],[5,3,true],[5,2,false],[6,3,false],
-   [7,4,true],[10,5,false],[10,6,true]]){
+   [0,0,false],[1,1,false],[3,3,false],[4,2,true],
+   [4,3,true],[5,3,true],[5,2,false],[6,3,true],
+   [7,4,true],[10,5,true],[10,6,true]]){
    assert.equal(validateSelectiveHistory({tested,hits}),valid,`n=${tested}, hits=${hits}`);
  }
 });
