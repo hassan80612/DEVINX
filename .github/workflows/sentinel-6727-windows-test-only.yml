@@ -17,7 +17,7 @@ on:
       - 'tests/sentinel-continuous-real-window-6721.test.mjs'
       - '.github/workflows/sentinel-6727-windows-test-only.yml'
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: sentinel-6727-windows-test-only
   cancel-in-progress: true
@@ -101,3 +101,45 @@ jobs:
           if(-not $exe){throw 'Missing installer'}
           & $exe.FullName
           if($LASTEXITCODE -ne 0){throw "Windows embedded-agent verification failed: $LASTEXITCODE"}
+
+  publish-candidate-installer:
+    needs: [package, windows-smoke]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.67.27-Windows-Verified
+          path: candidate
+      - name: Publish only verified 67.27 install assets to candidate branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=test/turn-awareness-selective55-20261013
+          actual="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [ "$actual" != "$GITHUB_SHA" ]; then
+            echo "Candidate changed after Windows verification; refuse to overwrite newer work"
+            exit 1
+          fi
+          for file in Sentinel-Agent-Windows.exe sentinel-agent-windows.exe Sentinel-Agent-13.4.67.27.exe agent_payload_v88.zip agent-update.json; do
+            test -s "candidate/$file"
+            cp "candidate/$file" "sentinel-trading-lab/public/downloads/$file"
+          done
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const root='sentinel-trading-lab/public/downloads/';
+          const manifest=JSON.parse(fs.readFileSync(root+'agent-update.json','utf8'));
+          const expected=crypto.createHash('sha256').update(fs.readFileSync(root+'agent_payload_v88.zip')).digest('hex');
+          if(manifest.version!=='13.4.67.27'||manifest.zipSha256!==expected)throw Error('Release mismatch');
+          NODE
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f sentinel-trading-lab/public/downloads/{Sentinel-Agent-Windows.exe,sentinel-agent-windows.exe,Sentinel-Agent-13.4.67.27.exe,agent_payload_v88.zip,agent-update.json}
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'build(sentinel): deliver checksum verified 67.27 installer for DEMO [skip ci] [skip deploy]'
+          git push origin HEAD:$branch
