@@ -1,0 +1,33 @@
+name: Sentinel 67.30 simple nav and broker translations
+on:
+  push:
+    branches: [fix/sentinel-6730-clean-nav-i18n-20261013]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: UI and core regressions
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/ui-texts.mjs
+          node --test tests/sentinel-6730-simple-nav-broker-i18n.test.mjs \
+            tests/sentinel-6728-continuous-only-ui.test.mjs \
+            tests/sentinel-6727-i18n-coverage.test.mjs \
+            tests/sentinel-ui-i18n-6726-candidate.test.mjs \
+            tests/sentinel-continuous-real-window-6721.test.mjs
+      - name: Typecheck
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
+      - name: Production website build
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
