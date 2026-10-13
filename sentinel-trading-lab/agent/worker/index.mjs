@@ -170,6 +170,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   if(action==='setting'){
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
+    if(key==='uiLanguage'){runtime.patchSettings({uiLanguage:String(value)},'overlay');await saveState();return{ok:true};}
     if(key==='forecastMode'){runtime.patchSettings({forecastMode:String(value)},'overlay');runtime.requestImmediateEvaluation?.();await saveState();return{ok:true};}
     if(key==='engine'){
       const allowed=['automatic','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
@@ -226,6 +227,12 @@ async function enforceAccessLease(){
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
 async function saveState(){try{await mkdir(dirname(STATE_FILE),{recursive:true});const tmp=`${STATE_FILE}.tmp`;await writeFile(tmp,JSON.stringify(runtime.snapshotPersistent(),null,2));await rename(tmp,STATE_FILE)}catch(e){console.error('state_save_error',e)}}
 await loadState();
+// Product now presents Continuous only. Migrate a saved Selective choice
+// once, without modifying any Continuous forecast rule or old signal history.
+if(runtime.settings.forecastMode==='selective'){
+  runtime.patchSettings({forecastMode:'continuous'},'product-mode-migration');
+  await saveState();
+}
 async function bootstrapSavedBrokers(){
   if(!accessLeaseValid())return syncRuntimeMarket();
   const preferred=vault.get('iq_option')?'iq_option':vault.get('exnova')?'exnova':'iq_option';
@@ -381,6 +388,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       marketStatus:view.liveBroker?.marketStatus||null,
       marketReason:view.liveBroker?.marketReason||null,
       engine:view.settings?.engine||null,forecastMode:view.settings?.forecastMode||'continuous',
+      uiLanguage:view.settings?.uiLanguage||'pt',
        vnext:a.vnext||null,
        strategy:view.settings?.strategy||'smart_confluence',
       strategy2:view.settings?.strategy2||'none',
