@@ -55,7 +55,7 @@ test('signed Agent payload carries original PC boundaries, side and confirmed tr
 test('mobile uses source timestamps in BOTH full and compact display, never artificial cycle math',()=>{
  const src=readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.match(src,/pcAuthoritativeWindow\(/);
- assert.match(src,/const period=windowEndsAt-windowStartedAt/);
+ assert.match(src,/const view=pcAuthoritativeWindow\(/);
  assert.doesNotMatch(src,/const cycle=validWindow/);
  assert.doesNotMatch(src,/windowEndsAt\+cycle\*period/);
  assert.match(src,/<MobileFutureEntryClock windowEndsAt=/);
