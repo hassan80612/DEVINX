@@ -17,7 +17,7 @@ export default async function PlansPage({searchParams}:{searchParams:Promise<{ma
     <header className={styles.nav}><Link href="/" className={styles.brand}><span className={styles.brandIcon}>S</span><span><strong>SENTINEL</strong><small>TRADING LAB</small></span></Link><LanguageSwitcher/><Link href="/login" className={styles.navLogin}><T>Entrar ↗</T></Link></header>
     <section className={styles.plansHero}>
       <span className={styles.kicker}><T>SEU SENTINEL · ACESSO POR 30 DIAS</T></span>
-      <h1><T>Seu mercado. Seu analista.</T><em><T>Um único plano.</T></em></h1>
+      <h1><T>Seu mercado. Seu analista.</T><br/><em><T>Um único plano.</T></em></h1>
       <p><T>O Agent analisa no PC e transmite o acompanhamento ao card do Sentinel no celular. Os alertas CALL/PUT e reversões ajudam na leitura, mas não executam ordens.</T></p>
       <div className={styles.plansMarketChooser} role="group" aria-label="Região de compra / Purchase region">
         <Link href="/planos?market=br" aria-current={market==='BR'?'page':undefined} className={market==='BR'?styles.marketActive:styles.marketOption}><T>Brasil · R$ 280</T></Link>
