@@ -30,6 +30,25 @@ jobs:
       - name: New 55 percent, reversal and timing regressions
         run: |
           node --test --test-reporter=spec tests/sentinel-turn-awareness-selective55-candidate.test.mjs
+      - name: Benchmark selective work against original 67.26
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp scripts/sentinel-selective-speed-candidate.mjs /tmp/sentinel-selective-speed-candidate.mjs
+          node /tmp/sentinel-selective-speed-candidate.mjs > /tmp/selective-candidate-speed.json
+          original=$(git rev-parse HEAD)
+          git checkout --detach 7cd0e7315fd7b6a59ad82142ffc8db7491c902ca
+          node /tmp/sentinel-selective-speed-candidate.mjs > /tmp/selective-baseline-speed.json
+          git checkout --detach "$original"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const a=JSON.parse(fs.readFileSync('/tmp/selective-baseline-speed.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/selective-candidate-speed.json','utf8'));
+          console.log('Baseline 67.26 matrix ms:',a.averageMatrixMs);
+          console.log('Candidate matrix ms:',b.averageMatrixMs);
+          console.log('Baseline single ms:',a.averageSingleMs);
+          console.log('Candidate single ms:',b.averageSingleMs);
+          NODE
       - name: Compare existing integration failures against unmodified 67.26
         shell: bash
         run: |
