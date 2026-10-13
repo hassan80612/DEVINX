@@ -50,7 +50,7 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
     const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
     if(accessError||!access){
-      console.error('DEVINX_ACCESS_CHECK_UNAVAILABLE',{status:accessError?.status??null,code:accessError?.code??'empty_response'});
+      console.error('DEVINX_ACCESS_CHECK_UNAVAILABLE',{code:accessError?.code??'empty_response'});
       return <AccessUnavailableCard/>;
     }
     if(access.allowed)redirect(nextPath||'/painel');
