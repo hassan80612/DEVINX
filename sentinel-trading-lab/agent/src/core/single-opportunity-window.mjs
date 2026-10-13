@@ -38,11 +38,6 @@ export function evolveOpportunity({
   // No second CALL NOW, PUT NOW, or opposite-direction replacement, even
   // if the continuous market analysis keeps changing underneath.
   if(old.phase!=='open')return {...old,entryReadyNow:false};
-  // An already-missed instant is never advertised as CALL/PUT AGORA later.
-  // The ORIGINAL opportunity clock still runs to its fixed window end.
-  // No artificial tick, timer restart or opposite signal is introduced.
-  if(now-Number(old.entryAt)>1500)
-    return {...old,phase:'cancelled',reason:'entry-source-arrived-too-late',entryReadyNow:false};
   // Wait for a GENUINE fresh quote AT/AFTER the chosen moment. A failed
   // confirmation does not restart, flip, or end the countdown.
   if(!fresh||now<old.entryAt||Number(quoteAt)<old.entryAt)
