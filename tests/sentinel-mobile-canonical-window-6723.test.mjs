@@ -51,3 +51,10 @@ test('PUT is never guessed, and missing/expired PC frames do not put AGUARDANDO 
  assert.equal(expired.label,'');
  assert.equal(expired.active,false);
 });
+
+test('first authenticated PC signal always replaces cloud without window, even with older evaluation time',()=>{
+ const cloud={...state(t,'scanning',null,0,t+25000),lastResult:{asset:'EUR/GBP OTC',analysis:{}}};
+ const fired=state(t,'fired','PUT',t+11000,t+11050);
+ assert.equal(acceptSignedPcFrame(cloud,fired),true);
+ assert.equal(keepSignedViewOverCloud(fired,{...cloud,lastEvalMs:t+25000},{now:t+2500}),true);
+});
