@@ -58,7 +58,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     rows.push(rowFor(model,seconds));
   }
   const entryRows=locked?[locked]:futureEntrySchedule({
-    settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory
+    settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
   });
   return {context,rows,entryRows,computedAt:now,reused:false};
 }
