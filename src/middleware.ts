@@ -57,6 +57,9 @@ export async function middleware(request:NextRequest){
   );
 
   const{data,error}=await supabase.auth.getClaims();
+  if(error&&(error.status===402||(error.status??0)>=500||/exceed_egress_quota|project is restricted/i.test(error.message||''))){
+    return copySessionCookies(response,new NextResponse('Authentication service temporarily unavailable',{status:503,headers:{'Retry-After':'30'}}));
+  }
   const claims=error?null:data?.claims;
   if(!claims){
     if(privateLaserPath)return copySessionCookies(response,new NextResponse(null,{status:404}));
@@ -80,7 +83,10 @@ export async function middleware(request:NextRequest){
   if(pathname==='/onboarding'||pathname.startsWith('/onboarding/')){
     const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
-    if(accessError||!access?.allowed){
+    if(accessError||!access){
+      return copySessionCookies(response,new NextResponse('Access verification temporarily unavailable',{status:503,headers:{'Retry-After':'30'}}));
+    }
+    if(!access.allowed){
       const url=request.nextUrl.clone();
       url.pathname='/entrar';
       url.search='';
