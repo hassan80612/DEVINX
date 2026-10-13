@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.29",
-  "build": "13.4.67.29-continuous-only-multilingual-ui-release",
+  "version": "13.4.67.30",
+  "build": "13.4.67.30-continuous-only-multilingual-ui-release",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
