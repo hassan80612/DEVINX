@@ -1,0 +1,101 @@
+name: Sentinel 67.27 Windows Test Artifact - no deployment
+on:
+  workflow_dispatch:
+  push:
+    branches: [test/turn-awareness-selective55-20261013]
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - 'sentinel-trading-lab/agent-launcher.go'
+      - 'tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs'
+      - 'tests/sentinel-source-event-pc-mobile-6722.test.mjs'
+      - 'tests/sentinel-pc-mobile-signed-clock-6724.test.mjs'
+      - 'sentinel-trading-lab/src/lib/signed-live-analyst-channel.ts'
+      - 'sentinel-trading-lab/src/lib/pc-clock-sync.mjs'
+      - 'sentinel-trading-lab/src/components/LiveScenarioCard.tsx'
+      - 'sentinel-trading-lab/src/lib/pc-authoritative-window.mjs'
+      - 'sentinel-trading-lab/src/lib/pc-authoritative-window.d.mts'
+      - 'tests/sentinel-continuous-real-window-6721.test.mjs'
+      - '.github/workflows/sentinel-6727-windows-verified.yml'
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-6727-windows-test-only
+  cancel-in-progress: true
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Confirm exact release metadata and source behavior
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const r=require('./sentinel-trading-lab/agent/release.json');
+          const p=require('./sentinel-trading-lab/agent/package.json');
+          if(r.version!=='13.4.67.27'||r.version!==p.version)throw Error('version mismatch');
+          NODE
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/worker/lightweight-overlay-view.mjs
+          node --check sentinel-trading-lab/agent/worker/signed-live-bridge.mjs
+          node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
+          node --test tests/sentinel-turn-awareness-selective55-candidate.test.mjs tests/sentinel-ui-i18n-6726-candidate.test.mjs tests/sentinel-selective-live-6726.test.mjs tests/sentinel-selective-historical-6718.test.mjs tests/sentinel-autonomous-coherent-perf-6717.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-continuous-real-window-6721.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-v13460-mobile-realtime-regression.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs
+      - name: Create checksum-verified Windows payload and executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          (cd agent && zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store')
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const release=JSON.parse(fs.readFileSync('agent/release.json','utf8'));
+          const zipSha256=crypto.createHash('sha256').update(fs.readFileSync('public/downloads/agent_payload_v88.zip')).digest('hex');
+          fs.writeFileSync('public/downloads/agent-update.json',JSON.stringify({format:'sentinel-agent-update-v1',version:release.version,build:release.build,zipSha256})+'\n');
+          NODE
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/Sentinel-Agent-13.4.67.27.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/{agent_payload_v88.zip,Sentinel-Agent-Windows.exe}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.4.67.27-Windows-Verified
+          path: |
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+            sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+            sentinel-trading-lab/public/downloads/Sentinel-Agent-13.4.67.27.exe
+            sentinel-trading-lab/public/downloads/agent_payload_v88.zip
+            sentinel-trading-lab/public/downloads/agent-update.json
+          if-no-files-found: error
+          retention-days: 14
+  windows-smoke:
+    needs: package
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.4.67.27-Windows-Verified
+          path: candidate
+      - name: Verify Windows installer and embedded code without installing
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Get-ChildItem candidate -Recurse -Filter 'Sentinel-Agent-Windows.exe' | Select-Object -First 1
+          if(-not $exe){throw 'Missing installer'}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "Windows embedded-agent verification failed: $LASTEXITCODE"}
