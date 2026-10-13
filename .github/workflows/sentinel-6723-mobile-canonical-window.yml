@@ -1,0 +1,24 @@
+name: Sentinel 67.23 Authoritative Mobile Signal Display
+on:
+  push:
+    branches: [fix/sentinel-6723-canonical-mobile-state-20261013]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Confirm immutable Agent version and test signed event ordering
+        run: |
+          node -e "if(require('./sentinel-trading-lab/agent/release.json').version!=='13.4.67.23')process.exit(1)"
+          node --test tests/sentinel-mobile-canonical-window-6723.test.mjs tests/sentinel-mobile-event-pc-fidelity-6723.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs
+      - name: Compile web/mobile only, leave Windows Agent unchanged
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+          npm run build

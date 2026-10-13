@@ -20,10 +20,10 @@ export function pcAuthoritativeWindow({
   const remainingSeconds=active?Math.max(1,Math.ceil((end-time)/1000)):null;
   let label;
   if(enterNow)label='ENTRADA AGORA · '+(direction==='CALL'?'↑ CALL':'↓ PUT');
-  else if(!valid)label='AGUARDANDO PC';
+  else if(!valid)label='';
   else if(phase==='cancelled')label='JANELA SEM ENTRADA';
-  else if(phase==='fired')label=direction?(direction==='CALL'?'↑ CALL · ENTRADA SINALIZADA':'↓ PUT · ENTRADA SINALIZADA'):'ENTRADA SINALIZADA';
-  else if(!withinDeadline)label='AGUARDANDO PC';
+  else if(phase==='fired')label='ENTRADA JÁ SINALIZADA'+(direction?' · '+(direction==='CALL'?'↑ CALL':'↓ PUT'):'');
+  else if(!withinDeadline)label='';
   else if(phase==='open'&&direction)label=(direction==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA';
   else label='JANELA ABERTA · ANALISANDO';
   return {active,enterNow,withinDeadline,remainingSeconds,label,phase,startedAt:start,deadline:end};
