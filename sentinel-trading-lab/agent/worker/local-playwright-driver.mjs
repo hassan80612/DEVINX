@@ -140,7 +140,8 @@ const PC_UI_KEYS=[
  "Pausar esta leitura",
  "Aplicando…",
  "Aplicado",
- "Erro: "
+ "Erro: ",
+ "Estratégia responsável pela previsão"
 ];
 const PC_UI_EN=Object.freeze(Object.fromEntries(PC_UI_KEYS.map(k=>[k,translations.en[k]||k])));
 const PROVIDERS={
