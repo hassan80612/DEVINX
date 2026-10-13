@@ -67,7 +67,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[horizon,setHorizon]=useState(String(s?.settings?.forecastHorizonSeconds||60));
   const[expirySeconds,setExpirySeconds]=useState(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
   const[threshold,setThreshold]=useState(String(s?.settings?.futureDisplayThreshold||70));
-  const[forecastMode,setForecastMode]=useState(String(s?.settings?.forecastMode||'continuous'));
   const[chosenEngine,setChosenEngine]=useState(String(s?.settings?.engine||'automatic'));
   const[strategy1,setStrategy1]=useState(String(s?.settings?.strategy||'smart_confluence'));
   const[strategy2,setStrategy2]=useState(String(s?.settings?.strategy2||'none'));
@@ -90,7 +89,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     };
   },[]);
   useEffect(()=>{
-    if(!settingsEditing.current){setForecastMode(String(s?.settings?.forecastMode||'continuous'));setChosenEngine(String(s?.settings?.engine||'automatic'));setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
+    if(!settingsEditing.current){setChosenEngine(String(s?.settings?.engine||'automatic'));setHorizon(String(s?.settings?.forecastHorizonSeconds||60));setExpirySeconds(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));setStrategy1(String(s?.settings?.strategy||'smart_confluence'));setStrategy2(String(s?.settings?.strategy2||'none'));setStrategy3(String(s?.settings?.strategy3||'none'));}
     // Remote status refreshes must not overwrite a value the user is typing.
     if(!thresholdEditing.current)setThreshold(String(s?.settings?.futureDisplayThreshold||70));
   },[s?.settings?.forecastMode,s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.engine,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3]);
@@ -200,13 +199,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     await act('settings',{orderDurationMs:Number(value)*1000,forecastHorizonSeconds:Number(value)});
   };
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
-    <label>{t("Estratégia do cenário")}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy||forecastMode==='selective'} onChange={e=>void changeEngine(e.target.value)}>
-        {forecastMode==='selective'?<option value={chosenEngine}>{t("Seletiva Autônoma")}</option>:
-          SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
-      </select>
-    </label>
-    <label>{t("Previsão")}{" "}<select aria-label={t('Modo de previsão')} value={forecastMode} disabled={busy} onChange={e=>{setForecastMode(e.target.value);void act('settings',{forecastMode:e.target.value})}}>
-        <option value="continuous">{t("Contínua")}</option><option value="selective">{t("Seletiva")}</option>
+    <label>{t("Estratégia do cenário")}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
+        {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
       </select>
     </label>
     <label>{t("Entrada daqui a")}{" "}<select aria-label={t('Tempo até a entrada prevista')} value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
@@ -245,7 +239,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <span>{t("JANELA")}{" "}<b>{expiryLabel(Number(expirySeconds))}</b></span><span>{t("ENTRADA")}{" "}<b>{t(opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE')}</b></span>
       <span>{t("PERÍODO APÓS")}{" "}<b>{expiryLabel(Number(futureEntry?.holdingSeconds||expirySeconds))}</b></span>
     </div>
-    {forecastMode!=='selective'&&<details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>{t("Detalhes e qualidade da previsão")}</summary>
+    {<details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>{t("Detalhes e qualidade da previsão")}</summary>
       <small>{t(entryDataFresh?'Cotação atual recebida':'Cotação atrasada ou indisponível · não operar com dados antigos')}.</small>
       <small>{t('Estratégia ')}{futureEntry?.engineId||chosenEngine}{t(' · emitida ')}{futureEntry?.issuedAt?clock(futureEntry.issuedAt):'—'}{t(' · entrada ')}{entryPlanValid?clock(plannedAt):'—'}{t(' · vencimento ')}{entryPlanValid?clock(plannedExit):'—'}.</small>
       <small data-testid="mobile-feed-path">{t('Cotação PC: ')}{m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'}{t(' · canal celular: ')}{m.transportAge===null?'—':m.transportAge+'s'}.</small>
