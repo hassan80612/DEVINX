@@ -1577,14 +1577,15 @@ export class LocalPlaywrightDriver{
             try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
             catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
           };
-          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))el.dataset.selectLock='1'},true);
-          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
+          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],select[data-sentinel-clock-mode],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))el.dataset.selectLock='1'},true);
+          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],select[data-sentinel-clock-mode],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
-            const languageSelect=ev.target?.closest?.('[data-sentinel-ui-language]');
-            if(languageSelect){
-              const next=languageSelect.value==='en'?'en':'pt';
-              window.__sentinelLastOverlayData.uiLanguage=next;
-              void sendAction({action:'setting',key:'uiLanguage',value:next});
+            const clockSelect=ev.target?.closest?.('[data-sentinel-clock-mode]');
+            if(clockSelect){
+              const next=clockSelect.value==='broker'?'broker':'current';
+              // Presentation-only update. It never resets or re-evaluates the analyst.
+              window.__sentinelLastOverlayData.clockMode=next;
+              void sendAction({action:'setting',key:'clockMode',value:next});
               el.dataset.selectLock='0';
               queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));
               return;
@@ -1711,9 +1712,9 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
               <div style="display:grid;gap:3px"><strong style="color:${goldSoft};font-size:15px;letter-spacing:.035em">SENTINEL <span style="font-size:11px;color:${muted}">V${esc(d.agentVersion||'13.4.60')}</span></strong><small style="color:${muted};font-size:10px">${esc(visibleAsset)} · ${tr(liveNow?'● COTAÇÃO AO VIVO':'● AGUARDANDO FEED')} · ${tr(runtimeLabel)}</small></div>
               <div style="display:flex;gap:4px;align-items:center">
-                <select data-sentinel-ui-language aria-label="Language / Idioma" style="color-scheme:${uiTheme};background:${fieldBg};border:1px solid ${panelBorder};border-radius:6px;color:${fieldInk};padding:5px 6px;max-width:75px;font-size:10px;font-weight:750">
-                  <option value="pt" ${uiLang==='pt'?'selected':''}>PT</option>
-                  <option value="en" ${uiLang==='en'?'selected':''}>EN</option>
+                <select data-sentinel-clock-mode aria-label="${tr('TEMPO DA CORRETORA')}" title="${tr('TEMPO DA CORRETORA')}" style="color-scheme:${uiTheme};background:${fieldBg};border:1px solid ${panelBorder};border-radius:6px;color:${fieldInk};padding:5px 6px;max-width:180px;font-size:10px;font-weight:750">
+                  <option value="current" ${d.clockMode!=='broker'?'selected':''}>${tr('Relógio atual')}</option>
+                  <option value="broker" ${d.clockMode==='broker'?'selected':''}>${tr('Sincronizado com a corretora')}</option>
                 </select>
                 <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Claro')}</button>
                 <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Escuro')}</button>
@@ -1973,7 +1974,7 @@ export class LocalPlaywrightDriver{
             if(next.nodeType!==Node.ELEMENT_NODE)continue;
             // Preserve the editor and its live DOM/options while focused;
             // update every other part of the overlay in the same frame.
-            if(current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')&&
+            if(current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],select[data-sentinel-clock-mode],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')&&
               (current===focused||el.dataset.selectLock==='1'))continue;
             for(const attr of [...current.attributes])if(!next.hasAttribute(attr.name)&&!(attr.name==='open'&&current.matches?.('details[data-sentinel-preserve-open]')))current.removeAttribute(attr.name);
             for(const attr of [...next.attributes])if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
