@@ -46,12 +46,12 @@ export const marketingMessages=Object.freeze({
     "en": "An analysis workspace to monitor market scenarios, identify possible reversals and see CALL/PUT signals more clearly. The Agent runs on your PC; the card follows you on your phone."
   },
   "home.hero.primary": {
-    "pt": "Acessar o Sentinel",
-    "en": "Access Sentinel"
+    "pt": "Conhecer o plano · US$ 50",
+    "en": "Explore the plan · US$ 50"
   },
   "home.hero.secondary": {
-    "pt": "Conhecer a plataforma ↓",
-    "en": "Explore the platform ↓"
+    "pt": "Já tenho conta · Entrar",
+    "en": "Already have an account · Sign in"
   },
   "home.hero.note1": {
     "pt": "◈ Análise contínua",
