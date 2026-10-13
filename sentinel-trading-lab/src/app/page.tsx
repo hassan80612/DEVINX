@@ -15,7 +15,7 @@ export default function Home(){
        <div className={styles.eyebrow}><span className={styles.liveDot}/><Msg id="home.hero.eyebrow"/></div>
        <h1><Msg id="home.hero.title1"/><br/><em><Msg id="home.hero.title2"/></em></h1>
        <p className={styles.lead}><Msg id="home.hero.description"/></p>
-       <div className={styles.actions}><Link href="/login" className={styles.primary}><Msg id="home.hero.primary"/><span aria-hidden="true">↗</span></Link><a href="#como-funciona" className={styles.secondary}><Msg id="home.hero.secondary"/></a></div>
+       <div className={styles.actions}><Link href="/planos" className={styles.primary}><Msg id="home.hero.primary"/><span aria-hidden="true">↗</span></Link><Link href="/login" className={styles.secondary}><Msg id="home.hero.secondary"/></Link></div>
        <div className={styles.heroNotes}><span><Msg id="home.hero.note1"/></span><span><Msg id="home.hero.note2"/></span><span><Msg id="home.hero.note3"/></span></div>
      </div>
      <div className={styles.preview} aria-label="Demonstração ilustrativa do visual do card, sem recomendação operacional">
