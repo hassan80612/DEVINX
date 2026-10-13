@@ -798,7 +798,7 @@ export const translations=Object.freeze({en:Object.freeze({
   "VENCIMENTO DA POSIÇÃO": "POSITION EXPIRY",
   "COTAÇÃO AO VIVO": "LIVE QUOTE",
   "● COTAÇÃO AO VIVO": "● LIVE QUOTE",
-  "ATIVO": "ASSET",
+  "ATIVO": "ACTIVE",
   "Tempo REAL · AGORA": "REAL-TIME · NOW",
   "● AO VIVO": "● LIVE",
   "SESSÃO CONECTADA": "SESSION CONNECTED",
