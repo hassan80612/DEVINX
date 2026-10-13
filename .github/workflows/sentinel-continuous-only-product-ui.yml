@@ -28,6 +28,7 @@ jobs:
         run: |
           node --test \
             tests/sentinel-6728-continuous-only-ui.test.mjs \
+            tests/sentinel-billing-two-markets-intl.test.mjs \
             tests/sentinel-turn-awareness-selective55-candidate.test.mjs \
             tests/sentinel-6727-i18n-coverage.test.mjs \
             tests/sentinel-source-event-pc-mobile-6722.test.mjs \
