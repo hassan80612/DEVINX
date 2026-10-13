@@ -8,11 +8,13 @@ export class LatestOverlayScheduler{
     this.slowCooldownMs=slowCooldownMs;this.nextAllowedAt=0;this.timer=null;
     this.renderCount=0;this.slowCount=0;this.lastRenderMs=0;this.averageRenderMs=0;this.coalescedFrames=0;
     this.lastCompleteAt=0;this.urgentRenderCount=0;
+    this.lastQueueDelayMs=0;this.maxQueueDelayMs=0;this.lastUrgentDeliveryMs=null;
   }
   publish(provider,data,{urgent=false}={}){
     if(this.pending)this.coalescedFrames++;
     // Preserve priority when an updated quote supersedes a pending CALL/PUT.
-    this.pending={provider,data,urgent:urgent===true||this.pending?.urgent===true};
+    this.pending={provider,data,urgent:urgent===true||this.pending?.urgent===true,
+      queuedAt:this.pending?.urgent===true&&urgent!==true?this.pending.queuedAt:Date.now()};
     this.schedule();
   }
   schedule(){
@@ -24,7 +26,7 @@ export class LatestOverlayScheduler{
       clearTimeout(this.timer);this.timer=null;
     }
     const readyAt=this.pending.urgent?
-      Math.max(Date.now(),this.lastCompleteAt+200):this.nextAllowedAt;
+      Math.max(Date.now(),this.lastCompleteAt+50):this.nextAllowedAt;
     const delay=Math.max(0,readyAt-Date.now());
     this.timer=setTimeout(()=>{this.timer=null;void this.flush()},delay);
     this.timer.unref?.();
@@ -34,12 +36,15 @@ export class LatestOverlayScheduler{
     this.running=true;
     const frame=this.pending;this.pending=null;
     const began=Date.now();
+    this.lastQueueDelayMs=Math.max(0,began-Number(frame.queuedAt||began));
+    this.maxQueueDelayMs=Math.max(this.maxQueueDelayMs,this.lastQueueDelayMs);
     try{await this.update(frame.provider,frame.data)}
     catch{this.errors++}
     finally{
       const elapsed=Date.now()-began,slow=elapsed>=this.slowThresholdMs;
       this.renderCount++;this.lastRenderMs=elapsed;
-      if(frame.urgent)this.urgentRenderCount++;
+      if(frame.urgent){this.urgentRenderCount++;
+        this.lastUrgentDeliveryMs=Math.max(0,Date.now()-Number(frame.queuedAt||began));}
       this.lastCompleteAt=Date.now();
       this.averageRenderMs=Math.round(this.averageRenderMs?this.averageRenderMs*.8+elapsed*.2:elapsed);
       if(slow)this.slowCount++;
@@ -52,6 +57,8 @@ export class LatestOverlayScheduler{
     lastRenderMs:this.lastRenderMs,averageRenderMs:this.averageRenderMs,
     renderCount:this.renderCount,slowCount:this.slowCount,urgentRenderCount:this.urgentRenderCount,
     coalescedFrames:this.coalescedFrames,errors:this.errors,
+    lastQueueDelayMs:this.lastQueueDelayMs,maxQueueDelayMs:this.maxQueueDelayMs,
+    lastUrgentDeliveryMs:this.lastUrgentDeliveryMs,
     pending:this.pending!=null,running:this.running
   }}
 }
