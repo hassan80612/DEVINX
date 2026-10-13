@@ -40,7 +40,10 @@ test('English locale is propagated through an independent Agent UI setting',()=>
  const web=read('sentinel-trading-lab/src/app/console/page.tsx');
  const agent=read('sentinel-trading-lab/agent/worker/index.mjs');
  const browser=read('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs');
- assert.match(web,/onLanguageChange=\{next=>\{void act\('settings',\{uiLanguage:next\}\)\}\}/);
+ assert.match(web,/<LanguageSwitcher\\/>/);
+ assert.doesNotMatch(web,/onLanguageChange=\\{next/);
+ assert.match(web,/const update=\\{uiLanguage:language\\}/);
+ assert.match(web,/if\\(!disposed&&attempts<4\\)retryTimer=setTimeout/);
  assert.match(agent,/uiLanguage:view\.settings\?\.uiLanguage\|\|'pt'/);
  assert.match(browser,/String\(d\.uiLanguage\|\|'pt'\)/);
  assert.doesNotMatch(browser,/data-sentinel-ui-language/);
