@@ -647,7 +647,12 @@ export const translations=Object.freeze({en:Object.freeze({
   "Estima a expansão de faixas e pressão de rompimento.": "Estimates range expansion and breakout pressure.",
   "Projetos de linhas históricas, desvios e eventuais quebras.": "Analyzes historical trendlines, deviations and breaks.",
   "Analisa swings anteriores e regiões de retração.": "Analyzes past swings and pullback zones.",
-  "Combina os indicadores internos desta estratégia.": "Combines this strategy's internal indicators."
+  "Combina os indicadores internos desta estratégia.": "Combines this strategy's internal indicators.",
+  "Brasil · R$ 280": "Brazil · R$ 280",
+  "Internacional · US$ 50": "International · US$ 50",
+  "O acesso custa R$ 280 por 30 dias no Brasil e US$ 50 por 30 dias no exterior. Cada compra aprovada acrescenta 30 dias; a renovação é manual pelo checkout da Kiwify.": "Access costs R$ 280 for 30 days in Brazil and US$ 50 for 30 days internationally. Each approved purchase adds 30 days; renewal is manual through the Kiwify checkout.",
+  "Brasil R$ 280 · Internacional US$ 50 · 30 dias": "Brazil R$ 280 · International US$ 50 · 30 days",
+  "Região de compra": "Purchase region"
 })});
 export function sentinelLanguage(value){return value==='en'?'en':'pt';}
 export function sentinelText(language,key){
