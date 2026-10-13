@@ -6,6 +6,7 @@ import {scenarioViewFromRuntime} from './scenario-view.mjs';
 import {translations} from '../src/core/ui-texts.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
+import {readBrokerTimingFromText} from './broker-timing-readonly.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -143,7 +144,8 @@ const PC_UI_KEYS=[
  "Erro: ",
  "Estratégia responsável pela previsão"
 ];
-const PC_UI_EN=Object.freeze(Object.fromEntries(PC_UI_KEYS.map(k=>[k,translations.en[k]||k])));
+// Use the entire single-source dictionary: the prior short allowlist left dynamic overlay labels untranslated.
+const PC_UI_EN=translations.en;
 const PROVIDERS={
   iq_option:{url:'https://iqoption.com/pt',tradeUrl:'https://iqoption.com/traderoom',domain:'iqoption.com',wsDomain:'iqoption.com',label:'IQ Option'},
   exnova:{url:'https://exnova.com/pt/',tradeUrl:'https://exnova.com/traderoom',domain:'exnova.com',wsDomain:'ws.trade.exnova.com',label:'Exnova'}
@@ -1112,7 +1114,7 @@ export class LocalPlaywrightDriver{
     const marketReason=st.screenCandidateSymbol?'Ativo clicado aguardando confirmação':analysisFeedValidated?`${st.symbol||'Ativo'} com dados de mercado validados`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
     const selectedAccount=(st.lastBalances||[]).find(v=>st.balanceId!=null&&n(v?.id)===n(st.balanceId))||null;
     const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
-    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
+    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt,brokerTiming:st.brokerTiming||null}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1120,6 +1122,23 @@ export class LocalPlaywrightDriver{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
       payload.uiTranslations=PC_UI_EN;
+      const st=this.state(provider);
+      // Optional, bounded, read-only UI observation. Never blocks rendering,
+      // requests trading actions or invalidates a pinned forecast.
+      if(payload.clockMode==='broker'&&!s.pendingBrokerTimeScan&&
+        Date.now()-Number(s.lastBrokerTimeScanAt||0)>=2500){
+        s.lastBrokerTimeScanAt=Date.now();
+        s.pendingBrokerTimeScan=true;
+        void s.page.locator('body').innerText({timeout:650}).then(text=>{
+          const raw=String(text||'').slice(0,30000);
+          const top=raw.slice(0,3000);
+          const instrumentKind=/\\bblitz\\b/i.test(top)?'blitz':/\\bdigital\\b/i.test(top)?'digital':'unknown';
+          const observed=readBrokerTimingFromText(raw,{nowMs:Date.now(),instrumentKind});
+          // Stale and unrecognized readings are never treated as broker authority.
+          st.brokerTiming=observed;
+        }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
+      }
+      payload.brokerTiming=st.brokerTiming||payload.brokerTiming||null;
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
@@ -1208,7 +1227,16 @@ export class LocalPlaywrightDriver{
 
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         const uiLang=String(d.uiLanguage||'pt')==='en'?'en':'pt';
-        const tr=k=>uiLang==='en'?(d.uiTranslations?.[k]||k):k;
+        const tr=k=>{
+          const raw=String(k??'');
+          if(uiLang!=='en')return raw;
+          const dict=d.uiTranslations||{};
+          if(dict[raw])return dict[raw];
+          // Composite entry labels carry CALL/PUT direction and must translate
+          // the exact technical phrase without altering the signal.
+          return raw.replace(/JANELA ABERTA · AGUARDE|JANELA ABERTA · ANALISANDO|JANELA SEM ENTRADA|ENTRADA JÁ SINALIZADA|ENTRADA AGORA|\\d+s RESTANTES/g,
+            part=>dict[part]||(part.endsWith('s RESTANTES')?part.replace('s RESTANTES','s REMAINING'):part==='ENTRADA AGORA'?'ENTER NOW':part));
+        };
         const n=(v,dg=0)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toFixed(dg):'—';
         const m=d.metrics||{},plan=d.plan||{},q=d.quality||{},short=m.shortModel||{};
         const analysisTransient=d.analysisTransient===true,analysisStale=d.analysisStale===true;
