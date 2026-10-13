@@ -1,0 +1,26 @@
+name: Sentinel 67.24 Signed PC Clock and Mobile Parity
+on:
+  push:
+    branches: [fix/sentinel-6723-mobile-clock-pc-time-20261013]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Agent and signed socket syntax, exact release
+        run: |
+          node -e "if(require('./sentinel-trading-lab/agent/release.json').version!=='13.4.67.24')process.exit(1)"
+          node --check sentinel-trading-lab/agent/worker/signed-live-bridge.mjs
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --test tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-mobile-canonical-window-6723.test.mjs tests/sentinel-mobile-event-pc-fidelity-6723.test.mjs tests/sentinel-live-bridge.test.mjs
+      - name: Verify Next build with phone and PC timing types
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+          npm run build

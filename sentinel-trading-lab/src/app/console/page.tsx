@@ -7,8 +7,8 @@ import {acceptSignedPcFrame,keepSignedViewOverCloud} from '../../lib/signed-pc-w
 
 type Status=any;
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.67.23';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.23.exe?v=lightweight-pc-mobile-events-1013`;
+const AVAILABLE_AGENT_VERSION='13.4.67.24';
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.24.exe?v=signed-pc-clock-1013`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},

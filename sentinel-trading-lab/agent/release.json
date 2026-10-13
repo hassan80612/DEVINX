@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.23",
-  "build": "13.4.67.23-lightweight-overlay-signed-events-1013",
+  "version": "13.4.67.24",
+  "build": "13.4.67.24-signed-pc-clock-card-parity-1013",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
