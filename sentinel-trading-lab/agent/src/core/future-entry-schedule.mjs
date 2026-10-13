@@ -164,7 +164,7 @@ function continuousWindow({input,settings,chosen}){
      noiseFraction:.15});
    if(!check.qualified)return null;
    // Review the existing projected side; do not manufacture a countertrade.
-   if(oppositeTurnPressure({quoteHistory:history,now,quoteTs,side:check.side}).blocked)return null;
+   if(oppositeTurnPressure({quoteHistory:history,now,quoteTs:Number(snap.quoteTs),side:check.side}).blocked)return null;
    return {side:check.side,projectedEntryPrice:first,projectedExitPrice:last,
     selectionStrength:Math.min(3,Math.abs(check.relativeMove)/
       Math.max(noise||1e-12,1e-12))};
