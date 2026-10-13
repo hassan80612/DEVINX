@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {oppositeTurnPressure} from '../sentinel-trading-lab/agent/src/core/turn-pressure.mjs';
 import {validateSelectiveHistory} from '../sentinel-trading-lab/agent/src/core/selective-autonomous.mjs';
+import {analystSnapshot,fitAnalystFrame} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
+import {LatestOverlayScheduler} from '../sentinel-trading-lab/agent/worker/latest-overlay-scheduler.mjs';
 import {evolveOpportunity} from '../sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs';
 const now=1900000000000,settings={asset:'TEST',engine:'automatic',forecastMode:'selective',orderDurationMs:30000};
 const sample=fn=>Array.from({length:31},(_,i)=>({ts:now-(30-i)*1000,price:Math.exp(fn(i))}));
@@ -69,4 +71,46 @@ test('55 percent means >=4 genuine validations, never a zero-sample pass',()=>{
    [7,4,true],[10,5,false],[10,6,true]]){
    assert.equal(validateSelectiveHistory({tested,hits}),valid,`n=${tested}, hits=${hits}`);
  }
+});
+
+test('quote more than 2s after planned entry never generates late CALL AGORA',()=>{
+ const start=now-8000;let w=evolveOpportunity({settings,now:start,quoteAt:start,candidate:candidate(start)});
+ const originalDeadline=w.windowEndsAt;
+ w=evolveOpportunity({settings,previous:w,now:start+7200,quoteAt:start+7200,
+   confirmation:{side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11}});
+ assert.equal(w.phase,'open');
+ assert.equal(w.entryReadyNow,false);
+ assert.equal(w.reason,'missed-entry-moment');
+ assert.equal(w.windowEndsAt,originalDeadline);
+ assert.equal(w.side,'CALL');
+ const repeated=evolveOpportunity({settings,previous:w,now:start+9000,quoteAt:start+9000,
+   confirmation:{side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11}});
+ assert.equal(repeated.phase,'open');assert.equal(repeated.entryReadyNow,false);
+});
+test('oversized optional cards cannot discard the mobile signed entry event',()=>{
+ const t=1800000000000,asset='EUR/USD OTC';
+ const state={state:'running',agentVersion:'13.4.67.26',settings:{asset,engine:'automatic',forecastMode:'selective',orderDurationMs:30000},
+  lastResult:{asset,analysis:{operationalSignal:{side:'WAIT',state:'ANALISANDO'},
+   vnext:{engineId:'automatic',expirySeconds:30,
+    cards:Array.from({length:3},(_,i)=>({id:'card'+i+'-'.padEnd(4500,'!'),side:'CALL'})),
+    opportunityWindow:{phase:'fired',windowStartedAt:t,windowEndsAt:t+30000,entryAt:t+10000},
+    futureEntryAnchor:{side:'PUT',asset,engineId:'automatic',delaySeconds:30,
+      issuedAt:t,holdingSeconds:30,entryAt:t+10000,exitAt:t+40000,phase:'fired',entryTriggeredAt:t+10000}}}}};
+ const frame=fitAnalystFrame(analystSnapshot(state,{
+  symbol:asset,validatedSymbol:asset,assetValidated:true,analysisFeedValidated:true,lastQuoteAt:t+10000,quote:1.1}),2920);
+ assert.ok(frame,'critical frame was dropped');
+ assert.equal(frame.lastResult.analysis.vnext.ea[1],'PUT');
+ assert.equal(frame.lastResult.analysis.vnext.ow[0],'fired');
+ assert.ok(Buffer.byteLength(JSON.stringify(frame))<=2920);
+});
+test('urgent PC overlay queue exposes actual wait and render delay',async()=>{
+ const scheduler=new LatestOverlayScheduler(async()=>{}, {minIntervalMs:1200,slowThresholdMs:800,slowCooldownMs:3000});
+ try{
+   scheduler.publish('iq_option',{side:'CALL'},{urgent:true});
+   await new Promise(r=>setTimeout(r,105));
+   const metrics=scheduler.metrics();
+   assert.equal(metrics.urgentRenderCount,1);
+   assert.ok(metrics.lastQueueDelayMs>=0);
+   assert.ok(metrics.lastUrgentDeliveryMs>=0);
+ }finally{if(scheduler.timer)clearTimeout(scheduler.timer)}
 });
