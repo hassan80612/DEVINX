@@ -43,7 +43,8 @@ test('English locale is propagated through an independent Agent UI setting',()=>
  assert.match(web,/onLanguageChange=\{next=>\{void act\('settings',\{uiLanguage:next\}\)\}\}/);
  assert.match(agent,/uiLanguage:view\.settings\?\.uiLanguage\|\|'pt'/);
  assert.match(browser,/String\(d\.uiLanguage\|\|'pt'\)/);
- assert.match(browser,/key:'uiLanguage'/);
+ assert.doesNotMatch(browser,/data-sentinel-ui-language/);
+ assert.match(browser,/const PC_UI_EN=translations\.en/);
 });
 test('marketing semantic ids have PT and EN translations and no literal PT fallback',()=>{
  const page=read('sentinel-trading-lab/src/app/page.tsx');
@@ -54,7 +55,7 @@ test('marketing semantic ids have PT and EN translations and no literal PT fallb
   assert.equal(marketingText('en',key),langs.en);
  }
  const ids=[...page.matchAll(/<Msg id="([^"]+)"\/>/g)].map(m=>m[1]);
- assert.ok(ids.length>65);
+ assert.ok(ids.length>=15,'compact home must preserve bilingual semantic messages');
  for(const id of ids)assert.ok(marketingMessages[id],id);
  assert.doesNotMatch(page,/<T>/);
 });
