@@ -299,6 +299,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   void publishLiveFrame();
   const tickStarted=Date.now();
   await runtime.tick(loopNow,{skipStatus:true});
+  // Deliver a confirmed decision immediately, BEFORE timing diagnostics,
+  // broker overlay rendering, journals or any other optional work.
+  void publishLiveFrame();
   const tickElapsed=Date.now()-tickStarted;
   evaluationPerformance.lastMs=tickElapsed;
   evaluationPerformance.averageMs=Math.round(evaluationPerformance.averageMs?
@@ -313,10 +316,6 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     evaluationPerformance.lastEntryTimingDelayMs=Number.isFinite(Number(fired.plannedEntryAt))?
       Number(fired.entryTriggeredAt)-Number(fired.plannedEntryAt):null;
   }
-  // Deliver a confirmed decision as soon as the engine finishes its quote
-  // analysis, before broker overlay rendering or expensive status work.
-  // The signed realtime bridge enforces burst limits and viewer verification.
-  void publishLiveFrame();
   if(runtime.lastEvalMs!==journalAnalysisAt){journalAnalysisAt=runtime.lastEvalMs;if(activeProvider)driver.setPredictionPeriod?.(activeProvider,runtime.lastResult?.analysis?.predictionInputQuality?.periodSeconds);if(recordMarketJournal)marketJournal.analysis(runtime.lastResult?.analysis,runtime.settings.asset,journalAnalysisAt);for(const event of runtime.forecastResearch.drain())if(recordMarketJournal)marketJournal.enqueue(event)}
   if(activeProvider){
     // A full status() rebuild includes research summaries, broker metadata and
