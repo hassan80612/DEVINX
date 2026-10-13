@@ -1,0 +1,35 @@
+name: Sentinel candidate — turn pressure, 55% and entry latency
+on:
+  push:
+    branches:
+      - test/turn-awareness-selective55-20261013
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Verify syntax
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/turn-pressure.mjs
+          node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
+          node --check sentinel-trading-lab/agent/src/core/selective-autonomous.mjs
+          node --check sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs
+      - name: Regression suite without broker or deployment
+        run: |
+          node --test \
+            tests/sentinel-turn-awareness-selective55-candidate.test.mjs \
+            tests/sentinel-selective-live-6726.test.mjs \
+            tests/sentinel-selective-historical-6718.test.mjs \
+            tests/sentinel-continuous-real-window-6721.test.mjs \
+            tests/sentinel-single-opportunity-6720.test.mjs \
+            tests/sentinel-selective-deadline-6714.test.mjs \
+            tests/sentinel-entry-window-6719.test.mjs
