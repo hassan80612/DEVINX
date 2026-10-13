@@ -6,10 +6,10 @@ import {SENTINEL_PLANS,sentinelCheckoutUrl,sentinelMarket} from '../../lib/comme
 
 export const dynamic='force-dynamic';
 
-export default async function PlansPage({searchParams}:{searchParams:Promise<{market?:string}>}){
+export default async function PlansPage({searchParams}:{searchParams:Promise<{market?:string;intl?:string}>}){
   const params=await searchParams;
   const hdr=await headers();
-  const market=sentinelMarket(params?.market,hdr.get('x-vercel-ip-country'));
+  const market=sentinelMarket(params?.market,hdr.get('x-vercel-ip-country'),params?.intl);
   const plan=SENTINEL_PLANS[market];
   const checkout=sentinelCheckoutUrl(market);
   return <main className={styles.page}>
@@ -21,7 +21,7 @@ export default async function PlansPage({searchParams}:{searchParams:Promise<{ma
       <p><T>O Agent analisa no PC e transmite o acompanhamento ao card do Sentinel no celular. Os alertas CALL/PUT e reversões ajudam na leitura, mas não executam ordens.</T></p>
       <div className={styles.plansMarketChooser} role="group" aria-label="Região de compra / Purchase region">
         <Link href="/planos?market=br" aria-current={market==='BR'?'page':undefined} className={market==='BR'?styles.marketActive:styles.marketOption}><T>Brasil · R$ 280</T></Link>
-        <Link href="/planos?market=intl" aria-current={market==='INTL'?'page':undefined} className={market==='INTL'?styles.marketActive:styles.marketOption}><T>Internacional · US$ 50</T></Link>
+        <Link href="/planos?market=intl&intl=1" aria-current={market==='INTL'?'page':undefined} className={market==='INTL'?styles.marketActive:styles.marketOption}><T>Internacional · US$ 50</T></Link>
       </div>
       <div className={styles.plansCard}>
         <div className={styles.plansTop}><div><span><T>PLANO SENTINEL</T></span><h2>{plan.name}</h2></div><span className={styles.plansCycle}><T>RENOVAÇÃO MANUAL</T></span></div>
