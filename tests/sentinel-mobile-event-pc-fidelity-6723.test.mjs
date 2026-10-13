@@ -25,7 +25,7 @@ test('mobile preserves PUT confirmation and never re-labels it as scanning or th
 test('obsolete window never displays JANELA ENCERRADA or invents the next clock',()=>{
  const old=state(t+31500,'open','CALL',0,t+31500);
  assert.equal(old.active,false);
- assert.equal(old.remainingSeconds,null);
+ assert.equal(old.remainingSeconds,0);
  assert.equal(old.label,'');
  assert.ok(!old.label.includes('JANELA ENCERRADA'));
  const next=pcAuthoritativeWindow({windowStartedAt:t+30000,windowEndsAt:t+60000,
@@ -38,7 +38,7 @@ test('mobile signed HMAC verification keeps socket arrival order, not completion
  assert.match(transport,/verificationQueue=verificationQueue\.then\(\(\)=>verifyFrame\(signedFrame\)\)/);
  assert.match(transport,/frame\.seq<=sequence/);
  const merge=readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
- assert.match(merge,/acceptSignedPcFrame\(previous,payload\)/);
+ assert.match(merge,/acceptSignedPcFrame\(previous,pcFrame\)/);
  assert.match(merge,/keepSignedViewOverCloud\(previous,data\)/);
 });
 test('no new trading authorization or worker engine changes on mobile-only fix',()=>{
