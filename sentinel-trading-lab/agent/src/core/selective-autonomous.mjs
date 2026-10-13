@@ -171,7 +171,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
   }
  }
  // Do not learn permission from a demonstrably losing held-out period.
- const validated=tested<6||hits/tested>=.46;
+ const validated=tested<6||hits/tested>=.55;
  const accepted=support&&robust&&specific&&validated;
  const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
   historicalExamples:historic.length,similarExamples:projection.examples,
