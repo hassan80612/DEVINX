@@ -42,11 +42,6 @@ export function evolveOpportunity({
   // confirmation does not restart, flip, or end the countdown.
   if(!fresh||now<old.entryAt||Number(quoteAt)<old.entryAt)
    return {...old,entryReadyNow:false};
-  // If a new real quote arrived more than 2s after the ORIGINAL selected
-  // moment, do not fabricate a late CALL/PUT AGORA. Keep the original
-  // countdown running, without changing the side or restarting the scan.
-  if(now-Number(old.entryAt)>2000)
-   return {...old,entryReadyNow:false,reason:'missed-entry-moment'};
   const verified=confirmation?.side===old.side&&
     Number(confirmation?.projectedEntryPrice)>0&&
     Number(confirmation?.projectedExitPrice)>0&&
