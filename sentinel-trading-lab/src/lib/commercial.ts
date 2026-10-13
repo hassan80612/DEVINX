@@ -8,10 +8,12 @@ export const SENTINEL_PLANS={
   INTL:{name:'Sentinel Trading Lab',amount:50,currency:'USD',cadenceDays:30,priceDisplay:'US$ 50',priceLabel:'US$ 50 / 30 days'}
 } as const;
 
-export function sentinelMarket(requested:string|undefined|null,country:string|undefined|null):SentinelMarket{
+export function sentinelMarket(requested:string|undefined|null,country:string|undefined|null,intl:string|undefined|null=null):SentinelMarket{
   const chosen=String(requested||'').trim().toLowerCase();
   if(chosen==='br'||chosen==='brasil'||chosen==='brazil')return 'BR';
   if(chosen==='intl'||chosen==='international'||chosen==='exterior')return 'INTL';
+  // Explicit public international campaign/link flag, regardless of geolocation.
+  if(['1','true','yes'].includes(String(intl||'').trim().toLowerCase()))return 'INTL';
   const geo=String(country||'').trim().toUpperCase();
   // Missing geolocation is common in local development; the selection remains
   // explicit and user-controlled through query links on the plans page.
@@ -35,7 +37,13 @@ export function sentinelCheckoutUrl(market:SentinelMarket='INTL'){
   const raw=market==='BR'
     ?'https://pay.kiwify.com.br/SQku9Rd'
     :String(process.env.KIWIFY_CHECKOUT_URL||'https://pay.kiwify.com/VNHYsjX').trim();
-  return trustedKiwifyUrl(raw);
+  const verified=trustedKiwifyUrl(raw);
+  if(!verified)return null;
+  if(market==='BR')return verified;
+  // Required international Kiwify flag; preserve other trusted URL parameters.
+  const url=new URL(verified);
+  url.searchParams.set('intl','1');
+  return url.toString();
 }
 
 // Backward compatibility for read-only UI components using the previous name.
