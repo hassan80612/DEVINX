@@ -16,6 +16,8 @@ on:
       - 'sentinel-trading-lab/src/app/page.tsx'
       - 'sentinel-trading-lab/src/components/SentinelLocale.tsx'
       - 'sentinel-trading-lab/agent/src/core/marketing-messages.mjs'
+      - 'tests/sentinel-signout-home-6729.test.mjs'
+      - 'tests/sentinel-6728-continuous-only-ui.test.mjs'
       - 'sentinel-trading-lab/src/lib/pc-authoritative-window.mjs'
       - 'sentinel-trading-lab/src/lib/pc-authoritative-window.d.mts'
       - 'tests/sentinel-continuous-real-window-6721.test.mjs'
