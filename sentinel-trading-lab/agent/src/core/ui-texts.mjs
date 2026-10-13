@@ -126,6 +126,8 @@ export const translations=Object.freeze({en:Object.freeze({
   "Vincular PC": "Pair PC",
   "Minha conta": "My account",
   "Baixar Agent V": "Download Agent V",
+  "Compra necessária": "Purchase required",
+  "Aguardando compra": "Awaiting purchase",
   "Agent aberto, worker parado.": "Agent open, worker stopped.",
   "Reiniciar Agent": "Restart Agent",
   "Estratégia do cenário": "Scenario strategy",
