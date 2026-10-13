@@ -1,6 +1,7 @@
 'use client';
 import {createContext,useContext,useEffect,useMemo,useState} from 'react';
 import {sentinelLanguage,sentinelText} from '../../agent/src/core/ui-texts.mjs';
+import {marketingText} from '../../agent/src/core/marketing-messages.mjs';
 type Lang='pt'|'en';
 type LocaleState={language:Lang,setLanguage:(next:Lang)=>void,t:(phrase:string)=>string};
 const Context=createContext<LocaleState|null>(null);
@@ -26,6 +27,11 @@ export function T({children}:{children:string}){
  const {t}=useSentinelLocale();
  const trimmed=children.trim();
  return <>{children.startsWith(' ')?' ':''}{t(trimmed)}{children.endsWith(' ')?' ':''}</>;
+}
+// Typed semantic catalog for newly designed public product sections.
+export function Msg({id}:{id:string}){
+ const {language}=useSentinelLocale();
+ return <>{marketingText(language,id)}</>;
 }
 export function LanguageSwitcher({onLanguageChange}:{onLanguageChange?:(language:Lang)=>void}={}){
  const {language,setLanguage}=useSentinelLocale();
