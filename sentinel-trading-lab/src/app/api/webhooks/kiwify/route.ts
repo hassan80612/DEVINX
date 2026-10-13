@@ -5,7 +5,15 @@ import {SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY} from '../../../../lib/supabase-co
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
+// Two separate Kiwify checkouts may represent two products. The Brazilian
+// product must be explicitly allowlisted through a server-only environment
+// variable before its paid webhooks are permitted to activate an account.
+// Unknown products remain ignored; signature verification is unchanged.
 const PRODUCT_ID='c05e1f00-c469-11f1-8fdf-3f2670dd515f';
+function isApprovedSentinelProduct(id:string){
+  const brId=String(process.env.SENTINEL_KIWIFY_BR_PRODUCT_ID||'').trim();
+  return id===PRODUCT_ID||(!!brId&&id===brId);
+}
 const MAX_BYTES=128_000;
 const reply=(body:Record<string,unknown>,status=200)=>NextResponse.json(body,{status,headers:{'cache-control':'no-store'}});
 
@@ -54,7 +62,7 @@ export async function POST(req:NextRequest){
   if(!verifyKiwifySignature(raw,signature,secret))return reply({ok:false,error:'invalid_signature'},401);
   let payload:any;try{payload=JSON.parse(raw)}catch{return reply({ok:false,error:'invalid_json'},400)}
   const productId=String(payload?.Product?.product_id||payload?.product?.product_id||payload?.product_id||'');
-  if(productId!==PRODUCT_ID)return reply({ok:true,ignored:'other_product'});
+  if(!isApprovedSentinelProduct(productId))return reply({ok:true,ignored:'other_product'});
   const kind=paymentKind(payload);
   if(!kind)return reply({ok:true,ignored:'unhandled_event'});
   const orderId=String(payload?.order_id||'').trim();
