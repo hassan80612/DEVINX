@@ -33,9 +33,9 @@ test('publisher marks new PC deadline urgent even if opportunity phase did not c
   const worker=readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');
   assert.match(worker,/pcWindow\?\.windowStartedAt,pcWindow\?\.windowEndsAt/);
   const card=readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
-  assert.match(card,/const period=windowEndsAt-windowStartedAt/);
-  assert.match(card,/const displayedEnd=validWindow\?windowEndsAt\+cycle\*period/);
-  assert.match(card,/awaitingNextFrame\?\(syncedRollover/);
+  // Newer 67.22 contract forbids extrapolating a second 30s PC window.
+  assert.match(card,/pcAuthoritativeWindow\(/);
+  assert.doesNotMatch(card,/windowEndsAt\+cycle\*period/);
   assert.match(card,/phase==='fired'/);
   assert.doesNotMatch(card,/readyNow=\{entryMoment\}/);
 });
