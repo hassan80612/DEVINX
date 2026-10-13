@@ -71,6 +71,11 @@ jobs:
             tests/sentinel-mobile-canonical-window-6723.test.mjs
             tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs
             tests/sentinel-live-bridge.test.mjs
+            tests/sentinel-1356-engine-card-latency.test.mjs
+            tests/sentinel-source-event-pc-mobile-6722.test.mjs
+            tests/sentinel-pc-mobile-signed-clock-6724.test.mjs
+            tests/sentinel-mobile-low-latency-1357.test.mjs
+            tests/sentinel-v13464-mobile-feed-continuity.test.mjs
           )
           original=$(git rev-parse HEAD)
           node --test --test-concurrency=2 --test-reporter=tap "${files[@]}" > candidate.tap 2>&1 || true
