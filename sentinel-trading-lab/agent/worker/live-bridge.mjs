@@ -108,7 +108,7 @@ export function analystSnapshot(runtimeStatus,live){
 export function fitAnalystFrame(snapshot,maxBytes=2920){
   const size=value=>Buffer.byteLength(JSON.stringify(value),'utf8');
   if(!snapshot||size(snapshot)<=maxBytes)return snapshot;
-  const a=snapshot.lastResult?.analysis||{},v=a.vnext;
+  const a=snapshot.lastResult?.analysis||{},v=a.vnext,op=a.operationalSignal||{};
   if(!v)return null;
   const compactVnext={
     engineId:v.engineId,expirySeconds:v.expirySeconds,
