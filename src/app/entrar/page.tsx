@@ -6,6 +6,7 @@ import {createServerSupabaseClient} from '@/lib/supabase/server';
 import {AuthForm} from './AuthForm';
 import {TrialActivation} from '@/components/TrialActivation';
 import {AccessGateCard} from '@/components/AccessGateCard';
+import {AccessUnavailableCard} from '@/components/AccessUnavailableCard';
 import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
 
 export const dynamic='force-dynamic';
@@ -35,7 +36,8 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
   // Laser Control has no public login or sign-up flow; only Financeiro Master links to it.
   if(nextPath.startsWith('/laser-control'))notFound();
   const supabase=await createServerSupabaseClient();
-  const{data}=await supabase.auth.getClaims();
+  const{data,error:authError}=await supabase.auth.getClaims();
+  if(authError&&(authError.status===402||(authError.status??0)>=500||/exceed_egress_quota|project is restricted/i.test(authError.message||'')))return <AccessUnavailableCard/>;
 
   if(data?.claims){
     if(trial==='claim'){await supabase.rpc('register_devinx_product',{p_product:'financeiro'});return <TrialActivation/>;}
@@ -45,9 +47,13 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
       redirect('/laser-control/conhecer#planos');
     }
     await supabase.rpc('register_devinx_product',{p_product:'financeiro'});
-    const{data:accessData}=await supabase.rpc('get_devinx_access_status');
+    const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
-    if(access?.allowed)redirect(nextPath||'/painel');
+    if(accessError||!access){
+      console.error('DEVINX_ACCESS_CHECK_UNAVAILABLE',{status:accessError?.status??null,code:accessError?.code??'empty_response'});
+      return <AccessUnavailableCard/>;
+    }
+    if(access.allowed)redirect(nextPath||'/painel');
     return <AccessGateCard/>;
   }
 
