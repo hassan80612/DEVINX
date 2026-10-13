@@ -171,6 +171,11 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     localCockpitLeaseUntil=Date.now()+12*60*60*1000;
     const key=String(payload.key||''),value=payload.value;
     if(key==='uiLanguage'){runtime.patchSettings({uiLanguage:String(value)},'overlay');await saveState();return{ok:true};}
+    if(key==='clockMode'){
+      if(!['current','broker'].includes(String(value)))throw new Error('invalid_clock_mode');
+      // This setting is presentation-only: do NOT request reanalysis or invalidate the entry window.
+      runtime.patchSettings({clockMode:String(value)},'overlay');await saveState();return{ok:true};
+    }
     if(key==='forecastMode'){runtime.patchSettings({forecastMode:String(value)},'overlay');runtime.requestImmediateEvaluation?.();await saveState();return{ok:true};}
     if(key==='engine'){
       const allowed=['automatic','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
@@ -389,6 +394,8 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       marketReason:view.liveBroker?.marketReason||null,
       engine:view.settings?.engine||null,forecastMode:view.settings?.forecastMode||'continuous',
       uiLanguage:view.settings?.uiLanguage||'pt',
+      clockMode:view.settings?.clockMode||'current',
+      brokerTiming:view.liveBroker?.brokerTiming||null,
        vnext:a.vnext||null,
        strategy:view.settings?.strategy||'smart_confluence',
       strategy2:view.settings?.strategy2||'none',
