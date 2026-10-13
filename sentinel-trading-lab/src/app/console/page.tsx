@@ -7,10 +7,10 @@ import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedPcOpportunity,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
 
 type Status=any;
-// DEMO release candidate 67.27, Windows installer checksum-verified. Original CALL/PUT timing unchanged.
+// DEMO release candidate 67.28, Windows installer checksum-verified. Original CALL/PUT timing unchanged.
 // Informative web release number; the connected PC reports its own actual version.
-const AVAILABLE_AGENT_VERSION='13.4.67.27';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.27.exe?v=turn-awareness-demo-1013`;
+const AVAILABLE_AGENT_VERSION='13.4.67.28';
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.28.exe?v=selective50-i18n-1013`;
 const tabDefs=[
   {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
