@@ -80,3 +80,11 @@
   .nav{padding:13px 16px}
   .eyebrow{font-size:9px;padding:8px 10px;letter-spacing:.09em}
 }
+
+/* Explicit billing market selector, independent of language preference. */
+.plansMarketChooser{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-width:540px;margin:0 auto 26px;padding:5px;border:1px solid #ad965c70;border-radius:14px;background:#071c1be0;box-shadow:0 14px 44px #0004}
+.marketOption,.marketActive{display:flex;align-items:center;justify-content:center;min-height:46px;padding:10px 15px;text-decoration:none;border-radius:10px;font-size:13px;font-weight:800;letter-spacing:.01em;transition:background .15s,color .15s}
+.marketOption{color:#b9c9bf;background:transparent}
+.marketOption:hover,.marketOption:focus-visible{color:#f7e6b9;background:#a88b4920}
+.marketActive{color:#0b201a;background:#e5c87b;box-shadow:0 4px 18px #bf984a40}
+@media(max-width:440px){.plansMarketChooser{gap:4px;padding:4px}.marketOption,.marketActive{font-size:11px;padding:10px 6px;min-height:44px}}
