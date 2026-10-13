@@ -204,6 +204,9 @@ export default function Page(){
           remote:{...(previous.remote||{}),online:true}
         };
       });
+    },(offsetMs:number,rttMs:number)=>{
+      setS(previous=>previous?.liveTopic===topic?
+        {...previous,pcClockOffsetMs:offsetMs,pcClockRttMs:rttMs}:previous);
     });
   },[s?.liveTopic,s?.liveSignatureKey,source,reconcileSettings]);
   // Compact mode affects presentation only: no new feeds, timers, or Supabase subscriptions.

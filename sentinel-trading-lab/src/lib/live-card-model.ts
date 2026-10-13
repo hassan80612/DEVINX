@@ -1,7 +1,7 @@
 import {scenarioViewFromRuntime} from '../../agent/worker/scenario-view.mjs';
 
 const num=(value:any)=>value!=null&&Number.isFinite(Number(value))?Number(value):null;
-export function liveCardModel(s:any,now:number,averageThreshold=60){
+export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now){
   const live=s?.liveBroker||{},a=s?.lastResult?.analysis||{},op=a.operationalSignal||{};
   const asset=String(live.validatedSymbol||live.symbol||s?.settings?.asset||live.uiSymbol||'—');
   const analysisAsset=String(s?.lastResult?.asset||a.asset||'');
@@ -142,7 +142,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60){
   const quoteAgeAtFrame=Number.isFinite(Number(s?.liveQuoteAgeAtFrame))?
     Math.max(0,Math.floor(Number(s.liveQuoteAgeAtFrame)/1000)):null;
   const transportAge=s?.liveTransport==='push'&&Number(s?.liveStreamAt)>0?
-    Math.max(0,Math.floor((now-Number(s.liveStreamAt))/1000)):null;
+    Math.max(0,Math.floor((localNow-Number(s.liveStreamAt))/1000)):null;
   const entryRemaining=entrySide&&Number.isFinite(Number(view.entryRemainingSeconds))?Math.max(0,Number(view.entryRemainingSeconds)):null;
   // The entry opportunity and the longer scenario have separate lifecycles.
   // A consumed/missed entry is NOT a closed forecast. This classification

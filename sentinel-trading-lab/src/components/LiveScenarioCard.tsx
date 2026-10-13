@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {liveCardModel} from '../lib/live-card-model';
 import {pcAuthoritativeWindow} from '../lib/pc-authoritative-window.mjs';
+import {pcClockNow} from '../lib/pc-clock-sync.mjs';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {SCENARIO_ENGINES} from '../../agent/src/core/scenario-engine-catalog.mjs';
 
@@ -12,9 +13,9 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 // Dedicated local timer: it never waits for a WebSocket packet or forces
 // the full analyst card to recalculate on every countdown tick.
-function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedExit,side,phase,quoteAt,liveFrameAt,holdingSeconds}:{
+function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedExit,side,phase,quoteAt,pcClockOffsetMs,holdingSeconds}:{
  windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedExit:number,
- side:string|null,phase:string|null,quoteAt:number,liveFrameAt:number,holdingSeconds:number
+ side:string|null,phase:string|null,quoteAt:number,pcClockOffsetMs:number|null,holdingSeconds:number
 }){
  const [now,setNow]=useState(()=>Date.now());
  useEffect(()=>{
@@ -30,7 +31,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  },[]);
  // Exactly the recorded PC opportunity state, not a new local scenario.
  // No cycle derivation: only an actual new Agent deadline begins another window.
- const view=pcAuthoritativeWindow({windowStartedAt,windowEndsAt,phase,side,entryTriggeredAt,quoteAt,now});
+ const view=pcAuthoritativeWindow({windowStartedAt,windowEndsAt,phase,side,entryTriggeredAt,quoteAt,now:pcClockNow(now,pcClockOffsetMs)});
  const running=view.active;
  const moment=view.enterNow;
  const seconds=view.remainingSeconds;
@@ -51,7 +52,8 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
 }
 
 export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
-  const[now,setNow]=useState(()=>Date.now());
+  const[localNow,setLocalNow]=useState(()=>Date.now());
+  const now=pcClockNow(localNow,s?.pcClockOffsetMs);
   const[recordedSignal,setRecordedSignal]=useState<{asset:string,side:string,price:number,at:number}|null>(null);
   const[averageThreshold,setAverageThreshold]=useState(60);
   const[averageInput,setAverageInput]=useState('60');
@@ -69,7 +71,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[strategy3,setStrategy3]=useState(String(s?.settings?.strategy3||'none'));
   useEffect(()=>{
     let timer:ReturnType<typeof setInterval>|null=null;
-    const update=()=>setNow(Date.now());
+    const update=()=>setLocalNow(Date.now());
     const syncVisibility=()=>{
       if(timer){clearInterval(timer);timer=null}
       if(document.visibilityState==='visible'){
@@ -110,7 +112,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       setThreshold(String(s?.settings?.futureDisplayThreshold||70));
     }
   };
-  const m=liveCardModel(s,now,averageThreshold);
+  const m=liveCardModel(s,now,averageThreshold,localNow);
   const vnext=!!s?.settings?.engine;
   // Duration selection is the lead time to a FUTURE entry.
   // Only the recorded entry schedule owns the hero countdown and direction.
@@ -240,7 +242,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     (m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'):undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
-    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} liveFrameAt={Number(s?.liveStreamAt||0)} holdingSeconds={Number(expirySeconds)}/>
+    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)}/>
     <div className="vnextProjectionValues">
       <div><small>PREÇO ESTIMADO NA ENTRADA</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
       <div><small>PREÇO ESTIMADO AO VENCER</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
@@ -302,7 +304,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     if(ok)settingsEditing.current=false;
   };
   const quoteShown=m.fresh?(s?.liveBroker?.quote??s?.feed?.price):null;
-  const pushed=m.fresh&&s?.liveTransport==='push'&&now-Number(s?.liveStreamAt||0)<4000;
+  const pushed=m.fresh&&s?.liveTransport==='push'&&localNow-Number(s?.liveStreamAt||0)<4000;
   const streamBadge=pushed?<small role="status" style={{color:'#29bc9d',fontWeight:800}}>● AO VIVO · PUSH</small>:null;
   const mobileFeedDelay=m.quoteAgeAtFrame!==null&&m.transportAge!==null?
     'PC '+m.quoteAgeAtFrame+'s · CANAL '+m.transportAge+'s':null;
