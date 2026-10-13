@@ -843,11 +843,11 @@ export function sentinelText(language,key){
  if(translations.en[value])return translations.en[value];
  // Broker diagnostics include changing numbers; translate them without
  // touching the broker adapter or allocating work on every market tick.
- let m=value.match(/^(\\d+) ativos detectados$/i);
+ let m=value.match(/^(\d+) ativos detectados$/i);
  if(m)return m[1]+' assets detected';
- m=value.match(/^saldo\\s+(REAL|DEMO)?\\s*lido$/i);
+ m=value.match(/^saldo\s+(REAL|DEMO)?\s*lido$/i);
  if(m)return (m[1]?m[1].toUpperCase()+' ':'')+'balance read';
- m=value.match(/^(\\d+) candles (atuais )?recebidos$/i);
+ m=value.match(/^(\d+) candles (atuais )?recebidos$/i);
  if(m)return m[1]+' '+(m[2]?'current ':'')+'candles received';
  if(value==='sessão conectada ao navegador local')return 'Session connected to the local browser';
  if(value==='sessão local pronta')return 'Local session ready';
