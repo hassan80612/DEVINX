@@ -1,5 +1,6 @@
 import './globals.css';
 import type {Metadata} from 'next';
+import {SentinelLocaleProvider} from '../components/SentinelLocale';
 
 export const metadata:Metadata={
   title:'Sentinel Trading Lab',
@@ -8,5 +9,5 @@ export const metadata:Metadata={
 };
 
 export default function RootLayout({children}:{children:React.ReactNode}){
-  return <html lang="pt-BR"><body>{children}</body></html>
+  return <html lang="pt-BR"><body><SentinelLocaleProvider>{children}</SentinelLocaleProvider></body></html>
 }
