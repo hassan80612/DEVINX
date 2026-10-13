@@ -30,16 +30,17 @@ for(const side of ['CALL','PUT']){
 const candidate=(start,side='CALL')=>({side,issuedAt:start,entryAt:start+5000,
   exitAt:start+35000,projectedEntryPrice:1.1,
   projectedExitPrice:side==='CALL'?1.11:1.09,delaySeconds:30,holdingSeconds:30});
-test('stale confirmation cancels entry but never resets the 30s window or flips direction',()=>{
+test('a missed confirmation does not flip or restart the original opportunity window',()=>{
  const start=now-8000;let w=evolveOpportunity({settings,now:start,quoteAt:start,candidate:candidate(start)});
  assert.equal(w.phase,'open');
  const end=w.windowEndsAt;
- w=evolveOpportunity({settings,previous:w,now:start+7000,quoteAt:start+7000,
-   confirmation:{side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11}});
- assert.equal(w.phase,'cancelled');assert.equal(w.side,'CALL');assert.equal(w.windowEndsAt,end);
- const again=evolveOpportunity({settings,previous:w,now:start+8000,quoteAt:start+8000,
-   candidate:candidate(start+8000,'PUT'),confirmation:{side:'PUT',projectedEntryPrice:1.1,projectedExitPrice:1.09}});
- assert.equal(again.phase,'cancelled');assert.equal(again.windowEndsAt,end);
+ w=evolveOpportunity({settings,previous:w,now:start+7000,quoteAt:start+7000,confirmation:null});
+ assert.equal(w.phase,'open');assert.equal(w.entryReadyNow,false);
+ assert.equal(w.side,'CALL');assert.equal(w.windowEndsAt,end);
+ const later=evolveOpportunity({settings,previous:w,now:start+8000,quoteAt:start+8000,
+   candidate:candidate(start+8000,'PUT'),confirmation:null});
+ assert.equal(later.phase,'open');assert.equal(later.windowEndsAt,end);
+ assert.equal(later.side,'CALL');
 });
 test('on-time confirmation still triggers exactly once',()=>{
  const start=now-8000;let w=evolveOpportunity({settings,now:start,quoteAt:start,candidate:candidate(start)});
