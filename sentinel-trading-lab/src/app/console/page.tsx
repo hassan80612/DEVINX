@@ -8,10 +8,10 @@ import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedPcOpportunity
 
 type Status=any;
 // Website version and installed Windows Agent are distinct releases.
-// Full 67.30 website and Windows Agent release. Continuous forecast logic remains unchanged.
-const WEB_RELEASE_VERSION='67.30';
-const AVAILABLE_AGENT_VERSION='13.4.67.30';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.30.exe?v=continuous-only-i18n-6730`;
+// 67.31 website and Windows Agent candidate. Continuous forecast core unchanged.
+const WEB_RELEASE_VERSION='67.31';
+const AVAILABLE_AGENT_VERSION='13.4.67.31';
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.31.exe?v=locale-broker-clock-6731`;
 const tabDefs=[
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
   {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia de previsão.'},
