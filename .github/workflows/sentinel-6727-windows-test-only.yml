@@ -15,7 +15,7 @@ on:
       - 'sentinel-trading-lab/src/lib/pc-authoritative-window.mjs'
       - 'sentinel-trading-lab/src/lib/pc-authoritative-window.d.mts'
       - 'tests/sentinel-continuous-real-window-6721.test.mjs'
-      - '.github/workflows/sentinel-6727-windows-verified.yml'
+      - '.github/workflows/sentinel-6727-windows-test-only.yml'
 permissions:
   contents: read
 concurrency:
@@ -27,6 +27,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
