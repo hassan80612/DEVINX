@@ -86,8 +86,13 @@ export function analystSnapshot(runtimeStatus,live){
     v:1,at:Date.now(),seq:0,agentVersion:String(runtimeStatus?.agentVersion||''),
     state:runtimeStatus?.state,killSwitch:runtimeStatus?.killSwitch,masterFrozen:runtimeStatus?.masterFrozen,
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
-    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
-    liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null},
+    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',clockMode:runtimeStatus?.settings?.clockMode||'current',engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
+    liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null,
+      brokerTiming:runtimeStatus?.settings?.clockMode==='broker'&&live?.brokerTiming?{
+        capturedAt:live.brokerTiming.capturedAt,
+        purchaseWindow:{closesAt:live.brokerTiming.purchaseWindow?.closesAt??null},
+        instrumentKind:live.brokerTiming.instrumentKind
+      }:null},
     feed:{price:live?.quote??null,quoteTs:liveQuoteAt},
     lastResult:{asset:result.asset||asset,analysis:{
       operationalSignal:operational,
