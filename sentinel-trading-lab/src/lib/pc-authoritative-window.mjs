@@ -28,7 +28,7 @@ export function pcAuthoritativeWindow({
   else if(phase==='cancelled')label='JANELA SEM ENTRADA';
   else if(phase==='fired')label='ENTRADA JÁ SINALIZADA'+(direction?' · '+(direction==='CALL'?'↑ CALL':'↓ PUT'):'');
   else if(!withinDeadline)label='';
-  else if(phase==='open'&&direction)label=(direction==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA';
+  else if(phase==='open'&&direction)label=(direction==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA · AGUARDE';
   else label='JANELA ABERTA · ANALISANDO';
   return {active,enterNow,withinDeadline,remainingSeconds,label,phase,startedAt:start,deadline:end};
 }

@@ -39,7 +39,7 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
   String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
  const direction=view.label;
  return <>
-  <div className="vnextFutureDirection"><strong data-testid="future-entry-decision">{direction}</strong></div>
+  <div className="vnextFutureDirection" data-await-entry={view.withinDeadline&&phase==='open'&&!moment?'true':undefined}><strong data-testid="future-entry-decision">{direction}</strong></div>
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
    <div><small>{moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA'}</small><strong>{countdown}</strong></div>
    <div><small>MOMENTO DE ENTRADA</small>

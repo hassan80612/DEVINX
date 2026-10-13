@@ -80,8 +80,8 @@ test('three cards are informational, no vote or extra motor invocations',()=>{
 });
 test('mobile reducer merges signed engine, expiry and vnext fields while preserving full remote context',async()=>{
  const s=await readFile(new URL('../sentinel-trading-lab/src/app/console/page.tsx',import.meta.url),'utf8');
- assert.match(s,/settings:reconcileSettings\(\{\.\.\.\(previous\.settings\|\|\{\}\),\s*\.\.\.\(payload\.settings\|\|\{\}\)\}\)/);
- assert.match(s,/analysis:\{\.\.\.\(previous\.lastResult\?\.analysis\|\|\{\}\),\.\.\.\(payload\.lastResult\?\.analysis\|\|\{\}\)\}/);
+ assert.match(s,/settings:reconcileSettings\(\{\.\.\.\(previous\.settings\|\|\{\}\),\s*\.\.\.\(pcFrame\.settings\|\|\{\}\)\}\)/);
+ assert.match(s,/analysis:\{\.\.\.\(previous\.lastResult\?\.analysis\|\|\{\}\),\.\.\.\(pcFrame\.lastResult\?\.analysis\|\|\{\}\)\}/);
 });
 
 test('normal and floating mobile use the SAME direct motor indication without remote polling',async()=>{

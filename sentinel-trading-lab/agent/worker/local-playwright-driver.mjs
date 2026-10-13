@@ -1517,7 +1517,7 @@ export class LocalPlaywrightDriver{
           ('ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT')):
           opportunityPhase==='cancelled'?'JANELA SEM ENTRADA':
           opportunityPhase==='fired'?'ENTRADA JÁ SINALIZADA':
-          opportunityPhase==='open'&&scheduledSide?(scheduledSide==='CALL'?'↑ CALL · JANELA ABERTA':'↓ PUT · JANELA ABERTA'):
+          opportunityPhase==='open'&&scheduledSide?(scheduledSide==='CALL'?'↑ CALL · JANELA ABERTA · AGUARDE':'↓ PUT · JANELA ABERTA · AGUARDE'):
           'JANELA ABERTA · ANALISANDO';
         const nextHtml=d.engine?`
           <div data-sentinel-card="vnext" style="padding:14px 15px;background:${panelBg};border:1px solid ${panelBorder};border-radius:14px;box-shadow:${panelShadow};color:${ink};font-family:Arial,sans-serif;min-width:0">

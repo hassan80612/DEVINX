@@ -40,7 +40,7 @@ test('Seletiva keeps original ANALISANDO countdown and never manufactures entry'
  assert.equal(display.enterNow,false);
  const after=pcAuthoritativeWindow({windowStartedAt:t,windowEndsAt:t+30000,phase:'scanning',now:t+30040});
  assert.equal(after.active,false);
- assert.equal(after.remainingSeconds,null);
+ assert.equal(after.remainingSeconds,0); // 67.24 keeps the completed PC deadline at 00:00.
 });
 test('PC overlay treats actual source window change and fired timestamp as urgent',()=>{
  const src=readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');
@@ -48,4 +48,19 @@ test('PC overlay treats actual source window change and fired timestamp as urgen
   src.slice(src.indexOf('const overlayFastKey=['),src.indexOf('if(overlayFastKey!==')),
   src.slice(src.indexOf('overlayTimingKey=['),src.indexOf('const urgentOverlay'))
  ])for(const match of ['windowStartedAt','windowEndsAt','entryTriggeredAt'])assert.ok(segment.includes(match),match);
+});
+
+// Waiting copy must not change the PC deadline or turn a forecast into entry.
+test('open CALL and PUT explicitly wait; only a confirmed trigger says AGORA',()=>{
+ for(const side of ['CALL','PUT']){
+  const args={windowStartedAt:t,windowEndsAt:t+30000,phase:'open',side,quoteAt:t+1000,now:t+1000};
+  const waiting=pcAuthoritativeWindow(args);
+  assert.equal(waiting.label,(side==='CALL'?'↑ CALL':'↓ PUT')+' · JANELA ABERTA · AGUARDE');
+  assert.equal(waiting.enterNow,false);
+  assert.equal(waiting.remainingSeconds,29);
+  const confirmed=pcAuthoritativeWindow({...args,phase:'fired',entryTriggeredAt:t+1000});
+  assert.equal(confirmed.enterNow,true);
+  assert.equal(confirmed.label,'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'));
+  assert.equal(confirmed.deadline,waiting.deadline);
+ }
 });
