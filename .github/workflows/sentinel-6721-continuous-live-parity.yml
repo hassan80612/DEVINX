@@ -1,0 +1,30 @@
+name: Sentinel 67.21 Fixed PC Window (Safe Candidate)
+on:
+  push:
+    branches: [fix/sentinel-continuous-real-window-20261012]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Confirm untouched Agent release and parse modified files
+        run: |
+          node -e "if(require('./sentinel-trading-lab/agent/release.json').version!=='13.4.67.21')process.exit(1)"
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+          node --check sentinel-trading-lab/agent/src/core/entry-window-planner.mjs
+          node --check sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs
+          node --check sentinel-trading-lab/src/lib/pc-authoritative-window.mjs
+      - name: Behavior regressions (Contínua, Seletiva and live bridge)
+        run: |
+          node --test tests/sentinel-continuous-real-window-6721.test.mjs tests/sentinel-live-bridge.test.mjs tests/sentinel-v13460-mobile-realtime-regression.test.mjs
+      - name: Build and TypeScript validation without publishing
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+          npm run build
