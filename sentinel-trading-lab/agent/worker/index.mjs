@@ -261,8 +261,25 @@ function overlayAnalysis(view,asset,now=Date.now()){
   if(!switched){const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200)return{analysis:cached.analysis,transient:true}}
   return{analysis:current||{},transient:false}
 }
+// Only local timings; never poll, touch the broker account or write DB rows.
 const brokerMaintenancePending=new Set();
-function scheduleBrokerMaintenance(provider){if(brokerMaintenancePending.has(provider))return;brokerMaintenancePending.add(provider);Promise.resolve(driver.maintain?.(provider)).then(()=>brokers[provider]?.refreshFromLive?.()).catch(()=>{}).finally(()=>brokerMaintenancePending.delete(provider))}
+const brokerMaintenancePerformance={};
+const evaluationPerformance={lastMs:0,averageMs:0,slowCount:0,lastQuoteToDecisionAgeMs:null,lastEntryTimingDelayMs:null,lastEntryEventAt:0};
+function scheduleBrokerMaintenance(provider){
+ if(brokerMaintenancePending.has(provider))return;
+ brokerMaintenancePending.add(provider);
+ const started=Date.now();
+ Promise.resolve().then(()=>driver.maintain?.(provider))
+  .then(()=>brokers[provider]?.refreshFromLive?.())
+  .catch(()=>{})
+  .finally(()=>{
+    const elapsed=Date.now()-started,old=brokerMaintenancePerformance[provider]||{};
+    brokerMaintenancePerformance[provider]={lastMs:elapsed,
+      averageMs:Math.round(old.averageMs?old.averageMs*.8+elapsed*.2:elapsed),
+      slowCount:(old.slowCount||0)+(elapsed>1000?1:0),samples:(old.samples||0)+1};
+    brokerMaintenancePending.delete(provider);
+  });
+}
 let shuttingDown=false;
 let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   const licensed=await enforceAccessLease();
@@ -280,7 +297,22 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
   // forecast itself takes longer to compute. The post-analysis broadcast below
   // will send any new qualified decision as soon as it exists.
   void publishLiveFrame();
+  const tickStarted=Date.now();
   await runtime.tick(loopNow,{skipStatus:true});
+  const tickElapsed=Date.now()-tickStarted;
+  evaluationPerformance.lastMs=tickElapsed;
+  evaluationPerformance.averageMs=Math.round(evaluationPerformance.averageMs?
+    evaluationPerformance.averageMs*.8+tickElapsed*.2:tickElapsed);
+  if(tickElapsed>500)evaluationPerformance.slowCount++;
+  const liveQuoteAt=Number(chooseLive()?.m?.lastQuoteAt||0);
+  evaluationPerformance.lastQuoteToDecisionAgeMs=liveQuoteAt>0?
+    Math.max(0,Date.now()-liveQuoteAt):null;
+  const fired=runtime.lastResult?.analysis?.vnext?.futureEntryAnchor;
+  if(fired?.phase==='fired'&&Number(fired.entryTriggeredAt)>evaluationPerformance.lastEntryEventAt){
+    evaluationPerformance.lastEntryEventAt=Number(fired.entryTriggeredAt);
+    evaluationPerformance.lastEntryTimingDelayMs=Number.isFinite(Number(fired.plannedEntryAt))?
+      Number(fired.entryTriggeredAt)-Number(fired.plannedEntryAt):null;
+  }
   // Deliver a confirmed decision as soon as the engine finishes its quote
   // analysis, before broker overlay rendering or expensive status work.
   // The signed realtime bridge enforces burst limits and viewer verification.
@@ -398,7 +430,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
 }catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,400).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
-  return{...base,marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
+  return{...base,marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
+    timingDiagnostics:{evaluation:{...evaluationPerformance},brokerMaintenance:{...brokerMaintenancePerformance}},
+    sessionVault:{configured:true},brokers:brokerStatuses(),loginStates:{iq_option:driver.peek?.('iq_option')||loginStates.iq_option,exnova:driver.peek?.('exnova')||loginStates.exnova},activeProvider:provider,liveBroker:provider?{provider,...live}:null,...(live?.balance!=null?{balance:live.balance,balanceSource:'broker'}:{}),...(live?.quote!=null?{feed:{label:`${provider==='exnova'?'EXNOVA':'IQ OPTION'} LIVE`,price:live.quote,quoteTs:live.lastQuoteAt||live.lastCandleAt||0}}:{})}}
 const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);const ALLOWED_ORIGINS=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
 function allowedOrigin(origin=''){
