@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {sentinelLanguage,sentinelText,translations} from '../sentinel-trading-lab/agent/src/core/ui-texts.mjs';
+import {marketingMessages} from '../sentinel-trading-lab/agent/src/core/marketing-messages.mjs';
 const read=p=>readFileSync(p,'utf8');
 const base='7cd0e7315fd7b6a59ad82142ffc8db7491c902ca';
 test('original 67.26 entry-now clock and labels are byte-for-byte preserved',()=>{
@@ -21,8 +22,12 @@ test('translation is deterministic and never modifies CALL/PUT model data',()=>{
  assert.equal(sentinelText('en','PUT'),'PUT');
  assert.ok(Object.keys(translations.en).length>=250);
 });
-test('every public landing/plans/login translated JSX text has a catalog key',()=>{
- for(const path of ['sentinel-trading-lab/src/app/page.tsx','sentinel-trading-lab/src/app/planos/page.tsx','sentinel-trading-lab/src/app/login/page.tsx']){
+test('marketing Home uses semantic PT/EN keys, while plans and login translate all visible literals',()=>{
+ const home=read('sentinel-trading-lab/src/app/page.tsx');
+ const ids=[...home.matchAll(/<Msg id="([^"]+)"\/>/g)].map(m=>m[1]);
+ assert.ok(ids.length>=50,'Home must use semantic message keys');
+ for(const id of ids)assert.ok(marketingMessages[id]?.en&&marketingMessages[id]?.pt,id);
+ for(const path of ['sentinel-trading-lab/src/app/planos/page.tsx','sentinel-trading-lab/src/app/login/page.tsx']){
    const phrases=[...read(path).matchAll(/<T>([^<>]+)<\/T>/g)].map(m=>m[1].trim());
    assert.ok(phrases.length>=10,path);
    for(const phrase of phrases){
@@ -38,7 +43,7 @@ test('mobile and PC use shared translations with independent browser-only select
  const header=read('sentinel-trading-lab/src/app/console/page.tsx');
  assert.match(mobile,/const \{t\}=useSentinelLocale\(\)/);
  assert.match(provider,/localStorage\.setItem\(KEY,language\)/);
- assert.match(header,/<LanguageSwitcher\/>/);
+ assert.match(header,/<LanguageSwitcher(?:\s|\/>)/);
  assert.match(pc,/data-sentinel-ui-language/);
  assert.match(pc,/translations\.en\[k\]/);
  assert.match(pc,/payload\.uiTranslations=PC_UI_EN/);
