@@ -19,6 +19,7 @@ on:
       - 'tests/sentinel-signout-home-6729.test.mjs'
       - 'tests/sentinel-6728-continuous-only-ui.test.mjs'
       - 'tests/sentinel-ui-i18n-6726-candidate.test.mjs'
+      - 'tests/sentinel-autonomous-coherent-perf-6717.test.mjs'
       - 'sentinel-trading-lab/src/lib/pc-authoritative-window.mjs'
       - 'sentinel-trading-lab/src/lib/pc-authoritative-window.d.mts'
       - 'tests/sentinel-continuous-real-window-6721.test.mjs'
