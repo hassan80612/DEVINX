@@ -20,7 +20,7 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
  const headroom=Math.max(0,Number(confirmationQuoteGapMs)||0);
  const remainingMs=deadline>now?deadline-now-headroom:realWindowEndsAt==null?windowSeconds*1000:0;
  const eligibleSeconds=Math.min(windowSeconds,Math.floor(remainingMs/1000));
- const offsets=entryOffsets(eligibleSeconds);
+ const offsets=eligibleSeconds>=2?entryOffsets(Math.max(5,eligibleSeconds)).filter(seconds=>seconds<=eligibleSeconds):[];
  const base={engineId,asset,delaySeconds:windowSeconds,holdingSeconds,
   issuedAt:now,entryAt:null,exitAt:null,entryOffsetSeconds:null,
   windowStartedAt:now,windowEndsAt:deadline>now?deadline:now+windowSeconds*1000,
