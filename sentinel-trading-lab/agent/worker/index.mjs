@@ -1,6 +1,7 @@
 import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
 import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
+import {lightweightOverlayView} from './lightweight-overlay-view.mjs';
 import http from 'node:http';
 import {readFile,writeFile,mkdir,rename,chmod} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
@@ -310,7 +311,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     ].join('|');
     if(overlayFastKey!==lastOverlayProbeKey||Date.now()-lastOverlayAt>=1000){
       lastOverlayProbeKey=overlayFastKey;
-      const view=await runtime.status();
+      const view=lightweightOverlayView(runtime);
     const brokerSwitching=String(view.liveBroker?.marketStatus||'').toLowerCase()==='switching'&&!view.liveBroker?.uiSymbol&&!view.liveBroker?.symbol;
     const currentAsset=brokerSwitching?'SINCRONIZANDO':(view.liveBroker?.uiSymbol||view.liveBroker?.symbol||view.settings?.asset||'—');
     const held=overlayAnalysis(view,currentAsset),a=held.analysis||{},m=a.metrics||{};
