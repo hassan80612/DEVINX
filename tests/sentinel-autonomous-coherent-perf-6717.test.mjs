@@ -73,8 +73,10 @@ test('percentages use observed quote cards even when there is no forecast receip
  assert.match(pc,/const fresh=Number.isFinite\(value\)&&Number.isFinite\(other\)&&liveNow&&d.vnext\?\.engineId===d.engine/);
  assert.doesNotMatch(pc,/d.vnext\?\.receipt\?\.engineId===d.engine&&Math.round/);
  assert.match(mobile,/vnext\?\.cards\|\|\[\]/);
- assert.match(pc,/Seletiva Autônoma/);
- assert.match(mobile,/disabled=\{busy\|\|forecastMode==='selective'\}/);
+ assert.match(pc,/data-sentinel-setting="engine"/);
+ assert.match(mobile,/value=\{chosenEngine\} disabled=\{busy\}/);
+ assert.doesNotMatch(mobile,/<option value="selective"/);
+ assert.doesNotMatch(pc,/<select data-sentinel-setting="forecastMode"/);
  const engine=fs.readFileSync('sentinel-trading-lab/agent/src/core/vnext-single-engine.mjs','utf8');
  assert.match(engine,/const autonomous=settings.forecastMode==='selective'/);
  assert.match(engine,/coherentInterval/);
