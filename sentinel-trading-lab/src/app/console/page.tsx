@@ -12,10 +12,9 @@ type Status=any;
 const AVAILABLE_AGENT_VERSION='13.4.67.29';
 const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.29.exe?v=continuous-only-i18n-1013`;
 const tabDefs=[
-  {key:'Dashboard',label:'Início',icon:'⌂',group:'Acesso',title:'Comece pelo Agent',subtitle:'Instale e vincule o Agent no PC. Depois acompanhe a análise em Mercado.'},
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
-  {key:'Broker Connection',label:'Corretora',icon:'⇄',group:'Conexão',title:'Corretora',subtitle:'Conecte IQ Option ou Exnova no computador.'},
   {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia de previsão.'},
+  {key:'Broker Connection',label:'Corretora',icon:'⇄',group:'Conexão',title:'Corretora',subtitle:'Conecte IQ Option ou Exnova no computador.'},
   {key:'Settings',label:'Conta & Agent',icon:'⚙',group:'Conta',title:'Conta & Agent',subtitle:'Licença, computadores vinculados e segurança.'},
   {key:'Membership',label:'Plano / Renovar',icon:'◈',group:'Conta',title:'Meu plano',subtitle:'Seu acesso e informações de renovação.'},
   {key:'Master Console',label:'Master',icon:'◆',group:'Admin',title:'Master Sentinel',subtitle:'Gerencie clientes, licenças, PCs e suporte remoto.'}
@@ -82,7 +81,7 @@ function normalizeStatus(data:any){
 export default function Page(){
   const {t,language}=useSentinelLocale();
   const languageSyncRef=useRef('');
-  const[tab,setTab]=useState('Dashboard');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
+  const[tab,setTab]=useState('Market Analysis');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
   const remotePolledAt=useRef(0);
   const liveFrameAt=useRef(0);
   // Reconcile an in-flight user selection with delayed Agent status/broadcast.
@@ -214,15 +213,15 @@ export default function Page(){
   },[s?.liveTopic,s?.liveSignatureKey,source,reconcileSettings]);
   // Compact mode affects presentation only: no new feeds, timers, or Supabase subscriptions.
   useEffect(()=>{try{setCompactAnalyst(new URLSearchParams(window.location.search).get('compact')==='1')}catch{}},[]);
-  useEffect(()=>{try{const requested=new URLSearchParams(window.location.search).get('tab');if(requested&&tabDefs.some(t=>t.key===requested))setTab(requested)}catch{}},[]);
+  useEffect(()=>{try{const requested=new URLSearchParams(window.location.search).get('tab');if(requested==='Dashboard')setTab('Market Analysis');else if(requested&&tabDefs.some(t=>t.key===requested))setTab(requested)}catch{}},[]);
   const toggleCompactAnalyst=()=>{
     const next=!compactAnalyst;
     setCompactAnalyst(next);
     // Return within the authenticated app: do not navigate to /login.
-    setTab(next?'Market Analysis':'Dashboard');
+    setTab('Market Analysis');
     try{const url=new URL(window.location.href);
       if(next){url.searchParams.set('compact','1');url.searchParams.set('tab','Market Analysis')}
-      else{url.searchParams.delete('compact');url.searchParams.set('tab','Dashboard')}
+      else{url.searchParams.delete('compact');url.searchParams.set('tab','Market Analysis')}
       window.history.replaceState(null,'',url.toString());
     }catch{}
   };
@@ -269,18 +268,18 @@ export default function Page(){
   },[language,source,agent.worker,agent.version,s?.agentVersion,s?.settings?.uiLanguage]);
   const agentCommand=async(action:'restart'|'exit')=>{if(source!=='local'){setErr('Reiniciar/desligar o Agent exige acesso ao PC. Pelo celular você controla o Bot: iniciar, pausar, parar e Kill Switch.');return}setBusy(true);try{await managerFetch(action,'POST',{});if(action==='exit'){setAgent({process:false,worker:false});setSource('remote')}setTimeout(refresh,700);setErr('')}catch(e:any){setErr(`Agent: ${String(e?.message||e)}`)}finally{setBusy(false)}};
   const claimPair=async()=>{if(!pairCode.trim())return;setBusy(true);const send=async(replaceExisting=false)=>{const r=await fetch('/api/devices/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:pairCode,replaceExisting})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'Falha ao vincular PC');return j};try{let j:any;try{j=await send(false)}catch(e:any){if(String(e?.message||e)==='limite_de_pcs'){const ok=window.confirm('Esta conta já atingiu o limite de computadores. Substituir o PC antigo por este novo computador?');if(!ok)throw e;j=await send(true)}else throw e}setPairCode('');setErr('');setNotice(j?.replaced?'Novo computador vinculado. O PC antigo foi substituído.':'Computador vinculado com sucesso.');setTimeout(refresh,300);setTimeout(()=>setNotice(''),4200)}catch(e:any){setErr(friendlyError(e))}finally{setBusy(false)}};
-  const current=visibleTabs.find(x=>x.key===tab)??visibleTabs[0];const groups=['Acesso','Análise','Conexão','Conta','Admin'];const content=useMemo(()=>{
+  const current=visibleTabs.find(x=>x.key===tab)??visibleTabs[0];const content=useMemo(()=>{
     // Hidden dashboard grids are expensive. During compact/market streaming,
     // only render the analyst; build the other tab AFTER navigating there.
     if(compactAnalyst||tab==='Market Analysis')return null;
     return tab==='Master Console'?<Master s={s} act={act} busy={busy}/>:
-      (s||tab==='Dashboard'||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair} onNavigate={setTab}/>:<OfflinePanel/>;
+      (s||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair} onNavigate={setTab}/>:<OfflinePanel/>;
   },[compactAnalyst,tab,s,busy,agent,account,pairCode,isMaster,source]);
-  const mobileMain=[['Dashboard','Início','⌂'],['Market Analysis','Mercado','⌁'],['Broker Connection','Corretora','⇄'],['Settings','Conta','⚙']] as const;
-  return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/favicon.ico" alt="Sentinel"/></div><div><span>SENTINEL</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups">{groups.map(group=><div className="navGroup" key={group}><div className="navTitle">{t(group)}</div>{visibleTabs.filter(x=>x.group===group).map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div>)}</nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':'CONTA'}</div><span>{account?.user?.email||'Sentinel'} · {source==='local'?'PC local':'PC remoto'}</span></div></aside>
-    <main className="main"><header className="topbar"><div className="pageHeading"><div className="topBrand"><img src="/favicon.ico" alt="Sentinel"/><span>Sentinel Trading Lab</span></div><div className="eyebrow">{t(current.group)} / {t(current.label)}</div><h1>{t(current.title)}</h1><p>{t(current.subtitle)}</p></div><div className="topactions">
+  const mobileMain=[['Market Analysis','Mercado','⌁'],['Strategies','Estratégias','◇'],['Broker Connection','Corretora','⇄'],['Settings','Conta','⚙']] as const;
+  return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/favicon.ico" alt="Sentinel"/></div><div><span>SENTINEL</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups" aria-label={t('Navegação')}><div className="navGroup">{visibleTabs.map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div></nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':'CONTA'}</div><span>{account?.user?.email||'Sentinel'} · {source==='local'?'PC local':'PC remoto'}</span></div></aside>
+    <main className="main"><header className="topbar"><div className="pageHeading"><div className="topBrand"><img src="/favicon.ico" alt="Sentinel"/><span>Sentinel Trading Lab</span></div><div className="eyebrow">{t('PAINEL SENTINEL')}</div><h1>{t(current.title)}</h1><p>{t(current.subtitle)}</p></div><div className="topactions">
         <div className="runtimeBadges"><span className="privateBadge">🔒 {account?.profile?.role==='master'?'MASTER':'PRIVADO'}</span><Pill tone={agent.process?'good':'neutral'}>{agent.process?'AGENT ONLINE':'AGENT OFF'}</Pill><Pill tone={agent.worker?'good':'neutral'}>{agent.worker?'WORKER ONLINE':'WORKER OFF'}</Pill><Pill tone={String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='demo'?'good':String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='real'?'bad':'neutral'}>CONTA {modeLabel(s?.liveBroker?.mode||s?.mode||'—')}</Pill><Pill tone={s?.state==='error'?'bad':s?.state==='running'?'good':'neutral'}>{String(s?.state||'offline').toUpperCase()}</Pill></div>
-        <div className="topUtility"><LanguageSwitcher onLanguageChange={next=>{void act('settings',{uiLanguage:next})}}/><button className="themeToggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} title="Alternar tema">{theme==='light'?'◐ Petróleo':'☀ Claro'}</button><button className="kill" disabled={busy||!s} onClick={()=>window.confirm('Ativar KILL SWITCH e parar imediatamente?')&&act('control/kill')}>KILL SWITCH</button><button className="secondary logoutBtn" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST'});window.location.replace('/')}}>{t('Sair')}</button></div>
+        <div className="topUtility"><LanguageSwitcher onLanguageChange={next=>{void act('settings',{uiLanguage:next})}}/><button className="themeToggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} title={t("Alternar tema")} aria-label={t("Alternar tema")}>{theme==='light'?t('Escuro'):t('Claro')}</button><button className="kill" disabled={busy||!s} onClick={()=>window.confirm('Ativar KILL SWITCH e parar imediatamente?')&&act('control/kill')}>KILL SWITCH</button><button className="secondary logoutBtn" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST'});window.location.replace('/')}}>{t('Sair')}</button></div>
       </div></header>
       {!agent.process&&<div className="agentbanner"><div className="agentIcon">!</div><div className="agentText"><b>Vincule o PC à sua conta Sentinel</b><span>Instale o Agent no PC que ficará ligado com IQ Option/Exnova. No ícone S ao lado do relógio aparecerá um código SNTL. Digite aqui uma vez.</span><div className="pairInline"><input value={pairCode} onChange={e=>setPairCode(e.target.value.toUpperCase())} placeholder="SNTL-XXXX-XXXX"/><button className="primary" disabled={busy||!pairCode} onClick={claimPair}>Vincular PC</button></div></div><div className="agentActions sentinelPcOnly">{agentAccess?<a className="secondary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">Baixar Agent V{AVAILABLE_AGENT_VERSION}</a>:<button className="secondary" disabled title="O Agent é liberado após a compra ser confirmada nesta conta.">Agent V{AVAILABLE_AGENT_VERSION} · compra necessária</button>}<button className="primary" onClick={()=>setTab('Settings')}>Minha conta</button></div></div>}
       {agent.process&&!agent.worker&&source==='local'&&<div className="alert"><b>Agent aberto, worker parado.</b> <button className="secondary" disabled={busy} onClick={()=>agentCommand('restart')}>Reiniciar Agent</button></div>}
@@ -292,7 +291,6 @@ export default function Page(){
 function Loading(){return <div className="grid"><section className="card span12"><div className="skeleton h32"/><div className="skeleton h90"/></section></div>}
 function OfflinePanel(){return <div className="grid"><section className="card span12"><div className="eyebrow"><T>SENTINEL PRONTO</T></div><h3><T>Aguardando o PC vinculado</T></h3><p className="muted">Sua conta está funcionando. Instale ou abra o Agent no PC, use o código SNTL para vincular e o painel começará a receber saldo, mercado e estado do bot automaticamente.</p><div className="metrics"><Metric label="Site" value="ONLINE"/><Metric label="Conta" value="ATIVA"/><Metric label="Agent" value="AGUARDANDO"/><Metric label="Bot" value="OFFLINE"/></div></section></div>}
 function Panel({name,s,act,busy,agent,agentCommand,account,pairCode,setPairCode,claimPair,onNavigate}:{name:string,s:Status,act:(p:string,b?:any)=>Promise<any>,busy:boolean,agent:any,agentCommand:any,account:any,pairCode:string,setPairCode:any,claimPair:any,onNavigate:(v:string)=>void}){
-   if(name==='Dashboard')return <Dashboard s={s} agent={agent} account={account} onNavigate={onNavigate}/>;
    if(name==='Market Analysis')return null;
    if(name==='Broker Connection')return <Broker s={s} act={act} busy={busy} account={account}/>;
    if(name==='Strategies')return <Strategies s={s} act={act} busy={busy}/>;
@@ -300,37 +298,6 @@ function Panel({name,s,act,busy,agent,agentCommand,account,pairCode,setPairCode,
    return <Settings s={s} agent={agent} agentCommand={agentCommand} busy={busy} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>;
 }
 
-function Dashboard({s,agent,account,onNavigate}:{s:Status,agent:any,account:any,onNavigate:(v:string)=>void}){
- const allowed=account?.profile?.role==='master'||account?.profile?.access_active===true;
- const live=s?.liveBroker||{},connected=agent.worker===true,started=s?.state==='running';
- const symbol=String(live.validatedSymbol||live.symbol||s?.settings?.asset||'—');
- return <section className="sentinelStart" aria-label="Início Sentinel">
-   <div className="sentinelStartHero">
-     <span className="sentinelEyebrow"><T>SENTINEL · CENTRO DE ANÁLISE</T></span>
-     <h2><T>O mercado em movimento.</T> <em><T>A análise com você.</T></em></h2>
-     <p><T>Uma central para acompanhar cenários, estratégias e o estado do analista em tempo real, sem confundir previsão e ponto de entrada.</T></p>
-     <div className="sentinelStartActions">
-       <button className="primary" type="button" onClick={()=>onNavigate('Market Analysis')}><T>Abrir Mercado ↗</T></button>
-       <button className="secondary" type="button" onClick={()=>onNavigate('Strategies')}><T>Minhas estratégias</T></button>
-       <div className="sentinelPcOnly">{allowed?<a className="secondary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">Baixar Agent V{AVAILABLE_AGENT_VERSION}</a>:<button className="secondary" type="button" onClick={()=>onNavigate('Membership')}><T>Ver acesso</T></button>}</div>
-     </div>
-     <div className="sentinelStartQuick" aria-label="Estado do Sentinel">
-       <div><small><T>ANALISTA</T></small><strong>{started?'ANALISANDO':s?.state==='paused'?'PAUSADO':'AGUARDANDO'}</strong></div>
-       <div><small><T>ATIVO</T></small><strong>{symbol}</strong></div>
-       <div><small><T>CONEXÃO</T></small><strong>{connected?'PC CONECTADO':'PC DESCONECTADO'}</strong></div>
-     </div>
-   </div>
-   <div className="sentinelMobileOnly sentinelMobileIntroduction">
-     <strong><T>ANÁLISE REMOTA</T></strong><p><T>O celular acompanha a análise do PC. Entre no Mercado para ver cotações, cenários e controles do bot.</T></p>
-     <button className="secondary" type="button" onClick={()=>onNavigate('Market Analysis')}><T>Acompanhar agora ↗</T></button>
-   </div>
-   <div className="sentinelStartSteps sentinelPcOnly">
-     <article><span>01</span><strong><T>Agent no PC</T></strong><p><T>Instale uma vez e mantenha a conexão ativa.</T></p></article>
-     <article><span>02</span><strong><T>Corretora conectada</T></strong><p><T>Confirme a conta e o ativo em análise.</T></p></article>
-     <article><span>03</span><strong><T>Suas estratégias</T></strong><p><T>Escolha os critérios da estratégia principal.</T></p></article>
-   </div>
- </section>
-}
 function Membership({account}:{account:any}){
  const profile=account?.profile||{};
  const active=profile.role==='master'||profile.access_active===true;
@@ -342,85 +309,6 @@ function Membership({account}:{account:any}){
    <div className="sentinelMembershipSummary"><div><small><T>Estado do plano</T></small><strong>{profile.role==='master'?'MASTER':active?'ATIVO':'AGUARDANDO ATIVAÇÃO'}</strong></div><div><small><T>Validade</T></small><strong>{profile.role==='master'?'Permanente':expiry}</strong></div><div><small><T>PCs permitidos</T></small><strong>{profile.max_devices||1}</strong></div></div>
    <div className="sentinelMembershipActions"><span><T>Brasil R$ 280 · Internacional US$ 50 · 30 dias</T></span><a href="/planos" className="secondary linkbtn"><T>Renovar ou comprar acesso</T></a></div>
  </section>
-}
-
-function Market({s}:{s:Status}){
-  const a=s.lastResult?.analysis||s.recentAnalyses?.[0]||{};
-  const m=a.metrics||{};
-  const fib=m.fib?.nearest;
-  const live=s.liveBroker||{};
-  const plan=s.lastResult?.plan||{};
-  const side=String(a.side||'WAIT').toUpperCase();
-  const signal=side==='BUY'?'CALL / COMPRA':side==='SELL'?'PUT / VENDA':'WAIT';
-  const next=s.nextEvalMs?new Date(s.nextEvalMs).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-  const orderExpiry=plan.expiresAt?new Date(plan.expiresAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'—';
-  const trend=m.structure?.bias==='bullish'?'ALTA':m.structure?.bias==='bearish'?'BAIXA':'LATERAL';
-  const macdState=m.macd?.histogram>0?'POSITIVO':m.macd?.histogram<0?'NEGATIVO':'NEUTRO';
-  const rsiState=m.rsi==null?'—':m.rsi>=70?'SOBRECOMPRADO':m.rsi<=30?'SOBREVENDIDO':m.rsi>=52?'FORÇA COMPRADORA':m.rsi<=48?'FORÇA VENDEDORA':'NEUTRO';
-  const bbState=m.bb&&m.last!=null?(m.last>=m.bb.upper?'BANDA SUPERIOR':m.last<=m.bb.lower?'BANDA INFERIOR':m.last>m.bb.mid?'ACIMA DA MÉDIA':'ABAIXO DA MÉDIA'):'—';
-  return <div className="grid">
-    <section className="card span12 signalCockpit">
-      <div className="split cockpitTop">
-        <div>
-          <div className="eyebrow">COCKPIT TÉCNICO · {s.analysisSource||'OFFLINE'}</div>
-          <h3>{live.uiSymbol||s.settings.asset||'—'}</h3>
-          <p className="muted"><T>Mesmo ativo da tela da corretora.</T></p>
-        </div>
-        <div className={'signalBadge '+side.toLowerCase()}>
-          <span>{signal}</span>
-          <b>{Math.round(Number(a.confidence||0))}%</b>
-        </div>
-      </div>
-      <div className="cockpitPlan">
-        <div><small><T>Estratégia</T></small><b>{String(s.settings?.strategy||'—').replaceAll('_',' ')}</b></div>
-        <div><small><T>Entrada</T></small><b>{plan.entry||'Aguardar confirmação'}</b></div>
-        <div><small><T>Saída / expiração</T></small><b>{plan.exit||'Sem entrada'}</b></div>
-        <div><small><T>Expira às</T></small><b>{orderExpiry}</b></div>
-        <div><small><T>Próxima análise</T></small><b>{next}</b></div>
-        <div><small><T>Estado</T></small><b>{String(s.state||'—').toUpperCase()}</b></div>
-      </div>
-      <div className="confidence"><i style={{width:String(a.confidence||0)+'%'}}/></div>
-      <div className="reasonlist large">{(a.reasons||s.lastResult?.reasons||['Aguardando análise']).slice(0,6).map((x:string,i:number)=><div key={i}>• {x}</div>)}</div>
-    </section>
-
-    <section className="card span8">
-      <div className="split"><div><div className="eyebrow"><T>INDICADORES</T></div><h3><T>Leitura técnica ao vivo</T></h3></div><Pill tone={side==='WAIT'?'warn':'good'}>{signal}</Pill></div>
-      <div className="indicatorGrid">
-        <div className="indicatorBox"><small><T>Estrutura</T></small><b>{m.structure?.label||'—'}</b><span>{trend}</span></div>
-        <div className="indicatorBox"><small>EMA 9</small><b>{fmt(m.fast)}</b><span>{m.fast!=null&&m.slow!=null?(m.fast>m.slow?'ACIMA DA 21':'ABAIXO DA 21'):'—'}</span></div>
-        <div className="indicatorBox"><small>EMA 21</small><b>{fmt(m.slow)}</b><span><T>CURTA</T></span></div>
-        <div className="indicatorBox"><small>EMA 50</small><b>{fmt(m.ema50)}</b><span>{m.last!=null&&m.ema50!=null?(m.last>m.ema50?'PREÇO ACIMA':'PREÇO ABAIXO'):'—'}</span></div>
-        <div className="indicatorBox"><small>EMA 200</small><b>{fmt(m.ema200)}</b><span><T>LONGA</T></span></div>
-        <div className="indicatorBox"><small>RSI 14</small><b>{fmt(m.rsi,1)}</b><span>{rsiState}</span></div>
-        <div className="indicatorBox"><small>MACD hist.</small><b>{fmt(m.macd?.histogram,5)}</b><span>{macdState}</span></div>
-        <div className="indicatorBox"><small><T>Estocástico</T></small><b>{fmt(m.stoch,1)}</b><span>{m.stoch==null?'—':m.stoch>80?'SOBRECOMPRADO':m.stoch<20?'SOBREVENDIDO':'NEUTRO'}</span></div>
-        <div className="indicatorBox"><small>Bollinger</small><b>{bbState}</b><span>{m.bb?fmt(m.bb.lower)+' — '+fmt(m.bb.upper):'—'}</span></div>
-        <div className="indicatorBox"><small>ATR 14</small><b>{fmt(m.atr,5)}</b><span><T>VOLATILIDADE</T></span></div>
-        <div className="indicatorBox"><small><T>Suporte</T></small><b>{fmt(m.sr?.support)}</b><span><T>NÍVEL</T></span></div>
-        <div className="indicatorBox"><small><T>Resistência</T></small><b>{fmt(m.sr?.resistance)}</b><span><T>NÍVEL</T></span></div>
-        <div className="indicatorBox"><small>Fibonacci</small><b>{fib?String(fib.name).replace('l',''):'—'}</b><span>{fib?fmt(fib.price):'—'}</span></div>
-        <div className="indicatorBox"><small><T>Momentum</T></small><b>{fmt(m.momentum,3)}</b><span>{m.momentum>0?'POSITIVO':m.momentum<0?'NEGATIVO':'NEUTRO'}</span></div>
-        <div className="indicatorBox"><small>Score BUY</small><b>{String(Math.round(m.buyScore||0))}</b><span><T>PONTOS</T></span></div>
-        <div className="indicatorBox"><small>Score SELL</small><b>{String(Math.round(m.sellScore||0))}</b><span><T>PONTOS</T></span></div>
-      </div>
-    </section>
-
-    <section className="card span4">
-      <h3><T>Confirmações</T></h3>
-      <div className="stack">
-        <Row k="Ativo na tela" v={live.uiSymbol||'—'}/>
-        <Row k="Ativo analisado" v={live.symbol||s.settings.asset||'—'}/>
-        <Row k="Candles" v={String(m.sourceCandles||live.candlesCount||live.candles?.length||0)}/>
-        <Row k="Feed atual" v={live.candleFresh?'SIM':'NÃO'}/>
-        <Row k="Timeframe superior" v={m.higherTF?.structure?.label||m.higherTF?.structure?.bias||'—'}/>
-        <Row k="Padrões de vela" v={(m.patterns||[]).map((x:any)=>x.label).join(', ')||'—'}/>
-        <Row k="Breakout/reteste" v={m.retest?.side||'WAIT'}/>
-        <Row k="Confiança mínima" v={pct(s.settings?.risk?.minConfidence)}/>
-        <Row k="Confiança atual" v={pct(a.confidence)}/>
-      </div>
-      <div className="demoDisclaimer"><T>Nenhum indicador elimina risco. Use o histórico da conta de prática para medir taxa de acerto por estratégia antes de confiar no sistema.</T></div>
-    </section>
-  </div>
 }
 
 function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
