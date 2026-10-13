@@ -16,6 +16,9 @@ export function watchSignedLiveAnalyst(topic:string,signingKey:string,onMessage:
   if(!validTopic(topic)||!validKey(signingKey)||typeof WebSocket==='undefined'||!globalThis.crypto?.subtle)return()=>{};
   let ws:WebSocket|null=null,joined=false,closed=false,attempt=0,ref=0,sequence=0;
   let retry:ReturnType<typeof setTimeout>|null=null,heartbeat:ReturnType<typeof setInterval>|null=null,viewer:ReturnType<typeof setInterval>|null=null;
+  // HMAC checks complete asynchronously. Serialize in socket arrival order so
+  // a later quote cannot overtake and discard a brief confirmed CALL/PUT event.
+  let verificationQueue:Promise<void>=Promise.resolve();
   const encoder=new TextEncoder();
   const keyPromise=crypto.subtle.importKey('raw',bytes(signingKey),{name:'HMAC',hash:'SHA-256'},false,['sign','verify']).catch(()=>null);
   const push=(event:string,payload:any,channel=topic)=>{
@@ -65,7 +68,10 @@ export function watchSignedLiveAnalyst(topic:string,signingKey:string,onMessage:
         if(msg.payload?.status!=='ok'){try{sock.close()}catch{};return}
         joined=true;attempt=0;void announce();viewer=setInterval(()=>{void announce()},10000);return
       }
-      if(joined&&msg.event==='broadcast'&&msg.payload?.event==='analyst')void verifyFrame(msg.payload.payload);
+      if(joined&&msg.event==='broadcast'&&msg.payload?.event==='analyst'){
+        const signedFrame=msg.payload.payload as SignedAnalystFrame;
+        verificationQueue=verificationQueue.then(()=>verifyFrame(signedFrame)).catch(()=>{});
+      }
     };
     sock.onerror=()=>{try{sock.close()}catch{}};
     sock.onclose=()=>{if(ws!==sock)return;ws=null;cleanup();schedule()};

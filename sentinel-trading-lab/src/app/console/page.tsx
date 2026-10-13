@@ -171,14 +171,29 @@ export default function Page(){
         // full-status response. Accept that evaluation, but never rewind price.
         const olderQuote=Number(payload.liveBroker?.lastQuoteAt||0)<prevPriceAt-250;
         const prevEval=Number(previous.lastEvalMs||0),nextEval=Number(payload.lastEvalMs||0);
-        if(nextEval<prevEval)return previous;
+        // A slower cloud status can already contain a newer ordinary quote
+        // while a signed PC window transition is travelling over Realtime.
+        // Only let that transition through when it advances the real Agent
+        // window or introduces a newly CONFIRMED entry in that window.
+        const oldV=previous.lastResult?.analysis?.vnext||{};
+        const newV=payload.lastResult?.analysis?.vnext||{};
+        const oldW=oldV.ow||oldV.opportunityWindow;
+        const newW=newV.ow||newV.opportunityWindow;
+        const win=(w:any,key:number,field:string)=>Array.isArray(w)?w[key]:w?.[field];
+        const oldStart=Number(win(oldW,1,'windowStartedAt')||0);
+        const newStart=Number(win(newW,1,'windowStartedAt')||0);
+        const oldTriggered=Number((Array.isArray(oldV.ea)?oldV.ea[10]:oldV.futureEntryAnchor?.entryTriggeredAt)||0);
+        const newTriggered=Number((Array.isArray(newV.ea)?newV.ea[10]:newV.futureEntryAnchor?.entryTriggeredAt)||0);
+        const sourceAdvance=newStart>oldStart||
+          (newStart>0&&newStart===oldStart&&newTriggered>oldTriggered);
+        if(nextEval<prevEval&&!sourceAdvance)return previous;
         // Only an accepted, current frame keeps the fast channel healthy.
         // Obsolete frames must not suppress the authenticated status fallback.
         liveFrameAt.current=Date.now();
         return {...previous,
           state:payload.state,
           killSwitch:payload.killSwitch,masterFrozen:payload.masterFrozen,
-          lastEvalMs:nextEval,
+          lastEvalMs:Math.max(prevEval,nextEval),
           // Motor and expiration can change on the PC between the expensive
           // authenticated status polls. The signed live packet must update
           // both so the mobile card immediately follows the actual motor.

@@ -1,0 +1,23 @@
+name: Sentinel 67.23 Mobile PC Signal Parity
+on:
+  push:
+    branches: [fix/sentinel-6723-mobile-event-render-20261013]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test CALL PUT display lifecycle and signed arrival ordering
+        run: |
+          node --test tests/sentinel-mobile-event-pc-fidelity-6723.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs
+      - name: Typecheck and build unchanged worker
+        working-directory: sentinel-trading-lab
+        run: |
+          npm install --ignore-scripts --no-package-lock --no-audit --no-fund
+          npm run build
