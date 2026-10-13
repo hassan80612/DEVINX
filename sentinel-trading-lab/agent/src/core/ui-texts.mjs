@@ -834,7 +834,14 @@ export const translations=Object.freeze({en:Object.freeze({
   "Sua conta está funcionando. Instale ou abra o Agent no PC, use o código SNTL para vincular e o painel começará a receber saldo, mercado e estado do bot automaticamente.": "Your account is ready. Install or open Agent on your PC, pair it with the SNTL code and the dashboard will show your broker and live market data.",
   "O acesso custa R$ 280 por 30 dias no Brasil e US$ 50 por 30 dias no exterior. Cada compra aprovada acrescenta 30 dias; a renovação é manual pelo checkout da Kiwify.": "Each purchase adds 30 days of access. Renew manually through Kiwify.",
   "Cada compra aprovada acrescenta 30 dias; a renovação é manual pelo checkout da Kiwify.": "Each approved purchase adds 30 days; renewal is manual through Kiwify.",
-  "O checkout desta moeda ainda não está disponível.": "Checkout is not available for this currency yet."
+  "O checkout desta moeda ainda não está disponível.": "Checkout is not available for this currency yet.",
+  "modo da conta ainda não detectado": "Account mode not detected",
+  "saldo ainda não recebido": "Balance not received",
+  "ativos ainda não detectados": "Assets not detected",
+  "ID do ativo ainda não detectado": "Active asset ID not detected",
+  "cotação ainda não recebida": "Quote not received",
+  "sessão conectada ao navegador local": "Session connected to the local browser",
+  "sessão local pronta": "Local session ready"
 })});
 export function sentinelLanguage(value){return value==='en'?'en':'pt';}
 export function sentinelText(language,key){
@@ -843,13 +850,35 @@ export function sentinelText(language,key){
  if(translations.en[value])return translations.en[value];
  // Broker diagnostics include changing numbers; translate them without
  // touching the broker adapter or allocating work on every market tick.
+ // Localize the read-only broker checklist at display time. The broker
+ // adapter retains canonical diagnostics, so translation never affects
+ // sessions, candle validation, price extraction or trading decisions.
+ const staticBrokerMessages={
+  'ativos ainda não detectados':'Assets not yet detected',
+  'sessão conectada ao navegador local':'Session connected to the local browser',
+  'sessão local pronta':'Local session ready',
+  'candles recebidos, aguardando atualização em tempo real':'Candles received; awaiting a real-time update',
+ };
+ if(Object.prototype.hasOwnProperty.call(staticBrokerMessages,value))return staticBrokerMessages[value];
  let m=value.match(/^(\d+) ativos detectados$/i);
  if(m)return m[1]+' assets detected';
  m=value.match(/^saldo\s+(REAL|DEMO)?\s*lido$/i);
  if(m)return (m[1]?m[1].toUpperCase()+' ':'')+'balance read';
+ m=value.match(/^conta\s+(REAL|DEMO)\s+ativa$/i);
+ if(m)return m[1].toUpperCase()+' account active';
  m=value.match(/^(\d+) candles (atuais )?recebidos$/i);
  if(m)return m[1]+' '+(m[2]?'current ':'')+'candles received';
- if(value==='sessão conectada ao navegador local')return 'Session connected to the local browser';
- if(value==='sessão local pronta')return 'Local session ready';
+ m=value.match(/^(\d+) candles recebidos; mínimo (\d+)$/i);
+ if(m)return m[1]+' candles received; minimum '+m[2];
+ m=value.match(/^(\d+) candles recebidos, aguardando atualização em tempo real$/i);
+ if(m)return m[1]+' candles received; awaiting a real-time update';
+ m=value.match(/^saldo\s+recebido$/i);
+ if(m)return 'Balance received';
+ m=value.match(/^modo recebido:\s*(.+)$/i);
+ if(m)return 'Account mode: '+m[1];
+ m=value.match(/^cotação recebida para (.+)$/i);
+ if(m)return 'Quote received for '+m[1];
+ m=value.match(/^([A-Z0-9/\- .]+)\s*\/\s*ID\s*(\d+)$/i);
+ if(m)return m[1].trim()+' / Asset ID '+m[2];
  return value;
 }
