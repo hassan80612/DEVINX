@@ -19,15 +19,22 @@ test('previously saved Selective mode migrates once without changing Continuous 
  const worker=read('sentinel-trading-lab/agent/worker/index.mjs');
  assert.match(worker,/if\(runtime\.settings\.forecastMode==='selective'\)\{/);
  assert.match(worker,/runtime\.patchSettings\(\{forecastMode:'continuous'\}/);
+ const restored='7cd0e7315fd7b6a59ad82142ffc8db7491c902ca';
+ const ref=path=>execFileSync('git',['show',restored+':'+path],{encoding:'utf8'});
+ // Exact 67.26 clock/entry confirmation, not a new imitation of old behavior.
  for(const path of [
-  'sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs',
   'sentinel-trading-lab/agent/src/core/entry-window-planner.mjs',
   'sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs',
-  'sentinel-trading-lab/agent/src/core/turn-pressure.mjs',
- ]){
-   const original=execFileSync('git',['show',base+':'+path],{encoding:'utf8'});
-   assert.equal(read(path),original,path);
- }
+ ])assert.equal(read(path),ref(path),path);
+ const file='sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs';
+ const original=ref(file),updated=read(file);
+ const continuous=s=>s.slice(s.indexOf('function continuousWindow('),s.indexOf('export function futureEntrySchedule('));
+ const confirm=s=>s.slice(s.indexOf(" const engineId=String(settings.engine||'automatic');",s.indexOf('export function confirmWindowEntry(')));
+ assert.equal(continuous(updated),continuous(original),'continuous window source changed');
+ assert.equal(confirm(updated),confirm(original),'continuous entry confirmation changed');
+ assert.match(updated,/forecast.side&&oppositeTurnPressure/); // kept only in hidden Seletiva
+ const pressure='sentinel-trading-lab/agent/src/core/turn-pressure.mjs';
+ assert.equal(read(pressure),execFileSync('git',['show',base+':'+pressure],{encoding:'utf8'}));
 });
 test('English locale is propagated through an independent Agent UI setting',()=>{
  const web=read('sentinel-trading-lab/src/app/console/page.tsx');
