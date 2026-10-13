@@ -54,13 +54,15 @@ test('on-time confirmation still triggers exactly once',()=>{
    confirmation:{side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11}});
  assert.equal(duplicate.phase,'fired');assert.equal(duplicate.entryReadyNow,false);
 });
-test('the two modes use the same counterturn check and Seletiva validates at 50 percent',()=>{
+test('counterturn checks remain Seletiva-only; Contínua is restored to original 67.26',()=>{
  const f=fs.readFileSync('sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs','utf8');
  const s=fs.readFileSync('sentinel-trading-lab/agent/src/core/selective-autonomous.mjs','utf8');
- assert.match(f,/oppositeTurnPressure/);
+ const continuous=f.slice(f.indexOf('function continuousWindow('),f.indexOf('export function futureEntrySchedule('));
+ const confirm=f.slice(f.indexOf(' const engineId=String(settings.engine||\'automatic\');',f.indexOf('export function confirmWindowEntry(')));
+ assert.doesNotMatch(continuous,/oppositeTurnPressure/);
+ assert.doesNotMatch(confirm,/oppositeTurnPressure/);
+ assert.match(f,/forecast.side&&oppositeTurnPressure/);
  assert.match(f,/if\(inSelective\)/);
- assert.match(f,/function continuousWindow/);
- assert.match(f,/if\(settings.forecastMode==='selective'\)/);
  assert.match(s,/validateSelectiveHistory\(\{tested,hits\}\)/);
 });
 
@@ -73,19 +75,21 @@ test('50 percent means >=4 genuine validations, never a zero-sample pass',()=>{
  }
 });
 
-test('quote more than 2s after planned entry never generates late CALL AGORA',()=>{
- const start=now-8000;let w=evolveOpportunity({settings,now:start,quoteAt:start,candidate:candidate(start)});
+test('quote more than 2s after scheduled entry follows original 67.26 confirmation, no rearm',()=>{
+ const continuous={...settings,forecastMode:'continuous'};
+ const start=now-8000;
+ let w=evolveOpportunity({settings:continuous,now:start,quoteAt:start,candidate:candidate(start)});
  const originalDeadline=w.windowEndsAt;
- w=evolveOpportunity({settings,previous:w,now:start+7200,quoteAt:start+7200,
+ w=evolveOpportunity({settings:continuous,previous:w,now:start+7200,quoteAt:start+7200,
    confirmation:{side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11}});
- assert.equal(w.phase,'open');
- assert.equal(w.entryReadyNow,false);
- assert.equal(w.reason,'missed-entry-moment');
+ assert.equal(w.phase,'fired');
+ assert.equal(w.entryReadyNow,true);
+ assert.equal(w.entryTriggeredAt,start+7200);
  assert.equal(w.windowEndsAt,originalDeadline);
  assert.equal(w.side,'CALL');
- const repeated=evolveOpportunity({settings,previous:w,now:start+9000,quoteAt:start+9000,
+ const repeated=evolveOpportunity({settings:continuous,previous:w,now:start+9000,quoteAt:start+9000,
    confirmation:{side:'CALL',projectedEntryPrice:1.1,projectedExitPrice:1.11}});
- assert.equal(repeated.phase,'open');assert.equal(repeated.entryReadyNow,false);
+ assert.equal(repeated.phase,'fired');assert.equal(repeated.entryReadyNow,false);
 });
 test('oversized optional cards cannot discard the mobile signed entry event',()=>{
  const t=1800000000000,asset='EUR/USD OTC';
