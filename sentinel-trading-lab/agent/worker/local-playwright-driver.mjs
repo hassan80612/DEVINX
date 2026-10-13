@@ -2003,19 +2003,19 @@ export class LocalPlaywrightDriver{
               firedAt>0&&nowClock>=firedAt&&nowClock<=firedAt+1500;
             const active=Number.isFinite(target)&&Number.isFinite(issued)&&issued>0&&
               target>issued&&(target>nowClock||verifiedNow);
-            if(cycleStatus)cycleStatus.textContent=verifiedNow?'MOMENTO CONFIRMADO':'ATÉ ENTRADA CALCULADA';
+            if(cycleStatus)cycleStatus.textContent=tr(verifiedNow?'MOMENTO CONFIRMADO':'ATÉ ENTRADA CALCULADA');
             const decision=pane.closest('[data-sentinel-card="vnext"]')?.querySelector('[data-sentinel-scenario-action]');
             // A finished receipt is no longer an active prediction. Never
             // freeze the computer at 00:00 while the next observation arrives.
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
-              decision.textContent=phase==='cancelled'?'JANELA SEM ENTRADA':
-                phase==='fired'?'ENTRADA JÁ SINALIZADA':'JANELA ABERTA · ANALISANDO';
+              decision.textContent=tr(phase==='cancelled'?'JANELA SEM ENTRADA':
+                phase==='fired'?'ENTRADA JÁ SINALIZADA':'JANELA ABERTA · ANALISANDO');
             }
             if(verifiedNow&&decision){
               const side=String(pane.getAttribute('data-side')||'');
-              decision.textContent=side==='CALL'?'ENTRADA AGORA · ↑ CALL':
-                 side==='PUT'?'ENTRADA AGORA · ↓ PUT':'JANELA ABERTA · ANALISANDO';
+              decision.textContent=tr(side==='CALL'?'ENTRADA AGORA · ↑ CALL':
+                 side==='PUT'?'ENTRADA AGORA · ↓ PUT':'JANELA ABERTA · ANALISANDO');
             }
             let shown='—:—';
             if(active){
@@ -2024,8 +2024,26 @@ export class LocalPlaywrightDriver{
               shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
               value.style.fontSize='';
             }
-            // The FULL opportunity clock always counts to its original deadline;
-            // ENTRADA AGORA is a one-off signal, not the clock itself.
+            // Optional clock view uses a BROKER-observed purchase cutoff.
+            // It never mutates target, window phase, entry direction or the engine.
+            // Unsupported broker pages keep the existing clock alive.
+            const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker';
+            const observation=window.__sentinelLastOverlayData?.brokerTiming||null;
+            const purchase=observation?.purchaseWindow||null;
+            const observedAt=Number(observation?.capturedAt||0);
+            const closesAt=Number(purchase?.closesAt||0);
+            const observationFresh=brokerMode&&observedAt>0&&nowClock>=observedAt&&
+              nowClock-observedAt<7000&&Number.isFinite(closesAt)&&closesAt>observedAt;
+            if(observationFresh){
+              const secondsLeft=Math.max(0,Math.ceil((closesAt-nowClock)/1000));
+              const pad=n=>String(n).padStart(2,'0');
+              shown=pad(Math.floor(secondsLeft/60))+':'+pad(secondsLeft%60);
+              if(cycleStatus)cycleStatus.textContent=tr('ATÉ FECHAR COMPRA');
+            }else if(brokerMode&&cycleStatus){
+              cycleStatus.textContent=tr('Relógio da corretora indisponível');
+            }
+            // The engine always owns entry signals; the selected display clock
+            // is never consulted to open, close or repeat a prediction window.
             if(value.textContent!==shown)value.textContent=shown;
           };
           el.__sentinelTargetClockTick=tickTargetClock;
