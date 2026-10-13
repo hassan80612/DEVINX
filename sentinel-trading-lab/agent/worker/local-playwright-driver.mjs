@@ -892,7 +892,16 @@ export class LocalPlaywrightDriver{
       st.marketStatus='recovering';st.marketReason='Feed isolado: descartando histórico incompatível com o ativo atual';st.lastCandleRequest=null;
     }
     const actualAge=latestCandleAgeMs(st);const stale=actualAge==null||actualAge>Math.max(90000,Number(st.candleSize||60)*2000);
-    const historyDue=!st.lastCandleRequest||now-Number(st.lastCandleRequest.at??st.lastCandleRequest)>9000;
+    // When the selected broker instrument is already delivering genuine
+    // quotes and its candle series is valid, do not refetch 200 candles every
+    // nine seconds. Recovery stays fast when the stream or series is unhealthy.
+    // This reduces repeated direct-feed work for IQ Option and Exnova without
+    // slowing new-quote analysis or changing the currently selected asset.
+    const streamingHealthy=st.candles.length>=50&&integrity.ok&&
+      candleFreshForState(st)&&st.lastQuoteAt>0&&now-st.lastQuoteAt<=2500;
+    const historyRefreshMs=streamingHealthy?30000:9000;
+    const historyDue=!st.lastCandleRequest||
+      now-Number(st.lastCandleRequest.at??st.lastCandleRequest)>historyRefreshMs;
     if(st.candles.length<50||stale||historyDue)await this.requestMarketData(provider,{force:st.candles.length<50||stale||historyDue}).catch(()=>{});
     await this.refreshPredictionHistory(provider,now).catch(()=>{});
     if(st.screenCandidateSymbol&&pairKey(st.screenCandidateSymbol)!==pairKey(st.symbol||'')){st.marketStatus='unvalidated';st.marketReason='Ativo da tela não validado. Feche o atual e abra o desejado pelo botão +.'}
