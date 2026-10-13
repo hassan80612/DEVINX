@@ -841,7 +841,9 @@ export const translations=Object.freeze({en:Object.freeze({
   "ID do ativo ainda não detectado": "Active asset ID not detected",
   "cotação ainda não recebida": "Quote not received",
   "sessão conectada ao navegador local": "Session connected to the local browser",
-  "sessão local pronta": "Local session ready"
+  "sessão local pronta": "Local session ready",
+  "ativo ainda não detectado": "Asset not detected",
+  "candles recebidos, aguardando atualização em tempo real": "Candles received; awaiting real-time updates"
 })});
 export function sentinelLanguage(value){return value==='en'?'en':'pt';}
 export function sentinelText(language,key){
@@ -853,13 +855,6 @@ export function sentinelText(language,key){
  // Localize the read-only broker checklist at display time. The broker
  // adapter retains canonical diagnostics, so translation never affects
  // sessions, candle validation, price extraction or trading decisions.
- const staticBrokerMessages={
-  'ativos ainda não detectados':'Assets not yet detected',
-  'sessão conectada ao navegador local':'Session connected to the local browser',
-  'sessão local pronta':'Local session ready',
-  'candles recebidos, aguardando atualização em tempo real':'Candles received; awaiting a real-time update',
- };
- if(Object.prototype.hasOwnProperty.call(staticBrokerMessages,value))return staticBrokerMessages[value];
  let m=value.match(/^(\d+) ativos detectados$/i);
  if(m)return m[1]+' assets detected';
  m=value.match(/^saldo\s+(REAL|DEMO)?\s*lido$/i);
