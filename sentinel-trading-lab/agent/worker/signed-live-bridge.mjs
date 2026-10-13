@@ -30,7 +30,7 @@ export class SignedLiveBridge extends LiveBridge{
     });
   }
   hasViewer(){return this.joined&&this.clock()-this.verifiedViewerAt<16000}
-  publish(snapshot,{urgent=false}={}){
+  publish(snapshot,{urgent=false,sourceEvent=false}={}){
     const a=snapshot?.lastResult?.analysis||{},op=a.operationalSignal||{},gc=a.generalConsensus||{};
     const scenario=op.scenario||{},alert=op.subanalyst?.alert||{};
     // A NEW broker quote is actionable information on 30s/60s expiries,
@@ -54,10 +54,10 @@ export class SignedLiveBridge extends LiveBridge{
     const changed=signal!==this.lastSignalKey;
     const quoteAt=Number(snapshot?.liveBroker?.lastQuoteAt||snapshot?.feed?.quoteTs||0);
     const newQuote=Number.isFinite(quoteAt)&&quoteAt>this.lastPublishedQuoteAt;
-    if(!urgent&&!changed&&!newQuote&&this.clock()-this.lastSentAt<4000)return false;
+    if(!sourceEvent&&!urgent&&!changed&&!newQuote&&this.clock()-this.lastSentAt<4000)return false;
     // Never delay a fresh CALL/PUT, reversal test, cancellation or scenario
     // review behind the four-second unchanged-quote optimization.
-    const published=super.publish(snapshot,{urgent:urgent||(changed&&!!this.lastSignalKey)});
+    const published=super.publish(snapshot,{urgent:urgent||(changed&&!!this.lastSignalKey),sourceEvent});
     if(published){this.lastSignalKey=signal;this.lastPublishedQuoteAt=Math.max(this.lastPublishedQuoteAt,quoteAt);}
     return published;
   }
