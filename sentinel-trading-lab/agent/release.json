@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.27",
-  "build": "13.4.67.27-turn-55-bilingual-latency-candidate",
+  "version": "13.4.67.28",
+  "build": "13.4.67.28-selective50-complete-i18n-release",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
