@@ -1,6 +1,6 @@
 {
-  "version": "13.4.67.26",
-  "build": "13.4.67.26-selective-live-context-1013",
+  "version": "13.4.67.27",
+  "build": "13.4.67.27-turn-55-bilingual-latency-candidate",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
