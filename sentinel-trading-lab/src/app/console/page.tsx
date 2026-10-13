@@ -338,9 +338,9 @@ function Membership({account}:{account:any}){
  return <section className="sentinelMembership">
    <span className="sentinelEyebrow"><T>PLANO E RENOVAÇÃO</T></span>
    <h2><T>Seu acesso ao Sentinel</T></h2>
-   <p><T>O acesso custa US$ 50 por 30 dias. Cada compra aprovada acrescenta 30 dias; a renovação é feita manualmente pelo checkout da Kiwify.</T></p>
+   <p><T>O acesso custa R$ 280 por 30 dias no Brasil e US$ 50 por 30 dias no exterior. Cada compra aprovada acrescenta 30 dias; a renovação é manual pelo checkout da Kiwify.</T></p>
    <div className="sentinelMembershipSummary"><div><small><T>Estado do plano</T></small><strong>{profile.role==='master'?'MASTER':active?'ATIVO':'AGUARDANDO ATIVAÇÃO'}</strong></div><div><small><T>Validade</T></small><strong>{profile.role==='master'?'Permanente':expiry}</strong></div><div><small><T>PCs permitidos</T></small><strong>{profile.max_devices||1}</strong></div></div>
-   <div className="sentinelMembershipActions"><span><T>US$ 50 / 30 dias · renovação manual</T></span><a href="/planos" className="secondary linkbtn"><T>Renovar ou comprar acesso</T></a></div>
+   <div className="sentinelMembershipActions"><span><T>Brasil R$ 280 · Internacional US$ 50 · 30 dias</T></span><a href="/planos" className="secondary linkbtn"><T>Renovar ou comprar acesso</T></a></div>
  </section>
 }
 
