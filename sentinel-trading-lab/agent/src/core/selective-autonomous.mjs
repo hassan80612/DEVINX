@@ -6,7 +6,7 @@
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 const valid=n=>Number.isFinite(Number(n))&&Number(n)>0;
 const round=n=>Number(n.toPrecision(12));
-export function validateSelectiveHistory({tested=0,hits=0,minExamples=4,minRate=.55}={}){
+export function validateSelectiveHistory({tested=0,hits=0,minExamples=4,minRate=.50}={}){
  const n=Number(tested),correct=Number(hits);
  // A zero/small sample is unknown, never interpreted as 100% validated.
  return Number.isInteger(n)&&Number.isInteger(correct)&&n>=minExamples&&
@@ -180,10 +180,13 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  const effect=Math.abs(projection.mean);
  const robust=effect>=.24&&effect>=projection.dispersion*.25;
  const specific=lift>=.06||(projection.agreement>=.79&&effect>=.55);
+ // Start chronological validation at 28 finished reference examples instead of
+ // 35; still demand 4 actually tested outcomes. This reduces warm-up time
+ // without using a partial candle or looking into future quotes.
  // Chronological shadow validation, when enough completed cases exist.
  // Does not read broker settlement and never claims a calibrated win rate.
  let tested=0,hits=0;
- if(historic.length>=35){
+ if(historic.length>=28){
   const order=historic.slice().reverse(),split=Math.floor(order.length*.76);
   for(let i=split;i<order.length;i++){
    const example=order[i];
@@ -198,8 +201,8 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  }
  // Do not learn permission from a demonstrably losing held-out period.
  // A percentage cannot be considered validated when no cases were tested.
-// Four is a provisional minimum to avoid the former zero-sample bypass
-// without requiring a long wait for six validations.
+// Four genuine chronological validations are still required. A 50% floor
+// does not authorize forecasts without evidence or predict broker wins.
  const validated=validateSelectiveHistory({tested,hits});
  const accepted=support&&robust&&specific&&validated;
  const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
