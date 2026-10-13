@@ -1690,24 +1690,19 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.85fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
+            <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
-                <select data-sentinel-setting="engine" ${d.forecastMode==='selective'?'disabled':''} title="${d.forecastMode==='selective'?'Seletiva autônoma: estratégias não participam':'Estratégia responsável pela previsão'}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
-                  ${d.forecastMode==='selective'?'<option value="'+esc(d.engine||'automatic')+'" selected>'+tr('Seletiva Autônoma')+'</option>':''}
-                  ${d.forecastMode==='selective'?'':`<option value="automatic" ${d.engine==='automatic'?'selected':''}>${tr('Automático Sentinel')}</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>${tr('Suporte e Resistência')}</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="mean_reversion" ${d.engine==='mean_reversion'?'selected':''}>Mean Reversion</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>`}
-                  ${d.forecastMode==='selective'?'':`<option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>`}
-                </select>
-              </label>
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('PREVISÃO')}
-                <select data-sentinel-setting="forecastMode" style="width:100%;min-width:0;height:35px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:10px">
-                  <option value="continuous" ${d.forecastMode!=='selective'?'selected':''}>${tr('Contínua')}</option><option value="selective" ${d.forecastMode==='selective'?'selected':''}>${tr('Seletiva')}</option>
+                <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela previsão')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+
+                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>${tr('Automático Sentinel')}</option>
+                  <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
+                  <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>${tr('Suporte e Resistência')}</option>
+                  <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
+                  <option value="mean_reversion" ${d.engine==='mean_reversion'?'selected':''}>Mean Reversion</option>
+                  <option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>
+                  <option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
+                  <option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
+                  <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
                 </select>
               </label>
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ENTRADA DAQUI A')}
