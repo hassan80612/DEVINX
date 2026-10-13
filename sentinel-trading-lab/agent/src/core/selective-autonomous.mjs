@@ -6,6 +6,12 @@
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 const valid=n=>Number.isFinite(Number(n))&&Number(n)>0;
 const round=n=>Number(n.toPrecision(12));
+export function validateSelectiveHistory({tested=0,hits=0,minExamples=4,minRate=.55}={}){
+ const n=Number(tested),correct=Number(hits);
+ // A zero/small sample is unknown, never interpreted as 100% validated.
+ return Number.isInteger(n)&&Number.isInteger(correct)&&n>=minExamples&&
+   correct>=0&&correct<=n&&correct/n>=minRate;
+}
 
 export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySeconds=30,
  holdingSeconds=delaySeconds,quoteTs=0,asset='UNKNOWN',engineId='automatic'}={}){
@@ -174,7 +180,7 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  // A percentage cannot be considered validated when no cases were tested.
 // Four is a provisional minimum to avoid the former zero-sample bypass
 // without requiring a long wait for six validations.
- const validated=tested>=4&&hits/tested>=.55;
+ const validated=validateSelectiveHistory({tested,hits});
  const accepted=support&&robust&&specific&&validated;
  const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
   historicalExamples:historic.length,similarExamples:projection.examples,
