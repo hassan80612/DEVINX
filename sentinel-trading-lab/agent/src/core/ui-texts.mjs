@@ -775,10 +775,81 @@ export const translations=Object.freeze({en:Object.freeze({
   "Ativo da tela": "Screen asset",
   "O Agent do PC está offline. Abra o Sentinel Agent no computador e tente novamente.": "The PC Agent is offline. Open Sentinel Agent on your computer and try again.",
   "Ativo validado": "Asset verified",
-  "Separação de mercado": "Market segmentation"
+  "Separação de mercado": "Market segmentation",
+  "Relógio atual": "Current clock",
+  "Sincronizado com a corretora": "Synced with broker",
+  "Relógio da corretora indisponível": "Broker clock unavailable",
+  "TEMPO DA CORRETORA": "BROKER TIMER",
+  "ATÉ FECHAR COMPRA": "UNTIL PURCHASE CLOSES",
+  "ATÉ ENTRADA CALCULADA": "UNTIL PLANNED ENTRY",
+  "MOMENTO CONFIRMADO": "MOMENT CONFIRMED",
+  "JANELA ABERTA": "WINDOW OPEN",
+  "JANELA ABERTA · AGUARDE": "WINDOW OPEN · WAIT",
+  "JANELA ABERTA · ANALISANDO": "WINDOW OPEN · ANALYZING",
+  "ENTRADA AGORA · ↑ CALL": "ENTER NOW · ↑ CALL",
+  "ENTRADA AGORA · ↓ PUT": "ENTER NOW · ↓ PUT",
+  "ENTRADA JÁ SINALIZADA": "ENTRY ALREADY SIGNALED",
+  "JANELA SEM ENTRADA": "WINDOW WITHOUT ENTRY",
+  "JANELA ABERTA · ANALISANDO": "WINDOW OPEN · ANALYZING",
+  "TOTAL MERCADO": "MARKET TOTAL",
+  "FORÇA ATUAL": "CURRENT STRENGTH",
+  "PRÓXIMA OPÇÃO": "NEXT OPTION",
+  "EXPIRAÇÃO SELECIONADA": "SELECTED EXPIRY",
+  "VENCIMENTO DA POSIÇÃO": "POSITION EXPIRY",
+  "COTAÇÃO AO VIVO": "LIVE QUOTE",
+  "● COTAÇÃO AO VIVO": "● LIVE QUOTE",
+  "ATIVO": "ASSET",
+  "Tempo REAL · AGORA": "REAL-TIME · NOW",
+  "● AO VIVO": "● LIVE",
+  "SESSÃO CONECTADA": "SESSION CONNECTED",
+  "SESSÃO ENCONTRADA": "SESSION FOUND",
+  "NÃO CONECTADO": "DISCONNECTED",
+  "LOGIN CONFIRMADO": "LOGIN CONFIRMED",
+  "Saldo lido": "Balance read",
+  "Fonte do saldo": "Balance source",
+  "Ativos lidos": "Assets detected",
+  "Janela": "Window",
+  "Aberta": "Open",
+  "Fechada": "Closed",
+  "Confirmado": "Confirmed",
+  "Sessão encontrada": "Session found",
+  "Aguardando": "Waiting",
+  "Online": "Online",
+  "Offline": "Offline",
+  "Conta ativa": "Active account",
+  "Ativo na tela": "On-screen asset",
+  "Ativo analisado": "Analyzed asset",
+  "Última candle": "Latest candle",
+  "Última solicitação": "Last request",
+  "Resposta candles": "Candle response",
+  "Ativo na tela": "On-screen asset",
+  "Mercado": "Market",
+  "Cotação": "Quote",
+  "Compra necessária": "Purchase required",
+  "Meu plano": "My plan",
+  "Minha conta": "My account",
+  "Vincular PC": "Pair PC",
+  "Vincule o PC à sua conta Sentinel": "Pair your PC with Sentinel",
+  "Instale o Agent no PC que ficará ligado com IQ Option/Exnova. No ícone S ao lado do relógio aparecerá um código SNTL. Digite aqui uma vez.": "Install Agent on the PC used for IQ Option/Exnova. Copy the SNTL code from the Agent tray icon and enter it here once.",
+  "Sua conta está funcionando. Instale ou abra o Agent no PC, use o código SNTL para vincular e o painel começará a receber saldo, mercado e estado do bot automaticamente.": "Your account is ready. Install or open Agent on your PC, pair it with the SNTL code and the dashboard will show your broker and live market data.",
+  "O acesso custa R$ 280 por 30 dias no Brasil e US$ 50 por 30 dias no exterior. Cada compra aprovada acrescenta 30 dias; a renovação é manual pelo checkout da Kiwify.": "Each purchase adds 30 days of access. Renew manually through Kiwify.",
+  "Cada compra aprovada acrescenta 30 dias; a renovação é manual pelo checkout da Kiwify.": "Each approved purchase adds 30 days; renewal is manual through Kiwify.",
+  "O checkout desta moeda ainda não está disponível.": "Checkout is not available for this currency yet."
 })});
 export function sentinelLanguage(value){return value==='en'?'en':'pt';}
 export function sentinelText(language,key){
  const value=String(key??'');
- return sentinelLanguage(language)==='en'?translations.en[value]||value:value;
+ if(sentinelLanguage(language)!=='en')return value;
+ if(translations.en[value])return translations.en[value];
+ // Broker diagnostics include changing numbers; translate them without
+ // touching the broker adapter or allocating work on every market tick.
+ let m=value.match(/^(\\d+) ativos detectados$/i);
+ if(m)return m[1]+' assets detected';
+ m=value.match(/^saldo\\s+(REAL|DEMO)?\\s*lido$/i);
+ if(m)return (m[1]?m[1].toUpperCase()+' ':'')+'balance read';
+ m=value.match(/^(\\d+) candles (atuais )?recebidos$/i);
+ if(m)return m[1]+' '+(m[2]?'current ':'')+'candles received';
+ if(value==='sessão conectada ao navegador local')return 'Session connected to the local browser';
+ if(value==='sessão local pronta')return 'Local session ready';
+ return value;
 }
