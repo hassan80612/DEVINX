@@ -80,7 +80,8 @@ function normalizeStatus(data:any){
 }
 
 export default function Page(){
-  const {t}=useSentinelLocale();
+  const {t,language}=useSentinelLocale();
+  const languageSyncRef=useRef('');
   const[tab,setTab]=useState('Dashboard');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
   const remotePolledAt=useRef(0);
   const liveFrameAt=useRef(0);
@@ -255,6 +256,17 @@ export default function Page(){
       setS(previous);setNotice('');setErr(friendlyError(e));setTimeout(()=>refresh(),300);return false;
     }finally{setBusy(false)}
   };
+  // A visitor may have chosen English before signing in. Synchronize it
+  // ONCE per connected Agent/version/language, not on each quote or poll.
+  useEffect(()=>{
+    if(!s||!agent.worker||s.settings?.uiLanguage===language)return;
+    const key=[source,s.agentVersion||agent.version||'',language].join('|');
+    if(languageSyncRef.current===key)return;
+    languageSyncRef.current=key;
+    const patch={uiLanguage:language};
+    void (source==='local'?localFetch('settings','PATCH',patch,2200):
+      cloudFetch('settings','PATCH',patch)).catch(()=>{});
+  },[language,source,agent.worker,agent.version,s?.agentVersion,s?.settings?.uiLanguage]);
   const agentCommand=async(action:'restart'|'exit')=>{if(source!=='local'){setErr('Reiniciar/desligar o Agent exige acesso ao PC. Pelo celular você controla o Bot: iniciar, pausar, parar e Kill Switch.');return}setBusy(true);try{await managerFetch(action,'POST',{});if(action==='exit'){setAgent({process:false,worker:false});setSource('remote')}setTimeout(refresh,700);setErr('')}catch(e:any){setErr(`Agent: ${String(e?.message||e)}`)}finally{setBusy(false)}};
   const claimPair=async()=>{if(!pairCode.trim())return;setBusy(true);const send=async(replaceExisting=false)=>{const r=await fetch('/api/devices/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:pairCode,replaceExisting})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'Falha ao vincular PC');return j};try{let j:any;try{j=await send(false)}catch(e:any){if(String(e?.message||e)==='limite_de_pcs'){const ok=window.confirm('Esta conta já atingiu o limite de computadores. Substituir o PC antigo por este novo computador?');if(!ok)throw e;j=await send(true)}else throw e}setPairCode('');setErr('');setNotice(j?.replaced?'Novo computador vinculado. O PC antigo foi substituído.':'Computador vinculado com sucesso.');setTimeout(refresh,300);setTimeout(()=>setNotice(''),4200)}catch(e:any){setErr(friendlyError(e))}finally{setBusy(false)}};
   const current=visibleTabs.find(x=>x.key===tab)??visibleTabs[0];const groups=['Acesso','Análise','Conexão','Conta','Admin'];const content=useMemo(()=>{
