@@ -171,7 +171,10 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
   }
  }
  // Do not learn permission from a demonstrably losing held-out period.
- const validated=tested<6||hits/tested>=.55;
+ // A percentage cannot be considered validated when no cases were tested.
+// Four is a provisional minimum to avoid the former zero-sample bypass
+// without requiring a long wait for six validations.
+ const validated=tested>=4&&hits/tested>=.55;
  const accepted=support&&robust&&specific&&validated;
  const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
   historicalExamples:historic.length,similarExamples:projection.examples,
