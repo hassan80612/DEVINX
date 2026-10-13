@@ -84,10 +84,11 @@ test('same quote context and different selected expiry recompute independent his
  const first=forwardHorizonMatrix({settings,snap,now,forecastModel:'selected-strengths-67.5'});
  const next=forwardHorizonMatrix({settings:{...settings,orderDurationMs:60000},snap,now,
   previous:first,forecastModel:'selected-strengths-67.5'});
- assert.equal(first.entryRows.length,1);
- assert.equal(next.entryRows.length,1);
- assert.equal(next.entryRows[0].delaySeconds,60);
- if(next.entryRows[0].side){assert.ok(next.entryRows[0].entryAt>now&&next.entryRows[0].entryAt<=now+60000);assert.equal(next.entryRows[0].exitAt,next.entryRows[0].entryAt+60000);}
+ assert.equal(first.entryRows.length,6);
+ assert.equal(next.entryRows.length,6);
+ const selected=next.entryRows.find(r=>r.delaySeconds===60);
+ assert.ok(selected);
+ if(selected.side){assert.ok(selected.entryAt>now&&selected.entryAt<=now+60000);assert.equal(selected.exitAt,selected.entryAt+60000);}
  assert.notEqual(first.context,next.context);
  assert.equal(next.reused,false);
 });

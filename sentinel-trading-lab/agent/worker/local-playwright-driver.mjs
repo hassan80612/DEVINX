@@ -1516,7 +1516,7 @@ export class LocalPlaywrightDriver{
         const scheduledDecision=entryMoment&&confirmedSide?
           ('ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT')):
           opportunityPhase==='cancelled'?'JANELA SEM ENTRADA':
-          opportunityPhase==='fired'?'ENTRADA JÁ SINALIZADA':
+          opportunityPhase==='fired'?'ENTRADA JÁ SINALIZADA'+(confirmedSide?' · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):''):
           opportunityPhase==='open'&&scheduledSide?(scheduledSide==='CALL'?'↑ CALL · JANELA ABERTA · AGUARDE':'↓ PUT · JANELA ABERTA · AGUARDE'):
           'JANELA ABERTA · ANALISANDO';
         const nextHtml=d.engine?`
@@ -1569,7 +1569,7 @@ export class LocalPlaywrightDriver{
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
                 <span style="color:${callTone}">JANELA ${durationText} · ENTRADA ${opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE'}</span>
                 <span style="color:${putTone}">PERÍODO APÓS ${entryPlanReady?Number(pinnedEntry.holdingSeconds)+'s':'—'}</span>
-                <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${esc(liveNow?(d.forecastMode==='selective'&&!entryPlanReady?d.vnext?.futureEntryForecast?.reason||'ANALISANDO':'AO VIVO'):'COTAÇÃO ATRASADA')}</span>
+                <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${esc(liveNow?'AO VIVO':'COTAÇÃO ATRASADA')}</span>
               </div>
               <details data-sentinel-preserve-open="1" style="font-size:10px;color:${muted};min-width:0;align-self:start">
                 <summary data-sentinel-no-drag="1" style="font-size:10px;font-weight:800;cursor:pointer;padding:5px 6px;height:25px;border:1px solid ${panelBorder};border-radius:6px;color:${goldSoft}">Detalhes da entrada futura</summary>
@@ -1582,8 +1582,8 @@ export class LocalPlaywrightDriver{
               </details>
             </section>
 
-            ${d.forecastMode==='selective'?'':`<details data-sentinel-preserve-open="1" data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
-              <summary data-sentinel-no-drag="1" style="font-weight:800;cursor:pointer">OUTRAS ENTRADAS FUTURAS · expandir</summary>
+            <details data-sentinel-preserve-open="1" data-sentinel-vnext-horizon-matrix style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};font-size:10px;color:${goldSoft}">
+              <summary data-sentinel-no-drag="1" style="font-weight:800;cursor:pointer">OUTROS HORÁRIOS FUTUROS · expandir</summary>
               <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-top:7px">
               ${[...new Set([5,10,30,60,120,300,duration/1000])].sort((x,y)=>x-y).slice(0,9).map(h=>{
                 const item=(Array.isArray(d.vnext?.futureEntryRows)?d.vnext.futureEntryRows:[]).find(x=>Number(x.delaySeconds)===h);
@@ -1594,8 +1594,8 @@ export class LocalPlaywrightDriver{
                 return '<div data-sentinel-horizon="'+h+'" style="min-width:0;padding:5px;border:1px solid '+(h*1000===duration?goldSoft:panelBorder)+';border-radius:6px"><small style="font-size:9px;white-space:nowrap">EM '+label+'</small><b style="display:block;color:'+(valid?(item.side==='CALL'?callTone:putTone):muted)+';font-size:12px">'+(valid?(item.side==='CALL'?'↑ CALL':'↓ PUT'):'—')+'</b><small style="font-size:8px;color:'+ink+'">'+(valid?price(item.projectedEntryPrice):'Sem previsão')+'</small></div>';
               }).join('')}
               </div>
-              <small style="font-size:8px;color:${muted}">Projeções para os próximos horários de entrada.</small>
-            </details>`}
+              <small style="font-size:8px;color:${muted}">Entrada prevista no horário de cada célula; período posterior igual ao prazo.</small>
+            </details>
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">TOTAIS · LEITURAS AO VIVO</b><small style="font-size:9px;color:${muted}">Índices direcionais, não taxa de acerto</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">

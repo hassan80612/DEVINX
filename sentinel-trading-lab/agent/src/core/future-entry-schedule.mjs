@@ -178,14 +178,30 @@ export function futureEntrySchedule(input={}){
  const requested=[...new Set((input.delays||[chosen]).map(Number).filter(h=>h>0&&h<=3600))];
  if(inSelective){
    const snap=input.snap||{},at=input.now??Date.now();
-   // All candidates use the same completed historical state but DIFFERENT
-   // observed entry->expiry outcomes. Three candles are descriptive only.
-   return requested.filter(h=>h===chosen).map(h=>{
+   // Auxiliary cells describe fixed future entry times. Only the selected
+   // horizon searches for an entry within its running opportunity window.
+   return requested.map(h=>{
+     const identity={asset:String(settings.asset||'UNKNOWN').toUpperCase(),
+       engineId:String(settings.engine||'automatic')};
+     if(h!==chosen)return autonomousSelectiveEntry({
+       quoteHistory:input.adaptiveHistory||snap.quoteHistory||[],now:at,
+       quoteTs:snap.quoteTs,delaySeconds:h,holdingSeconds:h,...identity});
+     const active=input.activeWindow;
+     if(active&&at<Number(active.windowEndsAt)&&
+       ['open','fired','cancelled'].includes(active.phase))return active;
+     const scanning=active?.phase==='scanning'&&active?.context?active:null;
+     const ticks=(input.adaptiveHistory||snap.quoteHistory||[]).slice(-20)
+       .map(q=>Number(q.ts));
+     const gaps=ticks.slice(1).map((t,i)=>t-ticks[i])
+       .filter(ms=>ms>0&&ms<=4000).sort((a,b)=>a-b);
+     const typicalGap=gaps.length?gaps[Math.floor(gaps.length/2)]:1000;
      const fresh=Number(snap.quoteTs)>0&&Number(snap.quoteTs)<=at&&
        at-Number(snap.quoteTs)<=2500;
      const result=planEntryWindow({
      windowSeconds:h,holdingSeconds:h,now:at,engineId:String(settings.engine||'automatic'),
      asset:String(settings.asset||'UNKNOWN').toUpperCase(),forecastMode:'selective',
+     realWindowEndsAt:scanning?Number(scanning.windowEndsAt):null,
+     confirmationQuoteGapMs:scanning?Math.max(200,Math.min(1500,typicalGap)):0,
      evaluateLead:seconds=>{
        const p=autonomousSelectiveEntry({quoteHistory:input.adaptiveHistory||
          snap.quoteHistory||[],now:at,quoteTs:snap.quoteTs,

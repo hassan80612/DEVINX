@@ -26,13 +26,12 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
  }
  const rows=[...unique.values()].sort((a,b)=>a.ts-b.ts);
  if(rows.length<12||now-rows.at(-1).ts>2500)return blank('waiting-fresh-quote');
- // A decision is anchored to the last completed observation interval.
- // The CURRENT partially forming bar/tick cannot flip it in milliseconds.
+ // Match the history against the market observed NOW. Freezing features at
+ // a 10/15/30-second grid hid retracements from entry confirmation. Stability
+ // belongs to the opportunity window, which already locks side and deadline.
  const effectiveH=Math.max(h,hold);
- const grid=effectiveH<=15?10000:effectiveH<=120?15000:30000;
- const anchor=Math.floor(now/grid)*grid;
- // A closed observation may be several seconds old; train against the
- // ACTUAL future entry timestamp, not the older feature anchor.
+ const anchor=now;
+ // Historical labels use the same observation-to-entry interval as live.
  const elapsedMs=now-anchor;
  const lookup=t=>{
   let lo=0,hi=rows.length-1,i=-1;
@@ -88,12 +87,14 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
   const before=lag.map(l=>lookup(t-l*1000));
   const prior=lookup(t-middleLag*2000);
   if(before.some(x=>!x)||!prior)return null;
+  // Do not clip these distances: a new, outsized reversal must not look
+  // identical to a smaller historical move after both saturate at +/-5.
   const logp=Math.log(p),moves=before.map((x,i)=>
-    clamp(Math.log(p/x)/(sigma*Math.sqrt(lag[i])),-5,5));
-  const acceleration=clamp((logp-2*Math.log(before[1])+Math.log(prior))/
-    (sigma*Math.sqrt(middleLag*2)),-5,5);
-  // Normalized position in the previous short range, a reversal/exhaustion
-  // feature. No future observations or selected-strategy inputs.
+    Math.log(p/x)/(sigma*Math.sqrt(lag[i])));
+  const acceleration=(logp-2*Math.log(before[1])+Math.log(prior))/
+    (sigma*Math.sqrt(middleLag*2));
+  // Multi-window returns and acceleration include the latest retracement,
+  // without substituting the current candle's colour for historical evidence.
   return {p,sigma,vector:[...moves,acceleration]};
  };
  const live=features(anchor);

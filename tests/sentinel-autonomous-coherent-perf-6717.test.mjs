@@ -52,11 +52,11 @@ test('continuous forecasts never contradict their own entry/exit prices or appro
    assert.equal(r.side,r.projectedExitPrice>r.projectedEntryPrice?'CALL':'PUT');
  }
 });
-test('only chosen horizon is evaluated in selective and engine changes are held for continuous',()=>{
+test('only chosen horizon supplies the primary forecast and engine changes are held for continuous',()=>{
  const settings={engine:'automatic',asset:'TEST',orderDurationMs:5000,forecastMode:'selective'};
  const matrix=forwardHorizonMatrix({settings,snap,now,forecastModel:'selected-strengths-67.5'});
  assert.equal(matrix.rows.length,1);
- assert.equal(matrix.entryRows.length,1);
+ assert.equal(matrix.entryRows.length,6);
  const runtime=new DemoTradingRuntime({enableVNext:true});
  runtime.patchSettings({engine:'trend'});
  runtime.patchSettings({forecastMode:'selective'});
@@ -85,5 +85,6 @@ test('all clocks share the original Agent deadline, no client deadline padding',
  const mobile=fs.readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  assert.match(rt,/const nextWindow=evolveOpportunity/);
  assert.match(pc,/const entryPlanActive=entryPlanReady&&windowRunning/);
- assert.match(mobile,/const running=windowStartedAt>0&&windowEndsAt>windowStartedAt&&now<windowEndsAt/);
+ assert.match(mobile,/const running=view.active/);
+ assert.match(mobile,/const view=pcAuthoritativeWindow/);
 });

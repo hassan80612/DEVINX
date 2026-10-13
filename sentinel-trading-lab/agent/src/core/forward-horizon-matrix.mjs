@@ -17,12 +17,10 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     adaptiveHistory?.length||0,Number(adaptiveHistory?.[0]?.ts)||0,
     Number(last?.price)||0,Array.isArray(snap.quoteHistory)?snap.quoteHistory.length:0
   ]);
-  // The autonomous selective panel has no auxiliary horizon matrix.
-  // In continuous mode fit the expensive learned model for the selected
-  // lead only. Optional secondary slots use the same selected strategy's
-  // inexpensive baseline instead of refitting 6-8 models per broker tick.
-  const horizons=settings.forecastMode==='selective'?[horizon]:
-    [...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
+  // Both modes expose auxiliary entry times. Seletiva evaluates each with
+  // its own estimator once, without five entry-window searches per cell.
+  const selective=settings.forecastMode==='selective';
+  const horizons=[...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
   // No arbitrary delay: re-evaluate as soon as the source quote or selected
   // context changes, not every redundant 400ms worker tick.
   if(previous?.context===context&&Array.isArray(previous.rows)){
@@ -34,7 +32,9 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     // only a currently fresh broker quote and the existing selected model.
     // No fictitious ticks, timer-based trade permission or broker reads.
     const expired=!locked&&Number(scheduled?.entryAt)>0&&Number(scheduled.entryAt)<=now;
-    if(locked)return {context,rows,entryRows:[locked],computedAt:previous.computedAt,reused:true};
+    if(locked)return {context,rows,entryRows:[locked,...(selective?
+      (previous.entryRows||[]).filter(r=>Number(r.delaySeconds)!==horizon):[])],
+      computedAt:previous.computedAt,reused:true};
     if(!expired||!(quoteAt>0&&now>=quoteAt&&now-quoteAt<=2500)){
       return {context,rows,entryRows:previous.entryRows||[],computedAt:previous.computedAt,reused:true};
     }
@@ -44,7 +44,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     return {context,rows,entryRows,computedAt:now,reused:false};
   }
   const rows=[];
-  for(const seconds of horizons){
+  for(const seconds of selective?[horizon]:horizons){
     const model=seconds===horizon&&primary?
       primary:singleEngineForecast({
         settings:{...settings,orderDurationMs:seconds*1000},
@@ -57,7 +57,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
       });
     rows.push(rowFor(model,seconds));
   }
-  const entryRows=locked?[locked]:futureEntrySchedule({
+  const entryRows=locked&&!selective?[locked]:futureEntrySchedule({
     settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
   });
   return {context,rows,entryRows,computedAt:now,reused:false};

@@ -234,12 +234,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     Number(m.quoteAt)>0&&now>=Number(m.quoteAt)&&now-Number(m.quoteAt)<3500&&
     entryTriggeredAt>0&&now>=entryTriggeredAt&&now<=entryTriggeredAt+1500;
   const entryPlanDisplayable=entryPlanValid&&(plannedAt>now||entryMoment);
-  // Classify the existing PC timestamp separately from mobile transport delay.
-  // Only the Agent grants entry; these messages are diagnostics, not signals.
-  // Selective customers see only an honest, concise pending state.
-  // Internal quote/qualification diagnostics stay in the engine, not the card.
-  const selectiveWaitingReason=forecastMode==='selective'?
-    (m.quoteFresh?'Aguardando confirmação':'Aguardando cotação atual'):undefined;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>ENTRADA FUTURA · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR'}</small></div>
     <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)}/>
@@ -266,7 +260,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
 
   const futureByHorizon=new Map<number,any>((m.vnextFutureEntryRows||[])
     .map((r:any):[number,any]=>[Number(r.delaySeconds),r]));
-  const forecastHorizonStrip=vnext&&forecastMode!=='selective'?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
+  const forecastHorizonStrip=vnext?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
     <summary>OUTROS HORÁRIOS FUTUROS · expandir</summary>
     <div className="vnextForwardHorizonsGrid">
       {allFutureHorizons.map(h=>{
