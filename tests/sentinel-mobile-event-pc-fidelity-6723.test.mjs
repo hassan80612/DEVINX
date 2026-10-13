@@ -43,6 +43,6 @@ test('mobile signed HMAC verification keeps socket arrival order, not completion
 });
 test('no new trading authorization or worker engine changes on mobile-only fix',()=>{
  const card=readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
- assert.match(card,/pcAuthoritativeWindow\(\{windowStartedAt,windowEndsAt,phase,side,entryTriggeredAt,quoteAt,now\}\)/);
+ assert.match(card,/pcAuthoritativeWindow\(\{windowStartedAt,windowEndsAt,phase,side,entryTriggeredAt,quoteAt,now:pcClockNow\(now,pcClockOffsetMs\)\}\)/);
  assert.doesNotMatch(card,/windowEndsAt\+cycle\*period/);
 });
