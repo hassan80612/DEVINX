@@ -1,0 +1,853 @@
+{
+  "baselineCommit": "7cd0e7315fd7b6a59ad82142ffc8db7491c902ca",
+  "kind": "deterministic simulated quotes, not broker trades",
+  "rows": [
+    {
+      "kind": "trend-to-lateral",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 24,
+        "trades": 22,
+        "wins": 9,
+        "losses": 13,
+        "accuracy": 0.4090909090909091,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.2419720000000325,
+        "maxMs": 24.087739000000006
+      },
+      "after": {
+        "opened": 3,
+        "trades": 2,
+        "wins": 0,
+        "losses": 2,
+        "accuracy": 0,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.6056459999999788,
+        "maxMs": 150.470822
+      }
+    },
+    {
+      "kind": "trend-to-lateral",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 25,
+        "trades": 20,
+        "wins": 9,
+        "losses": 11,
+        "accuracy": 0.45,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 68.95470000000023,
+        "maxMs": 110.73202300000003
+      },
+      "after": {
+        "opened": 3,
+        "trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "accuracy": 0,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 3.1968279999999822,
+        "maxMs": 276.061202
+      }
+    },
+    {
+      "kind": "trend-to-lateral",
+      "seed": 17,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 15,
+        "trades": 7,
+        "wins": 2,
+        "losses": 5,
+        "accuracy": 0.2857142857142857,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 7.251065000000381,
+        "maxMs": 19.245966000000408
+      },
+      "after": {
+        "opened": 4,
+        "trades": 3,
+        "wins": 1,
+        "losses": 2,
+        "accuracy": 0.3333333333333333,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.902313999999933,
+        "maxMs": 73.41340600000012
+      }
+    },
+    {
+      "kind": "trend-to-lateral",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 21,
+        "losses": 9,
+        "accuracy": 0.7,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.322072999999364,
+        "maxMs": 11.94168400000126
+      },
+      "after": {
+        "opened": 8,
+        "trades": 7,
+        "wins": 4,
+        "losses": 3,
+        "accuracy": 0.5714285714285714,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.058180999999877,
+        "maxMs": 92.67375400000014
+      }
+    },
+    {
+      "kind": "trend-to-lateral",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 30,
+        "trades": 27,
+        "wins": 17,
+        "losses": 10,
+        "accuracy": 0.6296296296296297,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.151267999997799,
+        "maxMs": 77.06976299999951
+      },
+      "after": {
+        "opened": 7,
+        "trades": 2,
+        "wins": 1,
+        "losses": 1,
+        "accuracy": 0.5,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.968159000000014,
+        "maxMs": 138.77284800000007
+      }
+    },
+    {
+      "kind": "trend-to-lateral",
+      "seed": 83,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 26,
+        "trades": 19,
+        "wins": 11,
+        "losses": 8,
+        "accuracy": 0.5789473684210527,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.427436999998463,
+        "maxMs": 10.439720999998826
+      },
+      "after": {
+        "opened": 7,
+        "trades": 5,
+        "wins": 2,
+        "losses": 3,
+        "accuracy": 0.4,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.8016849999999067,
+        "maxMs": 53.82749100000001
+      }
+    },
+    {
+      "kind": "continuous-strength",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.386450000000025,
+        "maxMs": 24.50458900000001
+      },
+      "after": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.5975790000002235,
+        "maxMs": 93.621486
+      }
+    },
+    {
+      "kind": "continuous-strength",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.125379000000066,
+        "maxMs": 128.402648
+      },
+      "after": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.737564999999449,
+        "maxMs": 103.84712600000057
+      }
+    },
+    {
+      "kind": "continuous-strength",
+      "seed": 17,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 2.204620999999861,
+        "maxMs": 16.423547999999755
+      },
+      "after": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 2.119665000000168,
+        "maxMs": 53.78484199999912
+      }
+    },
+    {
+      "kind": "continuous-strength",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.200896000000284,
+        "maxMs": 14.058402999999998
+      },
+      "after": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.2028339999997115,
+        "maxMs": 93.79226800000015
+      }
+    },
+    {
+      "kind": "continuous-strength",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.377547999999479,
+        "maxMs": 72.60557100000005
+      },
+      "after": {
+        "opened": 31,
+        "trades": 29,
+        "wins": 29,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 7.016238000000158,
+        "maxMs": 101.8105570000007
+      }
+    },
+    {
+      "kind": "continuous-strength",
+      "seed": 83,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.8154849999991711,
+        "maxMs": 10.799913999999262
+      },
+      "after": {
+        "opened": 31,
+        "trades": 29,
+        "wins": 29,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 2.2332339999993565,
+        "maxMs": 55.30873699999938
+      }
+    },
+    {
+      "kind": "lateral-range",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.321651999998721,
+        "maxMs": 9.890568999999232
+      },
+      "after": {
+        "opened": 16,
+        "trades": 12,
+        "wins": 12,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.455009000001155,
+        "maxMs": 89.84032200000001
+      }
+    },
+    {
+      "kind": "lateral-range",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.700480999999854,
+        "maxMs": 74.79256499999974
+      },
+      "after": {
+        "opened": 16,
+        "trades": 10,
+        "wins": 10,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.116316999999981,
+        "maxMs": 104.96518300000025
+      }
+    },
+    {
+      "kind": "lateral-range",
+      "seed": 17,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.192984000001161,
+        "maxMs": 8.014413999997487
+      },
+      "after": {
+        "opened": 15,
+        "trades": 12,
+        "wins": 12,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.2804639999994833,
+        "maxMs": 22.977826999998797
+      }
+    },
+    {
+      "kind": "lateral-range",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.544382000000041,
+        "maxMs": 8.38930899999832
+      },
+      "after": {
+        "opened": 23,
+        "trades": 20,
+        "wins": 20,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.7994979999984935,
+        "maxMs": 87.43650100000013
+      }
+    },
+    {
+      "kind": "lateral-range",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.440307000000757,
+        "maxMs": 73.1831940000011
+      },
+      "after": {
+        "opened": 23,
+        "trades": 17,
+        "wins": 17,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 7.493813999999475,
+        "maxMs": 99.23391499999889
+      }
+    },
+    {
+      "kind": "lateral-range",
+      "seed": 83,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.2217559999990044,
+        "maxMs": 9.577314999998634
+      },
+      "after": {
+        "opened": 23,
+        "trades": 21,
+        "wins": 21,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.2854859999988548,
+        "maxMs": 26.159521999999924
+      }
+    },
+    {
+      "kind": "retracement",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 30,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.3174870000220835,
+        "maxMs": 10.248940999998013
+      },
+      "after": {
+        "opened": 16,
+        "trades": 12,
+        "wins": 12,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.8680700000004435,
+        "maxMs": 145.50927000000047
+      }
+    },
+    {
+      "kind": "retracement",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 30,
+        "trades": 29,
+        "wins": 28,
+        "losses": 1,
+        "accuracy": 0.9655172413793104,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 7.336061999987578,
+        "maxMs": 80.1588150000025
+      },
+      "after": {
+        "opened": 29,
+        "trades": 24,
+        "wins": 23,
+        "losses": 1,
+        "accuracy": 0.9583333333333334,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 7.327623999997741,
+        "maxMs": 95.95068900000115
+      }
+    },
+    {
+      "kind": "retracement",
+      "seed": 17,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 29,
+        "trades": 26,
+        "wins": 25,
+        "losses": 1,
+        "accuracy": 0.9615384615384616,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.5337690000014845,
+        "maxMs": 7.342120999994222
+      },
+      "after": {
+        "opened": 12,
+        "trades": 7,
+        "wins": 7,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.4654479999990144,
+        "maxMs": 20.386883999999554
+      }
+    },
+    {
+      "kind": "retracement",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 31,
+        "trades": 30,
+        "wins": 28,
+        "losses": 2,
+        "accuracy": 0.9333333333333333,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 4.795232999982545,
+        "maxMs": 10.430740999989212
+      },
+      "after": {
+        "opened": 16,
+        "trades": 10,
+        "wins": 10,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 5.8987749999978405,
+        "maxMs": 70.7158649999983
+      }
+    },
+    {
+      "kind": "retracement",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 27,
+        "trades": 26,
+        "wins": 26,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.804131000011694,
+        "maxMs": 69.42052299997886
+      },
+      "after": {
+        "opened": 28,
+        "trades": 21,
+        "wins": 21,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 7.8505219999969995,
+        "maxMs": 94.66965500000151
+      }
+    },
+    {
+      "kind": "retracement",
+      "seed": 83,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 26,
+        "trades": 24,
+        "wins": 23,
+        "losses": 1,
+        "accuracy": 0.9583333333333334,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 3.181997000006959,
+        "maxMs": 8.209298000001581
+      },
+      "after": {
+        "opened": 20,
+        "trades": 11,
+        "wins": 11,
+        "losses": 0,
+        "accuracy": 1,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 1.9191790000004403,
+        "maxMs": 37.04262000000017
+      }
+    },
+    {
+      "kind": "lateral",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 20,
+        "trades": 13,
+        "wins": 7,
+        "losses": 6,
+        "accuracy": 0.5384615384615384,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.1839360000012675,
+        "maxMs": 8.569814999998925
+      },
+      "after": {
+        "opened": 0,
+        "trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "accuracy": null,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.12116899999818997,
+        "maxMs": 62.68418599999859
+      }
+    },
+    {
+      "kind": "lateral",
+      "seed": 17,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 27,
+        "trades": 20,
+        "wins": 11,
+        "losses": 9,
+        "accuracy": 0.55,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 55.428492000002734,
+        "maxMs": 83.93341700000019
+      },
+      "after": {
+        "opened": 0,
+        "trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "accuracy": null,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.0888009999980568,
+        "maxMs": 55.82942700000058
+      }
+    },
+    {
+      "kind": "lateral",
+      "seed": 17,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 24,
+        "trades": 16,
+        "wins": 12,
+        "losses": 4,
+        "accuracy": 0.75,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 7.3554410000069765,
+        "maxMs": 16.938938999999664
+      },
+      "after": {
+        "opened": 0,
+        "trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "accuracy": null,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.13587099999858765,
+        "maxMs": 31.7199870000004
+      }
+    },
+    {
+      "kind": "lateral",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "automatic",
+      "before": {
+        "opened": 20,
+        "trades": 15,
+        "wins": 6,
+        "losses": 9,
+        "accuracy": 0.4,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 6.215178999991622,
+        "maxMs": 29.316672999993898
+      },
+      "after": {
+        "opened": 0,
+        "trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "accuracy": null,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.115021000001434,
+        "maxMs": 63.5834360000008
+      }
+    },
+    {
+      "kind": "lateral",
+      "seed": 83,
+      "mode": "continuous",
+      "engine": "breakout",
+      "before": {
+        "opened": 27,
+        "trades": 19,
+        "wins": 6,
+        "losses": 13,
+        "accuracy": 0.3157894736842105,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 49.29275100000086,
+        "maxMs": 81.40432700001111
+      },
+      "after": {
+        "opened": 0,
+        "trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "accuracy": null,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.13391799999953946,
+        "maxMs": 63.56251599999814
+      }
+    },
+    {
+      "kind": "lateral",
+      "seed": 83,
+      "mode": "selective",
+      "engine": "automatic",
+      "before": {
+        "opened": 23,
+        "trades": 14,
+        "wins": 6,
+        "losses": 8,
+        "accuracy": 0.42857142857142855,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 9.433105000003707,
+        "maxMs": 20.20880500000203
+      },
+      "after": {
+        "opened": 0,
+        "trades": 0,
+        "wins": 0,
+        "losses": 0,
+        "accuracy": null,
+        "flips": 0,
+        "repeats": 0,
+        "p95Ms": 0.15210400000069058,
+        "maxMs": 30.27005199999985
+      }
+    }
+  ],
+  "releaseDecision": "NOT RELEASED: transition from trend to lateral still underperforms; simulated tests cannot establish broker efficacy.",
+  "limitations": [
+    "Two deterministic seeds per scenario; scenarios are synthetic, not market recordings.",
+    "Identical streams reused across engines, so counts across engines are not independent evidence.",
+    "The retained real-price fixture spans only 179.02 seconds; no synthetic ticks were reconstructed from candles.",
+    "This prototype adds qualification of existing forecasts, not a proven improvement in forecasting."
+  ]
+}

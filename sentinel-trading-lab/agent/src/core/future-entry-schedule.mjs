@@ -4,6 +4,7 @@ import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
 import {coherentInterval,observedNoise} from './forward-direction-quality.mjs';
 import {planEntryWindow} from './entry-window-planner.mjs';
+import {observedEntryEvidence} from './entry-evidence.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -114,8 +115,12 @@ function continuousWindow({input,settings,chosen}){
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(input.forecastModel)){
    const learned=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
     entryDelaySeconds:chosen,holdingSeconds:chosen,historicalQuoteGapMs:2500});
-   if(learned.status==='adaptive-direct-trajectory'&&Array.isArray(learned.expectedPath))
-    path=learned.expectedPath;
+   if(learned.status==='adaptive-direct-trajectory'){
+    // A model rejection is not permission to reconstruct a side from prices.
+    if(!learned.side)return planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,
+      now,engineId,asset,evaluateLead:()=>null});
+    if(Array.isArray(learned.expectedPath))path=learned.expectedPath;
+   }
  }
  const priceAt=seconds=>{
    if(!path)return null;
@@ -190,6 +195,11 @@ export function futureEntrySchedule(input={}){
      if(active&&at<Number(active.windowEndsAt)&&
        ['open','fired','cancelled'].includes(active.phase))return active;
      const scanning=active?.phase==='scanning'&&active?.context?active:null;
+     const evidence=entryEvidence({...input,settings});
+     if(!evidence.qualified)return {...planEntryWindow({windowSeconds:h,
+       holdingSeconds:h,now:at,...identity,forecastMode:'selective',
+       realWindowEndsAt:scanning?Number(scanning.windowEndsAt):null,
+       evaluateLead:()=>null}),entryEvidence:evidence};
      const ticks=(input.adaptiveHistory||snap.quoteHistory||[]).slice(-20)
        .map(q=>Number(q.ts));
      const gaps=ticks.slice(1).map((t,i)=>t-ticks[i])
@@ -215,7 +225,7 @@ export function futureEntrySchedule(input={}){
          Math.max(.01,p.historicalAgreement*.7+reliability*.3)};
      }
    });
-   return fresh?result:{...result,side:null,entryAt:null,exitAt:null,
+   return fresh?{...result,entryEvidence:evidence}:{...result,side:null,entryAt:null,exitAt:null,
      entryOffsetSeconds:null,projectedEntryPrice:null,
      projectedExitPrice:null,status:'waiting-fresh-quote'};
    });
@@ -227,8 +237,14 @@ export function futureEntrySchedule(input={}){
    settings:{...settings,forecastMode:'continuous'},
    historicalQuoteGapMs:2500,selectiveLeadSeconds:chosen
  });
- const chosenForecast=requested.includes(chosen)?
-   [continuousWindow({input,settings,chosen})]:[];
+ const chosenEvidence=requested.includes(chosen)?entryEvidence({...input,settings}):null;
+ const chosenForecast=requested.includes(chosen)?[chosenEvidence.qualified?
+   {...continuousWindow({input,settings,chosen}),entryEvidence:chosenEvidence}:
+   {...planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,
+     now:input.now??Date.now(),engineId:String(settings.engine||'automatic'),
+     asset:String(settings.asset||'UNKNOWN').toUpperCase(),
+     realWindowEndsAt:input.activeWindow?.phase==='scanning'?input.activeWindow.windowEndsAt:null,
+     evaluateLead:()=>null}),entryEvidence:chosenEvidence}]:[];
  const continuous=[...others,...chosenForecast].sort((a,b)=>a.delaySeconds-b.delaySeconds);
  // The original adaptive motor and fallback may not agree internally:
  // CALL/PUT is only valid when it points from its OWN entry to exit prices.
@@ -249,7 +265,7 @@ export function futureEntrySchedule(input={}){
  * evaluates t=now -> t+expiry using the selected mode's estimator; it NEVER
  * chooses a new offset or modifies the original window's CALL/PUT.
  */
-export function confirmWindowEntry({
+function rawConfirmWindowEntry({
  settings={},snap={},now=Date.now(),adaptiveHistory=null,
  forecastModel='original-67',entryAt=now
 }={}){
@@ -272,6 +288,8 @@ export function confirmWindowEntry({
   const learned=adaptiveDirectTrajectory({quoteHistory:quotes,asOf:now,
    entryDelaySeconds:lead,holdingSeconds:H,historicalQuoteGapMs:2500});
   if(learned.status==='adaptive-direct-trajectory'){
+   if(!['CALL','PUT'].includes(learned.side))return {...learned,side:null,
+     status:'model-rejected-direction'};
    const check=coherentInterval({entryPrice:learned.projectedEntryPrice,
     exitPrice:learned.projectedExitPrice,side:learned.side,noise});
    return check.qualified?learned:{...learned,side:null,status:check.reason};
@@ -293,4 +311,22 @@ export function confirmWindowEntry({
  return {...check,side:check.qualified?check.side:null,
   projectedEntryPrice:Number(first?.projectedPrice)||null,
   projectedExitPrice:Number(last?.projectedPrice)||null};
+}
+
+function entryEvidence(input){
+ const {settings={},snap={},now=Date.now(),adaptiveHistory=null,forecastModel='original-67'}=input;
+ const quoteHistory=adaptiveHistory||snap.quoteHistory||[];
+ return observedEntryEvidence({quoteHistory,now,
+   holdingSeconds:Number(settings.orderDurationMs)/1000,
+   context:[snap.provider||'unknown',settings.asset,settings.forecastMode,
+     settings.engine,forecastModel].join('|'),
+   predict:frame=>rawConfirmWindowEntry({settings,now:frame.now,
+     snap:{...frame,provider:snap.provider},adaptiveHistory:frame.quoteHistory,forecastModel})});
+}
+export function confirmWindowEntry(input={}){
+ const result=rawConfirmWindowEntry(input);
+ if(!['CALL','PUT'].includes(result?.side))return result;
+ const evidence=entryEvidence(input);
+ return evidence.qualified?{...result,entryEvidence:evidence}:
+   {...result,side:null,status:'waiting-validated-entry',entryEvidence:evidence};
 }

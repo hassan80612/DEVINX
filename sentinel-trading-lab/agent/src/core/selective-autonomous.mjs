@@ -170,9 +170,10 @@ export function autonomousSelectiveEntry({quoteHistory=[],now=Date.now(),delaySe
       (predicted.side==='PUT'&&example.paired<0))hits++;
   }
  }
- // Do not learn permission from a demonstrably losing held-out period.
- const validated=tested<6||hits/tested>=.46;
- const accepted=support&&robust&&specific&&validated;
+ // These overlapping neighbour checks are descriptive only. Opening and
+ // confirming an actual window require separate non-overlapping predictions
+ // from this estimator (entry-evidence.mjs); no 46% authorization shortcut.
+ const accepted=support&&robust&&specific;
  const result={...blank(accepted?'forecast':'no-validated-historical-edge'),
   historicalExamples:historic.length,similarExamples:projection.examples,
   featureLagsSeconds:lag,analysisLeadSeconds:h,holdingSeconds:hold,
