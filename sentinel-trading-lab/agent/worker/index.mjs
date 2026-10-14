@@ -215,7 +215,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   }
   throw new Error('invalid_overlay_action')
 });
-const ACCESS_LEASE_GRACE_MS=120000;
+const ACCESS_LEASE_GRACE_MS=65000;
 function accessLeaseValid(){return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&remoteRelay.info.lastContactAt!=null&&(Date.now()-Number(remoteRelay.info.lastContactAt))<=ACCESS_LEASE_GRACE_MS}
 function assertLicensedAccess(){
   if(!remoteRelay.info.paired)throw new Error('agent_not_paired');
@@ -226,7 +226,9 @@ function assertLicensedAccess(){
 async function enforceAccessLease(){
   if(accessLeaseValid())return true;
   if(runtime.stateName==='running')await runtime.stop('system','agent_access_unverified');
-  // V13.1: licença é da conta vinculada. Acesso local não contorna pagamento/expiração.
+  // Paid access also requires a recently refreshed browser session. Closing
+  // the last tab pauses analysis on lease expiry; explicit logout revokes
+  // that session immediately on the server. Never rely on UI-only blocking.
   return false;
 }
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
