@@ -50,6 +50,7 @@ test('actual agent worker boots under its manager, validates release/build/pid t
     latest=await r.json();
     if(latest.workerHealthy&&latest.version===expected.version&&
        latest.build===expected.build&&latest.workerPid>0){ok=true;break}
+    if(latest.lastExit?.code===1&&latest.lastStart&&Date.now()-latest.lastStart>4500)break;
    }catch{}
    await sleep(300);
   }
