@@ -29,7 +29,7 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
     'continuous-selected-engine-window-v1',
   status:'scanning-entry-window',actionable:false,calibrated:false};
  if(!offsets.length)return {...base,status:'invalid-window'};
- let best=null;
+ const valid=[];
  for(const seconds of offsets){
   const c=evaluateLead(seconds);
   const p1=Number(c?.projectedEntryPrice),p2=Number(c?.projectedExitPrice);
@@ -38,15 +38,19 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
    (p2>p1?'CALL':p2<p1?'PUT':null)!==side)continue;
   const raw=Number(c.selectionStrength);
   if(!Number.isFinite(raw)||raw<=0)continue;
-  // Score comes from OWN past observations or OWN selected motor projected
-  // excursion, with a very small tie preference for earlier valid entry.
-  // No fixed seconds, forced direction, or redefinition of holding time.
+  // Only qualified, mutually consistent interval forecasts enter this pool.
+  // There is no artificial minimum number of candles or time spent scanning.
   const score=raw-.018*seconds/windowSeconds;
-  if(!best||score>best.score){
-   best={...c,score,seconds};
-  }
+  valid.push({...c,score,seconds});
  }
- if(!best)return base;
+ if(!valid.length)return base;
+ const strongest=valid.reduce((a,b)=>b.score>a.score?b:a);
+ // A strong market can already offer a comparably qualified moment near NOW.
+ // Do not discard that moment just to wait tens of seconds for a negligible
+ // projected score improvement. Never fabricate a side or weaken the
+ // coherentInterval qualification supplied by the selected forecast engine.
+ const tolerance=Math.min(.10,Math.max(.015,Math.abs(strongest.score)*.035));
+ const best=valid.find(c=>c.score>=strongest.score-tolerance)||strongest;
  return {...base,status:'forecast',side:best.side,
   entryOffsetSeconds:best.seconds,
   entryAt:now+best.seconds*1000,
