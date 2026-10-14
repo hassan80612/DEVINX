@@ -1,4 +1,5 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
+import {causalForwardPath} from './causal-interval-forecast-1371.mjs';
 import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
@@ -111,6 +112,11 @@ function continuousWindow({input,settings,chosen}){
   return {...planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
    engineId,asset,evaluateLead:()=>null}),status:'waiting-fresh-quote'};
  let path=null;
+ let causal=null;
+ if(engineId==='automatic'&&input.forecastModel==='causal-interval-1371'){
+   causal=causalForwardPath({quoteHistory:history,asOf:now,
+     holdingSeconds:chosen,maxSeconds:chosen*2});
+ }
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(input.forecastModel)){
    const learned=adaptiveDirectTrajectory({quoteHistory:history,asOf:now,
@@ -134,6 +140,7 @@ function continuousWindow({input,settings,chosen}){
  };
  const forecastCache=new Map();
  const projectedAt=seconds=>{
+  if(causal)return causal.priceAt(seconds);
   if(path)return priceAt(seconds);
   if(forecastCache.has(seconds))return forecastCache.get(seconds);
   const forecast=singleEngineForecast({settings:{...settings,forecastMode:'continuous',
@@ -273,6 +280,15 @@ export function confirmWindowEntry({
  }
  const engineId=String(settings.engine||'automatic');
  const noise=observedNoise({quotes,now,horizonSeconds:H});
+ if(engineId==='automatic'&&forecastModel==='causal-interval-1371'){
+  const causal=causalForwardPath({quoteHistory:quotes,asOf:now,
+    holdingSeconds:H,maxSeconds:lead+H});
+  const entry=causal.priceAt(lead),exit=causal.priceAt(lead+H);
+  const check=coherentInterval({entryPrice:entry,exitPrice:exit,noise});
+  return {...check,side:check.qualified?check.side:null,
+    projectedEntryPrice:entry,projectedExitPrice:exit,
+    status:check.qualified?'causal-future-interval':causal.status};
+ }
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(forecastModel)){
   const learned=adaptiveDirectTrajectory({quoteHistory:quotes,asOf:now,
