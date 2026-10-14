@@ -42,7 +42,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
       return {context,auxIdentity,lastAuxRefreshAt:previous?.lastAuxRefreshAt,rows,entryRows:previous.entryRows||[],computedAt:previous.computedAt,reused:true};
     }
     const entryRows=futureEntrySchedule({
-      settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
+      settings,snap,now,delays:[horizon],knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
     });
     return {context,rows,entryRows,computedAt:now,reused:false,auxIdentity,
       lastAuxRefreshAt:refreshAux?now:previous?.lastAuxRefreshAt};
@@ -68,8 +68,12 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
       });
     rows.push(rowFor(model,seconds));
   }
+  // Only the selected expiry may create a tradable entry. The six
+  // additional entry searches previously ran on EVERY market quote and
+  // competed with real signal timing. Informational horizon forecast rows
+  // remain fully available on the existing 4-second schedule.
   const entryRows=locked&&!selective?[locked]:futureEntrySchedule({
-    settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
+    settings,snap,now,delays:[horizon],knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
   });
   return {context,auxIdentity,lastAuxRefreshAt:refreshAux?now:previous?.lastAuxRefreshAt,
     rows,entryRows,computedAt:now,reused:false};
