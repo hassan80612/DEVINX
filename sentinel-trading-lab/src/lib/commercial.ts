@@ -40,9 +40,13 @@ export function sentinelCheckoutUrl(market:SentinelMarket='INTL'){
   const verified=trustedKiwifyUrl(raw);
   if(!verified)return null;
   if(market==='BR')return verified;
-  // Required international Kiwify flag; preserve other trusted URL parameters.
+  // Kiwify's documented international checkout parameter is region=intl.
+  // "intl=1" is a Sentinel campaign flag, NOT a documented Kiwify locale.
+  // Kiwify currently does not offer a verified URL switch for English copy:
+  // never claim to change its native text with an unsupported lang=en query.
   const url=new URL(verified);
-  url.searchParams.set('intl','1');
+  url.searchParams.delete('intl');
+  url.searchParams.set('region','intl');
   return url.toString();
 }
 
