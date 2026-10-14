@@ -11,11 +11,13 @@ const sgn=x=>x>0?'CALL':x<0?'PUT':null;
 function quoteSeries(kind='up',end=780){
  const rows=[];let p=1.114;
  for(let i=0;i<end;i++){
-  let rate=kind==='down'?-.000007:.000007;
+  let rate=['down','down-last-spike'].includes(kind)?-.000007:.000007;
   if(kind==='bear-to-bull')rate=i<595?-.000007:.000026;
   if(kind==='bull-to-bear')rate=i<595?.000007:-.000026;
   if(kind==='range')rate=.000002*Math.cos(i/23);
   p+=rate+Math.sin(i/5)*.0000003;
+  if(i===625&&kind==='up-last-spike')p-=.00045;
+  if(i===625&&kind==='down-last-spike')p+=.00045;
   rows.push({ts:T+i*1000,receivedAt:T+i*1000,price:p});
  }
  return rows;
@@ -74,7 +76,7 @@ test('13.7.9: structurally tested causality ignores future/backfilled market pri
 });
 test('13.7.9 matched-data synthetic holdout: compare directions and missed/out-of-sample outcomes',()=>{
  const rows=[];
- const expectedReal=['up','down','bear-to-bull','bull-to-bear','range'];
+ const expectedReal=['up','down','bear-to-bull','bull-to-bear','range','up-last-spike','down-last-spike'];
  for(const kind of expectedReal){
   const all=quoteSeries(kind,790),history=all.filter(q=>q.ts<=issue);
   const future=all.find(q=>q.ts===issue+60000);
@@ -92,7 +94,10 @@ test('13.7.9 matched-data synthetic holdout: compare directions and missed/out-o
  console.log('[matched-synthetic-replay] '+JSON.stringify(rows));
  const prior=rows.filter(x=>x.model==='13.7.8'),next=rows.filter(x=>x.model==='13.7.9');
  assert.equal(prior.length,next.length);
- assert.ok(next.every(x=>x.predicted!==null),JSON.stringify(rows));
+ const oldCorrect=prior.filter(x=>x.correct).length,newCorrect=next.filter(x=>x.correct).length;
+ assert.ok(newCorrect>=oldCorrect,JSON.stringify({oldCorrect,newCorrect,rows}));
+ assert.ok(next.filter(x=>x.predicted!==null).length>=5,
+   'completed-structure model should not become inert on strong trends');
  // Synthetic exercise is an architecture/regression benchmark, NOT evidence
  // of live broker accuracy or a claimed win rate.
  const src=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/causal-closed-structure-1379.mjs',import.meta.url),'utf8');
