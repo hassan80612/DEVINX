@@ -1121,7 +1121,14 @@ export class LocalPlaywrightDriver{
     const marketReason=st.screenCandidateSymbol?'Ativo clicado aguardando confirmação':analysisFeedValidated?`${st.symbol||'Ativo'} com dados de mercado validados`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
     const selectedAccount=(st.lastBalances||[]).find(v=>st.balanceId!=null&&n(v?.id)===n(st.balanceId))||null;
     const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
-    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt,brokerTiming:st.brokerTiming||null}
+    // The broker clock comes from ONE source of truth for runtime and PC.
+    // Keep the visible-page expiry observation's original capturedAt/source:
+    // timeSync may improve the clock, but must never re-date stale expiry data.
+    const protocolClock=this.feeds.get(provider)?.brokerClock?.();
+    const brokerTiming=protocolClock?.verified?
+      {...(st.brokerTiming||{}),brokerClockVerified:true,brokerClock:protocolClock}:
+      (st.brokerTiming||null);
+    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt,brokerTiming}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1132,7 +1139,7 @@ export class LocalPlaywrightDriver{
       const st=this.state(provider);
       // Optional, bounded, read-only UI observation. Never blocks rendering,
       // requests trading actions or invalidates a pinned forecast.
-      if(payload.clockMode==='broker'&&!s.pendingBrokerTimeScan&&
+      if(!s.pendingBrokerTimeScan&&
         Date.now()-Number(s.lastBrokerTimeScanAt||0)>=2500){
         s.lastBrokerTimeScanAt=Date.now();
         s.pendingBrokerTimeScan=true;
@@ -1145,14 +1152,9 @@ export class LocalPlaywrightDriver{
           st.brokerTiming={...observed,symbol:st.symbol};
         }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
       }
-      // Prefer authenticated WebSocket broker time to a fragile page-text
-      // clock. DOM is a read-only fallback, never a fake local timeSync.
-      const protocolClock=this.feeds.get(provider)?.brokerClock?.();
-      const timing=st.brokerTiming||payload.brokerTiming||null;
-      payload.brokerTiming=protocolClock?.verified?
-        {...(timing||{}),capturedAt:protocolClock.capturedAt,
-          brokerClockVerified:true,brokerClock:protocolClock,
-          source:'broker-protocol-timesync'}:timing;
+      // Timing is observed regardless of the user's clock presentation.
+      // A single read-only snapshot is shared by the forecast and overlay.
+      payload.brokerTiming=this.liveStatus(provider).brokerTiming;
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
