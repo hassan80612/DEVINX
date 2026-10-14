@@ -106,9 +106,8 @@ function structureMove(p,seconds){
  const exhaustion=aligned&&avg(last)<avg(previous)*.60?.63:1;
  // Long horizons cannot extrapolate a short momentum pulse indefinitely.
  const drift=rate*exhaustion*40*(1-Math.exp(-h/40));
- const trendSign=Math.sign(rate);
  const lastClosed=p.points.at(-1),mean=p.points.reduce((a,b)=>a+b,0)/p.points.length;
- const reverting=(p.regime==='range'?.30:.08)*(mean-last)*
+ const reverting=(p.regime==='range'?.30:.08)*(mean-lastClosed)*
   (1-Math.exp(-h/40));
  const cap=Math.max(1e-10,p.sigma*Math.sqrt(Math.max(1,h))*2.4);
  return clamp(drift+reverting,-cap,cap);
