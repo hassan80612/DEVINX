@@ -272,8 +272,12 @@ function overlayAnalysis(view,asset,now=Date.now()){
   const sameAsset=!!key&&!!resultAsset&&key===resultAsset;
   const current=sameAsset?(view.lastResult?.analysis||null):null;
   const complete=current&&current.metrics&&current.finalConfluence&&Number.isFinite(Number(current.confidence));
-  if(complete){overlayCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false}}
-  if(!switched){const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200)return{analysis:cached.analysis,transient:true}}
+  // A completed opportunity window may remain as historical context, but
+  // MUST NOT be served as a LIVE CALL/PUT when the next window starts.
+  const withinWindow=analysis=>!analysis?.vnext?.opportunityWindow?.windowEndsAt||
+    now<Number(analysis.vnext.opportunityWindow.windowEndsAt);
+  if(complete&&withinWindow(current)){overlayCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false}}
+  if(!switched){const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200&&withinWindow(cached.analysis))return{analysis:cached.analysis,transient:true}}
   return{analysis:current||{},transient:false}
 }
 // Only local timings; never poll, touch the broker account or write DB rows.
