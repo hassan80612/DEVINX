@@ -15,6 +15,8 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   const auxIdentity=JSON.stringify([forecastModel,settings.engine,settings.asset,horizon,settings.forecastMode||'continuous']);
   const refreshAux=previous?.auxIdentity!==auxIdentity||!Number(previous?.lastAuxRefreshAt)||
     now-Number(previous.lastAuxRefreshAt)>=4000;
+  const crossedWindowDeadline=Number(previous?.windowDeadlineAt)>0&&
+    now>=Number(previous.windowDeadlineAt);
   const context=JSON.stringify([
     forecastModel,settings.forecastMode||'continuous',settings.engine,settings.asset,horizon,quoteAt,Number(last?.ts)||0,
     adaptiveHistory?.length||0,Number(adaptiveHistory?.[0]?.ts)||0,
@@ -26,7 +28,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   const horizons=[...new Set([...FORWARD_HORIZONS,horizon])].sort((a,b)=>a-b);
   // No arbitrary delay: re-evaluate as soon as the source quote or selected
   // context changes, not every redundant 400ms worker tick.
-  if(previous?.context===context&&Array.isArray(previous.rows)){
+  if(!crossedWindowDeadline&&previous?.context===context&&Array.isArray(previous.rows)){
     const rows=previous.rows.map(row=>row.horizonSeconds===horizon?
       rowFor(primary,horizon):row).filter(Boolean);
     const scheduled=previous.entryRows?.find(r=>Number(r?.delaySeconds)===horizon);
@@ -35,16 +37,16 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
     // only a currently fresh broker quote and the existing selected model.
     // No fictitious ticks, timer-based trade permission or broker reads.
     const expired=!locked&&Number(scheduled?.entryAt)>0&&Number(scheduled.entryAt)<=now;
-    if(locked)return {context,auxIdentity,lastAuxRefreshAt:previous?.lastAuxRefreshAt,rows,entryRows:[locked,...(selective?
+    if(locked)return {context,auxIdentity,windowDeadlineAt:locked.windowEndsAt,lastAuxRefreshAt:previous?.lastAuxRefreshAt,rows,entryRows:[locked,...(selective?
       (previous.entryRows||[]).filter(r=>Number(r.delaySeconds)!==horizon):[])],
       computedAt:previous.computedAt,reused:true};
     if(!expired||!(quoteAt>0&&now>=quoteAt&&now-quoteAt<=2500)){
-      return {context,auxIdentity,lastAuxRefreshAt:previous?.lastAuxRefreshAt,rows,entryRows:previous.entryRows||[],computedAt:previous.computedAt,reused:true};
+      return {context,auxIdentity,windowDeadlineAt:activeWindow?.windowEndsAt||previous?.windowDeadlineAt||null,lastAuxRefreshAt:previous?.lastAuxRefreshAt,rows,entryRows:previous.entryRows||[],computedAt:previous.computedAt,reused:true};
     }
     const entryRows=futureEntrySchedule({
       settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
     });
-    return {context,rows,entryRows,computedAt:now,reused:false,auxIdentity,
+    return {context,rows,entryRows,computedAt:now,reused:false,auxIdentity,windowDeadlineAt:activeWindow?.windowEndsAt||null,
       lastAuxRefreshAt:refreshAux?now:previous?.lastAuxRefreshAt};
   }
   const rows=[];
@@ -71,7 +73,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   const entryRows=locked&&!selective?[locked]:futureEntrySchedule({
     settings,snap,now,delays:horizons,knownForecasts:rows,forecastModel,adaptiveHistory,activeWindow
   });
-  return {context,auxIdentity,lastAuxRefreshAt:refreshAux?now:previous?.lastAuxRefreshAt,
+  return {context,auxIdentity,windowDeadlineAt:activeWindow?.windowEndsAt||null,lastAuxRefreshAt:refreshAux?now:previous?.lastAuxRefreshAt,
     rows,entryRows,computedAt:now,reused:false};
 }
 function rowFor(model,h){
