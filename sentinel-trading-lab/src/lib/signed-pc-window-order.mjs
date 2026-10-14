@@ -145,6 +145,24 @@ export function acceptSignedPcFrame(previous,incoming){
  }
  return nextEval>=prevEval;
 }
+// A rejected signed window may still carry a genuinely newer broker quote.
+// Keep the Agent-confirmed direction/entry untouched, but do not freeze the
+// phone price while a cloud evaluation temporarily leads the signed socket.
+export function keepNewerVerifiedQuote(previous,incoming,{now=Date.now()}={}){
+ if(!previous||!incoming||!sameContext(previous,incoming))return previous;
+ const a=previous.liveBroker||{},b=incoming.liveBroker||{};
+ const oldAt=Number(a.lastQuoteAt||0),newAt=Number(b.lastQuoteAt||0);
+ const sentAt=Number(incoming.at||0);
+ if(b.assetValidated!==true||b.analysisFeedValidated!==true||
+   String(a.symbol||'').toUpperCase()!==String(b.symbol||'').toUpperCase()||
+   !Number.isFinite(newAt)||newAt<=oldAt||!Number.isFinite(sentAt)||
+   newAt>sentAt+2500||sentAt-newAt>30000||
+   !Number.isFinite(Number(b.quote))||Number(b.quote)<=0)return previous;
+ return {...previous,liveBroker:{...a,...b},feed:incoming.feed||previous.feed,
+   liveQuoteAgeAtFrame:Math.max(0,sentAt-newAt),
+   liveStreamAt:now,liveTransport:'push'};
+}
+
 export function keepSignedViewOverCloud(previous,cloud,{now=Date.now()}={}){
  if(!previous||!cloud)return false;
  const sameStream=!!previous.liveTopic&&previous.liveTopic===cloud.liveTopic;
