@@ -216,6 +216,8 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   throw new Error('invalid_overlay_action')
 });
 const ACCESS_LEASE_GRACE_MS=65000;
+let suspendedByAccessLease=false;
+let lastAccessResumeAttemptAt=0;
 function accessLeaseValid(){return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&remoteRelay.info.lastContactAt!=null&&(Date.now()-Number(remoteRelay.info.lastContactAt))<=ACCESS_LEASE_GRACE_MS}
 function assertLicensedAccess(){
   if(!remoteRelay.info.paired)throw new Error('agent_not_paired');
@@ -224,11 +226,27 @@ function assertLicensedAccess(){
   return true
 }
 async function enforceAccessLease(){
-  if(accessLeaseValid())return true;
-  if(runtime.stateName==='running')await runtime.stop('system','agent_access_unverified');
-  // Paid access also requires a recently refreshed browser session. Closing
-  // the last tab pauses analysis on lease expiry; explicit logout revokes
-  // that session immediately on the server. Never rely on UI-only blocking.
+  if(accessLeaseValid()){
+    if(suspendedByAccessLease&&runtime.stateName==='paused'&&
+      Date.now()-lastAccessResumeAttemptAt>=3000){
+      lastAccessResumeAttemptAt=Date.now();
+      try{
+        // Recovery of the SAME user's previously running analysis, not a new
+        // opportunity or arbitrary extra waiting period. No broker is opened.
+        await runtime.start('session-restored');
+        runtime.requestImmediateEvaluation?.();
+        suspendedByAccessLease=false;
+      }catch{
+        // Keep analysis paused if live market is unavailable, without
+        // presenting stale signals as active.
+      }
+    }
+    return true;
+  }
+  if(runtime.stateName==='running'){
+    suspendedByAccessLease=true;
+    await runtime.pause('system-session-inactive');
+  }
   return false;
 }
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
@@ -452,7 +470,7 @@ function ensureAccess(path,{local=false}={}){
   if(!requiresAccess(path))return;
   assertLicensedAccess();
 }
-async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST')return runtime.pause(payload.actor||'user');if(path==='/control/stop'&&method==='POST')return runtime.stop(payload.actor||'user',payload.reason||'manual');if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
+async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST'){suspendedByAccessLease=false;return runtime.pause(payload.actor||'user')}if(path==='/control/stop'&&method==='POST'){suspendedByAccessLease=false;return runtime.stop(payload.actor||'user',payload.reason||'manual')}if(path==='/control/kill'&&method==='POST')return runtime.kill(payload.actor||'user');if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
     if(payload?.brokerSwitch===true){
       const provider=String(payload.provider||activeProvider||'');
       if(!['iq_option','exnova'].includes(provider)||!brokers[provider]?.connected)
@@ -576,7 +594,8 @@ async function remoteLoop(){
       remoteRelay.info.accessActive=false;
       remoteRelay.info.accessReason='license_check_unavailable';
       if(runtime.stateName==='running'){
-        await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
+        suspendedByAccessLease=true;
+        await runtime.pause('system-license-unavailable').catch(()=>{});
       }
     }
   }finally{remoteBusy=false}
