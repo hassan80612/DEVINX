@@ -283,12 +283,15 @@ function overlayAnalysis(view,asset,now=Date.now()){
   const sameAsset=!!key&&!!resultAsset&&key===resultAsset;
   const current=sameAsset?(view.lastResult?.analysis||null):null;
   const cycle=current?.vnext?.opportunityWindow;
+  const cycleStartsAt=Number(cycle?.windowStartedAt||0);
   const cycleEndsAt=Number(cycle?.windowEndsAt||0);
+  const currentQuoteAt=Number(view.liveBroker?.lastQuoteAt||view.feed?.quoteTs||0);
   // A finished window is never the "current" card for its successor.
   // Clear the old direction while waiting for a real next-cycle quote.
   if(view.settings?.engine){
     overlayCache.delete(key);
-    if(!current||switched||(cycleEndsAt>0&&now>=cycleEndsAt))
+    if(!current||switched||(cycleEndsAt>0&&now>=cycleEndsAt)||
+       (cycleStartsAt>0&&currentQuoteAt<cycleStartsAt))
       return {analysis:{asset:key,side:'WAIT',reasons:['Aguardando nova janela e cotação']},transient:false};
     return{analysis:current,transient:false};
   }
