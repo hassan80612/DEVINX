@@ -981,8 +981,8 @@ export class DemoTradingRuntime{
       const structure=threeClosedCandleEvidence({
         quoteHistory:adaptiveHistory||snap.quoteHistory,now,
         holdingSeconds:Number(settings.orderDurationMs)/1000});
-      const eligible=Boolean(currentEntry?.side==='CALL'||currentEntry?.side==='PUT');
-      const qualifiedEntry=eligible?{...currentEntry,guardBaseline:{
+      const hasDirectionalCandidate=Boolean(currentEntry?.side==='CALL'||currentEntry?.side==='PUT');
+      const qualifiedEntry=hasDirectionalCandidate?{...currentEntry,guardBaseline:{
         lastClose:structure.lastClose||Number(snap.price)||null,
         lastHigh:structure.lastHigh||null,lastLow:structure.lastLow||null,
         periodSeconds:structure.periodSeconds||null
