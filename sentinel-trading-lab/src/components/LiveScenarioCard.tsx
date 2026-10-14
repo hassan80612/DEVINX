@@ -239,13 +239,10 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
     Number(futureEntry.delaySeconds)===Number(expirySeconds));
   const entryDataFresh=m.fresh;
-  const entryTriggeredAt=Number(futureEntry?.entryTriggeredAt||0);
-  // Same PC timestamp/quote freshness rules as the mobile clock. A
-  // short-lived entryReadyNow latch cannot make the phone skip CALL/PUT AGORA.
-  const entryMoment=entryPlanValid&&opportunityPhase==='fired'&&m.online&&m.running&&
-    Number(m.quoteAt)>0&&now>=Number(m.quoteAt)&&now-Number(m.quoteAt)<3500&&
-    entryTriggeredAt>0&&now>=entryTriggeredAt&&now<=entryTriggeredAt+1500;
-  const entryPlanDisplayable=entryPlanValid&&(plannedAt>now||entryMoment);
+  // Match the PC overlay: a projected entry time is not the end of the
+  // opportunity. Keep its prices until the PC's actual window deadline.
+  const entryPlanDisplayable=entryPlanValid&&Number(m.vnextOpportunityWindow?.windowStartedAt)>0&&
+    Number(m.vnextOpportunityWindow?.windowEndsAt)>now;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>{t('ENTRADA FUTURA')} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{t(entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR')}</small></div>
     <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} clockMode={clockChoice} brokerTiming={s?.liveBroker?.brokerTiming??null}/>

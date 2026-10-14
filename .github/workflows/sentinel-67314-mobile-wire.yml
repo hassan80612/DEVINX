@@ -1,0 +1,25 @@
+name: Sentinel WEB 67.31.4 Mobile Wire Compatibility
+on:
+  push:
+    branches: [fix/sentinel-67314-mobile-wire-20261014]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Test actual producer, signed socket consumer and rendered card
+        run: |
+          node --test tests/sentinel-mobile-wire-auth.test.mjs tests/sentinel-67314-mobile-render.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-mobile-event-pc-fidelity-6723.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-mobile-pc-channel-parity-6721.test.mjs
+          node --test --test-name-pattern='mobile locale is local' tests/sentinel-67312-mobile-language-isolation.test.mjs
+      - name: Web build
+        working-directory: sentinel-trading-lab
+        run: NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
