@@ -53,8 +53,13 @@ export function watchSignedLiveAnalyst(topic:string,signingKey:string,onMessage:
     }
   };
   const verifyFrame=async(frame:SignedAnalystFrame)=>{
+    // The signed clock echo is what bootstraps a phone whose local clock differs
+    // from the Agent. Until it arrives, accept only authenticated frames within
+    // the supported 120s skew; quote/evaluation freshness STILL prevents entries.
+    // After calibration, tolerate short Realtime stalls without blanking the UI.
+    const maxClockDifference=calibratedClock?15000:120000;
     if(!frame||frame.v!==1||!Number.isSafeInteger(frame.seq)||frame.seq<=sequence||
-       !Number.isFinite(frame.at)||Math.abs(pcClockNow(Date.now(),calibratedClock?.offsetMs)-frame.at)>8000||
+       !Number.isFinite(frame.at)||Math.abs(pcClockNow(Date.now(),calibratedClock?.offsetMs)-frame.at)>maxClockDifference||
        !frame.liveBroker?.symbol||!frame.lastResult?.asset||!/^[a-f0-9]{64}$/.test(String(frame.sig||'')))return;
     const k=await keyPromise;if(!k||closed||!joined)return;
     const unsigned:any={...frame};delete unsigned.sig;
