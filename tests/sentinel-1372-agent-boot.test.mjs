@@ -53,7 +53,9 @@ test('actual agent worker boots under its manager, validates release/build/pid t
    }catch{}
    await sleep(300);
   }
-  assert.equal(ok,true,'Manager did not launch a healthy version-matched child: '+JSON.stringify(latest)+' '+output);
+  let workerLog='';
+  try{workerLog=readFileSync(resolve(agent,'worker/data/worker.log'),'utf8').slice(-4500)}catch{}
+  assert.equal(ok,true,'Manager did not launch a healthy version-matched child: '+JSON.stringify(latest)+' '+output+' WORKER LOG: '+workerLog);
   const worker=await fetch('http://127.0.0.1:'+workerPort+'/health',{signal:AbortSignal.timeout(1000)}).then(r=>r.json());
   assert.equal(worker.pid,latest.workerPid);
   assert.equal(worker.version,expected.version);
