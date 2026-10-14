@@ -312,7 +312,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const mobileFeedDelay=m.quoteAgeAtFrame!==null&&m.transportAge!==null?
     'PC '+m.quoteAgeAtFrame+'s · CANAL '+m.transportAge+'s':null;
   if(compact)return <section className={`liveScenario liveScenarioCompact ${m.tone}`} aria-label="Sentinel compacto flutuante" data-testid="live-scenario-compact">
-    <header className="compactHeader"><div><small>{t("SENTINEL · ANALISTA PC")}</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">{t("← Início")}</button></header>
+    <header className="compactHeader"><div><small>{t("SENTINEL · ANALISTA PROFISSIONAL")}</small><b className="compactAsset">{m.asset}</b></div><button type="button" className="compactToggle" onClick={onToggleCompact} aria-label="Voltar ao Início do Sentinel">{t("← Início")}</button></header>
     {engineSettings}
     {!vnext&&<>
     <div className={`liveDecision ${mobileDirection==='CALL'?'call':mobileDirection==='PUT'?'put':'neutral'} ${mobileWatchTone} ${m.displayScenarioStale?'stale-preview':''} ${m.entrySide?'actionable':''}`} data-testid="live-decision" role="status" aria-live="polite">
@@ -363,7 +363,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <footer>{t("Cotação recebida do PC.")}</footer>
   </section>;
   return <section className={`liveScenario ${m.tone}`} aria-label={t('Cenário ao vivo')} data-testid="live-scenario">
-    <header><div><small>{m.asset} · {t('LEITURA DO PC')}</small><h2>{t(m.scenarioLabel)}</h2><b>{t(m.state)}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>{t("Modo flutuante ↘")}</button></div></header>
+    <header><div><small>{m.asset} · {t('ANALISTA PROFISSIONAL · LEITURA DO PC')}</small><h2>{t(m.scenarioLabel)}</h2><b>{t(m.state)}</b></div><div className="liveHeaderRight"><button type="button" className="compactToggle" onClick={onToggleCompact}>{t("Modo flutuante ↘")}</button></div></header>
     {engineSettings}
     {!vnext&&<div className={`liveDecision ${directionClass} ${m.entrySide?'actionable':''}`} role="status" aria-live="polite" data-testid="live-decision"><small>{decisionLabel}</small><strong><span aria-hidden="true">{decisionArrow}</span> {decisionText}</strong><span>{m.entrySide?t('JANELA DE ENTRADA ')+m.entryRemaining+t('s · confirme a expiração na corretora'):t(m.scenarioInactive?'Cenário anterior encerrado; nenhuma entrada válida':liveDirection?'Direção do cenário · ainda não é entrada':'Aguardando dados e estrutura válida')}</span>{scenarioClock}</div>}
     {forecastReceipt}
