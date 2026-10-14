@@ -162,7 +162,7 @@ function continuousWindow({input,settings,chosen}){
  // A new quote may update the candidate, but cannot move its original end.
  // Require one normal source-quote interval to confirm before that deadline.
  // Seletiva retains its independent estimator and countdown unchanged.
- const window= input.activeWindow?.phase==='scanning'&&
+ const window= ['scanning','open'].includes(input.activeWindow?.phase)&&
    input.activeWindow?.context?input.activeWindow:null;
  const recentTicks=history.slice(-20).map(x=>Number(x.ts)).filter(Number.isFinite);
  const gaps=recentTicks.slice(1).map((x,i)=>x-recentTicks[i]).filter(n=>n>0&&n<=4000).sort((a,b)=>a-b);
