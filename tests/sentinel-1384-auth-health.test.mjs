@@ -38,3 +38,15 @@ test('presence only logs out for an invalid session; temporary server errors rem
  const ok=load('src/app/api/auth/presence/route.ts',reply(200,{ok:true}));
  assert.equal((await ok.POST(request('/api/auth/presence'))).status,200);
 });
+test('account refresh preserves a valid login through server failures and malformed responses',async()=>{
+ for(const response of [reply(503,{error:'overloaded'}),reply(429,{error:'rate_limited'}),new Response('bad gateway',{status:502}),reply(200,{})]){
+  const {GET}=load('src/app/api/auth/me/route.ts',response);
+  const result=await GET(request('/api/auth/me'));
+  assert.equal(result.status,503);
+  assert.equal(result.headers.get('location'),null);
+ }
+ const denied=load('src/app/api/auth/me/route.ts',reply(200,{ok:false,error:'unauthorized'}));
+ assert.equal((await denied.GET(request('/api/auth/me'))).status,401);
+ const ok=load('src/app/api/auth/me/route.ts',reply(200,{ok:true,account:{role:'master',accessActive:true}}));
+ assert.equal((await ok.GET(request('/api/auth/me'))).status,200);
+});

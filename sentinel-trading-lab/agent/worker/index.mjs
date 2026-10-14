@@ -215,7 +215,9 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
   }
   throw new Error('invalid_overlay_action')
 });
-const ACCESS_LEASE_GRACE_MS=65000;
+// Keep a previously verified lease through a brief transport outage.
+// A confirmed denial still pauses immediately; this never renews browser presence.
+const ACCESS_LEASE_GRACE_MS=180000;
 function accessLeaseValid(){return remoteRelay.info.paired===true&&remoteRelay.info.accessActive===true&&remoteRelay.info.lastContactAt!=null&&(Date.now()-Number(remoteRelay.info.lastContactAt))<=ACCESS_LEASE_GRACE_MS}
 function assertLicensedAccess(){
   if(!remoteRelay.info.paired)throw new Error('agent_not_paired');

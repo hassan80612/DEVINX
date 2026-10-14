@@ -24,10 +24,12 @@ export function ActiveBrowserSession(){
   const interval=window.setInterval(()=>{void ping()},12000);
   const foreground=()=>{void ping()};
   window.addEventListener('focus',foreground);
+  window.addEventListener('online',foreground);
+  window.addEventListener('pageshow',foreground);
   document.addEventListener('visibilitychange',foreground);
   // No logout or network action on unload: another open browser tab with
   // the same authenticated session must continue to work.
-  return()=>{mounted=false;clearInterval(interval);window.removeEventListener('focus',foreground);document.removeEventListener('visibilitychange',foreground)};
+  return()=>{mounted=false;clearInterval(interval);window.removeEventListener('focus',foreground);window.removeEventListener('online',foreground);window.removeEventListener('pageshow',foreground);document.removeEventListener('visibilitychange',foreground)};
  },[]);
  return null;
 }

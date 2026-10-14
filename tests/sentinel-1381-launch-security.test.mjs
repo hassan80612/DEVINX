@@ -26,7 +26,7 @@ test('Browser pays its own lease; logout revokes cookie and live session',()=>{
  assert.match(route,/sentinel_web_presence/);
  assert.match(route,/SESSION_COOKIE/);
  assert.match(logout,/sentinel_auth_logout/);
- assert.match(src('agent/worker/index.mjs'),/ACCESS_LEASE_GRACE_MS=65000/);
+ assert.match(src('agent/worker/index.mjs'),/ACCESS_LEASE_GRACE_MS=180000/);
 });
 test('Paid and logged-in local PC is paired without asking for manual SNTL code',()=>{
  const ui=src('src/app/console/page.tsx');
