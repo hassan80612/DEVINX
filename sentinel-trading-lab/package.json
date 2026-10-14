@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "prebuild": "node --test ../tests/sentinel-67315-mobile-integrity.test.mjs ../tests/sentinel-mobile-wire-auth.test.mjs ../tests/sentinel-67314-mobile-render.test.mjs ../tests/sentinel-pc-mobile-signed-clock-6724.test.mjs"
   },
   "dependencies": {
     "next": "15.5.27",
