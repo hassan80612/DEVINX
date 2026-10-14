@@ -54,7 +54,7 @@ export default function Home(){
    ['03','Abra o Sentinel','Instale o Agent Windows e escolha a corretora para acompanhar.']],
   plan:'PLANO ÚNICO · 30 DIAS',price:'R$ 280',afterPrice:'30 dias de acesso · renovação manual',
   purchase:'Comprar acesso de 30 dias',secure:'Pagamento seguro pela Kiwify · acesso liberado para o e-mail cadastrado',
-  caveat:'Importante: o Sentinel é um software de análise técnica, não uma recomendação personalizada de investimento. Não executa operações, não promete lucros nem garante percentual de acerto. Operações envolvem risco elevado de perdas.',
+  caveat:'Importante: o Sentinel é um software de análise técnica, não uma recomendação personalizada de investimento. Não executa operações. Não garante assertividade nem ganhos. Nenhum percentual de acerto é prometido. Operações envolvem risco elevado de perdas.',
   copyright:'Plataforma independente de análise de mercado',terms:'Termos',privacy:'Privacidade'
  };
  const href=en?'/comprar?market=INTL':'/comprar?market=BR';
