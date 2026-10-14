@@ -12,11 +12,25 @@ function load(path,response){
  const exports={};
  vm.runInNewContext(js,{exports,URL,AbortSignal,fetch:async()=>response.clone(),atob,
   require:name=>name==='next/server'?{NextResponse}:name.includes('_shared')?
-   {rpc:async()=>response.clone()}:{SUPABASE_URL:'https://test.invalid',SUPABASE_PUBLISHABLE_KEY:'test',SESSION_COOKIE:'session'}});
+   {rpc:async()=>{if(response instanceof Error)throw response;return response.clone()},clearSession:res=>res.cookies.set('session','',{maxAge:0})}:{SUPABASE_URL:'https://test.invalid',SUPABASE_PUBLISHABLE_KEY:'test',SESSION_COOKIE:'session'}});
  return exports;
 }
 const reply=(status,data)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
 const request=path=>new NextRequest('https://sentinel.test'+path,{headers:{cookie:'session=test-session'}});
+test('logout only clears the browser cookie after server-side revocation succeeds',async()=>{
+ for(const response of [reply(503,{error:'unavailable'}),reply(200,{ok:false}),new Response('bad gateway',{status:502}),new Error('offline')]){
+  const {POST}=load('src/app/api/auth/logout/route.ts',response);
+  const result=await POST(request('/api/auth/logout'));
+  assert.equal(result.status,503);
+  assert.equal(result.headers.get('set-cookie'),null);
+ }
+ const {POST}=load('src/app/api/auth/logout/route.ts',reply(200,{ok:true}));
+ const result=await POST(request('/api/auth/logout'));
+ assert.equal(result.status,200);
+ assert.match(result.headers.get('set-cookie'),/Max-Age=0/i);
+ const anonymous=await POST(new NextRequest('https://sentinel.test/api/auth/logout'));
+ assert.equal(anonymous.status,200);
+});
 test('temporary upstream failures cannot send a valid browser to login or serve a login page as EXE',async()=>{
  for(const response of [reply(503,{error:'overloaded'}),reply(429,{error:'rate_limited'}),new Response('gateway broken',{status:502})]){
   const {middleware}=load('src/middleware.ts',response);
