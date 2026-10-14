@@ -25,7 +25,7 @@ function state(){return {
   engineId:'automatic',expirySeconds:30,
   opportunityWindow:{phase:'open',windowStartedAt:start,windowEndsAt:start+30000,entryAt:start+10000},
   futureEntryAnchor:{side:'CALL',delaySeconds:30,holdingSeconds:30,
-   issuedAt:start,entryAt:start+10000,exitAt:start+40000,
+   issuedAt:start,windowStartedAt:start,entryAt:start+10000,exitAt:start+40000,
    projectedEntryPrice:1.23456,projectedExitPrice:1.23478}
  }}}
 };}
