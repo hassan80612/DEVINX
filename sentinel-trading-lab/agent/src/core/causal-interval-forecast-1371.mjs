@@ -25,9 +25,9 @@ const after=(r,t)=>{
 };
 function profile(r,t){
  const at=before(r,t);
- const p15=before(r,t-15000),p30=before(r,t-30000);
+ const p5=before(r,t-5000),p10=before(r,t-10000),p15=before(r,t-15000),p20=before(r,t-20000),p30=before(r,t-30000);
  const p60=before(r,t-60000),p90=before(r,t-90000);
- if(!at||!p15||!p30||!p60||!p90||
+ if(!at||!p5||!p10||!p15||!p20||!p30||!p60||!p90||
     t-at.ts>3000||t-90000-p90.ts>3000)return null;
  const recent=r.filter(x=>x.ts>=t-90000&&x.ts<=t);
  if(recent.length<24)return null;
@@ -43,9 +43,10 @@ function profile(r,t){
  const net=at.lp-p90.lp;
  const low=Math.min(...recent.map(x=>x.lp)),high=Math.max(...recent.map(x=>x.lp));
  const scale=Math.max(1e-10,sigma);
- const rate15=(at.lp-p15.lp)/15,rate30=(at.lp-p30.lp)/30;
+ const rate5=(at.lp-p5.lp)/5,rate10=(at.lp-p10.lp)/10;
+ const rate15=(at.lp-p15.lp)/15,rate20=(at.lp-p20.lp)/20,rate30=(at.lp-p30.lp)/30;
  const rate60=(at.lp-p60.lp)/60,rate90=net/90;
- return {at,sigma,rate15,rate30,rate60,rate90,
+ return {at,sigma,rate5,rate10,rate15,rate20,rate30,rate60,rate90,
   efficiency:clamp(Math.abs(net)/Math.max(path,1e-12),0,1),
   position:high-low>1e-12?(at.lp-low)/(high-low):.5,
   mean:recent.reduce((s,q)=>s+q.lp,0)/recent.length,
@@ -54,26 +55,51 @@ function profile(r,t){
    clamp(rate60/scale,-3,3),clamp(rate90/scale,-3,3),
    clamp((rate15-rate60)/scale,-3,3),
    clamp(Math.abs(net)/Math.max(path,1e-12),0,1),
-   high-low>1e-12?(at.lp-low)/(high-low):.5]
+   high-low>1e-12?(at.lp-low)/(high-low):.5,
+   clamp(rate10/scale,-3,3)]
  };
 }
+// Identify a regime from OBSERVED swings rather than the colour of the
+// current candle. Short-term noise alone cannot overturn a real trend.
+export function forwardRegime(p){
+ const long=(p.rate60*.6+p.rate90*.4),short=(p.rate10*.50+p.rate15*.35+p.rate20*.15);
+ const normal=Math.max(1e-10,p.sigma);
+ const oldSide=Math.sign(long),newSide=Math.sign(short);
+ const relativeStrength=Math.abs(short)/Math.max(normal*.45,Math.abs(long));
+ const opposed=oldSide!==0&&newSide!==0&&oldSide!==newSide;
+ const shortPersistent=oldSide!==0&&
+  Math.sign(p.rate5)===newSide&&Math.sign(p.rate10)===newSide&&
+  Math.sign(p.rate15)===newSide;
+ const moved=Math.abs(p.rate10*10)/Math.max(normal*Math.sqrt(10),1e-12);
+ const meaningful=shortPersistent&&relativeStrength>.55&&moved>.48;
+ const turn=opposed&&meaningful;
+ const slowTrend=p.efficiency>.35&&Math.abs(long)>normal*.10;
+ const regime=turn?'reversal':!slowTrend||p.efficiency<.25?'range':'trend';
+ return {regime,oldSide,newSide,turn,relativeStrength,shortPersistent,
+  moveSigma:moved,short,long};
+}
 function structureMove(p,seconds){
- // A multi-scale path, not the sign of the current tick. Recent acceleration
- // allows earlier reversal, while 90s structure avoids candle chasing.
  const horizon=Math.max(0,Number(seconds));
- const trend=(p.rate90*.37+p.rate60*.40+p.rate30*.18+p.rate15*.05);
- const accel=clamp((p.rate15-p.rate60)*12,-p.sigma*3,p.sigma*3);
- const persistence=clamp(.18+.7*p.efficiency,.18,.88);
- const trendMove=trend*45*(1-Math.exp(-horizon/45))*persistence;
- const accelMove=accel*(1-Math.exp(-horizon/22))*.40;
- const extreme=p.position-.5;
- const reversion=-(p.at.lp-p.mean)*(.15+.40*(1-p.efficiency))*
-  (1-Math.exp(-horizon/40));
- // Structural exhaustion: decreasing momentum near previous extreme.
- const exhausting=p.rate15*p.rate60<0||Math.abs(p.rate15)<Math.abs(p.rate60)*.3;
- const turning=exhausting?-(p.position-.5)*p.sigma*Math.sqrt(horizon)*.4:0;
+ const s=forwardRegime(p);
+ // Dynamic regime probabilities are not win-rate assertions.
+ // Reversal: the confirmed 5/10/15s leg outweighs the spent 90s trend.
+ // Trend: preserve the multi-candle structure; range: shrink continuation.
+ const trend=s.regime==='reversal'?
+   p.rate90*.07+p.rate60*.10+p.rate30*.13+p.rate20*.20+p.rate15*.20+p.rate10*.30:
+   s.regime==='range'?
+   p.rate90*.16+p.rate60*.19+p.rate30*.23+p.rate20*.18+p.rate15*.15+p.rate10*.09:
+   p.rate90*.31+p.rate60*.34+p.rate30*.20+p.rate20*.10+p.rate15*.04+p.rate10*.01;
+ const persistence=s.regime==='reversal'?.80:s.regime==='range'?.22:
+   clamp(.30+.58*p.efficiency,.25,.84);
+ const accel=clamp((p.rate10-p.rate30)*8,-p.sigma*1.5,p.sigma*1.5);
+ const accelWeight=s.regime==='reversal'?.60:s.regime==='range'?.22:.16;
+ const drift=trend*45*(1-Math.exp(-horizon/45))*persistence;
+ const acceleration=accel*(1-Math.exp(-horizon/18))*accelWeight;
+ const reversion=-(p.at.lp-p.mean)*
+   (s.regime==='range'?.44:s.regime==='reversal'?.12:.10)*
+   (1-Math.exp(-horizon/40));
  const limit=Math.max(1e-9,p.sigma*Math.sqrt(Math.max(1,horizon))*2.5);
- return clamp(trendMove+accelMove+reversion+turning,-limit,limit);
+ return clamp(drift+acceleration+reversion,-limit,limit);
 }
 function matches(r,now,current,maxSeconds){
  const cutoff=now-maxSeconds*1000-3500;
@@ -88,13 +114,18 @@ function matches(r,now,current,maxSeconds){
   if(!outcome||outcome.ts>now||
     outcome.ts-(t+maxSeconds*1000)>3000)continue;
   const d=current.features.reduce((sum,v,i)=>{
-   const weight=[1.2,1.7,1.6,1.3,1.1,.7,.8][i];
+   const weight=[1.1,1.5,1.3,1,.95,.6,.7,1.5][i];
    return sum+weight*(v-old.features[i])**2;
   },0);
-  cases.push({t,dist:Math.sqrt(d/8.4),sigma:old.sigma,origin:old.at.lp});
+  const regime=forwardRegime(old).regime;
+  cases.push({t,dist:Math.sqrt(d/9.65),sigma:old.sigma,origin:old.at.lp,regime});
  }
  if(cases.length<6)return null;
- const neighbors=cases.sort((a,b)=>a.dist-b.dist).slice(0,Math.min(10,Math.max(6,Math.floor(cases.length*.4))));
+ const currentRegime=forwardRegime(current).regime;
+ // Analogues from opposite market regimes are not comparable reversals.
+ const same=cases.filter(x=>x.regime===currentRegime);
+ const eligible=same.length>=6?same:cases;
+ const neighbors=eligible.sort((a,b)=>a.dist-b.dist).slice(0,Math.min(10,Math.max(6,Math.floor(eligible.length*.4))));
  return {cases,neighbors};
 }
 export function causalForwardPath({
@@ -108,6 +139,7 @@ export function causalForwardPath({
   return invalid('stale-or-invalid-horizon');
  const current=profile(rows,latest.ts);
  if(!current)return invalid('insufficient-causal-structure');
+ const regime=forwardRegime(current);
  const analog=matches(rows,latest.ts,current,end);
  const modelPriceAt=seconds=>{
   const s=Number(seconds);
@@ -140,8 +172,9 @@ export function causalForwardPath({
  return {status:'causal-forward-path',priceAt:modelPriceAt,
   modelVersion:'causal-interval-1371',referencePrice:round(Math.exp(current.at.lp)),
   sigmaPerSqrtSecond:current.sigma,analogExamples:analog?.cases.length||0,
-  analogNeighbors:analog?.neighbors.length||0,regime:current.efficiency>.6?'trend':
-   current.efficiency<.28?'range':'transition',latestQuoteAt:latest.ts,
+  analogNeighbors:analog?.neighbors.length||0,regime:regime.regime,
+  reversalEvidence:regime.turn?{shortLegSigma:regime.moveSigma,relativeStrength:regime.relativeStrength}:null,
+  latestQuoteAt:latest.ts,
   quoteSpanSeconds:(latest.ts-rows[0].ts)/1000,
   predictedOnClosedHistory:true,causal:true};
 }
