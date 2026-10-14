@@ -1160,6 +1160,19 @@ export class LocalPlaywrightDriver{
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
+        // The clock selector is a LOCAL presentation preference, not a
+        // trading setting. Server frames may be delayed/out of order and
+        // must never reset a user's selected broker time back to current.
+        const clockKey='sentinel-broker-clock-display-mode-v1';
+        let storedClock=null;
+        try{storedClock=window.localStorage.getItem(clockKey)}catch{}
+        const heldClock=window.__sentinelClockDisplayMode;
+        const selectedClock=
+          heldClock==='broker'||heldClock==='current'?heldClock:
+          storedClock==='broker'||storedClock==='current'?storedClock:
+          d.clockMode==='broker'?'broker':'current';
+        window.__sentinelClockDisplayMode=selectedClock;
+        d.clockMode=selectedClock;
         window.__sentinelLastOverlayData=d;
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
@@ -1601,9 +1614,13 @@ export class LocalPlaywrightDriver{
             const clockSelect=ev.target?.closest?.('[data-sentinel-clock-mode]');
             if(clockSelect){
               const next=clockSelect.value==='broker'?'broker':'current';
-              // Presentation-only update. It never resets or re-evaluates the analyst.
+              // Clock choice belongs to the overlay, not the forecast or
+              // the Agent settings endpoint. Persist across broker-frame
+              // refreshes and browser reloads; no async server race.
+              window.__sentinelClockDisplayMode=next;
+              try{window.localStorage.setItem('sentinel-broker-clock-display-mode-v1',next)}catch{}
               window.__sentinelLastOverlayData.clockMode=next;
-              void sendAction({action:'setting',key:'clockMode',value:next});
+              clockSelect.value=next;
               el.dataset.selectLock='0';
               queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));
               return;
