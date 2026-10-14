@@ -1,6 +1,5 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
-import {causalForwardPath} from './causal-interval-forecast-1371.mjs';
-import {causalForwardPath as closedStructurePath} from './causal-closed-structure-1379.mjs';
+import {quoteScopedCausalPath} from './quote-scoped-causal-path.mjs';
 import {selectedEngineForecastRequest} from './scenario-engine-catalog.mjs';
 import {automaticForwardPrediction} from './automatic-forward-model.mjs';
 import {specialistForwardPrediction} from './specialist-forward-models.mjs';
@@ -30,7 +29,7 @@ export function singleEngineForecast({
  const selective=!autonomous&&request.engineId==='selective_forecast'?selectiveIntervalForecast({quoteHistory:adaptiveHistory||quotes,asOf:now,entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const selectedStrengths=!autonomous&&forecastModel==='selected-strengths-67.5';
  const causal=!autonomous&&request.engineId==='automatic'&&['causal-interval-1371','causal-closed-structure-1379'].includes(forecastModel)?
-   (forecastModel==='causal-closed-structure-1379'?closedStructurePath:causalForwardPath)({quoteHistory:adaptiveHistory||quotes,asOf:now,
+   quoteScopedCausalPath({forecastModel,quoteHistory:adaptiveHistory||quotes,asOf:now,
      holdingSeconds:seconds,maxSeconds:seconds}):null;
  const selectedSpecialist=selectedStrengths&&['breakout','fibonacci_retest'].includes(request.engineId);
  const specialistCandidate=!autonomous&&request.engineId!=='automatic'&&(forecastModel==='specialist-structure-v2'||selectedSpecialist)?
