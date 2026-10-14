@@ -1,13 +1,13 @@
 {
-  "version": "13.8.2",
-  "build": "13.8.2-launch-onepage-window-isolation",
+  "version": "13.8.3",
+  "build": "13.8.3-signal-latency-quote-scoped-causal",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.8.2-cycle-isolation-and-session-resume-tests;broker-validation-pending",
+    "modelValidation": "13.8.3-quote-scoped-causal-identity-tests;live-Windows-validation-pending",
     "forecastModel": "causal-closed-structure-1379"
   }
 }
