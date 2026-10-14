@@ -1153,10 +1153,32 @@ export class LocalPlaywrightDriver{
           st.brokerTiming={...observed,symbol:st.symbol};
         }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
       }
-      // Timing is observed regardless of the user's clock presentation.
-      // A single read-only snapshot is shared by the forecast and overlay.
+      // Timing is observed regardless of the presentation mode.
       payload.brokerTiming=this.liveStatus(provider).brokerTiming;
-      payload.brokerClockView=brokerClockView({timing:payload.brokerTiming});
+      // Pin a signal's already verified broker expiration independently of
+      // the NEXT opportunity window. Window rollover is not option expiry.
+      const windowState=payload.vnext?.opportunityWindow||null;
+      const selectedAsset=String(payload.validatedAsset||payload.asset||'').toUpperCase();
+      if(s.brokerClockSignalAsset!==selectedAsset){
+        s.brokerClockSignalAsset=selectedAsset;
+        s.lastVerifiedBrokerSignal=null;
+      }
+      if(windowState?.phase==='fired'&&
+        Number(windowState.brokerExpiresAt)>0&&
+        Number(windowState.exitAt)===Number(windowState.brokerExpiresAt)&&
+        Number(windowState.entryTriggeredAt)>0){
+        const last=s.lastVerifiedBrokerSignal;
+        if(!last||Number(windowState.entryTriggeredAt)>=Number(last.entryTriggeredAt)){
+          s.lastVerifiedBrokerSignal={phase:'fired',
+            brokerExpiresAt:Number(windowState.brokerExpiresAt),
+            exitAt:Number(windowState.exitAt),
+            entryTriggeredAt:Number(windowState.entryTriggeredAt)};
+        }
+      }
+      payload.brokerClockView=brokerClockView({
+        timing:payload.brokerTiming,
+        windowState:s.lastVerifiedBrokerSignal||windowState
+      });
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
@@ -2077,15 +2099,24 @@ export class LocalPlaywrightDriver{
                 const secs=(Number(view.timeSeconds)+Math.floor(age/1000)+86400)%86400;
                 const time=pad(Math.floor(secs/3600))+':'+
                   pad(Math.floor((secs%3600)/60))+':'+pad(secs%60);
-                if(view.kind==='purchase'&&Number(view.purchaseEndsAt)>nowClock){
+                if(view.kind==='expiry'||view.kind==='expired'){
+                  const deadline=Number(view.expiresAt);
+                  const left=Math.max(0,Math.ceil((deadline-nowClock)/1000));
+                  shown=pad(Math.floor(left/60))+':'+pad(left%60);
+                  if(cycleStatus)cycleStatus.textContent=left>0?
+                    'SINAL · ATÉ VENCIMENTO NA CORRETORA':'SINAL · VENCIMENTO ATINGIDO';
+                  if(brokerStatus)brokerStatus.textContent=
+                    left>0?'PRAZO DO SINAL · CORRETORA':'EXPIRADO · CORRETORA';
+                }else if(view.kind==='purchase'&&Number(view.purchaseEndsAt)>nowClock){
                   const left=Math.max(0,Math.ceil((Number(view.purchaseEndsAt)-nowClock)/1000));
                   shown=pad(Math.floor(left/60))+':'+pad(left%60);
                   if(cycleStatus)cycleStatus.textContent='ATÉ FECHAR COMPRA · CORRETORA';
+                  if(brokerStatus)brokerStatus.textContent=time+' · SINCRONIZADO';
                 }else{
                   shown=time;
                   if(cycleStatus)cycleStatus.textContent='HORA DA CORRETORA';
+                  if(brokerStatus)brokerStatus.textContent=time+' · SINCRONIZADO';
                 }
-                if(brokerStatus)brokerStatus.textContent=time+' · SINCRONIZADO';
               }
             }else if(brokerStatus){
               brokerStatus.textContent='PREVISÃO · RELÓGIO LOCAL';
