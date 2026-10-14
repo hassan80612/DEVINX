@@ -1,13 +1,13 @@
 {
-  "version": "13.7.9",
-  "build": "13.7.9-completed-structure-replay-candidate",
+  "version": "13.8.0",
+  "build": "13.8.0-continuous-tick-same-side-replan",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.7.9-synthetic-replay-real-broker-validation-pending",
+    "modelValidation": "13.8.0-window-replay-tests-real-broker-validation-pending",
     "forecastModel": "causal-closed-structure-1379"
   }
 }
