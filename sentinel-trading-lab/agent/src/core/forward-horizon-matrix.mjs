@@ -10,7 +10,7 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
   const selected=positive(settings.orderDurationMs)&&Number(settings.orderDurationMs)/1000;
   const horizon=selected||60;
   const quoteAt=positive(snap.quoteTs);
-  const locked=activeWindow?.phase&&now<Number(activeWindow.windowEndsAt)&&['open','fired','cancelled'].includes(activeWindow.phase)?activeWindow:null;
+  const locked=activeWindow?.phase&&now<Number(activeWindow.windowEndsAt)&&['fired','cancelled'].includes(activeWindow.phase)?activeWindow:null;
   const last=Array.isArray(snap.quoteHistory)?snap.quoteHistory.at(-1):null;
   const auxIdentity=JSON.stringify([forecastModel,settings.engine,settings.asset,horizon,settings.forecastMode||'continuous']);
   const refreshAux=previous?.auxIdentity!==auxIdentity||!Number(previous?.lastAuxRefreshAt)||
