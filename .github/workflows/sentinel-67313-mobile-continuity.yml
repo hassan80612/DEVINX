@@ -1,0 +1,38 @@
+name: Sentinel WEB 67.31.3 PC-to-Mobile Continuity
+on:
+  push:
+    branches: [fix/sentinel-67313-mobile-signed-frame-continuity-20261013]
+    paths:
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - 'sentinel-trading-lab/src/lib/signed-pc-window-order.mjs'
+      - 'tests/sentinel-67313-signed-mobile-continuity.test.mjs'
+      - '.github/workflows/sentinel-67313-mobile-continuity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-web-pc-mobile-67313
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Test actual signed frames, rollover and original engine
+        run: |
+          node --check sentinel-trading-lab/src/lib/signed-pc-window-order.mjs
+          node --test tests/sentinel-67313-signed-mobile-continuity.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-source-event-pc-mobile-6722.test.mjs tests/sentinel-lightweight-overlay-no-broker-freeze-6723.test.mjs tests/sentinel-67312-mobile-language-isolation.test.mjs
+      - name: Web build
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
+      - name: Typecheck
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
