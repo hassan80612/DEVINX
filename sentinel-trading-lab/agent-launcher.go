@@ -94,9 +94,11 @@ func main() {
         fail("A instalação do Sentinel Agent não foi concluída. Detalhes em " + logPath, err)
     }
 
-    // Open the product after a successful install.
+    // Exactly ONE navigation after success; the PowerShell installer and
+    // tray never launch another page automatically. Users choose their
+    // broker manually in Sentinel instead of auto-starting IQ Option.
     if os.Getenv("SENTINEL_INSTALL_TEST") != "1" && os.Getenv("CI") != "true" {
-        _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://sentinel-trading-lab.vercel.app").Start()
+        _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://sentinel-trading-lab.vercel.app/console?tab=Broker%20Connection").Start()
     }
 
     _ = os.Remove(installerPath)
