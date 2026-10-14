@@ -9,7 +9,7 @@ export default function Home(){
  const copy=english?{
   eyebrow:'PROFESSIONAL MARKET ANALYSIS SOFTWARE',
   heading:'Your technical market analyst, alongside your decisions.',
-  lead:'Sentinel Trading Lab combines real-time quotes, completed market structure, trends, retracements and projected CALL/PUT scenarios into one clear view. Instead of switching between tools, focus on what the market is doing and your chosen entry and expiry.',
+  lead:'DevinX Trading Lab combines real-time quotes, completed market structure, trends, retracements and projected CALL/PUT scenarios into one clear view. Instead of switching between tools, focus on what the market is doing and your chosen entry and expiry.',
   brokerIntro:'READS MARKET DATA FROM',
   call:'Buy 30-day access',login:'Sign in',create:'Create my account',
   price:'US$ 50',cycle:'30 days · manual renewal',
@@ -23,7 +23,7 @@ export default function Home(){
  }:{
   eyebrow:'SOFTWARE PROFISSIONAL DE ANÁLISE DE MERCADO',
   heading:'Seu analista técnico de mercado, ao lado das suas decisões.',
-  lead:'O Sentinel Trading Lab reúne cotações em tempo real, estrutura anterior do mercado, tendências, retrações e projeções de cenários CALL/PUT em uma leitura objetiva. Você acompanha o comportamento do ativo e o momento previsto para entrada e vencimento, sem precisar alternar entre várias ferramentas.',
+  lead:'O DevinX Trading Lab reúne cotações em tempo real, estrutura anterior do mercado, tendências, retrações e projeções de cenários CALL/PUT em uma leitura objetiva. Você acompanha o comportamento do ativo e o momento previsto para entrada e vencimento, sem precisar alternar entre várias ferramentas.',
   brokerIntro:'ANÁLISE PARA OS MERCADOS DE',
   call:'Comprar acesso por 30 dias',login:'Entrar',create:'Criar minha conta',
   price:'R$ 280',cycle:'30 dias · renovação manual',
@@ -40,7 +40,7 @@ export default function Home(){
  return <main className={styles.page}>
   <div className={styles.glow} aria-hidden="true"/>
   <header className={styles.nav}>
-   <Link href="/" className={styles.brand}><span className={styles.symbol}>S</span><span><strong>SENTINEL</strong><small>TRADING LAB</small></span></Link>
+   <Link href="/" className={styles.brand}><span className={styles.symbol}>DX</span><span><strong>DEVINX</strong><small>TRADING LAB</small></span></Link>
    <div className={styles.navRight}><LanguageSwitcher/><Link href="/login" className={styles.login}>{copy.login}</Link></div>
   </header>
 
@@ -62,7 +62,7 @@ export default function Home(){
      <a href="https://devinx.com.br" className={styles.devinxButton}>{english?'Discover DevinX':'Conheça o DevinX'} <span aria-hidden="true">↗</span></a>
     </div>
     <aside className={styles.showcase} aria-label={copy.sample}>
-     <div className={styles.showcaseTop}><span className={styles.showcaseLogo}>S</span><div><strong>SENTINEL ANALYST</strong><small>{copy.quote}</small></div><span className={styles.sample}>DEMO</span></div>
+     <div className={styles.showcaseTop}><span className={styles.showcaseLogo}>DX</span><div><strong>DEVINX ANALYST</strong><small>{copy.quote}</small></div><span className={styles.sample}>DEMO</span></div>
      <div className={styles.chart}>
       <div className={styles.chartTop}><span>EUR/USD</span><small>01:00</small></div>
       <svg width="100%" height="150" viewBox="0 0 470 150" role="img" aria-label={english?'Illustrative market price chart':'Gráfico ilustrativo de preço'}>

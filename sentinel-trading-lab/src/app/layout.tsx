@@ -3,9 +3,11 @@ import type {Metadata} from 'next';
 import {SentinelLocaleProvider} from '../components/SentinelLocale';
 
 export const metadata:Metadata={
-  title:'Sentinel Trading Lab',
+  title:'DevinX Trading Lab',
+  applicationName:'DevinX Trading Lab',
+  openGraph:{title:'DevinX Trading Lab',siteName:'DevinX Trading Lab',type:'website'},
   description:'Análise técnica em tempo real com Agent Windows, alertas CALL/PUT e acompanhamento pelo celular. As operações são manuais; resultados não são garantidos.',
-  icons:{icon:'/favicon.ico',shortcut:'/favicon.ico',apple:'/favicon.ico'}
+  icons:{icon:'/devinx-icon.svg',shortcut:'/devinx-icon.svg',apple:'/devinx-icon.svg'}
 };
 
 export default function RootLayout({children}:{children:React.ReactNode}){

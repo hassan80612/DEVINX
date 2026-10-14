@@ -22,7 +22,7 @@ async function authInfo(token:string):Promise<AuthInfo>{
 
 export async function middleware(req:NextRequest){
   const p=req.nextUrl.pathname;
-  if(p==='/'||p==='/planos'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||p==='/favicon.ico'||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
+  if(p==='/'||p==='/planos'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
   // Authenticated installed Agents can fetch signed release packages to
   // update themselves without a browser session. Non-paying users cannot.
   if(p==='/downloads/agent_payload_v88.zip'&&req.headers.has('x-sentinel-agent-install')){

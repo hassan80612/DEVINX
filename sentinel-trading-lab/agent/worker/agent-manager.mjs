@@ -15,7 +15,7 @@ const WORKER_PID=resolve(PID_DIR,'worker.pid');
 const EXIT_MARKER=resolve(PID_DIR,'agent.exit');
 const MANAGER_LOG=resolve(PID_DIR,'manager.log');
 const WORKER_LOG=resolve(PID_DIR,'worker.log');
-const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app'];
+const DEFAULT_ALLOWED_ORIGINS=['https://sentinel-trading-lab.vercel.app','https://sentinel-trading-lab-iguassu-shop.vercel.app','https://trading.devinx.com.br','https://sentinel.devinx.com.br'];
 const EXTRA=(process.env.SENTINEL_ALLOWED_ORIGINS||'').split(',').map(v=>v.trim()).filter(Boolean);
 const ALLOWED=new Set([...DEFAULT_ALLOWED_ORIGINS,...EXTRA]);
 

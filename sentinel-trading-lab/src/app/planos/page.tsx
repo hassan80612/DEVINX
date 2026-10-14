@@ -10,7 +10,7 @@ export default function PlansPage(){
   const intlCheckout=sentinelCheckoutUrl('INTL');
   return <main className={styles.page}>
     <div className={styles.ambient} aria-hidden="true"/>
-    <header className={styles.nav}><Link href="/" className={styles.brand}><span className={styles.brandIcon}>S</span><span><strong>SENTINEL</strong><small>TRADING LAB</small></span></Link><LanguageSwitcher/><Link href="/login" className={styles.navLogin}><T>Entrar ↗</T></Link></header>
+    <header className={styles.nav}><Link href="/" className={styles.brand}><span className={styles.brandIcon}>DX</span><span><strong>DEVINX</strong><small>TRADING LAB</small></span></Link><LanguageSwitcher/><Link href="/login" className={styles.navLogin}><T>Entrar ↗</T></Link></header>
     <section className={styles.plansHero}>
       <span className={styles.kicker}><T>SEU SENTINEL · ACESSO POR 30 DIAS</T></span>
       <h1><T>Seu mercado. Seu analista.</T><em><T> Um único plano.</T></em></h1>
