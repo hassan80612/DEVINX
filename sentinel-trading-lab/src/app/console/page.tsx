@@ -4,7 +4,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {LiveScenarioCard} from '../../components/LiveScenarioCard';
 import {LanguageSwitcher,T,useSentinelLocale} from '../../components/SentinelLocale';
 import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
-import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedAnalystDisplay,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
+import {acceptSignedPcFrame,keepNewerVerifiedQuote,keepSignedViewOverCloud,reconcileSignedAnalystDisplay,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
 
 type Status=any;
 // Website version and installed Windows Agent are distinct releases.
@@ -178,7 +178,7 @@ export default function Page(){
         // Every accepted signed frame comes from the PC. Do not discard its
         // fired/open transition because a cloud status has a newer quote.
         // Also never move backwards to a previous opportunity window.
-        if(!acceptSignedPcFrame(previous,pcFrame))return previous;
+        if(!acceptSignedPcFrame(previous,pcFrame))return keepNewerVerifiedQuote(previous,pcFrame);
         // Only an accepted, current frame keeps the fast channel healthy.
         // Obsolete frames must not suppress the authenticated status fallback.
         liveFrameAt.current=Date.now();
