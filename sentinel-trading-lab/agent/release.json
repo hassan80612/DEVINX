@@ -1,13 +1,13 @@
 {
-  "version": "13.7.8",
-  "build": "13.7.8-continuous-impulse-synced-purchase-window",
+  "version": "13.7.9",
+  "build": "13.7.9-completed-structure-replay-candidate",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.7.8-synthetic-regression-live-results-unverified",
-    "forecastModel": "causal-interval-1371"
+    "modelValidation": "13.7.9-synthetic-replay-real-broker-validation-pending",
+    "forecastModel": "causal-closed-structure-1379"
   }
 }
