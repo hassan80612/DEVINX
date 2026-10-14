@@ -4,12 +4,12 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {LiveScenarioCard} from '../../components/LiveScenarioCard';
 import {LanguageSwitcher,T,useSentinelLocale} from '../../components/SentinelLocale';
 import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
-import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedPcOpportunity,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
+import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedAnalystDisplay,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
 
 type Status=any;
 // Website version and installed Windows Agent are distinct releases.
 // 67.31 website and Windows Agent candidate. Continuous forecast core unchanged.
-const WEB_RELEASE_VERSION='67.31.2';
+const WEB_RELEASE_VERSION='67.31.3';
 const AVAILABLE_AGENT_VERSION='13.4.67.31';
 const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.31.exe?v=locale-broker-clock-6731`;
 const tabDefs=[
@@ -169,7 +169,7 @@ export default function Page(){
         // Compact PC packets may momentarily omit a window at rollover.
         // Reuse only the last already-confirmed PC window while retaining
         // fresh quotes; the next window must still originate from the Agent.
-        const pcFrame=reconcileSignedPcOpportunity(previous,payload);
+        const pcFrame=reconcileSignedAnalystDisplay(previous,payload);
         const prevPriceAt=Number(previous.liveBroker?.lastQuoteAt||0);
         // An updated strategy evaluation may use a quote older than a concurrent
         // full-status response. Accept that evaluation, but never rewind price.
