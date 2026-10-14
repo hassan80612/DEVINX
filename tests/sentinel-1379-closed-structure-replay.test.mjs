@@ -46,7 +46,7 @@ test('13.7.9: completed structures distinguish persistent trend from confirmed r
   const forecast=newModel({quoteHistory:quoteSeries(kind,630),asOf:issue,
     holdingSeconds:60,maxSeconds:120});
   const direction=sgn(logWindow(forecast));
-  assert.equal(direction,side,JSON.stringify({kind,regime:forecast.regime,direction,expected:side}));
+  assert.equal(direction,side,JSON.stringify({kind,status:forecast.status,p60:forecast.priceAt(60),p120:forecast.priceAt(120),regime:forecast.regime,direction,expected:side}));
  }
 });
 test('13.7.9: same SELECTED model computes display, future entry and due-time confirmation',()=>{
@@ -92,7 +92,7 @@ test('13.7.9 matched-data synthetic holdout: compare directions and missed/out-o
  console.log('[matched-synthetic-replay] '+JSON.stringify(rows));
  const prior=rows.filter(x=>x.model==='13.7.8'),next=rows.filter(x=>x.model==='13.7.9');
  assert.equal(prior.length,next.length);
- assert.ok(next.every(x=>x.predicted!==null),'new model did not produce any usable forecasts');
+ assert.ok(next.every(x=>x.predicted!==null),JSON.stringify(rows));
  // Synthetic exercise is an architecture/regression benchmark, NOT evidence
  // of live broker accuracy or a claimed win rate.
  const src=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/causal-closed-structure-1379.mjs',import.meta.url),'utf8');
