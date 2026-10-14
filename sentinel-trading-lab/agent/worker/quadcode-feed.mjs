@@ -73,7 +73,7 @@ export class QuadcodeFeed {
     if(name==='timeSync'){
        const raw=Number(data?.msg),ms=raw>1e12?raw:raw>1e9?raw*1000:NaN;
        const received=Date.now();
-       if(this.authenticated&&Number.isFinite(ms)&&Math.abs(ms-received)<=120000){
+       if(this.ready&&Number.isFinite(ms)&&Math.abs(ms-received)<=120000){
          this.serverTime=ms;this.serverTimeReceivedAt=received;
        }
      }
