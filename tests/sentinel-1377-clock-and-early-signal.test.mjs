@@ -39,7 +39,8 @@ test('clock chooser never sends settings action or gets overwritten by delayed r
  assert.match(source,/s\.lastVerifiedBrokerSignal=\{phase:'fired'/);
  assert.match(source,/s\.brokerClockSignalAsset!==selectedAsset/);
  assert.match(source,/SINAL · VENCIMENTO ATINGIDO/);
- assert.match(source,/shown=pad\(Math\.floor\(left\/60\)\)\+':'+pad\(left%60\)/);
+ assert.ok(source.includes("shown=pad(Math.floor(left/60))+':'+pad(left%60)"),
+  'the broker-synchronized clock displays the remaining actual expiration');
 });
 test('single browser opening belongs to Go launcher; PowerShell never opens another page',()=>{
  const go=read('agent-launcher.go');
