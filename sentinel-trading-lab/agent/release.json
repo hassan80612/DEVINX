@@ -1,6 +1,6 @@
 {
-  "version": "13.7.4",
-  "build": "13.7.4-restore-asset-reader-continuous-adaptive",
+  "version": "13.7.5",
+  "build": "13.7.5-installer-stdout-direct-close",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
