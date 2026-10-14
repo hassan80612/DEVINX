@@ -1,6 +1,6 @@
 {
-  "version": "13.7.1",
-  "build": "13.7.1-causal-forward-interval-no-direction-veto",
+  "version": "13.7.2",
+  "build": "13.7.2-direct-worker-boot-diagnostics",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
