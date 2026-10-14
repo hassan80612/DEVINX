@@ -11,9 +11,25 @@ export class QuadcodeFeed {
     this.lastMessageAt=null;
     this.lastError=null;
     this.serverTime=null;
+    this.serverTimeReceivedAt=null;
     this.pending=new Map();
   }
   get ready(){return !!(this.ws&&this.ws.readyState===1)}
+  // Authenticated broker timeSync, never inferred from the PC wall clock.
+  // Use the original receive instant to compensate for elapsed time.
+  brokerClock(now=Date.now()){
+    const observed=Number(this.serverTime),received=Number(this.serverTimeReceivedAt);
+    if(!this.authenticated||!this.ready||!(observed>1e12)||
+      !(received>0)||now<received||now-received>120000)
+      return {verified:false,source:'broker-protocol-timesync',capturedAt:received||null};
+    return {verified:true,source:'broker-protocol-timesync',capturedAt:received,
+      brokerNowMs:observed+now-received,offsetMs:observed-received,
+      ageMs:now-received};
+  }
+  serverTimeSeconds(now=Date.now()){
+    const clock=this.brokerClock(now);
+    return clock.verified?Math.floor(clock.brokerNowMs/1000):null;
+  }
   status(){
     const ageMs=this.lastMessageAt?Math.max(0,Date.now()-this.lastMessageAt):null;
     return{connected:this.connected,authenticated:this.authenticated,ready:this.ready,lastMessageAt:this.lastMessageAt,messageAgeMs:ageMs,healthy:!!(this.ready&&this.authenticated&&(ageMs==null||ageMs<30000)),lastError:this.lastError,domain:this.domain}
@@ -54,7 +70,13 @@ export class QuadcodeFeed {
     const name=String(data?.name||'');
     if(name==='authenticated'&&data?.msg===true)this.authenticated=true;
     if(name==='profile'){this.authenticated=true;this.connected=true}
-    if(name==='timeSync'){const t=Number(data?.msg);if(Number.isFinite(t))this.serverTime=t}
+    if(name==='timeSync'){
+       const raw=Number(data?.msg),ms=raw>1e12?raw:raw>1e9?raw*1000:NaN;
+       const received=Date.now();
+       if(this.authenticated&&Number.isFinite(ms)&&Math.abs(ms-received)<=120000){
+         this.serverTime=ms;this.serverTimeReceivedAt=received;
+       }
+     }
     if(name==='heartbeat'){
       const hb=Number(data?.msg?.heartbeatTime??data?.msg);
       if(Number.isFinite(hb))this.send({name:'heartbeat',msg:{msg:{heartbeatTime:hb,userTime:Number(this.serverTime||Date.now())}},request_id:''});
