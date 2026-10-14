@@ -305,9 +305,8 @@ export default function Page(){
     if(autoLinkedDevice.current.has(key))return;
     autoLinkedDevice.current.add(key);
     const claim=async(replaceExisting=false)=>{
-      const url=replaceExisting?'/api/devices/replace':'/api/devices/claim';
-      const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},
-        body:JSON.stringify({code})});
+      const res=await fetch('/api/devices/claim',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({code,replaceExisting})});
       const data=await res.json().catch(()=>({}));
       if(!res.ok||!data.ok)throw new Error(data.error||'device_claim_failed');
     };
