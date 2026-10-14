@@ -50,7 +50,7 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
  // projected score improvement. Never fabricate a side or weaken the
  // coherentInterval qualification supplied by the selected forecast engine.
  const tolerance=Math.min(.10,Math.max(.015,Math.abs(strongest.score)*.035));
- const best=valid.find(c=>c.score>=strongest.score-tolerance)||strongest;
+ const best=valid.find(c=>c.side===strongest.side&&c.score>=strongest.score-tolerance)||strongest;
  return {...base,status:'forecast',side:best.side,
   entryOffsetSeconds:best.seconds,
   entryAt:now+best.seconds*1000,
