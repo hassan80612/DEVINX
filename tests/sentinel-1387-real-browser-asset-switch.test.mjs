@@ -35,3 +35,10 @@ test('OpenAI OTC named cached tab is read from the actual selected child-frame e
  assert.equal(st.activeId,9999);assert.equal(st.symbol,'OPENAI OTC');assert.equal(st.screenCandidateSymbol,null);
  }finally{await browser.close()}
 });
+test('periodic full DOM read cannot restore an inactive EUR/USD tab over selected OpenAI OTC',{skip:!available},async()=>{
+ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ try{const page=await browser.newPage();await page.setContent('<button role="tab" aria-selected="false">EUR/USD OTC</button><button role="tab" aria-selected="true">OpenAI (OTC)</button>');
+ const {d,st}=driver(page);st.activeMap.set('OPENAIOTC',9999);st.assets.add('OPENAI OTC');st.symbol='OPENAI OTC';st.uiSymbol='OPENAI OTC';st.activeId=9999;st.quote=50;
+ await d.domSnapshot('exnova');assert.equal(st.activeId,9999);assert.equal(st.symbol,'OPENAI OTC');
+ }finally{await browser.close()}
+});

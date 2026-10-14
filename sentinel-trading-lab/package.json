@@ -1,6 +1,6 @@
 {
   "name": "sentinel-trading-lab",
-  "version": "13.8.7",
+  "version": "13.8.8",
   "private": true,
   "type": "module",
   "scripts": {
