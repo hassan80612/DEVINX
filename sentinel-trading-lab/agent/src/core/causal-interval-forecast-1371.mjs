@@ -138,7 +138,8 @@ export function causalForwardPath({
   return round(Math.exp(current.at.lp+clamp(blended,-limit,limit)));
  };
  return {status:'causal-forward-path',priceAt:modelPriceAt,
-  modelVersion:'causal-interval-1371',analogExamples:analog?.cases.length||0,
+  modelVersion:'causal-interval-1371',referencePrice:round(Math.exp(current.at.lp)),
+  sigmaPerSqrtSecond:current.sigma,analogExamples:analog?.cases.length||0,
   analogNeighbors:analog?.neighbors.length||0,regime:current.efficiency>.6?'trend':
    current.efficiency<.28?'range':'transition',latestQuoteAt:latest.ts,
   quoteSpanSeconds:(latest.ts-rows[0].ts)/1000,
