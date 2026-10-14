@@ -1,5 +1,6 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {causalForwardPath} from './causal-interval-forecast-1371.mjs';
+import {selectedFixedBrokerExpiry,futurePriceExitSeconds} from './broker-fixed-expiry-1376.mjs';
 import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
@@ -106,6 +107,9 @@ function continuousWindow({input,settings,chosen}){
  const asset=String(settings.asset||'UNKNOWN').toUpperCase();
  const engineId=String(settings.engine||'automatic');
  const history=input.adaptiveHistory||snap.quoteHistory||[];
+ const fixedExpiry=selectedFixedBrokerExpiry({snap,settings,now});
+ const maxForecastSeconds=fixedExpiry.verified?
+   Math.max(chosen*2,Math.ceil(fixedExpiry.remainingSeconds)):chosen*2;
  const noise=observedNoise({quotes:history,now,horizonSeconds:chosen});
  const quoteAt=Number(snap.quoteTs);
  if(!(quoteAt>0&&quoteAt<=now&&now-quoteAt<=2500))
@@ -115,7 +119,7 @@ function continuousWindow({input,settings,chosen}){
  let causal=null;
  if(engineId==='automatic'&&input.forecastModel==='causal-interval-1371'){
    causal=causalForwardPath({quoteHistory:history,asOf:now,
-     holdingSeconds:chosen,maxSeconds:chosen*2});
+     holdingSeconds:chosen,maxSeconds:maxForecastSeconds});
  }
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(input.forecastModel)){
@@ -160,20 +164,32 @@ function continuousWindow({input,settings,chosen}){
  const gaps=recentTicks.slice(1).map((x,i)=>x-recentTicks[i]).filter(n=>n>0&&n<=4000).sort((a,b)=>a-b);
  const typicalGap=gaps.length?gaps[Math.floor(gaps.length/2)]:1000;
  const confirmationQuoteGapMs=window?Math.max(200,Math.min(1500,typicalGap)):0;
- return planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
+ const planned=planEntryWindow({windowSeconds:chosen,holdingSeconds:chosen,now,
   engineId,asset,forecastMode:'continuous',
   realWindowEndsAt:window?Number(window.windowEndsAt):null,
   confirmationQuoteGapMs,
   evaluateLead:seconds=>{
-   const first=projectedAt(seconds),last=projectedAt(seconds+chosen);
+   const exitLead=futurePriceExitSeconds({brokerExpiry:fixedExpiry,now,
+     leadSeconds:seconds,holdingSeconds:chosen});
+   if(exitLead===null)return null;
+   const first=projectedAt(seconds),last=projectedAt(exitLead);
    if(!(first>0&&last>0))return null;
-   const check=coherentInterval({entryPrice:first,exitPrice:last,noise,
+   // A Digital fixed-clock option is evaluated at its selected expiry,
+   // not at entry + the opportunity window length.
+   const held=exitLead-seconds;
+   const actualNoise=observedNoise({quotes:history,now,horizonSeconds:held})||noise;
+   const check=coherentInterval({entryPrice:first,exitPrice:last,noise:actualNoise,
      noiseFraction:.15});
    if(!check.qualified)return null;
    return {side:check.side,projectedEntryPrice:first,projectedExitPrice:last,
     selectionStrength:Math.min(3,Math.abs(check.relativeMove)/
-      Math.max(noise||1e-12,1e-12))};
+      Math.max(actualNoise||1e-12,1e-12))};
   }});
+ if(!planned.side||!fixedExpiry.verified)return planned;
+ return {...planned,brokerExpiresAt:fixedExpiry.expiresAt,
+   exitAt:fixedExpiry.expiresAt,
+   actualHoldingSeconds:(fixedExpiry.expiresAt-planned.entryAt)/1000,
+   expirySource:'broker-visible-readonly'};
 }
 export function futureEntrySchedule(input={}){
  const legacy=input.settings?.engine==='selective_forecast';
@@ -261,7 +277,7 @@ export function futureEntrySchedule(input={}){
  */
 export function confirmWindowEntry({
  settings={},snap={},now=Date.now(),adaptiveHistory=null,
- forecastModel='original-67',entryAt=now
+ forecastModel='original-67',entryAt=now,brokerExpiresAt=null
 }={}){
  const H=Number(settings.orderDurationMs||0)/1000;
  const lead=Math.max(0,Math.ceil((Number(entryAt)-now)/1000));
@@ -281,12 +297,19 @@ export function confirmWindowEntry({
  const engineId=String(settings.engine||'automatic');
  const noise=observedNoise({quotes,now,horizonSeconds:H});
  if(engineId==='automatic'&&forecastModel==='causal-interval-1371'){
+  const fixedExpiry=brokerExpiresAt>now?{verified:true,expiresAt:Number(brokerExpiresAt)}:
+    selectedFixedBrokerExpiry({snap,settings,now});
+  const exitLead=futurePriceExitSeconds({brokerExpiry:fixedExpiry,now,
+    leadSeconds:lead,holdingSeconds:H});
+  if(exitLead===null)return {side:null,status:'selected-expiry-already-reached'};
   const causal=causalForwardPath({quoteHistory:quotes,asOf:now,
-    holdingSeconds:H,maxSeconds:Math.max(H*2,lead+H)});
-  const entry=causal.priceAt(lead),exit=causal.priceAt(lead+H);
-  const check=coherentInterval({entryPrice:entry,exitPrice:exit,noise});
+    holdingSeconds:H,maxSeconds:Math.max(H*2,Math.ceil(exitLead))});
+  const entry=causal.priceAt(lead),exit=causal.priceAt(exitLead);
+  const actualNoise=observedNoise({quotes,now,horizonSeconds:exitLead-lead})||noise;
+  const check=coherentInterval({entryPrice:entry,exitPrice:exit,noise:actualNoise});
   return {...check,side:check.qualified?check.side:null,
     projectedEntryPrice:entry,projectedExitPrice:exit,
+    ...(fixedExpiry.verified?{brokerExpiresAt:fixedExpiry.expiresAt}:{}),
     status:check.qualified?'causal-future-interval':causal.status};
  }
  if(engineId==='automatic'&&
