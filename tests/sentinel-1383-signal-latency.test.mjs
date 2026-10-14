@@ -36,8 +36,8 @@ test('existing analysis, scheduling and signal confirmation use the exact same s
  const helper=read('agent/src/core/quote-scoped-causal-path.mjs');
  assert.match(main,/quoteScopedCausalPath\(/);
  assert.ok([...schedule.matchAll(/quoteScopedCausalPath\(/g)].length>=2);
- assert.match(helper,/const cached=memo\.get\(quoteHistory\)/);
- assert.match(helper,/cached\?\.key===key/);
+ assert.match(helper,/cached=memo\.get\(quoteHistory\)/);
+ assert.match(helper,/cached\?\.has\(key\)/);
  assert.match(schedule,/brokerAllowsEntry\(\{buyWindow,entryAt:now\}\)/);
  assert.match(schedule,/coherentInterval\(\{entryPrice:entry,exitPrice:exit,noise:actualNoise/);
 });

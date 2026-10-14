@@ -281,7 +281,7 @@ test('Existing tab clicks become hints and never retarget the validated asset by
   assert.ok(ui.includes("source:'tab-click-hint'"));
   assert.ok(ui.includes("if(source==='tab-click-hint'&&changed&&current)"));
   assert.ok(ui.includes("st.marketStatus='unvalidated'"));
-  assert.ok(ui.includes('Ativo clicado ainda não validado'));
+  assert.ok(ui.includes('Ativo clicado aguardando confirmação'));
   assert.ok(!ui.includes('selected-tab-settled'));
 });
 
@@ -396,7 +396,7 @@ test('An unvalidated clicked tab makes the broker feed fail closed even if old c
   assert.equal(live.assetValidated,false);
   assert.equal(live.feedValidated,false);
   assert.equal(live.marketStatus,'unvalidated');
-  assert.match(live.marketReason,/não validado/i);
+  assert.match(live.marketReason,/aguardando confirmação/i);
 });
 
 

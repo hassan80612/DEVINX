@@ -121,7 +121,7 @@ function continuousWindow({input,settings,chosen}){
  let causal=null;
  if(engineId==='automatic'&&['causal-interval-1371','causal-closed-structure-1379'].includes(input.forecastModel)){
    causal=quoteScopedCausalPath({forecastModel:input.forecastModel,
-     quoteHistory:history,asOf:now,holdingSeconds:chosen,maxSeconds:maxForecastSeconds});
+     quoteHistory:history,candles:snap.candles||[],asOf:now,holdingSeconds:chosen,maxSeconds:maxForecastSeconds});
  }
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(input.forecastModel)){
@@ -313,7 +313,7 @@ export function confirmWindowEntry({
   const exitLead=futurePriceExitSeconds({brokerExpiry:fixedExpiry,now,
     leadSeconds:lead,holdingSeconds:H});
   if(exitLead===null)return {side:null,status:'selected-expiry-already-reached'};
-  const causal=quoteScopedCausalPath({forecastModel,quoteHistory:quotes,asOf:now,
+  const causal=quoteScopedCausalPath({forecastModel,quoteHistory:quotes,candles:snap.candles||[],asOf:now,
     holdingSeconds:H,maxSeconds:Math.max(H*2,Math.ceil(exitLead))});
   const entry=causal.priceAt(lead),exit=causal.priceAt(exitLead);
   const actualNoise=observedNoise({quotes,now,horizonSeconds:exitLead-lead})||noise;

@@ -1,3 +1,4 @@
+import {priorCandleReaction} from './prior-candle-reaction.mjs';
 // Sentinel 13.7.9 candidate — causal completed-structure forecast.
 // Direction derives from non-overlapping COMPLETED 10s blocks. The latest
 // forming block is used only as today's reference price, not a direction vote.
@@ -145,7 +146,7 @@ function matches(rows,now,current,maxSeconds){
  const neighbors=eligible.sort((a,b)=>a.dist-b.dist).slice(0,8);
  return {cases,neighbors};
 }
-export function causalForwardPath({quoteHistory=[],asOf=Date.now(),
+export function causalForwardPath({quoteHistory=[],candles=[],asOf=Date.now(),
  holdingSeconds=30,maxSeconds=90}={}){
  const now=Number(asOf),hold=Number(holdingSeconds),end=Number(maxSeconds);
  const invalid=status=>({status,priceAt:()=>null,
@@ -156,6 +157,7 @@ export function causalForwardPath({quoteHistory=[],asOf=Date.now(),
  const current=profile(rows,latest.ts);
  if(!current)return invalid('insufficient-completed-structure');
  const analog=current.exhaustion?null:matches(rows,now,current,end);
+ const levelReaction=priorCandleReaction({candles,quoteHistory,asOf:now,sigma:current.sigma});
  const priceAt=s=>{
   if(!(Number.isFinite(s)&&s>=0&&s<=end))return null;
   if(s===0)return precise(Math.exp(latest.lp));
@@ -177,6 +179,10 @@ export function causalForwardPath({quoteHistory=[],asOf=Date.now(),
     move=move*(1-mix)+(sum/total)*mix;
    }
   }
+  // A measured failed test of the prior candle changes the estimated PATH;
+  // it is not an extra entry veto or a fixed waiting period. A sustained
+  // break receives no such reversal correction.
+  if(levelReaction)move=levelReaction.rate*15*(1-Math.exp(-s/15));
   const cap=current.sigma*Math.sqrt(s)*3;
   return precise(Math.exp(latest.lp+clamp(move,-cap,cap)));
  };
@@ -186,7 +192,8 @@ export function causalForwardPath({quoteHistory=[],asOf=Date.now(),
   sigmaPerSqrtSecond:current.sigma,
   analogExamples:analog?.cases.length||0,
   analogNeighbors:analog?.neighbors.length||0,
-  regime:current.regime,
+  regime:levelReaction?'level-rejection':current.regime,
+  levelReaction,
   reversalEvidence:current.reversal?
     {confirmedClosedBlocks:true,recentImpulse:current.recentImpulse}:null,
   latestQuoteAt:latest.ts,

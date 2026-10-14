@@ -29,7 +29,7 @@ export function singleEngineForecast({
  const selective=!autonomous&&request.engineId==='selective_forecast'?selectiveIntervalForecast({quoteHistory:adaptiveHistory||quotes,asOf:now,entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const selectedStrengths=!autonomous&&forecastModel==='selected-strengths-67.5';
  const causal=!autonomous&&request.engineId==='automatic'&&['causal-interval-1371','causal-closed-structure-1379'].includes(forecastModel)?
-   quoteScopedCausalPath({forecastModel,quoteHistory:adaptiveHistory||quotes,asOf:now,
+   quoteScopedCausalPath({forecastModel,quoteHistory:adaptiveHistory||quotes,candles:snap.candles||[],asOf:now,
      holdingSeconds:seconds,maxSeconds:seconds}):null;
  const selectedSpecialist=selectedStrengths&&['breakout','fibonacci_retest'].includes(request.engineId);
  const specialistCandidate=!autonomous&&request.engineId!=='automatic'&&(forecastModel==='specialist-structure-v2'||selectedSpecialist)?

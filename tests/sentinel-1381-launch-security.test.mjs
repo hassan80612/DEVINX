@@ -63,15 +63,16 @@ test('Localized Kiwify renewal goes directly to a trusted checkout; marketing is
  assert.doesNotMatch(home,/90%|80%|assertividade elevada/);
 });
 
-test('Passive broker WebSocket sampling avoids decoding unwanted frames on every tick',()=>{
+test('Passive observer preserves historical responses and coalesces selected live frames',()=>{
  const src=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const start=src.indexOf("ws.on('framereceived',event=>{");
  const end=src.indexOf("});",start);
  const block=src.slice(start,end);
- const gate=block.indexOf("if(now-Number(st.lastPassiveFrameAt||0)<200)return;");
- const decoding=block.indexOf("const payload=typeof raw==='string'");
- assert.ok(start>=0&&gate>0&&decoding>0&&gate<decoding,'throttle before converting WS data');
- assert.match(block,/this\.ingest\(provider,payload,'page-in'\)/);
+ assert.ok(start>=0);
+ assert.match(block,/frame\?\.name==='candles'/);
+ assert.match(block,/pendingPassiveFrame=frame/);
+ assert.match(block,/Number\(aid\)!==Number\(st\.activeId\)/);
+ assert.match(block,/this\.ingest\(provider,frame,'page-in'\)/);
  assert.match(src,/readBrokerTimingFromText\(raw/);
  assert.match(src,/await s\.page\.evaluate\(\(d\)=>/);
 });
