@@ -249,7 +249,7 @@
   border-color:rgba(223,186,95,.46)
 }
 .sentinelProduct .copy{max-width:710px}
-.sentinelProduct h2{font-size:clamp(31px,4.2vw,49px)}
+.sentinelProduct h2{font-size:clamp(27px,3.5vw,39px);line-height:1.18}
 .sentinelProduct .featureGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .sentinelJump{
   background:radial-gradient(circle at 10% 15%,rgba(220,189,94,.2),transparent 46%),
