@@ -35,7 +35,14 @@ const COPY={
     storeLogin:"Já tenho loja · Entrar",
     storeExample:"Ver vitrine real de exemplo",
     storeFeaturesTitle:"LOJA · TUDO PARA ORGANIZAR E VENDER",
-    financeJump:"Financeiro",storeJump:"Loja",laserJump:"Laser Control"
+    financeJump:"Financeiro",storeJump:"Loja",laserJump:"Laser Control",
+    sentinelJump:"Sentinel",
+    sentinelTag:"SENTINEL TRADING LAB · ANÁLISE DE MERCADO",
+    sentinelLine1:"Seu mercado com mais contexto.",
+    sentinelText:"Acompanhe cenários CALL e PUT, variações de preço e alertas de mercado. A análise é informativa: as operações continuam manuais.",
+    sentinelPrimary:"Conhecer Sentinel",
+    sentinelLogin:"Já tenho acesso · Entrar",
+    sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE"
   },
   en:{
     control:"DEVINX · YOU'RE IN CONTROL",
@@ -63,7 +70,14 @@ const COPY={
     storeLogin:"I already have a store · Sign in",
     storeExample:"View real example storefront",
     storeFeaturesTitle:"STORE · EVERYTHING TO ORGANIZE AND SELL",
-    financeJump:"Finance",storeJump:"Store",laserJump:"Laser Control"
+    financeJump:"Finance",storeJump:"Store",laserJump:"Laser Control",
+    sentinelJump:"Sentinel",
+    sentinelTag:"SENTINEL TRADING LAB · MARKET ANALYSIS",
+    sentinelLine1:"More context for your market.",
+    sentinelText:"Follow CALL/PUT scenarios, price changes and market alerts. Informational analysis only; all trades remain manual.",
+    sentinelPrimary:"Explore Sentinel",
+    sentinelLogin:"I have access · Sign in",
+    sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS"
   },
   es:{
     control:"DEVINX · TÚ TIENES EL CONTROL",
@@ -91,7 +105,14 @@ const COPY={
     storeLogin:"Ya tengo tienda · Entrar",
     storeExample:"Ver tienda real de ejemplo",
     storeFeaturesTitle:"TIENDA · TODO PARA ORGANIZAR Y VENDER",
-    financeJump:"Finanzas",storeJump:"Tienda",laserJump:"Laser Control"
+    financeJump:"Finanzas",storeJump:"Tienda",laserJump:"Laser Control",
+    sentinelJump:"Sentinel",
+    sentinelTag:"SENTINEL TRADING LAB · ANÁLISIS DE MERCADO",
+    sentinelLine1:"Más contexto para tu mercado.",
+    sentinelText:"Sigue escenarios CALL/PUT, cambios de precio y alertas. El análisis es informativo; operas manualmente.",
+    sentinelPrimary:"Conocer Sentinel",
+    sentinelLogin:"Ya tengo acceso · Entrar",
+    sentinelFeaturesTitle:"SENTINEL · CARACTERÍSTICAS"
   },
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",
@@ -119,7 +140,14 @@ const COPY={
     storeLogin:"J'ai déjà une boutique · Connexion",
     storeExample:"Voir une vraie boutique exemple",
     storeFeaturesTitle:"BOUTIQUE · TOUT POUR ORGANISER ET VENDRE",
-    financeJump:"Finance",storeJump:"Boutique",laserJump:"Laser Control"
+    financeJump:"Finance",storeJump:"Boutique",laserJump:"Laser Control",
+    sentinelJump:"Sentinel",
+    sentinelTag:"SENTINEL TRADING LAB · ANALYSE DE MARCHÉ",
+    sentinelLine1:"Une lecture plus claire du marché.",
+    sentinelText:"Suivez les scénarios CALL/PUT, les variations de prix et les alertes. Analyse informative ; ordres manuels.",
+    sentinelPrimary:"Découvrir Sentinel",
+    sentinelLogin:"J'ai un accès · Connexion",
+    sentinelFeaturesTitle:"SENTINEL · FONCTIONNALITÉS"
   },
   de:{
     control:"DEVINX · DU HAST DIE KONTROLLE",
@@ -147,7 +175,14 @@ const COPY={
     storeLogin:"Ich habe einen Shop · Anmelden",
     storeExample:"Echten Beispiel-Shop ansehen",
     storeFeaturesTitle:"SHOP · ALLES ZUM ORGANISIEREN UND VERKAUFEN",
-    financeJump:"Finanzen",storeJump:"Shop",laserJump:"Laser Control"
+    financeJump:"Finanzen",storeJump:"Shop",laserJump:"Laser Control",
+    sentinelJump:"Sentinel",
+    sentinelTag:"SENTINEL TRADING LAB · MARKTANALYSE",
+    sentinelLine1:"Mehr Kontext für Ihren Markt.",
+    sentinelText:"Verfolgen Sie CALL/PUT-Szenarien, Kursbewegungen und Warnungen. Nur informative Analyse; Trades bleiben manuell.",
+    sentinelPrimary:"Sentinel entdecken",
+    sentinelLogin:"Zugang vorhanden · Anmelden",
+    sentinelFeaturesTitle:"SENTINEL · FUNKTIONEN"
   },
   ar:{
     control:"DEVINX · أنت المتحكم",
@@ -175,7 +210,14 @@ const COPY={
     storeLogin:"لدي متجر · دخول",
     storeExample:"عرض متجر حقيقي كمثال",
     storeFeaturesTitle:"المتجر · كل ما تحتاجه للتنظيم والبيع",
-    financeJump:"المالي",storeJump:"المتجر",laserJump:"Laser Control"
+    financeJump:"المالي",storeJump:"المتجر",laserJump:"Laser Control",
+    sentinelJump:"Sentinel",
+    sentinelTag:"SENTINEL TRADING LAB · تحليل الأسواق",
+    sentinelLine1:"رؤية أوضح لحركة السوق.",
+    sentinelText:"تابع سيناريوهات CALL و PUT وتحركات الأسعار وتنبيهات السوق. التحليل معلوماتي والصفقات تتم يدوياً.",
+    sentinelPrimary:"تعرف على Sentinel",
+    sentinelLogin:"لدي حساب · دخول",
+    sentinelFeaturesTitle:"SENTINEL · المزايا"
   }
 } as const;
 
@@ -267,6 +309,15 @@ const FINANCE_FEATURES={
   ]
 } as const;
 
+const SENTINEL_FEATURES={
+  "pt-BR":["Análise Contínua","Cenários CALL e PUT","Previsões para o vencimento escolhido","Leitura de tendências e reversões","IQ Option e Exnova","Acompanhamento no PC e celular"],
+  en:["Continuous analysis","CALL and PUT scenarios","Chosen expiry forecasts","Trend and reversal context","IQ Option and Exnova","PC and phone access"],
+  es:["Análisis continuo","Escenarios CALL y PUT","Pronósticos hasta el vencimiento","Tendencias y reversiones","IQ Option y Exnova","Acceso desde PC y móvil"],
+  fr:["Analyse continue","Scénarios CALL et PUT","Prévisions à l'échéance choisie","Tendances et retournements","IQ Option et Exnova","PC et téléphone"],
+  de:["Kontinuierliche Analyse","CALL/PUT-Szenarien","Prognosen zur gewählten Laufzeit","Trends und Umkehrungen","IQ Option und Exnova","PC und Smartphone"],
+  ar:["تحليل مستمر","سيناريوهات CALL و PUT","توقعات حتى انتهاء المدة","الاتجاهات والانعكاسات","IQ Option و Exnova","الوصول من الكمبيوتر والهاتف"]
+} as const;
+
 const STORE_FEATURES=[
   "Vitrine própria","Cadastro de produtos",
   "Estoque por produto","Estoque por cor",
@@ -336,10 +387,27 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
     </section>
 
     <nav className={styles.productJumpNav} aria-label={intl?"Product shortcuts":"Atalhos dos produtos"}>
+      <a className={`${styles.productJump} ${styles.sentinelJump}`} href="#sentinel" onClick={jumpTo("sentinel")}>{c.sentinelJump}</a>
       {financeVisible&&<a className={`${styles.productJump} ${styles.financeJump}`} href="#financeiro" onClick={jumpTo("financeiro")}>{c.financeJump}</a>}
       {showStore&&<a className={`${styles.productJump} ${styles.storeJump}`} href="#loja" onClick={jumpTo("loja")}>{c.storeJump}</a>}
       <a className={`${styles.productJump} ${styles.laserJump}`} href="#laser-control" onClick={jumpTo("laser-control")}>{c.laserJump}</a>
     </nav>
+
+    <section id="sentinel" className={`${styles.product} ${styles.sentinelProduct}`} aria-label="Sentinel Trading Lab">
+      <div className={styles.productGlow}/>
+      <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
+      <div className={styles.copy}>
+        <span className={styles.tag}><i/>{c.sentinelTag}</span>
+        <h2>{c.sentinelLine1}</h2>
+        <p>{c.sentinelText}</p>
+        <div className={styles.actions}>
+          <a className={styles.primary} href="/sentinel">{c.sentinelPrimary}</a>
+          <a className={styles.secondary} href="/sentinel?next=login">{c.sentinelLogin}</a>
+        </div>
+      </div>
+      <FeatureGrid title={c.sentinelFeaturesTitle} items={SENTINEL_FEATURES[activeLocale]}/>
+      <p className={styles.sentinelRisk}>{locale==='pt-BR'?'Não executa ordens e não garante resultados. Mercado envolve risco de perdas.': 'No automatic orders or guaranteed returns. Trading involves risk.'}</p>
+    </section>
 
     <section className={`${styles.products} ${(!showStore||!financeVisible)?styles.financeOnly:""}`} aria-label={intl?c.intlChoose:c.choose}>
       {financeVisible&&<article id="financeiro" className={`${styles.product} ${styles.financeProduct}`}>
