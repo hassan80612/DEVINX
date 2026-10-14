@@ -238,28 +238,11 @@ if(runtime.settings.forecastMode==='selective'){
   runtime.patchSettings({forecastMode:'continuous'},'product-mode-migration');
   await saveState();
 }
-async function bootstrapSavedBrokers(){
-  if(!accessLeaseValid())return syncRuntimeMarket();
-  const preferred=vault.get('iq_option')?'iq_option':vault.get('exnova')?'exnova':'iq_option';
-  const order=[preferred,...Object.keys(brokers).filter(x=>x!==preferred)];
-  for(const name of order){
-    const adapter=brokers[name];if(!adapter)continue;
-    if(name!==preferred&&!adapter.sessionRef)continue;
-    try{
-      const info=await driver.call(name,'resume-visible',{body:{startup:true}});
-      loginStates[name]=info;activeProvider=name;
-      if(info?.sessionPresent){
-        const sessionRef=adapter.sessionRef||`local-profile:${name}`;
-        if(!adapter.sessionRef){await vault.put(name,sessionRef);adapter.attachSessionRef(sessionRef)}
-        await adapter.connect().catch(()=>{});
-      }
-      await driver.maintain?.(name).catch(()=>{});adapter.refreshFromLive?.();break
-    }catch{}
-  }
-  syncRuntimeMarket()
-}
-setTimeout(()=>bootstrapSavedBrokers().catch(()=>{}),900).unref();
-setTimeout(()=>{if(!activeProvider&&accessLeaseValid())bootstrapSavedBrokers().catch(()=>{})},3500).unref();
+// The Agent starts without opening ANY broker. A stored IQ Option profile
+// is not consent to open that broker on every installation, Agent restart or
+// Windows login. The user chooses IQ Option or Exnova from the Corretora page;
+// /brokers/{provider}/login is the explicit manual action. An ALREADY
+// open broker is still recognized by autoConnectVisibleBrokers below.
 const overlayCache=new Map();
 let overlayAssetKey='';
 function overlayAnalysis(view,asset,now=Date.now()){
