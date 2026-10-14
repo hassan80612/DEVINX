@@ -1,13 +1,13 @@
 {
-  "version": "13.7.2",
-  "build": "13.7.2-direct-worker-boot-diagnostics",
+  "version": "13.7.3",
+  "build": "13.7.3-continuous-adaptive-broker-timesync-digital",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.7.1-causal-replay-tests-unproven-live",
+    "modelValidation": "13.7.3-structural-reversal-regression-pending-live",
     "forecastModel": "causal-interval-1371"
   }
 }
