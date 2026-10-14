@@ -33,11 +33,15 @@ export function threeClosedCandleEvidence({quoteHistory=[],now=Date.now(),holdin
  const period=horizon>=30?30:horizon>=10?10:5;
  const q=quotesUntil(quoteHistory,now),bars=closedBars(q,now,period);
  if(!bars)return {ready:false,side:null,reason:'three-closed-candles-unavailable',periodSeconds:period};
+ // Historical volatility is measured ONLY from completed candles. A sudden
+ // quote on the forming candle must not relabel the three closed candles.
+ const boundary=bars.at(-1).to;
+ const closedQuotes=q.filter(x=>x.ts<boundary);
  const moves=bars.map(b=>Math.log(b.close/b.open));
  const total=Math.log(bars.at(-1).close/bars[0].open);
  const side=total>0?'CALL':total<0?'PUT':null;
  const agree=moves.filter(x=>side&&sign(side)*x>0).length;
- const last=moves.at(-1),noise=observedNoise({quotes:q,now,horizonSeconds:period*3});
+ const last=moves.at(-1),noise=observedNoise({quotes:closedQuotes,now:boundary,horizonSeconds:period*3});
  // Three closed bars are evidence, not a claimed win probability. A strong
  // latest contrary bar invalidates the historical directional agreement.
  const strongContra=side&&sign(side)*last<0&&Math.abs(last)>=Math.abs(total)*.5;
