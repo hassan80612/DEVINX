@@ -1,13 +1,13 @@
 {
-  "version": "13.8.4",
-  "build": "13.8.4-stable-session-download-opening-reversal",
+  "version": "13.8.5",
+  "build": "13.8.5-unresolved-closed-structure-transition",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.8.4-session-order-download-structural-regression-tests;live-Windows-validation-pending",
+    "modelValidation": "13.8.5-closed-transition-regression-tests;live-Windows-validation-pending",
     "forecastModel": "causal-closed-structure-1379"
   }
 }
