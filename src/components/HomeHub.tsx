@@ -3,7 +3,6 @@
 import {type MouseEvent,useEffect,useState} from "react";
 import {BrandLogo} from "@/components/BrandLogo";
 import {LanguageMenu} from "@/components/LanguageMenu";
-import {LaserHomeCard} from "@/components/LaserHomeCard";
 import {useI18n} from "@/i18n/provider";
 import {createClient} from "@/lib/supabase/client";
 import styles from "./HomeHub.module.css";
@@ -35,7 +34,7 @@ const COPY={
     storeLogin:"Já tenho loja · Entrar",
     storeExample:"Ver vitrine real de exemplo",
     storeFeaturesTitle:"LOJA · TUDO PARA ORGANIZAR E VENDER",
-    financeJump:"Financeiro",storeJump:"Loja",laserJump:"Laser Control",
+    financeJump:"Financeiro",storeJump:"Loja",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANÁLISE DE MERCADO",
     sentinelLine1:"Seu mercado com mais contexto.",
@@ -70,7 +69,7 @@ const COPY={
     storeLogin:"I already have a store · Sign in",
     storeExample:"View real example storefront",
     storeFeaturesTitle:"STORE · EVERYTHING TO ORGANIZE AND SELL",
-    financeJump:"Finance",storeJump:"Store",laserJump:"Laser Control",
+    financeJump:"Finance",storeJump:"Store",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · MARKET ANALYSIS",
     sentinelLine1:"More context for your market.",
@@ -105,7 +104,7 @@ const COPY={
     storeLogin:"Ya tengo tienda · Entrar",
     storeExample:"Ver tienda real de ejemplo",
     storeFeaturesTitle:"TIENDA · TODO PARA ORGANIZAR Y VENDER",
-    financeJump:"Finanzas",storeJump:"Tienda",laserJump:"Laser Control",
+    financeJump:"Finanzas",storeJump:"Tienda",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANÁLISIS DE MERCADO",
     sentinelLine1:"Más contexto para tu mercado.",
@@ -140,7 +139,7 @@ const COPY={
     storeLogin:"J'ai déjà une boutique · Connexion",
     storeExample:"Voir une vraie boutique exemple",
     storeFeaturesTitle:"BOUTIQUE · TOUT POUR ORGANISER ET VENDRE",
-    financeJump:"Finance",storeJump:"Boutique",laserJump:"Laser Control",
+    financeJump:"Finance",storeJump:"Boutique",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANALYSE DE MARCHÉ",
     sentinelLine1:"Une lecture plus claire du marché.",
@@ -175,7 +174,7 @@ const COPY={
     storeLogin:"Ich habe einen Shop · Anmelden",
     storeExample:"Echten Beispiel-Shop ansehen",
     storeFeaturesTitle:"SHOP · ALLES ZUM ORGANISIEREN UND VERKAUFEN",
-    financeJump:"Finanzen",storeJump:"Shop",laserJump:"Laser Control",
+    financeJump:"Finanzen",storeJump:"Shop",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · MARKTANALYSE",
     sentinelLine1:"Mehr Kontext für Ihren Markt.",
@@ -210,7 +209,7 @@ const COPY={
     storeLogin:"لدي متجر · دخول",
     storeExample:"عرض متجر حقيقي كمثال",
     storeFeaturesTitle:"المتجر · كل ما تحتاجه للتنظيم والبيع",
-    financeJump:"المالي",storeJump:"المتجر",laserJump:"Laser Control",
+    financeJump:"المالي",storeJump:"المتجر",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · تحليل الأسواق",
     sentinelLine1:"رؤية أوضح لحركة السوق.",
@@ -342,26 +341,22 @@ function FeatureGrid({title,items}:{title:string;items:readonly string[]}){
   </section>;
 }
 
-export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:initialFinanceVisible=true}:{laserVisible?:boolean;financeVisible?:boolean}={}){
+export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisible?:boolean}={}){
   const{locale}=useI18n();
-  const[visibility,setVisibility]=useState({laser:initialLaserVisible,finance:initialFinanceVisible});
+  const[visibility,setVisibility]=useState({finance:initialFinanceVisible});
 
   useEffect(()=>{
     let active=true;
     const supabase=createClient();
     void supabase.rpc('get_public_site_visibility').then((result:{data?:unknown;error?:unknown})=>{
       if(!active||result.error)return;
-      const data=result.data as {laser_public_visible?:boolean|null;finance_public_visible?:boolean|null}|Array<{laser_public_visible?:boolean|null;finance_public_visible?:boolean|null}>|null|undefined;
+      const data=result.data as {finance_public_visible?:boolean|null}|Array<{finance_public_visible?:boolean|null}>|null|undefined;
       const row=Array.isArray(data)?data[0]:data;
-      setVisibility({
-        laser:true,
-        finance:row?.finance_public_visible!==false
-      });
+      setVisibility({finance:row?.finance_public_visible!==false});
     });
     return()=>{active=false};
   },[]);
 
-  const laserVisible=true;
   const financeVisible=visibility.finance;
   const activeLocale=(locale in COPY?locale:"pt-BR") as keyof typeof COPY;
   const c=COPY[activeLocale];
@@ -390,7 +385,6 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       <a className={`${styles.productJump} ${styles.sentinelJump}`} href="#sentinel" onClick={jumpTo("sentinel")}>{c.sentinelJump}</a>
       {financeVisible&&<a className={`${styles.productJump} ${styles.financeJump}`} href="#financeiro" onClick={jumpTo("financeiro")}>{c.financeJump}</a>}
       {showStore&&<a className={`${styles.productJump} ${styles.storeJump}`} href="#loja" onClick={jumpTo("loja")}>{c.storeJump}</a>}
-      <a className={`${styles.productJump} ${styles.laserJump}`} href="#laser-control" onClick={jumpTo("laser-control")}>{c.laserJump}</a>
     </nav>
 
     <section id="sentinel" className={`${styles.product} ${styles.sentinelProduct}`} aria-label="Sentinel Trading Lab">
@@ -453,8 +447,6 @@ export function HomeHub({laserVisible:initialLaserVisible=false,financeVisible:i
       </article>
       </>}
     </section>
-
-    {laserVisible&&<LaserHomeCard/>}
 
     <footer className={styles.footer}>{c.control}</footer>
   </main>;
