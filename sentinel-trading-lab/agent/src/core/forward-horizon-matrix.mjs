@@ -52,7 +52,8 @@ export function forwardHorizonMatrix({settings={},snap={},now=Date.now(),primary
         // The selected forecast remains unchanged. During selective analysis,
         // auxiliary chart slots use the original lightweight estimator instead
         // of repeating six structural regressions on every broker quote.
-        forecastModel:seconds===horizon?forecastModel:'original-67',
+        forecastModel:seconds===horizon||forecastModel==='causal-interval-1371'?
+          forecastModel:'original-67',
         adaptiveHistory
       });
     rows.push(rowFor(model,seconds));
