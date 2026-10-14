@@ -94,7 +94,7 @@ export function evolveOpportunity({
    old.windowEndsAt+Math.floor(Math.max(0,now-old.windowEndsAt)/(H*1000))*H*1000:
    now;
  const end=started+H*1000;
- if(validCandidate()&&Number(candidate.issuedAt)>=started&&Number(candidate.entryAt)<=end)
+ if(validCandidate()&&(!old?.windowEndsAt||Number(candidate.issuedAt)>=started)&&Number(candidate.entryAt)<=end)
   return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
    openedAt:started,windowStartedAt:started,windowEndsAt:end,
    candidateQuoteAt:Number(quoteAt),entryReadyNow:false,entryTriggeredAt:null};
