@@ -24,7 +24,7 @@ test('installer succeeds and terminates; Worker and tray are started independent
  assert.doesNotMatch(src.slice(success,exit),/Read-Host|Wait-Process|WaitForExit|ReadKey/);
  assert.match(src,/Start-Transcript -Path/);
  assert.match(src,/Stop-Transcript \| Out-Null/);
- assert.match(src,/Invoke-RestMethod 'http:\/\/127\.0\.0\.1:8788\/health'/);
+ assert.match(src,/Invoke-RestMethod[^\n]*'http:\/\/127\.0\.0\.1:8788\/health'/);
 });
 test('embedded EXE and background updater use the same success and logging path',()=>{
  const launcherInstall=read('public/downloads/install-agent-v88.ps1');
