@@ -40,9 +40,14 @@ export function sentinelCheckoutUrl(market:SentinelMarket='INTL'){
   const verified=trustedKiwifyUrl(raw);
   if(!verified)return null;
   if(market==='BR')return verified;
-  // Required international Kiwify flag; preserve other trusted URL parameters.
+  // Kiwify documents region=intl as the official international checkout
+  // selector (no CPF, Brazilian boleto or installments). The former intl=1
+  // flag is NOT an official language selector and did not change Portuguese.
+  // Do not pretend an unsupported lang=en parameter forces English: Kiwify
+  // controls the hosted payment page language and merchant checkout layout.
   const url=new URL(verified);
-  url.searchParams.set('intl','1');
+  url.searchParams.delete('intl');
+  url.searchParams.set('region','intl');
   return url.toString();
 }
 
