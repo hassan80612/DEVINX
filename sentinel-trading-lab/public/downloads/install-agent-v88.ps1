@@ -140,32 +140,74 @@ try {
   $watchdog = Join-Path $root 'worker\watchdog.ps1'
   $manager = Join-Path $root 'worker\agent-manager.mjs'
 
-  if ($env:SENTINEL_INSTALL_TEST -eq '1') {
-    $env:SENTINEL_WORKER_HOST='127.0.0.1'
-    $env:SENTINEL_WORKER_PORT='8787'
-    $env:SENTINEL_MANAGER_PORT='8788'
-    Start-Process -FilePath $node -ArgumentList @("`"$manager`"") -WorkingDirectory $root -WindowStyle Hidden | Out-Null
-  } else {
+  # 13.7.2: Start and verify the real Agent manager DIRECTLY. The tray and
+  # watchdog are observers: neither is permitted to be the only startup path.
+  # A desktop tray crash must never leave the Windows worker silently offline.
+  $env:SENTINEL_WORKER_HOST='127.0.0.1'
+  $env:SENTINEL_WORKER_PORT='8787'
+  $env:SENTINEL_MANAGER_PORT='8788'
+  $env:SENTINEL_ALLOWED_ORIGINS='https://sentinel-trading-lab.vercel.app,https://sentinel-trading-lab-iguassu-shop.vercel.app'
+  foreach ($script in @(
+      $manager,
+      (Join-Path $root 'worker\index.mjs'),
+      (Join-Path $root 'src\core\runtime.mjs'),
+      (Join-Path $root 'src\core\causal-interval-forecast-1371.mjs')
+  )) {
+    if (-not (Test-Path -LiteralPath $script)) { throw "Modulo ausente no pacote: $script" }
+    & $node --check $script
+    if ($LASTEXITCODE -ne 0) { throw "Erro de sintaxe no Agent: $script" }
+  }
+  $managerStdout = Join-Path $dataDir 'manager-start-stdout.log'
+  $managerStderr = Join-Path $dataDir 'manager-start-stderr.log'
+  $managerProcess = Start-Process -FilePath $node -ArgumentList @("`"$manager`"") `
+    -WorkingDirectory $root -WindowStyle Hidden -PassThru `
+    -RedirectStandardOutput $managerStdout -RedirectStandardError $managerStderr
+  if (-not $managerProcess -or $managerProcess.Id -le 0) {
+    throw 'Falha ao executar o gerenciador Node do Sentinel.'
+  }
+  $ready=$false
+  $managerHealth=$null
+  for ($i=0; $i -lt 120; $i++) {
+    try {
+      $managerHealth = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
+      if ($managerHealth.ok -and $managerHealth.workerHealthy -and
+        $managerHealth.version -eq $expectedVersion -and $managerHealth.build -eq $expectedBuild) {
+        $ready = $true
+        break
+      }
+    } catch {}
+    $managerProcess.Refresh()
+    if ($managerProcess.HasExited) { break }
+    Start-Sleep -Milliseconds 500
+  }
+  if (-not $ready) {
+    foreach ($log in @($managerStderr,
+        (Join-Path $dataDir 'worker.log'),
+        (Join-Path $dataDir 'manager.log'))) {
+      if (Test-Path -LiteralPath $log) {
+        Write-Host ("ERRO DETALHADO: " + $log) -ForegroundColor Yellow
+        Get-Content -LiteralPath $log -Tail 14 -ErrorAction SilentlyContinue |
+          ForEach-Object { Write-Host $_ -ForegroundColor Yellow }
+      }
+    }
+    if ($managerHealth -and $managerHealth.lastExit) {
+      Write-Host ("Ultimo Worker: " + ($managerHealth.lastExit | ConvertTo-Json -Compress)) -ForegroundColor Yellow
+    }
+    throw "Agent $expectedVersion nao iniciou: consulte worker.log e manager.log. O instalador exibiu o erro de inicializacao acima."
+  }
+
+  # Only AFTER /health confirms matching version, build and actual child PID
+  # enable tray icon and recovery watchdog. Avoid duplicate manager startups.
+  if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     $watchdogHost = Join-Path $root 'worker\watchdog-host.ps1'
     $runCmd = "powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$tray`""
     $watchdogCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$watchdogHost`""
     New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Force | Out-Null
     Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLab' -Value $runCmd -Force
     Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'SentinelTradingLabWatchdog' -Value $watchdogCmd -Force
-
-    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$watchdogHost`"") -WindowStyle Hidden | Out-Null
     Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-STA','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$tray`"") -WindowStyle Hidden | Out-Null
+    Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',"`"$watchdogHost`"") -WindowStyle Hidden | Out-Null
   }
-
-  $ready = $false
-  for ($i=0; $i -lt 120; $i++) {
-    try {
-      $h = Invoke-RestMethod -UseBasicParsing 'http://127.0.0.1:8788/health' -TimeoutSec 1
-      if ($h.ok -and $h.workerHealthy -and $h.version -eq $expectedVersion -and $h.build -eq $expectedBuild) { $ready = $true; break }
-    } catch {}
-    Start-Sleep -Milliseconds 500
-  }
-  if (-not $ready) { throw "Agent abriu, mas o Worker nao respondeu. Consulte install.log e worker\data\manager.log; execute novamente o Agent V$expectedVersion." }
 
   if ($env:SENTINEL_INSTALL_TEST -ne '1') {
     $trayReady = $false
