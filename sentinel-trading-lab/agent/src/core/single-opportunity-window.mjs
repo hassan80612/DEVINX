@@ -96,7 +96,9 @@ export function evolveOpportunity({
  const end=started+H*1000;
  // A new fixed cycle needs its own quote and fresh forecast, never the
  // previous cycle's still-future appointment carried through a cache.
- const sourceInNewCycle=Number(quoteAt)>=started&&Number(candidate?.issuedAt)>=started;
+ const rolledFromPriorCycle=!!old?.windowEndsAt&&now>=old.windowEndsAt;
+ const sourceInNewCycle=!rolledFromPriorCycle||
+   (Number(quoteAt)>=started&&Number(candidate?.issuedAt)>=started);
  if(sourceInNewCycle&&validCandidate()&&Number(candidate.entryAt)<=end)
   return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
    openedAt:started,windowStartedAt:started,windowEndsAt:end,
