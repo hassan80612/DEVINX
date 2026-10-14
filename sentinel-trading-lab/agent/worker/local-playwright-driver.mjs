@@ -1142,7 +1142,7 @@ export class LocalPlaywrightDriver{
           const instrumentKind=/\bblitz\b/i.test(top)?'blitz':/\bdigital\b/i.test(top)?'digital':'unknown';
           const observed=readBrokerTimingFromText(raw,{nowMs:Date.now(),instrumentKind});
           // Stale and unrecognized readings are never treated as broker authority.
-          st.brokerTiming=observed;
+          st.brokerTiming={...observed,symbol:st.symbol};
         }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
       }
       // Prefer authenticated WebSocket broker time to a fragile page-text
