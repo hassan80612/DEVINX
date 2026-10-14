@@ -5,7 +5,7 @@
 export function entryOffsets(windowSeconds){
  const h=Number(windowSeconds);
  if(!Number.isInteger(h)||h<5||h>3600)return [];
- return [...new Set([Math.min(h,Math.max(2,Math.ceil(h*.08))),
+ return [...new Set([1,Math.min(h,Math.max(2,Math.ceil(h*.08))),
    Math.max(2,Math.round(h*.24)),Math.max(2,Math.round(h*.48)),
    Math.max(2,Math.round(h*.72)),Math.max(2,Math.round(h*.96))])]
    .filter(x=>x<=h).sort((a,b)=>a-b);
