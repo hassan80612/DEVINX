@@ -434,7 +434,9 @@ function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}
  };
  return <div className="grid">
    <section className="card span12">
+     <div className="sentinelProTag">{t('ANALISTA PROFISSIONAL DE MERCADO')}</div>
      <h3>{t('Escolha sua corretora')}</h3>
+     <div className="sentinelBrokerPartners"><div className="sentinelBrokerPartner">IQ Option<small>{t('Análise técnica')}</small></div><div className="sentinelBrokerPartner">Exnova<small>{t('Análise técnica')}</small></div></div>
      <p className="muted">{t('O Agent acompanha a conta e o ativo abertos na corretora escolhida. Nenhuma operação é executada automaticamente.')}</p>
      <div className="actions topgap">
        <button className="primary" disabled={busy||!allowed} onClick={()=>open('iq_option')}>{t('Abrir IQ Option')}</button>
@@ -582,12 +584,14 @@ function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentC
        <a className="secondary linkbtn sentinelPcOnly" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{t('Instalar / atualizar Agent')}</a>
      </div>
    </section>
-   {s?.runtimeKind==='persistent-worker'&&<section className="card span12 sentinelPcOnly">
+   {s?.runtimeKind==='persistent-worker'&&<section className="card span12 sentinelPcOnly sentinelAccountAgentCard">
      <h3>{t('Agent neste computador')}</h3>
-     <p className="muted">{t('O Agent só libera novas análises com uma sessão autenticada aberta e um período de acesso válido. Não é necessário vincular o celular.')}</p>
-     <div className="actions topgap">
-       <button className="secondary" disabled={busy||!agent.process} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button>
-       <button className="secondary" disabled={busy||!agent.process} onClick={()=>agentCommand('exit')}>{t('Desligar Agent')}</button>
+     <div className="sentinelAgentBody">
+       <p className="muted">{t('Seu Agent acompanha o login ativo e a validade do acesso. O celular utiliza a mesma conta, sem vinculação adicional.')}</p>
+       <div className="actions">
+         <button className="secondary" disabled={busy||!agent.process} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button>
+         <button className="secondary" disabled={busy||!agent.process} onClick={()=>agentCommand('exit')}>{t('Desligar Agent')}</button>
+       </div>
      </div>
    </section>}
  </div>
