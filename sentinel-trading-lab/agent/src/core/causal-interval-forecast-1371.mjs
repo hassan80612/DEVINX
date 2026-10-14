@@ -46,7 +46,9 @@ function profile(r,t){
  const rate5=(at.lp-p5.lp)/5,rate10=(at.lp-p10.lp)/10;
  const rate15=(at.lp-p15.lp)/15,rate20=(at.lp-p20.lp)/20,rate30=(at.lp-p30.lp)/30;
  const rate60=(at.lp-p60.lp)/60,rate90=net/90;
- return {at,sigma,rate5,rate10,rate15,rate20,rate30,rate60,rate90,
+ // The former trend must NOT include the unfolding 10-20s reversal.
+ const priorRate=(p30.lp-p90.lp)/60;
+ return {at,sigma,rate5,rate10,rate15,rate20,rate30,rate60,rate90,priorRate,
   efficiency:clamp(Math.abs(net)/Math.max(path,1e-12),0,1),
   position:high-low>1e-12?(at.lp-low)/(high-low):.5,
   mean:recent.reduce((s,q)=>s+q.lp,0)/recent.length,
@@ -62,7 +64,7 @@ function profile(r,t){
 // Identify a regime from OBSERVED swings rather than the colour of the
 // current candle. Short-term noise alone cannot overturn a real trend.
 export function forwardRegime(p){
- const long=(p.rate60*.6+p.rate90*.4),short=(p.rate10*.50+p.rate15*.35+p.rate20*.15);
+ const long=p.priorRate,short=(p.rate10*.50+p.rate15*.35+p.rate20*.15);
  const normal=Math.max(1e-10,p.sigma);
  const oldSide=Math.sign(long),newSide=Math.sign(short);
  const relativeStrength=Math.abs(short)/Math.max(normal*.45,Math.abs(long));
