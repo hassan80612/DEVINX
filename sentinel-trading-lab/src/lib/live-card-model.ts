@@ -40,7 +40,15 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
   // Entry remains gated by fresh (2.5s) and runtimeView.canEnter.
   const scenario=op.scenario||null;
   const vnext=a?.vnext||null;
-  const vnextReceipt=matchingMarket&&vnext?.engineId===s?.settings?.engine&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
+  const currentWindowEpoch=Number(vnext?.opportunityWindow?.windowStartedAt||
+    vnext?.ow?.[1]||0);
+  const currentWindowEnd=Number(vnext?.opportunityWindow?.windowEndsAt||
+    vnext?.ow?.[2]||0);
+  const currentEpochValid=currentWindowEpoch>0&&currentWindowEnd>now;
+  const vnextReceipt=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
+    currentEpochValid&&Number(vnext?.receipt?.issuedAt)>=currentWindowEpoch&&
+    vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&
+    Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
   const vnextTargetAnchor=matchingMarket&&vnext?.targetAnchor?.engineId===s?.settings?.engine&&
     vnext?.targetAnchor?.asset?.toUpperCase()===asset.toUpperCase()&&
     Number(vnext.targetAnchor.expirySeconds)===horizon?vnext.targetAnchor:null;
