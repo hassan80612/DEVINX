@@ -278,6 +278,13 @@ function overlayAnalysis(view,asset,now=Date.now()){
     now<Number(analysis.vnext.opportunityWindow.windowEndsAt);
   if(complete&&withinWindow(current)){overlayCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false}}
   if(!switched){const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200&&withinWindow(cached.analysis))return{analysis:cached.analysis,transient:true}}
+  if(current&&!withinWindow(current)){
+    const vnext=current.vnext||{};
+    return{analysis:{...current,
+      vnext:{...vnext,receipt:null,futureEntryAnchor:null,
+        opportunityWindow:null,futureEntryRows:[],targetAnchor:null},
+      operationalSignal:null,side:'WAIT'},transient:false}
+  }
   return{analysis:current||{},transient:false}
 }
 // Only local timings; never poll, touch the broker account or write DB rows.
