@@ -40,8 +40,13 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
   // Entry remains gated by fresh (2.5s) and runtimeView.canEnter.
   const scenario=op.scenario||null;
   const vnext=a?.vnext||null;
-  const vnextReceipt=matchingMarket&&vnext?.engineId===s?.settings?.engine&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
-  const vnextTargetAnchor=matchingMarket&&vnext?.targetAnchor?.engineId===s?.settings?.engine&&
+  // A delayed network frame from the former 30/60s cycle must not be
+  // presented as the live decision of the next window.
+  const cycleEndAt=Number(Array.isArray(vnext?.ow)?
+    vnext.ow[2]:vnext?.opportunityWindow?.windowEndsAt||0);
+  const endedPreviousCycle=cycleEndAt>0&&now>=cycleEndAt;
+  const vnextReceipt=!endedPreviousCycle&&matchingMarket&&vnext?.engineId===s?.settings?.engine&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
+  const vnextTargetAnchor=!endedPreviousCycle&&matchingMarket&&vnext?.targetAnchor?.engineId===s?.settings?.engine&&
     vnext?.targetAnchor?.asset?.toUpperCase()===asset.toUpperCase()&&
     Number(vnext.targetAnchor.expirySeconds)===horizon?vnext.targetAnchor:null;
   const vnextProjection=vnextReceipt&&vnext?.projection?.kind!=='invalid'?
@@ -65,11 +70,11 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
     windowEndsAt:Number(rawWindow[2]),entryAt:Number(rawWindow[3]),
     reason:String(rawWindow[4]||'')
   }:rawWindow||null;
-  const vnextFutureEntryAnchor=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
+  const vnextFutureEntryAnchor=!endedPreviousCycle&&matchingMarket&&vnext?.engineId===s?.settings?.engine&&
     Number(entryAnchor?.delaySeconds)===horizon&&
     Number(entryAnchor?.entryAt)>Number(entryAnchor?.issuedAt)&&
     ['CALL','PUT'].includes(String(entryAnchor?.side||''))?entryAnchor:null;
-  const vnextFutureEntryRows=matchingMarket&&vnext?.engineId===s?.settings?.engine?
+  const vnextFutureEntryRows=!endedPreviousCycle&&matchingMarket&&vnext?.engineId===s?.settings?.engine?
     (Array.isArray(vnext?.er)?vnext.er:
       Array.isArray(vnext?.futureEntryRows)?vnext.futureEntryRows:[])
       .map(entryFromTuple)
@@ -79,7 +84,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
   // tuples. Both are strictly from the currently selected engine and asset.
   const rawHorizons=Array.isArray(vnext?.hf)?vnext.hf:
     Array.isArray(vnext?.horizonForecasts)?vnext.horizonForecasts:[];
-  const vnextHorizons=matchingMarket&&vnext?.engineId===s?.settings?.engine?
+  const vnextHorizons=!endedPreviousCycle&&matchingMarket&&vnext?.engineId===s?.settings?.engine?
     rawHorizons.map((r:any)=>Array.isArray(r)?{
       horizonSeconds:Number(r[0]),side:r[1]||null,projectedPrice:r[2],
       issuedAt:Number(r[3])||0,targetAt:(Number(r[3])||0)+Number(r[0])*1000
