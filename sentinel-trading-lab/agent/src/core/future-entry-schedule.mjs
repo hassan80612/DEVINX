@@ -1,6 +1,7 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
 import {causalForwardPath} from './causal-interval-forecast-1371.mjs';
 import {selectedFixedBrokerExpiry,futurePriceExitSeconds} from './broker-fixed-expiry-1376.mjs';
+import {observedBuyWindow,brokerAllowsEntry} from './broker-buy-window-1378.mjs';
 import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
 import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
@@ -108,6 +109,7 @@ function continuousWindow({input,settings,chosen}){
  const engineId=String(settings.engine||'automatic');
  const history=input.adaptiveHistory||snap.quoteHistory||[];
  const fixedExpiry=selectedFixedBrokerExpiry({snap,settings,now});
+ const buyWindow=observedBuyWindow({snap,settings,now});
  const maxForecastSeconds=fixedExpiry.verified?
    Math.max(chosen*2,Math.ceil(fixedExpiry.remainingSeconds)):chosen*2;
  const noise=observedNoise({quotes:history,now,horizonSeconds:chosen});
@@ -169,6 +171,9 @@ function continuousWindow({input,settings,chosen}){
   realWindowEndsAt:window?Number(window.windowEndsAt):null,
   confirmationQuoteGapMs,
   evaluateLead:seconds=>{
+   // A qualified prediction is not tradable after the broker's observed
+   // purchase deadline. This is only active in synchronized-clock mode.
+   if(!brokerAllowsEntry({buyWindow,entryAt:now+seconds*1000}))return null;
    const exitLead=futurePriceExitSeconds({brokerExpiry:fixedExpiry,now,
      leadSeconds:seconds,holdingSeconds:chosen});
    if(exitLead===null)return null;
@@ -282,6 +287,9 @@ export function confirmWindowEntry({
  const H=Number(settings.orderDurationMs||0)/1000;
  const lead=Math.max(0,Math.ceil((Number(entryAt)-now)/1000));
  const quotes=adaptiveHistory||snap.quoteHistory||[];
+ const buyWindow=observedBuyWindow({snap,settings,now});
+ if(!brokerAllowsEntry({buyWindow,entryAt:now}))
+  return {side:null,status:'broker-purchase-closed'};
  if(!(H>=5&&H<=3600)||!(Number(snap.quoteTs)>0&&
   Number(snap.quoteTs)<=now&&now-Number(snap.quoteTs)<=2500))
   return {side:null,status:'waiting-fresh-quote'};
