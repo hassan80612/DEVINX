@@ -769,11 +769,16 @@ export class LocalPlaywrightDriver{
       // Passive observation of the broker's actual market data (13.4.27).
       // Never send, block, mutate or proxy broker traffic.
       ws.on('framereceived',event=>{
+        // A busy broker emits many WebSocket packets per second.
+        // Apply the EXISTING 200ms read-only sampling gate BEFORE decoding
+        // binary frames and testing large payloads. The same qualifying
+        // market packets are ingested; broker network and analysis remain
+        // untouched. Never block or intercept a broker frame.
+        const st=this.state(provider),now=Date.now();
+        if(now-Number(st.lastPassiveFrameAt||0)<200)return;
         const raw=event?.payload;
         const payload=typeof raw==='string'?raw:(Buffer.isBuffer(raw)&&raw.length<=120000?raw.toString('utf8'):null);
         if(!payload||payload.length>120000||!/candle-generated|quote-generated|instrument-quotes|ticker/i.test(payload))return;
-        const st=this.state(provider),now=Date.now();
-        if(now-Number(st.lastPassiveFrameAt||0)<200)return;
         st.lastPassiveFrameAt=now;
         this.ingest(provider,payload,'page-in');
       });
