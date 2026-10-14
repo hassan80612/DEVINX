@@ -1,13 +1,13 @@
 {
-  "version": "13.7.6",
-  "build": "13.7.6-continuous-real-digital-expiry-broker-clock-manual-broker",
+  "version": "13.7.7",
+  "build": "13.7.7-broker-clock-pinned-one-tab-early-entries",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.7.6-expiry-clock-integration-replay-pending",
+    "modelValidation": "13.7.7-causal-early-entry-clock-regressions-pending-live",
     "forecastModel": "causal-interval-1371"
   }
 }
