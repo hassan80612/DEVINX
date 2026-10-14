@@ -1484,3 +1484,15 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 
 /* Keep the waiting instruction visible at narrow phone widths. */
 .liveScenario .vnextFutureDirection[data-await-entry="true"] strong{font-size:clamp(12px,3.7vw,18px)!important}
+
+/* 13.8.2: Account Agent control panel must remain a real grid cell.
+   The older .sentinelPcOnly {display:contents} removed its card box. */
+.accountAgentCard{grid-column:1/-1!important;display:flex!important;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px;min-width:0;padding:19px 21px!important}
+.accountAgentCopy{min-width:0;flex:1 1 260px;max-width:700px}
+.accountAgentCopy h3{font-size:16px!important;margin:0 0 7px!important}
+.accountAgentCopy p{font-size:13px!important;line-height:1.5!important;max-width:690px}
+.accountAgentActions{display:flex;gap:9px;align-items:center;flex:0 0 auto;flex-wrap:wrap}
+.accountAgentActions button{white-space:nowrap;min-width:132px;min-height:42px}
+.accountAgentDownload{display:inline-flex}
+@media(max-width:900px){.accountAgentCard,.accountAgentDownload{display:none!important}}
+@media(max-width:620px){.accountAgentCard{padding:14px!important}.accountAgentActions{width:100%}.accountAgentActions button{flex:1 1 115px}}
