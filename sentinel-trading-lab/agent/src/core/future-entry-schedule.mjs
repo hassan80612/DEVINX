@@ -282,7 +282,7 @@ export function confirmWindowEntry({
  const noise=observedNoise({quotes,now,horizonSeconds:H});
  if(engineId==='automatic'&&forecastModel==='causal-interval-1371'){
   const causal=causalForwardPath({quoteHistory:quotes,asOf:now,
-    holdingSeconds:H,maxSeconds:lead+H});
+    holdingSeconds:H,maxSeconds:Math.max(H*2,lead+H)});
   const entry=causal.priceAt(lead),exit=causal.priceAt(lead+H);
   const check=coherentInterval({entryPrice:entry,exitPrice:exit,noise});
   return {...check,side:check.qualified?check.side:null,
