@@ -236,11 +236,8 @@ try {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan
     Write-Host 'Se o Windows esconder o icone, clique na setinha ^ ao lado do relogio.' -ForegroundColor Yellow
-    # Open the Sentinel broker-choice page, NEVER a default IQ/Exnova window.
-    # The user's broker starts only from the explicit Corretora button.
-    try { Start-Process 'https://sentinel-trading-lab.vercel.app/console?tab=Broker%20Connection' | Out-Null } catch {
-      Write-Host 'Abra o Sentinel em: https://sentinel-trading-lab.vercel.app/console?tab=Broker%20Connection' -ForegroundColor Yellow
-    }
+    # The enclosing Go launcher owns the ONE post-install browser tab.
+    # Silent auto-updates must not launch or duplicate browser pages.
     Start-Sleep -Seconds 2
   }
   exit 0
