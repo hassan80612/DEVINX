@@ -2,7 +2,7 @@
 // superseded frames, and give the page breathing room after a slow render.
 // There must never be a catch-up loop when Playwright/page.evaluate stalls.
 export class LatestOverlayScheduler{
-  constructor(update,{minIntervalMs=1200,slowThresholdMs=800,slowCooldownMs=3000}={}){
+  constructor(update,{minIntervalMs=2200,slowThresholdMs=800,slowCooldownMs=3200}={}){
     this.update=update;this.pending=null;this.running=false;this.errors=0;
     this.minIntervalMs=minIntervalMs;this.slowThresholdMs=slowThresholdMs;
     this.slowCooldownMs=slowCooldownMs;this.nextAllowedAt=0;this.timer=null;
@@ -19,8 +19,10 @@ export class LatestOverlayScheduler{
   }
   schedule(){
     if(this.running||!this.pending)return;
-    // An actual decision transition may bypass the long cooldown of a
-    // previous SLOW drawing. It never interrupts an in-flight page.evaluate.
+    // Routine cosmetic refreshes are less frequent so they do not occupy
+    // the broker's rendering queue. An actual decision transition bypasses
+    // the normal and slow-render cooldown immediately, without another timer
+    // or a second independent analysis. Never interrupt an active evaluate.
     if(this.timer){
       if(!this.pending.urgent)return;
       clearTimeout(this.timer);this.timer=null;
