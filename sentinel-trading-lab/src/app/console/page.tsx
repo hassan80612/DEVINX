@@ -353,7 +353,7 @@ function Panel({name,s,act,busy,agent,agentCommand,account,pairCode,setPairCode,
    if(name==='Broker Connection')return <Broker s={s} act={act} busy={busy} account={account}/>;
    if(name==='Strategies')return <Strategies s={s} act={act} busy={busy}/>;
    if(name==='Membership')return <Membership account={account}/>;
-   return <Settings s={s} agent={agent} agentCommand={agentCommand} busy={busy} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair}/>;
+   return <Settings s={s} agent={agent} agentCommand={agentCommand} busy={busy} account={account}/>;
 }
 
 function Membership({account}:{account:any}){
