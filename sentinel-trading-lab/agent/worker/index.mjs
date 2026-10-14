@@ -282,6 +282,16 @@ function overlayAnalysis(view,asset,now=Date.now()){
   const resultAsset=String(view.lastResult?.asset||view.lastResult?.analysis?.asset||'').trim().toUpperCase();
   const sameAsset=!!key&&!!resultAsset&&key===resultAsset;
   const current=sameAsset?(view.lastResult?.analysis||null):null;
+  const cycle=current?.vnext?.opportunityWindow;
+  const cycleEndsAt=Number(cycle?.windowEndsAt||0);
+  // A finished window is never the "current" card for its successor.
+  // Clear the old direction while waiting for a real next-cycle quote.
+  if(view.settings?.engine){
+    overlayCache.delete(key);
+    if(!current||switched||(cycleEndsAt>0&&now>=cycleEndsAt))
+      return {analysis:{asset:key,side:'WAIT',reasons:['Aguardando nova janela e cotação']},transient:false};
+    return{analysis:current,transient:false};
+  }
   const complete=current&&current.metrics&&current.finalConfluence&&Number.isFinite(Number(current.confidence));
   if(complete){overlayCache.set(key,{analysis:current,at:now});return{analysis:current,transient:false}}
   if(!switched){const cached=overlayCache.get(key);if(cached&&now-Number(cached.at||0)<=2200)return{analysis:cached.analysis,transient:true}}
