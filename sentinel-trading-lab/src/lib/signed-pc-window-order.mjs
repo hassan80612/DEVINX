@@ -61,15 +61,65 @@ function withExistingWindow(previous,incoming){
 export function reconcileSignedPcOpportunity(previous,frame){
  return !previous?frame:withExistingWindow(previous,frame);
 }
+// The Agent sends a complete snapshot when it fits within the signed
+// channel budget, but sends a smaller (yet authenticated) snapshot when busy.
+// Missing optional display fields in that compact frame are NOT instructions
+// to clear the UI. Keep only already-received fields from the SAME PC window,
+// asset, engine and expiry; never derive a window, signal or new CALL/PUT.
+export function reconcileSignedAnalystDisplay(previous,incoming){
+ const frame=reconcileSignedPcOpportunity(previous,incoming);
+ if(!previous||!sameContext(previous,frame))return frame;
+ const oldV=previous?.lastResult?.analysis?.vnext;
+ const nextV=frame?.lastResult?.analysis?.vnext;
+ if(!oldV||!nextV||oldV.engineId!==nextV.engineId||
+    Number(oldV.expirySeconds)!==Number(nextV.expirySeconds))return frame;
+ const oldW=pcWindowInfo(previous),newW=pcWindowInfo(frame);
+ if(!(oldW.start>0&&oldW.start===newW.start&&oldW.end===newW.end))return frame;
+ // Normal frames carry computedStatus; this field disappears only when
+ // the Agent trims a large signed packet to its essential data.
+ const reduced=!Object.prototype.hasOwnProperty.call(nextV,'computedStatus');
+ if(!reduced)return frame;
+ const stable={...nextV};
+ for(const key of ['cards','hf','hm','er']){
+   if((!Array.isArray(stable[key])||stable[key].length===0)&&
+      Array.isArray(oldV[key])&&oldV[key].length>0)stable[key]=oldV[key];
+ }
+ // A missing projection is a size reduction; explicit null still clears it.
+ for(const key of ['projection','targetProjection']){
+   if(stable[key]===undefined&&oldV[key]!==undefined)stable[key]=oldV[key];
+ }
+ return {...frame,lastResult:{...frame.lastResult,analysis:{
+   ...(frame.lastResult?.analysis||{}),vnext:stable
+ }}};
+}
+
 export function reconcileCloudPcOpportunity(previous,cloud){
  if(!previous||!cloud)return cloud;
  if(!previous.liveTopic||previous.liveTopic!==cloud.liveTopic||
     cloud.remote?.online===false||cloud.state!=='running')return cloud;
  const restored=withExistingWindow(previous,cloud);
- // Preserve clock calibration and the socket status across an unrelated
- // cloud request. Otherwise the phone jumps to its own Date.now() for
- // several seconds and the countdown can flash blank on every poll.
+ // Cloud full-status polls may lag a verified PC Broadcast. The last
+ // authenticated, newer PC analysis owns the displayed opportunity until
+ // the server has an ACTUALLY newer evaluation (not until an arbitrary
+ // 6-second timeout). An expired opportunity still expires by its PC time.
+ const signed=previous.liveTransport==='push';
+ const samePC=signed&&sameContext(previous,cloud);
+ const previousEvaluation=Number(previous.lastEvalMs||0);
+ const cloudEvaluation=Number(cloud.lastEvalMs||0);
+ const keepSignedAnalysis=samePC&&previousEvaluation>0&&
+   cloudEvaluation<=previousEvaluation;
+ const pcBroker=previous.liveBroker||{},cloudBroker=cloud.liveBroker||{};
+ const pcQuoteAt=Number(pcBroker.lastQuoteAt||0);
+ const cloudQuoteAt=Number(cloudBroker.lastQuoteAt||0);
+ // A newer broker price is allowed through independently; it never
+ // resurrects a signalled CALL/PUT from a previous interval.
  return {...restored,
+   ...(keepSignedAnalysis?{
+     lastEvalMs:previousEvaluation,
+     lastResult:previous.lastResult,
+     liveBroker:cloudQuoteAt>pcQuoteAt?{...pcBroker,...cloudBroker}:pcBroker,
+     feed:cloudQuoteAt>pcQuoteAt?cloud.feed:previous.feed
+   }:{}),
    pcClockOffsetMs:previous.pcClockOffsetMs??cloud.pcClockOffsetMs,
    pcClockRttMs:previous.pcClockRttMs??cloud.pcClockRttMs,
    liveStreamAt:previous.liveStreamAt??cloud.liveStreamAt,
