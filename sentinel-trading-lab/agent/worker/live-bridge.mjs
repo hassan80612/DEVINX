@@ -141,14 +141,16 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const critical={
     v:snapshot.v,at:snapshot.at,seq:snapshot.seq,
     agentVersion:snapshot.agentVersion,state:snapshot.state,
-    settings:snapshot.settings,
+    killSwitch:snapshot.killSwitch,masterFrozen:snapshot.masterFrozen,
+    lastEvalMs:snapshot.lastEvalMs,settings:snapshot.settings,
     liveBroker:{
       symbol:snapshot.liveBroker?.symbol,
       validatedSymbol:snapshot.liveBroker?.validatedSymbol,
       assetValidated:snapshot.liveBroker?.assetValidated,
       analysisFeedValidated:snapshot.liveBroker?.analysisFeedValidated,
       lastQuoteAt:snapshot.liveBroker?.lastQuoteAt,
-      quote:snapshot.liveBroker?.quote
+      quote:snapshot.liveBroker?.quote,
+      brokerTiming:snapshot.liveBroker?.brokerTiming
     },
     feed:snapshot.feed,
     lastResult:{asset:snapshot.lastResult?.asset,analysis:{
