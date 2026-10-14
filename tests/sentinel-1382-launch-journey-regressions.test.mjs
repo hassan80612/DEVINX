@@ -68,3 +68,14 @@ test('checkout never forces a separate plan page and users keep matching registr
  assert.match(middleware,/p==='\/comprar'/);
  assert.match(migration,/refresh_kiwify_prepaid_access\(v_email\)/);
 });
+
+test('new market quotes do not run unused auxiliary ENTRY searches before the primary signal',()=>{
+ const matrix=src('agent/src/core/forward-horizon-matrix.mjs');
+ const matches=[...matrix.matchAll(/delays:\[horizon\],knownForecasts:rows/g)];
+ assert.equal(matches.length,2,'fast-quote and new-quote paths must both scan only selected entry horizon');
+ assert.doesNotMatch(matrix,/delays:horizons,knownForecasts:rows/);
+ assert.match(matrix,/FORWARD_HORIZONS/,'informational multi-horizon price forecasts remain');
+ const worker=src('agent/worker/index.mjs');
+ assert.match(worker,/realtimeQuotes\.request\(\)/,'live quote callback continues to schedule immediate evaluation');
+ assert.match(worker,/runtime\.requestImmediateEvaluation\?\.\(\)/,'new quote bypasses old stored evaluation wait');
+});
