@@ -7,6 +7,7 @@ import {translations} from '../src/core/ui-texts.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {readBrokerTimingFromText} from './broker-timing-readonly.mjs';
+import {brokerClockView} from './broker-clock-view.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -1155,6 +1156,7 @@ export class LocalPlaywrightDriver{
       // Timing is observed regardless of the user's clock presentation.
       // A single read-only snapshot is shared by the forecast and overlay.
       payload.brokerTiming=this.liveStatus(provider).brokerTiming;
+      payload.brokerClockView=brokerClockView({timing:payload.brokerTiming});
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
@@ -2040,37 +2042,39 @@ export class LocalPlaywrightDriver{
               shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
               value.style.fontSize='';
             }
-            // Two separate clocks: the OPPORTUNITY countdown always comes
-            // from the Agent; broker timeSync displays the broker's clock.
-            // A purchase deadline is NOT a prediction expiry or holding period.
+            // The SELECTED clock must change the MAIN readout, not merely
+            // the little footer. It remains read-only: never drive the
+            // opportunity window or a trade from the broker purchase cutoff.
             const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker';
-            const observation=window.__sentinelLastOverlayData?.brokerTiming||null;
-            const broker=observation?.brokerClock||null;
+            const view=window.__sentinelLastOverlayData?.brokerClockView||null;
             const brokerStatus=pane.querySelector('[data-sentinel-broker-clock-status]');
-            if(brokerStatus){
-              if(!brokerMode)brokerStatus.textContent='PC · horário local';
-              else{
-                const syncAt=Number(broker?.capturedAt||0);
-                const age=nowClock-syncAt;
-                const maxAge=broker?.source==='broker-protocol-timesync'?120000:7000;
-                const synced=broker?.verified===true&&syncAt>0&&age>=0&&age<=maxAge;
-                if(!synced)brokerStatus.textContent='CORRETORA · NÃO SINCRONIZADO';
-                else{
-                  let time='';
-                  if(Number.isFinite(Number(broker.brokerNowMs))&&broker.brokerNowMs>0){
-                    const unixMs=Number(broker.brokerNowMs)+age;
-                    time=new Date(unixMs).toLocaleTimeString('pt-BR',{hour12:false});
-                  }else if(Number.isFinite(Number(broker.clockSeconds))){
-                    const secs=(Number(broker.clockSeconds)+Math.floor(age/1000))%86400;
-                    const pad=n=>String(n).padStart(2,'0');
-                    time=pad(Math.floor(secs/3600))+':'+pad(Math.floor((secs%3600)/60))+':'+pad(secs%60);
-                  }
-                  brokerStatus.textContent=time?'CORRETORA '+time+' · SINCRONIZADO':
-                    'CORRETORA · NÃO SINCRONIZADO';
+            if(brokerMode){
+              const age=nowClock-Number(view?.capturedAt||0);
+              const verified=view?.verified===true&&age>=0&&age<=4500;
+              const pad=n=>String(n).padStart(2,'0');
+              if(!verified){
+                shown='—:—';
+                if(cycleStatus)cycleStatus.textContent='HORA DA CORRETORA';
+                if(brokerStatus)brokerStatus.textContent='CORRETORA · NÃO SINCRONIZADO';
+              }else{
+                const secs=(Number(view.timeSeconds)+Math.floor(age/1000)+86400)%86400;
+                const time=pad(Math.floor(secs/3600))+':'+
+                  pad(Math.floor((secs%3600)/60))+':'+pad(secs%60);
+                if(view.kind==='purchase'&&Number(view.purchaseEndsAt)>nowClock){
+                  const left=Math.max(0,Math.ceil((Number(view.purchaseEndsAt)-nowClock)/1000));
+                  shown=pad(Math.floor(left/60))+':'+pad(left%60);
+                  if(cycleStatus)cycleStatus.textContent='ATÉ FECHAR COMPRA · CORRETORA';
+                }else{
+                  shown=time;
+                  if(cycleStatus)cycleStatus.textContent='HORA DA CORRETORA';
                 }
+                if(brokerStatus)brokerStatus.textContent=time+' · SINCRONIZADO';
               }
+            }else if(brokerStatus){
+              brokerStatus.textContent='PREVISÃO · RELÓGIO LOCAL';
             }
-            // Neither clock is allowed to retarget an entry or modify H.
+            // Prediction target and verified entry still belong ONLY to
+            // the source Agent; broker clock never updates them.
             if(value.textContent!==shown)value.textContent=shown;
           };
           el.__sentinelTargetClockTick=tickTargetClock;
