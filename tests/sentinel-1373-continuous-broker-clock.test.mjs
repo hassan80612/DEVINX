@@ -30,16 +30,22 @@ test('continuous distinguishes sustained structural reversal from a small retrac
  const r=Math.log(reverse.priceAt(60)/reverse.priceAt(30));
  assert.ok(r>b,JSON.stringify({baseline:b,reversal:r}));
 });
-test('false Digital switch from background page get-candles cannot select OTC by active_id',()=>{
+test('13.7.4 restores the pre-13.7.3 asset identification without adding new gates',()=>{
+ const src=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ assert.match(src,/if\(activeChanged&&prevActiveId!=null&&Number\(prevActiveId\)!==Number\(aid\)\)/);
+ assert.match(src,/st\.activeId=Number\(aid\);st\.pendingPageActiveId=Number\(aid\);/);
+ assert.match(src,/const mappedId=st\.activeMap\.get\(pairKey\(st\.symbol\)\);/);
+ assert.doesNotMatch(src,/consistentMap=st\.activeId/);
+ assert.doesNotMatch(src,/pendingPageActiveAt=Date\.now\(\)/);
  const d=new LocalPlaywrightDriver();
  const st=d.state('iq_option');
  st.symbol='EUR/USD';st.uiSymbol='EUR/USD';st.activeId=101;st.candleActiveId=101;
  st.activeMap.set('EURUSD',101);st.activeMap.set('EURUSDOTC',202);
  st.assets.add('EUR/USD');st.assets.add('EUR/USD OTC');
- d.ingest('iq_option',{name:'sendMessage',msg:{name:'get-candles',body:{active_id:202,size:60}},request_id:'page-bg'},'page-out');
- assert.equal(st.symbol,'EUR/USD');
- assert.equal(st.activeId,101);
- assert.equal(st.pendingPageActiveId,202);
+ d.ingest('iq_option',{name:'sendMessage',msg:{name:'get-candles',
+  body:{active_id:202,size:60}},request_id:'page-bg'},'page-out');
+ assert.equal(st.activeId,202,'restored pre-13.7.3 broker selection behavior');
+ assert.equal(st.symbol,'EUR/USD OTC');
 });
 test('authenticated timeSync calibrates the broker clock; stale or forged time is not synchronized',()=>{
  const q=new QuadcodeFeed({onFrame:()=>{}});
