@@ -9,9 +9,9 @@ import {acceptSignedPcFrame,keepNewerVerifiedQuote,keepSignedViewOverCloud,recon
 type Status=any;
 // Website version and installed Windows Agent are distinct releases.
 // 13.7 website and Windows Agent must be installed together for the structural entry correction.
-const WEB_RELEASE_VERSION='13.7.3';
-const AVAILABLE_AGENT_VERSION='13.7.3';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.7.3.exe?v=continuous-adaptive-broker-clock-1373`;
+const WEB_RELEASE_VERSION='13.7.4';
+const AVAILABLE_AGENT_VERSION='13.7.4';
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.7.4.exe?v=revert-asset-only-1374`;
 const tabDefs=[
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
   {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia de previsão.'},
