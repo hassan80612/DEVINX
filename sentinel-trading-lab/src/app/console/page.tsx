@@ -579,13 +579,15 @@ function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentC
      </div>
      <div className="actions topgap">
        <a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Renovar acesso na Kiwify')}</a>
-       <a className="secondary linkbtn sentinelPcOnly" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{t('Instalar / atualizar Agent')}</a>
+       <a className="secondary linkbtn accountAgentDownload" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{t('Instalar / atualizar Agent')}</a>
      </div>
    </section>
-   {s?.runtimeKind==='persistent-worker'&&<section className="card span12 sentinelPcOnly">
-     <h3>{t('Agent neste computador')}</h3>
-     <p className="muted">{t('O Agent só libera novas análises com uma sessão autenticada aberta e um período de acesso válido. Não é necessário vincular o celular.')}</p>
-     <div className="actions topgap">
+   {s?.runtimeKind==='persistent-worker'&&<section className="card span12 accountAgentCard">
+     <div className="accountAgentCopy">
+       <h3>{t('Agent neste computador')}</h3>
+       <p className="muted">{t('O Agent permanece instalado, mas só libera novas análises com login ativo e acesso vigente. Não é necessário vincular o celular.')}</p>
+     </div>
+     <div className="accountAgentActions">
        <button className="secondary" disabled={busy||!agent.process} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button>
        <button className="secondary" disabled={busy||!agent.process} onClick={()=>agentCommand('exit')}>{t('Desligar Agent')}</button>
      </div>
