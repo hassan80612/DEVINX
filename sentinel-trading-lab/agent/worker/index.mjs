@@ -223,12 +223,41 @@ function assertLicensedAccess(){
   if(!accessLeaseValid())throw new Error('agent_access_unverified');
   return true
 }
+// License/signed-in presence is independent of the manual analysis switch.
+let suspendedForAccess=false;
 async function enforceAccessLease(){
-  if(accessLeaseValid())return true;
-  if(runtime.stateName==='running')await runtime.stop('system','agent_access_unverified');
-  // Paid access also requires a recently refreshed browser session. Closing
-  // the last tab pauses analysis on lease expiry; explicit logout revokes
-  // that session immediately on the server. Never rely on UI-only blocking.
+  if(accessLeaseValid()){
+    if(suspendedForAccess&&runtime.stateName==='paused'){
+      try{
+        // Resume only the running session we paused for a lost lease.
+        // A manual stop/kill while offline must never start by itself.
+        await runtime.start('system-access-restored');
+        suspendedForAccess=false;
+        runtime.vnextWindowState=null;
+        runtime.vnextHorizonMatrix=null;
+        runtime.vnextFutureEntryAnchor=null;
+        runtime.vnextWindowCheckedQuoteAt=0;
+        runtime.requestImmediateEvaluation?.();
+      }catch(e){
+        remoteRelay.info.lastError='access_resume_waiting: '+String(e?.message||e);
+        return false;
+      }
+    }else if(suspendedForAccess&&runtime.stateName!=='paused'){
+      suspendedForAccess=false;
+    }
+    return true;
+  }
+  if(runtime.stateName==='running'){
+    suspendedForAccess=true;
+    await runtime.pause('system-access-lost');
+    runtime.vnextWindowState=null;
+    runtime.vnextHorizonMatrix=null;
+    runtime.vnextFutureEntryAnchor=null;
+    runtime.vnextWindowCheckedQuoteAt=0;
+    runtime.lastResult={action:'WAIT',reasons:['Sessão inativa: aguardando login autorizado']};
+  }
+  // Closing the last site tab pauses analyses; a valid login and paid
+  // entitlement resume only a session which was running before the loss.
   return false;
 }
 async function loadState(){try{runtime.restore(JSON.parse(await readFile(STATE_FILE,'utf8')))}catch(e){if(e?.code!=='ENOENT')console.error('state_load_error',e)}}
@@ -575,9 +604,7 @@ async function remoteLoop(){
     if(last>0&&Date.now()-last>ACCESS_LEASE_GRACE_MS){
       remoteRelay.info.accessActive=false;
       remoteRelay.info.accessReason='license_check_unavailable';
-      if(runtime.stateName==='running'){
-        await runtime.stop('system','agent_license_check_unavailable').catch(()=>{});
-      }
+      await enforceAccessLease().catch(()=>{});
     }
   }finally{remoteBusy=false}
 }
