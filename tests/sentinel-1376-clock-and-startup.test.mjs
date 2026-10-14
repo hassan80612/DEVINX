@@ -48,7 +48,9 @@ test('startup never opens IQ Option or Exnova without an explicit Corretora clic
  assert.doesNotMatch(worker,/bootstrapSavedBrokers\(/);
  assert.match(worker,/p\.action==='login'&&method==='POST'/);
  assert.match(tray,/Broker%20Connection/);
- assert.match(install,/console\?tab=Broker%20Connection/);
+ const launcher=readFileSync(new URL('../sentinel-trading-lab/agent-launcher.go',import.meta.url),'utf8');
+ assert.match(launcher,/console\?tab=Broker%20Connection/);
+ assert.doesNotMatch(install,/Start-Process\s+['\"]https:\/\/sentinel-trading-lab\.vercel\.app/);
  assert.doesNotMatch(install,/Start-Process\s+['"]https:\/\/iqoption/);
  assert.doesNotMatch(install,/Start-Process\s+['"]https:\/\/exnova/);
 });
