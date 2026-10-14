@@ -1,0 +1,36 @@
+name: Sentinel WEB 67.31.2 Mobile Language Isolation
+on:
+  push:
+    branches: [fix/sentinel-67312-mobile-locale-local-only-20261013]
+    paths:
+      - 'sentinel-trading-lab/src/app/console/page.tsx'
+      - 'tests/sentinel-67312-mobile-language-isolation.test.mjs'
+      - '.github/workflows/sentinel-67312-mobile-isolation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: sentinel-web-mobile-locale-67312
+  cancel-in-progress: true
+jobs:
+  web-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Regression - mobile independent of Agent settings
+        run: |
+          node --test tests/sentinel-67312-mobile-language-isolation.test.mjs tests/sentinel-6731-language-site-broker-fixed.test.mjs tests/sentinel-6731-dual-clock-pricing-i18n.test.mjs
+      - name: Web production build
+        run: |
+          cd sentinel-trading-lab
+          NEXT_TELEMETRY_DISABLED=1 ../node_modules/.bin/next build
+      - name: Typecheck
+        run: npx tsc --noEmit --project sentinel-trading-lab/tsconfig.json
