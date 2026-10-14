@@ -4,8 +4,8 @@ import {Analytics} from '@vercel/analytics/next';
 import {I18nProvider} from '@/i18n/provider';
 import {PresenceProvider} from '@/components/LivePresence';
 
-const title='DevinX | Financeiro, Loja e Laser Control';
-const description='DevinX reúne ferramentas independentes para controle financeiro, gestão de loja e controle remoto do LightBurn com o DevinX Laser Control.';
+const title='DevinX | Sentinel, Financeiro, Loja e Laser Control';
+const description='DevinX reúne Sentinel Trading Lab e ferramentas independentes para análise de mercados, controle financeiro, gestão de loja e controle remoto do LightBurn com o DevinX Laser Control.';
 
 export const metadata:Metadata={
   metadataBase:new URL('https://devinx.com.br'),
@@ -16,6 +16,8 @@ export const metadata:Metadata={
   },
   description,
   keywords:[
+    'Sentinel Trading Lab',
+    'análise técnica de mercado',
     'controle financeiro',
     'controle de gastos',
     'meta diária financeira',
