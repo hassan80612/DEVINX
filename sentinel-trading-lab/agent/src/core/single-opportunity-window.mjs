@@ -36,7 +36,8 @@ export function evolveOpportunity({
    if(validCandidate()&&Number(candidate.entryAt)<=old.windowEndsAt)
     return {...candidate,context:key,phase:'open',reason:'awaiting-entry',
      openedAt:old.windowStartedAt,windowStartedAt:old.windowStartedAt,
-     windowEndsAt:old.windowEndsAt,entryReadyNow:false,entryTriggeredAt:null};
+     windowEndsAt:old.windowEndsAt,candidateQuoteAt:Number(quoteAt),
+     entryReadyNow:false,entryTriggeredAt:null};
    return {...old,entryReadyNow:false};
   }
   // No second CALL NOW, PUT NOW, or opposite-direction replacement, even
@@ -46,8 +47,25 @@ export function evolveOpportunity({
   // fire an opposite entry, or re-arm inside the original window.
   if(invalidationReason)return {...old,phase:'cancelled',reason:String(invalidationReason),
     entryReadyNow:false,entryTriggeredAt:null};
-  // Wait for a GENUINE fresh quote AT/AFTER the chosen moment. A failed
-  // confirmation does not restart, flip, or end the countdown.
+  // Keep one DIRECTION and one CALL/PUT AGORA per original window, but do
+  // not lock the exact entry second before any call has been emitted.
+  // A fresh, qualified opportunity of the SAME side may advance the
+  // pending moment. This is not a second signal or a flipped window.
+  const reschedulable=fresh&&validCandidate()&&candidate.side===old.side&&
+    Number(candidate.entryAt)<=Number(old.windowEndsAt)&&
+    Number(quoteAt)>Number(old.candidateQuoteAt||0)&&
+    Number(candidate.brokerExpiresAt||0)===Number(old.brokerExpiresAt||0);
+  const refreshMoment=reason=>({
+    ...old,entryAt:Number(candidate.entryAt),
+    projectedEntryPrice:Number(candidate.projectedEntryPrice),
+    projectedExitPrice:Number(candidate.projectedExitPrice),
+    selectionStrength:Number(candidate.selectionStrength),
+    candidateQuoteAt:Number(quoteAt),entryReadyNow:false,reason
+  });
+  if(reschedulable&&now<Number(old.entryAt)&&
+     Number(candidate.entryAt)<Number(old.entryAt))
+    return refreshMoment('earlier-qualified-same-side-entry');
+  // Wait for a GENUINE fresh quote AT/AFTER the chosen moment.
   if(!fresh||now<old.entryAt||Number(quoteAt)<old.entryAt)
    return {...old,entryReadyNow:false};
   const verified=confirmation?.side===old.side&&
@@ -56,7 +74,14 @@ export function evolveOpportunity({
     (confirmation.projectedExitPrice>confirmation.projectedEntryPrice?
       'CALL':confirmation.projectedExitPrice<confirmation.projectedEntryPrice?
       'PUT':null)===old.side;
-  if(!verified)return {...old,entryReadyNow:false,reason:'looking-for-entry'};
+  if(!verified){
+   // If the originally scheduled instant was missed, don't keep a dead
+   // appointment for the rest of the 30s window. Reuse fresh same-side
+   // evidence within its ORIGINAL deadline; otherwise keep scanning.
+   if(reschedulable&&Number(candidate.entryAt)>now)
+    return refreshMoment('replanned-same-side-entry');
+   return {...old,entryReadyNow:false,reason:'looking-for-entry'};
+  }
   const fixed=Number(old.brokerExpiresAt)>0?Number(old.brokerExpiresAt):null;
   return {...old,phase:'fired',entryReadyNow:true,entryTriggeredAt:now,
     plannedEntryAt:old.entryAt,entryAt:now,exitAt:fixed??now+H*1000,
@@ -72,7 +97,7 @@ export function evolveOpportunity({
  if(validCandidate()&&Number(candidate.entryAt)<=end)
   return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
    openedAt:started,windowStartedAt:started,windowEndsAt:end,
-   entryReadyNow:false,entryTriggeredAt:null};
+   candidateQuoteAt:Number(quoteAt),entryReadyNow:false,entryTriggeredAt:null};
  return {context:key,phase:'scanning',reason:fresh?'scanning':'waiting-fresh-quote',
   engineId:String(settings.engine||'automatic'),
   asset:String(settings.asset||'UNKNOWN').toUpperCase(),
