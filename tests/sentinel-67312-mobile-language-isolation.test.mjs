@@ -22,14 +22,13 @@ test('mobile locale is local and does not send commands to the PC',()=>{
 test('mobile and PC share only market frames, not the locale selector',()=>{
  assert.match(panel,/<LanguageSwitcher\/>/);
  assert.doesNotMatch(panel,/<LanguageSwitcher onLanguageChange=/);
- assert.match(panel,/const WEB_RELEASE_VERSION='67\.31\.2';/);
+ assert.match(panel,/const WEB_RELEASE_VERSION='67\.31\.3';/);
  assert.match(panel,/const AVAILABLE_AGENT_VERSION='13\.4\.67\.31';/);
 });
-test('original realtime and forecast remain byte-identical to previously published release',()=>{
+test('original realtime transport and forecast remain byte-identical; only PC display reconciliation may change',()=>{
  const files=[
   'sentinel-trading-lab/src/components/LiveScenarioCard.tsx',
   'sentinel-trading-lab/src/lib/pc-authoritative-window.mjs',
-  'sentinel-trading-lab/src/lib/signed-pc-window-order.mjs',
   'sentinel-trading-lab/src/lib/signed-live-analyst-channel.ts',
   'sentinel-trading-lab/agent/src/core/runtime.mjs',
   'sentinel-trading-lab/agent/worker/index.mjs',
