@@ -65,8 +65,12 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
     windowEndsAt:Number(rawWindow[2]),entryAt:Number(rawWindow[3]),
     reason:String(rawWindow[4]||'')
   }:rawWindow||null;
+  const anchorWindowCurrent=Number(vnextOpportunityWindow?.windowEndsAt)>now&&
+    Number(vnextOpportunityWindow?.windowStartedAt)>0&&
+    Number(entryAnchor?.windowStartedAt||entryAnchor?.openedAt||0)===
+      Number(vnextOpportunityWindow?.windowStartedAt);
   const vnextFutureEntryAnchor=matchingMarket&&vnext?.engineId===s?.settings?.engine&&
-    Number(entryAnchor?.delaySeconds)===horizon&&
+    anchorWindowCurrent&&Number(entryAnchor?.delaySeconds)===horizon&&
     Number(entryAnchor?.entryAt)>Number(entryAnchor?.issuedAt)&&
     ['CALL','PUT'].includes(String(entryAnchor?.side||''))?entryAnchor:null;
   const vnextFutureEntryRows=matchingMarket&&vnext?.engineId===s?.settings?.engine?
