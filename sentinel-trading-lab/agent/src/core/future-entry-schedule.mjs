@@ -184,7 +184,10 @@ function continuousWindow({input,settings,chosen}){
    const held=exitLead-seconds;
    const actualNoise=observedNoise({quotes:history,now,horizonSeconds:held})||noise;
    const check=coherentInterval({entryPrice:first,exitPrice:last,noise:actualNoise,
-     noiseFraction:.15});
+     // A 2-tick projected edge inside ordinary market fluctuation is not
+     // a stable 60-second CALL/PUT forecast. Use the measured noise scale,
+     // not an arbitrary candle-count or waiting time.
+     noiseFraction:.35});
    if(!check.qualified)return null;
    return {side:check.side,projectedEntryPrice:first,projectedExitPrice:last,
     selectionStrength:Math.min(3,Math.abs(check.relativeMove)/
@@ -314,7 +317,8 @@ export function confirmWindowEntry({
     holdingSeconds:H,maxSeconds:Math.max(H*2,Math.ceil(exitLead))});
   const entry=causal.priceAt(lead),exit=causal.priceAt(exitLead);
   const actualNoise=observedNoise({quotes,now,horizonSeconds:exitLead-lead})||noise;
-  const check=coherentInterval({entryPrice:entry,exitPrice:exit,noise:actualNoise});
+  const check=coherentInterval({entryPrice:entry,exitPrice:exit,noise:actualNoise,
+   noiseFraction:.35});
   return {...check,side:check.qualified?check.side:null,
     projectedEntryPrice:entry,projectedExitPrice:exit,
     ...(fixedExpiry.verified?{brokerExpiresAt:fixedExpiry.expiresAt}:{}),
