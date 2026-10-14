@@ -75,3 +75,16 @@ test('Passive broker WebSocket sampling avoids decoding unwanted frames on every
  assert.match(src,/readBrokerTimingFromText\(raw/);
  assert.match(src,/await s\.page\.evaluate\(\(d\)=>/);
 });
+
+test('US$50 offer forces English on Sentinel plan page independently from prior browser language',()=>{
+ const plans=readFileSync(new URL('../sentinel-trading-lab/src/app/planos/LocalizedPlans.tsx',import.meta.url),'utf8');
+ const commercial=readFileSync(new URL('../sentinel-trading-lab/src/lib/commercial.ts',import.meta.url),'utf8');
+ assert.match(plans,/chosen==='intl'\|\|chosen==='international'/);
+ assert.match(plans,/setLanguage\(usd\?'en':'pt'\)/);
+ assert.match(plans,/const international=market\?market==='INTL':language==='en'/);
+ assert.match(plans,/international\?'US\$ 50':'R\$ 280'/);
+ assert.match(commercial,/url\.searchParams\.set\('region','intl'\)/);
+ assert.doesNotMatch(commercial,/url\.searchParams\.set\('intl','1'\)/);
+ // Native text belongs to the third-party Kiwify page, not the Sentinel.
+ assert.doesNotMatch(commercial,/url\.searchParams\.set\('lang','en'\)/);
+});
