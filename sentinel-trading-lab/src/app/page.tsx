@@ -29,7 +29,7 @@ export default function Home(){
   price:'R$ 280',cycle:'30 dias · renovação manual',
   bullets:[['Cenários futuros','Projeções de preço e horário para o vencimento escolhido.'],['Tendências e reversões','Leitura da estrutura das velas concluídas, retrações e possíveis viradas.'],['Painel ao vivo','Agent Windows e acompanhamento na mesma conta pelo PC ou celular.']],
   how:'Como começar sem complicação',steps:[['01','Compre','Finalize o pagamento seguro na Kiwify.'],['02','Crie sua conta','Use o MESMO e-mail informado no pagamento.'],['03','Conecte','Faça login no PC e escolha a corretora.']],
-  disclaimer:'Software de análise profissional não significa acerto garantido. Não há promessa de lucro ou aconselhamento personalizado. Operações são manuais e podem gerar perdas. IQ Option e Exnova são marcas de terceiros; o Sentinel não é afiliado ou endossado por elas.',
+  disclaimer:'Não garante assertividade nem ganhos. Software de análise profissional, sem promessa de lucro ou aconselhamento personalizado. Operações são manuais e podem gerar perdas. IQ Option e Exnova são marcas de terceiros; o Sentinel não é afiliado ou endossado por elas.',
   renew:'Pagamento único para 30 dias de acesso. Sem renovação automática.',
   sample:'Visual ilustrativo — não é sinal de entrada',see:'O que o analista acompanha',
   quote:'CONTEXTO DO MERCADO',status:'Leitura técnica',security:'Login individual + acesso vigente',
