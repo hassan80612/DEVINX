@@ -3,9 +3,8 @@
 -- Logout deletes the session immediately. The separate paid-entitlement
 -- function remains unchanged for site access and payment registration.
 ALTER TABLE sentinel_app.sessions ADD COLUMN IF NOT EXISTS last_presence_at timestamptz;
-CREATE INDEX IF NOT EXISTS sentinel_sessions_recent_presence
- ON sentinel_app.sessions(account_id,last_presence_at DESC)
- WHERE last_presence_at IS NOT NULL;
+-- Existing session token_hash/account indexes are sufficient for this
+-- small account-scoped table; avoid a write-heavy timestamp index.
 
 CREATE OR REPLACE FUNCTION public.sentinel_web_presence(p_session_token text)
  RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
@@ -143,48 +142,17 @@ begin
   v_access:=sentinel_app.agent_access_active(v.account_id) AND sentinel_app.agent_web_session_active(v.account_id);
 
   if not v_access then
+    -- The browser may be closed temporarily. Do NOT deliver the old
+    -- control/kill command, which permanently latches the runtime and
+    -- prevents recovering after a valid re-login. The Agent already
+    -- stops its analysis loop when accessActive=false.
     update sentinel_app.commands
     set status='canceled'
-    where device_id=v.id
-      and status in ('queued','delivered')
+    where device_id=v.id and status in ('queued','delivered')
       and command_type<>'control/kill';
-
-    select id into v_kill_id
-    from sentinel_app.commands
-    where device_id=v.id
-      and command_type='control/kill'
-      and status='queued'
-      and expires_at>now()
-    order by created_at desc
-    limit 1;
-
-    if v_kill_id is null then
-      insert into sentinel_app.commands(
-        account_id,device_id,command_type,payload,status,expires_at
-      )
-      values(
-        v.account_id,v.id,'control/kill',
-        jsonb_build_object('actor','system','reason','agent_access_inactive'),
-        'queued',now()+interval '25 seconds'
-      )
-      returning id into v_kill_id;
-    end if;
-
-    update sentinel_app.commands
-    set status='delivered',delivered_at=now()
-    where id=v_kill_id;
-
     return jsonb_build_object(
-      'ok',true,
-      'paired',true,
-      'accessActive',false,
-      'accessReason','subscription_inactive',
-      'command',jsonb_build_object(
-        'id',v_kill_id,
-        'type','control/kill',
-        'payload',jsonb_build_object('actor','system','reason','agent_access_inactive'),
-        'expiresAt',now()+interval '25 seconds'
-      )
+      'ok',true,'paired',true,'accessActive',false,
+      'accessReason','session_or_subscription_inactive','command',null
     );
   end if;
 
