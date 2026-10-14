@@ -1223,6 +1223,11 @@ export class DemoTradingRuntime{
       this.audit.write({actorId:'engine',actorRole:'system',action:'bot.auto_stop',metadata:{reason:'limite da sessão de operações',sessionTrades,sessionLimit}});
       return reply()
     }
+    // Continuous is quote-driven, even if an old installation persisted a
+    // long general-purpose scheduler interval. Never leave an opportunity
+    // waiting 15/30 seconds for the old scheduler to wake up.
+    const liveContinuous=!!this.settings.engine&&this.settings.forecastMode!=='selective';
+    if(liveContinuous&&this.nextEvalMs>now+1000)this.nextEvalMs=now;
     if(now<this.nextEvalMs)return reply();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={asset:this.settings.asset,action:'WAIT',analysis:{asset:this.settings.asset,side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return reply()}if(!this.externalMarket)this.feed.tick(now);
     try{
       const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;
@@ -1255,7 +1260,8 @@ export class DemoTradingRuntime{
       this.pipelineTimings={analysisMs:Math.max(0,Date.now()-evaluationStartedAt),
         quoteAgeAtDecisionMs:snap.quoteTs?Math.max(0,Date.now()-Number(snap.quoteTs)):null,
         quoteAt:snap.quoteTs||null,completedAt:Date.now()};
-      this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,this.settings.schedule.intervalMs,now);
+      this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,
+        liveContinuous?1000:this.settings.schedule.intervalMs,now);
       if(result.analysis)this.analyses.unshift(this._compactAnalysis({ts:iso(now),asset:this.settings.asset,...result.analysis,latency:result.latency}));this.analyses=this.analyses.slice(0,180);
       if(result.action==='DEMO_ORDER'){
         this.pending.push({orderId:result.order.id,side:result.order.side,referencePrice:result.order.referencePrice,amount:result.order.amount??result.amount,asset:result.order.asset||this.settings.asset,openedAt:result.order.openedAt||iso(now),external:!!result.order.external,provider:result.order.provider||this.externalMarket?.provider,settleAt:now+this.settings.orderDurationMs});
