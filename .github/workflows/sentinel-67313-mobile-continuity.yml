@@ -6,6 +6,7 @@ on:
       - 'sentinel-trading-lab/src/app/console/page.tsx'
       - 'sentinel-trading-lab/src/lib/signed-pc-window-order.mjs'
       - 'tests/sentinel-67313-signed-mobile-continuity.test.mjs'
+      - 'tests/sentinel-67312-mobile-language-isolation.test.mjs'
       - '.github/workflows/sentinel-67313-mobile-continuity.yml'
   workflow_dispatch:
 permissions:
