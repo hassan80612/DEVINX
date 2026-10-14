@@ -5,10 +5,10 @@ import {HomeHub} from "@/components/HomeHub";
 
 export const metadata:Metadata={
   title:{absolute:"DevinX | Você no controle"},
-  description:"Escolha o DevinX para sua rotina: controle financeiro, gestão de loja ou controle remoto do LightBurn com o Laser Control.",
+  description:"Conheça Sentinel Trading Lab, DevinX Financeiro e DevinX Loja: produtos independentes para sua rotina.",
   alternates:{canonical:"/"},
-  openGraph:{title:"DevinX | Você no controle",description:"Análise de mercado, finanças, loja e controle remoto do LightBurn em produtos independentes para sua rotina.",url:"https://devinx.com.br",siteName:"DEVINX",type:"website"},
-  twitter:{card:"summary_large_image",title:"DevinX | Você no controle",description:"Sentinel, Financeiro, Loja e Laser Control: escolha seu produto DevinX que faz sentido para sua rotina."}
+  openGraph:{title:"DevinX | Você no controle",description:"Análise de mercado, finanças e gestão de loja em produtos independentes para sua rotina.",url:"https://devinx.com.br",siteName:"DEVINX",type:"website"},
+  twitter:{card:"summary_large_image",title:"DevinX | Você no controle",description:"Sentinel, Financeiro e Loja: escolha o produto DevinX que faz sentido para sua rotina."}
 };
 
 export default function Home(){return <HomeHub/>;}
