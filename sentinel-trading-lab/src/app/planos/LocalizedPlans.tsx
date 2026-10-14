@@ -1,12 +1,26 @@
 'use client';
 import styles from '../landing.module.css';
+import {useEffect,useState} from 'react';
 import {T,useSentinelLocale} from '../../components/SentinelLocale';
 
 // Language chooses the advertised market and its REAL checkout, not geolocation.
 // The server validates both checkout URLs before passing them to this component.
 export default function LocalizedPlans({brCheckout,intlCheckout}:{brCheckout:string|null,intlCheckout:string|null}){
-  const {language}=useSentinelLocale();
-  const international=language==='en';
+  const {language,setLanguage}=useSentinelLocale();
+  // Campaign/currency is selected by the URL, never inferred from the
+  // visitor's old language preference. In particular a dollar offer opens
+  // our entire price/checkout information in English even on a BR browser.
+  const [market,setMarket]=useState<'BR'|'INTL'|null>(null);
+  useEffect(()=>{
+    const p=new URLSearchParams(window.location.search);
+    const chosen=String(p.get('market')||'').toLowerCase();
+    const usd=chosen==='intl'||chosen==='international'||p.get('intl')==='1';
+    const br=chosen==='br'||chosen==='brasil'||chosen==='brazil';
+    if(!usd&&!br)return;
+    setMarket(usd?'INTL':'BR');
+    setLanguage(usd?'en':'pt');
+  },[setLanguage]);
+  const international=market?market==='INTL':language==='en';
   const price=international?'US$ 50':'R$ 280';
   const checkout=international?intlCheckout:brCheckout;
   return <div className={styles.plansCard} data-testid="localized-plan-price" data-currency={international?'USD':'BRL'}>
