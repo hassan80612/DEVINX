@@ -57,12 +57,14 @@ export function singleEngineForecast({
      evidence:[selective.reason,'Margem sobre volatilidade e resultados históricos concluídos']}:null
  }:causal?{
    status:causal.status,
-   diagnostic:{referencePrice:Number(quotes.at(-1)?.price),quoteAt:causal.latestQuoteAt},
+   diagnostic:{referencePrice:causal.referencePrice,quoteAt:causal.latestQuoteAt},
    prediction:causal.status==='causal-forward-path'?(()=>{
-     const base=Number(quotes.at(-1)?.price),predicted=causal.priceAt(seconds);
+     const base=Number(causal.referencePrice),predicted=causal.priceAt(seconds);
      if(!(base>0&&predicted>0))return null;
      return {side:predicted>base?'CALL':predicted<base?'PUT':'NEUTRAL',
-       projectedPrice:predicted,expectedLow:predicted,expectedHigh:predicted,
+       projectedPrice:predicted,
+       expectedLow:predicted*Math.exp(-1.5*causal.sigmaPerSqrtSecond*Math.sqrt(seconds)),
+       expectedHigh:predicted*Math.exp(1.5*causal.sigmaPerSqrtSecond*Math.sqrt(seconds)),
        modelConfidence:null,evidence:[
          'Projection of the real future price using 15s/30s/60s/90s causal structure',
          'Completed independent past intervals '+causal.analogExamples+'; regime '+causal.regime,
