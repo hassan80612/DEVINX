@@ -6,6 +6,7 @@ $manager = Join-Path $root 'worker\agent-manager.mjs'
 $iconPath = Join-Path $root 'worker\sentinel.ico'
 $exitMarker = Join-Path $root 'worker\data\agent.exit'
 $site = 'https://sentinel-trading-lab.vercel.app'
+$brokerConsole = $site + '/console?tab=Broker%20Connection'
 $managerHealth = 'http://127.0.0.1:8788/health'
 $agentEnabled = -not (Test-Path $exitMarker)
 $logDir = Join-Path $root 'worker\data'
@@ -93,7 +94,7 @@ $pairItem.Enabled = $false
 [void]$menu.Items.Add($uninstallItem)
 $notify.ContextMenuStrip = $menu
 
-$openItem.Add_Click({ Start-Process $site })
+$openItem.Add_Click({ Start-Process $brokerConsole })
 $startItem.Add_Click({
   $script:agentEnabled = $true
   $statusItem.Text = 'Status: ligando Agent...'
@@ -165,7 +166,7 @@ Remove-Item -LiteralPath (Join-Path $env:TEMP 'sentinel-agent-v88-payload') -Rec
   [System.Windows.Forms.Application]::Exit()
 })
 $pairItem.Add_Click({ if ($pairItem.Tag) { [System.Windows.Forms.Clipboard]::SetText([string]$pairItem.Tag); Start-Process ($site + '/?pair=' + [uri]::EscapeDataString([string]$pairItem.Tag)) } })
-$notify.Add_DoubleClick({ Start-Process $site })
+$notify.Add_DoubleClick({ Start-Process $brokerConsole })
 
 $failCount = 0
 $timer = New-Object System.Windows.Forms.Timer
