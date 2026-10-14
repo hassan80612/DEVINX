@@ -1,6 +1,5 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
-import {causalForwardPath} from './causal-interval-forecast-1371.mjs';
-import {causalForwardPath as closedStructurePath} from './causal-closed-structure-1379.mjs';
+import {quoteScopedCausalPath} from './quote-scoped-causal-path.mjs';
 import {selectedFixedBrokerExpiry,futurePriceExitSeconds} from './broker-fixed-expiry-1376.mjs';
 import {observedBuyWindow,brokerAllowsEntry} from './broker-buy-window-1378.mjs';
 import {selectiveIntervalForecast,qualifyStrategyInterval,selectiveEvidence} from './selective-forward-model.mjs';
@@ -121,9 +120,8 @@ function continuousWindow({input,settings,chosen}){
  let path=null;
  let causal=null;
  if(engineId==='automatic'&&['causal-interval-1371','causal-closed-structure-1379'].includes(input.forecastModel)){
-   const forecastPath=input.forecastModel==='causal-closed-structure-1379'?closedStructurePath:causalForwardPath;
-   causal=forecastPath({quoteHistory:history,asOf:now,
-     holdingSeconds:chosen,maxSeconds:maxForecastSeconds});
+   causal=quoteScopedCausalPath({forecastModel:input.forecastModel,
+     quoteHistory:history,asOf:now,holdingSeconds:chosen,maxSeconds:maxForecastSeconds});
  }
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(input.forecastModel)){
@@ -310,13 +308,12 @@ export function confirmWindowEntry({
  const engineId=String(settings.engine||'automatic');
  const noise=observedNoise({quotes,now,horizonSeconds:H});
  if(engineId==='automatic'&&['causal-interval-1371','causal-closed-structure-1379'].includes(forecastModel)){
-  const forecastPath=forecastModel==='causal-closed-structure-1379'?closedStructurePath:causalForwardPath;
   const fixedExpiry=brokerExpiresAt>now?{verified:true,expiresAt:Number(brokerExpiresAt)}:
     selectedFixedBrokerExpiry({snap,settings,now});
   const exitLead=futurePriceExitSeconds({brokerExpiry:fixedExpiry,now,
     leadSeconds:lead,holdingSeconds:H});
   if(exitLead===null)return {side:null,status:'selected-expiry-already-reached'};
-  const causal=forecastPath({quoteHistory:quotes,asOf:now,
+  const causal=quoteScopedCausalPath({forecastModel,quoteHistory:quotes,asOf:now,
     holdingSeconds:H,maxSeconds:Math.max(H*2,Math.ceil(exitLead))});
   const entry=causal.priceAt(lead),exit=causal.priceAt(exitLead);
   const actualNoise=observedNoise({quotes,now,horizonSeconds:exitLead-lead})||noise;
