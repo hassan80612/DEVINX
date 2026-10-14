@@ -737,7 +737,8 @@ export class LocalPlaywrightDriver{
         if(st.activeId==null)st.activeId=Number(mappedId);
         // Passive metadata cannot overwrite a verified Digital/OTC active ID.
         // Only an actual selected-tab change resets the quote series.
-        if(st.candles.length<50&&(idChanged||!st.lastCandleRequest))setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
+        if(st.candles.length<50&&(!idChanged||st.activeId===Number(mappedId))&&
+          (idChanged||!st.lastCandleRequest))setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
       }
     }
     if(!st.symbol&&st.activeId!=null){
@@ -805,7 +806,12 @@ export class LocalPlaywrightDriver{
   ];let ok=false;for(const q of requests){const r=await this.wsSend(provider,q);ok=ok||!!r?.ok}st.lastRequestAt=Date.now();st.lastBaseRequestAt=st.lastRequestAt;if(ok)st.protocol='active-websocket';return ok}
   async _requestCandles(provider,{symbol=null,activeId=null,force=false}={}){
     const st=this.state(provider),targetSymbol=symbol||st.uiSymbol||st.symbol;if(!targetSymbol)return false;
-    const targetId=activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
+    const targetId=activeId??st.activeId??st.activeMap.get(pairKey(targetSymbol));if(targetId==null)return false;
+    if(st.symbol&&pairKey(targetSymbol)===pairKey(st.symbol)&&st.activeId!=null&&
+      Number(targetId)!==Number(st.activeId)){
+      st.marketStatus='unvalidated';st.marketReason='ID do ativo Digital difere da aba validada';
+      return false;
+    }
     const size=Number(st.candleSize||60),changed=st.subscribedSymbol!==targetSymbol||String(st.subscribedActiveId)!==String(targetId);
     // r10 renovava a assinatura em toda leitura forçada, o que ajudava a recuperar
     // microfluxo mas podia empilhar subscriptions. Aqui renovamos somente se a mesma
@@ -869,6 +875,10 @@ export class LocalPlaywrightDriver{
     if(screenId==null){
       st.marketStatus='syncing';st.marketReason=`Identificando o ativo da tela ${screenSymbol}`;return false
     }
+    if(st.activeId!=null&&Number(st.activeId)!==Number(screenId)){
+      st.marketStatus='unvalidated';st.marketReason='Mapa do ativo diverge da aba selecionada';
+      return false;
+    }
     st.symbol=screenSymbol;st.activeId=Number(screenId);
     await this._requestCandles(provider,{symbol:screenSymbol,activeId:Number(screenId),force:true}).catch(()=>{});
     await sleep(180);
@@ -884,7 +894,7 @@ export class LocalPlaywrightDriver{
     if(!st.symbol||pairKey(st.symbol)!==pairKey(screenSymbol)){
       st.symbol=screenSymbol;st.activeId=null;st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'};st.subscribedSymbol=null;st.subscribedActiveId=null;st.autoSelected=false;st.suggestedSymbol=null;
     }
-    let targetId=st.activeMap.get(pairKey(screenSymbol));
+    let targetId=st.activeId??st.activeMap.get(pairKey(screenSymbol));
     if(targetId==null){await this.requestBaseData(provider).catch(()=>{});await sleep(120);targetId=st.activeMap.get(pairKey(screenSymbol))}
     if(targetId==null){st.activeId=null;st.marketStatus='syncing';st.marketReason=`Identificando o ativo da tela ${screenSymbol}`;return false}
     st.activeId=Number(targetId);
@@ -1118,7 +1128,10 @@ export class LocalPlaywrightDriver{
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     const candleAssetMatch=st.activeId!=null&&st.candleActiveId!=null&&Number(st.activeId)===Number(st.candleActiveId);
-    const assetValidated=!!(st.symbol&&st.activeId!=null&&!st.screenCandidateSymbol);
+    const mappedSelectedId=st.activeMap.get(pairKey(st.symbol||''));
+    const consistentMap=st.activeId!=null&&
+      (mappedSelectedId==null||Number(mappedSelectedId)===Number(st.activeId));
+    const assetValidated=!!(st.symbol&&st.activeId!=null&&consistentMap&&!st.screenCandidateSymbol);
     const quoteAgeMs=st.lastQuoteAt==null?Infinity:Math.max(0,Date.now()-Number(st.lastQuoteAt));
     // Market analysis only needs the correct instrument and fresh price data.
     // Broker-account mode and balance are separate safety gates for execution.
