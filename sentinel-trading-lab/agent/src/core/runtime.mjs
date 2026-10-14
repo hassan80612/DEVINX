@@ -21,8 +21,7 @@ import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
 import {confirmWindowEntry} from './future-entry-schedule.mjs';
 import {evolveOpportunity,opportunityContext} from './single-opportunity-window.mjs';
-import {guardOpeningCandidate,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
-import {oppositeTurnPressure} from './turn-pressure.mjs';
+import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
@@ -976,17 +975,17 @@ export class DemoTradingRuntime{
       const shouldRecheck=entryDue&&quoteFresh&&
         Number(snap.quoteTs)>=Number(currentWindow.entryAt)&&
         Number(snap.quoteTs)>this.vnextWindowCheckedQuoteAt;
-      // 13.7: the SELECTED engine still produces the candidate. Three real,
-      // completed candles must corroborate its side BEFORE opening; the
-      // forming candle cannot authorize direction by itself.
-      const admission=currentWindow?.phase==='open'||currentWindow?.phase==='fired'||
-        currentWindow?.phase==='cancelled'?null:
-        guardOpeningCandidate({candidate:currentEntry,snap,settings,now});
-      const qualifiedEntry=admission?.allowed?{...currentEntry,guardBaseline:{
-        lastClose:admission.evidence.lastClose,
-        lastHigh:admission.evidence.lastHigh,
-        lastLow:admission.evidence.lastLow,
-        periodSeconds:admission.evidence.periodSeconds
+      // The old 13.7 compared the predicted side to a completed-candle trend
+      // and VETOED genuine reversal setups. In 13.7.1 completed bars belong
+      // to the FORECAST features; they are NOT an extra direction lock.
+      const structure=threeClosedCandleEvidence({
+        quoteHistory:adaptiveHistory||snap.quoteHistory,now,
+        holdingSeconds:Number(settings.orderDurationMs)/1000});
+      const eligible=Boolean(currentEntry?.side==='CALL'||currentEntry?.side==='PUT');
+      const qualifiedEntry=eligible?{...currentEntry,guardBaseline:{
+        lastClose:structure.lastClose||Number(snap.price)||null,
+        lastHigh:structure.lastHigh||null,lastLow:structure.lastLow||null,
+        periodSeconds:structure.periodSeconds||null
       }}:null;
       // Broker expiry metadata is read-only and often unknown. Only a RECENT,
       // identified duration can rule out the user-selected holding period.
@@ -996,13 +995,10 @@ export class DemoTradingRuntime{
       const invalidationReason=currentWindow?.phase==='open'?
         (!brokerDuration.allowed?brokerDuration.reason:
           reversal?.invalidated?reversal.reason:null):null;
-      // Check counterpressure at the *actual* entry instant as well. This
-      // prevents a bearish forecast from firing into a validated bullish turn.
-      const counterpressure=shouldRecheck?
-        oppositeTurnPressure({quoteHistory:adaptiveHistory||snap.quoteHistory,
-          now,quoteTs:snap.quoteTs,side:currentWindow.side}):null;
-      const confirmation=shouldRecheck&&!invalidationReason&&
-        counterpressure?.blocked!==true?
+      // Re-evaluate the selected future interval on each fresh source quote.
+      // A reversal is cancelled structurally above, not vetoed by 3 candle
+      // colours or a second unrelated market-direction filter.
+      const confirmation=shouldRecheck&&!invalidationReason?
         confirmWindowEntry({settings,snap,now,adaptiveHistory,
           forecastModel:this.forecastModel,entryAt:currentWindow.entryAt}):null;
       if(shouldRecheck)this.vnextWindowCheckedQuoteAt=Number(snap.quoteTs);
