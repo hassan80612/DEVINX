@@ -9,7 +9,7 @@ import {acceptSignedPcFrame,keepSignedViewOverCloud,reconcileSignedPcOpportunity
 type Status=any;
 // Website version and installed Windows Agent are distinct releases.
 // 67.31 website and Windows Agent candidate. Continuous forecast core unchanged.
-const WEB_RELEASE_VERSION='67.31.1';
+const WEB_RELEASE_VERSION='67.31.2';
 const AVAILABLE_AGENT_VERSION='13.4.67.31';
 const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-13.4.67.31.exe?v=locale-broker-clock-6731`;
 const tabDefs=[
@@ -261,6 +261,12 @@ export default function Page(){
   // polling, subscriptions or strategy resets).
   // A failed remote command must NOT silently suppress all future attempts.
   useEffect(()=>{
+    // Each phone/tablet translates its own card from the site locale.
+    // NEVER enqueue a remote Agent command for language changes on mobile:
+    // no cloud ACK, extra polling, or PC-dependent mobile display.
+    const mobileBrowser=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||
+      (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    if(mobileBrowser)return;
     if(!s||!agent.worker||s.settings?.uiLanguage===language)return;
     let disposed=false;
     let retryTimer:ReturnType<typeof setTimeout>|null=null;
