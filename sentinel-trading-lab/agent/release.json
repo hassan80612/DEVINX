@@ -1,6 +1,6 @@
 {
-  "version": "13.7.3",
-  "build": "13.7.3-continuous-adaptive-broker-timesync-digital",
+  "version": "13.7.4",
+  "build": "13.7.4-restore-asset-reader-continuous-adaptive",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
