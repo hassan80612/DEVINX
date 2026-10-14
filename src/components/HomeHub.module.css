@@ -240,3 +240,21 @@
   .laserSoon{grid-template-columns:1fr auto;text-align:left}
   .laserSoon small{grid-column:1/-1;text-align:left}
 }
+
+/* Sentinel is the first independent product, sharing the same card language. */
+.sentinelProduct{
+  width:min(1160px,100%);margin:0 auto 18px;scroll-margin-top:20px;
+  background:radial-gradient(circle at 90% 12%,rgba(225,183,84,.12),transparent 40%),
+    linear-gradient(145deg,#102a2a 0%,#081c22 75%,#0c2926 100%);
+  border-color:rgba(223,186,95,.46)
+}
+.sentinelProduct .copy{max-width:710px}
+.sentinelProduct h2{font-size:clamp(31px,4.2vw,49px)}
+.sentinelProduct .featureGrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sentinelJump{
+  background:radial-gradient(circle at 10% 15%,rgba(220,189,94,.2),transparent 46%),
+  linear-gradient(140deg,#142a2b,#0b1c21);border-color:rgba(230,194,100,.58)
+}
+.sentinelRisk{font-size:11px!important;color:#a9b6b3!important;max-width:100%!important}
+@media(max-width:700px){.sentinelProduct .featureGrid{grid-template-columns:1fr 1fr}}
+@media(max-width:390px){.sentinelProduct .featureGrid{grid-template-columns:1fr}}
