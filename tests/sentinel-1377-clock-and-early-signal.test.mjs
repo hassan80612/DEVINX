@@ -35,7 +35,8 @@ test('clock chooser never sends settings action or gets overwritten by delayed r
  const selectedBlock=source.slice(selectAt,selectAt+950);
  assert.match(selectedBlock,/window\.__sentinelClockDisplayMode=next/);
  assert.match(selectedBlock,/localStorage\.setItem\('sentinel-broker-clock-display-mode-v1',next\)/);
- assert.doesNotMatch(selectedBlock,/sendAction\(\{action:'setting',key:'clockMode'/);
+ assert.match(selectedBlock,/sendAction\(\{action:'setting',key:'clockMode'/);
+ assert.match(source,/window\.__sentinelLastClockModeSync!==selectedClock/);
  assert.match(source,/s\.lastVerifiedBrokerSignal=\{phase:'fired'/);
  assert.match(source,/s\.brokerClockSignalAsset!==selectedAsset/);
  assert.match(source,/SINAL · VENCIMENTO ATINGIDO/);
