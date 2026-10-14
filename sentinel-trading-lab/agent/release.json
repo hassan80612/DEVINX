@@ -1,13 +1,13 @@
 {
-  "version": "13.4.67.31",
-  "build": "13.4.67.31-i18n-pricing-dual-clock-readonly",
+  "version": "13.7.0",
+  "build": "13.7-closed-history-structural-invalidation",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "research-preview-manual-only",
+    "modelValidation": "13.7-causal-closed-bars-replay-pending",
     "forecastModel": "selected-strengths-67.5"
   }
 }
