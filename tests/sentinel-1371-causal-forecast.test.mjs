@@ -60,7 +60,7 @@ test('selected automatic engine and actual entry confirmation use the new owner'
   forecastModel:'causal-interval-1371',adaptiveHistory:q,entryAt:asOf});
  assert.ok(confirm.projectedEntryPrice>0&&confirm.projectedExitPrice>0);
  assert.equal(confirm.projectedExitPrice,causalForwardPath({
-  quoteHistory:q,asOf,holdingSeconds:30,maxSeconds:30}).priceAt(30));
+  quoteHistory:q,asOf,holdingSeconds:30,maxSeconds:60}).priceAt(30));
 });
 test('13.7.1 runtime does not impose the 13.7 candle-colour veto or duplicate counterpressure veto',()=>{
  const runtime=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/runtime.mjs',import.meta.url),'utf8');
