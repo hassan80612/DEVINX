@@ -68,8 +68,16 @@ function profile(all,t){
    points.at(-1)>Math.max(...points.slice(4,8)):
    points.at(-1)<Math.min(...points.slice(4,8)));
  const reversal=opposed&&twoAgainst&&recentImpulse>=.72&&swingBreak;
- const range=!reversal&&Math.abs(points.at(-1)-points[0])/
+ const location=(points.at(-1)-Math.min(...points))/
+  Math.max(1e-12,Math.max(...points)-Math.min(...points));
+ const againstLast=priorSign!==0&&Math.sign(bars.at(-1))===-priorSign;
+ const spentLeg=againstLast&&
+  Math.abs(bars.at(-1))<Math.abs(bars.at(-2))*.65&&
+  Math.abs(bars.at(-2))<Math.abs(bars.at(-3))*.85;
+ const exhaustion=spentLeg&&(priorSign>0?location>.88:location<.12);
+ const weakHistory=Math.abs(points.at(-1)-points[0])/
   Math.max(1e-12,sigma*Math.sqrt(90))<.75;
+ const range=!reversal&&(weakHistory||exhaustion);
  const regime=reversal?'reversal':range?'range':'trend';
  const volatility=Math.max(normalized10,1e-12);
  const features=[
@@ -82,7 +90,7 @@ function profile(all,t){
   clamp((points.at(-1)-Math.min(...points))/volatility,-4,4)
  ];
  return {at,points,bars,sigma,prior,recent,regime,priorSign,recentSign,
-  reversal,range,normalized10,recentImpulse,features,closed,travel};
+  reversal,range,exhaustion,normalized10,recentImpulse,features,closed,travel};
 }
 export function forwardRegime(p){
  if(!p)return {regime:'unknown',turn:false};
@@ -109,6 +117,10 @@ function structureMove(p,seconds){
  const lastClosed=p.points.at(-1),mean=p.points.reduce((a,b)=>a+b,0)/p.points.length;
  const reverting=(p.regime==='range'?.30:.08)*(mean-lastClosed)*
   (1-Math.exp(-h/40));
+ // A wave at a completed-structure extreme which has stopped progressing
+ // is not evidence of a new opposite trade. Leave it without an edge
+ // instead of inventing PUT/CALL from one closed contrary block.
+ if(p.exhaustion&&!p.reversal)return 0;
  const cap=Math.max(1e-10,p.sigma*Math.sqrt(Math.max(1,h))*2.4);
  return clamp(drift+reverting,-cap,cap);
 }
@@ -143,7 +155,7 @@ export function causalForwardPath({quoteHistory=[],asOf=Date.now(),
   return invalid('stale-or-invalid-horizon');
  const current=profile(rows,latest.ts);
  if(!current)return invalid('insufficient-completed-structure');
- const analog=matches(rows,now,current,end);
+ const analog=current.exhaustion?null:matches(rows,now,current,end);
  const priceAt=s=>{
   if(!(Number.isFinite(s)&&s>=0&&s<=end))return null;
   if(s===0)return precise(Math.exp(latest.lp));
