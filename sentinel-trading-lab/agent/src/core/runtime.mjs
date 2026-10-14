@@ -21,6 +21,8 @@ import {singleEngineForecast} from './vnext-single-engine.mjs';
 import {forwardHorizonMatrix} from './forward-horizon-matrix.mjs';
 import {confirmWindowEntry} from './future-entry-schedule.mjs';
 import {evolveOpportunity,opportunityContext} from './single-opportunity-window.mjs';
+import {guardOpeningCandidate,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
+import {oppositeTurnPressure} from './turn-pressure.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 
@@ -974,13 +976,39 @@ export class DemoTradingRuntime{
       const shouldRecheck=entryDue&&quoteFresh&&
         Number(snap.quoteTs)>=Number(currentWindow.entryAt)&&
         Number(snap.quoteTs)>this.vnextWindowCheckedQuoteAt;
-      const confirmation=shouldRecheck?
+      // 13.7: the SELECTED engine still produces the candidate. Three real,
+      // completed candles must corroborate its side BEFORE opening; the
+      // forming candle cannot authorize direction by itself.
+      const admission=currentWindow?.phase==='open'||currentWindow?.phase==='fired'||
+        currentWindow?.phase==='cancelled'?null:
+        guardOpeningCandidate({candidate:currentEntry,snap,settings,now});
+      const qualifiedEntry=admission?.allowed?{...currentEntry,guardBaseline:{
+        lastClose:admission.evidence.lastClose,
+        lastHigh:admission.evidence.lastHigh,
+        lastLow:admission.evidence.lastLow,
+        periodSeconds:admission.evidence.periodSeconds
+      }}:null;
+      // Broker expiry metadata is read-only and often unknown. Only a RECENT,
+      // identified duration can rule out the user-selected holding period.
+      const brokerDuration=brokerDurationGuard({snap,settings,now});
+      const reversal=currentWindow?.phase==='open'?
+        confirmedStructuralReversal({window:currentWindow,snap,now}):null;
+      const invalidationReason=currentWindow?.phase==='open'?
+        (!brokerDuration.allowed?brokerDuration.reason:
+          reversal?.invalidated?reversal.reason:null):null;
+      // Check counterpressure at the *actual* entry instant as well. This
+      // prevents a bearish forecast from firing into a validated bullish turn.
+      const counterpressure=shouldRecheck?
+        oppositeTurnPressure({quoteHistory:adaptiveHistory||snap.quoteHistory,
+          now,quoteTs:snap.quoteTs,side:currentWindow.side}):null;
+      const confirmation=shouldRecheck&&!invalidationReason&&
+        counterpressure?.blocked!==true?
         confirmWindowEntry({settings,snap,now,adaptiveHistory,
           forecastModel:this.forecastModel,entryAt:currentWindow.entryAt}):null;
       if(shouldRecheck)this.vnextWindowCheckedQuoteAt=Number(snap.quoteTs);
       const nextWindow=evolveOpportunity({
-        previous:this.vnextWindowState,candidate:currentEntry,settings,
-        now,quoteAt:snap.quoteTs,confirmation
+        previous:this.vnextWindowState,candidate:qualifiedEntry,settings,
+        now,quoteAt:snap.quoteTs,confirmation,invalidationReason
       });
       // Persist only the window state, not a duplicate or retriggerable
       // "now" forecast. A cancelled/fired window remains terminal until its
