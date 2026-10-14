@@ -21,7 +21,11 @@ export function evolveOpportunity({
  if(!(H>=5&&H<=3600))return null;
  const validCandidate=()=>fresh&&isSide(candidate?.side)&&
    Number(candidate.issuedAt)<=now&&Number(candidate.entryAt)>now&&
-   Number(candidate.exitAt)===Number(candidate.entryAt)+H*1000&&
+   // The opportunity window (H) is not the Digital option's fixed expiry.
+   (Number(candidate.exitAt)===Number(candidate.entryAt)+H*1000||
+     (Number(candidate.brokerExpiresAt)>now&&
+       Number(candidate.brokerExpiresAt)===Number(candidate.exitAt)&&
+       Number(candidate.exitAt)-Number(candidate.entryAt)>=5000))&&
    Number(candidate.projectedEntryPrice)>0&&Number(candidate.projectedExitPrice)>0&&
    (candidate.projectedExitPrice>candidate.projectedEntryPrice?'CALL':
      candidate.projectedExitPrice<candidate.projectedEntryPrice?'PUT':null)===candidate.side;
@@ -53,8 +57,11 @@ export function evolveOpportunity({
       'CALL':confirmation.projectedExitPrice<confirmation.projectedEntryPrice?
       'PUT':null)===old.side;
   if(!verified)return {...old,entryReadyNow:false,reason:'looking-for-entry'};
+  const fixed=Number(old.brokerExpiresAt)>0?Number(old.brokerExpiresAt):null;
   return {...old,phase:'fired',entryReadyNow:true,entryTriggeredAt:now,
-    plannedEntryAt:old.entryAt,entryAt:now,exitAt:now+H*1000,
+    plannedEntryAt:old.entryAt,entryAt:now,exitAt:fixed??now+H*1000,
+    actualHoldingSeconds:(fixed??now+H*1000)-now>0?
+      ((fixed??now+H*1000)-now)/1000:0,
     reason:'confirmed',confirmedEntryPrice:Number(confirmation.projectedEntryPrice)};
  }
  // Advance the fixed H-second cycle once, never restart on each tick.
