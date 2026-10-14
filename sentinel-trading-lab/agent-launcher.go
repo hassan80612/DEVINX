@@ -4,7 +4,6 @@ import (
     _ "embed"
     "encoding/json"
     "fmt"
-    "io"
     "os"
     "os/exec"
     "path/filepath"
@@ -79,17 +78,16 @@ func main() {
         args = append(args, "-VerifyPayloadOnly")
     }
     cmd := exec.Command("powershell.exe", args...)
+    // Inherit Windows console handles DIRECTLY. io.MultiWriter makes
+    // os/exec create anonymous pipes; background tray/watchdog descendants
+    // can inherit their write ends. PowerShell exits successfully but Go
+    // Wait() remains blocked until those long-lived background processes
+    // release the pipes. The visible installer window then never closes.
+    // PowerShell handles its own install.log using Start-Transcript instead.
     cmd.Stdout = os.Stdout
     cmd.Stderr = os.Stderr
-    logPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "SentinelTradingLab", "install.log")
-    _ = os.MkdirAll(filepath.Dir(logPath), 0o700)
-    logFile, logErr := os.Create(logPath)
-    if logErr == nil {
-        defer logFile.Close()
-        cmd.Stdout = io.MultiWriter(os.Stdout, logFile)
-        cmd.Stderr = io.MultiWriter(os.Stderr, logFile)
-    }
     cmd.Stdin = os.Stdin
+    logPath := filepath.Join(os.Getenv("LOCALAPPDATA"), "SentinelTradingLab", "install.log")
     cmd.Env = append(os.Environ(), "SENTINEL_INSTALL_SOURCE=embedded-exe")
 
     if err := cmd.Run(); err != nil {
