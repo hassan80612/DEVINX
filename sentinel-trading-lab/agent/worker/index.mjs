@@ -359,9 +359,11 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     // overlay actually needs painting or its operational state has changed.
     const pendingOp=runtime.lastResult?.analysis?.operationalSignal||{};
     const pendingScenario=pendingOp.scenario||{};
+    const cycleDeadline=Number(runtime.lastResult?.analysis?.vnext?.opportunityWindow?.windowEndsAt||0);
+    const expiredOpportunityFrame=cycleDeadline>0&&Date.now()>=cycleDeadline;
     const overlayFastKey=[
       activeProvider,runtime.settings.asset,runtime.settings.engine,runtime.settings.forecastMode,runtime.settings.orderDurationMs,
-      pendingScenario.side,pendingScenario.status,pendingScenario.closed,
+      pendingScenario.side,pendingScenario.status,pendingScenario.closed,expiredOpportunityFrame,
       pendingOp.createdAt,pendingOp.side,pendingOp.state,pendingOp.ready,
       pendingOp.actionable,pendingOp.activeUntil,
       // A new future entry is a FIRST-CLASS decision change, not a
@@ -391,7 +393,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     const effectiveQuoteFreshnessMs=forecastSeconds<=30?Math.min(configuredFreshnessMs,1500):forecastSeconds<=60?Math.min(configuredFreshnessMs,2000):configuredFreshnessMs;
     const quoteStale=!(liveTs>0)||Date.now()-liveTs>effectiveQuoteFreshnessMs;
     const op=a.operationalSignal||{},scenario=op.scenario||{},
-      overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,
+      overlayTimingKey=[currentAsset,scenario.side,scenario.status,scenario.closed,expiredOpportunityFrame,
         op.createdAt,op.side,op.state,op.ready,op.actionable,op.activeUntil,
         a.vnext?.futureEntryAnchor?.issuedAt,
         a.vnext?.futureEntryAnchor?.entryAt,
