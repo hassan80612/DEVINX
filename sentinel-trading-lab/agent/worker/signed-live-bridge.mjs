@@ -7,12 +7,15 @@ export class SignedLiveBridge extends LiveBridge{
   constructor(topic,secret,options={}){
     super(topic,options);
     if(!/^[a-f0-9]{64}$/.test(secret))throw new Error('live_signing_key_missing');
-    this.secret=secret;this.verifiedViewerAt=0;this.lastPublishedQuoteAt=0;this.onViewer=options.onViewer;
+    this.secret=secret;this.verifiedViewerAt=0;this.lastPublishedQuoteAt=0;this.lastOpportunityKey='';this.onViewer=options.onViewer;
   }
   mac(input){return createHmac('sha256',Buffer.from(this.secret,'hex')).update(input).digest('hex')}
   verifyViewer(payload){
     const at=Number(payload?.at),hex=String(payload?.sig||'');
-    if(!Number.isFinite(at)||Math.abs(this.clock()-at)>12000||!/^[a-f0-9]{64}$/.test(hex))return false;
+    // The mobile may have a different device clock. A valid HMAC, not its
+    // uncalibrated timestamp, authenticates the first viewer/clock handshake.
+    // The clock-sync sample itself still has a short signed RTT and 120s limit.
+    if(!Number.isFinite(at)||Math.abs(this.clock()-at)>120000||!/^[a-f0-9]{64}$/.test(hex))return false;
     const a=Buffer.from(this.mac(this.topic+'|'+at),'hex'),b=Buffer.from(hex,'hex');
     return timingSafeEqual(a,b);
   }
@@ -61,11 +64,18 @@ export class SignedLiveBridge extends LiveBridge{
     const changed=signal!==this.lastSignalKey;
     const quoteAt=Number(snapshot?.liveBroker?.lastQuoteAt||snapshot?.feed?.quoteTs||0);
     const newQuote=Number.isFinite(quoteAt)&&quoteAt>this.lastPublishedQuoteAt;
+    // An Agent-confirmed new window or one-shot entry must not sit behind the
+    // normal 500ms minimum cadence. Unchanged market percentages still do.
+    const opportunityKey=JSON.stringify([a.vnext?.ow?.[0]||null,a.vnext?.ow?.[1]||0,
+      a.vnext?.ow?.[2]||0,a.vnext?.ea?.[1]||null,a.vnext?.ea?.[10]||0]);
+    const criticalTransition=this.lastOpportunityKey!==''&&
+      opportunityKey!==this.lastOpportunityKey&&
+      ['open','cancelled','fired'].includes(String(a.vnext?.ow?.[0]||''));
     if(!sourceEvent&&!urgent&&!changed&&!newQuote&&this.clock()-this.lastSentAt<4000)return false;
     // Never delay a fresh CALL/PUT, reversal test, cancellation or scenario
     // review behind the four-second unchanged-quote optimization.
-    const published=super.publish(snapshot,{urgent:urgent||(changed&&!!this.lastSignalKey),sourceEvent});
-    if(published){this.lastSignalKey=signal;this.lastPublishedQuoteAt=Math.max(this.lastPublishedQuoteAt,quoteAt);}
+    const published=super.publish(snapshot,{urgent:urgent||(changed&&!!this.lastSignalKey),sourceEvent:sourceEvent||criticalTransition});
+    if(published){this.lastSignalKey=signal;this.lastOpportunityKey=opportunityKey;this.lastPublishedQuoteAt=Math.max(this.lastPublishedQuoteAt,quoteAt);}
     return published;
   }
   send(event,payload,topic=this.topic){
