@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 
 import {LiveScenarioCard} from '../../components/LiveScenarioCard';
+import {ActiveBrowserSession} from '../../components/ActiveBrowserSession';
 import {LanguageSwitcher,T,useSentinelLocale} from '../../components/SentinelLocale';
 import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
 import {acceptSignedPcFrame,keepNewerVerifiedQuote,keepSignedViewOverCloud,reconcileSignedAnalystDisplay,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
@@ -83,6 +84,7 @@ export default function Page(){
   const {t,language}=useSentinelLocale();
 
   const[tab,setTab]=useState('Market Analysis');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
+  const autoLinkedDevice=useRef(new Set<string>());
   const remotePolledAt=useRef(0);
   const liveFrameAt=useRef(0);
   // Reconcile an in-flight user selection with delayed Agent status/broadcast.
@@ -293,6 +295,34 @@ export default function Page(){
   },[language,source,agent.worker,agent.version,s?.agentVersion,s?.settings?.uiLanguage]);
   const agentCommand=async(action:'restart'|'exit')=>{if(source!=='local'){setErr('Reiniciar/desligar o Agent exige acesso ao PC. Pelo celular você controla o Bot: iniciar, pausar, parar e Kill Switch.');return}setBusy(true);try{await managerFetch(action,'POST',{});if(action==='exit'){setAgent({process:false,worker:false});setSource('remote')}setTimeout(refresh,700);setErr('')}catch(e:any){setErr(`Agent: ${String(e?.message||e)}`)}finally{setBusy(false)}};
   const claimPair=async()=>{if(!pairCode.trim())return;setBusy(true);const send=async(replaceExisting=false)=>{const r=await fetch('/api/devices/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:pairCode,replaceExisting})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'Falha ao vincular PC');return j};try{let j:any;try{j=await send(false)}catch(e:any){if(String(e?.message||e)==='limite_de_pcs'){const ok=window.confirm('Esta conta já atingiu o limite de computadores. Substituir o PC antigo por este novo computador?');if(!ok)throw e;j=await send(true)}else throw e}setPairCode('');setErr('');setNotice(j?.replaced?'Novo computador vinculado. O PC antigo foi substituído.':'Computador vinculado com sucesso.');setTimeout(refresh,300);setTimeout(()=>setNotice(''),4200)}catch(e:any){setErr(friendlyError(e))}finally{setBusy(false)}};
+  // Pair the authenticated local Windows Agent automatically with the paid
+  // account. The proof is read only from the local loopback worker; a remote
+  // mobile browser cannot silently claim a random PC.
+  useEffect(()=>{
+    const code=String(agent?.pairingCode||'');
+    const key=String(account?.user?.id||'')+':'+code;
+    if(source!=='local'||!agentAccess||agent?.paired!==false||!code||!account?.user?.id)return;
+    if(autoLinkedDevice.current.has(key))return;
+    autoLinkedDevice.current.add(key);
+    const claim=async(replaceExisting=false)=>{
+      const url=replaceExisting?'/api/devices/replace':'/api/devices/claim';
+      const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({code})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok||!data.ok)throw new Error(data.error||'device_claim_failed');
+    };
+    void (async()=>{
+      try{await claim();setNotice('Agent autorizado automaticamente para esta conta.');setTimeout(refresh,600)}
+      catch(err:any){
+        if(String(err?.message||'')==='limite_de_pcs'){
+          if(window.confirm('Você já tem um PC autorizado. Substituí-lo por este computador?')){
+            try{await claim(true);setNotice('Novo PC autorizado.');setTimeout(refresh,600)}
+            catch{setErr('Não foi possível autorizar este computador. Verifique sua conta.')}
+          }
+        }else setErr('A autorização automática do Agent não foi concluída. Faça login novamente no PC.');
+      }
+    })();
+  },[source,agentAccess,agent?.paired,agent?.pairingCode,account?.user?.id,refresh]);
   const current=visibleTabs.find(x=>x.key===tab)??visibleTabs[0];const content=useMemo(()=>{
     // Hidden dashboard grids are expensive. During compact/market streaming,
     // only render the analyst; build the other tab AFTER navigating there.
@@ -301,7 +331,7 @@ export default function Page(){
       (s||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair} onNavigate={setTab}/>:<OfflinePanel/>;
   },[compactAnalyst,tab,s,busy,agent,account,pairCode,isMaster,source]);
   const mobileMain=[['Market Analysis','Mercado','⌁'],['Strategies','Estratégias','◇'],['Broker Connection','Corretora','⇄'],['Settings','Conta','⚙']] as const;
-  return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/favicon.ico" alt="Sentinel"/></div><div><span>SENTINEL</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups" aria-label={t('Navegação')}><div className="navGroup">{visibleTabs.map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div></nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':t('CONTA')}</div><span>{account?.user?.email||'Sentinel'} · {t(source==='local'?'PC local':'PC remoto')}</span></div></aside>
+  return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><ActiveBrowserSession/><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/favicon.ico" alt="Sentinel"/></div><div><span>SENTINEL</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups" aria-label={t('Navegação')}><div className="navGroup">{visibleTabs.map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div></nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':t('CONTA')}</div><span>{account?.user?.email||'Sentinel'} · {t(source==='local'?'PC local':'PC remoto')}</span></div></aside>
     <main className="main"><header className="topbar"><div className="pageHeading"><div className="topBrand"><img src="/favicon.ico" alt="Sentinel"/><span>Sentinel Trading Lab</span></div><div className="eyebrow">{t('PAINEL SENTINEL')} · WEB {WEB_RELEASE_VERSION}</div><h1>{t(current.title)}</h1><p>{t(current.subtitle)}</p></div><div className="topactions">
         <div className="runtimeBadges"><span className="privateBadge">🔒 {account?.profile?.role==='master'?'MASTER':t('PRIVADO')}</span><Pill tone={agent.process?'good':'neutral'}>{t(agent.process?'AGENT ONLINE':'AGENT OFF')}</Pill><Pill tone={agent.worker?'good':'neutral'}>{t(agent.worker?'WORKER ONLINE':'WORKER OFF')}</Pill><Pill tone={String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='demo'?'good':String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='real'?'bad':'neutral'}>{t('CONTA')} {t(modeLabel(s?.liveBroker?.mode||s?.mode||'—'))}</Pill><Pill tone={s?.state==='error'?'bad':s?.state==='running'?'good':'neutral'}>{t(String(s?.state||'offline').toUpperCase())}</Pill></div>
         <div className="topUtility"><LanguageSwitcher/><button className="themeToggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} title={t("Alternar tema")} aria-label={t("Alternar tema")}>{theme==='light'?t('Escuro'):t('Claro')}</button><button className="kill" disabled={busy||!s} onClick={()=>window.confirm('Ativar KILL SWITCH e parar imediatamente?')&&act('control/kill')}>KILL SWITCH</button><button className="secondary logoutBtn" onClick={async()=>{await fetch('/api/auth/logout',{method:'POST'});window.location.replace('/')}}>{t('Sair')}</button></div>
