@@ -2,8 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {evolveOpportunity} from '../sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs';
-import {analystSnapshot} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
-import {liveCardModel} from '../sentinel-trading-lab/src/lib/live-card-model.ts';
 const src=p=>readFileSync(new URL('../sentinel-trading-lab/'+p,import.meta.url),'utf8');
 const T=Date.parse('2026-10-14T20:00:00Z');
 const settings={asset:'EUR/USD',forecastMode:'continuous',engine:'automatic',orderDurationMs:30000};
