@@ -10,7 +10,7 @@ export function opportunityContext(settings={}){
 }
 export function evolveOpportunity({
  previous=null,candidate=null,settings={},now=Date.now(),
- quoteAt=null,confirmation=null
+ quoteAt=null,confirmation=null,invalidationReason=null
 }={}){
  const key=opportunityContext(settings),H=Number(settings.orderDurationMs)/1000;
  const fresh=Number(quoteAt)>0&&Number(quoteAt)<=now&&now-Number(quoteAt)<=2500;
@@ -38,6 +38,10 @@ export function evolveOpportunity({
   // No second CALL NOW, PUT NOW, or opposite-direction replacement, even
   // if the continuous market analysis keeps changing underneath.
   if(old.phase!=='open')return {...old,entryReadyNow:false};
+  // The Agent alone may cancel a structural reversal. Never flip direction,
+  // fire an opposite entry, or re-arm inside the original window.
+  if(invalidationReason)return {...old,phase:'cancelled',reason:String(invalidationReason),
+    entryReadyNow:false,entryTriggeredAt:null};
   // Wait for a GENUINE fresh quote AT/AFTER the chosen moment. A failed
   // confirmation does not restart, flip, or end the countdown.
   if(!fresh||now<old.entryAt||Number(quoteAt)<old.entryAt)
