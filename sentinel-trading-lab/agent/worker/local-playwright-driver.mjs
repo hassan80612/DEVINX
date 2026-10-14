@@ -369,12 +369,10 @@ function protocolScan(data,st,direction='in'){
       const activeChanged=(prevPageId!=null&&Number(prevPageId)!==Number(aid))||(prevPageId==null&&prevActiveId!=null&&Number(prevActiveId)!==Number(aid));
       st.pageActiveId=aid;st.lastPageActiveAt=Date.now();
       if(activeChanged&&prevActiveId!=null&&Number(prevActiveId)!==Number(aid)){
-        const resolved=symbolForActiveId(st,aid);
-        st.activeId=Number(aid);st.pendingPageActiveId=Number(aid);
-        st.symbol=resolved||null;st.uiSymbol=resolved||null;st.uiSymbolSource=resolved?'protocol-page':'protocol-page-pending';st.screenCandidateSymbol=null;st.validatedAt=Date.now();
-        st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'active_id_switch'};
-        st.subscribedSymbol=null;st.subscribedActiveId=null;st.suggestedSymbol=null;st.lastRequestAt=null;
-        st.marketStatus='switching';st.marketReason=resolved?`Ativo alterado na corretora: ${resolved}`:'Ativo alterado na corretora · identificando novo ativo';
+        // get-candles is often a BACKGROUND request, not the selected tab.
+        st.pendingPageActiveId=Number(aid);
+        st.pendingPageActiveAt=Date.now();
+        st.pendingPageSymbol=symbolForActiveId(st,aid);
       }
       const selected=st.uiSymbol||st.symbol||null;
       if(selected&&Number(st.activeId)===Number(aid)){const key=pairKey(selected);st.activeMap.set(key,aid);st.assets.add(selected);st.pendingPageActiveId=null}
@@ -721,15 +719,24 @@ export class LocalPlaywrightDriver{
     const chosen=chooseCandidate(out.balanceCandidates,st.mode);if(chosen&&st.balance==null){st.balance=chosen.value;st.balanceSource=`network:${chosen.mode||'unknown'}`;if(chosen.mode)st.mode=chosen.mode}
     if(out.modeCandidates?.length&&!st.mode){const strong=out.modeCandidates.filter(x=>Number(x.score||0)>=10);const modes=uniq(strong.map(x=>x.mode).filter(Boolean));if(modes.length===1)st.mode=modes[0]}applyKnownBalance(st)
     st.assets=out.assets;st.activeMap=out.activeMap;
-    if(st.pageActiveId!=null&&st.lastPageActiveAt!==before.lastPageActiveAt){
-      const resolvedPageSymbol=symbolForActiveId(st,st.pageActiveId);
-      if(resolvedPageSymbol)this.applyActiveSelection(provider,{activeId:st.pageActiveId,source:'protocol-page-late'});
+    if(st.pendingPageActiveId!=null&&st.lastPageActiveAt!==before.lastPageActiveAt&&
+       Date.now()-Number(st.lastPendingPageVerificationAt||0)>1600){
+      st.lastPendingPageVerificationAt=Date.now();
+      // A bounded read of the SELECTED visible tab, never the background ID.
+      const timer=setTimeout(()=>this.domSnapshot(provider,{fast:false}).then(()=>{
+        const current=this.state(provider);
+        current.pendingPageActiveId=null;
+        current.pendingPageSymbol=null;
+      }).catch(()=>{}),250);
+      timer.unref?.();
     }
     if(st.symbol){
       const mappedId=st.activeMap.get(pairKey(st.symbol));
       if(mappedId!=null){
         const idChanged=st.activeId==null||Number(st.activeId)!==Number(mappedId);
-        st.activeId=Number(mappedId);
+        if(st.activeId==null)st.activeId=Number(mappedId);
+        // Passive metadata cannot overwrite a verified Digital/OTC active ID.
+        // Only an actual selected-tab change resets the quote series.
         if(st.candles.length<50&&(idChanged||!st.lastCandleRequest))setTimeout(()=>this.requestMarketData(provider,{force:true}).catch(()=>{}),0);
       }
     }
@@ -749,7 +756,7 @@ export class LocalPlaywrightDriver{
     // protocolScan already applies only real page get-candles selection changes.
     // Background candle/quote subscriptions are deliberately ignored for retargeting.
     // Market prices/candles are accepted only by protocolScan for the selected active_id.
-    if(st.symbol){const id=st.activeMap.get(pairKey(st.symbol));if(id!=null)st.activeId=id}
+    // Do not retarget activeId from a refreshed list of instrument metadata.
     const assetChanged=(before.activeId!=null&&st.activeId!=null&&Number(before.activeId)!==Number(st.activeId))||(before.symbol&&st.symbol&&pairKey(before.symbol)!==pairKey(st.symbol))||(String(st.marketStatus||'').toLowerCase()==='switching'&&(before.activeId!==st.activeId||before.symbol!==st.symbol));
     const changed=before.quote!==st.quote||before.lastQuoteAt!==st.lastQuoteAt||before.lastCandleAt!==st.lastCandleAt||before.activeId!==st.activeId||before.symbol!==st.symbol||before.lastClose!==st.candles.at(-1)?.close;
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol,assetChanged,marketStatus:st.marketStatus})).catch(()=>{})}catch{}}
@@ -1139,7 +1146,7 @@ export class LocalPlaywrightDriver{
         void s.page.locator('body').innerText({timeout:650}).then(text=>{
           const raw=String(text||'').slice(0,30000);
           const top=raw.slice(0,3000);
-          const instrumentKind=/\\bblitz\\b/i.test(top)?'blitz':/\\bdigital\\b/i.test(top)?'digital':'unknown';
+          const instrumentKind=/\bblitz\b/i.test(top)?'blitz':/\bdigital\b/i.test(top)?'digital':'unknown';
           const observed=readBrokerTimingFromText(raw,{nowMs:Date.now(),instrumentKind});
           // Stale and unrecognized readings are never treated as broker authority.
           st.brokerTiming=observed;
