@@ -71,6 +71,9 @@ export function readBrokerTimingFromText(text, {nowMs = Date.now(), instrumentKi
     instrumentKind: kind,
     capturedAt,
     brokerClockVerified: current != null,
+    brokerClock: current == null?{verified:false,source:'visible-broker-clock'}:
+      {verified:true,source:'visible-broker-clock',capturedAt,
+       clockSeconds:current},
     selectedExpiration: expiration,
     purchaseWindow: {
       raw: purchaseRaw,
