@@ -14,6 +14,16 @@ $payloadZip = Join-Path $stage 'payload.zip'
 $payloadTmp = Join-Path $stage 'payload'
 $installMutex = New-Object System.Threading.Mutex($false, 'Local\SentinelTradingLabInstall')
 $locked = $false
+# Keep the install diagnostics WITHOUT creating inherited OS pipes from Go.
+# A long-running Worker/tray must never keep the installer window alive.
+$installTranscriptActive = $false
+try {
+  New-Item -ItemType Directory -Force -Path $root | Out-Null
+  Start-Transcript -Path (Join-Path $root 'install.log') -Append -ErrorAction Stop | Out-Null
+  $installTranscriptActive = $true
+} catch {
+  Write-Host 'Aviso: nao foi possivel ativar o log completo desta instalacao.' -ForegroundColor Yellow
+}
 
 function Step($t) { Write-Host "`n$t" -ForegroundColor Cyan }
 function Fail($m) { Write-Host "`nERRO: $m" -ForegroundColor Red; if ($env:SENTINEL_INSTALL_TEST -ne '1' -and $env:CI -ne 'true') { Read-Host 'Pressione ENTER para fechar' | Out-Null }; exit 1 }
@@ -233,5 +243,6 @@ try {
   if ($locked) { try { $installMutex.ReleaseMutex() } catch {} }
   $installMutex.Dispose()
   Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
+  if ($installTranscriptActive) { try { Stop-Transcript | Out-Null } catch {} }
 }
 
