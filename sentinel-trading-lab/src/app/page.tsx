@@ -14,7 +14,7 @@ export default function Home(){
   call:'Buy 30-day access',login:'Sign in',create:'Create my account',
   price:'US$ 50',cycle:'30 days · manual renewal',
   bullets:[['Forward scenarios','Price and time projections for your selected expiry.'],['Trend & reversal context','Completed-candle structure, retracements and directional changes.'],['Live dashboard','Windows Agent and the same account on PC or mobile.']],
-  how:'A straightforward way to start',steps:[['01','Purchase','Complete the secure Kiwify checkout.'],['02','Create your account','Use the SAME email address as on your payment.'],['03','Connect','Sign in on Windows and choose your broker.']],
+  how:'A straightforward way to start',steps:[['01','Purchase','Complete the secure Kiwify checkout.'],['02','Create your account','Use the SAME email address as on your payment.'],['03','Connect','Install the Windows Agent, sign in and choose your broker.']],
   disclaimer:'Professional analysis software, not a guarantee of accuracy, profit, or suitable investment advice. Trades are placed manually. IQ Option and Exnova are independent trademarks; Sentinel is not affiliated with or endorsed by them.',
   renew:'One payment gives 30 days of access. No automatic renewal.',
   sample:'Illustrative layout — not an actual signal',see:'What your analyst examines',
@@ -28,7 +28,7 @@ export default function Home(){
   call:'Comprar acesso por 30 dias',login:'Entrar',create:'Criar minha conta',
   price:'R$ 280',cycle:'30 dias · renovação manual',
   bullets:[['Cenários futuros','Projeções de preço e horário para o vencimento escolhido.'],['Tendências e reversões','Leitura da estrutura das velas concluídas, retrações e possíveis viradas.'],['Painel ao vivo','Agent Windows e acompanhamento na mesma conta pelo PC ou celular.']],
-  how:'Como começar sem complicação',steps:[['01','Compre','Finalize o pagamento seguro na Kiwify.'],['02','Crie sua conta','Use o MESMO e-mail informado no pagamento.'],['03','Conecte','Faça login no PC e escolha a corretora.']],
+  how:'Como começar sem complicação',steps:[['01','Compre','Finalize o pagamento seguro na Kiwify.'],['02','Crie sua conta','Use o MESMO e-mail informado no pagamento.'],['03','Conecte','Instale o Agent Windows, entre na conta e escolha a corretora.']],
   disclaimer:'Não garante assertividade nem ganhos. Software de análise profissional, sem promessa de lucro ou aconselhamento personalizado. Operações são manuais e podem gerar perdas. IQ Option e Exnova são marcas de terceiros; o Sentinel não é afiliado ou endossado por elas.',
   renew:'Pagamento único para 30 dias de acesso. Sem renovação automática.',
   sample:'Visual ilustrativo — não é sinal de entrada',see:'O que o analista acompanha',
@@ -59,6 +59,7 @@ export default function Home(){
       <Link href={checkout} className={styles.buy}>{copy.call} <span aria-hidden="true">↗</span></Link>
      </div>
      <div className={styles.afterBuy}><span>{copy.renew}</span><Link href="/login?mode=register">{copy.create} →</Link></div>
+     <a href="https://devinx.com.br" className={styles.devinxButton}>{english?'Discover DevinX':'Conheça o DevinX'} <span aria-hidden="true">↗</span></a>
     </div>
     <aside className={styles.showcase} aria-label={copy.sample}>
      <div className={styles.showcaseTop}><span className={styles.showcaseLogo}>S</span><div><strong>SENTINEL ANALYST</strong><small>{copy.quote}</small></div><span className={styles.sample}>DEMO</span></div>
