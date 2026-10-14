@@ -1,4 +1,5 @@
 import {adaptiveDirectTrajectory} from './adaptive-direct-trajectory.mjs';
+import {causalForwardPath} from './causal-interval-forecast-1371.mjs';
 import {selectedEngineForecastRequest} from './scenario-engine-catalog.mjs';
 import {automaticForwardPrediction} from './automatic-forward-model.mjs';
 import {specialistForwardPrediction} from './specialist-forward-models.mjs';
@@ -27,6 +28,9 @@ export function singleEngineForecast({
  const autonomous=settings.forecastMode==='selective';
  const selective=!autonomous&&request.engineId==='selective_forecast'?selectiveIntervalForecast({quoteHistory:adaptiveHistory||quotes,asOf:now,entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const selectedStrengths=!autonomous&&forecastModel==='selected-strengths-67.5';
+ const causal=!autonomous&&request.engineId==='automatic'&&forecastModel==='causal-interval-1371'?
+   causalForwardPath({quoteHistory:adaptiveHistory||quotes,asOf:now,
+     holdingSeconds:seconds,maxSeconds:seconds}):null;
  const selectedSpecialist=selectedStrengths&&['breakout','fibonacci_retest'].includes(request.engineId);
  const specialistCandidate=!autonomous&&request.engineId!=='automatic'&&(forecastModel==='specialist-structure-v2'||selectedSpecialist)?
    specialistStructurePrediction({...options,engineId:request.engineId}):null;
@@ -39,7 +43,7 @@ export function singleEngineForecast({
    adaptiveDirectTrajectory({quoteHistory:adaptiveHistory||quotes,asOf:now,
      entryDelaySeconds:0,holdingSeconds:seconds}):null;
  const useAdaptive=learned?.status==='adaptive-direct-trajectory';
- const modelVersion=autonomous?'selective-historical-outcomes-v2':selective?'selective-interval-v1':useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
+ const modelVersion=autonomous?'selective-historical-outcomes-v2':causal?'causal-interval-1371':selective?'selective-interval-v1':useSpecialist?'specialist-structure-v2':useStructure?'structure-context-v2':useAdaptive?'adaptive-direct-trajectory-v1':'vnext-single-owner-v1';
  // The selective decision belongs only to the HISTORICAL future-entry
  // estimator (T+H to T+2H). Never show the unrelated trend extrapolator
  // (now to T+H) as a second CALL/PUT in the same selective card.
@@ -51,6 +55,19 @@ export function singleEngineForecast({
    prediction:selective.qualified?{side:selective.side,projectedPrice:selective.projectedExitPrice,
      expectedLow:selective.expectedLow,expectedHigh:selective.expectedHigh,modelConfidence:null,
      evidence:[selective.reason,'Margem sobre volatilidade e resultados históricos concluídos']}:null
+ }:causal?{
+   status:causal.status,
+   diagnostic:{referencePrice:Number(quotes.at(-1)?.price),quoteAt:causal.latestQuoteAt},
+   prediction:causal.status==='causal-forward-path'?(()=>{
+     const base=Number(quotes.at(-1)?.price),predicted=causal.priceAt(seconds);
+     if(!(base>0&&predicted>0))return null;
+     return {side:predicted>base?'CALL':predicted<base?'PUT':'NEUTRAL',
+       projectedPrice:predicted,expectedLow:predicted,expectedHigh:predicted,
+       modelConfidence:null,evidence:[
+         'Projection of the real future price using 15s/30s/60s/90s causal structure',
+         'Completed independent past intervals '+causal.analogExamples+'; regime '+causal.regime,
+         'No current-candle veto, no old-67 extrapolation and no claimed win rate']};
+    })():null
  }:useStructure?{
    status:'candidate-forward-prediction',
    diagnostic:{referencePrice:structure.referencePrice,quoteAt:structure.latestTrainingOutcomeAt},
@@ -73,7 +90,7 @@ export function singleEngineForecast({
  // Unlike pure momentum extrapolation, these independently observed outcomes
  // are prices that followed comparable PAST quote patterns by the SELECTED
  // expiration. No last/current candle direction is a decision gate.
- const analog=autonomous||selective||useAdaptive||useStructure?null:historicalForwardAnalogs({
+ const analog=autonomous||selective||useAdaptive||useStructure||causal?null:historicalForwardAnalogs({
    quoteHistory:quotes,asOf:now,selectedSeconds:seconds,
    engineId:request.engineId
  });
