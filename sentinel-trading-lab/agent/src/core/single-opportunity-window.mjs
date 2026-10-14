@@ -33,7 +33,7 @@ export function evolveOpportunity({
   if(old.phase==='scanning'){
    // A directional opportunity can be admitted once in this window.
    // A new candidate can NEVER extend the already running countdown.
-   if(validCandidate()&&Number(candidate.entryAt)<=old.windowEndsAt)
+   if(validCandidate()&&Number(candidate.issuedAt)>=Number(old.windowStartedAt)&&Number(candidate.entryAt)<=old.windowEndsAt)
     return {...candidate,context:key,phase:'open',reason:'awaiting-entry',
      openedAt:old.windowStartedAt,windowStartedAt:old.windowStartedAt,
      windowEndsAt:old.windowEndsAt,candidateQuoteAt:Number(quoteAt),
@@ -94,7 +94,7 @@ export function evolveOpportunity({
    old.windowEndsAt+Math.floor(Math.max(0,now-old.windowEndsAt)/(H*1000))*H*1000:
    now;
  const end=started+H*1000;
- if(validCandidate()&&Number(candidate.entryAt)<=end)
+ if(validCandidate()&&Number(candidate.issuedAt)>=started&&Number(candidate.entryAt)<=end)
   return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
    openedAt:started,windowStartedAt:started,windowEndsAt:end,
    candidateQuoteAt:Number(quoteAt),entryReadyNow:false,entryTriggeredAt:null};
