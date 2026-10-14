@@ -37,9 +37,9 @@ const COPY={
     financeJump:"Financeiro",storeJump:"Loja",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANÁLISE DE MERCADO",
-    sentinelLine1:"Seu mercado com mais contexto.",
-    sentinelText:"Acompanhe cenários CALL e PUT, variações de preço e alertas de mercado. A análise é informativa: as operações continuam manuais.",
-    sentinelPrimary:"Conhecer Sentinel",
+    sentinelLine1:"Seu analista técnico profissional de mercado.",
+    sentinelText:"Análise em tempo real, estrutura de velas, tendências, retrações e cenários CALL/PUT. Um painel profissional para acompanhar IQ Option e Exnova com clareza; as operações são manuais.",
+    sentinelPrimary:"Conhecer o analista",
     sentinelLogin:"Já tenho acesso · Entrar",
     sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE"
   },
@@ -72,8 +72,8 @@ const COPY={
     financeJump:"Finance",storeJump:"Store",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · MARKET ANALYSIS",
-    sentinelLine1:"More context for your market.",
-    sentinelText:"Follow CALL/PUT scenarios, price changes and market alerts. Informational analysis only; all trades remain manual.",
+    sentinelLine1:"Professional technical market analysis.",
+    sentinelText:"Live prices, completed candle structure, trends, retracements and CALL/PUT scenarios for IQ Option and Exnova. You remain in control of every trade.",
     sentinelPrimary:"Explore Sentinel",
     sentinelLogin:"I have access · Sign in",
     sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS"
@@ -107,7 +107,7 @@ const COPY={
     financeJump:"Finanzas",storeJump:"Tienda",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANÁLISIS DE MERCADO",
-    sentinelLine1:"Más contexto para tu mercado.",
+    sentinelLine1:"Tu analista técnico profesional.",
     sentinelText:"Sigue escenarios CALL/PUT, cambios de precio y alertas. El análisis es informativo; operas manualmente.",
     sentinelPrimary:"Conocer Sentinel",
     sentinelLogin:"Ya tengo acceso · Entrar",
@@ -142,7 +142,7 @@ const COPY={
     financeJump:"Finance",storeJump:"Boutique",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · ANALYSE DE MARCHÉ",
-    sentinelLine1:"Une lecture plus claire du marché.",
+    sentinelLine1:"Votre analyste technique professionnel.",
     sentinelText:"Suivez les scénarios CALL/PUT, les variations de prix et les alertes. Analyse informative ; ordres manuels.",
     sentinelPrimary:"Découvrir Sentinel",
     sentinelLogin:"J'ai un accès · Connexion",
@@ -177,7 +177,7 @@ const COPY={
     financeJump:"Finanzen",storeJump:"Shop",
     sentinelJump:"Sentinel",
     sentinelTag:"SENTINEL TRADING LAB · MARKTANALYSE",
-    sentinelLine1:"Mehr Kontext für Ihren Markt.",
+    sentinelLine1:"Ihr professioneller technischer Analyst.",
     sentinelText:"Verfolgen Sie CALL/PUT-Szenarien, Kursbewegungen und Warnungen. Nur informative Analyse; Trades bleiben manuell.",
     sentinelPrimary:"Sentinel entdecken",
     sentinelLogin:"Zugang vorhanden · Anmelden",
@@ -394,6 +394,10 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
         <span className={styles.tag}><i/>{c.sentinelTag}</span>
         <h2>{c.sentinelLine1}</h2>
         <p>{c.sentinelText}</p>
+        <div className={styles.sentinelBrokerBrands} aria-label="IQ Option e Exnova">
+          <span className={styles.sentinelIq}>IQ <b>OPTION</b></span>
+          <span className={styles.sentinelExnova}>EXNOVA</span>
+        </div>
         <div className={styles.actions}>
           <a className={styles.primary} href="/sentinel">{c.sentinelPrimary}</a>
           <a className={styles.secondary} href="/sentinel?next=login">{c.sentinelLogin}</a>
