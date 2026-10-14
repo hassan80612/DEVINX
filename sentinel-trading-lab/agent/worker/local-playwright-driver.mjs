@@ -1193,7 +1193,21 @@ export class LocalPlaywrightDriver{
           heldClock==='broker'||heldClock==='current'?heldClock:
           storedClock==='broker'||storedClock==='current'?storedClock:
           d.clockMode==='broker'?'broker':'current';
+        // Local selection stays stable through delayed frames. A single
+        // asynchronous settings update makes the Agent know whether broker
+        // cutoff validation is enabled, without changing its forecast mode,
+        // entry deadline, or visual clock until the user chooses again.
+        const agentClockMode=d.clockMode==='broker'?'broker':'current';
         window.__sentinelClockDisplayMode=selectedClock;
+        if(selectedClock!==agentClockMode&&
+           window.__sentinelLastClockModeSync!==selectedClock){
+          window.__sentinelLastClockModeSync=selectedClock;
+          queueMicrotask(()=>{
+            try{Promise.resolve(window.__sentinelOverlayAction?.({
+              action:'setting',key:'clockMode',value:selectedClock
+            })).catch(()=>{})}catch{}
+          });
+        }
         d.clockMode=selectedClock;
         window.__sentinelLastOverlayData=d;
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
@@ -1643,6 +1657,10 @@ export class LocalPlaywrightDriver{
               try{window.localStorage.setItem('sentinel-broker-clock-display-mode-v1',next)}catch{}
               window.__sentinelLastOverlayData.clockMode=next;
               clockSelect.value=next;
+              window.__sentinelLastClockModeSync=next;
+              // The Agent must know if the user enabled synchronized mode;
+              // don't let an old response overwrite the local UI preference.
+              void sendAction({action:'setting',key:'clockMode',value:next});
               el.dataset.selectLock='0';
               queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));
               return;
