@@ -48,7 +48,7 @@ test('PC overlay never uses a cached analysis from the previous fixed cycle',()=
 });
 test('Phone countdown and forecast refuse a delayed frame from a completed previous cycle',()=>{
  const src=read('sentinel-trading-lab/src/lib/live-card-model.ts');
- assert.match(src,/const endedPreviousCycle=cycleEndAt>0&&now>=cycleEndAt/);
+ assert.match(src,/const endedPreviousCycle=\(cycleEndAt>0&&now>=cycleEndAt\)/);
  for(const field of ['vnextReceipt','vnextTargetAnchor','vnextFutureEntryAnchor','vnextFutureEntryRows','vnextHorizons'])
   assert.match(src,new RegExp('const '+field+'=!endedPreviousCycle&&matchingMarket&&'));
 });
