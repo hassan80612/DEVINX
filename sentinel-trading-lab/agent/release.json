@@ -1,13 +1,13 @@
 {
-  "version": "13.7.0",
-  "build": "13.7-closed-history-structural-invalidation",
+  "version": "13.7.1",
+  "build": "13.7.1-causal-forward-interval-no-direction-veto",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.7-causal-closed-bars-replay-pending",
-    "forecastModel": "selected-strengths-67.5"
+    "modelValidation": "13.7.1-causal-replay-tests-unproven-live",
+    "forecastModel": "causal-interval-1371"
   }
 }
