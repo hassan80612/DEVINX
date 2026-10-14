@@ -100,8 +100,20 @@ function structureMove(p,seconds){
  const reversion=-(p.at.lp-p.mean)*
    (s.regime==='range'?.44:s.regime==='reversal'?.12:.10)*
    (1-Math.exp(-horizon/40));
+ // A persistent 5/10/15/20-second directional leg has price evidence
+ // that a slowly weighted 60/90-second trend may miss. Reprice the FUTURE
+ // move, rather than placing a direction veto or waiting another candle.
+ // One isolated quote/green candle cannot qualify as a persistent leg.
+ const shortSide=Math.sign(p.rate10);
+ const legAligned=shortSide!==0&&[p.rate5,p.rate15,p.rate20]
+   .every(rate=>Math.sign(rate)===shortSide);
+ const legSigma=Math.abs(p.rate10*10)/
+   Math.max(1e-12,p.sigma*Math.sqrt(10));
+ const legEvidence=legAligned?clamp((legSigma-.5)/1.5,0,1):0;
+ const shortRate=p.rate5*.12+p.rate10*.34+p.rate15*.29+p.rate20*.25;
+ const persistenceMove=shortRate*Math.min(horizon,45)*legEvidence*.68;
  const limit=Math.max(1e-9,p.sigma*Math.sqrt(Math.max(1,horizon))*2.5);
- return clamp(drift+acceleration+reversion,-limit,limit);
+ return clamp(drift+acceleration+reversion+persistenceMove,-limit,limit);
 }
 function matches(r,now,current,maxSeconds){
  const cutoff=now-maxSeconds*1000-3500;
