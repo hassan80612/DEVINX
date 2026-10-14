@@ -20,7 +20,27 @@ const tool=(name,args,options={})=>{
   throw Error(name+' failed: '+String(result.stderr||result.error?.message||result.stdout).slice(0,600));
  return result.stdout?.trim()||'';
 };
-console.log('Sentinel 13.7 installer: '+tool('go',['version']));
+// Vercel's Next.js build image has no Go toolchain. Bootstrap a PINNED
+// official distribution, check the SHA256 published at go.dev/dl, and do not
+// silently fall back to an old bundled executable.
+let goBinary='go',goEnv={...process.env};
+if(spawnSync('go',['version'],{encoding:'utf8'}).error){
+ const archive=join(root,'.go-1.24.9-linux-amd64.tar.gz');
+ const directory=join(root,'.go-1.24.9-toolchain');
+ const shaExpected='5b7899591c2dd6e9da1809fde4a2fad842c45d3f6b9deb235ba82216e31e34a6';
+ console.log('Installing verified Go 1.24.9 toolchain for Windows cross-build');
+ tool('curl',['-fsSL','--retry','2','--max-time','120',
+  'https://go.dev/dl/go1.24.9.linux-amd64.tar.gz','-o',archive]);
+ const shaActual=createHash('sha256').update(readFileSync(archive)).digest('hex');
+ if(shaActual!==shaExpected)throw Error('go_toolchain_sha256_mismatch');
+ mkdirSync(directory,{recursive:true});
+ tool('tar',['-xzf',archive,'-C',directory]);
+ rmSync(archive,{force:true});
+ goBinary=join(directory,'go','bin','go');
+ goEnv={...process.env,GOROOT:join(directory,'go'),
+  PATH:join(directory,'go','bin')+':'+process.env.PATH};
+}
+console.log('Sentinel 13.7 installer: '+tool(goBinary,['version'],{env:goEnv}));
 tool('zip',['-v']);
 const zip=join(dl,'agent_payload_v88.zip');
 rmSync(zip,{force:true});
@@ -37,8 +57,8 @@ writeFileSync(join(dl,'agent-update.json'),JSON.stringify({
 const exe=join(dl,'Sentinel-Agent-13.7.exe');
 // The launcher embeds the ZIP AND the release identity, so an old EXE cannot
 // accidentally install an old engine under the 13.7 version.
-const env={...process.env,GOOS:'windows',GOARCH:'amd64',CGO_ENABLED:'0',GOTOOLCHAIN:'local'};
-tool('go',['build','-trimpath','-ldflags=-s -w -buildid=','-o',exe,'agent-launcher.go'],{env});
+const env={...goEnv,GOOS:'windows',GOARCH:'amd64',CGO_ENABLED:'0',GOTOOLCHAIN:'local'};
+tool(goBinary,['build','-trimpath','-ldflags=-s -w -buildid=','-o',exe,'agent-launcher.go'],{env});
 if(statSync(exe).size<1000000)throw Error('invalid_windows_executable');
 for(const alias of ['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe'])
  copyFileSync(exe,join(dl,alias));
