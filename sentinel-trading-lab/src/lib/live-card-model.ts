@@ -42,9 +42,13 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
   const vnext=a?.vnext||null;
   // A delayed network frame from the former 30/60s cycle must not be
   // presented as the live decision of the next window.
-  const cycleEndAt=Number(Array.isArray(vnext?.ow)?
-    vnext.ow[2]:vnext?.opportunityWindow?.windowEndsAt||0);
-  const endedPreviousCycle=cycleEndAt>0&&now>=cycleEndAt;
+  const rawCycle=Array.isArray(vnext?.ow)?vnext.ow:null;
+  const cycleStartAt=Number(rawCycle?rawCycle[1]:vnext?.opportunityWindow?.windowStartedAt||0);
+  const cycleEndAt=Number(rawCycle?rawCycle[2]:vnext?.opportunityWindow?.windowEndsAt||0);
+  // A clock rollover cannot turn a quote from the PREVIOUS 30/60s
+  // opportunity into a live recommendation of the NEW opportunity.
+  const endedPreviousCycle=(cycleEndAt>0&&now>=cycleEndAt)||
+    (cycleStartAt>0&&quoteAt<cycleStartAt);
   const vnextReceipt=!endedPreviousCycle&&matchingMarket&&vnext?.engineId===s?.settings?.engine&&vnext?.receipt?.asset?.toUpperCase()===asset.toUpperCase()&&Number(vnext?.receipt?.expirySeconds)===horizon?vnext.receipt:null;
   const vnextTargetAnchor=!endedPreviousCycle&&matchingMarket&&vnext?.targetAnchor?.engineId===s?.settings?.engine&&
     vnext?.targetAnchor?.asset?.toUpperCase()===asset.toUpperCase()&&
