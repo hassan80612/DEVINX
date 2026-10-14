@@ -1,13 +1,13 @@
 {
   "name": "sentinel-trading-lab",
-  "version": "13.8.6",
+  "version": "13.8.7",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "prebuild": "cd .. && npm install --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund && node --test tests/sentinel-67315-mobile-integrity.test.mjs tests/sentinel-mobile-wire-auth.test.mjs tests/sentinel-67314-mobile-render.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-137-structural-entry.test.mjs tests/sentinel-1371-causal-forecast.test.mjs tests/sentinel-1372-agent-boot.test.mjs tests/sentinel-1373-continuous-broker-clock.test.mjs tests/sentinel-1375-installer-window-close.test.mjs tests/sentinel-1376-actual-digital-expiry.test.mjs tests/sentinel-1376-clock-and-startup.test.mjs tests/sentinel-1377-clock-and-early-signal.test.mjs tests/sentinel-1378-reversal-and-purchase.test.mjs tests/sentinel-1379-closed-structure-replay.test.mjs tests/sentinel-1380-replan-without-fake-waits.test.mjs tests/sentinel-1381-launch-security.test.mjs tests/sentinel-1382-launch-cycle-regression.test.mjs tests/sentinel-1383-signal-latency.test.mjs tests/sentinel-1384-session-download-reversal.test.mjs tests/sentinel-1384-auth-health.test.mjs tests/sentinel-1385-asset-history-latency.test.mjs tests/sentinel-1385-prior-candle-reaction.test.mjs tests/sentinel-1386-access-continuity.test.mjs tests/sentinel-devinx-hub-launch.test.mjs && node sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs"
+    "prebuild": "cd .. && npm install --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund && node --test tests/sentinel-67315-mobile-integrity.test.mjs tests/sentinel-mobile-wire-auth.test.mjs tests/sentinel-67314-mobile-render.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs tests/sentinel-137-structural-entry.test.mjs tests/sentinel-1371-causal-forecast.test.mjs tests/sentinel-1372-agent-boot.test.mjs tests/sentinel-1373-continuous-broker-clock.test.mjs tests/sentinel-1375-installer-window-close.test.mjs tests/sentinel-1376-actual-digital-expiry.test.mjs tests/sentinel-1376-clock-and-startup.test.mjs tests/sentinel-1377-clock-and-early-signal.test.mjs tests/sentinel-1378-reversal-and-purchase.test.mjs tests/sentinel-1379-closed-structure-replay.test.mjs tests/sentinel-1380-replan-without-fake-waits.test.mjs tests/sentinel-1381-launch-security.test.mjs tests/sentinel-1382-launch-cycle-regression.test.mjs tests/sentinel-1383-signal-latency.test.mjs tests/sentinel-1384-session-download-reversal.test.mjs tests/sentinel-1384-auth-health.test.mjs tests/sentinel-1385-asset-history-latency.test.mjs tests/sentinel-1385-prior-candle-reaction.test.mjs tests/sentinel-1386-access-continuity.test.mjs tests/sentinel-1387-active-selection.test.mjs tests/sentinel-devinx-hub-launch.test.mjs && node sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs"
   },
   "dependencies": {
     "next": "15.5.27",

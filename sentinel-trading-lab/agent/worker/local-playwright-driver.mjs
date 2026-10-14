@@ -198,9 +198,9 @@ const PAIR_CODES=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL',
 function pairStrings(text=''){
   const t=String(text).toUpperCase();
   const raw=t.match(/\b[A-Z]{3}\s*[/\-]\s*[A-Z]{3}(?:\s*\(?OTC\)?)?/g)||[];
-  const compact=t.match(/\b[A-Z]{6}(?:-OTC)?\b/g)||[];
+  const compact=t.match(/\b[A-Z]{6}(?:-?OTC|\s*\(?OTC\)?)?\b/g)||[];
   const a=raw.map(x=>x.replace(/\s+/g,' ').trim().replace('-', '/').replace(/\s*\(?OTC\)?$/,' OTC'));
-  const b=compact.map(x=>{const otc=x.endsWith('-OTC'),z=x.replace(/-OTC$/,'');return `${z.slice(0,3)}/${z.slice(3,6)}${otc?' OTC':''}`});
+  const b=compact.map(x=>{const otc=/OTC\)?$/.test(x),z=x.replace(/(?:-?OTC|\s*\(?OTC\)?)$/,'');return `${z.slice(0,3)}/${z.slice(3,6)}${otc?' OTC':''}`});
   return uniq([...a,...b].filter(x=>{const base=x.replace(/ OTC$/,'');const [q,r]=base.split('/');return q&&r&&!BAD_PAIR_TOKENS.has(q)&&!BAD_PAIR_TOKENS.has(r)&&(PAIR_CODES.has(q)||PAIR_CODES.has(r))}));
 }
 function assetStrings(text=''){
@@ -210,9 +210,15 @@ function assetStrings(text=''){
     const rx=new RegExp('(^|[^A-Z])'+needle.replace(' ','\\s+')+'([^A-Z]|$)','i');
     if(rx.test(raw))out.push(label+(raw.includes('OTC')?' OTC':''));
   }
+  // OTC equities/indices are real broker instruments too (e.g. OpenAI).
+  // Accept a bounded single asset label, not arbitrary text or a price.
+  if(!out.length&&raw.length<=65){
+    const label=raw.match(/^(?:OTC[.:-]([A-Z][A-Z0-9 .&_\-]{1,40})|([A-Z][A-Z0-9 .&_\-]{1,40}?)\s*[-.]?\s*\(?OTC\)?)$/);
+    if(label)out.push(String(label[1]||label[2]).trim()+' OTC');
+  }
   return uniq(out)
 }
-function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z]/g,'')}
+function pairKey(v=''){return String(v).toUpperCase().replace(/\s*\(?OTC\)?$/,'-OTC').replace(/[^A-Z0-9]/g,'')}
 function symbolForActiveId(st,activeId){
   const aid=Number(activeId);if(!Number.isFinite(aid))return null;
   const keys=[...st.activeMap.entries()].filter(([,id])=>Number(id)===aid).map(([key])=>String(key));
@@ -501,6 +507,10 @@ function recursiveScan(obj,out,hint=''){
   if(objectMode){out.modeCandidates=out.modeCandidates||[];out.modeCandidates.push({mode:objectMode,score:/balance|account|profile/.test(hint)?12:6})}
   const localHint=(hint+' '+String(obj.name??obj.type??obj.event??obj.method??obj.action??obj.account_type??obj.accountMode??'')).toLowerCase();
   const ownPairs=uniq(keys.flatMap(k=>typeof obj[k]==='string'?assetStrings(obj[k]):[]));
+  if(!ownPairs.length&&/active|instrument|asset|underlying/.test(localHint)){
+    const label=String(obj.display_name??obj.displayName??obj.symbol??obj.ticker??obj.name??'').trim();
+    if(/^[A-Za-z][A-Za-z0-9 .&_\-]{0,40}$/.test(label)&&!/(get-|subscribe|message|generated)/i.test(label))ownPairs.push(label);
+  }
   const possibleId=n(obj.active_id??obj.activeId??obj.instrument_active_id??obj.asset_id??((ownPairs.length||/active|instrument|asset|underlying/.test(localHint))?obj.id:null));
   if(possibleId!=null&&ownPairs.length){for(const p of ownPairs){out.activeMap.set(pairKey(p),possibleId);out.assets.add(p)}}
   for(const k of keys){const v=obj[k],kl=k.toLowerCase();
@@ -672,15 +682,19 @@ export class LocalPlaywrightDriver{
             const codes=new Set(['USD','EUR','GBP','JPY','AUD','NZD','CAD','CHF','BRL','TRY','ZAR','MXN','SGD','HKD','NOK','SEK','DKK','PLN','CZK','HUF','THB','BTC','ETH','XAU','XAG']);
             const out=[];
             for(const m of raw.matchAll(/\b([A-Z]{3})\s*[\/-]\s*([A-Z]{3})(?:\s*\(?OTC\)?)?/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
-            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
+            for(const m of raw.matchAll(/\b([A-Z]{3})([A-Z]{3})(?:-?OTC|\s*\(?OTC\)?)?\b/g))if(codes.has(m[1])||codes.has(m[2]))out.push(`${m[1]}/${m[2]}${/OTC/.test(m[0])?' OTC':''}`);
             const named=[['GOLD','Gold'],['SILVER','Silver'],['BITCOIN','Bitcoin'],['ETHEREUM','Ethereum'],['CRUDE OIL','Crude Oil'],['NATURAL GAS','Natural Gas']];
             for(const [needle,label] of named)if(new RegExp('(^|[^A-Z])'+needle.replace(' ','\\\\s+')+'([^A-Z]|$)','i').test(raw))out.push(label+(raw.includes('OTC')?' OTC':''));
+            if(!out.length&&raw.trim().length<=65){
+              const label=raw.trim().match(/^(?:OTC[.:-]([A-Z][A-Z0-9 .&_\-]{1,40})|([A-Z][A-Z0-9 .&_\-]{1,40}?)\s*[-.]?\s*\(?OTC\)?)$/);
+              if(label)out.push(String(label[1]||label[2]).trim()+' OTC');
+            }
             return [...new Set(out)];
           };
-          let lastHint='';
+          let lastHint='',lastHintAt=0;
           const publishHint=(symbol)=>{
-            if(!symbol||symbol===lastHint)return;
-            lastHint=symbol;
+            if(!symbol||(symbol===lastHint&&Date.now()-lastHintAt<150))return;
+            lastHint=symbol;lastHintAt=Date.now();
             window.__sentinelClickedSymbol=symbol;window.__sentinelClickedSymbolAt=Date.now();
             try{window.__sentinelAssetChanged?.({symbol,source:'tab-click-hint',at:Date.now()})}catch{}
           };
@@ -771,16 +785,16 @@ export class LocalPlaywrightDriver{
     if(changed&&this.marketUpdateHandler){try{Promise.resolve(this.marketUpdateHandler(provider,{quote:st.quote,lastQuoteAt:st.lastQuoteAt,lastCandleAt:st.lastCandleAt,activeId:st.activeId,symbol:st.symbol,uiSymbol:st.uiSymbol,assetChanged,marketStatus:st.marketStatus})).catch(()=>{})}catch{}}
   }
   attachNetwork(provider,page){
-    if(page.__sentinelAttached)return;
+    if(page.__sentinelAttached)return page.__sentinelNetworkReady;
     page.__sentinelAttached=true;
     // Preserve outbound active-tab selection without decoding inbound
     // high-frequency market traffic or costly broker HTTP response bodies.
+    const observeSent=payload=>{
+      if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
+      this.ingest(provider,payload,'page-out');
+    };
     page.on('websocket',ws=>{
-      ws.on('framesent',event=>{
-        const payload=event?.payload;
-        if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
-        this.ingest(provider,payload,'page-out');
-      });
+      ws.on('framesent',event=>observeSent(event?.payload));
       // Passive observation of the broker's actual market data (13.4.27).
       // Never send, block, mutate or proxy broker traffic.
       ws.on('framereceived',event=>{
@@ -811,6 +825,23 @@ export class LocalPlaywrightDriver{
       });
     });
     this.state(provider).pageNetworkTap='read-only-quote-observer';
+    // Playwright's websocket event only includes sockets CREATED after attachment.
+    // CDP also observes frames of the broker's already-open restored socket.
+    // No request interception, page WebSocket patching, reload or extra feed.
+    page.__sentinelNetworkReady=(async()=>{
+      if(!page.context?.().newCDPSession)return;
+      let client;
+      try{
+        client=await page.context().newCDPSession(page);
+        client.on('Network.webSocketFrameSent',event=>{
+          if(event.response?.opcode===1)observeSent(event.response.payloadData);
+        });
+        await client.send('Network.enable');
+        page.__sentinelSelectionCdp=client;
+        this.state(provider).pageSelectionObserver='cdp-existing-and-new-sockets';
+      }catch{await client?.detach().catch(()=>{})}
+    })();
+    return page.__sentinelNetworkReady;
   }
   async directFeed(provider){
     const s=await this.session(provider);if(!s.context)return null;const cfg=this.config(provider);let cookies=[];try{cookies=await s.context.cookies()}catch{}
@@ -1014,8 +1045,9 @@ export class LocalPlaywrightDriver{
     throw new Error('broker_account_switch_not_confirmed');
   }
   applyActiveSelection(provider,{symbol=null,activeId=null,source='ui'}={}){
-    const st=this.state(provider),aid=Number(activeId);let next=symbol?assetStrings(symbol)[0]||null:null;
-    if(!next&&Number.isFinite(aid)){
+    const st=this.state(provider),aid=n(activeId);let next=symbol?assetStrings(symbol)[0]||null:null;
+    if(!next&&symbol)next=[...st.assets].find(x=>pairKey(x)===pairKey(symbol))||null;
+    if(!next&&aid!=null){
       const key=[...st.activeMap.entries()].find(([,id])=>Number(id)===aid)?.[0]||null;
       if(key){const named={GOLD:'Gold',SILVER:'Silver',BITCOIN:'Bitcoin',ETHEREUM:'Ethereum',CRUDEOIL:'Crude Oil',NATURALGAS:'Natural Gas'};next=[...st.assets].find(x=>pairKey(x)===key)||named[key]||((key.length===6||key.endsWith('OTC'))?(key.endsWith('OTC')?key.slice(0,3)+'/'+key.slice(3,6)+' OTC':key.slice(0,3)+'/'+key.slice(3,6)):null)}
     }
@@ -1032,17 +1064,26 @@ export class LocalPlaywrightDriver{
         st.assetConfirmTimer=null;
         const page=this.sessions.get(provider)?.page;
         if(!page||st.screenCandidateSymbol!==next)return;
-        const candidates=await page.evaluate(()=>{
-          const selector='[role="tab"][aria-selected="true"],[aria-selected="true"][data-test*="asset" i],[aria-selected="true"][data-testid*="asset" i],[data-state="active"][role="tab"],[class*="tab"][class*="active"],[class*="tab"][class*="selected"]';
-          return [...document.querySelectorAll(selector)].slice(0,32).filter(el=>{
-            const r=el.getBoundingClientRect();
-            return r.width>=30&&r.height>8&&r.top<320;
-          }).map(el=>String(el.textContent||'').trim().slice(0,65));
-        }).catch(()=>[]);
-        const confirmed=candidates.some(label=>assetStrings(label).some(symbol=>pairKey(symbol)===key));
-        if(confirmed&&st.screenCandidateSymbol===next){
-          this.applyActiveSelection(provider,{symbol:next,activeId:st.activeMap.get(key),source:'broker-validated'});
-          if(st.activeId!=null)void this.requestMarketData(provider,{force:true}).catch(()=>{});
+        // Cached tabs may emit no get-candles. Read the actual selected tab
+        // in every frame, with bounded retries for the broker's render delay.
+        for(const delay of [0,350,650]){
+          if(delay)await sleep(delay);
+          if(st.screenCandidateSymbol!==next)return;
+          const frames=page.frames?.()||[page];
+          const lists=await Promise.all(frames.map(frame=>frame.evaluate(()=>{
+            const selector='[role="tab"][aria-selected="true"],[aria-selected="true"][data-test*="asset" i],[aria-selected="true"][data-testid*="asset" i],[data-state="active"][role="tab"],[data-state="selected"][role="tab"],[class*="tab" i][class*="active" i],[class*="tab" i][class*="selected" i]';
+            return [...document.querySelectorAll(selector)].slice(0,32).filter(el=>{
+              if(el.closest('#sentinel-trading-overlay-host,[aria-selected="false"]'))return false;
+              const r=el.getBoundingClientRect(),style=getComputedStyle(el);
+              return style.display!=='none'&&style.visibility!=='hidden'&&r.width>=30&&r.height>8&&r.top<320;
+            }).map(el=>String(el.textContent||'').trim().slice(0,65));
+          }).catch(()=>[])));
+          const confirmed=lists.flat().some(label=>pairKey(label)===key||assetStrings(label).some(symbol=>pairKey(symbol)===key));
+          if(confirmed&&st.screenCandidateSymbol===next){
+            this.applyActiveSelection(provider,{symbol:next,activeId:st.activeMap.get(key),source:'broker-validated'});
+            if(st.activeId!=null)void this.requestMarketData(provider,{force:true}).catch(()=>{});
+            return;
+          }
         }
       },300);
       st.assetConfirmTimer.unref?.();
@@ -1060,7 +1101,7 @@ export class LocalPlaywrightDriver{
       if(st.activeId!=null)st.validatedAt=st.validatedAt||Date.now();
       return true
     }
-    st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??(Number.isFinite(aid)?aid:null);st.pendingPageActiveId=null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;st.screenCandidateSymbol=null;st.validatedAt=Date.now();
+    st.uiSymbol=next;st.symbol=next;st.activeId=st.activeMap.get(key)??aid;st.pendingPageActiveId=null;st.lastUiSignalAt=Date.now();st.uiSymbolSource=source;st.autoSelected=false;st.screenCandidateSymbol=null;st.validatedAt=Date.now();
     st.candles=[];st.quote=null;st.quoteHistory=[];st.lastQuoteAt=null;st.lastCandleAt=null;st.candleActiveId=null;st.predictionCandles=[];st.predictionPeriod=null;st.lastPredictionRequestAt=0;st.candleIntegrity={ok:false,reason:'asset_switch'};st.quoteBackfillKey=null;st.suggestedSymbol=null;st.lastRequestAt=null;st.marketStatus='switching';st.marketReason='Validando novo ativo: '+next;
     try{Promise.resolve(this.marketUpdateHandler?.(provider,{symbol:next,uiSymbol:next,activeId:st.activeId,source,assetChanged:true,validatedAt:st.validatedAt})).catch(()=>{})}catch{}
     if(st.switchRequestTimer){clearTimeout(st.switchRequestTimer);st.switchRequestTimer=null}

@@ -1,3 +1,4 @@
+import {marketDiagnostic} from './market-diagnostic.mjs';
 import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
 import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
@@ -498,7 +499,7 @@ function ensureAccess(path,{local=false}={}){
   if(!requiresAccess(path))return;
   assertLicensedAccess();
 }
-async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST'){suspendedForAccess=false;return runtime.pause(payload.actor||'user')}if(path==='/control/stop'&&method==='POST'){suspendedForAccess=false;return runtime.stop(payload.actor||'user',payload.reason||'manual')}if(path==='/control/kill'&&method==='POST'){suspendedForAccess=false;return runtime.kill(payload.actor||'user')}if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
+async function act(path,method,payload,ctx={}){ensureAccess(path,ctx);if(path==='/diagnostics/market'&&method==='POST')return marketDiagnostic(runtime,runtime.externalMarket||{});if(path==='/status'&&method==='GET')return status();if(path==='/research'&&method==='GET')return{summary:runtime.forecastResearch.summary(),entries:runtime.entryResearch.summary(),entryOutcomes:runtime.entryResearch.outcomes.slice(-100),journal:marketJournal.status(),outcomes:runtime.forecastResearch.outcomes.slice(-100)};if(path==='/control/start'&&method==='POST'){if(activeProvider&&brokers[activeProvider]?.connected){await driver.maintain?.(activeProvider).catch(()=>{});brokers[activeProvider].refreshFromLive?.()}syncRuntimeMarket();return runtime.start(payload.actor||'user')};if(path==='/control/pause'&&method==='POST'){suspendedForAccess=false;return runtime.pause(payload.actor||'user')}if(path==='/control/stop'&&method==='POST'){suspendedForAccess=false;return runtime.stop(payload.actor||'user',payload.reason||'manual')}if(path==='/control/kill'&&method==='POST'){suspendedForAccess=false;return runtime.kill(payload.actor||'user')}if(path==='/control/reset-kill'&&method==='POST')return runtime.resetKill(payload.actor||'master');if(path==='/control/freeze'&&method==='POST')return runtime.freeze(payload.actor||'master');if(path==='/control/unfreeze'&&method==='POST')return runtime.unfreeze(payload.actor||'master');if(path==='/control/clear-error'&&method==='POST')return runtime.clearExecutionError(payload.actor||'master');if(path==='/mode'&&method==='POST'){
     if(payload?.brokerSwitch===true){
       const provider=String(payload.provider||activeProvider||'');
       if(!['iq_option','exnova'].includes(provider)||!brokers[provider]?.connected)
@@ -609,7 +610,7 @@ async function remoteLoop(){
         const data=await withTimeout(act('/'+cmd.type,method,cmd.payload||{}),28000,'agent_command_timeout');
         await saveState();
         // ACK the action promptly; publish refreshed state in the next heartbeat.
-        await remoteRelay.ack(cmd.id,true,{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
+        await remoteRelay.ack(cmd.id,true,cmd.type==='diagnostics/market'?{ok:true,marketDiagnostic:data}:{ok:true,state:data?.state||null,mode:data?.mode||null,strategy:data?.settings?.strategy||null,activeProvider:data?.activeProvider||null,loginStates:data?.loginStates||null})
         lastRemoteHeartbeatAttemptAt=0;
       }catch(e){
         await remoteRelay.ack(cmd.id,false,{error:String(e?.message||e).slice(0,180)}).catch(()=>{})

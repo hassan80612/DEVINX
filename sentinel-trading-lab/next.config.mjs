@@ -10,7 +10,7 @@ const agentDownloadHeaders=[
 const retiredInstallerVersions=[2,3,4,5,6,7,9,10,11,12,13,14,15,16,17];
 const nextConfig={
   reactStrictMode:true,
-  async redirects(){return [...['13.8.0','13.8.1','13.8.2','13.8.3','13.8.4','13.8.5'].map(version=>({
+  async redirects(){return [...['13.8.0','13.8.1','13.8.2','13.8.3','13.8.4','13.8.5','13.8.6'].map(version=>({
     source:'/downloads/Sentinel-Agent-'+version+'.exe',
     destination:'/downloads/Sentinel-Agent-Windows.exe',permanent:false
   })),...retiredInstallerVersions.map(n=>({
@@ -21,7 +21,7 @@ const nextConfig={
   async headers(){return[
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-13.8.6.exe',headers:agentDownloadHeaders},
+    {source:'/downloads/Sentinel-Agent-13.8.7.exe',headers:agentDownloadHeaders},
     {source:'/(.*)',headers:[{key:'Permissions-Policy',value:'local-network=(self), loopback-network=(self)'},{key:'X-Content-Type-Options',value:'nosniff'}]}
   ]}
 };
