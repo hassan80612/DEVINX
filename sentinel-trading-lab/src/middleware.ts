@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,SESSION_COOKIE} from './lib/supabase-config';
 
-type AuthInfo={ok:boolean,role?:string,accessActive?:boolean};
+type AuthInfo={ok:boolean,unavailable?:boolean,role?:string,accessActive?:boolean};
 
 async function authInfo(token:string):Promise<AuthInfo>{
   if(!token)return{ok:false};
@@ -10,13 +10,14 @@ async function authInfo(token:string):Promise<AuthInfo>{
       method:'POST',
       headers:{'content-type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,authorization:`Bearer ${SUPABASE_PUBLISHABLE_KEY}`},
       body:JSON.stringify({p_session_token:token}),
-      cache:'no-store'
+      cache:'no-store',signal:AbortSignal.timeout(8000)
     });
-    if(!r.ok)return{ok:false};
+    if(!r.ok)return{ok:false,unavailable:r.status!==401&&r.status!==403};
     const j=await r.json().catch(()=>null),a=j?.account;
+    if(!j)return{ok:false,unavailable:true};
     if(!j?.ok||!a)return{ok:false};
     return{ok:true,role:String(a.role||''),accessActive:a.accessActive===true}
-  }catch{return{ok:false}}
+  }catch{return{ok:false,unavailable:true}}
 }
 
 export async function middleware(req:NextRequest){
@@ -45,6 +46,8 @@ export async function middleware(req:NextRequest){
 
   const token=req.cookies.get(SESSION_COOKIE)?.value||'';
   const auth=await authInfo(token);
+  // Upstream outages are retryable errors, never login pages saved as EXE files.
+  if(auth.unavailable)return NextResponse.json({ok:false,error:'session_check_unavailable'},{status:503,headers:{'cache-control':'no-store','retry-after':'3'}});
 
   // Having an account is not a license. Clients must have a verified
   // Kiwify payment before entering the console, pairing, streaming or even

@@ -88,7 +88,9 @@ export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  const against=window.side==='PUT'?1:-1;
  const moves=bars.map(b=>Math.log(b.close/b.open));
  if(!moves.every(m=>against*m>0))return {invalidated:false,reason:'ordinary-retracement'};
- const baseline=Number(window.guardBaseline?.lastClose);
+ // A reversal is relative to the price when THIS window opened. The last
+ // completed 30s close may belong to the previous leg.
+ const baseline=Number(window.guardBaseline?.referencePrice??window.guardBaseline?.lastClose);
  if(!(baseline>0))return {invalidated:false,reason:'missing-open-structure'};
  const latest=history.at(-1);
  if(!latest||now-latest.ts>2500)return {invalidated:false,reason:'stale-market'};

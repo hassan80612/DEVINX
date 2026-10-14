@@ -13,7 +13,10 @@ export async function POST(req:NextRequest){
  try{
   const r=await rpc('sentinel_web_presence',{p_session_token:token});
   const data=await r.json().catch(()=>({ok:false}));
-  if(!r.ok||data?.ok!==true)return NextResponse.json({ok:false,error:'unauthorized'},{status:401,headers:{'cache-control':'no-store'}});
+  if(r.status===401||r.status===403||data?.error==='unauthorized')
+    return NextResponse.json({ok:false,error:'unauthorized'},{status:401,headers:{'cache-control':'no-store'}});
+  if(!r.ok||data?.ok!==true)
+    return NextResponse.json({ok:false,error:'session_check_failed'},{status:503,headers:{'cache-control':'no-store'}});
   return NextResponse.json({ok:true},{headers:{'cache-control':'no-store'}});
  }catch{return NextResponse.json({ok:false,error:'session_check_failed'},{status:503,headers:{'cache-control':'no-store'}})}
 }

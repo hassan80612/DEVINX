@@ -105,7 +105,7 @@ async function loadOrCreateIdentity(file){
 }
 
 export class SentinelRemoteRelay{
-  constructor({file=null,version='11.8.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
+  constructor({file=null,version='11.8.0'}={}){this.file=resolve(file||persistentIdentityFile());this.version=version;this.identity=null;this.requestSequence=0;this.lastAccessSequence=0;this.info={paired:false,pairingCode:null,deviceId:null,accessActive:false,accessReason:'unpaired',lastContactAt:null,lastError:null};}
   async init(){
     await seedPersistentIdentity(this.file);
     this.identity=await loadOrCreateIdentity(this.file);
@@ -115,7 +115,12 @@ export class SentinelRemoteRelay{
     const r=await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`,{method:'POST',headers:{'content-type':'application/json','apikey':PUBLISHABLE_KEY,'authorization':`Bearer ${ANON_JWT}`},body:JSON.stringify(args),cache:'no-store',signal:AbortSignal.timeout(8000)});
     const j=await r.json().catch(()=>({ok:false,error:`rpc_${r.status}`}));if(!r.ok||j?.ok===false)throw new Error(j?.error||`rpc_${r.status}`);this.info.lastContactAt=Date.now();this.info.lastError=null;return j;
   }
-  _apply(j={}){
+  _apply(j={},sequence=++this.requestSequence){
+    // A slower heartbeat must not overwrite a newer poll's authorization.
+    // Command ACKs without authorization fields do not advance this clock.
+    const hasAccess=['paired','accessActive','accessReason'].some(k=>k in j);
+    if(hasAccess&&sequence<this.lastAccessSequence)return j;
+    if(hasAccess)this.lastAccessSequence=sequence;
     if('paired' in j)this.info.paired=!!j.paired;
     if('accessActive' in j)this.info.accessActive=!!j.accessActive;
     if('accessReason' in j)this.info.accessReason=j.accessReason||null;
@@ -123,8 +128,9 @@ export class SentinelRemoteRelay{
     if('pairingCode' in j)this.info.pairingCode=j.pairingCode||null;
     return j;
   }
-  async register(){try{const j=await this.rpc('sentinel_agent_register',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken,p_display_name:process.env.COMPUTERNAME||'PC Sentinel',p_agent_version:this.version});return this._apply(j)}catch(e){this.info.lastError=String(e?.message||e);return null}}
-  async heartbeat(state){try{const j=await this.rpc('sentinel_agent_heartbeat',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken,p_state:state||{},p_agent_version:this.version});return this._apply(j)}catch(e){this.info.lastError=String(e?.message||e);return null}}
-  async poll(){try{const j=await this.rpc('sentinel_agent_poll',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken});return this._apply(j)}catch(e){this.info.lastError=String(e?.message||e);return null}}
-  async ack(commandId,ok,result={}){try{const j=await this.rpc('sentinel_agent_ack',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken,p_command_id:commandId,p_ok:!!ok,p_result:result||{}});return this._apply(j)}catch(e){this.info.lastError=String(e?.message||e);return null}}
+  async _request(name,args){const sequence=++this.requestSequence;return this._apply(await this.rpc(name,args),sequence)}
+  async register(){try{const j=await this._request('sentinel_agent_register',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken,p_display_name:process.env.COMPUTERNAME||'PC Sentinel',p_agent_version:this.version});return j}catch(e){this.info.lastError=String(e?.message||e);return null}}
+  async heartbeat(state){try{const j=await this._request('sentinel_agent_heartbeat',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken,p_state:state||{},p_agent_version:this.version});return j}catch(e){this.info.lastError=String(e?.message||e);return null}}
+  async poll(){try{const j=await this._request('sentinel_agent_poll',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken});return j}catch(e){this.info.lastError=String(e?.message||e);return null}}
+  async ack(commandId,ok,result={}){try{const j=await this._request('sentinel_agent_ack',{p_install_id:this.identity.installId,p_device_secret:this.identity.deviceToken,p_command_id:commandId,p_ok:!!ok,p_result:result||{}});return j}catch(e){this.info.lastError=String(e?.message||e);return null}}
 }

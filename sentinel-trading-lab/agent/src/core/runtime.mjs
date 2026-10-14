@@ -983,6 +983,7 @@ export class DemoTradingRuntime{
         holdingSeconds:Number(settings.orderDurationMs)/1000});
       const hasDirectionalCandidate=Boolean(currentEntry?.side==='CALL'||currentEntry?.side==='PUT');
       const qualifiedEntry=hasDirectionalCandidate?{...currentEntry,guardBaseline:{
+        referencePrice:Number(snap.price)||null,
         lastClose:structure.lastClose||Number(snap.price)||null,
         lastHigh:structure.lastHigh||null,lastLow:structure.lastLow||null,
         periodSeconds:structure.periodSeconds||null

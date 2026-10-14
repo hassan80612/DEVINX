@@ -12,7 +12,7 @@ const dl=join(root,'public','downloads');
 const agent=join(root,'agent');
 const release=JSON.parse(readFileSync(join(agent,'release.json'),'utf8'));
 const pkg=JSON.parse(readFileSync(join(agent,'package.json'),'utf8'));
-if(release.version!==pkg.version||release.version!=='13.8.3')throw Error('agent_release_mismatch');
+if(release.version!==pkg.version||release.version!=='13.8.4')throw Error('agent_release_mismatch');
 mkdirSync(dl,{recursive:true});
 const tool=(name,args,options={})=>{
  const result=spawnSync(name,args,{cwd:root,encoding:'utf8',...options});
@@ -48,13 +48,13 @@ rmSync(zip,{force:true});
 // directly. Do not package installed sessions, secrets, logs or node_modules.
 tool('zip',['-qr',zip,'.','-x','node_modules/*','worker/data/*','*.log','*.enc','*.secret','.env*'],{cwd:agent});
 const manifest=JSON.parse(readFileSync(join(agent,'release.json'),'utf8'));
-if(manifest.version!=='13.8.3'||statSync(zip).size<50000)throw Error('invalid_agent_payload');
+if(manifest.version!=='13.8.4'||statSync(zip).size<50000)throw Error('invalid_agent_payload');
 const sha=createHash('sha256').update(readFileSync(zip)).digest('hex');
 writeFileSync(join(dl,'agent-update.json'),JSON.stringify({
  format:'sentinel-agent-update-v1',version:release.version,build:release.build,
  zipSha256:sha
 })+'\n');
-const exe=join(dl,'Sentinel-Agent-13.8.3.exe');
+const exe=join(dl,'Sentinel-Agent-13.8.4.exe');
 // The launcher embeds the ZIP AND the release identity, so an old EXE cannot
 // accidentally install an old engine under the 13.7 version.
 const env={...goEnv,GOOS:'windows',GOARCH:'amd64',CGO_ENABLED:'0',GOTOOLCHAIN:'local'};
