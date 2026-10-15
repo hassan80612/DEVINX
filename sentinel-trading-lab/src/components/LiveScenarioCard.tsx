@@ -53,10 +53,6 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
   pad(Math.floor(brokerSeconds/3600))+':'+pad(Math.floor(brokerSeconds%3600/60))+':'+pad(brokerSeconds%60):'—:—';
  const countdown=brokerVerified&&!signalClock&&!purchase?brokerTime:shownSeconds==null?'—:—':
   pad(Math.floor(shownSeconds/60))+':'+pad(shownSeconds%60);
- const observedAt=Number(observation?.observedAt||0);
- const evaluated=Number(observation?.evaluatedAt||evaluatedAt);
- const observedFresh=brokerNow>=observedAt&&brokerNow-observedAt<=2500&&
-  brokerNow>=evaluated&&brokerNow-evaluated<5000;
  // Provisional price direction remains internal and cannot be mistaken for a signal.
  const scanningLabel='ANALISANDO';
  const direction=nowMode?(
