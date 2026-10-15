@@ -52,16 +52,6 @@ export function SiteVisibilityAdminCard(){
     </div>
 
     <div className={styles.rows}>
-      <article>
-        <div>
-          <b>Laser Control</b>
-          <span>Visível na home · publicação permanente</span>
-        </div>
-        <div className={styles.actions}>
-          <a href="/laser-control">Abrir Laser Control</a>
-          <a href="/laser-control/guia">Abrir guia</a>
-        </div>
-      </article>
 
       <article>
         <div>

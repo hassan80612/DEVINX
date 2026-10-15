@@ -1,6 +1,6 @@
 create table if not exists public.devinx_product_memberships (
   user_id uuid not null references auth.users(id) on delete cascade,
-  product text not null check (product in ('financeiro','laser')),
+  product text not null check (product in ('financeiro')),
   source text not null default 'activity',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -24,7 +24,7 @@ declare
   v_product text:=lower(trim(coalesce(p_product,'')));
 begin
   if v_uid is null then raise exception 'not authenticated'; end if;
-  if v_product not in ('financeiro','laser') then raise exception 'invalid product'; end if;
+  if v_product not in ('financeiro') then raise exception 'invalid product'; end if;
 
   insert into public.devinx_product_memberships(user_id,product,source,created_at,updated_at)
   values(v_uid,v_product,'authenticated_flow',now(),now())
@@ -46,7 +46,7 @@ declare
 begin
   insert into public.profiles (id) values (new.id) on conflict (id) do nothing;
 
-  if v_product in ('financeiro','laser') then
+  if v_product in ('financeiro') then
     insert into public.devinx_product_memberships(user_id,product,source,created_at,updated_at)
     values(new.id,v_product,'signup',now(),now())
     on conflict(user_id,product) do update set updated_at=now();
@@ -69,41 +69,6 @@ where
   or exists(select 1 from public.devinx_kiwify_pass_access k where k.email=lower(u.email))
   or exists(select 1 from public.devinx_admin_users a where a.user_id=u.id)
 on conflict(user_id,product) do nothing;
-
-insert into public.devinx_product_memberships(user_id,product,source)
-select distinct u.id,'laser','inferred_existing'
-from auth.users u
-where
-  exists(select 1 from devinx_laser.entitlements e where e.user_id=u.id)
-  or exists(select 1 from devinx_laser.devices d where d.owner_user_id=u.id)
-  or exists(select 1 from devinx_laser.mentor_sessions m where m.mentor_user_id=u.id)
-  or exists(select 1 from devinx_laser.email_access_grants g where g.email=lower(u.email))
-  or exists(select 1 from devinx_laser.kiwify_subscriptions k where k.email=lower(u.email))
-  or exists(select 1 from devinx_laser.kiwify_pass_access k where k.email=lower(u.email))
-  or exists(select 1 from public.devinx_admin_users a where a.user_id=u.id)
-on conflict(user_id,product) do nothing;
-
-create or replace function public.admin_list_devinx_product_memberships()
-returns table(user_id uuid,email text,financeiro boolean,laser boolean)
-language sql
-security definer
-set search_path to 'public','auth'
-as $function$
-select
-  u.id,
-  lower(u.email)::text,
-  coalesce(bool_or(m.product='financeiro'),false),
-  coalesce(bool_or(m.product='laser'),false)
-from auth.users u
-left join public.devinx_product_memberships m on m.user_id=u.id
-where public.is_devinx_admin()
-group by u.id,u.email
-having count(m.product)>0
-order by lower(u.email);
-$function$;
-
-revoke all on function public.admin_list_devinx_product_memberships() from public,anon;
-grant execute on function public.admin_list_devinx_product_memberships() to authenticated,service_role;
 
 create or replace function public.admin_list_devinx_customers()
 returns table(
@@ -233,9 +198,6 @@ begin
   select email::text into target_email from auth.users where id=p_user_id;
   if target_email is null then raise exception 'user not found'; end if;
   if lower(trim(coalesce(p_confirm_email,''))) <> lower(target_email) then raise exception 'email confirmation mismatch'; end if;
-  if exists(select 1 from public.devinx_product_memberships pm where pm.user_id=p_user_id and pm.product='laser') then
-    raise exception 'shared account has laser membership';
-  end if;
   delete from auth.users where id=p_user_id;
 end;
 $function$;

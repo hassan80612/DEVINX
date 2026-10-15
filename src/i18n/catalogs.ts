@@ -1,5 +1,4 @@
 import {landingCatalogs} from './landing';
-import {laserCatalogs} from './laser';
 
 export const locales=['pt-BR','en','es','fr','ar','de'] as const;
 export type Locale=(typeof locales)[number];
@@ -1181,11 +1180,11 @@ const arInstallmentOriginRelease=replace(arResetRelease,{
 });
 
 export const catalogs:Record<Locale,Catalog>={
-  'pt-BR':{...ptInstallmentOriginRelease,...landingCatalogs['pt-BR'],...laserCatalogs['pt-BR']},
-  en:{...enInstallmentOriginRelease,...landingCatalogs.en,...laserCatalogs.en},
-  es:{...esInstallmentOriginRelease,...landingCatalogs.es,...laserCatalogs.es},
-  fr:{...frInstallmentOriginRelease,...landingCatalogs.fr,...laserCatalogs.fr},
-  ar:{...arInstallmentOriginRelease,...landingCatalogs.ar,...laserCatalogs.ar},
-  de:{...deInstallmentOriginRelease,...landingCatalogs.de,...laserCatalogs.de},
+  'pt-BR':{...ptInstallmentOriginRelease,...landingCatalogs['pt-BR']},
+  en:{...enInstallmentOriginRelease,...landingCatalogs.en},
+  es:{...esInstallmentOriginRelease,...landingCatalogs.es},
+  fr:{...frInstallmentOriginRelease,...landingCatalogs.fr},
+  ar:{...arInstallmentOriginRelease,...landingCatalogs.ar},
+  de:{...deInstallmentOriginRelease,...landingCatalogs.de},
 };
 export type TranslationKey=keyof typeof ptInstallmentOriginRelease;

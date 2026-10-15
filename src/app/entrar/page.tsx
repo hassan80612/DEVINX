@@ -6,7 +6,6 @@ import {createServerSupabaseClient} from '@/lib/supabase/server';
 import {AuthForm} from './AuthForm';
 import {TrialActivation} from '@/components/TrialActivation';
 import {AccessGateCard} from '@/components/AccessGateCard';
-import {getLaserControlAccess} from '@/features/laser-control/server/master-access';
 
 export const dynamic='force-dynamic';
 
@@ -18,11 +17,9 @@ function safePath(value:string|string[]|undefined){
 function first(value:string|string[]|undefined){return Array.isArray(value)?value[0]:value}
 
 export async function generateMetadata({searchParams}:{searchParams:Promise<{next?:string|string[]}>}):Promise<Metadata>{
-  const params=await searchParams;
-  const laserMode=safePath(params.next).startsWith('/laser-control');
   return {
-    title:{absolute:laserMode?'Entrar | DevinX Laser Control':'Entrar | DevinX'},
-    description:laserMode?'Entre na sua conta DevinX para acessar o Laser Control.':'Entre na sua conta DevinX.',
+    title:{absolute:'Entrar | DevinX'},
+    description:'Entre na sua conta DevinX.',
     alternates:{canonical:'/entrar'},
     robots:{index:false,follow:false}
   };
@@ -37,11 +34,6 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
 
   if(data?.claims){
     if(trial==='claim'){await supabase.rpc('register_devinx_product',{p_product:'financeiro'});return <TrialActivation/>;}
-    if(nextPath.startsWith('/laser-control')){
-      const laserAccess=await getLaserControlAccess();
-      if(laserAccess.allowed)redirect(nextPath);
-      redirect('/laser-control/conhecer#planos');
-    }
     await supabase.rpc('register_devinx_product',{p_product:'financeiro'});
     const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
@@ -59,5 +51,5 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
     ?'Esse link de recuperação é inválido ou expirou. Solicite um novo.'
     :'';
 
-  return <AuthForm nextPath={nextPath} initialError={initialError} initialTrial={trial==='1'&&!nextPath.startsWith('/laser-control')} laserMode={nextPath.startsWith('/laser-control')}/>;
+  return <AuthForm nextPath={nextPath} initialError={initialError} initialTrial={trial==='1'}/>;
 }

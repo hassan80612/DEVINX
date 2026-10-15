@@ -13,7 +13,6 @@ type Diagnostic={email:string;user_id:string|null;account_exists:boolean;onboard
 type KiwifyEvent={event_type:string|null;subscription_status:string|null;has_access:boolean;access_until:string|null;plan_name:string|null;amount_minor:number|null;currency_code:string|null;subscription_id:string|null;order_id:string|null;received_at:string};
 type WebhookAttempt={outcome:'received'|'accepted'|'ignored'|'error';event_type:string|null;product_id:string|null;note:string|null;received_at:string};
 type Settings={subscription_required:boolean;checkout_url:string|null};
-type ProductMembership={user_id:string;email:string;financeiro:boolean;laser:boolean};
 
 function statusKey(status:string){
   if(status==='active')return 'common.active';
@@ -25,7 +24,6 @@ export function AdminMaster(){
   const{t,date,locale}=useI18n();
   const[funnel,setFunnel]=useState<Funnel|null>(null);
   const[customers,setCustomers]=useState<Customer[]>([]);
-  const[laserAccounts,setLaserAccounts]=useState<Set<string>>(new Set());
   const[search,setSearch]=useState('');
   const[filter,setFilter]=useState<'all'|'active'|'blocked'|'pending'|'kiwify'|'manual'|'trial'>('all');
   const[notice,setNotice]=useState('');
@@ -57,33 +55,18 @@ export function AdminMaster(){
     return t('master.sourceAccount');
   }
 
-  function linkedToLaser(customer:Customer){
-    const email=customer.email.trim().toLowerCase();
-    return Boolean(
-      (customer.user_id&&laserAccounts.has('id:'+customer.user_id))||
-      laserAccounts.has('email:'+email)
-    );
-  }
-
   async function load(){
     setLoading(true);
     const s=createClient();
-    const[f,cfg,list,attempts,memberships]=await Promise.all([
+    const[f,cfg,list,attempts]=await Promise.all([
       s.rpc('admin_get_devinx_customer_funnel'),
       s.rpc('admin_get_devinx_settings'),
       s.rpc('admin_list_devinx_customers'),
-      s.rpc('admin_list_kiwify_webhook_attempts'),
-      s.rpc('admin_list_devinx_product_memberships')
+      s.rpc('admin_list_kiwify_webhook_attempts')
     ]);
-    if(f.error||cfg.error||list.error||memberships.error){setNotice(t('master.unauthorized'));setLoading(false);return}
+    if(f.error||cfg.error||list.error){setNotice(t('master.unauthorized'));setLoading(false);return}
     const fr=Array.isArray(f.data)?f.data[0]:f.data;
     const cr=Array.isArray(cfg.data)?cfg.data[0]:cfg.data;
-    const keys=new Set<string>();
-    ((memberships.data||[]) as ProductMembership[]).filter(m=>m.laser).forEach(m=>{
-      if(m.user_id)keys.add('id:'+m.user_id);
-      if(m.email)keys.add('email:'+m.email.trim().toLowerCase());
-    });
-    setLaserAccounts(keys);
     setFunnel(fr as Funnel);
     setCustomers((list.data||[]) as Customer[]);
     setWebhookAttempts((attempts.data||[]) as WebhookAttempt[]);
@@ -174,10 +157,6 @@ export function AdminMaster(){
 
   async function deleteAccount(customer:Customer){
     if(!customer.user_id||!customer.account_exists)return;
-    if(linkedToLaser(customer)){
-      setNotice('Esta identidade DevinX também usa o Laser Control. Para proteger o Laser, ela não pode ser excluída pela Master do Financeiro.');
-      return;
-    }
     const typed=prompt(t('master.deletePrompt')+'\n\n'+customer.email);
     if(!typed)return;
     const s=createClient();
@@ -254,7 +233,7 @@ export function AdminMaster(){
         return <article key={c.email} className={'adminUser collapsibleCustomer '+(c.is_admin?'masterSelf ':'')+(opened?'expanded':'collapsed')}>
           <button className="collapseHeader customerHeader" type="button" onClick={()=>{toggleCustomer(c.email);if(!opened&&c.kiwify_customer)loadEvents(c.email)}}>
             <div className="adminIdentity"><b>{c.email}</b><small>{c.is_admin?t('master.admin'):c.account_exists?(c.onboarded_at?t('master.accountReady'):t('master.onboardingPending')):t('master.waitingAccount')}</small></div>
-            <div className="customerHeaderBadges">{linkedToLaser(c)&&<span className="statusBadge">LASER</span>}{c.kiwify_customer&&<span className="statusBadge">KIWIFY</span>}{(c.manual_grant||c.access_source==='manual')&&<span className="statusBadge">{t('master.manual')}</span>}<span className={'statusBadge '+(c.access_status==='blocked'?'overdue':'')}>{t(statusKey(c.access_status))}</span></div>
+            <div className="customerHeaderBadges">{c.kiwify_customer&&<span className="statusBadge">KIWIFY</span>}{(c.manual_grant||c.access_source==='manual')&&<span className="statusBadge">{t('master.manual')}</span>}<span className={'statusBadge '+(c.access_status==='blocked'?'overdue':'')}>{t(statusKey(c.access_status))}</span></div>
             <em>{opened?'−':'＋'}</em>
           </button>
           {opened&&<div className="collapsibleBody customerBody">
@@ -274,7 +253,7 @@ export function AdminMaster(){
               {!c.is_admin&&<>{c.access_status==='active'?<button className="dangerText" onClick={()=>setAccess(c,false)}>{t('master.block')}</button>:<button className="positiveAction" onClick={()=>setAccess(c,true)}>{t('master.grant')}</button>}
               {(c.manual_grant||c.access_source==='manual')&&<button onClick={()=>clearManual(c)}>{t('master.removeManual')}</button>}
               {c.account_exists&&<button onClick={()=>sendPasswordReset(c)}>{t('master.resetPassword')}</button>}
-              {c.account_exists&&!linkedToLaser(c)&&<button className="dangerText" onClick={()=>deleteAccount(c)}>{t('master.delete')}</button>}</>}
+              {c.account_exists&&<button className="dangerText" onClick={()=>deleteAccount(c)}>{t('master.delete')}</button>}</>}
             </div>
             {c.kiwify_customer&&<div className="kiwifyTimeline"><div className="timelineTitle"><b>{t('master.kiwifyHistory')}</b><button className="ghost compactButton" onClick={()=>loadEvents(c.email)}>{t('master.refresh')}</button></div>
               {eventLoading[c.email]?<span className="loader"/>:events.length===0?<small>{t('master.noKiwifyEvents')}</small>:events.map((ev,index)=><div className="timelineEvent" key={ev.received_at+'-'+index}><span className={ev.has_access?'timelineDot active':'timelineDot'}/><div><b>{ev.event_type||ev.subscription_status||t('master.kiwifyEvent')}</b><small>{date(ev.received_at,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}{ev.access_until?' · '+t('master.validUntil')+' '+date(ev.access_until,{day:'2-digit',month:'short',year:'numeric'}):''}</small></div><strong>{ev.amount_minor!=null?money(ev.amount_minor,ev.currency_code):''}</strong></div>)}

@@ -2,7 +2,7 @@ import {createServerClient} from '@supabase/ssr';
 import {NextResponse,type NextRequest} from 'next/server';
 
 const CANONICAL_HOST='devinx.com.br';
-const protectedPrefixes=['/painel','/laser-control','/onboarding','/redefinir-senha'];
+const protectedPrefixes=['/painel','/onboarding','/redefinir-senha'];
 const obviousProbePrefixes=['/wp-admin','/wp-content','/wp-includes','/phpmyadmin','/vendor/phpunit','/.git','/.env','/server-status'];
 const obviousProbeExact=new Set(['/wp-login.php','/xmlrpc.php','/wp-config.php','/composer.json','/composer.lock']);
 
@@ -45,13 +45,7 @@ export async function middleware(request:NextRequest){
     return NextResponse.redirect(canonical,308);
   }
 
-  const publicLaserPage=
-    pathname==='/laser-control/conhecer'||pathname.startsWith('/laser-control/conhecer/')||
-    pathname==='/laser-control/guia'||pathname.startsWith('/laser-control/guia/')||
-    pathname==='/laser-control/mentoria'||pathname.startsWith('/laser-control/mentoria/')||
-    pathname==='/laser-control/obrigado'||pathname.startsWith('/laser-control/obrigado/')||
-    pathname==='/laser-control/thank-you'||pathname.startsWith('/laser-control/thank-you/');
-  const isProtected=!publicLaserPage&&protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+  const isProtected=protectedPrefixes.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
 
   // Public pages do not need an Auth round-trip. This keeps marketing/storefront
   // requests independent from Supabase availability and removes middleware latency.

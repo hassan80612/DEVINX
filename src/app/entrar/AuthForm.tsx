@@ -14,25 +14,9 @@ const CANONICAL_ORIGIN='https://devinx.com.br';
 
 function safeNextPath(value:string){return value.startsWith('/')&&!value.startsWith('//')?value:'/painel'}
 
-export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMode=false}:{nextPath?:string;initialError?:string;initialTrial?:boolean;laserMode?:boolean}){
-  const{t,locale}=useI18n();
-  const authProduct=laserMode?'laser':'financeiro';
-  const laserPlansLabel={
-    'pt-BR':'Ver planos do Laser Control',
-    en:'View Laser Control plans',
-    es:'Ver planes de Laser Control',
-    fr:'Voir les offres Laser Control',
-    de:'Laser-Control-Pläne ansehen',
-    ar:'عرض خطط Laser Control'
-  }[locale];
-  const laserLoginDescription={
-    'pt-BR':'Entre para acessar o DevinX Laser Control.',
-    en:'Sign in to access DevinX Laser Control.',
-    es:'Inicia sesión para acceder a DevinX Laser Control.',
-    fr:'Connectez-vous pour accéder à DevinX Laser Control.',
-    de:'Melden Sie sich an, um DevinX Laser Control zu öffnen.',
-    ar:'سجّل الدخول للوصول إلى DevinX Laser Control.'
-  }[locale];
+export function AuthForm({nextPath='',initialError='',initialTrial=false}:{nextPath?:string;initialError?:string;initialTrial?:boolean}){
+  const{t}=useI18n();
+  const authProduct='financeiro';
   const[mode,setMode]=useState<Mode>(initialError?'recuperar':initialTrial?'criar':'entrar');
   const[trialFlow,setTrialFlow]=useState(initialTrial);const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[showPassword,setShowPassword]=useState(false);const[message,setMessage]=useState(initialError? t('auth.errorExpired'):'');const[messageKind,setMessageKind]=useState<MessageKind>(initialError?'error':'idle');const[pending,setPending]=useState(false);const[purchaseApproved,setPurchaseApproved]=useState(false);
 
@@ -41,7 +25,7 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
   function resetFields(){setPassword('');setConfirmPassword('');setShowPassword(false);setMessage('');setMessageKind('idle')}
   function changeMode(next:Mode){setTrialFlow(false);setMode(next);resetFields()}
   function startTrial(){setTrialFlow(true);setMode('criar');resetFields()}
-  async function destinationForUser(userId:string){if(laserMode)return safeNextPath(nextPath);const s=createClient();const{data}=await s.from('profiles').select('onboarded_at').eq('id',userId).maybeSingle();return data?.onboarded_at?safeNextPath(nextPath):'/onboarding'}
+  async function destinationForUser(userId:string){const s=createClient();const{data}=await s.from('profiles').select('onboarded_at').eq('id',userId).maybeSingle();return data?.onboarded_at?safeNextPath(nextPath):'/onboarding'}
   async function registerProduct(s:ReturnType<typeof createClient>){const{error}=await s.rpc('register_devinx_product',{p_product:authProduct});if(error){console.error('DEVINX PRODUCT MEMBERSHIP',error);if(/exceed_egress_quota|quota|fetch failed|service unavailable|502|503|504|402/i.test(String(error.message||'')))throw error}}
   function friendlyError(message:string){const lower=message.toLowerCase();if(lower.includes('invalid login credentials'))return t('auth.errorCredentials');if(lower.includes('email not confirmed'))return t('auth.errorUnconfirmed');if(lower.includes('user already registered'))return t('auth.errorExists');if(lower.includes('password should be'))return t('auth.errorPassword');if(lower.includes('rate limit'))return t('auth.errorRate');if(/exceed_egress_quota|quota|network|failed to fetch|fetch failed|service unavailable|gateway|timeout|402|502|503|504/.test(lower))return 'Serviço de autenticação temporariamente indisponível. Seu acesso não foi cancelado. Tente novamente em alguns instantes.';return t('auth.errorGeneric')}
 
@@ -53,7 +37,7 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
     setPending(true);const s=createClient();
     try{
       if(mode==='entrar'){const{data,error}=await s.auth.signInWithPassword({email:normalizedEmail,password});if(error||!data.user){setMessage(friendlyError(error?.message||''));setMessageKind('error');return}await registerProduct(s);window.location.replace(await destinationForUser(data.user.id));return}
-      if(mode==='criar'){const afterConfirm=trialFlow?'/entrar?trial=claim':laserMode?safeNextPath(nextPath):'/painel';const{data,error}=await s.auth.signUp({email:normalizedEmail,password,options:{emailRedirectTo:CANONICAL_ORIGIN+'/auth/confirm?next='+encodeURIComponent(afterConfirm),data:{devinx_product:authProduct}}});const alreadyExists=Boolean(error?.message?.toLowerCase().includes('user already registered')||data.user?.identities?.length===0);if(alreadyExists){setTrialFlow(false);setMode('entrar');setMessage(t('auth.errorExists'));setMessageKind('error');return}if(error||!data.user){setMessage(friendlyError(error?.message||''));setMessageKind('error');return}if(data.session){await registerProduct(s);window.location.replace(afterConfirm);return}setMessage(trialFlow?t('trial.created'):t('auth.created'));setMessageKind('success');return}
+      if(mode==='criar'){const afterConfirm=trialFlow?'/entrar?trial=claim':'/painel';const{data,error}=await s.auth.signUp({email:normalizedEmail,password,options:{emailRedirectTo:CANONICAL_ORIGIN+'/auth/confirm?next='+encodeURIComponent(afterConfirm),data:{devinx_product:authProduct}}});const alreadyExists=Boolean(error?.message?.toLowerCase().includes('user already registered')||data.user?.identities?.length===0);if(alreadyExists){setTrialFlow(false);setMode('entrar');setMessage(t('auth.errorExists'));setMessageKind('error');return}if(error||!data.user){setMessage(friendlyError(error?.message||''));setMessageKind('error');return}if(data.session){await registerProduct(s);window.location.replace(afterConfirm);return}setMessage(trialFlow?t('trial.created'):t('auth.created'));setMessageKind('success');return}
       const callback=CANONICAL_ORIGIN+'/auth/confirm?next=/redefinir-senha';const{error}=await s.auth.resetPasswordForEmail(normalizedEmail,{redirectTo:callback});if(error){setMessage(friendlyError(error.message));setMessageKind('error');return}setMessage(t('auth.resetSent'));setMessageKind('success');
     }catch(e:any){setMessage(friendlyError(String(e?.message||'network error')));setMessageKind('error')}finally{setPending(false)}
   }
@@ -62,9 +46,9 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
     <header className="authTop"><Link className="brand" href="/"><BrandLogo/></Link><LanguageMenu/></header>
     {purchaseApproved&&<section className="purchaseReturnNotice"><span>✓</span><div><b>{t('auth.purchaseApprovedTitle')}</b><p>{t('auth.purchaseApprovedText')}</p></div></section>}
     <section className="authCard">
-      <div className="authIntro"><span className="goldPill">{laserMode?'DEVINX LASER CONTROL':'DEVINX'}</span><h1>{mode==='entrar'?t('auth.titleLogin'):mode==='criar'?(trialFlow?t('trial.title'):t('auth.titleCreate')):t('auth.titleRecover')}</h1><p>{mode==='entrar'?(laserMode?laserLoginDescription:t('auth.loginDesc')):mode==='criar'?(trialFlow?t('trial.desc'):t('auth.createDesc')):t('auth.recoverDesc')}</p>{trialFlow&&<small>{t('trial.noCard')}</small>}</div>
+      <div className="authIntro"><span className="goldPill">DEVINX</span><h1>{mode==='entrar'?t('auth.titleLogin'):mode==='criar'?(trialFlow?t('trial.title'):t('auth.titleCreate')):t('auth.titleRecover')}</h1><p>{mode==='entrar'?t('auth.loginDesc'):mode==='criar'?(trialFlow?t('trial.desc'):t('auth.createDesc')):t('auth.recoverDesc')}</p>{trialFlow&&<small>{t('trial.noCard')}</small>}</div>
       {mode!=='recuperar'&&<div className="authTabs"><button type="button" className={mode==='entrar'?'active':''} onClick={()=>changeMode('entrar')}>{t('auth.login')}</button><button type="button" className={mode==='criar'&&!trialFlow?'active':''} onClick={()=>changeMode('criar')}>{t('auth.create')}</button></div>}
-      {mode==='entrar'&&!laserMode&&<button className="secondary authTrialButton" type="button" onClick={startTrial}>{t('trial.cta')}</button>}
+      {mode==='entrar'&&<button className="secondary authTrialButton" type="button" onClick={startTrial}>{t('trial.cta')}</button>}
       <form onSubmit={handleSubmit} className="authForm">
         <label>{t('auth.email')}<input value={email} onChange={e=>setEmail(e.target.value)} type="email" required autoComplete="username" inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="you@email.com"/></label>
         {mode!=='recuperar'&&<label>{t('auth.password')}<div className="passwordField"><input value={password} onChange={e=>setPassword(e.target.value)} type={showPassword?'text':'password'} minLength={6} required autoComplete={mode==='entrar'?'current-password':'new-password'}/><button type="button" onClick={()=>setShowPassword(v=>!v)}>{showPassword?t('auth.hide'):t('auth.show')}</button></div></label>}
@@ -75,8 +59,6 @@ export function AuthForm({nextPath='',initialError='',initialTrial=false,laserMo
       {mode==='entrar'&&<button className="authLinkButton" type="button" onClick={()=>changeMode('recuperar')}>{t('auth.forgot')}</button>}
       {mode==='recuperar'&&<button className="authLinkButton" type="button" onClick={()=>changeMode('entrar')}>{t('auth.backLogin')}</button>}
     </section>
-    {laserMode
-      ?<aside className="authSubscription authSubscriptionPlans"><a className="secondary" href="/laser-control/conhecer#planos" style={{width:'100%',minHeight:48}}>{laserPlansLabel}</a></aside>
-      :<aside className="authSubscription authSubscriptionPlans"><SubscriptionPlans variant="compact"/></aside>}
+    <aside className="authSubscription authSubscriptionPlans"><SubscriptionPlans variant="compact"/></aside>
   </main>;
 }
