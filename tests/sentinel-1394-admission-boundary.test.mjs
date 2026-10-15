@@ -121,6 +121,8 @@ test('holdout: how many valid and invalid windows survive through an actual plan
    const due=admitSec+lead;
    if(due>=30)continue;
    const data=timeline({side,admitSec,scenario,seed});
+   data.old.entryAt=START+due*1000;
+   data.fixed.entryAt=START+due*1000;
    const oldCancel=[],newCancel=[];
    for(let t=admitSec+1;t<=due;t++){
     const r=inspect(data,t);
