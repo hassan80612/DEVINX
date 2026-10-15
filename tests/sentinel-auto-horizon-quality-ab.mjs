@@ -6,10 +6,16 @@ import {readFileSync} from 'node:fs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
 const start=Date.UTC(2026,9,1,0,0,0);
 const durations=[30000,60000];
-const policies=['production_auto','quality_regime_verified'];
+const policies=['production_auto','quality_regime_verified','quality_phase_aware','quality_regime_phase'];
 function chooseCandidate(sample,policy){
+ const map={
+  production_auto:'baseline',
+  quality_regime_verified:'regime-verification',
+  quality_phase_aware:'phase-aware',
+  quality_regime_phase:'regime-plus-phase'
+ };
  return analyzeNowOpportunity({...sample,engineId:'automatic',
-   qualityPolicy:policy==='quality_regime_verified'?'regime-verification':'baseline'});
+   qualityPolicy:map[policy]||'baseline'});
 }
 function samples(kind,seed,count=420){
  let state=(seed*103^0xa21bd)>>>0;
