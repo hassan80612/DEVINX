@@ -43,7 +43,15 @@ try{
   delaySeconds:30,holdingSeconds:30,issuedAt:entryTime-10000,entryAt:entryTime-10000,
   entryTriggeredAt:entryTime-10000,exitAt:entryTime+20000,projectedEntryPrice:1.1};
  await update(locked);assert.equal(await label.innerText(),'OPERAÇÃO EM ANDAMENTO · ↑ CALL');
- const countdown=await page.locator('[data-sentinel-vnext-clock-value]').innerText();
+ // The overlay's local countdown paints on its own 250ms timer. Reading it
+ // before that tick races the DOM renderer; wait for a REAL synchronized value
+ // and still fail if it never appears.
+ const clockValue=page.locator('[data-sentinel-vnext-clock-value]');
+ let countdown=await clockValue.innerText();
+ for(let i=0;i<12&&!/^00:(?:1[8-9]|20)$/.test(countdown);i++){
+   await page.waitForTimeout(90);
+   countdown=await clockValue.innerText();
+ }
  assert.match(countdown,/^00:(?:1[8-9]|20)$/,'The verified 20-second broker countdown must be visible and fresh');
  const labelBounds=await label.evaluate(el=>({width:el.scrollWidth,available:el.parentElement.clientWidth}));
  assert.ok(labelBounds.width<=labelBounds.available,JSON.stringify(labelBounds));
