@@ -56,5 +56,5 @@ test('pattern learner uses only settled past periods and ignores future/unreceiv
 test('Agent uses the shared market policy instead of independently competing strategies',()=>{
  const r=new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
  assert.equal(r.settings.engine,'automatic');
- assert.ok(r._signalValidationGate.toString().includes("qualityPolicy:'adaptive-market-v1'"));
+ assert.ok(r._signalValidationGate.toString().includes("qualityPolicy:'adaptive-market-v17'"));
 });
