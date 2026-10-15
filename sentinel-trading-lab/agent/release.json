@@ -1,6 +1,6 @@
 {
-  "version": "13.9.16",
-  "build": "13.9.16-single-market-base-causal-30s",
+  "version": "13.9.17",
+  "build": "13.9.17-curated-strategies-bilingual-mobile-guide",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
