@@ -936,8 +936,19 @@ export class DemoTradingRuntime{
         now,durationMs:settings.orderDurationMs,engineId:settings.engine
       });
       const duration=brokerDurationGuard({snap,settings,now});
-      const eligible=duration.allowed?observation:
-        {...observation,side:null,ready:false,reason:duration.reason};
+      // A previously valid reversal/continuation can turn within a second.
+      // Never display a new entry from a quote that sat in an analysis queue.
+      // This is transport freshness, not an added market/strategy veto.
+      const quoteAgeMs=now-Number(snap.quoteTs||0);
+      const maxEntryQuoteAgeMs=Number(settings.orderDurationMs)<=10000?800:
+        Number(settings.orderDurationMs)<=30000?1450:
+        Number(settings.orderDurationMs)<=60000?1950:2500;
+      const entryQuoteFresh=quoteAgeMs>=0&&quoteAgeMs<=maxEntryQuoteAgeMs;
+      const eligible=!duration.allowed?
+        {...observation,side:null,ready:false,reason:duration.reason}:
+        !entryQuoteFresh?
+        {...observation,side:null,ready:false,reason:'late-quote-no-entry'}:
+        observation;
       const next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,engineId:settings.engine,durationMs:settings.orderDurationMs
@@ -991,7 +1002,17 @@ export class DemoTradingRuntime{
           observedAt:observation.observedAt,strength:observation.strength,
           price:Number(snap.price)||null,evaluatedAt:now
         },cards:readings.cards,
-        windowOutcomes:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now').length
+        // Observed quote-direction score only; not executed broker settlements.
+        // Never convert a synthetic/demonstration result into claimed win rate.
+        windowOutcomes:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now').length,
+        outcomeQuality:{
+          source:'observed-broker-quotes-not-trade-settlements',
+          completed:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct!==null).length,
+          correct:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===true).length,
+          failed:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===false).length,
+          excludedTies:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now'&&x.correct===null).length,
+          activeStrategy:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000
+        }
       };
       const analysisResult={...analysis,asset:settings.asset,engineId:settings.engine,
         vnext,side:'WAIT',confidence:0,
