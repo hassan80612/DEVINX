@@ -1,13 +1,13 @@
 {
-  "version": "13.9.12",
-  "build": "13.9.12-current-strategies-range-and-balance",
+  "version": "13.9.13",
+  "build": "13.9.13-confirmed-range-boundaries-and-current-turns",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.9.12-native-current-setups-irregular-range-turns-settlement-cache-and-first-post-expiry",
+    "modelValidation": "13.9.13-confirmed-past-range-levels-current-turn-direction-and-quote-context-regressions",
     "forecastModel": "now-structural-v1"
   }
 }

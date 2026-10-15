@@ -57,6 +57,39 @@ test('extensive stored history cannot impose a new collection wait on current se
    analyzeNowOpportunity(input),engineId);
  }
 });
+test('a reversal must follow current net movement, not two earlier counter-ticks',()=>{
+ const wave=Array.from({length:161},(_,i)=>({ts:T+i*1000,
+  price:1.1+.0006*Math.sin(2*Math.PI*i/48)}));
+ [1.10055,1.10054,1.10053,1.100575].forEach((p,i)=>wave[157+i].price=p);
+ for(const mirror of [false,true]){
+  const q=mirror?wave.map(x=>({...x,price:2.2-x.price})):wave.map(x=>({...x}));
+  const inspect=()=>analyzeNowOpportunity({quoteHistory:q,price:q.at(-1).price,
+   quoteAt:q.at(-1).ts,now:q.at(-1).ts,durationMs:30000});
+  assert.equal(inspect().ready,false,'two small counter-ticks cannot outweigh resumed current flow');
+  q.at(-1).price=mirror?2.2-1.10051:1.10051;
+  assert.equal(inspect().side,mirror?'CALL':'PUT','actual current reaction releases on this quote, with no timer');
+ }
+});
+test('a new range breakout cannot create its own resistance or support for a reversal',()=>{
+ const wave=Array.from({length:161},(_,i)=>({ts:T+i*1000,
+  price:1.1+.0006*Math.sin(2*Math.PI*i/48)}));
+ [1.1009,1.10088,1.10086,1.10084].forEach((p,i)=>wave[157+i].price=p);
+ for(const mirror of [false,true]){
+  const q=mirror?wave.map(x=>({...x,price:2.2-x.price})):wave;
+  const result=analyzeNowOpportunity({quoteHistory:q,price:q.at(-1).price,
+   quoteAt:q.at(-1).ts,now:q.at(-1).ts,durationMs:30000});
+  assert.notEqual(result.side,mirror?'CALL':'PUT','boundary must already exist before this breakout');
+  assert.notEqual(result.reason,'closed-range-extreme-reversal-confirmed');
+ }
+});
+test('a newer history point cannot be mixed with an older quoted entry price',()=>{
+ for(const engineId of engines){
+  const input={quoteHistory:quotes,price:quotes.at(-1).price,quoteAt:T,now:T+200,engineId};
+  const expected=analyzeNowOpportunity(input);
+  assert.deepEqual(analyzeNowOpportunity({...input,quoteHistory:[...quotes,
+   {ts:T+50,price:99},{ts:T+100,price:100}]}),expected,engineId);
+ }
+});
 test('specialist setups confirm an observed level turn, mean return, Fibonacci retest and line break',()=>{
  const wave=Array.from({length:150},(_,i)=>({ts:T+i*1000,
   price:1.1+.0006*Math.sin(i*2*Math.PI/43)+i*.0000005}));

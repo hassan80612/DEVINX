@@ -86,17 +86,31 @@ function completedRangeStructure(quotes,now,noise,spot){
   const near=[closes[i-2],closes[i-1],closes[i+1],closes[i+2]];
   const hi=closes[i].log>Math.max(...near.map(x=>x.log));
   const lo=closes[i].log<Math.min(...near.map(x=>x.log));
-  if(hi||lo)pivots.push({at:closes[i].at,type:hi?'HIGH':'LOW'});
+  if(hi||lo){
+   const observed=last.filter(q=>q.ts>=closes[i-1].at&&q.ts<closes[i+2].at);
+   pivots.push({at:closes[i].at,type:hi?'HIGH':'LOW',
+     level:hi?Math.max(...observed.map(q=>Math.log(q.price))):
+       Math.min(...observed.map(q=>Math.log(q.price)))});
+  }
  }
  if(pivots.length<2)return null;
  if(pivots.length===2)return {ready:false,reason:'range-awaiting-third-confirmed-turn'};
  const recent=pivots.slice(-4),gaps=recent.slice(1).map((p,i)=>(p.at-recent[i].at)/1000);
  const sorted=[...gaps].sort((a,b)=>a-b),half=sorted[Math.floor(sorted.length/2)];
  const minGap=Math.min(...gaps),maxGap=Math.max(...gaps);
- const upper=Math.max(...last.map(x=>Math.log(x.price)));
- const lower=Math.min(...last.map(x=>Math.log(x.price)));
+ // Established range boundaries come from ALREADY CONFIRMED past pivots.
+ // Including the current price here made every new high its own resistance
+ // and every new low its own support, mislabeling breakouts as reversals.
+ const highs=pivots.filter(p=>p.type==='HIGH').slice(-2);
+ const lows=pivots.filter(p=>p.type==='LOW').slice(-2);
+ if(!highs.length||!lows.length)return null;
+ const upper=Math.max(...highs.map(p=>p.level));
+ const lower=Math.min(...lows.map(p=>p.level));
  const span=upper-lower;
  if(!(span>noise*1.10))return null;
+ const boundaryTolerance=Math.max(noise*.10,span*.02);
+ if(Math.log(spot)>upper+boundaryTolerance||Math.log(spot)<lower-boundaryTolerance)
+   return null;
  const regular=gaps.length>=2&&half>=12&&half<=90&&
    minGap>=9&&(maxGap-minGap)/half<=.52&&
    recent.every((v,i)=>i===0||v.type!==recent[i-1].type);
@@ -119,8 +133,14 @@ function completedRangeStructure(quotes,now,noise,spot){
  const up=lastFew.slice(1).filter((x,i)=>x.price>lastFew[i].price).length;
  const retreat= Math.log(peak/spot),bounce=Math.log(spot/trough);
  const minTurn=Math.max(noise*.045,span*.016);
- const highTurn=position>=.73&&retreat>=minTurn&&down>=2;
- const lowTurn=position<=.27&&bounce>=minTurn&&up>=2;
+ // Two small counter-ticks are not a current reversal if price has already
+ // resumed its original direction. Both net recent movement and the latest
+ // observed step must agree with the claimed turn. No extra collection wait.
+ const turnBase=before(last,now-3000,2500);
+ const turnMove=turnBase?Math.log(spot/turnBase.price):0;
+ const previous=last.at(-2),lastStep=previous?Math.log(spot/previous.price):0;
+ const highTurn=position>=.73&&retreat>=minTurn&&down>=2&&turnMove<0&&lastStep<=0;
+ const lowTurn=position<=.27&&bounce>=minTurn&&up>=2&&turnMove>0&&lastStep>=0;
  if(highTurn||lowTurn)return {ready:true,side:highTurn?'PUT':'CALL',
   reason:'closed-range-extreme-reversal-confirmed',
   observedSwingSeconds:half,position,efficiency};
@@ -136,7 +156,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  if(!(seconds>=5&&seconds<=3600))return waiting('invalid-expiry');
  if(!(Number(quoteAt)>0&&Number(quoteAt)<=now&&now-Number(quoteAt)<=2500&&finitePrice(price)))
   return waiting('stale-live-quote');
- const quotes=causalQuotes(quoteHistory,now);
+ const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
  if(!quotes.length||!quotes.some(q=>q.ts===Number(quoteAt)&&Number(q.price)===Number(price)))
   return waiting('live-quote-unverified');
  // Selected strategies produce native current evidence; the shared lifecycle

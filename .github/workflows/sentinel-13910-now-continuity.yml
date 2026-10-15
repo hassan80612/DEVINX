@@ -1,4 +1,4 @@
-name: Sentinel 13.9.12 native current strategies and cycle continuity
+name: Sentinel 13.9.13 native current strategies and cycle continuity
 on:
   push:
     branches: [fix/sentinel-live-strategies-20261015]
@@ -27,7 +27,7 @@ jobs:
         run: npx tsc --noEmit
       - uses: actions/upload-artifact@v4
         with:
-          name: Sentinel-13.9.12-Windows
+          name: Sentinel-13.9.13-Windows
           path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
           retention-days: 5
   windows-payload:
@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Sentinel-13.9.12-Windows
+          name: Sentinel-13.9.13-Windows
           path: candidate
       - name: Run actual Windows executable and verify its embedded release without installing
         shell: pwsh
