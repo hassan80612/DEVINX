@@ -22,7 +22,8 @@ function run({side,admit,lead,seed}){
  }
  const reference=rows.find(q=>q.ts===T+admit*1000).price;
  const initial={phase:'open',side,openedAt:T,windowStartedAt:T,
-   windowEndsAt:T+30000,admittedAt:T+admit*1000,
+   windowEndsAt:T+30000,entryAt:T+(admit+lead)*1000,
+   admittedAt:T+admit*1000,
    guardBaseline:{referencePrice:reference,lastClose:reference}};
  const before={...initial,admittedAt:undefined};
  const due=admit+lead;
