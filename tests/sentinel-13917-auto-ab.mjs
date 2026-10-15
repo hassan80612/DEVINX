@@ -10,7 +10,7 @@ const durations=[30000,60000];
 const policies=['previous_auto_13916','revised_auto_13917'];
 function chooseCandidate(sample,policy){
  if(policy==='revised_auto_13917')
-  return analyzeNowOpportunity({...sample,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
+  return analyzeNowOpportunity({...sample,engineId:'automatic',qualityPolicy:'adaptive-market-research'});
  // Reproduce the previous 13.9.16 routing exactly, without future tick reads.
  const structural=analyzeNowOpportunity({...sample,engineId:'automatic'});
  const learning=Number(sample.durationMs)===30000?causalPatternDirection(sample):null;
