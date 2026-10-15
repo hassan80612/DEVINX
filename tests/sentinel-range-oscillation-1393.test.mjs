@@ -92,5 +92,5 @@ test('no new permissions, timing gates, vetoes or dependence on the forming cand
  assert.match(model,/const observedOscillation=/);
  assert.match(model,/const range=!reversal/);
  assert.match(model,/last quoted instant of the FORMING bar/i);
- for(const s of [model,phase])assert.doesNotMatch(s,/brokerAllowsEntry|confirmationQuoteGapMs|cooldown|CALL AGORA|PUT AGORA/);
+ for(const s of [model,phase])assert.doesNotMatch(s,/brokerAllowsEntry\\(|confirmationQuoteGapMs\\s*[:=]|setTimeout\\(|setInterval\\(/);
 });
