@@ -33,8 +33,7 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
   const{data}=await supabase.auth.getClaims();
 
   if(data?.claims){
-    if(trial==='claim'){await supabase.rpc('register_devinx_product',{p_product:'financeiro'});return <TrialActivation/>;}
-    await supabase.rpc('register_devinx_product',{p_product:'financeiro'});
+    if(trial==='claim')return <TrialActivation/>;
     const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
     // An RPC outage must never masquerade as a blocked plan or billing failure.
