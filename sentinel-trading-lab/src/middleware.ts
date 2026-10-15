@@ -21,6 +21,15 @@ async function authInfo(token:string):Promise<AuthInfo>{
 }
 
 export async function middleware(req:NextRequest){
+  // Retire the legacy hostname without touching the Agent, chart, or database.
+  // Preserve paths, query parameters and 308 semantics for installed clients.
+  const host=(req.headers.get('x-forwarded-host')||req.headers.get('host')||'').split(':')[0].toLowerCase();
+  if(host==='sentinel-trading-lab.vercel.app'){
+    const target=req.nextUrl.clone();
+    target.protocol='https:';
+    target.host='trading.devinx.com.br';
+    return NextResponse.redirect(target,308);
+  }
   const p=req.nextUrl.pathname;
   // The Windows EXE only installs the Agent. Pairing, running analysis, API
   // access and the self-update ZIP STILL require an active paid account.
