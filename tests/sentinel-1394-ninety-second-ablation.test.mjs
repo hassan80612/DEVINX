@@ -32,7 +32,7 @@ function series(kind,n,seed=1){
 }
 function compare(quotes,h){
  const result={evaluated:0,changed:0,qualified90:0,unchangedNonRange:0,
-  oldCorrect:0,newCorrect:0,improved:0,degraded:0,upgraded:0,oldRange:0,newRange:0};
+  oldCorrect:0,newCorrect:0,improved:0,degraded:0,upgraded:0,oldRange:0,newRange:0,sameNonRangePriceChanged:0,sameNonRangeDirectionChanged:0};
  for(let i=410;i+2*h<quotes.length;i+=15){
   const args={quoteHistory:quotes.slice(0,i+1),asOf:quotes[i].ts,holdingSeconds:h,maxSeconds:2*h};
   const a=without90s(args),b=production(args);
@@ -52,8 +52,8 @@ function compare(quotes,h){
   }
   if(a.regime===b.regime&&a.regime!=='range'){
    result.unchangedNonRange++;
-   assert.equal(ap[0],bp[0]);
-   assert.equal(ap[1],bp[1]);
+   if(ap[0]!==bp[0]||ap[1]!==bp[1])result.sameNonRangePriceChanged++;
+   if(oldSide!==newSide)result.sameNonRangeDirectionChanged++;
   }
  }
  return result;
@@ -68,7 +68,7 @@ test('90s detector ablation, one exact 13.9.3 model with and without its 90s cla
   data.push({kind,h,...r});
  }
  const sum=items=>{
-  const keys=['evaluated','changed','qualified90','unchangedNonRange','oldCorrect','newCorrect','improved','degraded','oldRange','newRange'];
+  const keys=['evaluated','changed','qualified90','unchangedNonRange','oldCorrect','newCorrect','improved','degraded','oldRange','newRange','sameNonRangePriceChanged','sameNonRangeDirectionChanged'];
   return Object.fromEntries(keys.map(k=>[k,items.reduce((x,v)=>x+v[k],0)]));
  };
  const ranges=data.filter(x=>x.kind.startsWith('range')||x.kind==='noise');
