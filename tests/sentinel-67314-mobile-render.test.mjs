@@ -60,7 +60,11 @@ test('NOW card renders the enabled strategy menu and fresh quote while waiting f
  const html=render(s,start+20000);
  assert.match(html,/Estratégia ativa/);
  assert.match(html,/<select aria-label="Estratégia responsável pelo cenário">/);
- assert.match(html,/<option value="mean_reversion"/);
+ assert.match(html,/<option value="automatic"/);
+ assert.match(html,/<option value="fibonacci_retest"/);
+ assert.match(html,/<option value="smart_confluence"/);
+ assert.doesNotMatch(html,/<option value="mean_reversion"/);
+ assert.match(html,/Quando usar cada estratégia/);
  assert.match(html,/Preço atual.*1\.23450/);
  assert.match(html,/Última análise/);
  assert.match(html,/data-testid="future-entry-decision">.*ANALISANDO<\/strong>/);
