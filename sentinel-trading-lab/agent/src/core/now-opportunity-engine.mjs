@@ -157,18 +157,33 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // No selector votes or second timed confirmation can delay an entry.
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
+  // Shared quote/timing source, but manual strategy selection still owns its
+  // native technical setup. It must NOT be overwritten by the automatic side.
+  if(engineId!=='automatic'){
+   const chosen=analyzeNowOpportunity({...input,engineId});
+   return {...chosen,engineId,qualityPolicy,contextStrategy:engineId,
+    signalOwner:'shared-market-base'};
+  }
   const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
+  // An automatic strategy is a REGIME selector, not a competing vote.
+  // Prefer an observed Fibonacci retracement near a historical swing, then
+  // recent settled 30s analogues; 60s never borrows the 30s statistics.
+  // No new post-tick clock, minimum waiting period or extra entry veto.
+  const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
+  const fib=currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),
+   engineId:'fibonacci_retest'});
+  if(fib.ready)return {...structural,...fib,engineId,qualityPolicy,
+   observedAt:Number(quoteAt),entryPrice:Number(price),
+   expirySeconds:Number(durationMs)/1000,contextStrategy:'fibonacci_retest',
+   signalOwner:'shared-market-base'};
   const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
-  const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
-  const contextStrategy=useLearning?'mean_reversion':'trend';
-  if(useLearning)return {...structural,...learning,engineId,qualityPolicy,
-   reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
-   entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
-   contextStrategy:engineId==='automatic'?contextStrategy:engineId,
-   signalOwner:'shared-market-base'};
+  if(learning?.ready===true&&Number(learning.strength)>=.4)
+   return {...structural,...learning,engineId,qualityPolicy,
+    reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
+    entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
+    contextStrategy:'adaptive-30s',signalOwner:'shared-market-base'};
   return {...structural,engineId,qualityPolicy,
-   contextStrategy:engineId==='automatic'?'trend':engineId,
-   signalOwner:'shared-market-base'};
+   contextStrategy:'structural-market',signalOwner:'shared-market-base'};
  }
  const seconds=Number(durationMs)/1000;
  let provisionalSide=null;
