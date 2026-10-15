@@ -59,6 +59,14 @@ export async function middleware(request:NextRequest){
   );
 
   const{data,error}=await supabase.auth.getClaims();
+  // A restricted or unreachable Supabase is NOT an invalid user session.
+  // Do not clear/redirect an existing login merely because a quota or network
+  // failure prevents checking its JWT. Expired/absent sessions still log in.
+  const authMessage=String(error?.message||'').toLowerCase();
+  const transientAuthError=Boolean(error)&&/exceed_egress_quota|quota|fetch failed|failed to fetch|network|timeout|service unavailable|502|503|504|402/i.test(authMessage);
+  if(transientAuthError)return new NextResponse('O Financeiro está temporariamente indisponível. Sua conta não foi bloqueada. Tente novamente em instantes.',{
+    status:503,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store','retry-after':'10'}
+  });
   const claims=error?null:data?.claims;
   if(!claims){
     const url=request.nextUrl.clone();
@@ -74,7 +82,10 @@ export async function middleware(request:NextRequest){
   if(pathname==='/onboarding'||pathname.startsWith('/onboarding/')){
     const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
-    if(accessError||!access?.allowed){
+    if(accessError||!access)return new NextResponse('Não foi possível consultar seu acesso. Tente novamente mais tarde.',{
+      status:503,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store','retry-after':'10'}
+    });
+    if(!access.allowed){
       const url=request.nextUrl.clone();
       url.pathname='/entrar';
       url.search='';
