@@ -1503,3 +1503,114 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 @media(prefers-reduced-motion:reduce){.sentinelAnalysisSpinner{animation:none}}
 
 .liveScenario .vnextFutureDirection .sentinelAnalysisSpinner{width:13px;height:13px;min-width:13px;max-width:none;margin:0 8px 0 0;color:inherit;overflow:visible}
+
+/* PC-only layout polish: market card must not stretch into a giant canvas.
+   No changes to market engine, live transport, timing or mobile signal state. */
+@media (min-width:901px){
+ .app.marketWorkspace:not(.compactAnalyst) .main{max-width:1280px}
+ .app.marketWorkspace:not(.compactAnalyst) .liveScenario{
+   max-width:1130px;margin:0 auto 16px;padding:15px 19px;
+   border-radius:14px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .liveScenario>header{
+   gap:10px;align-items:center;margin-bottom:8px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextEngineToolbar{
+   grid-template-columns:minmax(0,1.65fr) minmax(130px,.77fr) minmax(130px,.75fr);
+   gap:9px;align-items:start;margin:7px 0 9px;padding:10px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextEngineToolbar label{
+   font-size:10px;gap:5px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextEngineToolbar label:first-child small{
+   display:block;max-width:100%;white-space:nowrap;
+   text-overflow:ellipsis;overflow:hidden;line-height:15px!important;
+   font-size:10px!important;margin-top:2px!important;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextEngineToolbar select{
+   height:36px!important;min-height:36px!important;font-size:12px!important;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextFutureReceipt{
+   display:flex;flex-direction:column;gap:6px;
+   width:100%;height:auto;min-height:0;margin:8px 0 10px;
+   padding:12px 15px;align-items:stretch;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextReceiptTitle{width:100%;min-width:0}
+ .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection{
+   display:flex;align-items:center;justify-content:flex-start;
+   height:33px;min-height:33px;max-height:33px;margin:0;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextFutureDirection strong{
+   font-size:21px!important;line-height:30px!important;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextTargetCountdown{
+   height:80px;min-height:80px;max-height:80px;
+   padding:9px 13px;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextTargetCountdown b{font-size:18px!important}
+ .app.marketWorkspace:not(.compactAnalyst) .vnextProjectionValues{
+   height:57px;min-height:57px;max-height:57px;
+   grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextProjectionValues>div{padding:7px 11px}
+ .app.marketWorkspace:not(.compactAnalyst) .vnextProjectionValues strong{font-size:16px!important}
+ .app.marketWorkspace:not(.compactAnalyst) .vnextProjectionBias{
+   height:31px;min-height:31px;max-height:31px;
+   justify-content:flex-start;gap:20px;overflow:visible;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextForecastDetails{
+   height:auto;min-height:26px;align-self:stretch;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextForecastDetails[open]{
+   position:static;box-shadow:none;padding:4px 8px 10px;
+   background:#09241f;border:1px solid #739b8060;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextForecastDetails[open]>*:not(summary){margin:7px 4px}
+ .app.marketWorkspace:not(.compactAnalyst) .vnextMobileReadings{
+   margin:11px 0;padding:13px 15px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextMobileReadingsGrid{
+   grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextMobileReadingsGrid>div{
+   height:auto;min-height:93px;max-height:none;
+   padding:10px 12px;gap:7px;align-content:start;overflow:visible;
+   border:1px solid #7ba39145;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextMobileReadingsGrid small{
+   font-size:11px!important;line-height:1.35;
+   min-height:0;max-height:none;overflow:visible;white-space:normal;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextMobileReadingsGrid strong{
+   font-size:19px;line-height:1.15;overflow:visible;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .vnextMobileReadingsGrid span{
+   font-size:11px;line-height:1.4;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .liveScenarioMeta{
+   margin:10px 0 7px;font-size:12px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .liveControls{
+   display:flex;flex-wrap:wrap;justify-content:center;
+   gap:10px;margin:13px 0 8px;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .liveControls button{
+   flex:0 1 174px;width:auto;max-width:182px;min-width:140px;
+   min-height:41px;padding:9px 12px!important;font-size:12px!important;
+ }
+ .app.marketWorkspace:not(.compactAnalyst) .liveScenario footer{
+   margin-top:9px;font-size:11px;
+ }
+}
+/* A genuine mobile layout defect: expanded card details were constrained to
+   a 24px grid row and could overlap the three readings beneath. The mobile
+   clock and its PC-authoritative data are intentionally unchanged. */
+@media(max-width:900px){
+ .liveScenario .vnextFutureReceipt:has(> .vnextForecastDetails[open]){
+   grid-template-rows:20px 27px 74px 49px 27px auto;
+ }
+ .liveScenario .vnextFutureReceipt:has(> .vnextForecastDetails[open]) .vnextForecastDetails{
+   align-self:stretch;position:static;min-height:24px;
+   box-sizing:border-box;z-index:auto;
+ }
+}
