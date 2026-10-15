@@ -156,28 +156,19 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
  // No selector votes or second timed confirmation can delay an entry.
- // The observed market base is authoritative. Automatic picks a chart
- // CONTEXT from the retained four specialists without their voting or delaying
- // its signal. An explicitly chosen manual specialist can refine the current
- // direction from its own price evidence on a verified live quote.
- if(qualityPolicy==='adaptive-market-v17'){
+ // All selected strategies use one common market base. In Automatic,
+ // describe the actually observed chart phase using only the four retained
+ // technical contexts. A specialist can annotate the setup, but must not
+ // override an evaluated 30s/60s direction without validated evidence:
+ // randomized-price A/B showed such overrides sharply increased losses.
+ if(qualityPolicy==='adaptive-market-v17'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
   const original=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
   const context=automaticChartContext({...input,base:original});
-  if(engineId==='automatic')return {...original,engineId,qualityPolicy,
-    contextStrategy:context.strategy,marketShape:context.marketShape,
-    signalOwner:'shared-market-base'};
-  const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
-  const current=quotes.some(q=>q.ts===Number(quoteAt)&&Number(q.price)===Number(price));
-  const specialist=current&&now-Number(quoteAt)<=2500?
-    currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),engineId}):null;
-  if(specialist?.ready===true)return {...original,...specialist,
-    engineId,qualityPolicy,observedAt:Number(quoteAt),entryPrice:Number(price),
-    expirySeconds:Number(durationMs)/1000,contextStrategy:engineId,
-    signalOwner:'shared-market-base'};
-  return {...original,engineId,qualityPolicy,contextStrategy:engineId,
-    specialistStatus:specialist?.reason||'base-continuation',
-    signalOwner:'shared-market-base'};
+  return {...original,engineId,qualityPolicy,
+   contextStrategy:engineId==='automatic'?context.strategy:engineId,
+   marketShape:context.marketShape,
+   signalOwner:'shared-market-base'};
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
