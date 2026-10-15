@@ -155,6 +155,29 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
  // No selector votes or second timed confirmation can delay an entry.
+ // Research: compare an actual chart-dependent AUTOMATIC strategy choice
+ // against the published base. Strategies are specialized observations, not
+ // parallel engines or new blocking gates; one signal lifecycle remains owner.
+ if(['adaptive-market-v2a','adaptive-market-v2b','adaptive-market-v2c'].includes(qualityPolicy)){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const published=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
+  const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
+  const ids=['fibonacci_retest','support_resistance','trend','smart_confluence'];
+  const readings=ids.map(id=>({id,...currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),engineId:id})}));
+  const selected=engineId==='automatic'?
+   readings.find(x=>x.ready===true):
+   readings.find(x=>x.id===engineId&&x.ready===true);
+  if(!selected)return {...published,engineId,qualityPolicy,
+   contextStrategy:engineId==='automatic'?'smart_confluence':engineId};
+  const switchDirection=qualityPolicy==='adaptive-market-v2b'||
+   (qualityPolicy==='adaptive-market-v2a'&&Number(durationMs)===60000&&
+    ['fibonacci_retest','support_resistance'].includes(selected.id));
+  if(!switchDirection)return {...published,engineId,qualityPolicy,
+   contextStrategy:selected.id};
+  return {...published,ready:true,side:selected.side,reason:selected.reason,
+   observedAt:Number(quoteAt),entryPrice:Number(price),engineId,qualityPolicy,
+   contextStrategy:selected.id,signalOwner:'shared-market-base'};
+ }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
   const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
