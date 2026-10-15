@@ -1,7 +1,7 @@
-name: Sentinel 13.9.16 unified market base - ONE PRODUCTION RELEASE
+name: Sentinel 13.9.17 five strategies - ONE RELEASE
 on:
   push:
-    branches: [fix/sentinel-shared-base-direction-single-20261015]
+    branches: [fix/sentinel-four-strategies-guidance-20261015]
 permissions:
   contents: read
 jobs:
@@ -22,10 +22,10 @@ jobs:
       - name: Validate original regressions, current strategy and first post-expiry quote; compile embedded Agent
         working-directory: sentinel-trading-lab
         run: npm run prebuild
-      - name: Validate shared decision owner and preserve 60-second baseline
-        run: node --test tests/sentinel-shared-base-v2.test.mjs tests/sentinel-13915-one-pass.test.mjs
-      - name: Compare 30-second outcome learning with deployed baseline (research, not market proof)
-        run: node tests/sentinel-shared-base-v2-ab.mjs
+      - name: Validate five strategies, native signals, translations, saved settings and existing signal lifecycle
+        run: node --test tests/sentinel-13917-public-strategies.test.mjs tests/sentinel-13915-one-pass.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs
+      - name: Ensure Automatic remains 13.9.16 direction-equivalent after rejecting inferior variants
+        run: node tests/sentinel-13917-auto-ab.mjs
       - name: Typecheck actual site
         working-directory: sentinel-trading-lab
         run: npx tsc --noEmit
@@ -35,7 +35,7 @@ jobs:
           node scripts/sentinel-13914-overlay-smoke.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: Sentinel-13.9.16-Windows
+          name: Sentinel-13.9.17-Windows
           path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
           retention-days: 5
   windows-payload:
@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: Sentinel-13.9.16-Windows
+          name: Sentinel-13.9.17-Windows
           path: candidate
       - name: Run actual Windows executable and verify its embedded release without installing
         shell: pwsh
