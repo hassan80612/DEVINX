@@ -1,0 +1,28 @@
+name: Sentinel 13.9.5 quote timing isolation
+on:
+  push:
+    branches:
+      - fix/sentinel-1395-quote-race-latency-20261015
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+      - name: Syntax verify affected modules
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/runtime.mjs
+          node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+          node --check sentinel-trading-lab/agent/src/core/single-opportunity-window.mjs
+      - name: Isolated late quote and existing entry regressions
+        run: |
+          node --test tests/sentinel-1395-quote-race-latency.test.mjs \
+            tests/sentinel-1380-replan-without-fake-waits.test.mjs \
+            tests/sentinel-1394-exclusive-deadline.test.mjs \
+            tests/sentinel-1394-admission-boundary.test.mjs \
+            tests/sentinel-1383-signal-latency.test.mjs
