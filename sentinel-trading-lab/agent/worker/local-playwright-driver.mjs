@@ -1305,8 +1305,14 @@ export class LocalPlaywrightDriver{
       const st=this.state(provider);
       // Optional, bounded, read-only UI observation. Never blocks rendering,
       // requests trading actions or invalidates a pinned forecast.
+      // A full body.innerText can force browser-wide text/layout work.
+      // Keep fast read-only scanning when broker clock is explicitly shown;
+      // for the ordinary local-clock view inspect at a lower frequency.
+      // Neither cadence participates in quote ingestion, entry decisions or
+      // the independently ticking overlay clock.
+      const scanEveryMs=payload.clockMode==='broker'?2500:10000;
       if(!s.pendingBrokerTimeScan&&
-        Date.now()-Number(s.lastBrokerTimeScanAt||0)>=2500){
+        Date.now()-Number(s.lastBrokerTimeScanAt||0)>=scanEveryMs){
         s.lastBrokerTimeScanAt=Date.now();
         s.pendingBrokerTimeScan=true;
         void s.page.locator('body').innerText({timeout:650}).then(text=>{
