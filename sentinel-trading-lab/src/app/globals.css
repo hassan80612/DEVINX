@@ -1496,3 +1496,10 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .accountAgentDownload{display:inline-flex}
 @media(max-width:900px){.accountAgentCard,.accountAgentDownload{display:none!important}}
 @media(max-width:620px){.accountAgentCard{padding:14px!important}.accountAgentActions{width:100%}.accountAgentActions button{flex:1 1 115px}}
+
+.sentinelAnalysisSpinner{display:inline-block;width:.8em;height:.8em;margin-right:9px;flex-shrink:0;vertical-align:-.05em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sentinelAnalysisSpin .9s linear infinite}
+.sentinelAnalysisSpinner[data-active="0"]{animation-play-state:paused;opacity:.4}
+@keyframes sentinelAnalysisSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.sentinelAnalysisSpinner{animation:none}}
+
+.liveScenario .vnextFutureDirection .sentinelAnalysisSpinner{width:13px;height:13px;min-width:13px;max-width:none;margin:0 8px 0 0;color:inherit;overflow:visible}

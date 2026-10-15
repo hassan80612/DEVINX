@@ -996,7 +996,7 @@ export class DemoTradingRuntime{
         vnext,side:'WAIT',confidence:0,
         operationalSignal:{
           asset:settings.asset,side:active?next.side:'AGUARDAR',
-          state:active?'EM ANDAMENTO':'ANALISANDO AGORA',
+          state:active?'EM ANDAMENTO':'ANALISANDO',
           ready:freshSignal,actionable:false,
           strength:observation.strength??0,
           activeUntil:active?next.exitAt:null

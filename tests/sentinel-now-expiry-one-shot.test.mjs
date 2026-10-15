@@ -103,7 +103,7 @@ test('compact phone broadcast keeps NOW mode, exact PC signal and expiry',()=>{
  assert.ok(fitAnalystFrame(wire,2920));
 });
 
-test('lateral whipsaws do not masquerade as current entry opportunities',()=>{
+test('irregular waves release only observed extreme turns, never phantom trends',()=>{
  let fired=0;
  for(let seed=0;seed<80;seed++){
   const q=Array.from({length:151},(_,i)=>{
@@ -112,9 +112,16 @@ test('lateral whipsaws do not masquerade as current entry opportunities',()=>{
   });
   const outcome=analyzeNowOpportunity({quoteHistory:q,price:q.at(-1).price,
    quoteAt:T,now:T,durationMs:30000});
-  if(outcome.ready)fired++;
+  if(outcome.ready){
+   fired++;assert.equal(outcome.reason,'closed-range-extreme-reversal-confirmed');
+   const prices=q.map(x=>x.price),low=Math.min(...prices),high=Math.max(...prices);
+   const position=(q.at(-1).price-low)/(high-low);
+   assert.ok(outcome.side==='CALL'?position<=.27:position>=.73);
+   const latest=q.slice(-7).map(x=>x.price),price=q.at(-1).price;
+   assert.ok(outcome.side==='CALL'?price>Math.min(...latest):price<Math.max(...latest));
+  }
  }
- assert.equal(fired,0,'do not fire a signal simply because a range wiggle resembles three aligned candles');
+ assert.ok(fired>0,'irregular historical spacing must not veto an actual current extreme turn');
 });
 test('replayed past market quotes do not use future data and never overlap expiries',async()=>{
  const {readFileSync}=await import('node:fs');

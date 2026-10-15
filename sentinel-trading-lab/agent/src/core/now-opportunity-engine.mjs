@@ -100,9 +100,12 @@ function completedRangeStructure(quotes,now,noise,spot){
  const regular=gaps.length>=2&&half>=12&&half<=90&&
    minGap>=9&&(maxGap-minGap)/half<=.52&&
    recent.every((v,i)=>i===0||v.type!==recent[i-1].type);
- // An unresolved oscillation is not a trend. Continue observing each new
- // quote rather than chase its latest leg as a directional entry.
- if(!regular)return {ready:false,reason:'irregular-multi-swing-range'};
+ // Uneven pivots with a directional fit belong to the trend assessment,
+ // not a counter-trend reversal or a blanket "irregular" waiting state.
+ if(!regular&&trendFit>=.50)return null;
+ // Regularity describes the past; it cannot veto an ACTUAL present turn.
+ // An irregular range is still a range: confirm its extreme and retreat
+ // below, rather than wait minutes for evenly spaced historical pivots.
  // These are observations of the present, not a forecast of the next
  // half-cycle. The selected holding time must not veto every subsequent
  // entry based on a guessed future repetition of past swing duration.
@@ -121,7 +124,8 @@ function completedRangeStructure(quotes,now,noise,spot){
  if(highTurn||lowTurn)return {ready:true,side:highTurn?'PUT':'CALL',
   reason:'closed-range-extreme-reversal-confirmed',
   observedSwingSeconds:half,position,efficiency};
- return {ready:false,reason:'range-extreme-awaiting-confirmed-turn'};
+ return {ready:false,reason:regular?'range-extreme-awaiting-confirmed-turn':
+   'irregular-range-awaiting-current-turn'};
 }
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,

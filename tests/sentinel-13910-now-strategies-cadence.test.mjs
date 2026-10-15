@@ -49,6 +49,14 @@ test('all strategies reject flat or unavailable evidence and ignore future arriv
   assert.equal(analyzeNowOpportunity({...input,price:1.1,quoteHistory:quotes.map(q=>({...q,price:1.1}))}).ready,false,engineId);
  }
 });
+test('extensive stored history cannot impose a new collection wait on current setups',()=>{
+ const old=Array.from({length:6000},(_,i)=>({ts:T-7000000+i*1000,price:2+i*.00001}));
+ for(const engineId of engines){
+  const input={quoteHistory:quotes,price:quotes.at(-1).price,quoteAt:T,now:T,engineId};
+  assert.deepEqual(analyzeNowOpportunity({...input,quoteHistory:[...old,...quotes]}),
+   analyzeNowOpportunity(input),engineId);
+ }
+});
 test('specialist setups confirm an observed level turn, mean return, Fibonacci retest and line break',()=>{
  const wave=Array.from({length:150},(_,i)=>({ts:T+i*1000,
   price:1.1+.0006*Math.sin(i*2*Math.PI/43)+i*.0000005}));
@@ -105,6 +113,40 @@ test('unchanged broker prices still carry the exact latest live timestamp into a
   assert.equal(st.quoteHistory.at(-1).ts,st.lastQuoteAt);
   const result=analyzeNowOpportunity({quoteHistory:st.quoteHistory,price:st.quote,quoteAt:st.lastQuoteAt,now:T+150,durationMs:30000});
   assert.notEqual(result.reason,'live-quote-unverified');
+ }
+});
+test('settlement balance changes survive subsequent quotes and keep other accounts isolated',()=>{
+ for(const provider of ['exnova','iq_option']){
+  const d=new LocalPlaywrightDriver({dataDir:'ignored'}),st=d.state(provider);
+  Object.assign(st,{balanceId:10,mode:'demo',symbol:'EUR/USD OTC',uiSymbol:'EUR/USD OTC',activeId:76});
+  d.ingest(provider,{name:'balances',msg:[{id:10,type:4,amount:1000},{id:20,type:1,amount:100}]});
+  assert.equal(st.balance,1000);
+  d.ingest(provider,{name:'balance-changed',msg:{balance_id:10,type:4,amount:1008}});
+  assert.equal(st.balance,1008,'live win must not be overwritten by old account cache');
+  d.ingest(provider,{name:'quote-generated',msg:{active_id:76,price:1.1,time:T/1000}});
+  assert.equal(st.balance,1008,'next market frame must retain the settled balance');
+  d.ingest(provider,{name:'balance-changed',msg:{balance_id:20,type:1,amount:115}});
+  assert.equal(st.balance,1008);assert.equal(st.balanceId,10);assert.equal(st.mode,'demo');
+  d.ingest(provider,{name:'balance-changed',msg:{balance_id:10,type:4,amount:998}});
+  assert.equal(st.balance,998,'loss settlement must update immediately as well');
+  d.ingest(provider,{name:'profile',msg:{balance_id:10,balance_type:4,balance:1012}});
+  assert.equal(st.balance,1012,'fresh profile updates its account cache too');
+ }
+});
+test('passive account updates bypass market sampling on new and restored broker sockets',async()=>{
+ for(const provider of ['exnova','iq_option']){
+  const d=new LocalPlaywrightDriver({dataDir:'ignored'}),st=d.state(provider);
+  Object.assign(st,{balanceId:10,mode:'demo',lastPassiveFrameAt:Date.now(),activeId:76});
+  const wsEvents={},cdpEvents={};
+  const page={on:(name,fn)=>{if(name==='websocket')fn({on:(name,fn)=>wsEvents[name]=fn});},
+   context:()=>({newCDPSession:async()=>({on:(name,fn)=>cdpEvents[name]=fn,send:async()=>{}})})};
+  await d.attachNetwork(provider,page);
+  cdpEvents['Network.webSocketFrameReceived']({response:{opcode:1,payloadData:JSON.stringify(
+   {name:'balance-changed',msg:{balance_id:10,type:4,amount:1008}})}});
+  assert.equal(st.balance,1008,'existing restored socket settlement is observed immediately');
+  page.__sentinelAccountCdpReady=false;
+  wsEvents.framereceived({payload:JSON.stringify({name:'balance-changed',msg:{balance_id:10,type:4,amount:1016}})});
+  assert.equal(st.balance,1016,'WebSocket event fallback must not drop a non-market event');
  }
 });
 test('both PC and site display the real strategy selector and live evaluation',()=>{

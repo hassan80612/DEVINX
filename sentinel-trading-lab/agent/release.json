@@ -1,13 +1,13 @@
 {
-  "version": "13.9.11",
-  "build": "13.9.11-native-current-strategy-evidence",
+  "version": "13.9.12",
+  "build": "13.9.12-current-strategies-range-and-balance",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.9.11-native-current-setups-no-legacy-gates-and-first-post-expiry-reentry-regressions",
+    "modelValidation": "13.9.12-native-current-setups-irregular-range-turns-settlement-cache-and-first-post-expiry",
     "forecastModel": "now-structural-v1"
   }
 }

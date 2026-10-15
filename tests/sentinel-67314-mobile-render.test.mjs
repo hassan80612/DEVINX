@@ -63,5 +63,11 @@ test('NOW card renders the enabled strategy menu and fresh quote while waiting f
  assert.match(html,/<option value="mean_reversion"/);
  assert.match(html,/Preço atual.*1\.23450/);
  assert.match(html,/Última análise/);
+ assert.match(html,/data-testid="future-entry-decision">.*ANALISANDO<\/strong>/);
+ assert.match(html,/data-testid="analysis-spinner" data-active="1"/);
+ assert.doesNotMatch(html,/ANALISANDO AGORA/);
  assert.doesNotMatch(html,/<strong>ANÁLISE AGORA<\/strong>/);
+ assert.match(render(s,start+26000),/data-testid="analysis-spinner" data-active="0"/);
+ s.state='paused';
+ assert.match(render(s,start+20000),/data-testid="analysis-spinner" data-active="0"/);
 });

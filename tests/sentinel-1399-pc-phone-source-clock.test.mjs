@@ -64,7 +64,7 @@ test('scanning never fabricates a window that hides the entire PC and mobile ana
  }).analysis;
  assert.equal(a.vnext.opportunityWindow.phase,'scanning');
  assert.ok(!a.vnext.opportunityWindow.windowStartedAt);
- assert.equal(a.operationalSignal.state,'ANALISANDO AGORA');
+ assert.equal(a.operationalSignal.state,'ANALISANDO');
  assert.equal(shouldDiscardVnextFrame({analysis:a,quoteAt:T,now}),false);
  r.lastResult={asset:'EUR/USD',analysis:a};r.lastEvalMs=now;
  const mobile=liveCardModel(mobileState(r,q,now),now,60,now);

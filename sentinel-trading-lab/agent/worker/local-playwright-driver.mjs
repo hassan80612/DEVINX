@@ -11,6 +11,7 @@ import {brokerClockView} from './broker-clock-view.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
+ "ANALISANDO",
  "CALL — confirmação",
  "PUT — confirmação",
  "Leitura atual do Cenário.",
@@ -334,6 +335,14 @@ function candleSeriesIntegrity(candles=[],quote=null){
   return{ok:true,reason:'ok',medianMovePct:Math.round(median*100000)/1000}
 }
 
+function rememberBalanceChange(st,id,type,amount){
+  if(id==null||amount==null)return;
+  const rows=Array.isArray(st.lastBalances)?st.lastBalances:[];
+  const index=rows.findIndex(row=>n(row?.id)===id);
+  const row={...(index>=0?rows[index]:{}),id,amount,balance:amount};
+  if([1,4].includes(type))row.type=type;
+  st.lastBalances=index>=0?rows.map((old,i)=>i===index?row:old):[...rows,row].slice(-50);
+}
 function applyKnownBalance(st){
   const arr=Array.isArray(st.lastBalances)?st.lastBalances:[];if(!arr.length)return false;
   // A mudança de conta no PC pode chegar pelo cabeçalho antes do perfil.
@@ -399,6 +408,7 @@ function protocolScan(data,st,direction='in'){
   if(outer==='profile'&&data.msg&&typeof data.msg==='object'){
     const m=data.msg;const bid=n(m.balance_id??m.balanceId);if(bid!=null)st.balanceId=bid;
     let selected=null;const balances=Array.isArray(m.balances)?m.balances:[];
+    if(balances.length)st.lastBalances=balances.slice(0,50);
     const explicitType=Number(m.balance_type??m.balanceType);
     if(st.balanceId!=null)selected=balances.find(x=>n(x?.id)===n(st.balanceId))||null;
     if(!selected&&[1,4].includes(explicitType))selected=balances.find(x=>Number(x?.type)===explicitType)||null;
@@ -406,14 +416,26 @@ function protocolScan(data,st,direction='in'){
     if(!selected&&eligible.length===1)selected=eligible[0];
     const typ=Number(selected?.type??([1,4].includes(explicitType)?explicitType:NaN));
     if(typ===1)st.mode='real';if(typ===4)st.mode='demo';
-    const val=n(selected?.amount??((st.mode&&[1,4].includes(explicitType))?m.balance:null));if(val!=null){st.balance=val;st.balanceSource='protocol:profile'}else applyKnownBalance(st)
+    const val=n(selected?.amount??((st.mode&&[1,4].includes(explicitType))?m.balance:null));if(val!=null){rememberBalanceChange(st,n(selected?.id)??st.balanceId,typ,val);st.balance=val;st.balanceSource='protocol:profile'}else applyKnownBalance(st)
   }
   if(outer==='balances'){
     const arr=Array.isArray(data.msg)?data.msg:Array.isArray(data?.msg?.data)?data.msg.data:Array.isArray(data?.msg?.balances)?data.msg.balances:[];
     if(arr.length){st.lastBalances=arr.slice(0,50);applyKnownBalance(st)}
   }
   if(/balance-changed/i.test(outer)||/balance-changed/i.test(inner)){
-    const m=(data.msg&&typeof data.msg==='object')?data.msg:data;const id=n(m.balance_id??m.balanceId??m.id);const typ=Number(m.type??m.balance_type??m.balanceType);const matchesKnown=st.balanceId!=null&&id!=null&&id===st.balanceId;const matchesMode=st.mode&&((st.mode==='real'&&typ===1)||(st.mode==='demo'&&typ===4));if(matchesKnown||matchesMode){if(typ===1)st.mode='real';if(typ===4)st.mode='demo';if(st.balanceId==null&&id!=null)st.balanceId=id;const val=n(m.amount??m.balance??m.current_balance??m.value);if(val!=null){st.balance=val;st.balanceSource='protocol:balance-changed'}}
+    const m=(data.msg&&typeof data.msg==='object')?data.msg:data;
+    const id=n(m.balance_id??m.balanceId??m.id),typ=Number(m.type??m.balance_type??m.balanceType);
+    const val=n(m.amount??m.balance??m.current_balance??m.value);
+    // Keep the account cache current too: ingest() reapplies it on the next
+    // packet. An old balances snapshot must not undo a live settlement.
+    rememberBalanceChange(st,id,typ,val);
+    const matchesKnown=st.balanceId!=null&&id!=null&&id===st.balanceId;
+    const matchesMode=st.mode&&((st.mode==='real'&&typ===1)||(st.mode==='demo'&&typ===4));
+    if(matchesKnown||(st.balanceId==null&&matchesMode)){
+      if(typ===1)st.mode='real';if(typ===4)st.mode='demo';
+      if(st.balanceId==null&&id!=null)st.balanceId=id;
+      if(val!=null){st.balance=val;st.balanceSource='protocol:balance-changed'}
+    }
   }
   if(outer==='candles'){
     const rid=marketRequestId(data),explicitAid=n(data?.msg?.active_id??data?.msg?.activeId),correlatedAid=requestedActiveId(st,data),aid=explicitAid??correlatedAid;
@@ -802,6 +824,8 @@ export class LocalPlaywrightDriver{
       if(typeof payload!=='string'||payload.length>12000||!payload.includes('get-candles'))return;
       this.ingest(provider,payload,'page-out');
     };
+    const isAccountFrame=frame=>['balances','profile'].includes(String(frame?.name||''))||
+      /balance-changed/i.test(String(frame?.name||'')+' '+String(frame?.msg?.name||''));
     page.on('websocket',ws=>{
       ws.on('framesent',event=>observeSent(event?.payload));
       // Passive observation of the broker's actual market data (13.4.27).
@@ -811,6 +835,12 @@ export class LocalPlaywrightDriver{
         const payload=typeof raw==='string'?raw:(Buffer.isBuffer(raw)&&raw.length<=120000?raw.toString('utf8'):null);
         if(!payload||payload.length>120000)return;
         let frame;try{frame=JSON.parse(payload)}catch{return}
+        // Settlement/account events are low frequency and must not wait for
+        // the next get-balances poll or share the sampled market-data slot.
+        if(isAccountFrame(frame)){
+          if(!page.__sentinelAccountCdpReady)this.ingest(provider,frame,'page-in');
+          return;
+        }
         // Historical responses and their request IDs are never sampled away.
         if(frame?.name==='candles'){this.ingest(provider,frame,'page-in');return}
         if(!/candle-generated|quote-generated|instrument-quotes|ticker/i.test(payload))return;
@@ -845,7 +875,15 @@ export class LocalPlaywrightDriver{
         client.on('Network.webSocketFrameSent',event=>{
           if(event.response?.opcode===1)observeSent(event.response.payloadData);
         });
+        client.on('Network.webSocketFrameReceived',event=>{
+          const response=event?.response,payload=response?.payloadData;
+          if(response?.opcode!==1||typeof payload!=='string'||payload.length>120000||
+            !/balance|profile/.test(payload))return;
+          let frame;try{frame=JSON.parse(payload)}catch{return}
+          if(isAccountFrame(frame))this.ingest(provider,frame,'page-in');
+        });
         await client.send('Network.enable');
+        page.__sentinelAccountCdpReady=true;
         page.__sentinelSelectionCdp=client;
         this.state(provider).pageSelectionObserver='cdp-existing-and-new-sockets';
       }catch{await client?.detach().catch(()=>{})}
@@ -1334,15 +1372,15 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.4.67.27'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.9.12'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.4.67.27';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.12';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
-          reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay select{color-scheme:dark}#sentinel-trading-overlay select option{background-color:#10232c;color:#f7fbff}#sentinel-trading-overlay[data-theme="light"] select{color-scheme:light}#sentinel-trading-overlay[data-theme="light"] select option{background-color:#fff;color:#111318}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:none}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
+          reset.textContent=`:host{all:initial}*,*::before,*::after{box-sizing:border-box}button,select,input{font:inherit;text-transform:none;letter-spacing:normal}button{margin:0}#sentinel-trading-overlay select{color-scheme:dark}#sentinel-trading-overlay select option{background-color:#10232c;color:#f7fbff}#sentinel-trading-overlay[data-theme="light"] select{color-scheme:light}#sentinel-trading-overlay[data-theme="light"] select option{background-color:#fff;color:#111318}@keyframes sentinelAnalysisSpin{to{transform:rotate(360deg)}}.sentinel-analysis-spinner{display:inline-block;width:.8em;height:.8em;margin-right:9px;vertical-align:-.05em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sentinelAnalysisSpin .9s linear infinite}.sentinel-analysis-spinner[data-active="0"]{animation-play-state:paused;opacity:.4}@media(prefers-reduced-motion:reduce){.sentinel-analysis-spinner{animation:none}}@keyframes sentinelMetalSweep{0%,18%{background-position:200% 0;opacity:0}28%{opacity:.08}44%{opacity:.34}60%{opacity:.08}70%,100%{background-position:-200% 0;opacity:0}}#sentinel-trading-overlay{font-variant-numeric:tabular-nums;overflow-anchor:none;contain:layout paint;outline:none}[data-sentinel-card],[data-sentinel-role="horizon-outlook"]{contain:layout paint;overflow-anchor:none}.sentinel-shine{position:relative;isolation:isolate}.sentinel-shine::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;clip-path:inset(0 round 13px);background:linear-gradient(100deg,transparent 35%,rgba(255,238,182,.02) 43%,rgba(255,224,128,.22) 49%,rgba(255,250,220,.34) 51%,rgba(255,209,92,.16) 55%,transparent 64%);background-size:300% 100%;background-position:200% 0;animation:none}.sentinel-shine>*{position:relative;z-index:1}.sentinel-metal-gold{background:linear-gradient(180deg,#fff3c4 0%,#f4d77e 32%,#c99e3e 62%,#ffe8a1 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important;-webkit-text-fill-color:transparent;text-shadow:0 0 12px rgba(242,205,111,.18)}#sentinel-trading-overlay::-webkit-scrollbar{width:7px;height:7px}#sentinel-trading-overlay::-webkit-scrollbar-track{background:transparent}#sentinel-trading-overlay::-webkit-scrollbar-thumb{background:rgba(154,132,88,.55);border-radius:999px}#sentinel-trading-overlay::-webkit-scrollbar-thumb:hover{background:rgba(190,160,96,.72)}`;
           shadow.appendChild(reset);
-          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.4.67.27';shadow.appendChild(el);
+          el=document.createElement('section');el.id=id;el.dataset.uiVersion='13.9.12';shadow.appendChild(el);
           Object.assign(el.style,{
             position:'fixed',right:'12px',top:'12px',zIndex:'2147483647',
             width:'500px',height:'min(560px, calc(100vh - 24px))',minWidth:'420px',maxWidth:'min(720px, calc(100vw - 18px))',
@@ -1901,7 +1939,7 @@ export class LocalPlaywrightDriver{
         const scheduledDecision=nowMode?
           (entryMoment&&confirmedSide?'ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
             opportunityPhase==='fired'?'OPERAÇÃO EM ANDAMENTO · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
-            'ANALISANDO AGORA'):
+            'ANALISANDO'):
           entryMoment&&confirmedSide?
           ('ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT')):
           opportunityPhase==='cancelled'?'JANELA SEM ENTRADA':
@@ -1945,7 +1983,7 @@ export class LocalPlaywrightDriver{
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr('Preço atual')+': '+price(d.price)+' · '+tr('Última análise')+': '+esc(new Date(Number(d.vnext?.nowObservation?.evaluatedAt||0)).toLocaleTimeString('pt-BR',{hour12:false})):tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
-              <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(tr(scheduledDecision))}</div>
+              <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div>
               <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-broker-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
                 <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">${tr('MOMENTO DE ENTRADA')}</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(triggeredAt).toLocaleTimeString('pt-BR',{hour12:false})):tr('AGUARDANDO')}</b><small style="font-size:9px;color:${muted};white-space:nowrap">${tr('VENCIMENTO')} ${opportunityPhase==='fired'&&scheduledExit?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):tr('após a entrada')}</small></div>
@@ -1955,7 +1993,7 @@ export class LocalPlaywrightDriver{
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${tr(nowMode?'PREÇO AO VENCER · AGUARDANDO':'PREÇO FUTURO AO VENCER')}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedExitPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
-                <span style="color:${callTone}">${tr(nowMode?'PRAZO':'JANELA')} ${durationText} · ${tr(nowMode?(opportunityPhase==='fired'?'EM ANDAMENTO':'ANALISANDO AGORA'):'ENTRADA')} ${nowMode?'':tr(opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE')}</span>
+                <span style="color:${callTone}">${tr(nowMode?'PRAZO':'JANELA')} ${durationText} · ${tr(nowMode?(opportunityPhase==='fired'?'EM ANDAMENTO':'ANALISANDO'):'ENTRADA')} ${nowMode?'':tr(opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE')}</span>
                 <span style="color:${putTone}">${tr('PERÍODO APÓS')} ${entryPlanReady?Number(pinnedEntry.holdingSeconds)+'s':'—'}</span>
                 <span style="font-size:9px;font-weight:600;color:${muted};overflow:hidden;text-overflow:ellipsis">${tr(liveNow?'AO VIVO':'COTAÇÃO ATRASADA')}</span>
               </div>
@@ -2020,7 +2058,7 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;gap:8px;min-width:0;padding-top:3px">
               <span style="width:9px;height:9px;border-radius:999px;background:#7ce9c1;box-shadow:0 0 14px rgba(124,233,193,.52);flex:0 0 auto"></span>
               <div>
-                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.4.67.27')}</span></div>
+                <div style="font-size:13.5px;font-weight:750;letter-spacing:.105em;color:${ink}">SENTINEL <span class="sentinel-metal-gold" style="font-weight:700">V${esc(d.agentVersion||'13.9.12')}</span></div>
                 <div style="font-size:9.5px;font-weight:720;color:${muted};margin-top:2px">${tr('painel premium de análise')}</div>
               </div>
             </div>
@@ -2206,14 +2244,22 @@ export class LocalPlaywrightDriver{
               target>issued&&(target>nowClock||verifiedNow);
             const nowAnalysisMode=pane.getAttribute('data-mode')==='now';
             if(cycleStatus)cycleStatus.textContent=tr(nowAnalysisMode?
-              (target>nowClock?'ATÉ O VENCIMENTO':'ANALISANDO AGORA'):
+              (target>nowClock?'ATÉ O VENCIMENTO':'ANALISANDO'):
               (verifiedNow?'MOMENTO CONFIRMADO':'ATÉ ENTRADA CALCULADA'));
-            const decision=pane.closest('[data-sentinel-card="vnext"]')?.querySelector('[data-sentinel-scenario-action]');
+            const action=pane.closest('[data-sentinel-card="vnext"]')?.querySelector('[data-sentinel-scenario-action]');
+            const decision=action?.querySelector('[data-sentinel-decision-label]')||action;
+            const spinner=action?.querySelector('[data-sentinel-analysis-spinner]');
+            if(spinner){
+              spinner.style.display=nowAnalysisMode&&!active?'inline-block':'none';
+              const data=window.__sentinelLastOverlayData;
+              const age=nowClock-Number(data?.vnext?.nowObservation?.evaluatedAt||0);
+              spinner.dataset.active=data?.state==='running'&&pane.getAttribute('data-live-quote')==='1'&&age>=0&&age<5000?'1':'0';
+            }
             // A finished receipt is no longer an active prediction. Never
             // freeze the computer at 00:00 while the next observation arrives.
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
-              decision.textContent=tr(nowAnalysisMode?'ANALISANDO AGORA':
+              decision.textContent=tr(nowAnalysisMode?'ANALISANDO':
                 phase==='cancelled'?'JANELA SEM ENTRADA':
                 phase==='fired'?'ENTRADA JÁ SINALIZADA':'JANELA ABERTA · ANALISANDO');
             }
@@ -2221,7 +2267,7 @@ export class LocalPlaywrightDriver{
               const side=String(pane.getAttribute('data-side')||'');
               decision.textContent=tr(side==='CALL'?'ENTRADA AGORA · ↑ CALL':
                  side==='PUT'?'ENTRADA AGORA · ↓ PUT':
-                 nowAnalysisMode?'ANALISANDO AGORA':'JANELA ABERTA · ANALISANDO');
+                 nowAnalysisMode?'ANALISANDO':'JANELA ABERTA · ANALISANDO');
             }
             let shown='—:—';
             if(active){
