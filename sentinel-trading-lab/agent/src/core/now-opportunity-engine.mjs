@@ -148,12 +148,49 @@ function completedRangeStructure(quotes,now,noise,spot){
    'irregular-range-awaiting-current-turn'};
 }
 
+// RESEARCH ONLY: detect a confirmation arriving as the observable live impulse
+// exhausts. This measures only broker quotes already seen, never future candles.
+export function observedImpulsePhase({quoteHistory=[],quoteAt=null,price=null,side=null}={}){
+ const time=Number(quoteAt),spot=Number(price),direction=side==='CALL'?1:side==='PUT'?-1:0;
+ if(!(time>0&&spot>0&&direction))return {exhausted:false,reason:'invalid'};
+ const rows=causalQuotes(quoteHistory,time).filter(q=>q.ts<=time);
+ if(!rows.length||rows.at(-1).ts!==time)return {exhausted:false,reason:'insufficient'};
+ const p2=before(rows,time-2000,1500),p4=before(rows,time-4000,1500);
+ const p8=before(rows,time-8000,1500);
+ if(!p2||!p4||!p8)return {exhausted:false,reason:'insufficient'};
+ const latest=direction*Math.log(spot/p2.price);
+ const preceding=direction*Math.log(p2.price/p4.price);
+ const previousFour=direction*Math.log(p4.price/p8.price)/2;
+ const maximumEarlier=Math.max(preceding,previousFour);
+ const noise2=observedNoise({quotes:rows,now:time,horizonSeconds:2})||0;
+ // A move is aging if the last 2s has under 35% of the preceding
+ // directional speed, while the preceding surge exceeded observed noise.
+ // The test does not wait for a later quote or assume the next bar direction.
+ const matureSurge=maximumEarlier>Math.max(noise2*.15,1e-7);
+ const exhausted=matureSurge&&(latest<=0||latest<maximumEarlier*.35);
+ return {exhausted,reason:exhausted?'late-impulse-exhaustion':'impulse-not-exhausted',
+   recent2s:latest,prior2s:preceding,prior4sRate:previousFour};
+}
+
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline'}={}){
  // Offline research only. The deployed motor always uses qualityPolicy=baseline.
  // First make the production decision, then evaluate whether a specialist's
  // causal evidence and the observed swing duration justify 30/60s holds.
  // NEVER wait for future data to decide a signal at the current timestamp.
+ if((qualityPolicy==='phase-aware'||qualityPolicy==='regime-plus-phase')&&engineId==='automatic'){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const base=analyzeNowOpportunity({...input,engineId:'automatic',
+    qualityPolicy:qualityPolicy==='regime-plus-phase'?'regime-verification':'baseline'});
+  if(!base.ready)return base;
+  if(base.regime!=='observed-range-turn'){
+   const phase=observedImpulsePhase({...input,side:base.side});
+   if(phase.exhausted)return {...base,ready:false,side:null,entryPrice:null,
+     qualityPolicy,reason:'late-impulse-exhaustion',impulsePhase:phase};
+   return {...base,qualityPolicy,impulsePhase:phase};
+  }
+  return {...base,qualityPolicy};
+ }
  if(qualityPolicy==='regime-verification'&&engineId==='automatic'){
   const input={quoteHistory,price,quoteAt,now,durationMs};
   const base=analyzeNowOpportunity({...input,engineId:'automatic'});
