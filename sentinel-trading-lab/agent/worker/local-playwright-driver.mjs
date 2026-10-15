@@ -2228,10 +2228,10 @@ export class LocalPlaywrightDriver{
             // The SELECTED clock must change the MAIN readout, not merely
             // the little footer. It remains read-only: never drive the
             // opportunity window or a trade from the broker purchase cutoff.
-            const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker';
+            const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker'&&!nowAnalysisMode;
             const view=window.__sentinelLastOverlayData?.brokerClockView||null;
             const brokerStatus=pane.querySelector('[data-sentinel-broker-clock-status]');
-            if(brokerMode&&!nowAnalysisMode){
+            if(brokerMode){
               const age=nowClock-Number(view?.capturedAt||0);
               const verified=view?.verified===true&&age>=0&&age<=4500;
               const pad=n=>String(n).padStart(2,'0');
