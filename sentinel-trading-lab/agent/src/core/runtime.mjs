@@ -79,7 +79,7 @@ export class DemoTradingRuntime{
     this.feed=new SimulatedFeed({seed,start:1.084});this.feed.warmup(140);
     this.broker=new DemoBrokerAdapter({balance,payout});
     this.audit=new AuditLog();
-    this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.lastHeartbeat=Date.now();
+    this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.immediateEvaluationSerial=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
       mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,uiLanguage:'pt',clockMode:'current',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:60_000,forecastHorizonSeconds:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
@@ -91,7 +91,7 @@ export class DemoTradingRuntime{
     this.externalMarket=null;this.executionBroker=null;
   }
   setExecutionBroker(broker=null){this.executionBroker=broker||null;return this}
-  requestImmediateEvaluation(){if(this.stateName==='running')this.nextEvalMs=0;return this}
+  requestImmediateEvaluation(){if(this.stateName==='running'){this.immediateEvaluationSerial++;this.nextEvalMs=0}return this}
   setExternalMarket(market=null){
     if(!market){this.externalMarket=null;return this}
     const incomingAsset=String(market.symbol||market.uiSymbol||'').trim().toUpperCase();
@@ -1216,6 +1216,9 @@ export class DemoTradingRuntime{
     // status object twice; API callers retain the exact previous return value.
     const reply=()=>skipStatus?this.lastResult:this.status();
     const evaluationStartedAt=Date.now();
+    // Remember requests made AFTER this evaluation started. A new broker quote
+    // must not be lost when the current slow evaluation writes nextEvalMs.
+    const requestSerialAtStart=this.immediateEvaluationSerial;
     this.lastHeartbeat=now;this._settleDue(now);if(this.stateName!=='running')return reply();
     const sessionTrades=Math.max(0,this.trades.length-Math.max(0,Number(this.state.sessionTradeStartCount||0))),sessionLimit=Math.max(1,Number(this.settings.risk.maxTradesPerSession||10));
     this.settings.demoAutopilot=false;
@@ -1229,7 +1232,7 @@ export class DemoTradingRuntime{
     // waiting 15/30 seconds for the old scheduler to wake up.
     const liveContinuous=!!this.settings.engine&&this.settings.forecastMode!=='selective';
     if(liveContinuous&&this.nextEvalMs>now+1000)this.nextEvalMs=now;
-    if(now<this.nextEvalMs)return reply();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={asset:this.settings.asset,action:'WAIT',analysis:{asset:this.settings.asset,side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return reply()}if(!this.externalMarket)this.feed.tick(now);
+    if(now<this.nextEvalMs)return reply();const market=this._marketSnapshot();if(market.waitingLive){this.lastResult={asset:this.settings.asset,action:'WAIT',analysis:{asset:this.settings.asset,side:'WAIT',confidence:0,reasons:['Aguardando candles atuais do mesmo ativo da tela.']},reasons:['Aguardando candles atuais do mesmo ativo da tela.'],plan:signalPlan({analysis:{side:'WAIT',confidence:0},settings:this.settings,price:market.price,now})};this.lastEvalMs=now;this.nextEvalMs=this.immediateEvaluationSerial!==requestSerialAtStart?0:nextEvaluation(now,Math.min(Number(this.settings.schedule.intervalMs||15000),5000),now);return reply()}if(!this.externalMarket)this.feed.tick(now);
     try{
       const snap=this._marketSnapshot();const feed={snapshot:()=>snap};const liveAttached=!!this.externalMarket?.provider;
       const brokerMode=String(this.externalMarket?.brokerMode||this.externalMarket?.mode||'').toLowerCase();
@@ -1261,7 +1264,7 @@ export class DemoTradingRuntime{
       this.pipelineTimings={analysisMs:Math.max(0,Date.now()-evaluationStartedAt),
         quoteAgeAtDecisionMs:snap.quoteTs?Math.max(0,Date.now()-Number(snap.quoteTs)):null,
         quoteAt:snap.quoteTs||null,completedAt:Date.now()};
-      this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=nextEvaluation(now,
+      this.lastResult=result;this.lastEvalMs=now;this.nextEvalMs=this.immediateEvaluationSerial!==requestSerialAtStart?0:nextEvaluation(now,
         liveContinuous?1000:this.settings.schedule.intervalMs,now);
       if(result.analysis)this.analyses.unshift(this._compactAnalysis({ts:iso(now),asset:this.settings.asset,...result.analysis,latency:result.latency}));this.analyses=this.analyses.slice(0,180);
       if(result.action==='DEMO_ORDER'){
