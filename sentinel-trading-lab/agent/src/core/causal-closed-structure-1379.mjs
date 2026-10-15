@@ -152,7 +152,13 @@ function structureMove(p,seconds){
  const previous=bars.slice(3,6).map(x=>Math.abs(x));
  const last=bars.slice(-3).map(x=>Math.abs(x));
  const avg=arr=>arr.reduce((s,v)=>s+v,0)/arr.length;
- const exhaustion=aligned&&avg(last)<avg(previous)*.60?.63:1;
+ // Smooth fatigue from COMPLETED blocks only. At unchanged momentum the
+ // persistent-trend forecast is bit-identical. A moderate taper gets a
+ // proportional smaller projected continuation instead of a sharp step
+ // exactly at 60% of the earlier bar size. Never vetoes or flips a signal.
+ const taperRatio=avg(last)/Math.max(1e-12,avg(previous));
+ const taper=clamp((.85-taperRatio)/.25,0,1);
+ const exhaustion=aligned?1-.37*taper:1;
  // The old exp(-h/40) flattened even an uninterrupted, efficient trend:
  // entry -> expiry became nearly zero at the 60s/120s horizons. Extend the
  // horizon ONLY when completed blocks independently show persistence.
