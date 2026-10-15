@@ -1,6 +1,8 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "Contexto observado pelo Automático": "Chart context observed by Automatic",
+
   "Sugestão: Fibonacci Retest + Trend Following; use Smart Confluence separadamente (validar em DEMO).": "Suggestion: Fibonacci Retest + Trend Following; use Smart Confluence separately (validate in DEMO).",
   "Estratégias de mesma família; prefira combinar com Fibonacci Retest ou Trend Following.": "Strategies from the same family; consider Fibonacci Retest or Trend Following instead.",
 
