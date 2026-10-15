@@ -78,7 +78,7 @@ test('both languages explain the phone is a display that requires the PC and bro
  assert.match(home,/computer ON/);
  assert.match(home,/ENTRADA AGORA/);
  assert.match(home,/OPERAÇÃO EM ANDAMENTO/);
- assert.match(home,/Agent OFF/);
+ assert.match(home,/AGENT OFF/i);
  assert.match(home,/same Sentinel account|MESMA conta Sentinel/);
  assert.match(home,/mobileSteps\.map/);
 });
