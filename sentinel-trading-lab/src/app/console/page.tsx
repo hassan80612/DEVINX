@@ -5,14 +5,16 @@ import {LiveScenarioCard} from '../../components/LiveScenarioCard';
 import {ActiveBrowserSession} from '../../components/ActiveBrowserSession';
 import {LanguageSwitcher,T,useSentinelLocale} from '../../components/SentinelLocale';
 import {watchSignedLiveAnalyst} from '../../lib/signed-live-analyst-channel';
+import agentRelease from '../../../agent/release.json';
 import {acceptSignedPcFrame,keepNewerVerifiedQuote,keepSignedViewOverCloud,reconcileSignedAnalystDisplay,reconcileCloudPcOpportunity} from '../../lib/signed-pc-window-order.mjs';
 
 type Status=any;
-// Website version and installed Windows Agent are distinct releases.
-// 13.7 website and Windows Agent must be installed together for the structural entry correction.
-const WEB_RELEASE_VERSION='13.8.9';
-const AVAILABLE_AGENT_VERSION='13.8.9';
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-Windows.exe?v=13.8.9`;
+// The site's AVAILABLE version comes from the release packaged in this
+// deployment. The INSTALLED Windows Agent version still comes only from its
+// authenticated worker/manager status and may legitimately be older.
+const WEB_RELEASE_VERSION=agentRelease.version;
+const AVAILABLE_AGENT_VERSION=agentRelease.version;
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-Windows.exe?v=${encodeURIComponent(AVAILABLE_AGENT_VERSION)}`;
 const tabDefs=[
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
   {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia de previsão.'},
