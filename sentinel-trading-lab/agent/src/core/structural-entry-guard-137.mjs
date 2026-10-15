@@ -77,6 +77,26 @@ export function guardOpeningCandidate({candidate,snap={},settings={},now=Date.no
   evidence.reason==='three-closed-candles-aligned'?
    'candidate-conflicts-with-closed-candles':evidence.reason,evidence,expiry};
 }
+// Use the same complete 5s bars as the legacy guard, but align them to the
+// FIRST actual signal quote if the CALL/PUT was admitted after the fixed
+// countdown had already begun. Prices from before the side existed cannot
+// be proof of a subsequent reversal. This is not a new entry veto/delay.
+function admittedClosedBars(quotes,now,admittedAt,count=2){
+ const ms=5000,complete=Math.floor((now-admittedAt)/ms);
+ if(complete<count)return null;
+ const end=admittedAt+complete*ms,rows=[];
+ for(let i=count;i>0;i--){
+  const from=end-i*ms,to=from+ms;
+  const q=quotes.filter(x=>x.ts>=from&&x.ts<to);
+  const edge=Math.min(8000,ms*.45),maxGap=Math.min(8000,ms*.8);
+  if(q.length<2||q[0].ts-from>edge||to-q.at(-1).ts>edge+1000||
+    q.some((v,j)=>j>0&&v.ts-q[j-1].ts>maxGap))return null;
+  rows.push({from,to,open:q[0].price,close:q.at(-1).price,
+    high:Math.max(...q.map(x=>x.price)),low:Math.min(...q.map(x=>x.price)),
+    samples:q.length});
+ }
+ return rows;
+}
 export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  if(window?.phase!=='open'||!isSide(window.side))return {invalidated:false,reason:'not-open'};
  // 'openedAt' is the original CLOCK-cycle start, not necessarily when
@@ -88,7 +108,10 @@ export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  if(!(ts>0&&ts<=now&&now-ts<=2500&&openAt>0))return {invalidated:false,reason:'missing-fresh-quote'};
  const history=quotesUntil(snap.quoteHistory,now),q=history.filter(x=>x.ts>=openAt);
  // Two completed 5s bars after the original opportunity opened.
- const bars=closedBars(q,now,5,2);
+ const cycleAt=Number(window.openedAt||window.windowStartedAt||0);
+ const lateAdmission=Number(window.admittedAt)>cycleAt;
+ const bars=lateAdmission?admittedClosedBars(q,now,openAt,2):
+   closedBars(q,now,5,2);
  if(!bars||bars[0].from<openAt)return {invalidated:false,reason:'waiting-closed-reversal-bars'};
  const against=window.side==='PUT'?1:-1;
  const moves=bars.map(b=>Math.log(b.close/b.open));
