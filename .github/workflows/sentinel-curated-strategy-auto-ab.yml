@@ -18,8 +18,10 @@ jobs:
       - name: Compare Automatic 30/60 second strategies to current production
         run: node tests/sentinel-strategy-auto-context-ab.mjs
       - name: Regression and strategy user interface
-        run: node --test tests/sentinel-13915-one-pass.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-shared-base-v2.test.mjs
+        run: node --test tests/sentinel-five-strategies-mobile-guide.test.mjs tests/sentinel-13915-one-pass.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-shared-base-v2.test.mjs
       - name: Install website dependencies
         run: npm install --prefix sentinel-trading-lab --no-audit --no-fund
+      - name: Parse real Windows overlay script
+        run: node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
       - name: Typecheck translated strategy and mobile guide
         run: cd sentinel-trading-lab && npx tsc --noEmit
