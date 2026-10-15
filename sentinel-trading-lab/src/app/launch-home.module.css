@@ -26,3 +26,23 @@
 @media(prefers-reduced-motion:reduce){.buy{transition:none}}
 
 .devinxButton{display:inline-flex;align-items:center;gap:14px;margin-top:18px;padding:11px 16px;border:1px solid #8e865c;border-radius:9px;color:#e9d498;background:#ffffff05;font-size:12px;font-weight:700;min-height:44px}.devinxButton:hover{background:#d8b87314;border-color:#d8b873}.devinxButton:focus-visible{outline:2px solid #e5c680;outline-offset:3px}
+
+.mobileGuide{margin:26px 0 30px;padding:25px;border:1px solid #426a5a;border-radius:16px;background:linear-gradient(130deg,#0c2829,#0a1f24);color:#f6f1df}
+.mobileGuideIntro h2{font-size:clamp(20px,2.4vw,28px);margin:0 0 9px;color:#f2d995}
+.mobileGuideIntro p{font-size:13px;line-height:1.65;max-width:880px;color:#bfd1c4;margin:0 0 14px}
+.mobileGuideMust{display:block;padding:13px 15px;border-left:4px solid #dab66b;background:#18322f;border-radius:6px;color:#f5e9cc;font-size:13px;line-height:1.6}
+.mobileGuideGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:21px 0 23px}
+.mobileGuideStep{display:flex;align-items:flex-start;gap:12px;padding:16px;border:1px solid #34584d;background:#0a2326;border-radius:10px}
+.mobileGuideStep>span{font-size:17px;font-weight:850;color:#dfbf81;min-width:25px}
+.mobileGuideStep h3{font-size:13px;color:#f7f0df;margin:0 0 6px}
+.mobileGuideStep p{font-size:12px;color:#b3c9be;line-height:1.65;margin:0}
+.mobileGuideChecklist{padding:17px;border:1px solid #48685a;border-radius:12px;background:#102b29}
+.mobileGuideChecklist h3{font-size:15px;color:#f2d995;margin:0 0 14px}
+.mobileGuideChecklist>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mobileGuideChecklist article{border-left:2px solid #bda771;padding-left:11px}
+.mobileGuideChecklist b{font-size:11px;color:#f7e6b6}
+.mobileGuideChecklist p{font-size:11px;line-height:1.5;color:#b6cbbb;margin:5px 0 0}
+.mobileGuideFooter{font-size:12px;color:#c6d7cb;line-height:1.65;margin:16px 0}
+.mobileGuideLink{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border-radius:9px;padding:11px 17px;background:#dabb7c;color:#132a27;font-weight:800;font-size:12px}
+.mobileGuideLink:hover{filter:brightness(1.07)}
+@media(max-width:700px){.mobileGuide{padding:18px 14px}.mobileGuideGrid,.mobileGuideChecklist>div{grid-template-columns:1fr}.mobileGuideMust{font-size:12px}.mobileGuideStep{padding:12px}.mobileGuideChecklist{padding:14px}}
