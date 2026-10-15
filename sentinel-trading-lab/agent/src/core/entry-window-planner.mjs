@@ -14,7 +14,7 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
  now=Date.now(),engineId='automatic',asset='UNKNOWN',forecastMode='continuous',
  // The currently running fixed opportunity, when supplied, is the true
  // deadline. Do not plan an entry in a new floating now+H interval.
- realWindowEndsAt=null,confirmationQuoteGapMs=0,lateEntryRisk=0,
+ realWindowEndsAt=null,confirmationQuoteGapMs=0,
  evaluateLead=()=>null}={}){
  const deadline=Number(realWindowEndsAt);
  const headroom=Math.max(0,Number(confirmationQuoteGapMs)||0);
@@ -40,10 +40,9 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
   if(!Number.isFinite(raw)||raw<=0)continue;
   // Only qualified, mutually consistent interval forecasts enter this pool.
   // There is no artificial minimum number of candles or time spent scanning.
-  // In an evidenced mature streak, prefer comparably strong entries sooner.
- // This is a preference, NOT a ban on late entries or strong trends.
- const timingPenalty=.018+.14*Math.max(0,Math.min(1,Number(lateEntryRisk)||0));
- const score=raw-timingPenalty*seconds/windowSeconds;
+  // Prefer equally qualified earlier instants without an extra penalty
+  // tied to candle count, exhaustion score or waiting period.
+  const score=raw-.018*seconds/windowSeconds;
   valid.push({...c,score,seconds});
  }
  if(!valid.length)return base;
