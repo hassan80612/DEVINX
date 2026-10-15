@@ -1,6 +1,7 @@
 import {priorCandleReaction} from './prior-candle-reaction.mjs';
 import {completedStreakStage} from './completed-streak-stage.mjs';
 import {rangePhaseMove} from './range-phase-trajectory-experimental.mjs';
+import {terminalTrendCurvature} from './terminal-trend-curvature-1396.mjs';
 // Sentinel 13.7.9 candidate — causal completed-structure forecast.
 // Direction derives from non-overlapping COMPLETED 10s blocks. The latest
 // forming block is used only as today's reference price, not a direction vote.
@@ -171,7 +172,10 @@ function structureMove(p,seconds){
  const reverting=(p.regime==='range'?.15+.35*extremity:.08)*(mean-lastClosed)*
   (1-Math.exp(-h/40));
  const cap=Math.max(1e-10,p.sigma*Math.sqrt(Math.max(1,h))*2.4);
- const baseline=clamp(drift+reverting,-cap,cap);
+ const terminalCurvature=terminalTrendCurvature({bars,
+  persistentTrend:p.persistentTrend,regime:p.regime,priorSign:p.priorSign,
+  sigma:p.sigma,horizonSeconds:h});
+ const baseline=clamp(drift+reverting+terminalCurvature,-cap,cap);
  // Only the range case can bend within the entry-to-expiry horizon.
  // Trend and confirmed reversal return EXACTLY the previous estimate.
  return p.regime==='range'?rangePhaseMove({points:p.points,
