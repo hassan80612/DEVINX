@@ -1,6 +1,16 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "Qual estratégia usar em cada gráfico?": "Which strategy suits each chart?",
+  "Quando usar: se você ainda não sabe se o gráfico está em tendência, retração ou região de reação; o Sentinel escolhe o contexto observado.": "When to use: when you are unsure whether the chart is trending, retracing, or reacting near a price level; Sentinel selects the observed market context.",
+  "Quando usar: retrações após uma tendência clara, com reação perto dos níveis de Fibonacci.": "When to use: pullbacks after a clear trend, with price reacting near Fibonacci levels.",
+  "Quando usar: tendência definida, com máximas e mínimas na mesma direção.": "When to use: a well-defined trend with highs and lows moving in the same direction.",
+  "Quando usar: preço perto de uma zona testada de suporte ou resistência, com reação visível.": "When to use: price is near a previously tested support or resistance zone, with a visible reaction.",
+  "Quando usar: gráfico com tendência e níveis relevantes alinhados; prefira contexto técnico claro.": "When to use: a chart where trend and key price levels align; use a clear technical context.",
+  "Suporte / Resistência": "Support / Resistance",
+  "Quando usar": "When to use",
+  "Fibonacci Retest": "Fibonacci Retest",
+
   "Preço atual": "Current price",
   "Estratégia ativa": "Active strategy",
   "Estratégia responsável pela análise": "Strategy responsible for the analysis",
