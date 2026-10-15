@@ -1,13 +1,13 @@
 {
-  "version": "13.9.7",
-  "build": "13.9.7-now-entry-one-shot-expiry",
+  "version": "13.9.8",
+  "build": "13.9.8-closed-range-turn-now-entry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.9.7-now-entry-contract-and-lateral-regressions;180-second-declining-quote-fixture-3-of-3-30s-nonrepresentative;real-broker-outcomes-not-validated",
+    "modelValidation": "13.9.8-causal-range-regime-simulation-holdout-trend-preservation;real-broker-settlements-not-validated",
     "forecastModel": "now-structural-v1"
   }
 }
