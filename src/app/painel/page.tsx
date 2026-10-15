@@ -20,7 +20,16 @@ export default async function PainelPage(){
   ]);
 
   const access=Array.isArray(accessData)?accessData[0]:accessData;
-  if(accessError||!access?.allowed)redirect('/entrar?acesso=expirado');
+  // An unavailable access RPC is a service failure, never a subscription denial.
+  // Do not send a paying user back to login as if their access had expired.
+  if(accessError||!access){
+    return <main style={{maxWidth:680,margin:'10vh auto',padding:28}}>
+      <h1>Financeiro temporariamente indisponível</h1>
+      <p>Não foi possível verificar seu acesso ao DevinX. Sua assinatura não foi alterada. Aguarde alguns instantes e tente novamente.</p>
+      <a href="/painel">Tentar novamente</a>
+    </main>;
+  }
+  if(!access.allowed)redirect('/entrar?acesso=expirado');
   if(profileError)throw profileError;
   if(!profile?.onboarded_at)redirect('/onboarding');
 
