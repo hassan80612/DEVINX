@@ -105,3 +105,25 @@ test('original one-window side and expiry still immutable; no opposite signal in
  assert.equal(response.side,'PUT');
  assert.equal(response.entryAt,at+17000);
 });
+
+test('proof of indistinguishable histories: opposite future outcomes share all quotes at decision time',()=>{
+ let pairs=0,oppositeOutcomes=0;
+ for(const side of ['PUT','CALL'])for(let n=0;n<60;n++){
+  const a=build('pullback-then-continue',side,n),b=build('early-reversal',side,n);
+  const due=a.opening+17000;
+  const knownA=a.rows.filter(q=>q.ts<=due);
+  const knownB=b.rows.filter(q=>q.ts<=due);
+  assert.deepEqual(knownA,knownB,'not possible to distinguish outcomes from identical past');
+  const exit=due+30000;
+  const direction=rows=>{
+   const entry=rows.find(q=>q.ts===due).price;
+   const atExpiry=rows.find(q=>q.ts===exit).price;
+   return atExpiry>entry?'CALL':'PUT';
+  };
+  pairs++;oppositeOutcomes+=Number(direction(a.rows)!==direction(b.rows));
+ }
+ console.log('[1394 REVERSAL causal indistinguishable pairs] '+JSON.stringify({
+  pairs,oppositeOutcomes,decisionTimestampSame:true,
+  meaning:'a deterministic causal classifier cannot distinguish these two futures by the decision time'}));
+ assert.equal(oppositeOutcomes,pairs);
+});
