@@ -462,7 +462,12 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       nextEval:next,
       realtime:true,
       analysisTransient:held.transient,
-      analysisStale:!view.liveBroker||view.liveBroker.analysisFeedValidated===false||(view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false)||quoteStale,
+      // The NOW engine requires authenticated live quotes, NOT historical
+      // candle validation. The visual state must obey the same source gate.
+      analysisStale:!view.liveBroker||quoteStale||(a.vnext?.mode==='now'
+        ?view.liveBroker.quoteFeedValidated!==true
+        :(view.liveBroker.analysisFeedValidated===false||
+          (view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false))),
       liveAgeMs:liveTs>0?Math.max(0,Date.now()-liveTs):null,
       analysisAgeMs:view.lastEvalMs?Math.max(0,Date.now()-Number(view.lastEvalMs)):null,
       durationMs:view.settings?.orderDurationMs||60000,
@@ -479,7 +484,7 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
     }
   }
   if(Date.now()-lastPersistAt>=5000){lastPersistAt=Date.now();await saveState()}
-}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,400).unref();
+}catch(e){console.error('worker_loop_error',e)}finally{busy=false}}setInterval(loop,200).unref();
 function brokerStatuses(){return Object.fromEntries(Object.entries(brokers).map(([k,v])=>[k,{...v.status(),marketData:driver.liveStatus?.(k)||null}]))}
 async function status(){if(activeProvider&&brokers[activeProvider]?.connected)brokers[activeProvider].refreshFromLive?.();const chosen=syncRuntimeMarket();const base=await runtime.status();const provider=chosen?.k||null,live=chosen?.m||null;
   return{...base,marketJournal:{...marketJournal.status(),enabled:recordMarketJournal},agentVersion:VERSION,liveTopic,liveSignatureKey,remoteRelay:{...remoteRelay.info},runtimeKind:'persistent-worker',browserDriver:{configured:driver.available,type:driver instanceof LocalPlaywrightDriver?'system-browser-playwright':'remote-http',overlayPerformance:overlayUpdates.metrics()},
