@@ -32,7 +32,7 @@ test('every guidance message has an English translation, with PT still the origi
 test('mobile and PC display the same public strategy catalog and expandable explanations',()=>{
  const mobile=readFileSync('sentinel-trading-lab/src/components/LiveScenarioCard.tsx','utf8');
  const pc=readFileSync('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
- assert.match(mobile,/PUBLIC_STRATEGY_IDS\.includes\(e\.id\)/);
+ assert.match(mobile,/PUBLIC_STRATEGY_IDS\.some\(id=>id===e\.id\)/);
  assert.match(mobile,/STRATEGY_CHOICES\.map\(e=>/);
  assert.match(mobile,/data-testid="strategy-when-to-use"/);
  assert.match(pc,/payload\.publicStrategies=STRATEGY_CHOICES/);
