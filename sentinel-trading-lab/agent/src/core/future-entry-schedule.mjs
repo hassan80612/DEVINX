@@ -8,7 +8,6 @@ import {autonomousSelectiveEntry} from './selective-autonomous.mjs';
 import {coherentInterval,observedNoise} from './forward-direction-quality.mjs';
 import {planEntryWindow} from './entry-window-planner.mjs';
 import {oppositeTurnPressure} from './turn-pressure.mjs';
-import {observedStreakRejection} from './completed-streak-stage.mjs';
 
 // A future-entry prediction is NOT the price direction from now to entryAt.
 // It is the conditional price move from estimated ENTRY price at now + H
@@ -171,7 +170,6 @@ function continuousWindow({input,settings,chosen}){
   engineId,asset,forecastMode:'continuous',
   realWindowEndsAt:window?Number(window.windowEndsAt):null,
   confirmationQuoteGapMs,
-  lateEntryRisk:causal?.streakStage?.lateRisk||0,
   evaluateLead:seconds=>{
    // A qualified prediction is not tradable after the broker's observed
    // purchase deadline. This is only active in synchronized-clock mode.
@@ -191,8 +189,6 @@ function continuousWindow({input,settings,chosen}){
      // not an arbitrary candle-count or waiting time.
      noiseFraction:.35});
    if(!check.qualified)return null;
-   // Streak alone never rejects a strong trend; verified live retreat can.
-   if(observedStreakRejection({stage:causal?.streakStage,side:check.side}))return null;
    return {side:check.side,projectedEntryPrice:first,projectedExitPrice:last,
     selectionStrength:Math.min(3,Math.abs(check.relativeMove)/
       Math.max(actualNoise||1e-12,1e-12))};
@@ -323,14 +319,10 @@ export function confirmWindowEntry({
   const actualNoise=observedNoise({quotes,now,horizonSeconds:exitLead-lead})||noise;
   const check=coherentInterval({entryPrice:entry,exitPrice:exit,noise:actualNoise,
    noiseFraction:.35});
-  const observedRejection=check.qualified?
-    observedStreakRejection({stage:causal?.streakStage,side:check.side}):null;
-  return {...check,qualified:check.qualified&&!observedRejection,
-    side:check.qualified&&!observedRejection?check.side:null,
+  return {...check,side:check.qualified?check.side:null,
     projectedEntryPrice:entry,projectedExitPrice:exit,
     ...(fixedExpiry.verified?{brokerExpiresAt:fixedExpiry.expiresAt}:{}),
-    status:observedRejection?'observed-streak-rejection':
-      check.qualified?'causal-future-interval':causal.status};
+    status:check.qualified?'causal-future-interval':causal.status};
  }
  if(engineId==='automatic'&&
    ['adaptive-direct-trajectory-v1','selected-strengths-67.5'].includes(forecastModel)){
