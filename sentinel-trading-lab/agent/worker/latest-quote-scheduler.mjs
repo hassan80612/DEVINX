@@ -1,6 +1,8 @@
 // Coalesce bursts while guaranteeing that the last received quote is evaluated.
+// Keep the analysis receipt close to its source tick; the 200ms pacing added
+// avoidable entry latency even after the broker had already sent a fresh tick.
 export class LatestQuoteScheduler {
-  constructor({evaluate,isBusy=()=>false,isRunning=()=>true,intervalMs=200}) {
+  constructor({evaluate,isBusy=()=>false,isRunning=()=>true,intervalMs=80}) {
     Object.assign(this,{evaluate,isBusy,isRunning,intervalMs});this.pending=false;this.timer=null;this.lastAt=0;this.evaluating=false;
   }
   request(){this.pending=true;this.schedule();}
