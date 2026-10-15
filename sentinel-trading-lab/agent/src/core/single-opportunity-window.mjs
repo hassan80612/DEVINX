@@ -37,7 +37,7 @@ export function evolveOpportunity({
     return {...candidate,context:key,phase:'open',reason:'awaiting-entry',
      openedAt:old.windowStartedAt,windowStartedAt:old.windowStartedAt,
      windowEndsAt:old.windowEndsAt,candidateQuoteAt:Number(quoteAt),
-     entryReadyNow:false,entryTriggeredAt:null};
+     admittedAt:Number(quoteAt),entryReadyNow:false,entryTriggeredAt:null};
    return {...old,entryReadyNow:false};
   }
   // No second CALL NOW, PUT NOW, or opposite-direction replacement, even
@@ -102,7 +102,7 @@ export function evolveOpportunity({
  if(sourceInNewCycle&&validCandidate()&&Number(candidate.entryAt)<end)
   return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
    openedAt:started,windowStartedAt:started,windowEndsAt:end,
-   candidateQuoteAt:Number(quoteAt),entryReadyNow:false,entryTriggeredAt:null};
+   candidateQuoteAt:Number(quoteAt),admittedAt:Number(quoteAt),entryReadyNow:false,entryTriggeredAt:null};
  return {context:key,phase:'scanning',reason:fresh?'scanning':'waiting-fresh-quote',
   engineId:String(settings.engine||'automatic'),
   asset:String(settings.asset||'UNKNOWN').toUpperCase(),
