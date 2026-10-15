@@ -16,7 +16,7 @@ jobs:
       - name: Install existing agent dependencies
         run: npm install --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund
       - name: Validate automatic ownership, range and expiry regression
-        run: node --test tests/sentinel-automatic-single-owner-root.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-1398-range-structure-regression.test.mjs
+        run: node --test tests/sentinel-automatic-single-owner-root.test.mjs tests/sentinel-impulse-phase-research.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-1398-range-structure-regression.test.mjs
       - name: Compare candidate and baseline signals chronologically 30s 60s
         run: node tests/sentinel-auto-horizon-quality-ab.mjs
       - name: Typecheck isolated user interface
