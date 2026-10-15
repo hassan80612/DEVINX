@@ -3,7 +3,6 @@
 // Closed bars decide the structural side; fresh live quotes confirm NOW.
 import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
-import {sharedMarketBase} from './shared-market-base.mjs';
 import {causalPatternDirection} from './causal-pattern-direction.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
@@ -152,35 +151,24 @@ function completedRangeStructure(quotes,now,noise,spot){
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline'}={}){
- if(['pattern-v1','pattern-v2','pattern-v3','pattern-v4','pattern-v5'].includes(qualityPolicy)&&engineId){
+ // A SINGLE common market-base decides the direction for every strategy.
+ // 30s may learn from already-closed 30s outcome analogues; 60s conserves
+ // the original causal structural decision while its local samples are sparse.
+ // No selector votes or second timed confirmation can delay an entry.
+ if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
-  const original=analyzeNowOpportunity({...input,engineId:'automatic'});
-  const pattern=causalPatternDirection(input);
-  // Strategy selection changes context, never creates a second signal owner.
-  // The causal model may replace the base direction, not suppress its entry.
-  const choosePattern=qualityPolicy==='pattern-v1'?true:
-   qualityPolicy==='pattern-v2'?pattern.strength>=.4:
-   qualityPolicy==='pattern-v3'?pattern.strength>=(durationMs===60000 ? 0.75 : 0.4):
-   qualityPolicy==='pattern-v4'?pattern.strength>=(durationMs===60000 ? 0.9 : 0.4):
-   qualityPolicy==='pattern-v5'?(durationMs===30000?pattern.strength>=.4:
-    (pattern.strength>=.60&&original.reason==='closed-range-extreme-reversal-confirmed')):false;
-  if(pattern.ready&&choosePattern)
-   return {...original,...pattern,engineId,qualityPolicy,
-    reason:'past-observed-holding-outcomes',expirySeconds:durationMs/1000,
-    contextStrategy:engineId,signalOwner:'shared-market-base'};
-  return {...original,engineId,qualityPolicy,signalOwner:'shared-market-base'};
- }
- if(qualityPolicy==='shared-base-v2'){
-  const input={quoteHistory,price,quoteAt,now,durationMs};
-  const baseline=analyzeNowOpportunity({...input,engineId:'automatic'});
-  const shared=sharedMarketBase({...input,selectedStrategy:engineId});
-  // A verified early phase changes the direction/entry instant. Otherwise
-  // the current automatic observation is retained unchanged; no waiting gate
-  // or independent strategy veto is inserted into the decision path.
-  if(shared.ready)return {...baseline,...shared,engineId,qualityPolicy,
-   reason:shared.reason,observedAt:Number(quoteAt),entryPrice:Number(price)};
-  return {...baseline,engineId,qualityPolicy,marketPhase:shared.marketPhase||'unresolved',
-   contextStrategy:shared.contextStrategy||engineId,signalOwner:'shared-market-base'};
+  const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
+  const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
+  const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
+  const contextStrategy=useLearning?'mean_reversion':'trend';
+  if(useLearning)return {...structural,...learning,engineId,qualityPolicy,
+   reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
+   entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
+   contextStrategy:engineId==='automatic'?contextStrategy:engineId,
+   signalOwner:'shared-market-base'};
+  return {...structural,engineId,qualityPolicy,
+   contextStrategy:engineId==='automatic'?'trend':engineId,
+   signalOwner:'shared-market-base'};
  }
  const seconds=Number(durationMs)/1000;
  let provisionalSide=null;
