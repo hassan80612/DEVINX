@@ -6,9 +6,11 @@ import {readFileSync} from 'node:fs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
 const start=Date.UTC(2026,9,1,0,0,0);
 const durations=[30000,60000];
-const policies=['production_auto','early_v1','early_v2'];
+const policies=['production_auto','shared_base_v1','early_v1','early_v2'];
 function chooseCandidate(sample,policy){
- const qualityPolicy=policy==='early_v1'?'early-v1':policy==='early_v2'?'early-v2':'baseline';
+ const qualityPolicy=policy==='early_v1'?'early-v1':
+  policy==='early_v2'?'early-v2':
+  policy==='shared_base_v1'?'shared-base-v1':'baseline';
  return analyzeNowOpportunity({...sample,engineId:'automatic',qualityPolicy});
 }
 function samples(kind,seed,count=420){
