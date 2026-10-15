@@ -160,8 +160,8 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // The causal model may replace the base direction, not suppress its entry.
   const choosePattern=qualityPolicy==='pattern-v1'?true:
    qualityPolicy==='pattern-v2'?pattern.strength>=.4:
-   qualityPolicy==='pattern-v3'?pattern.strength>=(durationMs===60000?.75:.4):
-   qualityPolicy==='pattern-v4'?pattern.strength>=(durationMs===60000?.9:.4):
+   qualityPolicy==='pattern-v3'?pattern.strength>=(durationMs===60000 ? 0.75 : 0.4):
+   qualityPolicy==='pattern-v4'?pattern.strength>=(durationMs===60000 ? 0.9 : 0.4):
    qualityPolicy==='pattern-v5'?durationMs===30000?pattern.strength>=.4:
     (pattern.strength>=.60&&original.reason==='closed-range-extreme-reversal-confirmed');
   if(pattern.ready&&choosePattern)
