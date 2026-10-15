@@ -3,6 +3,7 @@ import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
 import {LatestOverlayScheduler} from './latest-overlay-scheduler.mjs';
 import {lightweightOverlayView} from './lightweight-overlay-view.mjs';
+import {shouldDiscardVnextFrame} from './vnext-frame-visibility.mjs';
 import http from 'node:http';
 import {readFile,writeFile,mkdir,rename,chmod} from 'node:fs/promises';
 import {dirname,resolve} from 'node:path';
@@ -293,8 +294,7 @@ function overlayAnalysis(view,asset,now=Date.now()){
   // Clear the old direction while waiting for a real next-cycle quote.
   if(view.settings?.engine){
     overlayCache.delete(key);
-    if(!current||switched||(cycleEndsAt>0&&now>=cycleEndsAt)||
-       (cycleStartsAt>0&&currentQuoteAt<cycleStartsAt))
+    if(shouldDiscardVnextFrame({analysis:current,quoteAt:currentQuoteAt,now,switched}))
       return {analysis:{asset:key,side:'WAIT',reasons:['Aguardando nova janela e cotação']},transient:false};
     return{analysis:current,transient:false};
   }
