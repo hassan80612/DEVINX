@@ -71,14 +71,16 @@ test('NOW card renders the enabled strategy menu and fresh quote while waiting f
  s.state='paused';
  assert.match(render(s,start+20000),/data-testid="analysis-spinner" data-active="0"/);
 });
-test('NOW phone switches provisional direction but preserves the confirmed receipt until expiry',()=>{
+test('NOW phone keeps provisional directions internal and preserves confirmed receipt until expiry',()=>{
  const s=state(),v=s.lastResult.analysis.vnext;
  v.mode='now';v.futureEntryAnchor=null;
  v.opportunityWindow={phase:'scanning',windowStartedAt:null,windowEndsAt:0};
  v.nowObservation={side:null,provisionalSide:'CALL',observedAt:start+20000,evaluatedAt:start+20000};
- assert.match(render(s,start+20000),/ANALISANDO POSSÍVEL CALL/);
+ assert.match(render(s,start+20000),/ANALISANDO/);
+ assert.doesNotMatch(render(s,start+20000),/ANALISANDO POSSÍVEL/);
  v.nowObservation.provisionalSide='PUT';
- assert.match(render(s,start+20000),/ANALISANDO POSSÍVEL PUT/);
+ assert.match(render(s,start+20000),/ANALISANDO/);
+ assert.doesNotMatch(render(s,start+20000),/ANALISANDO POSSÍVEL/);
  assert.doesNotMatch(render(s,start+24000),/ANALISANDO POSSÍVEL/);
  v.opportunityWindow={phase:'fired',windowStartedAt:start+10000,windowEndsAt:start+40000};
  v.futureEntryAnchor={side:'CALL',delaySeconds:30,holdingSeconds:30,issuedAt:start+10000,
