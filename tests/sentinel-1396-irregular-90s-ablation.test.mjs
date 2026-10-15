@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {causalForwardPath as with90s} from '../sentinel-trading-lab/agent/src/core/causal-closed-structure-1379.mjs';
 import {causalForwardPath as without90s} from './fixtures/sentinel-1395-forecast-without-90s.mjs';
+import {causalForwardPath as threshold044} from './fixtures/sentinel-1395-90s-threshold-044.mjs';
+import {causalForwardPath as threshold060} from './fixtures/sentinel-1395-90s-threshold-060.mjs';
 const T=1791500000000,side=d=>d>0?'CALL':d<0?'PUT':null;
 const kinds=['phase-shift','variable-period','drifting-center','range-breakout',
  'breakout-fake','amplitude-decay','amplitude-boost','triangle-skew',
@@ -82,4 +84,45 @@ test('90s effect specifically across changing oscillation periods and breakouts'
   irregular:totals(classes.irregular),trends:totals(classes.trends),all:totals(all),
   byKind:kinds.map(kind=>({kind,...totals(all.filter(x=>x.kind===kind))}))}));
  assert.ok(all.every(x=>x.total>=20),JSON.stringify(all.filter(x=>x.total<20)));
+});
+
+test('isolate smaller/larger 90s efficiency criteria: training and fresh-seed holdout',()=>{
+ const rows=[];
+ for(const kind of kinds)for(const h of [15,30,60,120])for(const seed of [1,4,13]){
+  const q=data(kind,seed),stats={kind,h,seed,total:0,
+   score052:0,score044:0,score060:0,
+   changed044:0,changed060:0,
+   gained044:0,lost044:0,gained060:0,lost060:0,
+   stableChanged044:0,stableChanged060:0};
+  for(let i=420;i+2*h<q.length;i+=14){
+   const args={quoteHistory:q.slice(0,i+1),asOf:q[i].ts,holdingSeconds:h,maxSeconds:h*2};
+   const models=[with90s(args),threshold044(args),threshold060(args)];
+   if(models.some(m=>m.status!=='causal-forward-path'))continue;
+   const pred=models.map(m=>side(m.priceAt(2*h)-m.priceAt(h)));
+   const trueSide=side(q[i+2*h].price-q[i+h].price);
+   if(!trueSide)continue;
+   stats.total++;
+   stats.score052+=Number(pred[0]===trueSide);
+   stats.score044+=Number(pred[1]===trueSide);
+   stats.score060+=Number(pred[2]===trueSide);
+   for(const [idx,label] of [[1,'044'],[2,'060']]){
+    if(pred[0]!==pred[idx]){
+     stats['changed'+label]++;
+     stats['gained'+label]+=Number(pred[idx]===trueSide);
+     stats['lost'+label]+=Number(pred[0]===trueSide);
+     if(models[0].trendContinuation&&models[idx].trendContinuation)
+      stats['stableChanged'+label]++;
+    }
+   }
+  }
+  rows.push(stats);
+ }
+ const tally=rs=>['total','score052','score044','score060','changed044','changed060',
+  'gained044','lost044','gained060','lost060','stableChanged044','stableChanged060']
+  .reduce((a,k)=>(a[k]=rs.reduce((s,z)=>s+z[k],0),a),{});
+ const summary={training:tally(rows.filter(x=>x.seed!==13)),
+  holdout:tally(rows.filter(x=>x.seed===13)),
+  holdoutByKind:kinds.map(kind=>({kind,...tally(rows.filter(x=>x.seed===13&&x.kind===kind))}))};
+ console.log('[1396 RANGE threshold training/holdout SIMULATED] '+JSON.stringify(summary));
+ assert.ok(summary.holdout.total>1500);
 });
