@@ -148,8 +148,53 @@ function completedRangeStructure(quotes,now,noise,spot){
    'irregular-range-awaiting-current-turn'};
 }
 
+// Research-only phase of a newly developing move. Causal: uses only the
+// broker quotes that arrived by quoteAt and no later candle/price.
+export function emergingDirection({quoteHistory=[],price=null,quoteAt=null,now=Date.now(),durationMs=30000,variant='early-v1'}={}){
+ const invalid=reason=>({ready:false,side:null,reason,entryPrice:null,observedAt:Number(quoteAt)||null});
+ const time=Number(quoteAt),spot=Number(price);
+ if(!(time>0&&time<=now&&now-time<=2500&&finitePrice(spot)))return invalid('stale-live-quote');
+ const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=time);
+ if(!quotes.length||quotes.at(-1).ts!==time||quotes.at(-1).price!==spot)return invalid('live-quote-unverified');
+ const p2=before(quotes,time-2000,1500),p4=before(quotes,time-4000,1500),
+  p8=before(quotes,time-8000,1600),p16=before(quotes,time-16000,1600);
+ if(!p2||!p4||!p8||!p16)return invalid('insufficient-observed-quotes');
+ const m2=Math.log(spot/p2.price),m4=Math.log(spot/p4.price),
+  m8=Math.log(spot/p8.price),prior12=Math.log(p4.price/p16.price);
+ const old=sideOf(prior12),direction=sideOf(m2);
+ const noise=observedNoise({quotes,now:time,horizonSeconds:4});
+ if(!(noise>0&&direction))return invalid('unresolved-direction');
+ // Quantify new momentum, rather than extrapolating the last completed bar.
+ // V1 favors the first 4s of an opposing move; V2 favors its 2s acceleration.
+ const sameFour=sideOf(m4)===direction;
+ const score=variant==='early-v2'
+  ? Math.abs(m2) / Math.max(noise,1e-10)
+  : Math.abs(m4) / Math.max(noise,1e-10);
+ const firstTurn=Boolean(old&&old!==direction);
+ const acceleration=Math.abs(m2)>=Math.abs(m4-m2)*1.05;
+ const early=firstTurn&&sameFour&&
+   (variant==='early-v2'?acceleration&&score>=.32:score>=.42);
+ const continuation=sameFour&&sideOf(m8)===direction&&
+  (variant==='early-v2'?acceleration&&score>=.36:score>=.56);
+ if(!(early||continuation))return invalid('micro-movement-not-established');
+ return {ready:true,side:direction,entryPrice:spot,observedAt:time,
+  reason:early?'observed-new-reversal':'observed-new-continuation',
+  phaseType:early?'reversal':'continuation',phaseScore:score,
+  observedImpulse:m2,observedNetMove:m8,expirySeconds:Number(durationMs)/1000};
+}
+
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic'}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline'}={}){
+ if(engineId==='automatic'&&(qualityPolicy==='early-v1'||qualityPolicy==='early-v2')){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const early=emergingDirection({...input,variant:qualityPolicy});
+  const baseline=analyzeNowOpportunity({...input,engineId:'automatic'});
+  // No new veto or waiting gate: the original decision stays usable when
+  // no emerging movement is observed. If new direction is detected, use it
+  // immediately instead of waiting for another four closed bars.
+  if(early.ready)return {...baseline,...early,qualityPolicy};
+  return baseline;
+ }
  const seconds=Number(durationMs)/1000;
  let provisionalSide=null;
  const waiting=reason=>({side:null,reason,ready:false,observedAt:Number(quoteAt)||null,
