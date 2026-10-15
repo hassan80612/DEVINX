@@ -33,7 +33,7 @@ export function evolveOpportunity({
   if(old.phase==='scanning'){
    // A directional opportunity can be admitted once in this window.
    // A new candidate can NEVER extend the already running countdown.
-   if(validCandidate()&&Number(candidate.entryAt)<=old.windowEndsAt)
+   if(validCandidate()&&Number(candidate.entryAt)<old.windowEndsAt)
     return {...candidate,context:key,phase:'open',reason:'awaiting-entry',
      openedAt:old.windowStartedAt,windowStartedAt:old.windowStartedAt,
      windowEndsAt:old.windowEndsAt,candidateQuoteAt:Number(quoteAt),
@@ -52,7 +52,7 @@ export function evolveOpportunity({
   // A fresh, qualified opportunity of the SAME side may advance the
   // pending moment. This is not a second signal or a flipped window.
   const reschedulable=fresh&&validCandidate()&&candidate.side===old.side&&
-    Number(candidate.entryAt)<=Number(old.windowEndsAt)&&
+    Number(candidate.entryAt)<Number(old.windowEndsAt)&&
     Number(quoteAt)>Number(old.candidateQuoteAt||0)&&
     Number(candidate.brokerExpiresAt||0)===Number(old.brokerExpiresAt||0);
   const refreshMoment=reason=>({
@@ -99,7 +99,7 @@ export function evolveOpportunity({
  const rolledFromPriorCycle=!!old?.windowEndsAt&&now>=old.windowEndsAt;
  const sourceInNewCycle=!rolledFromPriorCycle||
    (Number(quoteAt)>=started&&Number(candidate?.issuedAt)>=started);
- if(sourceInNewCycle&&validCandidate()&&Number(candidate.entryAt)<=end)
+ if(sourceInNewCycle&&validCandidate()&&Number(candidate.entryAt)<end)
   return {...candidate,context:key,phase:'open',reason:'awaiting-selected-entry',
    openedAt:started,windowStartedAt:started,windowEndsAt:end,
    candidateQuoteAt:Number(quoteAt),entryReadyNow:false,entryTriggeredAt:null};
