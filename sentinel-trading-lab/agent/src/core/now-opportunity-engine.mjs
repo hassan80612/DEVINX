@@ -66,7 +66,20 @@ function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
  }
  const net=Math.abs(Math.log(last.at(-1).price/last[0].price));
  const efficiency=travelled>0?net/travelled:1;
- if(efficiency>=.38)return null;
+ // A noisy REAL downtrend can have very low 1-second path efficiency.
+ // Distinguish net directional travel from alternating price extremes
+ // using a causal 90-second linear-fit strength, not net/path alone.
+ const regression=last.filter(x=>x.ts>=now-90000);
+ let meanT=0,meanP=0;
+ for(const q of regression){meanT+=(q.ts-now)/1000;meanP+=Math.log(q.price);}
+ meanT/=regression.length;meanP/=regression.length;
+ let xx=0,yy=0,xy=0;
+ for(const q of regression){
+  const x=(q.ts-now)/1000-meanT,y=Math.log(q.price)-meanP;
+  xx+=x*x;yy+=y*y;xy+=x*y;
+ }
+ const trendFit=xx>0&&yy>0?xy*xy/(xx*yy):0;
+ if(trendFit>=.70)return null;
  const pivots=[];
  for(let i=2;i<closes.length-2;i++){
   const near=[closes[i-2],closes[i-1],closes[i+1],closes[i+2]];
@@ -74,7 +87,8 @@ function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
   const lo=closes[i].log<Math.min(...near.map(x=>x.log));
   if(hi||lo)pivots.push({at:closes[i].at,type:hi?'HIGH':'LOW'});
  }
- if(pivots.length<3)return null;
+ if(pivots.length<2)return null;
+ if(pivots.length===2)return {ready:false,reason:'range-awaiting-third-confirmed-turn'};
  const recent=pivots.slice(-4),gaps=recent.slice(1).map((p,i)=>(p.at-recent[i].at)/1000);
  const sorted=[...gaps].sort((a,b)=>a-b),half=sorted[Math.floor(sorted.length/2)];
  const minGap=Math.min(...gaps),maxGap=Math.max(...gaps);
