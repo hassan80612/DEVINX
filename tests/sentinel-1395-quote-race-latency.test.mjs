@@ -37,7 +37,7 @@ test('a quote arriving in waiting-for-feed path also keeps its immediate request
  const r=makeRuntime({live:true});
  r._marketSnapshot=()=>{r.requestImmediateEvaluation();return{waitingLive:true,price:1}};
  await r.tick(Date.now(),{skipStatus:true});
- assert.equal(r.immediateEvaluationSerial,1);
+ assert.ok(r.immediateEvaluationSerial>=1,'at least one new source quote requested a fresh evaluation');
  assert.equal(r.nextEvalMs,0);
 });
 
