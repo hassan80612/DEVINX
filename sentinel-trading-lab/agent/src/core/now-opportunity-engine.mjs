@@ -155,7 +155,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
  // No selector votes or second timed confirmation can delay an entry.
- if(qualityPolicy==='adaptive-market-v1'&&engineId){
+ if(['adaptive-market-v1','adaptive-market-research'].includes(qualityPolicy)&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
   // Shared quote/timing source, but manual strategy selection still owns its
   // native technical setup. It must NOT be overwritten by the automatic side.
@@ -170,18 +170,24 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // recent settled 30s analogues; 60s never borrows the 30s statistics.
   // No new post-tick clock, minimum waiting period or extra entry veto.
   const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
-  const fib=currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),
-   engineId:'fibonacci_retest'});
-  if(fib.ready)return {...structural,...fib,engineId,qualityPolicy,
-   observedAt:Number(quoteAt),entryPrice:Number(price),
-   expirySeconds:Number(durationMs)/1000,contextStrategy:'fibonacci_retest',
-   signalOwner:'shared-market-base'};
   const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
-  if(learning?.ready===true&&Number(learning.strength)>=.4)
-   return {...structural,...learning,engineId,qualityPolicy,
-    reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
-    entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
-    contextStrategy:'adaptive-30s',signalOwner:'shared-market-base'};
+  const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
+  // This research option ONLY adds a technically observed early Fibonacci
+  // entry where neither the existing structural nor the completed-outcome
+  // engine has emitted a valid side. No second motor veto or timer.
+  if(qualityPolicy==='adaptive-market-research'&&!structural.ready&&!useLearning){
+   const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
+   const fib=currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),
+    engineId:'fibonacci_retest'});
+   if(fib.ready)return {...structural,...fib,engineId,qualityPolicy,
+    observedAt:Number(quoteAt),entryPrice:Number(price),
+    expirySeconds:Number(durationMs)/1000,contextStrategy:'fibonacci_retest',
+    signalOwner:'shared-market-base'};
+  }
+  if(useLearning)return {...structural,...learning,engineId,qualityPolicy,
+   reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
+   entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
+   contextStrategy:'adaptive-30s',signalOwner:'shared-market-base'};
   return {...structural,engineId,qualityPolicy,
    contextStrategy:'structural-market',signalOwner:'shared-market-base'};
  }
