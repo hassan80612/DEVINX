@@ -99,7 +99,24 @@ function profile(all,t){
  const persistentTrend=priorSign!==0&&priorSign===recentSign&&
    !weakHistory&&efficiency>=.68&&signChanges<=2;
  const sideways=signChanges>=3&&efficiency<.48;
- const range=!reversal&&(weakHistory||sideways||(exhaustion&&!persistentTrend));
+ // An oscillation can last 60–90s and contain a 30–60s locally directional
+ // leg. Only examining the LAST six 10s moves incorrectly calls that leg a
+ // trend. Inspect the SAME nine already closed 10s bars for completed
+ // alternating swings AND weak overall displacement relative to travel.
+ // This does not vote CALL/PUT, block entries, add any wait or touch the
+ // trend/reversal trajectory. Large one-sided retracements with only a
+ // single sign change remain outside this completed oscillation evidence.
+ const gross90=bars.reduce((a,v)=>a+Math.abs(v),0);
+ const net90=Math.abs(bars.reduce((a,v)=>a+v,0));
+ const amplitudeFloor=gross90/Math.max(1,bars.length)*.12;
+ const meaningful=bars.filter(v=>Math.abs(v)>amplitudeFloor);
+ const turns90=meaningful.slice(1).reduce((count,v,i)=>
+   count+(Math.sign(v)!==Math.sign(meaningful[i])?1:0),0);
+ const efficiency90=gross90>0?net90/gross90:1;
+ const observedOscillation=!persistentTrend&&turns90>=2&&
+   efficiency90<.52;
+ const range=!reversal&&(weakHistory||sideways||observedOscillation||
+   (exhaustion&&!persistentTrend));
  const regime=reversal?'reversal':range?'range':'trend';
  const volatility=Math.max(normalized10,1e-12);
  const features=[
@@ -113,6 +130,7 @@ function profile(all,t){
  ];
  return {at,points,bars,sigma,prior,recent,regime,priorSign,recentSign,
   reversal,range,exhaustion,persistentTrend,efficiency,signChanges,
+  observedOscillation,turns90,efficiency90,
   normalized10,recentImpulse,features,closed,travel};
 }
 export function forwardRegime(p){
