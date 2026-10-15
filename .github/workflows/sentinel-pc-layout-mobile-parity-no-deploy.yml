@@ -1,0 +1,25 @@
+name: Sentinel PC layout and mobile parity - NO DEPLOY
+on:
+  push:
+    branches: [fix/sentinel-pc-layout-only-20261015]
+permissions:
+  contents: read
+jobs:
+  browser-and-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install agent runtime and browser test dependencies
+        run: npm install --prefix sentinel-trading-lab/agent --no-audit --no-fund
+      - name: Verify PC-only layout and mobile card controls are preserved
+        run: node --test tests/sentinel-pc-visual-mobile-parity-20261015.test.mjs tests/sentinel-67313-signed-mobile-continuity.test.mjs tests/sentinel-67315-mobile-integrity.test.mjs tests/sentinel-13914-live-preview-clock.test.mjs tests/sentinel-mobile-canonical-window-6723.test.mjs
+      - name: Prepare Chromium browser
+        run: npx --prefix sentinel-trading-lab/agent playwright install --with-deps chromium
+      - name: Real PC broker-card browser smoke test and clock parity
+        run: node scripts/sentinel-13914-overlay-smoke.mjs
+      - name: Ensure the PC overlay JavaScript compiles
+        run: node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
