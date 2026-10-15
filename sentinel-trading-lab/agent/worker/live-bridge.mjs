@@ -38,7 +38,7 @@ export function analystSnapshot(runtimeStatus,live){
     e.phase||'open',Number(e.entryTriggeredAt)||0
   ]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
-    mode:vnext.mode==='now'?'now':'forecast',engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
+    ...(vnext.mode==='now'?{mode:'now'}:{}),engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     computedStatus:vnext.computedStatus||'unavailable',
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
     historicalComparisons:Number(vnext.historicalComparisons||0),
@@ -116,7 +116,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const a=snapshot.lastResult?.analysis||{},v=a.vnext,op=a.operationalSignal||{};
   if(!v)return null;
   const compactVnext={
-    mode:v.mode,engineId:v.engineId,expirySeconds:v.expirySeconds,
+    ...(v.mode==='now'?{mode:'now'}:{}),engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
     ea:v.ea,ow:v.ow,er:v.er,fq:v.fq,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
@@ -156,7 +156,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
     lastResult:{asset:snapshot.lastResult?.asset,analysis:{
       operationalSignal:{side:op.side||'WAIT',state:op.state||'ANALISANDO',
         ready:op.ready===true,actionable:op.actionable===true},
-      vnext:{mode:v.mode,engineId:v.engineId,expirySeconds:v.expirySeconds,
+      vnext:{...(v.mode==='now'?{mode:'now'}:{}),engineId:v.engineId,expirySeconds:v.expirySeconds,
         receipt:v.receipt,ea:v.ea,ow:v.ow,er:[],hf:[],hm:[],cards:[]}
     }}
   };
