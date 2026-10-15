@@ -1,0 +1,29 @@
+name: Sentinel 13.9.6 vs 13.9.7 A/B quote replay
+on:
+  push:
+    branches:
+      - test/sentinel-1396-vs-1397-chronological-20261015
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Fetch original v13.9.7 source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Fetch original v13.9.6 source unchanged
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: hassan80612/DEVINX
+          ref: ae8cb1381dc6f8f7adc1deb768e335ce33c54cbe
+          path: baseline1396
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Exact version checks
+        run: |
+          node -e "if(require('./sentinel-trading-lab/agent/release.json').version!=='13.9.7'||require('./baseline1396/sentinel-trading-lab/agent/release.json').version!=='13.9.6')process.exit(1)"
+          node --check tests/sentinel-1396-vs-1397-chronological-replay.mjs
+      - name: Comparative replay with no live orders
+        run: node tests/sentinel-1396-vs-1397-chronological-replay.mjs
