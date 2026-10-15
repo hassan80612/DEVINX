@@ -15,5 +15,11 @@ jobs:
           node-version: '24'
       - name: Install engine dependencies
         run: npm install --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund
+      - name: Validate the one-owner combined engine against original regressions
+        run: node --test tests/sentinel-auto-combo-one-owner.test.mjs tests/sentinel-13910-now-strategies-cadence.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs
       - name: Execute reproducible chronological 30/60-second A/B comparisons
         run: node tests/sentinel-combined-engine-holdout-research.mjs
+      - name: Typecheck reduced-selector UI without a production build
+        run: |
+          npm install --prefix sentinel-trading-lab --no-audit --no-fund
+          cd sentinel-trading-lab && npx tsc --noEmit
