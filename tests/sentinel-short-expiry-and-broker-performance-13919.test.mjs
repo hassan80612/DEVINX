@@ -36,6 +36,8 @@ test('persisted 60-second or older 15-minute expiry migrates to 30s without rest
 test('broker page wide text scan becomes less frequent for normal clock but keeps 2.5s on explicit broker clock',()=>{
  const source=readFileSync('sentinel-trading-lab/agent/worker/local-playwright-driver.mjs','utf8');
  assert.match(source,/scanEveryMs=payload\.clockMode==='broker'\?2500:10000/);
+ assert.match(source,/payload\.brokerTiming=this\.readBrokerTimingSnapshot\(provider,st\)/);
+ assert.doesNotMatch(source,/payload\.brokerTiming=this\.liveStatus\(provider\)\.brokerTiming/);
  assert.match(source,/Date\.now\(\)-Number\(s\.lastBrokerTimeScanAt\|\|0\)>=scanEveryMs/);
  const worker=readFileSync('sentinel-trading-lab/agent/worker/index.mjs','utf8');
  assert.match(worker,/runtime\.tick\(loopNow,\{skipStatus:true\}\)/);
