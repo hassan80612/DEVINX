@@ -1,0 +1,27 @@
+name: Sentinel 13.9.6 vs 13.9.8 exact-revision comparison
+on:
+  push:
+    branches:
+      - test/sentinel-1396-vs-1398-now-range-20261015
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: hassan80612/DEVINX
+          ref: ae8cb1381dc6f8f7adc1deb768e335ce33c54cbe
+          path: baseline1396
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Verify exact source release identities
+        run: |
+          node -e "if(require('./baseline1396/sentinel-trading-lab/agent/release.json').version!=='13.9.6'||require('./sentinel-trading-lab/agent/release.json').version!=='13.9.8') process.exit(1)"
+          node --check tests/sentinel-1396-vs-1398-chronological-ab.mjs
+      - name: Identical chronological prices with 30 and 60 second expiration
+        run: node tests/sentinel-1396-vs-1398-chronological-ab.mjs
