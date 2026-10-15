@@ -99,19 +99,7 @@ export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  const breakLevel=against*Math.log(latest.price/baseline)>noise*.55;
  const microBreak=against*(bars[1].close-(against>0?bars[0].high:bars[0].low))>
    baseline*noise*.10;
- // A bounce back across the opening reference can still be a normal
- // retracement within the completed price structure. When the opening
- // snapshot has a genuine previous high/low, a reversal is structurally
- // confirmed only after price also crosses that extreme. This changes
- // cancellation only; the original CALL/PUT forecast remains untouched.
- const structuralExtreme=against>0?
-   Number(window.guardBaseline?.lastHigh):Number(window.guardBaseline?.lastLow);
- const usableExtreme=Number.isFinite(structuralExtreme)&&structuralExtreme>0&&
-   (against>0?structuralExtreme>=baseline:structuralExtreme<=baseline);
- const crossedStructure=!usableExtreme||
-   against*Math.log(latest.price/structuralExtreme)>noise*.10;
- const confirmed=breakLevel&&microBreak&&crossedStructure&&
-   against*Math.log(bars[1].close/bars[0].open)>noise*.45;
+ const confirmed=breakLevel&&microBreak&&against*Math.log(bars[1].close/bars[0].open)>noise*.45;
  return {invalidated:confirmed,reason:confirmed?'confirmed-opposite-structure':
   'retracement-without-structure-break'};
 }
