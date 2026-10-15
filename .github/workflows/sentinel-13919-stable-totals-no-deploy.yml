@@ -1,0 +1,31 @@
+name: Sentinel stable PC and phone totals - NO DEPLOY
+on:
+  push:
+    branches: [fix/sentinel-stable-totals-no-hold-20261016]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install broker Agent dependencies
+        run: npm install --prefix sentinel-trading-lab/agent --no-audit --no-fund
+      - name: Verify stable totals and PC/mobile synchronization
+        run: node --test tests/sentinel-stable-total-slots-13919.test.mjs tests/sentinel-mobile-event-pc-fidelity-6723.test.mjs tests/sentinel-mobile-low-latency-1357.test.mjs tests/sentinel-67315-mobile-integrity.test.mjs tests/sentinel-13915-one-pass.test.mjs
+      - name: Verify Agent driver parses
+        run: node --check sentinel-trading-lab/agent/worker/local-playwright-driver.mjs
+      - name: Install matching browser
+        run: node sentinel-trading-lab/agent/node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Test PC live blank live nodes in Chromium
+        run: node scripts/sentinel-stable-total-slots-smoke.mjs
+      - name: Existing PC broker card and clock regression
+        run: node scripts/sentinel-13914-overlay-smoke.mjs
+      - name: Install site dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund
+      - name: Verify mobile UI typecheck
+        run: cd sentinel-trading-lab && npx tsc --noEmit
