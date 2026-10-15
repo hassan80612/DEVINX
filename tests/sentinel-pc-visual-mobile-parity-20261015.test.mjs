@@ -13,7 +13,7 @@ test('PC overlay selection controls occupy one row, not a tall strategy column',
  const intro=block.slice(0,block.indexOf('</div>'));
  assert.doesNotMatch(intro,/data-sentinel-strategy-when/);
  assert.match(block,/<details data-sentinel-pc-strategy-guide/);
- assert.doesNotMatch(block,/<details data-sentinel-pc-strategy-guide[^>]*\bopen\b/);
+ assert.doesNotMatch(block,/<details data-sentinel-pc-strategy-guide(?=[\s>])[^>]*\sopen(?:\s|=|>)/);
 });
 test('PC technical strategy explanation stays collapsed until user expands it',()=>{
  assert.match(pc,/<details data-testid="pc-strategy-when-guide"/);
