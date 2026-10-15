@@ -1,0 +1,30 @@
+name: Sentinel NOW range-turn surgical comparison
+on:
+  push:
+    branches:
+      - fix/sentinel-1398-now-range-turn-20261015
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: hassan80612/DEVINX
+          ref: dbf2d97aff782169a03a848ac2bc914c3cfdc1c7
+          path: baseline1397
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Engine syntax
+        run: |
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check tests/sentinel-1397-vs-range-turn-comparison.test.mjs
+      - name: A/B chronological simulations
+        run: node tests/sentinel-1397-vs-range-turn-comparison.test.mjs
+      - name: One-shot and old release guardrails
+        run: |
+          node --test tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-1395-quote-race-latency.test.mjs
