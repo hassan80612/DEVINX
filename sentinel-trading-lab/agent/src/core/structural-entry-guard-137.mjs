@@ -120,7 +120,19 @@ export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  const breakLevel=against*Math.log(latest.price/baseline)>noise*.55;
  const microBreak=against*(bars[1].close-(against>0?bars[0].high:bars[0].low))>
    baseline*noise*.10;
- const confirmed=breakLevel&&microBreak&&against*Math.log(bars[1].close/bars[0].open)>noise*.45;
+ const opposedImpulse=against*Math.log(bars[1].close/bars[0].open);
+ // Compare the 10s opposite displacement against the LAST 10s completed
+ // pre-window leg. This prevents a minor rebound in a persistent trend
+ // from appearing structurally stronger merely because 1s noise is small.
+ // Missing previous samples preserve the established cancellation formula.
+ const previous=history.filter(x=>x.ts<=openAt-10000).at(-1);
+ const opening=history.find(x=>x.ts>=openAt);
+ const priorMove=previous&&opening&&opening.ts-previous.ts<=13500?
+   (window.side==='CALL'?1:-1)*Math.log(opening.price/previous.price):null;
+ const priorAligned=priorMove!=null&&priorMove>noise*.1;
+ const dominatesPrior=!priorAligned||opposedImpulse>=priorMove*2.2;
+ const confirmed=breakLevel&&microBreak&&opposedImpulse>noise*.45&&
+   dominatesPrior;
  return {invalidated:confirmed,reason:confirmed?'confirmed-opposite-structure':
   'retracement-without-structure-break'};
 }
