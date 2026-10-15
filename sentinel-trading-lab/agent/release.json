@@ -1,13 +1,13 @@
 {
-  "version": "13.8.9",
-  "build": "13.8.9-devinx-domain-compatibility-same-forecast",
+  "version": "13.9.0",
+  "build": "13.9.0-trend-retracement-late-entry-broker-sustainability",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.8.9-asset-history-level-reaction-regression-tests;live-Windows-validation-pending",
+    "modelValidation": "13.9.0-full-126-regression-synthetic-tests;live-Windows-validation-pending",
     "forecastModel": "causal-closed-structure-1379"
   }
 }
