@@ -6,13 +6,10 @@ import {readFileSync} from 'node:fs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
 const start=Date.UTC(2026,9,1,0,0,0);
 const durations=[30000,60000];
-const policies=['production_auto','shared_base_v2','pattern_v1','pattern_v2','pattern_v3','pattern_v4','pattern_v5'];
+const policies=['production_auto','adaptive_market_v1'];
 function chooseCandidate(sample,policy){
- const qualityPolicy=policy==='shared_base_v2'?'shared-base-v2':
-  policy==='pattern_v1'?'pattern-v1':policy==='pattern_v2'?'pattern-v2':
-  policy==='pattern_v3'?'pattern-v3':policy==='pattern_v4'?'pattern-v4':
-  policy==='pattern_v5'?'pattern-v5':'baseline';
- return analyzeNowOpportunity({...sample,engineId:'automatic',qualityPolicy});
+ return analyzeNowOpportunity({...sample,engineId:'automatic',
+  qualityPolicy:policy==='adaptive_market_v1'?'adaptive-market-v1':'baseline'});
 }
 function samples(kind,seed,count=420){
  let state=(seed*103^0xa21bd)>>>0;
