@@ -149,7 +149,28 @@ function completedRangeStructure(quotes,now,noise,spot){
 }
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic'}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline'}={}){
+ // Offline research only. The deployed motor always uses qualityPolicy=baseline.
+ // First make the production decision, then evaluate whether a specialist's
+ // causal evidence and the observed swing duration justify 30/60s holds.
+ // NEVER wait for future data to decide a signal at the current timestamp.
+ if(qualityPolicy==='regime-verification'&&engineId==='automatic'){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const base=analyzeNowOpportunity({...input,engineId:'automatic'});
+  if(!base.ready)return base;
+  const expired=reason=>({...base,ready:false,side:null,entryPrice:null,reason});
+  const reversal=base.regime==='observed-range-turn';
+  if(reversal){
+   const swing=Number(base.observedSwingSeconds);
+   const expiration=Number(durationMs)/1000;
+   if(!(swing>0)||swing<expiration*.80)
+    return expired('observed-reversal-swing-shorter-than-expiry');
+  }
+  const specialist=analyzeNowOpportunity({...input,engineId:reversal?'support_resistance':'trend'});
+  if(specialist.ready!==true||specialist.side!==base.side)
+   return expired('no-independent-current-confirmation');
+  return {...base,qualityPolicy:'regime-verification',independentConfirmation:reversal?'support_resistance':'trend'};
+ }
  const seconds=Number(durationMs)/1000;
  let provisionalSide=null;
  const waiting=reason=>({side:null,reason,ready:false,observedAt:Number(quoteAt)||null,
