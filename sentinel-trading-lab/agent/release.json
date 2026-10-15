@@ -1,13 +1,13 @@
 {
-  "version": "13.9.6",
-  "build": "13.9.6-quote-freshness-and-scheduling",
+  "version": "13.9.7",
+  "build": "13.9.7-now-entry-one-shot-expiry",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.9.6-quote-timestamp-integrity-plus-24-unit-regressions;real-broker-outcomes-not-validated",
-    "forecastModel": "causal-closed-structure-1379"
+    "modelValidation": "13.9.7-now-entry-contract-and-lateral-regressions;180-second-declining-quote-fixture-3-of-3-30s-nonrepresentative;real-broker-outcomes-not-validated",
+    "forecastModel": "now-structural-v1"
   }
 }
