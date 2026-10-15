@@ -31,16 +31,26 @@ test('logout only clears the browser cookie after server-side revocation succeed
  const anonymous=await POST(new NextRequest('https://sentinel.test/api/auth/logout'));
  assert.equal(anonymous.status,200);
 });
-test('temporary upstream failures cannot send a valid browser to login or serve a login page as EXE',async()=>{
+test('Windows installer is never a login HTML page; update ZIP remains paid and fails closed',async()=>{
  for(const response of [reply(503,{error:'overloaded'}),reply(429,{error:'rate_limited'}),new Response('gateway broken',{status:502})]){
   const {middleware}=load('src/middleware.ts',response);
-  const result=await middleware(request('/downloads/Sentinel-Agent-Windows.exe'));
-  assert.equal(result.status,503);assert.equal(result.headers.get('location'),null);
+  for(const path of ['/downloads/Sentinel-Agent-Windows.exe','/downloads/Sentinel-Agent-13.9.5.exe']){
+   const result=await middleware(request(path));
+   assert.equal(result.headers.get('x-middleware-next'),'1',path);
+   assert.equal(result.headers.get('location'),null);
+  }
+  const zip=await middleware(request('/downloads/agent_payload_v88.zip'));
+  assert.equal(zip.status,503,'paid self-update ZIP must fail closed during auth outages');
+  assert.equal(zip.headers.get('location'),null);
  }
  const ok=load('src/middleware.ts',reply(200,{ok:true,account:{role:'client',accessActive:true}}));
- assert.equal((await ok.middleware(request('/downloads/Sentinel-Agent-Windows.exe'))).headers.get('x-middleware-next'),'1');
+ assert.equal((await ok.middleware(request('/downloads/agent_payload_v88.zip'))).headers.get('x-middleware-next'),'1');
  const denied=load('src/middleware.ts',reply(200,{ok:true,account:{role:'client',accessActive:false}}));
- assert.match((await denied.middleware(request('/downloads/Sentinel-Agent-Windows.exe'))).headers.get('location'),/\/planos$/);
+ assert.match((await denied.middleware(request('/downloads/agent_payload_v88.zip'))).headers.get('location'),/\/planos$/);
+ for(const route of ['/painel','/api/runtime/status']){
+  const result=await denied.middleware(request(route));
+  assert.notEqual(result.headers.get('x-middleware-next'),'1');
+ }
 });
 test('presence only logs out for an invalid session; temporary server errors remain retryable',async()=>{
  for(const response of [reply(500,{error:'database_unavailable'}),reply(429,{error:'rate_limited'}),new Response('bad json',{status:200})]){
