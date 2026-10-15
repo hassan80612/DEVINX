@@ -33,7 +33,16 @@ function after(rows,t){
 }
 function profile(all,t){
  // Historical anchors must use data RECEIVED before that anchor.
- const rows=all.filter(x=>x.ts<=t&&x.recv<=t);
+ // Every feature uses at most the prior 100s. Binary-search that
+ // bounded interval instead of filtering up to 6,000 quotes for EACH
+ // historical analogue. Keep receipt-time causality unchanged.
+ let lo=0,hi=all.length;
+ while(lo<hi){const m=(lo+hi)>>1;if(all[m].ts<=t)lo=m+1;else hi=m}
+ const end=lo;
+ lo=0;hi=end;
+ const earliest=t-105000;
+ while(lo<hi){const m=(lo+hi)>>1;if(all[m].ts<earliest)lo=m+1;else hi=m}
+ const rows=all.slice(lo,end).filter(x=>x.recv<=t);
  const at=before(rows,t);
  if(!at||t-at.ts>2500)return null;
  const closed=Math.floor(t/10000)*10000;
