@@ -57,9 +57,8 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  const evaluated=Number(observation?.evaluatedAt||evaluatedAt);
  const observedFresh=brokerNow>=observedAt&&brokerNow-observedAt<=2500&&
   brokerNow>=evaluated&&brokerNow-evaluated<5000;
- const provisional=observedFresh?(observation?.side||observation?.provisionalSide):null;
- const scanningLabel=provisional==='CALL'?'ANALISANDO POSSÍVEL CALL':
-  provisional==='PUT'?'ANALISANDO POSSÍVEL PUT':'ANALISANDO';
+ // Provisional price direction remains internal and cannot be mistaken for a signal.
+ const scanningLabel='ANALISANDO';
  const direction=nowMode?(
   moment?t('ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT')):
   running&&phase==='fired'?t('OPERAÇÃO EM ANDAMENTO · '+(side==='CALL'?'↑ CALL':'↓ PUT')):
