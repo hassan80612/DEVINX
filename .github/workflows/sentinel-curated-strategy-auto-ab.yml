@@ -17,6 +17,8 @@ jobs:
         run: npm install --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund
       - name: Compare Automatic 30/60 second strategies to current production
         run: node tests/sentinel-strategy-auto-context-ab.mjs
+      - name: Compare manually selected technical engines with former shared base
+        run: node tests/sentinel-four-manual-strategies-ab.mjs
       - name: Regression and strategy user interface
         run: node --test tests/sentinel-five-strategies-mobile-guide.test.mjs tests/sentinel-13915-one-pass.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-shared-base-v2.test.mjs
       - name: Install website dependencies
