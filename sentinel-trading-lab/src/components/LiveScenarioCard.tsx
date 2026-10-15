@@ -237,6 +237,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         {VISIBLE_STRATEGIES.map(e=><option key={e.id} value={e.id}>{t(e.name)} · {t(e.short)}</option>)}
       </select>
       <small style={{display:'block',fontSize:11,opacity:.88,marginTop:5}} data-testid="current-strategy-when">{t(VISIBLE_STRATEGIES.find(e=>e.id===normalizeUserStrategy(chosenEngine))?.when||VISIBLE_STRATEGIES[0].when)}</small>
+      {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
+       <small data-testid="automatic-chart-context" style={{display:'block',fontSize:11,opacity:.85,marginTop:4}}>{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
     </label>
     <label>{t('Relógio atual')}{' '}<select aria-label={t('TEMPO DA CORRETORA')} value={clockChoice} disabled={busy} data-testid="clock-mode-selector" onChange={e=>void changeClock(e.target.value)}>
       <option value="current">{t('Relógio atual')}</option><option value="broker">{t('Sincronizado com a corretora')}</option>
