@@ -1941,7 +1941,7 @@ export class LocalPlaywrightDriver{
         const observation=d.vnext?.nowObservation;
         const observationFresh=liveNow&&Date.now()-Number(observation?.observedAt||0)>=0&&Date.now()-Number(observation?.observedAt||0)<=2500;
         const provisional=observationFresh?(observation?.side||observation?.provisionalSide):null;
-        const scanningLabel=provisional==='CALL'?'ANALISANDO POSSÍVEL CALL':provisional==='PUT'?'ANALISANDO POSSÍVEL PUT':'ANALISANDO';
+        const scanningLabel='ANALISANDO';
         const scheduledDecision=nowMode?
           (entryMoment&&confirmedSide?'ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
             opportunityPhase==='fired'?'OPERAÇÃO EM ANDAMENTO · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
@@ -2267,7 +2267,7 @@ export class LocalPlaywrightDriver{
             const observationAge=nowClock-Number(observation?.observedAt||0);
             const provisional=pane.getAttribute('data-live-quote')==='1'&&observationAge>=0&&observationAge<=2500?
               (observation?.side||observation?.provisionalSide):null;
-            const scanningLabel=provisional==='CALL'?'ANALISANDO POSSÍVEL CALL':provisional==='PUT'?'ANALISANDO POSSÍVEL PUT':'ANALISANDO';
+            const scanningLabel='ANALISANDO';
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
               decision.textContent=tr(nowAnalysisMode?scanningLabel:
