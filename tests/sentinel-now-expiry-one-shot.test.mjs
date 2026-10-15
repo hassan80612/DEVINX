@@ -102,3 +102,58 @@ test('compact phone broadcast keeps NOW mode, exact PC signal and expiry',()=>{
  assert.equal(wire.lastResult.analysis.vnext.ea[7],T+30000);
  assert.ok(fitAnalystFrame(wire,2920));
 });
+
+test('lateral whipsaws do not masquerade as current entry opportunities',()=>{
+ let fired=0;
+ for(let seed=0;seed<80;seed++){
+  const q=Array.from({length:151},(_,i)=>{
+   const ts=T-(150-i)*1000;
+   return{ts,receivedAt:ts,price:1.1+.00035*Math.sin(i*2*Math.PI/22+seed*.23)};
+  });
+  const outcome=analyzeNowOpportunity({quoteHistory:q,price:q.at(-1).price,
+   quoteAt:T,now:T,durationMs:30000});
+  if(outcome.ready)fired++;
+ }
+ assert.equal(fired,0,'do not fire a signal simply because a range wiggle resembles three aligned candles');
+});
+test('replayed past market quotes do not use future data and never overlap expiries',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const raw=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation-prices.json',import.meta.url),'utf8'));
+ const rows=raw.quoteHistory;
+ let state=null,signals=[],verified=0,correct=0;
+ for(let i=0;i<rows.length;i++){
+  const last=rows[i],history=rows.slice(0,i+1);
+  const candidate=analyzeNowOpportunity({
+    quoteHistory:history,price:last.price,quoteAt:last.ts,
+    now:last.ts,durationMs:30000
+  });
+  // Deliberately add an unavailable next-day quote: a causal engine
+  // may not change its earlier decision because of it.
+  if(candidate.ready){
+   const future={ts:last.ts+86400000,receivedAt:last.ts+86400000,price:last.price*100};
+   assert.deepEqual(analyzeNowOpportunity({
+    quoteHistory:[...history,future],price:last.price,quoteAt:last.ts,now:last.ts,durationMs:30000
+   }),candidate);
+  }
+  const next=advanceNowOpportunity({previous:state,candidate,
+    now:last.ts,quoteAt:last.ts,asset:'BROKER SAMPLE',
+    engineId:'automatic',durationMs:30000});
+  if(next.phase==='fired'&&next.entryTriggeredAt!==state?.entryTriggeredAt){
+   if(signals.length)assert.ok(next.entryAt>=signals.at(-1).exitAt,'no overlapping entry or expiry');
+   signals.push({entryAt:next.entryAt,exitAt:next.exitAt,side:next.side,
+    entryPrice:next.entryPrice});
+  }
+  state=next;
+ }
+ for(const x of signals){
+  const exit=rows.find(y=>y.ts>=x.exitAt&&y.ts<=x.exitAt+1000);
+  if(!exit)continue;
+  verified++;
+  if(x.side==='CALL'?exit.price>x.entryPrice:exit.price<x.entryPrice)correct++;
+ }
+ assert.equal(signals.length,4);
+ assert.equal(verified,3);
+ assert.equal(correct,3);
+ // This fixture is 180 seconds in one downtrend. It cannot estimate the
+ // market-wide future hit rate or the settlement result at the broker.
+});
