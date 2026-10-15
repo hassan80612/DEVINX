@@ -465,7 +465,9 @@ let busy=false;async function loop(){if(shuttingDown||busy)return;busy=true;try{
       // The NOW engine requires authenticated live quotes, NOT historical
       // candle validation. The visual state must obey the same source gate.
       analysisStale:!view.liveBroker||quoteStale||(a.vnext?.mode==='now'
-        ?view.liveBroker.quoteFeedValidated!==true
+        ?(view.liveBroker.quoteFeedValidated!=null?
+          view.liveBroker.quoteFeedValidated!==true:
+          !(view.liveBroker.analysisFeedValidated===true||view.liveBroker.feedValidated===true))
         :(view.liveBroker.analysisFeedValidated===false||
           (view.liveBroker.analysisFeedValidated==null&&view.liveBroker.feedValidated===false))),
       liveAgeMs:liveTs>0?Math.max(0,Date.now()-liveTs):null,
