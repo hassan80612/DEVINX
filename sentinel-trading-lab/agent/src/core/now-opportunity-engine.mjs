@@ -39,6 +39,75 @@ function before(quotes,at,maxAgeMs=3500){
   return at-quotes[i].ts<=maxAgeMs?quotes[i]:null;
  return null;
 }
+
+// Recognize genuinely observed two-sided market oscillations using CLOSED
+// 5-second prices from the past, not future projections or forming candles.
+// Return null for a directional regime; return a verdict when past alternation
+// means a short-term impulse is a potentially misleading end-of-range leg.
+function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
+ const period=5000,end=Math.floor(now/period)*period;
+ const last=quotes.filter(q=>q.ts>=end-135000&&q.ts<=now);
+ if(last.length<70||last.at(-1).ts-last[0].ts<90000)return null;
+ const closes=[];
+ for(let t=end-130000;t<end;t+=period){
+  const part=last.filter(q=>q.ts>=t&&q.ts<t+period);
+  if(part.length<2||part[0].ts-t>3000||
+    t+period-part.at(-1).ts>3500||
+    part.some((q,i)=>i>0&&q.ts-part[i-1].ts>3500))continue;
+  closes.push({at:t,price:part.at(-1).price,log:Math.log(part.at(-1).price)});
+ }
+ if(closes.length<18)return null;
+ // A directional trend with small pullbacks has high total path efficiency.
+ // A long oscillation traverses both directions, returning near its origin.
+ let travelled=0;
+ for(let i=1;i<last.length;i++){
+  if(last[i].ts-last[i-1].ts<=3500)
+   travelled+=Math.abs(Math.log(last[i].price/last[i-1].price));
+ }
+ const net=Math.abs(Math.log(last.at(-1).price/last[0].price));
+ const efficiency=travelled>0?net/travelled:1;
+ if(efficiency>=.38)return null;
+ const pivots=[];
+ for(let i=2;i<closes.length-2;i++){
+  const near=[closes[i-2],closes[i-1],closes[i+1],closes[i+2]];
+  const hi=closes[i].log>Math.max(...near.map(x=>x.log));
+  const lo=closes[i].log<Math.min(...near.map(x=>x.log));
+  if(hi||lo)pivots.push({at:closes[i].at,type:hi?'HIGH':'LOW'});
+ }
+ if(pivots.length<3)return null;
+ const recent=pivots.slice(-4),gaps=recent.slice(1).map((p,i)=>(p.at-recent[i].at)/1000);
+ const sorted=[...gaps].sort((a,b)=>a-b),half=sorted[Math.floor(sorted.length/2)];
+ const minGap=Math.min(...gaps),maxGap=Math.max(...gaps);
+ const upper=Math.max(...last.map(x=>Math.log(x.price)));
+ const lower=Math.min(...last.map(x=>Math.log(x.price)));
+ const span=upper-lower;
+ if(!(span>noise*1.10))return null;
+ const regular=gaps.length>=2&&half>=12&&half<=90&&
+   minGap>=9&&(maxGap-minGap)/half<=.52&&
+   recent.every((v,i)=>i===0||v.type!==recent[i-1].type);
+ if(!regular)return {ready:false,reason:'irregular-multi-swing-range'};
+ // The exact option expiry must fit the completed half-swing evidence.
+ // This rejects directional bets held across multiple past oscillations.
+ if(holdingSeconds>half*1.35)
+  return {ready:false,reason:'expiry-exceeds-observed-range-swing'};
+ const position=(Math.log(spot)-lower)/span;
+ // Confirm ACTUAL retreat from a recent extreme. Being at the upper bound
+ // alone is not a PUT, and being at the lower bound alone is not a CALL.
+ const recentTicks=last.filter(x=>x.ts>=now-6500);
+ const lastFew=recentTicks.slice(-4),peak=Math.max(...recentTicks.map(q=>q.price));
+ const trough=Math.min(...recentTicks.map(q=>q.price));
+ const down=lastFew.slice(1).filter((x,i)=>x.price<lastFew[i].price).length;
+ const up=lastFew.slice(1).filter((x,i)=>x.price>lastFew[i].price).length;
+ const retreat= Math.log(peak/spot),bounce=Math.log(spot/trough);
+ const minTurn=Math.max(noise*.045,span*.016);
+ const highTurn=position>=.73&&retreat>=minTurn&&down>=2;
+ const lowTurn=position<=.27&&bounce>=minTurn&&up>=2;
+ if(highTurn||lowTurn)return {ready:true,side:highTurn?'PUT':'CALL',
+  reason:'closed-range-extreme-reversal-confirmed',
+  observedSwingSeconds:half,position,efficiency};
+ return {ready:false,reason:'range-extreme-awaiting-confirmed-turn'};
+}
+
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000}={}){
  const seconds=Number(durationMs)/1000;
@@ -55,6 +124,16 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  if(!bars)return waiting('completed-structure-not-ready');
  const moves=bars.map(b=>Math.log(b.close/b.open));
  const net=Math.log(bars.at(-1).close/bars[0].open);
+ const noise=observedNoise({quotes,now,horizonSeconds:barMs*4/1000});
+ if(!(noise>0))return waiting('insufficient-quote-variation');
+ const range=completedRangeStructure(quotes,now,seconds,noise,Number(price));
+ if(range){
+  if(!range.ready)return waiting(range.reason);
+  return {ready:true,side:range.side,reason:range.reason,
+    observedAt:Number(quoteAt),entryPrice:Number(price),
+    strength:null,expirySeconds:seconds,
+    regime:'observed-range-turn',observedSwingSeconds:range.observedSwingSeconds};
+ }
  // Directional efficiency distinguishes a persistent move from price
  // zigzags of similar amplitude. A weak sideways swing must not trigger
  // CALL/PUT merely because 3 of 4 small candle bodies share a colour.
@@ -70,8 +149,6 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  if(!side)return waiting('neutral-closed-structure');
  const aligned=moves.filter(m=>sign(side)*m>0).length;
  if(aligned<3)return waiting('lateral-or-mixed-structure');
- const noise=observedNoise({quotes,now,horizonSeconds:barMs*4/1000});
- if(!(noise>0))return waiting('insufficient-quote-variation');
  // Require a real directional movement over FOUR completed bars. A
  // microscopic rise/fall is not a signal, even if three candles were green.
  if(sign(side)*net<noise*.52)return waiting('closed-movement-below-noise');
