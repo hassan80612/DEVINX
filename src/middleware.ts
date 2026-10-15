@@ -18,6 +18,22 @@ function copySessionCookies(source:NextResponse,target:NextResponse){
 }
 
 export async function middleware(request:NextRequest){
+  // Laser Control retired: stop all UI and API traffic before Supabase auth or RPCs.
+  // Leave the code archived in the repository; never start realtime or remote sessions.
+  const pathname=request.nextUrl.pathname;
+  const laserUi=pathname==='/laser-control'||pathname.startsWith('/laser-control/');
+  const laserApi=pathname==='/api/laser-control'||pathname.startsWith('/api/laser-control/');
+  const laserWebhook=pathname==='/api/webhooks/kiwify/laser'||pathname.startsWith('/api/webhooks/kiwify/laser/');
+  if(laserWebhook){
+    // Stop provider retries without touching the database or granting access.
+    return NextResponse.json({ok:true,ignored:'laser_control_parked'},{status:200,headers:{'cache-control':'no-store'}});
+  }
+  if(laserApi)return NextResponse.json({ok:false,error:'laser_control_parked'},{
+    status:410,headers:{'cache-control':'no-store'}
+  });
+  if(laserUi)return new NextResponse('Laser Control desativado no DevinX.',{
+    status:410,headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}
+  });
   const host=(request.headers.get('x-forwarded-host')||request.headers.get('host')||'').split(':')[0].toLowerCase();
   if(isObviousProbe(request.nextUrl.pathname))return new NextResponse(null,{status:404});
 
@@ -29,7 +45,6 @@ export async function middleware(request:NextRequest){
     return NextResponse.redirect(canonical,308);
   }
 
-  const pathname=request.nextUrl.pathname;
   const publicLaserPage=
     pathname==='/laser-control/conhecer'||pathname.startsWith('/laser-control/conhecer/')||
     pathname==='/laser-control/guia'||pathname.startsWith('/laser-control/guia/')||
@@ -97,4 +112,4 @@ export async function middleware(request:NextRequest){
   return response;
 }
 
-export const config={matcher:['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js|woff2?|ttf|otf|mp4|webm|pdf|zip|txt|xml|json)$).*)']};
+export const config={matcher:['/api/laser-control/:path*','/api/webhooks/kiwify/laser/:path*','/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|css|js|woff2?|ttf|otf|mp4|webm|pdf|zip|txt|xml|json)$).*)']};
