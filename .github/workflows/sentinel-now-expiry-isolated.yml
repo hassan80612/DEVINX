@@ -36,6 +36,9 @@ jobs:
             tests/sentinel-mobile-wire-auth.test.mjs \
             tests/sentinel-67314-mobile-render.test.mjs \
             tests/sentinel-pc-mobile-signed-clock-6724.test.mjs
+      - name: Full original Agent prebuild and embedded Windows payload
+        working-directory: sentinel-trading-lab
+        run: npm run prebuild
       - name: Verify card TypeScript
         working-directory: sentinel-trading-lab
         run: npx tsc --noEmit
