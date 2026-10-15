@@ -1266,12 +1266,7 @@ export class LocalPlaywrightDriver{
         }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
       }
       // Timing is observed regardless of the presentation mode.
-      // Retain the exact broker-time verification without building a full
-      // 6,800-quote market snapshot on each overlay update.
-      const clock=this.feeds.get(provider)?.brokerClock?.();
-      payload.brokerTiming=clock?.verified?
-        {...(st.brokerTiming||{}),brokerClockVerified:true,brokerClock:clock}:
-        (st.brokerTiming||null);
+      payload.brokerTiming=this.liveStatus(provider).brokerTiming;
       // Pin a signal's already verified broker expiration independently of
       // the NEXT opportunity window. Window rollover is not option expiry.
       const windowState=payload.vnext?.opportunityWindow||null;
