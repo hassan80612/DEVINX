@@ -1,13 +1,13 @@
 {
-  "version": "13.9.3",
-  "build": "13.9.3-isolated-90s-oscillation-phase",
+  "version": "13.9.4",
+  "build": "13.9.4-exclusive-opportunity-deadline",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.9.3-138-synthetic-regressions;real-broker-outcomes-not-validated",
+    "modelValidation": "13.9.4-exclusive-deadline-regressions;forecast-math-unchanged;real-broker-outcomes-not-validated",
     "forecastModel": "causal-closed-structure-1379"
   }
 }
