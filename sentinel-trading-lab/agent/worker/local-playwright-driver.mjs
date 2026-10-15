@@ -350,6 +350,8 @@ function appendQuoteSample(st,ts,price){
   const t=Number(ts),p=Number(price);if(!Number.isFinite(t)||!Number.isFinite(p)||p<=0)return;
   if(!Array.isArray(st.quoteHistory))st.quoteHistory=[];
   const prev=st.quoteHistory.at(-1);
+  // Never let an older packet enter the live forward-time sample trail.
+  if(prev&&t<Number(prev.ts||0))return;
   if(prev&&prev.price===p&&t-Number(prev.ts||0)<250)return;
   st.quoteHistory.push({ts:t,price:p});
   if(st.quoteHistory.length>7200)st.quoteHistory.splice(0,st.quoteHistory.length-6800)
@@ -482,7 +484,9 @@ function protocolScan(data,st,direction='in'){
       if(q==null)continue;
       const rawTs=n(row.quote_time??row.time??row.timestamp??row.at??row.created_at),ts=rawTs==null?Date.now():(rawTs<1e12?rawTs*1000:rawTs);
       // Do not roll the live price backward on a delayed feed frame.
-      if(ts<Number(st.lastQuoteAt||0)-500||ts>Date.now()+5000)continue;
+      // A delayed packet may be useful for history, but cannot roll the live
+      // price/forecast clock back even by 500ms and create a false reversal.
+      if(ts<Number(st.lastQuoteAt||0)||ts>Date.now()+5000)continue;
       st.quote=Number(q);st.lastQuoteAt=ts;appendQuoteSample(st,ts,st.quote)
     }
   }
