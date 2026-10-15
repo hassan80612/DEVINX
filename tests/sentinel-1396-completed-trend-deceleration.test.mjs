@@ -36,6 +36,23 @@ function quotes(kind,n=1120,seed=3){
  }
  return rows;
 }
+function shadowPrice(quotes,now,model,h){
+ const original=model.priceAt(h);
+ if(!(original>0))return original;
+ const closed=Math.floor(now/10000)*10000,points=[];
+ for(let k=9;k>=0;k--){
+  const wall=closed-k*10000;
+  const row=quotes.findLast(q=>q.ts<=wall);
+  if(!row||wall-row.ts>3500)return original;
+  points.push(Math.log(row.price));
+ }
+ const bars=points.slice(1).map((p,i)=>p-points[i]);
+ const priorSign=Math.sign(points[6]-points[0]);
+ const correction=terminalTrendCurvature({bars,priorSign,
+  persistentTrend:model.trendContinuation,regime:model.regime,
+  sigma:model.sigmaPerSqrtSecond,horizonSeconds:h});
+ return original*Math.exp(correction);
+}
 function compare(kind,h,seed){
  const all=quotes(kind,1120,seed),r={kind,h,seed,samples:0,
    baselineCorrect:0,newCorrect:0,baselineWrong:0,newWrong:0,draws:0,
@@ -45,7 +62,9 @@ function compare(kind,h,seed){
   const args={quoteHistory:all.slice(0,i+1),asOf:all[i].ts,holdingSeconds:h,maxSeconds:h*2};
   const a=baseline(args),b=experiment(args);
   if(a.status!=='causal-forward-path'||b.status!=='causal-forward-path')continue;
-  const values=[a,b].map(x=>[x.priceAt(h),x.priceAt(2*h)]);
+  const values=[[a.priceAt(h),a.priceAt(2*h)],
+   [shadowPrice(args.quoteHistory,args.asOf,b,h),
+    shadowPrice(args.quoteHistory,args.asOf,b,2*h)]];
   if(values.flat().some(x=>!(x>0)))continue;
   const actual=sign(all[i+2*h].price-all[i+h].price);
   if(!actual){r.draws++;continue;}
