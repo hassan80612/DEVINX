@@ -110,6 +110,28 @@ export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  // Two completed 5s bars after the original opportunity opened.
  const cycleAt=Number(window.openedAt||window.windowStartedAt||0);
  const lateAdmission=Number(window.admittedAt)>cycleAt;
+ // A short, consistently observed post-admission reversal can be
+ // recognized before two 5s buckets complete. This uses NO pre-admission
+ // directional samples and NO forming candle colour. At least 4 seconds
+ // of contiguous adverse closes must have actually happened.
+ if(lateAdmission&&now-openAt>=4000&&now-openAt<10000){
+  const recent=q.slice(-5);
+  if(recent.length===5&&recent[0].ts>=openAt&&
+    recent.at(-1).ts-recent[0].ts>=3600&&
+    recent.at(-1).ts-recent[0].ts<=6400&&
+    recent.every((v,i)=>i===0||
+      (v.ts-recent[i-1].ts>=500&&v.ts-recent[i-1].ts<=2200))){
+   const against=window.side==='PUT'?1:-1;
+   const baseline=Number(window.guardBaseline?.referencePrice??window.guardBaseline?.lastClose);
+   const noise=observedNoise({quotes:history,now,horizonSeconds:5});
+   const latest=recent.at(-1);
+   const monotone=recent.slice(1).every((x,i)=>
+     against*Math.log(x.price/recent[i].price)>0);
+   if(baseline>0&&noise>0&&monotone&&
+      against*Math.log(latest.price/baseline)>noise*.55)
+    return {invalidated:true,reason:'confirmed-opposite-structure'};
+  }
+ }
  const bars=lateAdmission?admittedClosedBars(q,now,openAt,2):
    closedBars(q,now,5,2);
  if(!bars||bars[0].from<openAt)return {invalidated:false,reason:'waiting-closed-reversal-bars'};
