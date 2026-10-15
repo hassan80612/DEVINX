@@ -218,9 +218,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   };
   const nowMode=m.vnextMode==='now';
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
-    <label>{t("Estratégia do cenário")}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
+    <label>{t(nowMode?"ANALISTA":"Estratégia do cenário")}{" "}{nowMode?<strong>ANÁLISE AGORA</strong>:<select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
-      </select>
+      </select>}
     </label>
     <label>{t('Relógio atual')}{' '}<select aria-label={t('TEMPO DA CORRETORA')} value={clockChoice} disabled={busy} data-testid="clock-mode-selector" onChange={e=>void changeClock(e.target.value)}>
       <option value="current">{t('Relógio atual')}</option><option value="broker">{t('Sincronizado com a corretora')}</option>
@@ -263,7 +263,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <small>{t(entryDataFresh?'Cotação atual recebida':'Cotação atrasada ou indisponível · não operar com dados antigos')}.</small>
       <small>{t('Estratégia ')}{futureEntry?.engineId||chosenEngine}{t(' · emitida ')}{futureEntry?.issuedAt?clock(futureEntry.issuedAt):'—'}{t(' · entrada ')}{entryPlanValid?clock(plannedAt):'—'}{t(' · vencimento ')}{entryPlanValid?clock(plannedExit):'—'}.</small>
       <small data-testid="mobile-feed-path">{t('Cotação PC: ')}{m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'}{t(' · canal celular: ')}{m.transportAge===null?'—':m.transportAge+'s'}.</small>
-      <small data-testid="forecast-forward-outcome-research">{t('Resultados antigos por prazo: ')}{(m.vnextHorizonMeasurements||[]).length?m.vnextHorizonMeasurements.map((x:any)=>expiryLabel(x.horizonSeconds)+': '+x.correct+'/'+x.verified).join(' · '):t('sem resultados suficientes')}.</small>
+      <small data-testid="forecast-forward-outcome-research" style={{display:nowMode?'none':'block'}}> {t('Resultados antigos por prazo: ')}{(m.vnextHorizonMeasurements||[]).length?m.vnextHorizonMeasurements.map((x:any)=>expiryLabel(x.horizonSeconds)+': '+x.correct+'/'+x.verified).join(' · '):t('sem resultados suficientes')}.</small>
     </details>}
   </div>:null;
   // This is not a re-labelled candle: EVERY cell contains the selected
