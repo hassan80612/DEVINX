@@ -150,6 +150,21 @@ function completedRangeStructure(quotes,now,noise,spot){
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic'}={}){
+ // Experimental combined owner. Still one single authoritative entry engine.
+ // Verify a baseline opportunity against the relevant independent specialist;
+ // never treat any auxiliary prediction as a separate tradable signal.
+ if(engineId==='automatic_trend_support'){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const primary=analyzeNowOpportunity({...input,engineId:'automatic'});
+  if(!primary.ready)return {...primary,engineId};
+  const specialistId=primary.regime==='observed-range-turn'?'support_resistance':'trend';
+  const supporting=analyzeNowOpportunity({...input,engineId:specialistId});
+  if(supporting.ready===true&&supporting.side===primary.side)
+   return {...primary,engineId,confirmationEngine:specialistId,
+     confirmationReason:supporting.reason};
+  return {...primary,engineId,ready:false,side:null,entryPrice:null,
+   reason:'awaiting-'+specialistId+'-agreement',confirmationEngine:specialistId};
+ }
  const seconds=Number(durationMs)/1000;
  let provisionalSide=null;
  const waiting=reason=>({side:null,reason,ready:false,observedAt:Number(quoteAt)||null,
