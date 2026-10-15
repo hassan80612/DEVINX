@@ -1,0 +1,25 @@
+name: Sentinel curated strategies + Automatic AB - NO DEPLOY
+on:
+  push:
+    branches: [fix/sentinel-four-strategies-mobile-guide-20261015]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install existing engine dependencies
+        run: npm install --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund
+      - name: Compare Automatic 30/60 second strategies to current production
+        run: node tests/sentinel-strategy-auto-context-ab.mjs
+      - name: Regression and strategy user interface
+        run: node --test tests/sentinel-13915-one-pass.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-shared-base-v2.test.mjs
+      - name: Install website dependencies
+        run: npm install --prefix sentinel-trading-lab --no-audit --no-fund
+      - name: Typecheck translated strategy and mobile guide
+        run: cd sentinel-trading-lab && npx tsc --noEmit
