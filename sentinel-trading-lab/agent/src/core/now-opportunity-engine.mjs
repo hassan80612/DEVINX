@@ -47,7 +47,7 @@ function before(quotes,at,maxAgeMs=3500){
 function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
  const period=5000,end=Math.floor(now/period)*period;
  const last=quotes.filter(q=>q.ts>=end-135000&&q.ts<=now);
- if(last.length<70||last.at(-1).ts-last[0].ts<90000)return null;
+ if(last.length<50||last.at(-1).ts-last[0].ts<50000)return null;
  const closes=[];
  for(let t=end-130000;t<end;t+=period){
   const part=last.filter(q=>q.ts>=t&&q.ts<t+period);
@@ -56,7 +56,7 @@ function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
     part.some((q,i)=>i>0&&q.ts-part[i-1].ts>3500))continue;
   closes.push({at:t,price:part.at(-1).price,log:Math.log(part.at(-1).price)});
  }
- if(closes.length<18)return null;
+ if(closes.length<10)return null;
  // A directional trend with small pullbacks has high total path efficiency.
  // A long oscillation traverses both directions, returning near its origin.
  let travelled=0;
