@@ -170,6 +170,7 @@ function continuousWindow({input,settings,chosen}){
   engineId,asset,forecastMode:'continuous',
   realWindowEndsAt:window?Number(window.windowEndsAt):null,
   confirmationQuoteGapMs,
+  lateEntryRisk:causal?.streakStage?.lateRisk||0,
   evaluateLead:seconds=>{
    // A qualified prediction is not tradable after the broker's observed
    // purchase deadline. This is only active in synchronized-clock mode.
