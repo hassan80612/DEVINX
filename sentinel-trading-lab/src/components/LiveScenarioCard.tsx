@@ -7,6 +7,7 @@ import {brokerClockView} from '../../agent/worker/broker-clock-view.mjs';
 import {pcClockNow} from '../lib/pc-clock-sync.mjs';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {VISIBLE_STRATEGIES,normalizeUserStrategy,TECHNICAL_STRATEGY_IDS} from '../../agent/src/core/visible-strategy-guide.mjs';
+import {presentableMarketCards} from '../../agent/src/core/vnext-market-cards.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
 const STRATEGIES=VISIBLE_STRATEGIES.filter(x=>TECHNICAL_STRATEGY_IDS.includes(x.id));
@@ -318,11 +319,16 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const observationCards=vnext?<div className="vnextMobileReadings" data-testid="mobile-vnext-readings">
     <strong className="vnextReadingsHeading">{t("TOTAIS DO MERCADO")}</strong>
     <div className="vnextMobileReadingsGrid">
-      {(s?.lastResult?.analysis?.vnext?.cards||[]).slice(0,3).map((c:any,i:number)=>
-        <div key={c.id||i}><small>{t(['MERCADO AGORA','ESTRUTURA ANTERIOR','ESTRUTURA ANTERIOR + MERCADO AGORA'][i])}</small>
-          <strong>{t(c.side||'AGUARDAR')}</strong>
-          <span>CALL {c.callPct==null?'—':c.callPct+'%'} · PUT {c.putPct==null?'—':c.putPct+'%'}</span>
-        </div>)}
+      {presentableMarketCards(s?.lastResult?.analysis?.vnext?.cards).map((c,i)=>{
+        // Only the PC's current quote can make a reading live. An incomplete
+        // incoming cycle has the same stable slot but no borrowed old values.
+        const current=m.quoteFresh&&s?.lastResult?.analysis?.vnext?.engineId===s?.settings?.engine&&
+          c.callPct!==null&&c.putPct!==null;
+        return <div key={c.id}><small>{t(['MERCADO AGORA','ESTRUTURA ANTERIOR','ESTRUTURA ANTERIOR + MERCADO AGORA'][i])}</small>
+          <strong>{t(current?c.side:'AGUARDAR')}</strong>
+          <span>CALL {current?c.callPct+'%':'—'} · PUT {current?c.putPct+'%':'—'}</span>
+        </div>;
+      })}
     </div>
     <small>{t("O terceiro card é a média de Estrutura Anterior + Mercado Agora. A estratégia e os percentuais projetados aparecem apenas em Projeção Futura. Índices visuais, não taxas de acerto.")}</small>
   </div>:null;
