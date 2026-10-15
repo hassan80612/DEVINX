@@ -8,6 +8,7 @@ import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {readBrokerTimingFromText} from './broker-timing-readonly.mjs';
 import {brokerClockView} from './broker-clock-view.mjs';
+import {STRATEGY_CHOICES} from '../src/core/public-strategies.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -1336,6 +1337,7 @@ export class LocalPlaywrightDriver{
             entryTriggeredAt:Number(windowState.entryTriggeredAt)};
         }
       }
+      payload.publicStrategies=STRATEGY_CHOICES;
       payload.brokerClockView=brokerClockView({
         timing:payload.brokerTiming,
         windowState:s.lastVerifiedBrokerSignal||windowState
@@ -1454,6 +1456,10 @@ export class LocalPlaywrightDriver{
         }
 
         const esc=v=>String(v??'—').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        const strategyChoices=Array.isArray(d.publicStrategies)?d.publicStrategies:[];
+        const namedStrategy=id=>strategyChoices.find(e=>e.id===id)||strategyChoices[0]||null;
+        const engineChoice=strategyChoices.some(e=>e.id===d.engine)?d.engine:'automatic';
+        const selectableOption=e=>'<option value="'+e.id+'" '+(engineChoice===e.id?'selected':'')+'>'+esc(tr(e.name))+'</option>';
         const uiLang=String(d.uiLanguage||'pt')==='en'?'en':'pt';
         const tr=k=>{
           const raw=String(k??'');
@@ -1970,17 +1976,15 @@ export class LocalPlaywrightDriver{
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
                 <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela análise')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
 
-                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>${tr('Automático Sentinel')}</option>
-                  <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
-                  <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>${tr('Suporte e Resistência')}</option>
-                  <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
-                  <option value="mean_reversion" ${d.engine==='mean_reversion'?'selected':''}>Mean Reversion</option>
-                  <option value="breakout" ${d.engine==='breakout'?'selected':''}>Breakout</option>
-                  <option value="trendline_breakout" ${d.engine==='trendline_breakout'?'selected':''}>Trendline Breakout</option>
-                  <option value="fibonacci_retest" ${d.engine==='fibonacci_retest'?'selected':''}>Fibonacci Retest</option>
-                  <option value="smart_confluence" ${d.engine==='smart_confluence'?'selected':''}>Smart Confluence</option>
+                  ${strategyChoices.map(selectableOption).join('')}
                 </select>
               </label>
+              <details data-sentinel-preserve-open="1" data-sentinel-strategy-guide style="grid-column:1/-1;font-size:10px;color:${muted};padding:4px 6px;border:1px solid ${panelBorder};border-radius:7px">
+                <summary style="cursor:pointer;font-weight:800;color:${goldSoft}">${tr('Qual estratégia usar em cada gráfico?')}</summary>
+                <div style="display:grid;gap:5px;padding:8px 4px 4px">
+                  ${strategyChoices.map(e=>'<div><b>'+esc(tr(e.name))+':</b> '+esc(tr(e.when))+'</div>').join('')}
+                </div>
+              </details>
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr(nowMode?'DURAÇÃO DA OPERAÇÃO':'ENTRADA DAQUI A')}
                 <select data-sentinel-setting="duration" title="${tr('Prazo da previsão selecionado por você')}" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
                   ${[5,10,15,30,45,60,120,180,300,600,900,3600].map(v=>'<option value="'+v*1000+'" '+(duration===v*1000?'selected':'')+'>'+(v<60?v+'s':v/60+'min')+'</option>').join('')}
