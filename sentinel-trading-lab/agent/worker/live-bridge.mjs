@@ -38,7 +38,7 @@ export function analystSnapshot(runtimeStatus,live){
     e.phase||'open',Number(e.entryTriggeredAt)||0
   ]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
-    engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
+    mode:vnext.mode==='now'?'now':'forecast',engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
     computedStatus:vnext.computedStatus||'unavailable',
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
     historicalComparisons:Number(vnext.historicalComparisons||0),
@@ -116,7 +116,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   const a=snapshot.lastResult?.analysis||{},v=a.vnext,op=a.operationalSignal||{};
   if(!v)return null;
   const compactVnext={
-    engineId:v.engineId,expirySeconds:v.expirySeconds,
+    mode:v.mode,engineId:v.engineId,expirySeconds:v.expirySeconds,
     receipt:v.receipt,targetAnchor:v.targetAnchor,
     ea:v.ea,ow:v.ow,er:v.er,fq:v.fq,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
@@ -156,7 +156,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
     lastResult:{asset:snapshot.lastResult?.asset,analysis:{
       operationalSignal:{side:op.side||'WAIT',state:op.state||'ANALISANDO',
         ready:op.ready===true,actionable:op.actionable===true},
-      vnext:{engineId:v.engineId,expirySeconds:v.expirySeconds,
+      vnext:{mode:v.mode,engineId:v.engineId,expirySeconds:v.expirySeconds,
         receipt:v.receipt,ea:v.ea,ow:v.ow,er:[],hf:[],hm:[],cards:[]}
     }}
   };
