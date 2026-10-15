@@ -25,6 +25,16 @@ jobs:
           node --check tests/sentinel-1397-vs-range-turn-comparison.test.mjs
       - name: A/B chronological simulations
         run: node tests/sentinel-1397-vs-range-turn-comparison.test.mjs
-      - name: One-shot and old release guardrails
+      - name: One-shot, causal range structure and old release guardrails
         run: |
-          node --test tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-1395-quote-race-latency.test.mjs
+          node --test tests/sentinel-1398-range-structure-regression.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-1395-quote-race-latency.test.mjs
+      - name: Install site build dependencies
+        working-directory: sentinel-trading-lab
+        run: npm install --no-audit --no-fund
+      - name: Verify signed Windows Agent and original full prebuild
+        working-directory: sentinel-trading-lab
+        run: npm run prebuild
+      - name: Verify mobile PC parity and TypeScript
+        run: |
+          node --test tests/sentinel-67315-mobile-integrity.test.mjs tests/sentinel-mobile-wire-auth.test.mjs tests/sentinel-pc-mobile-signed-clock-6724.test.mjs
+          cd sentinel-trading-lab && npx tsc --noEmit
