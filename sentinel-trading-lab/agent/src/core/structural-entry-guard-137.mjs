@@ -28,6 +28,27 @@ function closedBars(quotes,now,periodSeconds,count=3){
  }
  return rows;
 }
+// A reversal belongs to an OPPORTUNITY opened at an arbitrary timestamp.
+// The broker's wall-clock 5s grid must not hide the first complete 5s bar
+// merely because the window opened between two wall-clock boundaries.
+// Keep the established quote coverage checks; only anchor the two buckets.
+function openingBars(quotes,now,openAt,periodSeconds=5,count=2){
+ const ms=periodSeconds*1000;
+ if(!(Number.isFinite(openAt)&&openAt>0&&now>=openAt+ms*count))return null;
+ const complete=Math.floor((now-openAt)/ms);
+ const end=openAt+complete*ms;
+ const bars=[];
+ for(let i=count;i>0;i--){
+  const from=end-i*ms,to=from+ms;
+  const q=quotes.filter(x=>x.ts>=from&&x.ts<to);
+  const edge=Math.min(8000,ms*.45),maxGap=Math.min(8000,ms*.8);
+  if(q.length<2||q[0].ts-from>edge||to-q.at(-1).ts>edge+1000||
+     q.some((v,j)=>j>0&&v.ts-q[j-1].ts>maxGap))return null;
+  bars.push({from,to,open:q[0].price,close:q.at(-1).price,
+   high:Math.max(...q.map(x=>x.price)),low:Math.min(...q.map(x=>x.price)),samples:q.length});
+ }
+ return bars;
+}
 export function threeClosedCandleEvidence({quoteHistory=[],now=Date.now(),holdingSeconds=30}={}){
  const horizon=Number(holdingSeconds);
  const period=horizon>=30?30:horizon>=10?10:5;
@@ -83,8 +104,8 @@ export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  if(!(ts>0&&ts<=now&&now-ts<=2500&&openAt>0))return {invalidated:false,reason:'missing-fresh-quote'};
  const history=quotesUntil(snap.quoteHistory,now),q=history.filter(x=>x.ts>=openAt);
  // Two completed 5s bars after the original opportunity opened.
- const bars=closedBars(q,now,5,2);
- if(!bars||bars[0].from<openAt)return {invalidated:false,reason:'waiting-closed-reversal-bars'};
+ const bars=openingBars(q,now,openAt,5,2);
+ if(!bars)return {invalidated:false,reason:'waiting-closed-reversal-bars'};
  const against=window.side==='PUT'?1:-1;
  const moves=bars.map(b=>Math.log(b.close/b.open));
  if(!moves.every(m=>against*m>0))return {invalidated:false,reason:'ordinary-retracement'};
