@@ -43,9 +43,15 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
       redirect('/laser-control/conhecer#planos');
     }
     await supabase.rpc('register_devinx_product',{p_product:'financeiro'});
-    const{data:accessData}=await supabase.rpc('get_devinx_access_status');
+    const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
-    if(access?.allowed)redirect(nextPath||'/painel');
+    // An RPC outage must never masquerade as a blocked plan or billing failure.
+    if(accessError||!access)return <main style={{maxWidth:680,margin:'10vh auto',padding:28}}>
+      <h1>Não foi possível consultar seu acesso</h1>
+      <p>O serviço de autenticação está temporariamente indisponível. Isso não significa que seu plano venceu.</p>
+      <a href="/entrar">Tentar novamente</a>
+    </main>;
+    if(access.allowed)redirect(nextPath||'/painel');
     return <AccessGateCard/>;
   }
 
