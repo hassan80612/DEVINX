@@ -79,7 +79,12 @@ export function guardOpeningCandidate({candidate,snap={},settings={},now=Date.no
 }
 export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  if(window?.phase!=='open'||!isSide(window.side))return {invalidated:false,reason:'not-open'};
- const ts=Number(snap.quoteTs||0),openAt=Number(window.openedAt||window.windowStartedAt||0);
+ // 'openedAt' is the original CLOCK-cycle start, not necessarily when
+ // this CALL/PUT was first admitted. Its guardBaseline is taken from the
+ // live quote AT admission. Only post-admission bars may invalidate that side.
+ // Legacy windows without this field keep their original behavior.
+ const ts=Number(snap.quoteTs||0);
+ const openAt=Number(window.admittedAt||window.openedAt||window.windowStartedAt||0);
  if(!(ts>0&&ts<=now&&now-ts<=2500&&openAt>0))return {invalidated:false,reason:'missing-fresh-quote'};
  const history=quotesUntil(snap.quoteHistory,now),q=history.filter(x=>x.ts>=openAt);
  // Two completed 5s bars after the original opportunity opened.
