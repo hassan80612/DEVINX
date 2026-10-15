@@ -233,9 +233,11 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   };
   const nowMode=m.vnextMode==='now';
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
-    <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
+    <label>{t('Estratégia ativa')}{" "}{nowMode?
+      <strong data-testid="single-automatic-owner">Automático Sentinel · único motor</strong>:
+      <select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
-      </select>
+      </select>}
     </label>
     <label>{t('Relógio atual')}{' '}<select aria-label={t('TEMPO DA CORRETORA')} value={clockChoice} disabled={busy} data-testid="clock-mode-selector" onChange={e=>void changeClock(e.target.value)}>
       <option value="current">{t('Relógio atual')}</option><option value="broker">{t('Sincronizado com a corretora')}</option>
