@@ -45,9 +45,9 @@ test('13.9.1: unconfirmed quotes/different candles cannot invent a reversal',()=
  const stage=completedStreakStage({candles:cut,quotePrice:1.10,asOf:T+120000,sigma:.00001});
  assert.equal(observedStreakRejection({stage,side:'CALL'}),null);
 });
-test('13.9.1: check is applied at both selected future entry and source-quote confirmation',()=>{
+test('13.9.2: no 13.9.1 streak veto remains in entry or live confirmation',()=>{
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/src/core/future-entry-schedule.mjs',import.meta.url),'utf8');
- assert.match(source,/observedStreakRejection\(\{stage:causal\?\.streakStage,side:check\.side\}\)/);
- assert.match(source,/status:observedRejection\?'observed-streak-rejection'/);
- assert.match(source,/const observedRejection=check\.qualified\?/);
+ assert.doesNotMatch(source,/observedStreakRejection/);
+ assert.doesNotMatch(source,/observed-streak-rejection/);
+ assert.match(source,/confirmWindowEntry/);
 });
