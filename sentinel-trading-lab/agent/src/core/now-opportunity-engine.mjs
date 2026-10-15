@@ -206,7 +206,10 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
    phase:'fired',reason:'present-confirmed',side:candidate.side,
    entryAt:now,entryTriggeredAt:now,plannedEntryAt:now,
    entryPrice:Number(candidate.entryPrice),confirmedEntryPrice:Number(candidate.entryPrice),
-   exitAt:expiry,windowStartedAt:now,windowEndsAt:expiry,
+   // A broker quote can precede the worker's Date.now() by milliseconds.
+   // Cycle origin MUST be the observed quote clock or both PC and phone
+   // incorrectly discard every legitimate real-time analysis as "old".
+   exitAt:expiry,windowStartedAt:Number(quoteAt),windowEndsAt:expiry,
    holdingSeconds:horizon/1000,delaySeconds:horizon/1000,
    issuedAt:now,entryReadyNow:true,observationSide:candidate.side,
    lastObservedAt:Number(quoteAt)};
@@ -214,7 +217,9 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  return {context:key,engineId,asset:String(asset).toUpperCase(),
    phase:'scanning',reason:!fresh?'waiting-fresh-quote':candidate?.reason||'scanning-now',
    side:null,entryAt:null,exitAt:null,entryTriggeredAt:null,entryReadyNow:false,
-   windowStartedAt:priorExpiry||now,windowEndsAt:0,observationSide:candidate?.side||null,
+   // Scanning is not an open signal window. Do not invent a cycle start
+   // equal to worker time: quoteAt normally trails the worker by 50-500ms.
+   windowStartedAt:null,windowEndsAt:0,observationSide:candidate?.side||null,
    lastObservedAt:Number(quoteAt)||null,lastExpiryAt:priorExpiry,
    holdingSeconds:horizon/1000,delaySeconds:horizon/1000};
 }
