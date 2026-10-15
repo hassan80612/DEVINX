@@ -24,6 +24,8 @@ import {evolveOpportunity,opportunityContext} from './single-opportunity-window.
 import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuard} from './structural-entry-guard-137.mjs';
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
+import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {lightweightDashboard} from './vnext-market-cards.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
 function dayKey(ts,timeZone='UTC'){
@@ -925,6 +927,85 @@ export class DemoTradingRuntime{
     this.signalValidation.pending=this.signalValidation.pending.slice(-240);
   }
   _signalValidationGate({analysis,snap,settings,now}){
+    if(settings.engine&&this.forecastModel==='now-structural-v1'){
+      // All price evidence is present or closed. Analysis never schedules
+      // a future entry and continues on each quote during an active option.
+      const observation=analyzeNowOpportunity({
+        quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
+        now,durationMs:settings.orderDurationMs
+      });
+      const duration=brokerDurationGuard({snap,settings,now});
+      const eligible=duration.allowed?observation:
+        {...observation,side:null,ready:false,reason:duration.reason};
+      const next=advanceNowOpportunity({
+        previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
+        asset:settings.asset,engineId:settings.engine,durationMs:settings.orderDurationMs
+      });
+      const old=this.vnextWindowState;
+      this.vnextWindowState=next;
+      const freshSignal=next?.phase==='fired'&&
+        (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
+      if(freshSignal){
+        this.vnextWindowOutcomes.push({
+          windowId:next.entryTriggeredAt,asset:next.asset,
+          engineId:next.engineId,forecastMode:'now',
+          periodSeconds:next.holdingSeconds,side:next.side,
+          entryAt:next.entryAt,exitAt:next.exitAt,
+          entryPrice:next.entryPrice,verified:false
+        });
+        this.vnextWindowOutcomes=this.vnextWindowOutcomes.slice(-350);
+      }
+      // Score observed quote at expiry, never fabricate broker settlement.
+      for(const outcome of this.vnextWindowOutcomes){
+        if(outcome.verified||Number(outcome.exitAt)>now)continue;
+        const point=(snap.quoteHistory||[]).find(q=>
+          Number(q.ts)>=outcome.exitAt&&Number(q.ts)<=outcome.exitAt+1000);
+        if(!point||!(Number(outcome.entryPrice)>0))continue;
+        outcome.verified=true;outcome.observedExitPrice=Number(point.price);
+        outcome.correct=outcome.observedExitPrice===outcome.entryPrice?null:
+          (outcome.observedExitPrice>outcome.entryPrice?'CALL':'PUT')===outcome.side;
+      }
+      const active=next?.phase==='fired'&&now<Number(next.exitAt);
+      const anchor=active?{
+        ...next,projectedEntryPrice:next.entryPrice,
+        projectedExitPrice:null,actualHoldingSeconds:next.holdingSeconds,
+        entryReadyNow:freshSignal
+      }:null;
+      this.vnextFutureEntryAnchor=anchor;
+      const readings=lightweightDashboard({quoteHistory:snap.quoteHistory,now});
+      const vnext={
+        mode:'now',engineId:settings.engine,expirySeconds:Number(settings.orderDurationMs)/1000,
+        computedStatus:observation.ready?'observed-confirmation':'observing-now',
+        forecastFoundation:'completed-structure-and-current-quote',
+        receipt:null,projection:null,targetAnchor:null,targetProjection:null,
+        futureEntryForecast:null,futureEntryAnchor:anchor,futureEntryRows:[],
+        horizonForecasts:[],horizonMeasurements:[],
+        opportunityWindow:next?{
+          phase:next.phase,reason:next.reason,windowStartedAt:next.windowStartedAt,
+          windowEndsAt:next.windowEndsAt,entryAt:next.entryAt,
+          exitAt:next.exitAt,side:next.side
+        }:null,nowObservation:{
+          side:observation.side,ready:observation.ready,reason:observation.reason,
+          observedAt:observation.observedAt,strength:observation.strength
+        },cards:readings.cards,
+        windowOutcomes:this.vnextWindowOutcomes.filter(x=>x.verified&&x.forecastMode==='now').length
+      };
+      const analysisResult={...analysis,asset:settings.asset,engineId:settings.engine,
+        vnext,side:'WAIT',confidence:0,
+        operationalSignal:{
+          asset:settings.asset,side:active?next.side:'AGUARDAR',
+          state:active?'EM ANDAMENTO':'ANALISANDO AGORA',
+          ready:freshSignal,actionable:false,
+          strength:observation.strength??0,
+          activeUntil:active?next.exitAt:null
+        },
+        strategyCards:[],strategyConfluence:null,strategyGuidance:null,
+        generalConsensus:null,entryPlanner:{modelVersion:'now-structural-v1',horizons:{}},
+        reasons:[active?'Operação em andamento: nenhuma nova chamada antes do vencimento.':
+          'Analisando o mercado atual para a próxima entrada.',observation.reason]
+      };
+      return{allowed:false,analysis:analysisResult,reasons:analysisResult.reasons};
+    }
     if(settings.engine){
       // VNext: ONE motor, ONE user-selected expiration. Never call the old
       // strategy panel, 3-way confluence or release logic for this branch.
