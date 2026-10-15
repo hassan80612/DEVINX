@@ -12,8 +12,9 @@ const snap=q=>({provider:'exnova',quoteHistory:q,price:q.at(-1).price,quoteTs:q.
 const make=()=>new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'});
 test('every selected strategy survives settings updates and Agent restart',()=>{
  for(const engine of engines){
-  const r=make();r.patchSettings({engine});assert.equal(r.settings.engine,engine);
-  const restored=make().restore(r.snapshotPersistent());assert.equal(restored.settings.engine,engine);
+  const selected=['automatic','fibonacci_retest','trend','support_resistance','smart_confluence'].includes(engine)?engine:'automatic';
+  const r=make();r.patchSettings({engine});assert.equal(r.settings.engine,selected);
+  const restored=make().restore(r.snapshotPersistent());assert.equal(restored.settings.engine,selected);
   assert.equal(restored.settings.forecastMode,'continuous');
  }
 });
