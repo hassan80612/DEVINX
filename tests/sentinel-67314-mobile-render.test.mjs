@@ -71,3 +71,30 @@ test('NOW card renders the enabled strategy menu and fresh quote while waiting f
  s.state='paused';
  assert.match(render(s,start+20000),/data-testid="analysis-spinner" data-active="0"/);
 });
+test('NOW phone switches provisional direction but preserves the confirmed receipt until expiry',()=>{
+ const s=state(),v=s.lastResult.analysis.vnext;
+ v.mode='now';v.futureEntryAnchor=null;
+ v.opportunityWindow={phase:'scanning',windowStartedAt:null,windowEndsAt:0};
+ v.nowObservation={side:null,provisionalSide:'CALL',observedAt:start+20000,evaluatedAt:start+20000};
+ assert.match(render(s,start+20000),/ANALISANDO POSSÍVEL CALL/);
+ v.nowObservation.provisionalSide='PUT';
+ assert.match(render(s,start+20000),/ANALISANDO POSSÍVEL PUT/);
+ assert.doesNotMatch(render(s,start+24000),/ANALISANDO POSSÍVEL/);
+ v.opportunityWindow={phase:'fired',windowStartedAt:start+10000,windowEndsAt:start+40000};
+ v.futureEntryAnchor={side:'CALL',delaySeconds:30,holdingSeconds:30,issuedAt:start+10000,
+  entryAt:start+10000,entryTriggeredAt:start+10000,exitAt:start+40000,projectedEntryPrice:1.23456};
+ const locked=render(s,start+20000);
+ assert.match(locked,/OPERAÇÃO EM ANDAMENTO · ↑ CALL/);
+ assert.doesNotMatch(locked,/ANALISANDO POSSÍVEL PUT/);
+});
+test('NOW phone renders the real synchronized broker clock instead of silently disabling the selection',()=>{
+ const s=state(),v=s.lastResult.analysis.vnext;
+ s.settings.clockMode='broker';v.mode='now';v.futureEntryAnchor=null;
+ v.opportunityWindow={phase:'scanning',windowStartedAt:null,windowEndsAt:0};
+ s.liveBroker.brokerTiming={brokerClock:{verified:true,source:'visible-broker-clock',
+  capturedAt:start+20000,clockSeconds:13*3600+10*60+15}};
+ const html=render(s,start+20000);
+ assert.match(html,/HORA DA CORRETORA/);assert.match(html,/13:10:15/);
+ assert.match(html,/SINCRONIZADO/);assert.doesNotMatch(html,/Relógio da corretora indisponível/);
+ assert.match(render(s,start+28000),/Relógio da corretora indisponível/);
+});

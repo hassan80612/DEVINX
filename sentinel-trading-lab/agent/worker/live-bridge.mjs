@@ -39,6 +39,8 @@ export function analystSnapshot(runtimeStatus,live){
   ]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
     ...(vnext.mode==='now'?{mode:'now'}:{}),engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
+    ...(vnext.mode==='now'?{nowObservation:take(vnext.nowObservation,
+      ['side','provisionalSide','ready','reason','observedAt','evaluatedAt'])}:{}),
     computedStatus:vnext.computedStatus||'unavailable',
     forecastFoundation:vnext.forecastFoundation||'extrapolation-pending-outcomes',
     historicalComparisons:Number(vnext.historicalComparisons||0),
@@ -91,7 +93,9 @@ export function analystSnapshot(runtimeStatus,live){
       brokerTiming:runtimeStatus?.settings?.clockMode==='broker'&&live?.brokerTiming?{
         capturedAt:live.brokerTiming.capturedAt,
         purchaseWindow:{closesAt:live.brokerTiming.purchaseWindow?.closesAt??null},
-        instrumentKind:live.brokerTiming.instrumentKind
+        instrumentKind:live.brokerTiming.instrumentKind,
+        brokerClock:live.brokerTiming.brokerClock,
+        source:live.brokerTiming.source
       }:null},
     feed:{price:live?.quote??null,quoteTs:liveQuoteAt},
     lastResult:{asset:result.asset||asset,analysis:{
@@ -117,6 +121,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
   if(!v)return null;
   const compactVnext={
     ...(v.mode==='now'?{mode:'now'}:{}),engineId:v.engineId,expirySeconds:v.expirySeconds,
+    ...(v.mode==='now'?{nowObservation:v.nowObservation}:{}),
     receipt:v.receipt,targetAnchor:v.targetAnchor,
     ea:v.ea,ow:v.ow,er:v.er,fq:v.fq,
     projection:v.projection,hf:v.hf,hm:v.hm,cards:v.cards
@@ -157,6 +162,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
       operationalSignal:{side:op.side||'WAIT',state:op.state||'ANALISANDO',
         ready:op.ready===true,actionable:op.actionable===true},
       vnext:{...(v.mode==='now'?{mode:'now'}:{}),engineId:v.engineId,expirySeconds:v.expirySeconds,
+        ...(v.mode==='now'?{nowObservation:v.nowObservation}:{}),
         receipt:v.receipt,ea:v.ea,ow:v.ow,er:[],hf:[],hm:[],cards:[]}
     }}
   };

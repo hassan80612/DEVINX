@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import {chromium} from '../sentinel-trading-lab/agent/node_modules/playwright-core/index.mjs';
+import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
+const browser=await chromium.launch({headless:true,executablePath:chromium.executablePath()});
+try{
+ const page=await browser.newPage({viewport:{width:1100,height:850}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ const at=Date.now();await page.clock.install({time:at});await page.clock.pauseAt(at+100);
+ await page.setContent('<html><body style="background:#18282a">Local broker fixture</body></html>');
+ const d=new LocalPlaywrightDriver(),session={page,background:false,lastBrokerTimeScanAt:Date.now()};
+ d.session=async()=>session;
+ const st=d.state('exnova');Object.assign(st,{symbol:'EUR/USD OTC',uiSymbol:'EUR/USD OTC',activeId:76});
+ const time=()=>at+100;
+ const base={asset:'EUR/USD OTC',validatedAsset:'EUR/USD OTC',assetValidated:true,
+  analysisAgeMs:0,liveAgeMs:0,state:'running',agentVersion:'13.9.14',price:1.1,
+  engine:'automatic',durationMs:30000,clockMode:'broker',uiLanguage:'pt',
+  vnext:{mode:'now',engineId:'automatic',expirySeconds:30,
+   opportunityWindow:{phase:'scanning',windowStartedAt:null,windowEndsAt:0},
+   nowObservation:{side:null,provisionalSide:'CALL',observedAt:time(),evaluatedAt:time()}}};
+ const update=async input=>{
+  session.lastBrokerTimeScanAt=Date.now();
+  st.brokerTiming={brokerClock:{verified:true,source:'visible-broker-clock',
+   capturedAt:Date.now(),clockSeconds:13*3600+10*60+15}};
+  assert.equal(await d.updateOverlay('exnova',input),true);
+ };
+ await update(base);
+ const label=page.locator('[data-sentinel-decision-label]');
+ assert.equal(await label.innerText(),'ANALISANDO POSSÍVEL CALL');
+ assert.match(await page.locator('[data-sentinel-broker-clock-status]').innerText(),/SINCRONIZADO/);
+ const put=structuredClone(base);put.vnext.nowObservation.provisionalSide='PUT';
+ await update(put);assert.equal(await label.innerText(),'ANALISANDO POSSÍVEL PUT');
+ const locked=structuredClone(put);
+ locked.vnext.opportunityWindow={phase:'fired',windowStartedAt:at-10000,windowEndsAt:at+20000};
+ locked.vnext.futureEntryAnchor={engineId:'automatic',asset:base.asset,side:'CALL',
+  delaySeconds:30,holdingSeconds:30,issuedAt:at-10000,entryAt:at-10000,
+  entryTriggeredAt:at-10000,exitAt:at+20000,projectedEntryPrice:1.1};
+ await update(locked);assert.equal(await label.innerText(),'OPERAÇÃO EM ANDAMENTO · ↑ CALL');
+ assert.equal(await page.locator('[data-sentinel-vnext-clock-value]').innerText(),'00:20');
+ const labelBounds=await label.evaluate(el=>({width:el.scrollWidth,available:el.parentElement.clientWidth}));
+ assert.ok(labelBounds.width<=labelBounds.available,JSON.stringify(labelBounds));
+ await page.clock.runFor(21000);
+ assert.doesNotMatch(await label.innerText(),/OPERAÇÃO EM ANDAMENTO/);
+ assert.deepEqual(errors,[]);
+ console.log('PASS: actual PC overlay flips provisional direction, locks confirmed CALL, expires without freeze and displays verified broker clock.');
+}finally{await browser.close();}

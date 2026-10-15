@@ -151,14 +151,19 @@ function completedRangeStructure(quotes,now,noise,spot){
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic'}={}){
  const seconds=Number(durationMs)/1000;
+ let provisionalSide=null;
  const waiting=reason=>({side:null,reason,ready:false,observedAt:Number(quoteAt)||null,
-   entryPrice:null,strength:null,expirySeconds:seconds});
+   provisionalSide,entryPrice:null,strength:null,expirySeconds:seconds});
  if(!(seconds>=5&&seconds<=3600))return waiting('invalid-expiry');
  if(!(Number(quoteAt)>0&&Number(quoteAt)<=now&&now-Number(quoteAt)<=2500&&finitePrice(price)))
   return waiting('stale-live-quote');
  const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
  if(!quotes.length||!quotes.some(q=>q.ts===Number(quoteAt)&&Number(q.price)===Number(price)))
   return waiting('live-quote-unverified');
+ // A changing observation is display-only. It never satisfies ready or
+ // authorizes an entry; the selected strategy still confirms its own setup.
+ const recentBase=before(quotes,Number(quoteAt)-3000,2500);
+ provisionalSide=recentBase?sideOf(Number(price)-recentBase.price):null;
  // Selected strategies produce native current evidence; the shared lifecycle
  // owns their signals. No legacy score/candle/forecast prerequisite is used.
  if(engineId!=='automatic'){
@@ -168,7 +173,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // This structure is retained across cycles; never start collecting it
  // again at expiry. Holding time does not impose any post-expiry pause.
  const barMs=(seconds<=10?5:seconds<=30?10:15)*1000;
- const bars=closingBars(quotes,now,barMs);
+ const bars=closingBars(quotes,Number(quoteAt),barMs);
  if(!bars)return waiting('completed-structure-not-ready');
  const moves=bars.map(b=>Math.log(b.close/b.open));
  const net=Math.log(bars.at(-1).close/bars[0].open);

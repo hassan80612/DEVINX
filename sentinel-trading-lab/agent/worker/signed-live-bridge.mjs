@@ -1,5 +1,6 @@
 import {createHmac,timingSafeEqual} from 'node:crypto';
 import {LiveBridge} from './live-bridge.mjs';
+import {analystWireV1} from '../src/core/analyst-wire-v1.mjs';
 
 // The public Realtime room only transports data. HMAC capability comes from
 // authenticated account status and rotates every Agent restart.
@@ -80,7 +81,8 @@ export class SignedLiveBridge extends LiveBridge{
   }
   send(event,payload,topic=this.topic){
     if(event==='broadcast'&&payload?.event==='analyst'&&payload.payload){
-      const frame=payload.payload;
+      const frame=JSON.parse(analystWireV1(payload.payload));
+      payload.payload=frame;
       delete frame.sig;
       frame.sig=this.mac(JSON.stringify(frame));
     }

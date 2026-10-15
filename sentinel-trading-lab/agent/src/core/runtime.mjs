@@ -986,7 +986,8 @@ export class DemoTradingRuntime{
           windowEndsAt:next.windowEndsAt,entryAt:next.entryAt,
           exitAt:next.exitAt,side:next.side
         }:null,nowObservation:{
-          side:observation.side,ready:observation.ready,reason:observation.reason,
+          side:observation.side,provisionalSide:observation.side||observation.provisionalSide||null,
+          ready:observation.ready,reason:eligible.reason,
           observedAt:observation.observedAt,strength:observation.strength,
           price:Number(snap.price)||null,evaluatedAt:now
         },cards:readings.cards,

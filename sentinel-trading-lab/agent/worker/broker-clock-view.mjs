@@ -22,7 +22,8 @@ export function brokerClockView({timing=null,windowState=null,now=Date.now()}={}
  if(!verified)return anchoredExpiry||{verified:false,kind:'unavailable',source:null,reason:'broker-time-not-fresh'};
  let timeSeconds=null,wallTimeMs=null;
  if(clock.source==='broker-protocol-timesync'&&valid(clock.brokerNowMs)){
-  wallTimeMs=Number(clock.brokerNowMs)+age;
+  // Protocol samples may already include elapsed receive time. Advance once.
+  wallTimeMs=Number(clock.brokerNowMs)+age-Number(clock.ageMs||0);
   const x=new Date(wallTimeMs);
   timeSeconds=x.getHours()*3600+x.getMinutes()*60+x.getSeconds();
  }else if(clock.source==='visible-broker-clock'&&

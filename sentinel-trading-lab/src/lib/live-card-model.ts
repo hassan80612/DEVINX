@@ -176,6 +176,7 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
   const setupCreatedAt=Number(op.scenario?.createdAt||op.createdAt||0);
   const reversalCheckedAt=Number(sub.checkedAt||0);
   return{asset,online,running,fresh,quoteFresh,totalsStale,quoteAt,evaluationAt,quoteAge,analysisAge,quoteAgeAtFrame,transportAge,state,side,tone,scenarioTone,scenarioInactive,
+    nowObservation:matchingMarket&&vnext?.engineId===s?.settings?.engine?vnext?.nowObservation||null:null,
     selectedEngine:s?.settings?.engine||null,vnextMode:vnext?.mode||'forecast',vnextReceipt,vnextTargetAnchor,vnextProjection,vnextTargetProjection,vnextHorizons,vnextHorizonMeasurements,vnextFutureEntryAnchor,vnextFutureEntryRows,vnextOpportunityWindow,vnextStatus:vnext?.computedStatus||null,
     vnextFoundation:vnext?.forecastFoundation||null,vnextHistorical:Number(vnext?.historicalComparisons||0),
     vnextVerified:vnext?.outcomesVerified||0,vnextLastSettled:vnext?.lastSettled||null,

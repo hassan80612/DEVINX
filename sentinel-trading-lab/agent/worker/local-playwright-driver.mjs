@@ -364,7 +364,9 @@ function appendQuoteSample(st,ts,price){
   // Keep the live timestamp represented even when the price is unchanged.
   // The analyzer verifies quoteAt against this trail. Dropping this tick
   // made an unchanged fresh quote look unverified until another price move.
-  if(prev&&(t===Number(prev.ts)||(prev.price===p&&t-Number(prev.ts||0)<250))){
+  // Fixed buckets preserve elapsed flat-price observations. A sliding
+  // t-prev.ts check rewrote the same sample forever during fast equal ticks.
+  if(prev&&(t===Number(prev.ts)||(prev.price===p&&Math.floor(t/250)===Math.floor(Number(prev.ts)/250)))){
     st.quoteHistory[st.quoteHistory.length-1]={ts:t,price:p};return;
   }
   st.quoteHistory.push({ts:t,price:p});
@@ -1936,10 +1938,14 @@ export class LocalPlaywrightDriver{
         const confirmedSide=entryPlanReady?pinnedEntry.side:null;
         const scheduledAt=entryPlanReady?Number(pinnedEntry.entryAt):0;
         const scheduledExit=entryPlanReady?Number(pinnedEntry.exitAt):0;
+        const observation=d.vnext?.nowObservation;
+        const observationFresh=liveNow&&Date.now()-Number(observation?.observedAt||0)>=0&&Date.now()-Number(observation?.observedAt||0)<=2500;
+        const provisional=observationFresh?(observation?.side||observation?.provisionalSide):null;
+        const scanningLabel=provisional==='CALL'?'ANALISANDO POSSÍVEL CALL':provisional==='PUT'?'ANALISANDO POSSÍVEL PUT':'ANALISANDO';
         const scheduledDecision=nowMode?
           (entryMoment&&confirmedSide?'ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
             opportunityPhase==='fired'?'OPERAÇÃO EM ANDAMENTO · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT'):
-            'ANALISANDO'):
+            scanningLabel):
           entryMoment&&confirmedSide?
           ('ENTRADA AGORA · '+(confirmedSide==='CALL'?'↑ CALL':'↓ PUT')):
           opportunityPhase==='cancelled'?'JANELA SEM ENTRADA':
@@ -2257,9 +2263,14 @@ export class LocalPlaywrightDriver{
             }
             // A finished receipt is no longer an active prediction. Never
             // freeze the computer at 00:00 while the next observation arrives.
+            const observation=window.__sentinelLastOverlayData?.vnext?.nowObservation;
+            const observationAge=nowClock-Number(observation?.observedAt||0);
+            const provisional=pane.getAttribute('data-live-quote')==='1'&&observationAge>=0&&observationAge<=2500?
+              (observation?.side||observation?.provisionalSide):null;
+            const scanningLabel=provisional==='CALL'?'ANALISANDO POSSÍVEL CALL':provisional==='PUT'?'ANALISANDO POSSÍVEL PUT':'ANALISANDO';
             if(!active&&decision){
               const phase=pane.getAttribute('data-window-phase');
-              decision.textContent=tr(nowAnalysisMode?'ANALISANDO':
+              decision.textContent=tr(nowAnalysisMode?scanningLabel:
                 phase==='cancelled'?'JANELA SEM ENTRADA':
                 phase==='fired'?'ENTRADA JÁ SINALIZADA':'JANELA ABERTA · ANALISANDO');
             }
@@ -2279,7 +2290,7 @@ export class LocalPlaywrightDriver{
             // The SELECTED clock must change the MAIN readout, not merely
             // the little footer. It remains read-only: never drive the
             // opportunity window or a trade from the broker purchase cutoff.
-            const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker'&&!nowAnalysisMode;
+            const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker';
             const view=window.__sentinelLastOverlayData?.brokerClockView||null;
             const brokerStatus=pane.querySelector('[data-sentinel-broker-clock-status]');
             if(brokerMode){
@@ -2294,7 +2305,10 @@ export class LocalPlaywrightDriver{
                 const secs=(Number(view.timeSeconds)+Math.floor(age/1000)+86400)%86400;
                 const time=pad(Math.floor(secs/3600))+':'+
                   pad(Math.floor((secs%3600)/60))+':'+pad(secs%60);
-                if(view.kind==='expiry'||view.kind==='expired'){
+                if(nowAnalysisMode&&active){
+                  if(cycleStatus)cycleStatus.textContent=tr('ATÉ O VENCIMENTO');
+                  if(brokerStatus)brokerStatus.textContent=time+' · '+tr('SINCRONIZADO');
+                }else if(view.kind==='expiry'||view.kind==='expired'){
                   const deadline=Number(view.expiresAt);
                   const left=Math.max(0,Math.ceil((deadline-nowClock)/1000));
                   shown=pad(Math.floor(left/60))+':'+pad(left%60);
