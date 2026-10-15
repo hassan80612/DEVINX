@@ -34,11 +34,10 @@ test('no cancellation of 80 same-direction opportunities during ordinary retreat
    const x=caseFor(side,type,i),a=oldCheck(x),b=newCheck(x);
    oldCancelled+=Number(a.invalidated);newCancelled+=Number(b.invalidated);
    assert.equal(x.window.side,side);
-   if(type==='trend')assert.equal(b.invalidated,false);
-   if(type==='pullback'||type==='bounce')assert.equal(b.invalidated,false,
-     JSON.stringify({type,side,i,b}));
-   if(type==='reversal')assert.equal(b.invalidated,true,
-     JSON.stringify({type,side,i,b}));
+   // Rejected cancellation rewrite is not in this candidate. The
+   // released 13.9.3 behavior must remain unchanged while better
+   // evidence is collected for true reversals inside a price range.
+   assert.deepEqual(b,a);
   }
   rows.push({type,side,total:40,oldCancelled,newCancelled});
  }
