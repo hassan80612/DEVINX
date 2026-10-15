@@ -29,7 +29,7 @@ export async function middleware(req:NextRequest){
   // with HTML, silently saving a broken "installer" on Windows.
   // Serve ONLY known flat .exe filenames as static binaries without cookies.
   // Never open ZIP, JSON, or paths outside /downloads here.
-  const installerFile=/^\\/downloads\\/(?:Sentinel-Agent-[A-Za-z0-9.-]+|sentinel-agent-windows)\\.exe$/i.test(p);
+  const installerFile=/^\/downloads\/(?:Sentinel-Agent-[A-Za-z0-9.-]+|sentinel-agent-windows)\.exe$/i.test(p);
   if(installerFile)return NextResponse.next();
   if(p==='/'||p==='/planos'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
   // Authenticated installed Agents can fetch signed release packages to
