@@ -294,7 +294,13 @@ function overlayAnalysis(view,asset,now=Date.now()){
   // Clear the old direction while waiting for a real next-cycle quote.
   if(view.settings?.engine){
     overlayCache.delete(key);
-    if(shouldDiscardVnextFrame({analysis:current,quoteAt:currentQuoteAt,now,switched}))
+    // The legacy expiry boundary stays authoritative. In NOW scanning
+    // there is no opened entry window and a broker tick may be a few
+    // milliseconds older than the evaluation timestamp. Never hide the
+    // entire analysis merely because of that ordinary quote transport gap.
+    if(!current||switched||(cycleEndsAt>0&&now>=cycleEndsAt)||
+       (cycleStartsAt>0&&currentQuoteAt<cycleStartsAt&&
+         shouldDiscardVnextFrame({analysis:current,quoteAt:currentQuoteAt,now,switched})))
       return {analysis:{asset:key,side:'WAIT',reasons:['Aguardando nova janela e cotação']},transient:false};
     return{analysis:current,transient:false};
   }
