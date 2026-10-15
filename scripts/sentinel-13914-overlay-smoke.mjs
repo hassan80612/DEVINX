@@ -5,7 +5,10 @@ const browser=await chromium.launch({headless:true,executablePath:chromium.execu
 try{
  const page=await browser.newPage({viewport:{width:1100,height:850}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- const at=Date.now();await page.clock.install({time:at});await page.clock.pauseAt(at+100);
+ // Keep the browser's simulated time advancing with the real Agent clock.
+ // Freezing the page at at+100 made fresh Node-side broker samples appear
+ // to come from the future, incorrectly failing the synchronization test.
+ const at=Date.now();await page.clock.install({time:at});
  await page.setContent('<html><body style="background:#18282a">Local broker fixture</body></html>');
  const d=new LocalPlaywrightDriver(),session={page,background:false,lastBrokerTimeScanAt:Date.now()};
  d.session=async()=>session;
