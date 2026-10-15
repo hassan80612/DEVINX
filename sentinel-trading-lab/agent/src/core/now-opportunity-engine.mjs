@@ -162,8 +162,8 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
    qualityPolicy==='pattern-v2'?pattern.strength>=.4:
    qualityPolicy==='pattern-v3'?pattern.strength>=(durationMs===60000 ? 0.75 : 0.4):
    qualityPolicy==='pattern-v4'?pattern.strength>=(durationMs===60000 ? 0.9 : 0.4):
-   qualityPolicy==='pattern-v5'?durationMs===30000?pattern.strength>=.4:
-    (pattern.strength>=.60&&original.reason==='closed-range-extreme-reversal-confirmed');
+   qualityPolicy==='pattern-v5'?(durationMs===30000?pattern.strength>=.4:
+    (pattern.strength>=.60&&original.reason==='closed-range-extreme-reversal-confirmed')):false;
   if(pattern.ready&&choosePattern)
    return {...original,...pattern,engineId,qualityPolicy,
     reason:'past-observed-holding-outcomes',expirySeconds:durationMs/1000,
