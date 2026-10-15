@@ -1,0 +1,19 @@
+name: Sentinel 30s/60s strategy-combination research (NO DEPLOY)
+on:
+  push:
+    branches: [research/sentinel-combo-30-60-validation-20261015]
+permissions:
+  contents: read
+jobs:
+  replay-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install engine dependencies
+        run: npm ci --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund
+      - name: Execute reproducible chronological 30/60-second A/B comparisons
+        run: node tests/sentinel-combined-engine-holdout-research.mjs
