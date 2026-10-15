@@ -1,4 +1,5 @@
 import {priorCandleReaction} from './prior-candle-reaction.mjs';
+import {completedStreakStage} from './completed-streak-stage.mjs';
 // Sentinel 13.7.9 candidate — causal completed-structure forecast.
 // Direction derives from non-overlapping COMPLETED 10s blocks. The latest
 // forming block is used only as today's reference price, not a direction vote.
@@ -130,7 +131,9 @@ function structureMove(p,seconds){
  const forwardTime=p.persistentTrend?h/(1+h/240):40*(1-Math.exp(-h/40));
  const exhaustionScale=p.exhaustion&&!p.reversal?
    (p.persistentTrend?.82:.35):1;
- const drift=rate*exhaustion*exhaustionScale*forwardTime;
+ const drift=rate*exhaustion*exhaustionScale*forwardTime*
+   (p.streakStage?.side===(rate>0?'CALL':'PUT')?
+    1-.60*Number(p.streakStage.lateRisk||0):1);
  const lastClosed=p.points.at(-1),mean=p.points.reduce((a,b)=>a+b,0)/p.points.length;
  // For a real range, mean reversion depends on position inside observed
  // bounds; mid-range noise must not masquerade as a directional edge.
@@ -173,6 +176,9 @@ export function causalForwardPath({quoteHistory=[],candles=[],asOf=Date.now(),
   return invalid('stale-or-invalid-horizon');
  const current=profile(rows,latest.ts);
  if(!current)return invalid('insufficient-completed-structure');
+ const streakStage=completedStreakStage({candles,quotePrice:Math.exp(latest.lp),
+   asOf:now,sigma:current.sigma});
+ current.streakStage=streakStage;
  const analog=current.exhaustion?null:matches(rows,now,current,end);
  const levelReaction=priorCandleReaction({candles,quoteHistory,asOf:now,sigma:current.sigma});
  const priceAt=s=>{
@@ -219,7 +225,7 @@ export function causalForwardPath({quoteHistory=[],candles=[],asOf=Date.now(),
   regime:levelReaction?'level-rejection':current.regime,
   levelReaction,trendContinuation:current.persistentTrend,
   directionalEfficiency:current.efficiency,
-  completedSignChanges:current.signChanges,
+  completedSignChanges:current.signChanges,streakStage,
   reversalEvidence:current.reversal?
     {confirmedClosedBlocks:true,recentImpulse:current.recentImpulse}:null,
   latestQuoteAt:latest.ts,
