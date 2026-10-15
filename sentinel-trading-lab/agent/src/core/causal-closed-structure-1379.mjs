@@ -76,9 +76,19 @@ function profile(all,t){
   Math.abs(bars.at(-1))<Math.abs(bars.at(-2))*.65&&
   Math.abs(bars.at(-2))<Math.abs(bars.at(-3))*.85;
  const exhaustion=spentLeg&&(priorSign>0?location>.88:location<.12);
+ // Classify continuous trends from persistence, not distance travelled.
+ // A soft opposite bar at an extreme is a pullback, not a mandatory range/stop.
+ const recentBars=bars.slice(-6),grossTravel=recentBars.reduce((s,x)=>s+Math.abs(x),0);
+ const netTravel=Math.abs(recentBars.reduce((s,x)=>s+x,0));
+ const efficiency=grossTravel>0?netTravel/grossTravel:0;
+ const signChanges=recentBars.slice(1).filter((x,i)=>
+   Math.sign(x)!==Math.sign(recentBars[i])).length;
  const weakHistory=Math.abs(points.at(-1)-points[0])/
   Math.max(1e-12,sigma*Math.sqrt(90))<.75;
- const range=!reversal&&(weakHistory||exhaustion);
+ const persistentTrend=priorSign!==0&&priorSign===recentSign&&
+   !weakHistory&&efficiency>=.68&&signChanges<=2;
+ const sideways=signChanges>=3&&efficiency<.48;
+ const range=!reversal&&(weakHistory||sideways||(exhaustion&&!persistentTrend));
  const regime=reversal?'reversal':range?'range':'trend';
  const volatility=Math.max(normalized10,1e-12);
  const features=[
@@ -91,7 +101,8 @@ function profile(all,t){
   clamp((points.at(-1)-Math.min(...points))/volatility,-4,4)
  ];
  return {at,points,bars,sigma,prior,recent,regime,priorSign,recentSign,
-  reversal,range,exhaustion,normalized10,recentImpulse,features,closed,travel};
+  reversal,range,exhaustion,persistentTrend,efficiency,signChanges,
+  normalized10,recentImpulse,features,closed,travel};
 }
 export function forwardRegime(p){
  if(!p)return {regime:'unknown',turn:false};
@@ -113,15 +124,21 @@ function structureMove(p,seconds){
  const last=bars.slice(-3).map(x=>Math.abs(x));
  const avg=arr=>arr.reduce((s,v)=>s+v,0)/arr.length;
  const exhaustion=aligned&&avg(last)<avg(previous)*.60?.63:1;
- // Long horizons cannot extrapolate a short momentum pulse indefinitely.
- const drift=rate*exhaustion*40*(1-Math.exp(-h/40));
+ // The old exp(-h/40) flattened even an uninterrupted, efficient trend:
+ // entry -> expiry became nearly zero at the 60s/120s horizons. Extend the
+ // horizon ONLY when completed blocks independently show persistence.
+ const forwardTime=p.persistentTrend?h/(1+h/240):40*(1-Math.exp(-h/40));
+ const exhaustionScale=p.exhaustion&&!p.reversal?
+   (p.persistentTrend?.82:.35):1;
+ const drift=rate*exhaustion*exhaustionScale*forwardTime;
  const lastClosed=p.points.at(-1),mean=p.points.reduce((a,b)=>a+b,0)/p.points.length;
- const reverting=(p.regime==='range'?.30:.08)*(mean-lastClosed)*
+ // For a real range, mean reversion depends on position inside observed
+ // bounds; mid-range noise must not masquerade as a directional edge.
+ const extremity=Math.min(1,Math.abs(p.points.at(-1)-
+   (Math.max(...p.points)+Math.min(...p.points))/2)/
+   Math.max(1e-12,(Math.max(...p.points)-Math.min(...p.points))/2));
+ const reverting=(p.regime==='range'?.15+.35*extremity:.08)*(mean-lastClosed)*
   (1-Math.exp(-h/40));
- // A wave at a completed-structure extreme which has stopped progressing
- // is not evidence of a new opposite trade. Leave it without an edge
- // instead of inventing PUT/CALL from one closed contrary block.
- if(p.exhaustion&&!p.reversal)return 0;
  const cap=Math.max(1e-10,p.sigma*Math.sqrt(Math.max(1,h))*2.4);
  return clamp(drift+reverting,-cap,cap);
 }
@@ -182,7 +199,14 @@ export function causalForwardPath({quoteHistory=[],candles=[],asOf=Date.now(),
   // A measured failed test of the prior candle changes the estimated PATH;
   // it is not an extra entry veto or a fixed waiting period. A sustained
   // break receives no such reversal correction.
-  if(levelReaction)move=levelReaction.rate*15*(1-Math.exp(-s/15));
+  if(levelReaction){
+   // A return inside the prior candle can be an ordinary pullback. An
+   // unconfirmed rejection must not entirely overwrite a persistent
+   // completed-structure forecast on one short-lived price swing.
+   const weight=clamp((levelReaction.normalizedRetreat-.75)/2.6,.12,.88);
+   const rejection=levelReaction.rate*15*(1-Math.exp(-s/15));
+   move=move*(1-weight)+rejection*weight;
+  }
   const cap=current.sigma*Math.sqrt(s)*3;
   return precise(Math.exp(latest.lp+clamp(move,-cap,cap)));
  };
@@ -193,7 +217,9 @@ export function causalForwardPath({quoteHistory=[],candles=[],asOf=Date.now(),
   analogExamples:analog?.cases.length||0,
   analogNeighbors:analog?.neighbors.length||0,
   regime:levelReaction?'level-rejection':current.regime,
-  levelReaction,
+  levelReaction,trendContinuation:current.persistentTrend,
+  directionalEfficiency:current.efficiency,
+  completedSignChanges:current.signChanges,
   reversalEvidence:current.reversal?
     {confirmedClosedBlocks:true,recentImpulse:current.recentImpulse}:null,
   latestQuoteAt:latest.ts,
