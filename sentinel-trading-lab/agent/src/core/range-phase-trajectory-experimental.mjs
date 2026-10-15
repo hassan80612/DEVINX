@@ -47,7 +47,6 @@ export function rangePhaseMove({points=[],horizonSeconds=0,baselineMove=0,
  const fullMean=ys.reduce((a,b)=>a+b,0)/ys.length;
  const total=ys.reduce((sum,y)=>sum+(y-fullMean)**2,0);
  if(!(total>1e-16))return baselineMove;
- const candidates=[];
  let best=null;
  for(const period of [40,45,50,55,60,65,70,75,80,85,90]){
   const fit=fitCycle(ys.slice(0,train),stop,period);
@@ -61,28 +60,12 @@ export function rangePhaseMove({points=[],horizonSeconds=0,baselineMove=0,
    sum+(allFit.at(t)-ys[i])**2,0);
   const fitSkill=1-fitSse/total;
   const consistency=Math.min(heldSkill,fitSkill);
-  candidates.push({fit:allFit,consistency});
   if(!best||consistency>best.consistency)best={fit:allFit,consistency};
  }
  // Strong evidence of a completed repeating path contributes a smoothly
  // weighted projection. A noisy/choppy or not-yet-repeating sideways leg
  // retains the previous forecast rather than a manufactured reversal.
- // Nearby periods should agree about the prospective displacement. If
- // multiple well-fitting periods diverge, shrink the EXTRAPOLATION weight
- // continuously rather than inventing a direction or vetoing an entry.
- const near=best?candidates.filter(v=>v.consistency>=best.consistency-.12)
-   .sort((a,b)=>b.consistency-a.consistency).slice(0,3):[];
- const delta=fit=>{
-  const w=2*Math.PI/fit.period,decay=Math.exp(-h/150);
-  return decay*(fit.cos*Math.cos(w*h)+fit.sin*Math.sin(w*h))-
-    fit.cos+(1-decay)*fit.center;
- };
- const predicted=near.map(v=>delta(v.fit));
- const spread=predicted.length>1?
-   Math.max(...predicted)-Math.min(...predicted):0;
- const amplitude=best?Math.max(1e-12,Math.hypot(best.fit.cos,best.fit.sin)):1;
- const stability=1/(1+(spread/Math.max(amplitude*.65,1e-12))**2);
- const mix=best?clamp((best.consistency-.15)/.65,0,.8)*stability:0;
+ const mix=best?clamp((best.consistency-.15)/.65,0,.8):0;
  if(mix===0)return baselineMove;
  const {fit}=best,w=2*Math.PI/fit.period;
  const waveNow=fit.cos;
