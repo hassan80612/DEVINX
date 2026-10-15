@@ -4,6 +4,7 @@
 import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 import {sharedMarketBase} from './shared-market-base.mjs';
+import {causalPatternDirection} from './causal-pattern-direction.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -151,6 +152,18 @@ function completedRangeStructure(quotes,now,noise,spot){
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline'}={}){
+ if((qualityPolicy==='pattern-v1'||qualityPolicy==='pattern-v2')&&engineId){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const original=analyzeNowOpportunity({...input,engineId:'automatic'});
+  const pattern=causalPatternDirection(input);
+  // Strategy selection changes context, never creates a second signal owner.
+  // The causal model may replace the base direction, not suppress its entry.
+  if(pattern.ready&&(qualityPolicy==='pattern-v1'||pattern.strength>=.4))
+   return {...original,...pattern,engineId,qualityPolicy,
+    reason:'past-observed-holding-outcomes',expirySeconds:durationMs/1000,
+    contextStrategy:engineId,signalOwner:'shared-market-base'};
+  return {...original,engineId,qualityPolicy,signalOwner:'shared-market-base'};
+ }
  if(qualityPolicy==='shared-base-v2'){
   const input={quoteHistory,price,quoteAt,now,durationMs};
   const baseline=analyzeNowOpportunity({...input,engineId:'automatic'});
