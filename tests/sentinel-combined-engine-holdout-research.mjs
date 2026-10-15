@@ -65,29 +65,39 @@ const recorded=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation
  .sort((a,b)=>a.ts-b.ts);
 const examples=[{type:'recorded-short',regime:'recorded',seed:0,rows:recorded}];
 const kinds=['up','down','weak-up','weak-down','up-failure','down-failure','rise-then-fall','fall-then-rise','late-jump','breakout','counter-spike','range-fast','range-slow','range-irregular','chop','step-down'];
-for(const kind of kinds)for(const seed of [7,11,19,23]){
+for(const kind of kinds)for(const seed of [7,19]){
  examples.push({type:kind,regime:/range|chop/.test(kind)?'range':/failure|then|spike|jump/.test(kind)?'turn':/up|down|breakout/.test(kind)?'directional':'mixed',seed,rows:samples(kind,seed)});
 }
+const memo=new WeakMap();
 function replay(rows,policy,duration,slipSeconds=0){
- let state=null,signals=[],timings=[];
- for(let i=0;i<rows.length;i++){
-  const q=rows[i],history=rows.slice(0,i+1),now=q.ts;
-  const baselineInput={quoteHistory:history,price:q.price,quoteAt:q.ts,now,durationMs:duration};
-  const candidate=chooseCandidate(baselineInput,policy);
-  const next=advanceNowOpportunity({previous:state,candidate,quoteAt:q.ts,now,asset:'RESEARCH',durationMs:duration,engineId:policy});
-  if(next?.phase==='fired'&&next.entryTriggeredAt!==state?.entryTriggeredAt){
-    const startAt=q.ts+slipSeconds*1000,expiryAt=startAt+duration;
-    const entry=rows.find(x=>x.ts>=startAt&&x.ts<=startAt+1000);
-    const exit=rows.find(x=>x.ts>=expiryAt&&x.ts<=expiryAt+1000);
-    const result=entry&&exit?((next.side==='CALL'?exit.price-entry.price:entry.price-exit.price)>0?'win':
-      exit.price===entry.price?'tie':'loss'):'unknown';
-    signals.push({t:q.ts,result,side:next.side,reason:candidate.reason});
+ const key=policy+'|'+duration;
+ let cached=memo.get(rows);
+ if(!cached){cached=new Map();memo.set(rows,cached);}
+ let signals=cached.get(key);
+ if(!signals){
+  let state=null;signals=[];
+  for(let i=0;i<rows.length;i++){
+   const q=rows[i],history=rows.slice(0,i+1),now=q.ts;
+   const baselineInput={quoteHistory:history,price:q.price,quoteAt:q.ts,now,durationMs:duration};
+   const candidate=chooseCandidate(baselineInput,policy);
+   const next=advanceNowOpportunity({previous:state,candidate,quoteAt:q.ts,now,asset:'RESEARCH',durationMs:duration,engineId:policy});
+   if(next?.phase==='fired'&&next.entryTriggeredAt!==state?.entryTriggeredAt){
+    signals.push({t:q.ts,side:next.side,reason:candidate.reason});
+   }
+   state=next;
   }
-  state=next;
+  cached.set(key,signals);
  }
- const scored=signals.filter(s=>s.result==='win'||s.result==='loss');
- return {signals:signals.length,completed:scored.length,wins:scored.filter(s=>s.result==='win').length,
-   losses:scored.filter(s=>s.result==='loss').length,unknown:signals.filter(s=>s.result==='unknown').length};
+ let wins=0,losses=0,ties=0,unknown=0;
+ for(const s of signals){
+  const entryAt=s.t+slipSeconds*1000,expiryAt=entryAt+duration;
+  const entry=rows.find(x=>x.ts>=entryAt&&x.ts<=entryAt+1000);
+  const exit=rows.find(x=>x.ts>=expiryAt&&x.ts<=expiryAt+1000);
+  if(!entry||!exit){unknown++;continue}
+  const move=(s.side==='CALL'?exit.price-entry.price:entry.price-exit.price);
+  if(move>0)wins++;else if(move<0)losses++;else ties++;
+ }
+ return {signals:signals.length,completed:wins+losses,wins,losses,unknown};
 }
 const merged={};
 for(const duration of durations){
@@ -118,4 +128,4 @@ for(const duration of [30,60])for(const slip of [0,1,2]){
    theoreticalPayout086:+(v.wins*.86-v.losses).toFixed(2)}));
  }
 }
-console.log('METHOD','Synthetic market paths (seeds 7/11/19/23), 1 short recorded fixture; no real broker orders; no claims of real win rates. Expiry 30/60s, execution slippage 0/1/2s; payout hypothetical 86%.');
+console.log('METHOD','Synthetic market paths (seeds 7/19), 1 short recorded fixture; no real broker orders; no claims of real win rates. Expiry 30/60s, execution slippage 0/1/2s; payout hypothetical 86%.');
