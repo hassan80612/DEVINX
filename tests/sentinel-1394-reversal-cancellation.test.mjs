@@ -67,3 +67,23 @@ test('missing extreme metadata retains original safe cancellation behavior',()=>
   assert.deepEqual(newCheck(x),oldCheck(x));
  }
 });
+
+test('stress test: a real two-bar reversal can develop BEFORE breaking the old 90s extreme',()=>{
+ const stats=[];
+ for(const side of ['CALL','PUT']){
+  let oldCanceled=0,newCanceled=0;
+  for(let i=0;i<40;i++){
+   const x=caseFor(side,'reversal',i);
+   const ref=x.window.guardBaseline.referencePrice;
+   // A 90s trend can place its old high/low far outside this 10s turn.
+   if(side==='PUT')x.window.guardBaseline.lastHigh=ref+.003;
+   else x.window.guardBaseline.lastLow=ref-.003;
+   oldCanceled+=Number(oldCheck(x).invalidated);
+   newCanceled+=Number(newCheck(x).invalidated);
+  }
+  stats.push({side,oldCanceled,newCanceled,total:40,
+   note:'directional turn before crossing remote prior extreme, settlement unknown'});
+ }
+ console.log('[1394 CANCEL COUNTEREXAMPLE, NOT broker outcome] '+JSON.stringify(stats));
+ assert.equal(stats.length,2);
+});
