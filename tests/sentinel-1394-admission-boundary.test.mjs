@@ -107,3 +107,43 @@ test('new admission marker cannot flip direction, extend countdown, or reopen a 
  assert.equal(result.windowStartedAt,START);
  assert.equal(result.windowEndsAt,START+30000);
 });
+
+test('holdout: how many valid and invalid windows survive through an actual planned entry second',()=>{
+ const summary={cases:0,oldWouldOpen:0,newWouldOpen:0,additionalCorrect:0,additionalIncorrect:0,
+  oldCancelled:0,newCancelled:0};
+ const detail=[];
+ const candidateSides=['CALL','PUT'],scenarios=['recover','weak-recoil','strong-turn','trend-continuation'];
+ for(const admitSec of [7,11,12,13,16])for(const lead of [3,6,9,12])
+ for(const scenario of scenarios)for(const side of candidateSides){
+  const group={admitSec,lead,scenario,side,cases:0,oldWouldOpen:0,newWouldOpen:0,
+   additionalCorrect:0,additionalIncorrect:0};
+  for(let seed=20;seed<40;seed++){
+   const due=admitSec+lead;
+   if(due>=30)continue;
+   const data=timeline({side,admitSec,scenario,seed});
+   const oldCancel=[],newCancel=[];
+   for(let t=admitSec+1;t<=due;t++){
+    const r=inspect(data,t);
+    if(r.old.invalidated)oldCancel.push(t);
+    if(r.fixed.invalidated)newCancel.push(t);
+   }
+   const oldActive=oldCancel.length===0,newActive=newCancel.length===0;
+   const entry=data.rows.find(q=>q.ts===START+due*1000).price;
+   const exit=data.rows.find(q=>q.ts===START+(due+30)*1000).price;
+   const correct=(exit>entry?'CALL':'PUT')===side;
+   for(const o of [summary,group]){
+    o.cases++;o.oldWouldOpen+=Number(oldActive);o.newWouldOpen+=Number(newActive);
+    o.additionalCorrect+=Number(!oldActive&&newActive&&correct);
+    o.additionalIncorrect+=Number(!oldActive&&newActive&&!correct);
+   }
+   summary.oldCancelled+=Number(!oldActive);summary.newCancelled+=Number(!newActive);
+  }
+  if(group.cases>0)detail.push(group);
+ }
+ console.log('[1394 ADMISSION HOLDOUT distinct windows, synthetic] '+JSON.stringify({summary,detail}));
+ assert.ok(summary.cases>800);
+ assert.ok(summary.additionalCorrect>0);
+ // Do not assert an impossible zero-regression promise: if an opposite
+ // movement continues through the actual entry second, the new guard
+ // may fail to cancel before its first two POST-admission bars complete.
+});
