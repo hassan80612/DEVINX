@@ -1,7 +1,7 @@
-name: Sentinel 13.9.14 live provisional direction, synced clock and sample continuity
+name: Sentinel 13.9.15 single-release latency/clock and compatibility
 on:
   push:
-    branches: [fix/sentinel-clock-analysis-20261015]
+    branches: [fix/sentinel-single-release-latency-domain-20261015]
 permissions:
   contents: read
 jobs:
@@ -22,6 +22,8 @@ jobs:
       - name: Validate original regressions, current strategy and first post-expiry quote; compile embedded Agent
         working-directory: sentinel-trading-lab
         run: npm run prebuild
+      - name: Validate new latency, no-provisional, and safe canonical-domain rules
+        run: node --test tests/sentinel-13915-one-pass.test.mjs
       - name: Typecheck actual site
         working-directory: sentinel-trading-lab
         run: npx tsc --noEmit
@@ -31,7 +33,7 @@ jobs:
           node scripts/sentinel-13914-overlay-smoke.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: Sentinel-13.9.14-Windows
+          name: Sentinel-13.9.15-Windows
           path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
           retention-days: 5
   windows-payload:
