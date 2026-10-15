@@ -126,7 +126,7 @@ const PC_UI_KEYS=[
  "Contexto técnico combinado.",
  "Aguardando confirmação.",
  "Escolha estratégias diferentes para comparar leituras.",
- "Sugestão: Price Action + Suporte/Resistência + Trend Following.",
+ "Sugestão: Fibonacci Retest + Trend Following + Suporte/Resistência.",
  "AGUARDANDO UM CENÁRIO",
  "SEM ESTRATÉGIAS",
  "PREVISÃO EM REAVALIAÇÃO",
@@ -2194,7 +2194,7 @@ export class LocalPlaywrightDriver{
               <label><span style="display:block;font-size:9.5px;font-weight:800;color:${muted};margin:0 0 3px 2px">${tr('Estratégia 2')}</span><select data-sentinel-setting="strategy2" style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9.5px;font-weight:700">${'<option value="none" '+(strategy2==='none'?'selected':'')+'>'+tr('Não selecionada')+'</option>'+strategyChoices.filter(e=>e.id!=='automatic').map(e=>'<option value="'+e.id+'" '+(strategy2===e.id?'selected':'')+'>'+esc(tr(e.name))+'</option>').join('')}</select></label>
               <label><span style="display:block;font-size:9.5px;font-weight:800;color:${muted};margin:0 0 3px 2px">${tr('Estratégia 3')}</span><select data-sentinel-setting="strategy3" style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9.5px;font-weight:700">${'<option value="none" '+(strategy3==='none'?'selected':'')+'>'+tr('Não selecionada')+'</option>'+strategyChoices.filter(e=>e.id!=='automatic').map(e=>'<option value="'+e.id+'" '+(strategy3===e.id?'selected':'')+'>'+esc(tr(e.name))+'</option>').join('')}</select></label>
             </div>
-            <div data-sentinel-strategy-advice role="note" style="margin-top:7px;padding:5px 7px;border-left:2px solid ${strategyGuidance.level==='conflict'?putTone:goldSoft};color:${strategyGuidance.level==='conflict'?putTone:muted};font-size:10px;line-height:1.35"><b>${tr('Combinação:')}</b> ${esc(tr(strategyGuidance.message||'Escolha estratégias diferentes para comparar leituras.'))} <span style="color:${subtle}">· ${esc(tr(strategyGuidance.recommendation||'Sugestão: Price Action + Suporte/Resistência + Trend Following.'))}</span></div>
+            <div data-sentinel-strategy-advice role="note" style="margin-top:7px;padding:5px 7px;border-left:2px solid ${strategyGuidance.level==='conflict'?putTone:goldSoft};color:${strategyGuidance.level==='conflict'?putTone:muted};font-size:10px;line-height:1.35"><b>${tr('Combinação:')}</b> ${esc(tr(strategyGuidance.message||'Escolha estratégias diferentes para comparar leituras.'))} <span style="color:${subtle}">· ${esc(tr(strategyGuidance.recommendation||'Sugestão: Fibonacci Retest + Trend Following + Suporte/Resistência.'))}</span></div>
             <div style="margin-top:6px;font-size:9.5px;color:${subtle}">${tr('Os 3 cards superiores de força da vela foram mantidos. As estratégias abaixo são calculadas separadamente.')}</div>
           </div>
 
