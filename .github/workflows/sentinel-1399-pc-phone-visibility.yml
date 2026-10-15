@@ -1,0 +1,39 @@
+name: Sentinel 13.9.9 PC / Phone visibility regression
+on:
+  push:
+    branches:
+      - fix/sentinel-1399-now-overlay-clock-20261015
+permissions:
+  contents: read
+jobs:
+  analyst-visibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Verify source
+        run: |
+          node --check sentinel-trading-lab/agent/worker/vnext-frame-visibility.mjs
+          node --check sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+          node --check sentinel-trading-lab/agent/worker/index.mjs
+      - name: Install site dependencies for TypeScript and legacy tests
+        working-directory: sentinel-trading-lab
+        run: npm install --no-audit --no-fund
+      - name: Exact source-clock reproduction, core and mobile regressions
+        run: |
+          node --test tests/sentinel-1399-pc-phone-source-clock.test.mjs \
+            tests/sentinel-1398-range-structure-regression.test.mjs \
+            tests/sentinel-now-expiry-one-shot.test.mjs \
+            tests/sentinel-1395-quote-race-latency.test.mjs \
+            tests/sentinel-67315-mobile-integrity.test.mjs \
+            tests/sentinel-mobile-wire-auth.test.mjs \
+            tests/sentinel-pc-mobile-signed-clock-6724.test.mjs
+      - name: Full prebuild with Windows Agent
+        working-directory: sentinel-trading-lab
+        run: npm run prebuild
+      - name: Verify TypeScript
+        working-directory: sentinel-trading-lab
+        run: npx tsc --noEmit
