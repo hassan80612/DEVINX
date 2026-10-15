@@ -17,7 +17,7 @@ const seconds=(n:number|null)=>n===null?'—':n+'s';
 function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,plannedExit,side,phase,quoteAt,pcClockOffsetMs,holdingSeconds,clockMode,brokerTiming}:{
  windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedExit:number,
  side:string|null,phase:string|null,quoteAt:number,pcClockOffsetMs:number|null,holdingSeconds:number,
- clockMode:string,brokerTiming:any
+ clockMode:string,brokerTiming:any,nowMode:boolean
 }){
  const {t}=useSentinelLocale();
  const [now,setNow]=useState(()=>Date.now());
@@ -41,16 +41,19 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,p
  const brokerNow=pcClockNow(now,pcClockOffsetMs);
  const capturedAt=Number(brokerTiming?.capturedAt||0);
  const purchaseClosesAt=Number(brokerTiming?.purchaseWindow?.closesAt||0);
- const brokerVerified=clockMode==='broker'&&capturedAt>0&&
+ const brokerVerified=!nowMode&&clockMode==='broker'&&capturedAt>0&&
   brokerNow>=capturedAt&&brokerNow-capturedAt<7000&&purchaseClosesAt>capturedAt;
  const shownSeconds=brokerVerified?Math.max(0,Math.ceil((purchaseClosesAt-brokerNow)/1000)):seconds;
  const countdown=shownSeconds==null?'—:—':
   String(Math.floor(shownSeconds/60)).padStart(2,'0')+':'+String(shownSeconds%60).padStart(2,'0');
- const direction=t(view.label);
+ const direction=nowMode?(
+  moment?'ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
+  running&&phase==='fired'?'OPERAÇÃO EM ANDAMENTO · '+(side==='CALL'?'↑ CALL':'↓ PUT'):
+  'ANALISANDO AGORA'):t(view.label);
  return <>
   <div className="vnextFutureDirection" data-await-entry={view.withinDeadline&&phase==='open'&&!moment?'true':undefined}><strong data-testid="future-entry-decision">{direction}</strong></div>
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-   <div><small>{brokerVerified?t('ATÉ FECHAR COMPRA'):clockMode==='broker'?t('Relógio da corretora indisponível'):t(moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA')}</small><strong>{countdown}</strong></div>
+   <div><small>{brokerVerified?t('ATÉ FECHAR COMPRA'):clockMode==='broker'?t('Relógio da corretora indisponível'):t(nowMode?'ATÉ O VENCIMENTO':moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA')}</small><strong>{countdown}</strong></div>
    <div><small>{t("MOMENTO DE ENTRADA")}</small>
     <b>{phase==='fired'&&entryTriggeredAt?clock(entryTriggeredAt):t('AGUARDANDO')}</b>
     <span>{phase==='fired'&&plannedExit>0?t('Vencimento ')+clock(plannedExit):
@@ -213,6 +216,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     // Display timing only. No forecast recalculation or window reset.
     await act('settings',{clockMode:mode});
   };
+  const nowMode=m.vnextMode==='now';
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
     <label>{t("Estratégia do cenário")}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
         {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
@@ -221,7 +225,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     <label>{t('Relógio atual')}{' '}<select aria-label={t('TEMPO DA CORRETORA')} value={clockChoice} disabled={busy} data-testid="clock-mode-selector" onChange={e=>void changeClock(e.target.value)}>
       <option value="current">{t('Relógio atual')}</option><option value="broker">{t('Sincronizado com a corretora')}</option>
     </select></label>
-    <label>{t("Entrada daqui a")}{" "}<select aria-label={t('Tempo até a entrada prevista')} value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
+    <label>{t(nowMode?"Duração da operação":"Entrada daqui a")}{" "}<select aria-label={t('Tempo até a entrada prevista')} value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
@@ -236,7 +240,8 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const plannedAt=Number(futureEntry?.entryAt||0);
   const plannedExit=Number(futureEntry?.exitAt||0);
   const entryPlanValid=!!(futureEntry&&['CALL','PUT'].includes(futureEntry.side)&&
-    plannedAt>Number(futureEntry.issuedAt)&&plannedExit>plannedAt&&
+    (nowMode?plannedAt>=Number(futureEntry.issuedAt):plannedAt>Number(futureEntry.issuedAt))&&
+    plannedExit>plannedAt&&
     Number(futureEntry.delaySeconds)===Number(expirySeconds));
   const entryDataFresh=m.fresh;
   // Match the PC overlay: a projected entry time is not the end of the
@@ -244,17 +249,17 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const entryPlanDisplayable=entryPlanValid&&Number(m.vnextOpportunityWindow?.windowStartedAt)>0&&
     Number(m.vnextOpportunityWindow?.windowEndsAt)>now;
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
-    <div className="vnextReceiptTitle"><b>{t('ENTRADA FUTURA')} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{t(entryDataFresh?'PROJEÇÃO FUTURA':'DADOS A CONFERIR')}</small></div>
-    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} clockMode={clockChoice} brokerTiming={s?.liveBroker?.brokerTiming??null}/>
+    <div className="vnextReceiptTitle"><b>{t(nowMode?'ANÁLISE EM TEMPO REAL':'ENTRADA FUTURA')} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{t(entryDataFresh?(nowMode?'COTAÇÃO AO VIVO':'PROJEÇÃO FUTURA'):'DADOS A CONFERIR')}</small></div>
+    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} clockMode={clockChoice} brokerTiming={s?.liveBroker?.brokerTiming??null} nowMode={nowMode}/>
     <div className="vnextProjectionValues">
-      <div><small>{t("PREÇO ESTIMADO NA ENTRADA")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
-      <div><small>{t("PREÇO ESTIMADO AO VENCER")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
+      <div><small>{t(nowMode?"PREÇO NA ENTRADA":"PREÇO ESTIMADO NA ENTRADA")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
+      <div><small>{t(nowMode?"PREÇO AO VENCER · AGUARDANDO":"PREÇO ESTIMADO AO VENCER")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedExitPrice):'—'}</strong></div>
     </div>
     <div className="vnextProjectionBias" aria-label="Cenário de entrada futura não confirmado">
-      <span>{t("JANELA")}{" "}<b>{expiryLabel(Number(expirySeconds))}</b></span><span>{t("ENTRADA")}{" "}<b>{t(opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE')}</b></span>
+      <span>{t(nowMode?"VENCIMENTO":"JANELA")}{" "}<b>{expiryLabel(Number(expirySeconds))}</b></span><span>{t(nowMode?"SINAL":"ENTRADA")}{" "}<b>{t(opportunityPhase==='fired'?(nowMode?'EM ANDAMENTO':'SINALIZADA'):nowMode?'ANALISANDO AGORA':'EM ANÁLISE')}</b></span>
       <span>{t("PERÍODO APÓS")}{" "}<b>{expiryLabel(Number(futureEntry?.holdingSeconds||expirySeconds))}</b></span>
     </div>
-    {<details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>{t("Detalhes e qualidade da previsão")}</summary>
+    {<details className="vnextForecastDetails" data-testid="vnext-forecast-details"><summary>{t(nowMode?"Detalhes da leitura atual":"Detalhes e qualidade da previsão")}</summary>
       <small>{t(entryDataFresh?'Cotação atual recebida':'Cotação atrasada ou indisponível · não operar com dados antigos')}.</small>
       <small>{t('Estratégia ')}{futureEntry?.engineId||chosenEngine}{t(' · emitida ')}{futureEntry?.issuedAt?clock(futureEntry.issuedAt):'—'}{t(' · entrada ')}{entryPlanValid?clock(plannedAt):'—'}{t(' · vencimento ')}{entryPlanValid?clock(plannedExit):'—'}.</small>
       <small data-testid="mobile-feed-path">{t('Cotação PC: ')}{m.quoteAgeAtFrame===null?'—':m.quoteAgeAtFrame+'s'}{t(' · canal celular: ')}{m.transportAge===null?'—':m.transportAge+'s'}.</small>
@@ -269,7 +274,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
 
   const futureByHorizon=new Map<number,any>((m.vnextFutureEntryRows||[])
     .map((r:any):[number,any]=>[Number(r.delaySeconds),r]));
-  const forecastHorizonStrip=vnext?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
+  const forecastHorizonStrip=vnext&&!nowMode?<details className="vnextForwardHorizons" data-testid="future-horizon-matrix" aria-label="Outras previsões de entradas futuras">
     <summary>{t("OUTROS HORÁRIOS FUTUROS · expandir")}</summary>
     <div className="vnextForwardHorizonsGrid">
       {allFutureHorizons.map(h=>{
@@ -359,7 +364,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       <div className="compactAverage" data-testid="compact-three-totals-average"><div><small>{t("MÉDIA DOS 3 TOTAIS · LEITURA")}</small><strong>{totals.average===null?'—':t('Alta ')+totals.average+'%'+t(' · baixa ')+(100-totals.average)+'%'}</strong><span>{t("Não é ordem de entrada.")}</span></div><label>{t("Limite visual")}<input aria-label={t('Limite visual da média')} type="text" inputMode="numeric" maxLength={2} value={averageInput} onFocus={e=>e.currentTarget.select()} onChange={e=>onAverageChange(e.target.value)} onBlur={commitAverage}/></label></div>
       {!vnext&&historicalNotice}
     </details>}
-    <div className="compactContext">{vnext?t('Estratégia selecionada · horizonte ')+expiryLabel(Number(s?.settings?.orderDurationMs||60000)/1000):t('Previsão ')+Math.round(Number(s?.settings?.forecastHorizonSeconds||60))+'s'}</div>
+    <div className="compactContext">{vnext?(nowMode?t('Estratégia · vencimento '):t('Estratégia selecionada · horizonte '))+expiryLabel(Number(s?.settings?.orderDurationMs||60000)/1000):t('Previsão ')+Math.round(Number(s?.settings?.forecastHorizonSeconds||60))+'s'}</div>
     <footer>{t("Cotação recebida do PC.")}</footer>
   </section>;
   return <section className={`liveScenario ${m.tone}`} aria-label={t('Cenário ao vivo')} data-testid="live-scenario">
@@ -386,6 +391,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     {!vnext&&<details className="liveSettings"><summary>{t("Ajustar cenário")}</summary><div><label>{t("Prazo da previsão")}<select value={horizon} onChange={e=>{settingsEditing.current=true;setHorizon(e.target.value)}}>{[30,60,120,300,600,900,3600].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>{t("Expiração (manual)")}<select aria-label={t('Expiração escolhida manualmente')} value={expirySeconds} onChange={e=>{settingsEditing.current=true;setExpirySeconds(e.target.value)}}>{[30,60,120,300,600,900].map(n=><option key={n} value={n}>{n<60?n+'s':n/60+' min'}</option>)}</select></label><label>{t("Estratégia 1")}<select aria-label="Estratégia 1" value={strategy1} onChange={e=>{settingsEditing.current=true;setStrategy1(e.target.value)}}>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{t(label)}</option>)}</select></label><label>{t("Estratégia 2")}<select aria-label="Estratégia 2" value={strategy2} onChange={e=>{settingsEditing.current=true;setStrategy2(e.target.value)}}><option value="none">{t("Não selecionada")}</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{t(label)}</option>)}</select></label><label>{t("Estratégia 3")}<select aria-label="Estratégia 3" value={strategy3} onChange={e=>{settingsEditing.current=true;setStrategy3(e.target.value)}}><option value="none">{t("Não selecionada")}</option>{STRATEGIES.map(([id,label])=><option key={id} value={id}>{t(label)}</option>)}</select></label><p data-testid="strategy-selection-advice" role="note" style={{gridColumn:'1 / -1',fontSize:11,opacity:.85,margin:'4px 0'}}>
       <b>{t("Combinação:")}</b> {t(strategyAdvice.message)} <span>· {t(strategyAdvice.recommendation)}</span>
     </p><label>{t("Limite do Cenário %")}<input aria-label="Limite do Cenário" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={2} value={threshold} onFocus={e=>{thresholdEditing.current=true;e.currentTarget.select()}} onChange={e=>onScenarioChange(e.target.value)} onBlur={commitScenario}/></label><button className="secondary" disabled={disabled||!Number.isFinite(Number(threshold))||Number(threshold)<50||Number(threshold)>95} onClick={applyScenario}>{t("Aplicar")}</button></div></details>}
-    <footer>{t(vnext?'Estratégia e prazo selecionados definem a projeção futura.':'Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo.')}</footer>
+    <footer>{t(vnext?(nowMode?'Análise do preço atual. O próximo sinal só poderá sair após o vencimento escolhido; confira a expiração real na corretora.':'Estratégia e prazo selecionados definem a projeção futura.'):'Previsão e prazo do cenário não são a expiração da corretora. Confira o vencimento no aplicativo.')}</footer>
   </section>
 }
