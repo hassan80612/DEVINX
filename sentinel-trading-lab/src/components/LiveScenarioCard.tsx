@@ -7,9 +7,10 @@ import {brokerClockView} from '../../agent/worker/broker-clock-view.mjs';
 import {pcClockNow} from '../lib/pc-clock-sync.mjs';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {SCENARIO_ENGINES} from '../../agent/src/core/scenario-engine-catalog.mjs';
+import {STRATEGY_CHOICES,PUBLIC_STRATEGY_IDS,normalizePublicStrategy} from '../../agent/src/core/public-strategies.mjs';
 
 type Props={s:any,busy:boolean,act:(path:string,body?:any)=>Promise<any>,compact:boolean,onToggleCompact:()=>void};
-const STRATEGIES=[['smart_confluence','Smart Confluence'],['price_action','Price Action'],['trendline_breakout','Trendline Breakout'],['support_resistance','Suporte / Resistência'],['fibonacci_retest','Fibonacci Retest'],['trend','Trend Following'],['mean_reversion','Mean Reversion'],['breakout','Breakout']] as const;
+const STRATEGIES=[['smart_confluence','Smart Confluence'],['support_resistance','Suporte / Resistência'],['fibonacci_retest','Fibonacci Retest'],['trend','Trend Following']] as const;
 const price=(n:any)=>n==null?'—':Number(n).toFixed(5);
 const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).toLocaleTimeString('pt-BR',{hour12:false}):'—';
 const seconds=(n:number|null)=>n===null?'—':n+'s';
@@ -232,9 +233,9 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     await act('settings',{clockMode:mode});
   };
   const nowMode=m.vnextMode==='now';
-  const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
-    <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={chosenEngine} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
-        {SCENARIO_ENGINES.map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
+  const engineSettings=vnext?<><div className="vnextEngineToolbar" data-testid="single-engine-selector">
+    <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={normalizePublicStrategy(chosenEngine)} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
+        {SCENARIO_ENGINES.filter(e=>PUBLIC_STRATEGY_IDS.includes(e.id)).map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
       </select>
     </label>
     <label>{t('Relógio atual')}{' '}<select aria-label={t('TEMPO DA CORRETORA')} value={clockChoice} disabled={busy} data-testid="clock-mode-selector" onChange={e=>void changeClock(e.target.value)}>
@@ -244,7 +245,16 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
     </label>
-  </div>:null;
+  </div>
+  <details data-testid="strategy-when-to-use" style={{margin:'5px 0 10px',padding:'7px 10px',border:'1px solid rgba(180,170,125,.25)',borderRadius:8}}>
+    <summary style={{cursor:'pointer',fontSize:12,fontWeight:750}}>{t('Qual estratégia usar em cada gráfico?')}</summary>
+    <div style={{display:'grid',gap:6,marginTop:8}}>
+      {STRATEGY_CHOICES.map(e=><div key={e.id} style={{fontSize:11,lineHeight:1.45}}>
+        <strong>{t(e.name)}:</strong> <span>{t(e.when)}</span>
+      </div>)}
+    </div>
+  </details>
+  </>:null;
 
 
   // Main prediction is a FUTURE entry at now + selected time, followed by
