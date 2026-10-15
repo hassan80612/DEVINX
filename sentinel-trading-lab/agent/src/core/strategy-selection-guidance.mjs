@@ -35,7 +35,7 @@ export function strategySelectionGuidance({ids=[],paused={},cards=[]}={}){
   if(count===0){level='idle';message='Selecione 1 a 3 estratégias para a análise.'}
   else if(duplicates){level='overlap';message='Estratégia repetida: use somente uma vez; não multiplica evidências.'}
   else if(divergence){level='conflict';message='CALL e PUT divergentes: evite combinar agora; teste separadas.'}
-  else if(overlapping){level='overlap';message='Estratégias de mesma família; prefira combinar com Price Action ou Trend.'}
+  else if(overlapping){level='overlap';message='Estratégias de mesma família; prefira combinar com Fibonacci Retest ou Trend Following.'}
   else if(aggregateMixed){level='overlap';message='Smart Confluence já agrega sinais: prefira usá-la sozinha ou com peso reduzido.'}
   else if(count===1){level='single';message=name(unique[0])+' selecionada: sinal deve respeitar esta estratégia.'}
   else{message=count+' estratégias complementares; entradas exigem preço confirmado.'}
