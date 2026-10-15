@@ -191,7 +191,7 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
       runtime.patchSettings({[key]:String(value)},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='duration'){
-      const n=Number(value);if(![5000,10000,15000,30000,45000,60000,120000,180000,300000,600000,900000,3600000].includes(n))throw new Error('invalid_duration');
+      const n=Number(value);if(![5000,10000,15000,30000].includes(n))throw new Error('invalid_short_operation_duration');
       runtime.patchSettings({orderDurationMs:n,forecastHorizonSeconds:Math.round(n/1000)},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='forecastHorizon'){
