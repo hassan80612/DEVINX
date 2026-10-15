@@ -92,7 +92,7 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
  if(old?.phase==='fired'&&now<old.exitAt)
   return {...old,entryReadyNow:false,observationSide:candidate?.side||null,
     lastObservedAt:Number(quoteAt)||null};
- const priorExpiry=old?.phase==='fired'?Number(old.exitAt):null;
+ const priorExpiry=old?.phase==='fired'?Number(old.exitAt):Number(old?.lastExpiryAt)||null;
  // Do not manufacture an instant re-entry from the same tick captured
  // before the previous option actually expired.
  const canRelease=fresh&&(!priorExpiry||Number(quoteAt)>=priorExpiry);
@@ -113,6 +113,6 @@ export function advanceNowOpportunity({previous=null,candidate=null,now=Date.now
    phase:'scanning',reason:!fresh?'waiting-fresh-quote':candidate?.reason||'scanning-now',
    side:null,entryAt:null,exitAt:null,entryTriggeredAt:null,entryReadyNow:false,
    windowStartedAt:priorExpiry||now,windowEndsAt:0,observationSide:candidate?.side||null,
-   lastObservedAt:Number(quoteAt)||null,
+   lastObservedAt:Number(quoteAt)||null,lastExpiryAt:priorExpiry,
    holdingSeconds:horizon/1000,delaySeconds:horizon/1000};
 }
