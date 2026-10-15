@@ -235,7 +235,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const nowMode=m.vnextMode==='now';
   const engineSettings=vnext?<><div className="vnextEngineToolbar" data-testid="single-engine-selector">
     <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={normalizePublicStrategy(chosenEngine)} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
-        {SCENARIO_ENGINES.filter(e=>PUBLIC_STRATEGY_IDS.includes(e.id)).map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
+        {SCENARIO_ENGINES.filter(e=>PUBLIC_STRATEGY_IDS.some(id=>id===e.id)).map((e:any)=><option key={e.id} value={e.id}>{t(e.name)}</option>)}
       </select>
     </label>
     <label>{t('Relógio atual')}{' '}<select aria-label={t('TEMPO DA CORRETORA')} value={clockChoice} disabled={busy} data-testid="clock-mode-selector" onChange={e=>void changeClock(e.target.value)}>
