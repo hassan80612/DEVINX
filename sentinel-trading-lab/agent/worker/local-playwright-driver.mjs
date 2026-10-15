@@ -1271,6 +1271,15 @@ export class LocalPlaywrightDriver{
     const info={provider,open:true,sessionPresent,likelyAuthenticated,url:snap.url,title:snap.title,cookieCount:cookies.length,authCookieSeen,phase,background:!!s.background,updatedAt:nowIso()};this.last.set(provider,info);return info;
   }
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
+  readBrokerTimingSnapshot(provider,st=this.state(provider)){
+    // Render-time clock lookup only. Never build the full market status,
+    // validate hundreds of candles or copy thousands of quote-history rows
+    // just to display the PC broker clock.
+    const protocolClock=this.feeds.get(provider)?.brokerClock?.();
+    return protocolClock?.verified?
+      {...(st.brokerTiming||{}),brokerClockVerified:true,brokerClock:protocolClock}:
+      (st.brokerTiming||null);
+  }
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     const candleAssetMatch=st.activeId!=null&&st.candleActiveId!=null&&Number(st.activeId)===Number(st.candleActiveId);
@@ -1288,10 +1297,7 @@ export class LocalPlaywrightDriver{
     // The broker clock comes from ONE source of truth for runtime and PC.
     // Keep the visible-page expiry observation's original capturedAt/source:
     // timeSync may improve the clock, but must never re-date stale expiry data.
-    const protocolClock=this.feeds.get(provider)?.brokerClock?.();
-    const brokerTiming=protocolClock?.verified?
-      {...(st.brokerTiming||{}),brokerClockVerified:true,brokerClock:protocolClock}:
-      (st.brokerTiming||null);
+    const brokerTiming=this.readBrokerTimingSnapshot(provider,st);
     return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,quoteFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt,brokerTiming}
   }
   async updateOverlay(provider,data={}){
@@ -1325,7 +1331,7 @@ export class LocalPlaywrightDriver{
         }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
       }
       // Timing is observed regardless of the presentation mode.
-      payload.brokerTiming=this.liveStatus(provider).brokerTiming;
+      payload.brokerTiming=this.readBrokerTimingSnapshot(provider,st);
       // Pin a signal's already verified broker expiration independently of
       // the NEXT opportunity window. Window rollover is not option expiry.
       const windowState=payload.vnext?.opportunityWindow||null;
