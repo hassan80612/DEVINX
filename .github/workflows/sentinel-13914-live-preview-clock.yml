@@ -1,7 +1,7 @@
-name: Sentinel 13.9.17 curated strategies, Automatic and PT/EN mobile guide - ONE RELEASE
+name: Sentinel 13.9.18 PC layout and mobile parity - NO PRODUCTION DEPLOY
 on:
   push:
-    branches: [fix/sentinel-four-strategies-mobile-guide-20261015]
+    branches: [fix/sentinel-pc-layout-only-20261015]
 permissions:
   contents: read
 jobs:
@@ -26,6 +26,8 @@ jobs:
         run: node --test tests/sentinel-five-strategies-mobile-guide.test.mjs tests/sentinel-shared-base-v2.test.mjs tests/sentinel-13915-one-pass.test.mjs
       - name: Compare 30-second outcome learning with deployed baseline (research, not market proof)
         run: node tests/sentinel-shared-base-v2-ab.mjs
+      - name: Verify compact PC layout, expanded mobile details, signed PC-to-mobile parity
+        run: node --test tests/sentinel-pc-visual-mobile-parity-20261015.test.mjs tests/sentinel-67315-mobile-integrity.test.mjs tests/sentinel-mobile-event-pc-fidelity-6723.test.mjs tests/sentinel-mobile-low-latency-1357.test.mjs
       - name: Typecheck actual site
         working-directory: sentinel-trading-lab
         run: npx tsc --noEmit
@@ -35,7 +37,7 @@ jobs:
           node scripts/sentinel-13914-overlay-smoke.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: Sentinel-13.9.17-Windows
+          name: Sentinel-13.9.18-Windows
           path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
           retention-days: 5
   windows-payload:
