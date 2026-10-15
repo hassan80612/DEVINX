@@ -99,17 +99,22 @@ function admittedClosedBars(quotes,now,admittedAt,count=2){
 }
 export function confirmedStructuralReversal({window,snap={},now=Date.now()}={}){
  if(window?.phase!=='open'||!isSide(window.side))return {invalidated:false,reason:'not-open'};
- // 'openedAt' is the original CLOCK-cycle start, not necessarily when
- // this CALL/PUT was first admitted. Its guardBaseline is taken from the
- // live quote AT admission. Only post-admission bars may invalidate that side.
- // Legacy windows without this field keep their original behavior.
+ // 'openedAt' is the fixed clock-cycle start. A later admitted CALL/PUT
+ // has a NEW price baseline; do not use prior bars as if that side existed.
+ // EXCEPTION: when the chosen entry is within 4s of admission, there cannot
+ // be four complete post-admission quotes. Preserve the 13.9.3 cancellation
+ // rule exactly there, rather than silently weaken last-second reversals.
+ // This neither moves the entry second nor imposes a new waiting period.
  const ts=Number(snap.quoteTs||0);
- const openAt=Number(window.admittedAt||window.openedAt||window.windowStartedAt||0);
+ const cycleAt=Number(window.openedAt||window.windowStartedAt||0);
+ const admittedAt=Number(window.admittedAt||cycleAt);
+ const entryAt=Number(window.entryAt||0);
+ const nearImmediate=admittedAt>cycleAt&&entryAt>admittedAt&&
+   entryAt-admittedAt<4000;
+ const openAt=nearImmediate?cycleAt:admittedAt;
  if(!(ts>0&&ts<=now&&now-ts<=2500&&openAt>0))return {invalidated:false,reason:'missing-fresh-quote'};
  const history=quotesUntil(snap.quoteHistory,now),q=history.filter(x=>x.ts>=openAt);
- // Two completed 5s bars after the original opportunity opened.
- const cycleAt=Number(window.openedAt||window.windowStartedAt||0);
- const lateAdmission=Number(window.admittedAt)>cycleAt;
+ const lateAdmission=admittedAt>cycleAt&&!nearImmediate;
  // A short, consistently observed post-admission reversal can be
  // recognized before two 5s buckets complete. This uses NO pre-admission
  // directional samples and NO forming candle colour. At least 4 seconds
