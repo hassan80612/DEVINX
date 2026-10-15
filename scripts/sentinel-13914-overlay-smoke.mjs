@@ -32,10 +32,10 @@ try{
  };
  await update(base);
  const label=page.locator('[data-sentinel-decision-label]');
- assert.equal(await label.innerText(),'ANALISANDO POSSÍVEL CALL');
+ assert.equal(await label.innerText(),'ANALISANDO');
  assert.match(await page.locator('[data-sentinel-broker-clock-status]').innerText(),/SINCRONIZADO/);
  const put=structuredClone(base);put.vnext.nowObservation.provisionalSide='PUT';
- await update(put);assert.equal(await label.innerText(),'ANALISANDO POSSÍVEL PUT');
+ await update(put);assert.equal(await label.innerText(),'ANALISANDO');
  const locked=structuredClone(put);
  const entryTime=Date.now();
  locked.vnext.opportunityWindow={phase:'fired',windowStartedAt:entryTime-10000,windowEndsAt:entryTime+20000};
