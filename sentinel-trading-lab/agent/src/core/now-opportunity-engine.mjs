@@ -3,6 +3,7 @@
 // Closed bars decide the structural side; fresh live quotes confirm NOW.
 import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
+import {sharedMarketDirection} from './shared-market-direction.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -185,6 +186,18 @@ export function emergingDirection({quoteHistory=[],price=null,quoteAt=null,now=D
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline'}={}){
+ // Experimental shared base runs identically for automatic and all manual
+ // strategies. The selector contextualizes a single decision; it cannot
+ // veto it. Existing baseline fallback prevents another waiting gate.
+ if(qualityPolicy==='shared-base-v1'){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const shared=sharedMarketDirection({...input,requestedStrategy:engineId});
+  const previous=analyzeNowOpportunity({...input,engineId,qualityPolicy:'baseline'});
+  if(!shared.ready)return {...previous,sharedBase:shared};
+  return {...previous,...shared,qualityPolicy,
+   phaseDecision:previous.side!==shared.side?'base-updated-direction':'base-earlier-direction',
+   contextStrategy:shared.selectedStrategy};
+ }
  if(engineId==='automatic'&&(qualityPolicy==='early-v1'||qualityPolicy==='early-v2')){
   const input={quoteHistory,price,quoteAt,now,durationMs};
   const early=emergingDirection({...input,variant:qualityPolicy});
