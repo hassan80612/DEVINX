@@ -1,6 +1,6 @@
 {
-  "version": "13.9.17",
-  "build": "13.9.17-curated-strategies-bilingual-mobile-guide",
+  "version": "13.9.18",
+  "build": "13.9.18-pc-visual-and-mobile-layout-parity-only",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
