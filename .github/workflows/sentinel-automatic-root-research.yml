@@ -1,0 +1,21 @@
+name: Sentinel single automatic root diagnosis — NO DEPLOY
+on:
+  push:
+    branches: [research/sentinel-automatic-root-30-60-20261015]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install existing agent dependencies
+        run: npm install --prefix sentinel-trading-lab/agent --omit=dev --no-audit --no-fund
+      - name: Validate baseline automatic regression
+        run: node --test tests/sentinel-13910-now-strategies-cadence.test.mjs tests/sentinel-now-expiry-one-shot.test.mjs tests/sentinel-1398-range-structure-regression.test.mjs
+      - name: Compare candidate and baseline signals chronologically 30s 60s
+        run: node tests/sentinel-auto-horizon-quality-ab.mjs
