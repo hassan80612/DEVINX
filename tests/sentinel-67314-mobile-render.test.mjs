@@ -53,3 +53,15 @@ test('confirmed direction and original entry timestamp survive after brief AGORA
  assert.match(html,/ENTRADA JÁ SINALIZADA · ↑ CALL/);
  assert.match(html,/1\.23456/);assert.doesNotMatch(html,/ENTRADA AGORA/);
 });
+test('NOW card renders the enabled strategy menu and fresh quote while waiting for entry',()=>{
+ const s=state();s.lastResult.analysis.vnext.mode='now';
+ s.lastResult.analysis.vnext.opportunityWindow={phase:'scanning',windowStartedAt:null,windowEndsAt:0};
+ s.lastResult.analysis.vnext.futureEntryAnchor=null;
+ const html=render(s,start+20000);
+ assert.match(html,/Estratégia ativa/);
+ assert.match(html,/<select aria-label="Estratégia responsável pelo cenário">/);
+ assert.match(html,/<option value="mean_reversion"/);
+ assert.match(html,/Preço atual.*1\.23450/);
+ assert.match(html,/Última análise/);
+ assert.doesNotMatch(html,/<strong>ANÁLISE AGORA<\/strong>/);
+});

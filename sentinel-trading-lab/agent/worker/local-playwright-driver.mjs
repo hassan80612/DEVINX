@@ -352,7 +352,12 @@ function appendQuoteSample(st,ts,price){
   const prev=st.quoteHistory.at(-1);
   // Never let an older packet enter the live forward-time sample trail.
   if(prev&&t<Number(prev.ts||0))return;
-  if(prev&&prev.price===p&&t-Number(prev.ts||0)<250)return;
+  // Keep the live timestamp represented even when the price is unchanged.
+  // The analyzer verifies quoteAt against this trail. Dropping this tick
+  // made an unchanged fresh quote look unverified until another price move.
+  if(prev&&(t===Number(prev.ts)||(prev.price===p&&t-Number(prev.ts||0)<250))){
+    st.quoteHistory[st.quoteHistory.length-1]={ts:t,price:p};return;
+  }
   st.quoteHistory.push({ts:t,price:p});
   if(st.quoteHistory.length>7200)st.quoteHistory.splice(0,st.quoteHistory.length-6800)
 }
@@ -1918,10 +1923,10 @@ export class LocalPlaywrightDriver{
               </div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr(nowMode?'ANALISTA':'ESTRATÉGIA ATIVA')}
-                <select data-sentinel-setting="engine" ${nowMode?'disabled':''} title="${tr('Estratégia responsável pela previsão')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
+                <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela análise')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
 
-                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>${tr(nowMode?'ANÁLISE AGORA · ESTRUTURA':'Automático Sentinel')}</option>
+                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>${tr('Automático Sentinel')}</option>
                   <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
                   <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>${tr('Suporte e Resistência')}</option>
                   <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
@@ -1939,7 +1944,7 @@ export class LocalPlaywrightDriver{
               </label>
             </div>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
-              <div style="font-size:10px;font-weight:850;letter-spacing:.06em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tr(nowMode?'ANÁLISE EM TEMPO REAL':'ENTRADA FUTURA')} · ${esc(d.engine||'automatic').toUpperCase()}</div>
+              <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr('Preço atual')+': '+price(d.price)+' · '+tr('Última análise')+': '+esc(new Date(Number(d.vnext?.nowObservation?.evaluatedAt||0)).toLocaleTimeString('pt-BR',{hour12:false})):tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}">${esc(tr(scheduledDecision))}</div>
               <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-broker-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>

@@ -48,17 +48,21 @@ test('confirmed upper/lower range turns are not momentum-following calls at extr
  assert.ok(out.evaluated.length>=8);
  assert.ok(out.wins>=8,JSON.stringify(out));
 });
-test('30s option cannot be treated as the short half-swing in 24s range',()=>{
+test('current confirmed turn is not blanket-blocked by past swing duration',()=>{
  const out=evaluate(quotes('range',24),30000);
- assert.ok(out.signals.length<=1,JSON.stringify(out.signals));
+ assert.ok(out.signals.length>0,JSON.stringify(out.signals));
+ assert.ok(out.signals.every(s=>s.origin==='closed-range-extreme-reversal-confirmed'));
+ assert.equal(out.wins,out.evaluated.length);
 });
-test('long expiry does not follow the short confirmed oscillation',()=>{
+test('holding time does not disable observed present entries',()=>{
  const out=evaluate(quotes('range',48),60000);
- assert.equal(out.signals.length,0);
+ assert.ok(out.signals.length>0);
+ assert.ok(out.signals.every(s=>s.exitAt-s.at===60000));
 });
-test('irregular multi-cycle ranges do not create phantom trend breaks',()=>{
+test('oscillating market only releases actually confirmed turns, never a phantom trend entry',()=>{
  const out=evaluate(quotes('choppy'),30000);
- assert.equal(out.signals.length,0);
+ assert.ok(out.signals.length>0);
+ assert.ok(out.signals.every(s=>s.origin==='closed-range-extreme-reversal-confirmed'));
 });
 test('previously recorded descending broker quotes remain causal and unblocked',()=>{
  const out=evaluate(recorded,30000);

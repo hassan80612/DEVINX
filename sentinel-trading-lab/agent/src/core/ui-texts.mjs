@@ -1,6 +1,16 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "Preço atual": "Current price",
+  "Estratégia ativa": "Active strategy",
+  "Estratégia responsável pela análise": "Strategy responsible for the analysis",
+  "Analisa a estrutura observada e confirma a entrada com a cotação atual.": "Analyzes observed structure and confirms entry with the current quote.",
+  "Analisa impulsos e rejeições nas sequências observadas de preço.": "Analyzes impulses and rejections in observed price sequences.",
+  "Analisa reações atuais em regiões históricas de preço.": "Analyzes current reactions at historical price levels.",
+  "Analisa o retorno à faixa média com confirmação atual.": "Analyzes mean reversion with current confirmation.",
+  "Analisa a expansão de faixas e rompimentos observados.": "Analyzes observed range expansion and breakouts.",
+  "Analisa linhas históricas, desvios e quebras observadas.": "Analyzes historical lines, deviations and observed breaks.",
+  "A estratégia escolhida analisa o mercado atual. A duração selecionada define o vencimento após o sinal.": "The selected strategy analyzes the current market. The selected duration sets expiry after the signal.",
   "Como funciona": "How it works",
   "Recursos": "Features",
   "Planos": "Plans",

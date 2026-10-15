@@ -377,20 +377,20 @@ function Membership({account}:{account:any}){
 function Strategies({s,act,busy}:{s:Status,act:any,busy:boolean}){
   const {t}=useSentinelLocale();
   const motors=[
-    ['automatic','Automático Sentinel','Previsão própria baseada no comportamento futuro de preço, sem outra estratégia.'],
-    ['price_action','Price Action','Projeta impulsos e rejeições a partir das sequências anteriores de preço.'],
-    ['support_resistance','Suporte e Resistência','Analisa regiões históricas de preço e possíveis reações futuras.'],
+    ['automatic','Automático Sentinel','Analisa a estrutura observada e confirma a entrada com a cotação atual.'],
+    ['price_action','Price Action','Analisa impulsos e rejeições nas sequências observadas de preço.'],
+    ['support_resistance','Suporte e Resistência','Analisa reações atuais em regiões históricas de preço.'],
     ['trend','Trend Following','Calcula continuidade e desaceleração histórica de tendências.'],
-    ['mean_reversion','Mean Reversion','Projeta possível retorno estatístico à faixa média.'],
-    ['breakout','Breakout','Estima a expansão de faixas e pressão de rompimento.'],
-    ['trendline_breakout','Trendline Breakout','Projetos de linhas históricas, desvios e eventuais quebras.'],
+    ['mean_reversion','Mean Reversion','Analisa o retorno à faixa média com confirmação atual.'],
+    ['breakout','Breakout','Analisa a expansão de faixas e rompimentos observados.'],
+    ['trendline_breakout','Trendline Breakout','Analisa linhas históricas, desvios e quebras observadas.'],
     ['fibonacci_retest','Fibonacci Retest','Analisa swings anteriores e regiões de retração.'],
     ['smart_confluence','Smart Confluence','Combina os indicadores internos desta estratégia.']
   ] as const;
   const selected=String(s.settings?.engine||'automatic');
   const active=motors.find(x=>x[0]===selected)||motors[0];
   return <section className="card span12 strategySection">
-    <div className="split"><div><div className="eyebrow"><T>ESTRATÉGIAS SENTINEL</T></div><h3><T>Escolha uma estratégia para o cenário</T></h3><p className="muted"><T>A estratégia escolhida calcula a previsão principal conforme o prazo selecionado.</T></p></div><div className="strategyActive"><span><T>Estratégia em uso</T></span><b>{t(active[1])}</b></div></div>
+    <div className="split"><div><div className="eyebrow"><T>ESTRATÉGIAS SENTINEL</T></div><h3><T>Escolha uma estratégia para o cenário</T></h3><p className="muted"><T>A estratégia escolhida analisa o mercado atual. A duração selecionada define o vencimento após o sinal.</T></p></div><div className="strategyActive"><span><T>Estratégia em uso</T></span><b>{t(active[1])}</b></div></div>
     <label className="vnextStrategyPicker"><T>Estratégia responsável</T>
       <select disabled={busy} aria-label={t('Selecionar estratégia')} value={selected} onChange={e=>void act('settings',{engine:e.target.value,strategy2:'none',strategy3:'none'})}>
         {motors.map(([id,title])=><option value={id} key={id}>{t(title)}</option>)}

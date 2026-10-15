@@ -1,0 +1,51 @@
+name: Sentinel 13.9.10 current strategy and cycle continuity
+on:
+  push:
+    branches: [fix/sentinel-live-strategies-20261015]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.9'
+      - name: Install web dependencies
+        working-directory: sentinel-trading-lab
+        run: npm install --no-audit --no-fund
+      - name: Validate original regressions, current strategy and first post-expiry quote; compile embedded Agent
+        working-directory: sentinel-trading-lab
+        run: npm run prebuild
+      - name: Typecheck actual site
+        working-directory: sentinel-trading-lab
+        run: npx tsc --noEmit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Sentinel-13.9.10-Windows
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          retention-days: 5
+  windows-payload:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Sentinel-13.9.10-Windows
+          path: candidate
+      - name: Run actual Windows executable and verify its embedded release without installing
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $ErrorActionPreference='Stop'
+          & ./candidate/Sentinel-Agent-Windows.exe
+          if($LASTEXITCODE -ne 0){throw "Embedded Agent verification failed: $LASTEXITCODE"}

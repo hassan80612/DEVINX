@@ -2,6 +2,7 @@
 // Never forecasts a future price, sends an order, or schedules a future entry.
 // Closed bars decide the structural side; fresh live quotes confirm NOW.
 import {observedNoise} from './forward-direction-quality.mjs';
+import {analyzeMarket} from './strategy.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -44,7 +45,7 @@ function before(quotes,at,maxAgeMs=3500){
 // 5-second prices from the past, not future projections or forming candles.
 // Return null for a directional regime; return a verdict when past alternation
 // means a short-term impulse is a potentially misleading end-of-range leg.
-function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
+function completedRangeStructure(quotes,now,noise,spot){
  const period=5000,end=Math.floor(now/period)*period;
  const last=quotes.filter(q=>q.ts>=end-135000&&q.ts<=now);
  if(last.length<50||last.at(-1).ts-last[0].ts<50000)return null;
@@ -99,11 +100,12 @@ function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
  const regular=gaps.length>=2&&half>=12&&half<=90&&
    minGap>=9&&(maxGap-minGap)/half<=.52&&
    recent.every((v,i)=>i===0||v.type!==recent[i-1].type);
+ // An unresolved oscillation is not a trend. Continue observing each new
+ // quote rather than chase its latest leg as a directional entry.
  if(!regular)return {ready:false,reason:'irregular-multi-swing-range'};
- // The exact option expiry must fit the completed half-swing evidence.
- // This rejects directional bets held across multiple past oscillations.
- if(holdingSeconds>half*1.35)
-  return {ready:false,reason:'expiry-exceeds-observed-range-swing'};
+ // These are observations of the present, not a forecast of the next
+ // half-cycle. The selected holding time must not veto every subsequent
+ // entry based on a guessed future repetition of past swing duration.
  const position=(Math.log(spot)-lower)/span;
  // Confirm ACTUAL retreat from a recent extreme. Being at the upper bound
  // alone is not a PUT, and being at the lower bound alone is not a CALL.
@@ -123,7 +125,7 @@ function completedRangeStructure(quotes,now,holdingSeconds,noise,spot){
 }
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',candles=[],minConfidence=74}={}){
  const seconds=Number(durationMs)/1000;
  const waiting=reason=>({side:null,reason,ready:false,observedAt:Number(quoteAt)||null,
    entryPrice:null,strength:null,expirySeconds:seconds});
@@ -133,6 +135,22 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  const quotes=causalQuotes(quoteHistory,now);
  if(!quotes.length||!quotes.some(q=>q.ts===Number(quoteAt)&&Number(q.price)===Number(price)))
   return waiting('live-quote-unverified');
+ // Selected strategies retain their own CURRENT technical calculation.
+ // Only its current side is consumed; no projected price or future-entry
+ // planner is used to release the signal.
+ if(engineId!=='automatic'){
+  const supported=['price_action','support_resistance','trend','mean_reversion',
+   'breakout','trendline_breakout','fibonacci_retest','smart_confluence'];
+  if(!supported.includes(engineId))return waiting('unknown-strategy');
+  const result=analyzeMarket({candles,quoteHistory:quotes,strategy:engineId,
+   minConfidence,durationMs,quoteTs:quoteAt,now,freshnessMs:2500});
+  const side=result.side==='BUY'?'CALL':result.side==='SELL'?'PUT':null;
+  return {...waiting('selected-strategy-observing'),ready:!!side,side,
+   reason:side?'selected-strategy-current-confirmation':'selected-strategy-observing',
+   engineId,entryPrice:side?Number(price):null,strength:Number(result.confidence)||0};
+ }
+ // This structure is retained across cycles; never start collecting it
+ // again at expiry. Holding time does not impose any post-expiry pause.
  const barMs=(seconds<=10?5:seconds<=30?10:15)*1000;
  const bars=closingBars(quotes,now,barMs);
  if(!bars)return waiting('completed-structure-not-ready');
@@ -140,7 +158,7 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  const net=Math.log(bars.at(-1).close/bars[0].open);
  const noise=observedNoise({quotes,now,horizonSeconds:barMs*4/1000});
  if(!(noise>0))return waiting('insufficient-quote-variation');
- const range=completedRangeStructure(quotes,now,seconds,noise,Number(price));
+ const range=completedRangeStructure(quotes,now,noise,Number(price));
  if(range){
   if(!range.ready)return waiting(range.reason);
   return {ready:true,side:range.side,reason:range.reason,

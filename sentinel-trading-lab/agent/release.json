@@ -1,13 +1,13 @@
 {
-  "version": "13.9.9",
-  "build": "13.9.9-now-clock-frame-visibility",
+  "version": "13.9.10",
+  "build": "13.9.10-now-strategies-cycle-continuity",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.9.9-live-real-broker-tick-plus-PC-phone-signed-visibility-regression-no-forecast-change",
+    "modelValidation": "13.9.10-current-strategy-selection-fresh-quote-and-first-post-expiry-reentry-regressions",
     "forecastModel": "now-structural-v1"
   }
 }
