@@ -22,6 +22,15 @@ async function authInfo(token:string):Promise<AuthInfo>{
 
 export async function middleware(req:NextRequest){
   const p=req.nextUrl.pathname;
+  // The Windows EXE only installs the Agent. Pairing, running analysis, API
+  // access and the self-update ZIP STILL require an active paid account.
+  // Browsers and download managers often start file transfers without the
+  // session cookie. Redirecting an .exe GET to /login then returns HTTP 200
+  // with HTML, silently saving a broken "installer" on Windows.
+  // Serve ONLY known flat .exe filenames as static binaries without cookies.
+  // Never open ZIP, JSON, or paths outside /downloads here.
+  const installerFile=/^\\/downloads\\/(?:Sentinel-Agent-[A-Za-z0-9.-]+|sentinel-agent-windows)\\.exe$/i.test(p);
+  if(installerFile)return NextResponse.next();
   if(p==='/'||p==='/planos'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
   // Authenticated installed Agents can fetch signed release packages to
   // update themselves without a browser session. Non-paying users cannot.
