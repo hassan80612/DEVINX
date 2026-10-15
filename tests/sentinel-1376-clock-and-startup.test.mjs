@@ -39,7 +39,7 @@ test('a stale or unobserved broker clock is NOT replaced by local prediction tim
  assert.match(driver,/ATÉ FECHAR COMPRA · CORRETORA/);
  assert.match(driver,/payload\.brokerClockView=brokerClockView/);
  assert.doesNotMatch(driver,/payload\.clockMode==='broker'&&!s\.pendingBrokerTimeScan/);
- assert.match(driver,/payload\\.brokerTiming=this\\.readBrokerTimingSnapshot\\(provider,st\\)/);
+ assert.match(driver,/payload\.brokerTiming=this\.readBrokerTimingSnapshot\(provider,st\)/);
 });
 test('startup never opens IQ Option or Exnova without an explicit Corretora click',()=>{
  const worker=readFileSync(new URL('../sentinel-trading-lab/agent/worker/index.mjs',import.meta.url),'utf8');
