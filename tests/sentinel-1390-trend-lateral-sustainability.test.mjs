@@ -93,5 +93,5 @@ test('historical-fit cost is bounded, without touching the broker clock or mobil
  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.match(model,/earliest=t-105000/);
  assert.match(driver,/if\(status\?\.healthy&&status\.ready&&status\.authenticated\)return existing/);
- assert.match(driver,/payload\\.brokerTiming=this\\.readBrokerTimingSnapshot\\(provider,st\\)/);
+ assert.match(driver,/payload\.brokerTiming=this\.readBrokerTimingSnapshot\(provider,st\)/);
 });
