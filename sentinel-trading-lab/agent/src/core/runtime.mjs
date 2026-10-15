@@ -25,6 +25,7 @@ import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuar
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 
 function iso(ts=Date.now()){return new Date(ts).toISOString()}
@@ -799,7 +800,16 @@ export class DemoTradingRuntime{
       patch.forecastMode!=='continuous'&&Object.prototype.hasOwnProperty.call(patch,'engine')){
       patch={...patch};delete patch.engine;
     }
-    if(this.forecastModel==='now-structural-v1')patch={...patch,forecastMode:'continuous'};
+    if(this.forecastModel==='now-structural-v1'){
+      patch={...patch,forecastMode:'continuous'};
+      if(Object.prototype.hasOwnProperty.call(patch,'engine'))
+        patch.engine=normalizeUserStrategy(patch.engine);
+      for(const field of ['strategy','strategy2','strategy3']){
+        if(!Object.prototype.hasOwnProperty.call(patch,field))continue;
+        const id=normalizeTechnicalStrategy(patch[field]);
+        patch[field]=id||(field==='strategy'?'smart_confluence':'none');
+      }
+    }
     if(Object.prototype.hasOwnProperty.call(patch,'clockMode')&&
       !['current','broker'].includes(patch.clockMode))throw new Error('invalid_clock_mode');
     if(Object.prototype.hasOwnProperty.call(patch,'forecastMode')&&
@@ -1393,7 +1403,13 @@ export class DemoTradingRuntime{
     }
   }
   snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
-  restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(this.forecastModel==='now-structural-v1'){this.settings.engine=this.settings.engine||'automatic';this.settings.forecastMode='continuous';}this.settings.demoAutopilot=false;if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses.slice(0,180).map(x=>this._compactAnalysis(x)):[];if(data.signalValidation&&typeof data.signalValidation==='object'){const prefix='micro-v5|'+CALIBRATION_EPOCH+'|';const pending=Array.isArray(data.signalValidation.pending)?data.signalValidation.pending.filter(x=>String(x?.key||'').startsWith(prefix)):[],outcomes=Array.isArray(data.signalValidation.outcomes)?data.signalValidation.outcomes.filter(x=>String(x?.key||'').startsWith(prefix)):[],lastQueued=Object.fromEntries(Object.entries(data.signalValidation.lastQueued&&typeof data.signalValidation.lastQueued==='object'?data.signalValidation.lastQueued:{}).filter(([k])=>String(k).startsWith(prefix)));this.signalValidation={pending,outcomes,lastQueued}};this._bootstrapSignalValidation();this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
+  restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(this.forecastModel==='now-structural-v1'){
+  this.settings.engine=normalizeUserStrategy(this.settings.engine);
+  this.settings.strategy=normalizeTechnicalStrategy(this.settings.strategy)||'smart_confluence';
+  this.settings.strategy2=normalizeTechnicalStrategy(this.settings.strategy2)||'none';
+  this.settings.strategy3=normalizeTechnicalStrategy(this.settings.strategy3)||'none';
+  this.settings.forecastMode='continuous';
+ }this.settings.demoAutopilot=false;if(data.state)this.state={...this.state,...data.state};this.masterFrozen=!!data.masterFrozen;this.killSwitch=!!data.killSwitch;this.trades=Array.isArray(data.trades)?data.trades:[];this.analyses=Array.isArray(data.analyses)?data.analyses.slice(0,180).map(x=>this._compactAnalysis(x)):[];if(data.signalValidation&&typeof data.signalValidation==='object'){const prefix='micro-v5|'+CALIBRATION_EPOCH+'|';const pending=Array.isArray(data.signalValidation.pending)?data.signalValidation.pending.filter(x=>String(x?.key||'').startsWith(prefix)):[],outcomes=Array.isArray(data.signalValidation.outcomes)?data.signalValidation.outcomes.filter(x=>String(x?.key||'').startsWith(prefix)):[],lastQueued=Object.fromEntries(Object.entries(data.signalValidation.lastQueued&&typeof data.signalValidation.lastQueued==='object'?data.signalValidation.lastQueued:{}).filter(([k])=>String(k).startsWith(prefix)));this.signalValidation={pending,outcomes,lastQueued}};this._bootstrapSignalValidation();this.incidents=Array.isArray(data.incidents)?data.incidents:[];if(Array.isArray(data.audit))this.audit.rows=data.audit;if(data.broker){this.broker.balance=Number(data.broker.balance||this.broker.balance);this.broker.orders=Array.isArray(data.broker.orders)?data.broker.orders:[]}this.stateName='stopped';this.lastResult={action:'WAIT',reasons:['runtime restaurada; aguardando início manual']};return this}
   async status(){
     const balance=this.externalMarket?.balance!=null?Number(this.externalMarket.balance):await this.broker.getBalance(),wins=this.trades.filter(x=>x.won).length,losses=this.trades.filter(x=>x.won===false).length,snap=this._marketSnapshot();
     const brokerMode=String(this.externalMarket?.brokerMode||this.externalMarket?.mode||'').toLowerCase(),sessionTrades=Math.max(0,this.trades.length-Math.max(0,Number(this.state.sessionTradeStartCount||0)));
