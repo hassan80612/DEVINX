@@ -9,12 +9,16 @@ const recorded=JSON.parse(readFileSync(new URL('./fixtures/sentinel-continuation
 const base=Date.UTC(2026,9,1),ASSET='REPLAY/TEST';
 const sign=s=>s==='CALL'?1:s==='PUT'?-1:0;
 function makeRows(kind,seed=0,length=540){
- const q=[],phase=seed*.38,p=kind.includes('slow')?86:kind.includes('fast')?32:kind.includes('mid')?48:
+ const q=[],phase=seed*.38,p=kind.startsWith('range-p')?
+   Number(kind.slice('range-p'.length)):kind.includes('slow')?86:
+   kind.includes('fast')?32:kind.includes('mid')?48:
    kind.includes('wide')?68:kind.includes('noisy')?37:48;
  for(let i=0;i<length;i++){
   const drift=kind==='up'?i*.000011:kind==='down'?-i*.000011:
     kind==='turn'?(i<270?i*.000011:270*.000011-(i-270)*.000020):
-    kind==='weak-trend'?i*.000004:0;
+    kind==='weak-trend'?i*.000004:
+    kind==='range-drift'?i*.000002:
+    kind==='range-breakout'&&i>270?(i-270)*.000018:0;
   const range=kind.startsWith('range')?.00068*(Math.sin(i*2*Math.PI/p+phase)
     +(kind.includes('noisy')?.30*Math.sin(i*2*Math.PI/17+phase/2):0)):0;
   const chop=kind==='chop'?.00064*(Math.sin(i*2*Math.PI/37+phase)+.35*Math.sin(i*2*Math.PI/17+phase/3)):0;
@@ -67,7 +71,8 @@ async function replay(Type,mode,rows,duration){
    examples:outcomes.slice(0,3),phaseCount};
 }
 const cases=[{name:'recorded-180s-down',type:'recorded',seed:0,h:30,rows:recorded}];
-const kinds=['up','down','turn','weak-trend','range-mid','range-fast','range-slow','range-wide','range-noisy','chop'];
+const kinds=['up','down','turn','weak-trend','range-mid','range-fast','range-slow','range-wide','range-noisy','chop',
+ 'range-p24','range-p41','range-p52','range-p62','range-p77','range-p96','range-drift','range-breakout'];
 for(const kind of kinds)for(const h of [30,60])for(const seed of [0,1,2]){
  const type=kind.startsWith('range')||kind==='chop'?'range':kind==='turn'?'reversal':'directional';
  cases.push({name:kind,type,seed,h,rows:makeRows(kind,seed)});
