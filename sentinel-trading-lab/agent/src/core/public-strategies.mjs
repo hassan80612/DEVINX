@@ -2,6 +2,8 @@
 // Keep the legacy algorithms loadable for old research data, but never offer
 // their IDs for new customer selections in NOW mode.
 export const STRATEGY_CHOICES=Object.freeze([
+ Object.freeze({id:'automatic',name:'Automático Sentinel',
+  when:'Quando usar: se você ainda não sabe se o gráfico está em tendência, retração ou região de reação; o Sentinel escolhe o contexto observado.'}),
  Object.freeze({id:'fibonacci_retest',name:'Fibonacci Retest',
   when:'Quando usar: retrações após uma tendência clara, com reação perto dos níveis de Fibonacci.'}),
  Object.freeze({id:'trend',name:'Trend Following',
@@ -11,7 +13,7 @@ export const STRATEGY_CHOICES=Object.freeze([
  Object.freeze({id:'smart_confluence',name:'Smart Confluence',
   when:'Quando usar: gráfico com tendência e níveis relevantes alinhados; prefira contexto técnico claro.'})
 ]);
-export const DEFAULT_PUBLIC_STRATEGY='fibonacci_retest';
+export const DEFAULT_PUBLIC_STRATEGY='automatic';
 export const PUBLIC_STRATEGY_IDS=Object.freeze(STRATEGY_CHOICES.map(x=>x.id));
 const visible=new Set(PUBLIC_STRATEGY_IDS);
 export const isPublicStrategy=id=>visible.has(String(id||''));
