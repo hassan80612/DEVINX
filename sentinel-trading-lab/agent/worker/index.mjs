@@ -1,3 +1,4 @@
+import {PUBLIC_STRATEGY_IDS} from '../src/core/public-strategies.mjs';
 import {marketDiagnostic} from './market-diagnostic.mjs';
 import {runtimeMarketFromLive} from './runtime-market.mjs';
 import {LatestQuoteScheduler} from './latest-quote-scheduler.mjs';
@@ -180,12 +181,12 @@ driver.setOverlayActionHandler?.(async(provider,payload={})=>{
     }
     if(key==='forecastMode'){runtime.patchSettings({forecastMode:String(value)},'overlay');runtime.requestImmediateEvaluation?.();await saveState();return{ok:true};}
     if(key==='engine'){
-      const allowed=['automatic','smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
+      const allowed=PUBLIC_STRATEGY_IDS;
       if(!allowed.includes(String(value)))throw new Error('invalid_engine');
       runtime.patchSettings({engine:String(value),strategy2:'none',strategy3:'none'},'overlay');
       runtime.requestImmediateEvaluation?.();
     }else if(key==='strategy'||key==='strategy2'||key==='strategy3'){
-      const allowed=['smart_confluence','price_action','trendline_breakout','support_resistance','fibonacci_retest','trend','mean_reversion','breakout'];
+      const allowed=PUBLIC_STRATEGY_IDS.filter(id=>id!=='automatic');
       const optional=key!=='strategy';
       if(!(optional&&String(value)==='none')&&!allowed.includes(String(value)))throw new Error('invalid_strategy');
       runtime.patchSettings({[key]:String(value)},'overlay');
