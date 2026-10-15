@@ -27,6 +27,12 @@ jobs:
             tests/sentinel-1380-replan-without-fake-waits.test.mjs \
             tests/sentinel-1394-exclusive-deadline.test.mjs \
             tests/sentinel-1383-signal-latency.test.mjs
+      - name: Existing signed PC-to-phone protocol compatibility
+        run: |
+          node --test tests/sentinel-67315-mobile-integrity.test.mjs \
+            tests/sentinel-mobile-wire-auth.test.mjs \
+            tests/sentinel-67314-mobile-render.test.mjs \
+            tests/sentinel-pc-mobile-signed-clock-6724.test.mjs
       - name: Verify card TypeScript
         working-directory: sentinel-trading-lab
         run: |
