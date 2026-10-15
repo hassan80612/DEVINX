@@ -1968,14 +1968,12 @@ export class LocalPlaywrightDriver{
                 <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
+            <div data-sentinel-pc-selection-row style="display:grid;grid-template-columns:minmax(0,1fr) minmax(126px,.38fr);gap:9px;align-items:end;padding:9px 11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
                 <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela análise')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
 
                   ${((d.visibleStrategies||[]).map(e=>'<option value="'+esc(e.id)+'" '+(d.engine===e.id?'selected':'')+'>'+esc(tr(e.name))+' · '+esc(tr(e.short))+'</option>')).join('')}
                 </select>
-                <small data-sentinel-strategy-when style="display:block;font-size:9px;line-height:1.4;color:${muted}">${esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.engine)?.when||(d.visibleStrategies||[])[0]?.when||''))}</small>
-                ${d.engine==='automatic'&&d.vnext?.nowObservation?.contextStrategy?'<small data-sentinel-automatic-context style="display:block;font-size:9px;color:'+goldSoft+'">'+esc(tr('Contexto observado pelo Automático'))+': '+esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.vnext.nowObservation.contextStrategy)?.name||'Smart Confluence'))+'</small>':''}
               </label>
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr(nowMode?'DURAÇÃO DA OPERAÇÃO':'ENTRADA DAQUI A')}
                 <select data-sentinel-setting="duration" title="${tr('Prazo da previsão selecionado por você')}" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
@@ -1983,6 +1981,11 @@ export class LocalPlaywrightDriver{
                 </select>
               </label>
             </div>
+            <details data-sentinel-pc-strategy-guide data-sentinel-preserve-open="1" style="margin-top:5px;padding:0 8px;border-radius:7px;border:1px solid ${panelBorder};color:${muted};font-size:9px">
+              <summary data-sentinel-no-drag="1" style="cursor:pointer;padding:6px 0;color:${goldSoft};font-size:10px;font-weight:750">${tr('Qual estratégia usar em cada gráfico?')}</summary>
+              <div data-sentinel-strategy-when style="line-height:1.5;padding:3px 0 7px">${esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.engine)?.when||(d.visibleStrategies||[])[0]?.when||''))}</div>
+              ${d.engine==='automatic'&&d.vnext?.nowObservation?.contextStrategy?'<small data-sentinel-automatic-context style="display:block;padding-bottom:6px;color:'+goldSoft+'">'+esc(tr('Contexto observado pelo Automático'))+': '+esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.vnext.nowObservation.contextStrategy)?.name||'Smart Confluence'))+'</small>':''}
+            </details>
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr('Preço atual')+': '+price(d.price)+' · '+tr('Última análise')+': '+esc(new Date(Number(d.vnext?.nowObservation?.evaluatedAt||0)).toLocaleTimeString('pt-BR',{hour12:false})):tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div>
@@ -2186,11 +2189,13 @@ export class LocalPlaywrightDriver{
               <label><span style="display:block;font-size:9.5px;font-weight:800;color:${muted};margin:0 0 3px 2px">${tr('Estratégia 2')}</span><select data-sentinel-setting="strategy2" style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9.5px;font-weight:700">${'<option value="none" '+(strategy2==='none'?'selected':'')+'>'+esc(tr('Não selecionada'))+'</option>'}${((d.visibleStrategies||[]).filter(e=>e.id!=='automatic').map(e=>'<option value="'+esc(e.id)+'" '+(strategy2===e.id?'selected':'')+'>'+esc(tr(e.name))+' · '+esc(tr(e.short))+'</option>')).join('')}</select></label>
               <label><span style="display:block;font-size:9.5px;font-weight:800;color:${muted};margin:0 0 3px 2px">${tr('Estratégia 3')}</span><select data-sentinel-setting="strategy3" style="width:100%;height:32px;background:${fieldBg};color:${fieldInk};border:1px solid ${fieldBorder};border-radius:8px;padding:0 7px;font-size:9.5px;font-weight:700">${'<option value="none" '+(strategy3==='none'?'selected':'')+'>'+esc(tr('Não selecionada'))+'</option>'}${((d.visibleStrategies||[]).filter(e=>e.id!=='automatic').map(e=>'<option value="'+esc(e.id)+'" '+(strategy3===e.id?'selected':'')+'>'+esc(tr(e.name))+' · '+esc(tr(e.short))+'</option>')).join('')}</select></label>
             </div>
-            <div data-testid="pc-strategy-when-guide" style="margin-top:8px;padding:8px;border:1px solid ${panelBorder};border-radius:8px;font-size:9.5px;color:${muted};line-height:1.55">
-              <b style="color:${goldSoft}">${tr('Quando usar cada estratégia')}</b>
-              ${(d.visibleStrategies||[]).map(e=>'<div><b>'+esc(tr(e.name))+':</b> '+esc(tr(e.when))+'</div>').join('')}
-              <small>${tr('As estratégias ajudam a interpretar o gráfico. Todas usam o mesmo motor-base. Nenhuma delas garante acerto.')}</small>
-            </div>
+            <details data-testid="pc-strategy-when-guide" data-sentinel-preserve-open="1" style="margin-top:8px;padding:7px 9px;border:1px solid ${panelBorder};border-radius:8px;font-size:9.5px;color:${muted};line-height:1.55">
+              <summary data-sentinel-no-drag="1" style="color:${goldSoft};font-weight:800;cursor:pointer">${tr('Quando usar cada estratégia')}</summary>
+              <div style="padding:7px 0 2px">
+                ${(d.visibleStrategies||[]).map(e=>'<div><b>'+esc(tr(e.name))+':</b> '+esc(tr(e.when))+'</div>').join('')}
+                <small>${tr('As estratégias ajudam a interpretar o gráfico. Todas usam o mesmo motor-base. Nenhuma delas garante acerto.')}</small>
+              </div>
+            </details>
             <div data-sentinel-strategy-advice role="note" style="margin-top:7px;padding:5px 7px;border-left:2px solid ${strategyGuidance.level==='conflict'?putTone:goldSoft};color:${strategyGuidance.level==='conflict'?putTone:muted};font-size:10px;line-height:1.35"><b>${tr('Combinação:')}</b> ${esc(tr(strategyGuidance.message||'Escolha estratégias diferentes para comparar leituras.'))} <span style="color:${subtle}">· ${esc(tr(strategyGuidance.recommendation||'Sugestão: Fibonacci Retest + Trend Following; use Smart Confluence separadamente (validar em DEMO).'))}</span></div>
             <div style="margin-top:6px;font-size:9.5px;color:${subtle}">${tr('Os 3 cards superiores de força da vela foram mantidos. As estratégias abaixo são calculadas separadamente.')}</div>
           </div>
