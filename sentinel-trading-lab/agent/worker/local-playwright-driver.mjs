@@ -844,6 +844,11 @@ export class LocalPlaywrightDriver{
     return page.__sentinelNetworkReady;
   }
   async directFeed(provider){
+    // Do not request browser cookies again while the real authenticated
+    // quote socket is healthy. The original recovery path handles stale
+    // connections and fresh cookie authentication when needed.
+    const existing=this.feeds.get(provider),status=existing?.status?.();
+    if(status?.healthy&&status.ready&&status.authenticated)return existing;
     const s=await this.session(provider);if(!s.context)return null;const cfg=this.config(provider);let cookies=[];try{cookies=await s.context.cookies()}catch{}
     const cookie=cookies.find(c=>String(c.name).toLowerCase()==='ssid'&&String(c.domain||'').includes(cfg.domain.replace(/^www\./,'')))||cookies.find(c=>String(c.name).toLowerCase()==='ssid');
     if(!cookie?.value){const st=this.state(provider);st.lastDirectError='ssid_cookie_not_found';return null}
@@ -1261,7 +1266,12 @@ export class LocalPlaywrightDriver{
         }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
       }
       // Timing is observed regardless of the presentation mode.
-      payload.brokerTiming=this.liveStatus(provider).brokerTiming;
+      // Retain the exact broker-time verification without building a full
+      // 6,800-quote market snapshot on each overlay update.
+      const clock=this.feeds.get(provider)?.brokerClock?.();
+      payload.brokerTiming=clock?.verified?
+        {...(st.brokerTiming||{}),brokerClockVerified:true,brokerClock:clock}:
+        (st.brokerTiming||null);
       // Pin a signal's already verified broker expiration independently of
       // the NEXT opportunity window. Window rollover is not option expiry.
       const windowState=payload.vnext?.opportunityWindow||null;
