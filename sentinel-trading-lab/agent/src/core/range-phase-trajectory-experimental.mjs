@@ -69,11 +69,9 @@ export function rangePhaseMove({points=[],horizonSeconds=0,baselineMove=0,
  if(mix===0)return baselineMove;
  const {fit}=best,w=2*Math.PI/fit.period;
  const waveNow=fit.cos;
- const decay=Math.exp(-h/150);
- const waveFuture=fit.cos*Math.cos(w*h)+fit.sin*Math.sin(w*h);
- // Decay the oscillatory DISPLACEMENT rather than subtracting an
- // undamped starting phase from a decayed future phase.
- const phased=decay*(waveFuture-waveNow)+(1-decay)*fit.center;
+ const waveFuture=Math.exp(-h/150)*
+   (fit.cos*Math.cos(w*h)+fit.sin*Math.sin(w*h));
+ const phased=waveFuture-waveNow+(1-Math.exp(-h/150))*(fit.center);
  const displacement=baselineMove*(1-mix)+phased*mix;
  const cap=sigma*Math.sqrt(Math.max(1,h))*2.4;
  return clamp(displacement,-cap,cap);
