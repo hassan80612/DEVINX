@@ -944,7 +944,7 @@ export class DemoTradingRuntime{
       const observation=analyzeNowOpportunity({
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
-        qualityPolicy:'adaptive-market-v1'
+        qualityPolicy:'adaptive-market-v17'
       });
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
