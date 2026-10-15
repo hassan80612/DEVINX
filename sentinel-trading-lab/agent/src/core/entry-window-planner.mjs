@@ -8,7 +8,7 @@ export function entryOffsets(windowSeconds){
  return [...new Set([1,Math.min(h,Math.max(2,Math.ceil(h*.08))),
    Math.max(2,Math.round(h*.24)),Math.max(2,Math.round(h*.48)),
    Math.max(2,Math.round(h*.72)),Math.max(2,Math.round(h*.96))])]
-   .filter(x=>x<=h).sort((a,b)=>a-b);
+   .filter(x=>x<h).sort((a,b)=>a-b);
 }
 export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
  now=Date.now(),engineId='automatic',asset='UNKNOWN',forecastMode='continuous',
@@ -20,7 +20,7 @@ export function planEntryWindow({windowSeconds=30,holdingSeconds=windowSeconds,
  const headroom=Math.max(0,Number(confirmationQuoteGapMs)||0);
  const remainingMs=deadline>now?deadline-now-headroom:realWindowEndsAt==null?windowSeconds*1000:0;
  const eligibleSeconds=Math.min(windowSeconds,Math.floor(remainingMs/1000));
- const offsets=eligibleSeconds>=2?entryOffsets(Math.max(5,eligibleSeconds)).filter(seconds=>seconds<=eligibleSeconds):[];
+ const offsets=eligibleSeconds>=2?entryOffsets(Math.max(5,eligibleSeconds)).filter(seconds=>seconds*1000<remainingMs):[];
  const base={engineId,asset,delaySeconds:windowSeconds,holdingSeconds,
   issuedAt:now,entryAt:null,exitAt:null,entryOffsetSeconds:null,
   windowStartedAt:now,windowEndsAt:deadline>now?deadline:now+windowSeconds*1000,
