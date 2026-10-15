@@ -126,7 +126,7 @@ const PC_UI_KEYS=[
  "Contexto técnico combinado.",
  "Aguardando confirmação.",
  "Escolha estratégias diferentes para comparar leituras.",
- "Sugestão: Price Action + Suporte/Resistência + Trend Following.",
+ "Sugestão: Fibonacci Retest + Trend Following; use Smart Confluence separadamente (validar em DEMO).",
  "AGUARDANDO UM CENÁRIO",
  "SEM ESTRATÉGIAS",
  "PREVISÃO EM REAVALIAÇÃO",
@@ -2190,7 +2190,7 @@ export class LocalPlaywrightDriver{
               ${(d.visibleStrategies||[]).map(e=>'<div><b>'+esc(tr(e.name))+':</b> '+esc(tr(e.when))+'</div>').join('')}
               <small>${tr('As estratégias ajudam a interpretar o gráfico. Todas usam o mesmo motor-base. Nenhuma delas garante acerto.')}</small>
             </div>
-            <div data-sentinel-strategy-advice role="note" style="margin-top:7px;padding:5px 7px;border-left:2px solid ${strategyGuidance.level==='conflict'?putTone:goldSoft};color:${strategyGuidance.level==='conflict'?putTone:muted};font-size:10px;line-height:1.35"><b>${tr('Combinação:')}</b> ${esc(tr(strategyGuidance.message||'Escolha estratégias diferentes para comparar leituras.'))} <span style="color:${subtle}">· ${esc(tr(strategyGuidance.recommendation||'Sugestão: Price Action + Suporte/Resistência + Trend Following.'))}</span></div>
+            <div data-sentinel-strategy-advice role="note" style="margin-top:7px;padding:5px 7px;border-left:2px solid ${strategyGuidance.level==='conflict'?putTone:goldSoft};color:${strategyGuidance.level==='conflict'?putTone:muted};font-size:10px;line-height:1.35"><b>${tr('Combinação:')}</b> ${esc(tr(strategyGuidance.message||'Escolha estratégias diferentes para comparar leituras.'))} <span style="color:${subtle}">· ${esc(tr(strategyGuidance.recommendation||'Sugestão: Fibonacci Retest + Trend Following; use Smart Confluence separadamente (validar em DEMO).'))}</span></div>
             <div style="margin-top:6px;font-size:9.5px;color:${subtle}">${tr('Os 3 cards superiores de força da vela foram mantidos. As estratégias abaixo são calculadas separadamente.')}</div>
           </div>
 
