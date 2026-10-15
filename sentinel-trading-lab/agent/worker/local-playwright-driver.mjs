@@ -1918,10 +1918,10 @@ export class LocalPlaywrightDriver{
               </div>
             </div>
             <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:6px;padding:11px;background:rgba(10,25,25,.23);border:1px solid ${panelBorder};border-radius:11px">
-              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr('ESTRATÉGIA ATIVA')}
-                <select data-sentinel-setting="engine" title="${tr('Estratégia responsável pela previsão')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
+              <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr(nowMode?'ANALISTA':'ESTRATÉGIA ATIVA')}
+                <select data-sentinel-setting="engine" ${nowMode?'disabled':''} title="${tr('Estratégia responsável pela previsão')}" style="width:100%;min-width:0;max-width:100%;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
 
-                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>${tr('Automático Sentinel')}</option>
+                  <option value="automatic" ${d.engine==='automatic'?'selected':''}>${tr(nowMode?'ANÁLISE AGORA · ESTRUTURA':'Automático Sentinel')}</option>
                   <option value="price_action" ${d.engine==='price_action'?'selected':''}>Price Action</option>
                   <option value="support_resistance" ${d.engine==='support_resistance'?'selected':''}>${tr('Suporte e Resistência')}</option>
                   <option value="trend" ${d.engine==='trend'?'selected':''}>Trend Following</option>
@@ -2231,7 +2231,7 @@ export class LocalPlaywrightDriver{
             const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker';
             const view=window.__sentinelLastOverlayData?.brokerClockView||null;
             const brokerStatus=pane.querySelector('[data-sentinel-broker-clock-status]');
-            if(brokerMode){
+            if(brokerMode&&!nowAnalysisMode){
               const age=nowClock-Number(view?.capturedAt||0);
               const verified=view?.verified===true&&age>=0&&age<=4500;
               const pad=n=>String(n).padStart(2,'0');
