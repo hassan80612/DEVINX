@@ -1,3 +1,4 @@
+import {normalizePublicStrategy} from './public-strategies.mjs';
 import {expiryDrivenForecast,expiryForecastIdentity} from './expiry-driven-forecast.mjs';
 /**
  * Sentinel VNext — independent main-scenario engine selection.
@@ -21,7 +22,7 @@ export const SCENARIO_ENGINES=Object.freeze([
 ].map(o=>Object.freeze(o)));
 const BY_ID=new Map(SCENARIO_ENGINES.map(engine=>[engine.id,engine]));
 export function selectedScenarioEngine(settings={}){
-  const value=String(settings.engine||settings.strategy||'automatic').toLowerCase();
+  const value=normalizePublicStrategy(String(settings.engine||settings.strategy||'automatic').toLowerCase());
   return BY_ID.get(value)||BY_ID.get('automatic');
 }
 export function oneEngineSelection(settings={}){
