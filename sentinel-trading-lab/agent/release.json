@@ -1,13 +1,13 @@
 {
-  "version": "13.9.1",
-  "build": "13.9.1-observed-post-streak-rejection-without-trend-veto",
+  "version": "13.9.2",
+  "build": "13.9.2-revert-1391-streak-gate-original-forecast",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "single-independent-user-expiry-vnext",
-    "modelValidation": "13.9.1-131-automated-regressions;live-Windows-broker-quote-validation-pending",
+    "modelValidation": "13.9.2-13.9.0-forecast-restored-no-new-veto;live-broker-validation-pending",
     "forecastModel": "causal-closed-structure-1379"
   }
 }
