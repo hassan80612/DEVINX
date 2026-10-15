@@ -64,8 +64,10 @@ test('multi-period range holdout compares only real entry-to-expiry moves',()=>{
  const summaries=kinds.flatMap(kind=>[30,60].map(lead=>{
   const rows=matched(series(kind),lead);
   const total=summarize(rows),range=summarize(rows,'range');
-  // Every observation classified as TREND/REVERSAL must be bit-identical.
-  for(const row of rows.filter(x=>x.regime!=='range')){
+  // The extended detector may promote an oscillation falsely labelled as
+  // trend by v1. All observations that STILL remain non-range are identical.
+  for(const row of rows.filter(x=>x.regime!=='range'&&
+   x.candidate.regime!=='range')){
    assert.equal(row.baseline.entry,row.candidate.entry,kind+' '+lead);
    assert.equal(row.baseline.exit,row.candidate.exit,kind+' '+lead);
   }
