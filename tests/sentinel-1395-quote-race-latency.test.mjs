@@ -13,12 +13,12 @@ function makeRuntime({live=false}={}){
 
 test('a new quote arriving while a forecast is finishing retains its immediate evaluation',async()=>{
  const r=makeRuntime();
- const observe=r.forecastResearch.observe.bind(r.forecastResearch);
  let requested=false;
- r.forecastResearch.observe=(...args)=>{
+ r._signalValidationGate=({analysis})=>{
    if(!requested){requested=true;r.requestImmediateEvaluation();}
-   return observe(...args);
+   return {allowed:false,analysis:{...analysis,operationalSignal:{side:'AGUARDAR',strength:0,ready:false}}};
  };
+ r.forecastResearch.observe=()=>{};
  await r.tick(Date.now(),{skipStatus:true});
  assert.equal(requested,true,'the race was exercised');
  assert.equal(r.immediateEvaluationSerial,1);
@@ -47,4 +47,11 @@ test('when stopped, quote requests cannot schedule a speculative analysis',()=>{
  r.requestImmediateEvaluation();
  assert.equal(r.immediateEvaluationSerial,0);
  assert.equal(r.nextEvalMs,123);
+});
+
+test('a stale DOM heartbeat cannot fake the timestamp of a market quote',()=>{
+ const r=new DemoTradingRuntime({enableVNext:true});
+ r.setExternalMarket({provider:'iq_option',symbol:'EUR/USD',quote:1.1,
+   quoteTs:0,lastFrameAt:Date.now(),lastDomAt:Date.now()});
+ assert.equal(r.externalMarket.quoteTs,0);
 });
