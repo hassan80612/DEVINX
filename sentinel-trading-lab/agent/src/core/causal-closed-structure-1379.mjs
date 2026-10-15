@@ -1,5 +1,6 @@
 import {priorCandleReaction} from './prior-candle-reaction.mjs';
 import {completedStreakStage} from './completed-streak-stage.mjs';
+import {closedStructureTrajectory} from './closed-structure-trajectory-1392.mjs';
 // Sentinel 13.7.9 candidate — causal completed-structure forecast.
 // Direction derives from non-overlapping COMPLETED 10s blocks. The latest
 // forming block is used only as today's reference price, not a direction vote.
@@ -119,41 +120,9 @@ export function forwardRegime(p){
  return {regime:p.regime,turn:p.reversal,priorSide:p.priorSign,
   recentSide:p.recentSign,recentImpulse:p.recentImpulse};
 }
-function structureMove(p,seconds){
- const h=Math.max(0,Number(seconds)),bars=p.bars;
- // Independent, CLOSED blocks determine continuation vs structural turn.
- // One contradictory closed bar is a retracement, not an instant PUT/CALL.
- const priorRate=p.prior/10,recentRate=p.recent/10;
- const aligned=Math.sign(priorRate)===Math.sign(recentRate);
- const rate=p.reversal?
-   recentRate*.72+priorRate*.08:
-   p.range?recentRate*.18-priorRate*.08:
-   aligned?priorRate*.51+recentRate*.39:
-   priorRate*.26+recentRate*.11;
- const previous=bars.slice(3,6).map(x=>Math.abs(x));
- const last=bars.slice(-3).map(x=>Math.abs(x));
- const avg=arr=>arr.reduce((s,v)=>s+v,0)/arr.length;
- const exhaustion=aligned&&avg(last)<avg(previous)*.60?.63:1;
- // The old exp(-h/40) flattened even an uninterrupted, efficient trend:
- // entry -> expiry became nearly zero at the 60s/120s horizons. Extend the
- // horizon ONLY when completed blocks independently show persistence.
- const forwardTime=p.persistentTrend?h/(1+h/240):40*(1-Math.exp(-h/40));
- const exhaustionScale=p.exhaustion&&!p.reversal?
-   (p.persistentTrend?.82:.35):1;
- const drift=rate*exhaustion*exhaustionScale*forwardTime*
-   (p.streakStage?.side===(rate>0?'CALL':'PUT')?
-    1-.60*Number(p.streakStage.lateRisk||0):1);
- const lastClosed=p.points.at(-1),mean=p.points.reduce((a,b)=>a+b,0)/p.points.length;
- // For a real range, mean reversion depends on position inside observed
- // bounds; mid-range noise must not masquerade as a directional edge.
- const extremity=Math.min(1,Math.abs(p.points.at(-1)-
-   (Math.max(...p.points)+Math.min(...p.points))/2)/
-   Math.max(1e-12,(Math.max(...p.points)-Math.min(...p.points))/2));
- const reverting=(p.regime==='range'?.15+.35*extremity:.08)*(mean-lastClosed)*
-  (1-Math.exp(-h/40));
- const cap=Math.max(1e-10,p.sigma*Math.sqrt(Math.max(1,h))*2.4);
- return clamp(drift+reverting,-cap,cap);
-}
+// One curve for all candidate entry instants and the actual expiry;
+// no separate CALL/PUT blocking after a 4-candle streak.
+const structureMove=closedStructureTrajectory;
 function matches(rows,now,current,maxSeconds){
  const cutoff=now-maxSeconds*1000-3500;
  const first=rows[0].ts+95000;
