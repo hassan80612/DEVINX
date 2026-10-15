@@ -40,7 +40,7 @@ export function strategySelectionGuidance({ids=[],paused={},cards=[]}={}){
   else if(count===1){level='single';message=name(unique[0])+' selecionada: sinal deve respeitar esta estratégia.'}
   else{message=count+' estratégias complementares; entradas exigem preço confirmado.'}
   return{level,message,selectedCount:count,distinctCount:unique.length,overlap:duplicates||overlapping||aggregateMixed,divergence,
-    recommendation:'Sugestão: Price Action + Suporte/Resistência + Trend Following (validar em DEMO).',
+    recommendation:'Sugestão: Fibonacci Retest + Trend Following; use Smart Confluence separadamente (validar em DEMO).',
     selected:unique,independentFamilies:new Set(families.filter(f=>f!=='aggregate')).size,
     provenAccuracy:false};
 }
