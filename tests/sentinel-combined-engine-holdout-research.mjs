@@ -8,6 +8,8 @@ const start=Date.UTC(2026,9,1,0,0,0);
 const durations=[30000,60000];
 const policies=['production_auto','auto_plus_trend_mean','auto_plus_trend_support','auto_plus_either','auto_plus_trend_only','auto_plus_mean_only'];
 function chooseCandidate(sample,policy){
+ // Score the real experimental implementation, not a hand-written proxy.
+ if(policy==='auto_plus_trend_support')return analyzeNowOpportunity({...sample,engineId:'automatic_trend_support'});
  const baseline=analyzeNowOpportunity({...sample,engineId:'automatic'});
  if(policy==='production_auto'||!baseline.ready)return baseline;
  const review=id=>analyzeNowOpportunity({...sample,engineId:id});
