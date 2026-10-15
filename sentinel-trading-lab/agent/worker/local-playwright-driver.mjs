@@ -5,6 +5,7 @@ import {spawn} from 'node:child_process';
 import {scenarioViewFromRuntime} from './scenario-view.mjs';
 import {translations} from '../src/core/ui-texts.mjs';
 import {VISIBLE_STRATEGIES} from '../src/core/visible-strategy-guide.mjs';
+import {presentableMarketCards} from '../src/core/vnext-market-cards.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {readBrokerTimingFromText} from './broker-timing-readonly.mjs';
@@ -1298,6 +1299,8 @@ export class LocalPlaywrightDriver{
     try{
       const payload=JSON.parse(JSON.stringify(data||{}));
       payload.overlayReceivedAt=Date.now();
+      // Stable presentation slots only: no broker analysis, caching or extra timer.
+      payload.visualMarketCards=presentableMarketCards(payload.vnext?.cards);
       payload.uiTranslations=PC_UI_EN;
       const st=this.state(provider);
       // Optional, bounded, read-only UI observation. Never blocks rendering,
@@ -2030,7 +2033,7 @@ export class LocalPlaywrightDriver{
 
             <div style="display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap;margin:11px 0 7px"><b style="font-size:11px;letter-spacing:.05em;color:${goldSoft}">${tr('TOTAIS · LEITURAS AO VIVO')}</b><small style="font-size:9px;color:${muted}">${tr('Índices direcionais, não taxa de acerto')}</small></div>
             <div data-sentinel-vnext-cards style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px">
-              ${(Array.isArray(d.vnext?.cards)?d.vnext.cards:[]).map(c=>{
+              ${(d.visualMarketCards||[]).map(c=>{
                 const value=c?.callPct==null?NaN:Number(c.callPct),other=c?.putPct==null?NaN:Number(c.putPct);
                 // These percentages are measured from OBSERVED prices; they must
                 // never freeze when the independent future estimator has no
