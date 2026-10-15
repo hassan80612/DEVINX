@@ -3,7 +3,7 @@
 # installed using the existing installer. Identity and worker/data survive.
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
-$site='https://sentinel-trading-lab.vercel.app'
+$site='https://trading.devinx.com.br'
 $root=Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $log=Join-Path $root 'worker\data\auto-update.log'
 function Log([string]$message){

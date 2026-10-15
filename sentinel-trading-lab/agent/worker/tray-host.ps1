@@ -5,7 +5,7 @@ $node = Join-Path $root '.sentinel-runtime\node.exe'
 $manager = Join-Path $root 'worker\agent-manager.mjs'
 $iconPath = Join-Path $root 'worker\sentinel.ico'
 $exitMarker = Join-Path $root 'worker\data\agent.exit'
-$site = 'https://sentinel-trading-lab.vercel.app'
+$site = 'https://trading.devinx.com.br'
 $brokerConsole = $site + '/console?tab=Broker%20Connection'
 $managerHealth = 'http://127.0.0.1:8788/health'
 $agentEnabled = -not (Test-Path $exitMarker)

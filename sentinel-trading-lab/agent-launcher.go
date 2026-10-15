@@ -98,7 +98,7 @@ func main() {
     // tray never launch another page automatically. Users choose their
     // broker manually in Sentinel instead of auto-starting IQ Option.
     if os.Getenv("SENTINEL_INSTALL_TEST") != "1" && os.Getenv("CI") != "true" {
-        _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://sentinel-trading-lab.vercel.app/console?tab=Broker%20Connection").Start()
+        _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://trading.devinx.com.br/console?tab=Broker%20Connection").Start()
     }
 
     _ = os.Remove(installerPath)

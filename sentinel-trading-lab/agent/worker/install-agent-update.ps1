@@ -6,7 +6,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-$site = 'https://sentinel-trading-lab.vercel.app'
+$site = 'https://trading.devinx.com.br'
 $root = Join-Path $env:LOCALAPPDATA 'SentinelTradingLab'
 $runtime = Join-Path $root '.sentinel-runtime'
 $stage = Join-Path $env:TEMP ('sentinel-v88-' + [Guid]::NewGuid().ToString('N'))

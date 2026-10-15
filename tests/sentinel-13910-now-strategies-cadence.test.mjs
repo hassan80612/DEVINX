@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {analyzeNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
-import {analyzeMarket} from '../sentinel-trading-lab/agent/src/core/strategy.mjs';
 import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
 const T=1800000000000;
 const engines=['automatic','price_action','support_resistance','trend','mean_reversion','breakout','trendline_breakout','fibonacci_retest','smart_confluence'];
@@ -18,18 +17,58 @@ test('every selected strategy survives settings updates and Agent restart',()=>{
   assert.equal(restored.settings.forecastMode,'continuous');
  }
 });
-test('selected specialist uses its own existing current-side calculation',()=>{
+test('selected strategies use native live setups without legacy candle or confidence prerequisites',()=>{
  for(const engineId of engines.slice(1)){
-  const expected=analyzeMarket({candles,quoteHistory:quotes,strategy:engineId,minConfidence:74,durationMs:30000,quoteTs:T,now:T,freshnessMs:2500});
-  const result=analyzeNowOpportunity({candles,quoteHistory:quotes,price:quotes.at(-1).price,quoteAt:T,now:T,durationMs:30000,engineId});
+  const input={quoteHistory:quotes,price:quotes.at(-1).price,quoteAt:T,now:T,durationMs:30000,engineId};
+  const result=analyzeNowOpportunity(input);
   assert.equal(result.engineId,engineId);
-  assert.equal(result.side,expected.side==='BUY'?'CALL':expected.side==='SELL'?'PUT':null);
-  assert.equal(result.strength,expected.confidence);
+  assert.deepEqual(analyzeNowOpportunity({...input,candles:[],minConfidence:100}),result);
+  assert.deepEqual(analyzeNowOpportunity({...input,candles,minConfidence:1}),result);
   assert.equal(Object.hasOwn(result,'projectedExitPrice'),false);
+  if(['trend','breakout','price_action','smart_confluence'].includes(engineId))assert.equal(result.side,'CALL',engineId);
+  if(['mean_reversion','support_resistance','fibonacci_retest'].includes(engineId))assert.equal(result.ready,false,'a trend alone must not invent a '+engineId+' setup');
+ }
+ const source=readFileSync('sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs','utf8');
+ assert.equal(source.includes('analyzeMarket'),false);
+});
+test('NOW quote validation does not wait on an unrelated candle feed for any strategy',()=>{
+ for(const engine of engines){
+  const r=make();r.settings.engine=engine;
+  r.externalMarket={quoteFeedValidated:true,analysisFeedValidated:false,feedValidated:false,
+   quoteHistory:quotes,quote:quotes.at(-1).price,quoteTs:T,candles:[]};
+  const snap=r._marketSnapshot();assert.equal(snap.waitingLive,false,engine);
+  assert.equal(snap.quoteHistory.length,quotes.length);
+ }
+});
+test('all strategies reject flat or unavailable evidence and ignore future arrivals',()=>{
+ for(const engineId of engines){
+  const input={quoteHistory:quotes,price:quotes.at(-1).price,quoteAt:T,now:T,durationMs:30000,engineId};
+  const result=analyzeNowOpportunity(input);
+  assert.deepEqual(analyzeNowOpportunity({...input,quoteHistory:[...quotes,
+   {ts:T+1000,price:99},{ts:T-100,receivedAt:T+1000,price:99}]}),result,engineId);
+  assert.equal(analyzeNowOpportunity({...input,price:1.1,quoteHistory:quotes.map(q=>({...q,price:1.1}))}).ready,false,engineId);
+ }
+});
+test('specialist setups confirm an observed level turn, mean return, Fibonacci retest and line break',()=>{
+ const wave=Array.from({length:150},(_,i)=>({ts:T+i*1000,
+  price:1.1+.0006*Math.sin(i*2*Math.PI/43)+i*.0000005}));
+ const lines=Array.from({length:70},(_,i)=>({ts:T+i*1000,
+  price:1.1+.00015*Math.sin(i*2*Math.PI/15)-i*.000001}));
+ for(let i=70;i<80;i++)lines.push({ts:T+i*1000,price:lines[69].price+(i-69)*.0001});
+ for(const [engineId,history,index,side] of [
+  ['support_resistance',wave,15,'PUT'],['mean_reversion',wave,14,'PUT'],
+  ['fibonacci_retest',wave,86,'CALL'],['trendline_breakout',lines,72,'CALL']]){
+  const q=history[index],input={quoteHistory:history,price:q.price,quoteAt:q.ts,now:q.ts,engineId};
+  assert.equal(analyzeNowOpportunity(input).side,side,engineId);
+  const mirrored=history.map(q=>({...q,price:2.2-q.price}));
+  assert.equal(analyzeNowOpportunity({...input,quoteHistory:mirrored,price:mirrored[index].price}).side,
+   side==='CALL'?'PUT':'CALL',engineId+' inverse setup');
  }
 });
 test('real runtime keeps analyzing through 30s expiry and reissues on first new quote, without warmup reset',()=>{
+ for(const engine of ['automatic','trend','smart_confluence','price_action','breakout']){
  const r=make();r.settings.asset='EUR/USD';r.settings.orderDurationMs=30000;
+ r.settings.engine=engine;
  const gate=(q,now)=>r._signalValidationGate({analysis:{asset:'EUR/USD'},snap:snap(q),settings:r.settings,now}).analysis;
  const a=gate(quotes,T+100);assert.equal(a.vnext.futureEntryAnchor.entryTriggeredAt,T+100);
  const observed=[...quotes];
@@ -46,6 +85,16 @@ test('real runtime keeps analyzing through 30s expiry and reissues on first new 
  assert.equal(next.vnext.futureEntryAnchor.entryTriggeredAt,T+30300);
  assert.equal(next.vnext.futureEntryAnchor.exitAt,T+60300);
  assert.equal(r.vnextWindowOutcomes.length,2);
+ }
+});
+test('Windows installer and updater use the existing canonical product domain',()=>{
+ const root='sentinel-trading-lab/';
+ const go=readFileSync(root+'agent-launcher.go','utf8');
+ assert.ok(go.includes('https://trading.devinx.com.br/console?tab=Broker%20Connection'));
+ for(const path of ['public/downloads/install-agent-v88.ps1','agent/worker/install-agent-update.ps1',
+  'agent/worker/auto-update.ps1','agent/worker/tray-host.ps1']){
+  assert.match(readFileSync(root+path,'utf8'),/\$site\s*=\s*'https:\/\/trading\.devinx\.com\.br'/);
+ }
 });
 test('unchanged broker prices still carry the exact latest live timestamp into analysis',()=>{
  for(const provider of ['exnova','iq_option']){

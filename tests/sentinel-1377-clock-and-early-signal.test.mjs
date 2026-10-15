@@ -50,7 +50,7 @@ test('single browser opening belongs to Go launcher; PowerShell never opens anot
  assert.equal(install,updater);
  const matches=[...go.matchAll(/_ = exec\.Command\("rundll32\.exe", "url\.dll,FileProtocolHandler", "([^"]+)"\)\.Start\(\)/g)];
  assert.equal(matches.length,1);
- assert.equal(matches[0][1],'https://sentinel-trading-lab.vercel.app/console?tab=Broker%20Connection');
+ assert.equal(matches[0][1],'https://trading.devinx.com.br/console?tab=Broker%20Connection');
  assert.doesNotMatch(install,/Start-Process\s+['"]https:\/\/sentinel-trading-lab\.vercel\.app/);
  assert.doesNotMatch(updater,/Start-Process\s+['"]https:\/\/sentinel-trading-lab\.vercel\.app/);
 });

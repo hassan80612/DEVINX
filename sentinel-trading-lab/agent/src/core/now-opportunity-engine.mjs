@@ -2,7 +2,7 @@
 // Never forecasts a future price, sends an order, or schedules a future entry.
 // Closed bars decide the structural side; fresh live quotes confirm NOW.
 import {observedNoise} from './forward-direction-quality.mjs';
-import {analyzeMarket} from './strategy.mjs';
+import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -125,7 +125,7 @@ function completedRangeStructure(quotes,now,noise,spot){
 }
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic',candles=[],minConfidence=74}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic'}={}){
  const seconds=Number(durationMs)/1000;
  const waiting=reason=>({side:null,reason,ready:false,observedAt:Number(quoteAt)||null,
    entryPrice:null,strength:null,expirySeconds:seconds});
@@ -135,19 +135,11 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  const quotes=causalQuotes(quoteHistory,now);
  if(!quotes.length||!quotes.some(q=>q.ts===Number(quoteAt)&&Number(q.price)===Number(price)))
   return waiting('live-quote-unverified');
- // Selected strategies retain their own CURRENT technical calculation.
- // Only its current side is consumed; no projected price or future-entry
- // planner is used to release the signal.
+ // Selected strategies produce native current evidence; the shared lifecycle
+ // owns their signals. No legacy score/candle/forecast prerequisite is used.
  if(engineId!=='automatic'){
-  const supported=['price_action','support_resistance','trend','mean_reversion',
-   'breakout','trendline_breakout','fibonacci_retest','smart_confluence'];
-  if(!supported.includes(engineId))return waiting('unknown-strategy');
-  const result=analyzeMarket({candles,quoteHistory:quotes,strategy:engineId,
-   minConfidence,durationMs,quoteTs:quoteAt,now,freshnessMs:2500});
-  const side=result.side==='BUY'?'CALL':result.side==='SELL'?'PUT':null;
-  return {...waiting('selected-strategy-observing'),ready:!!side,side,
-   reason:side?'selected-strategy-current-confirmation':'selected-strategy-observing',
-   engineId,entryPrice:side?Number(price):null,strength:Number(result.confidence)||0};
+  const result=currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),engineId});
+  return {...waiting(result.reason),...result,entryPrice:result.ready?Number(price):null};
  }
  // This structure is retained across cycles; never start collecting it
  // again at expiry. Holding time does not impose any post-expiry pause.
