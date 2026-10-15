@@ -3,6 +3,7 @@
 // Closed bars decide the structural side; fresh live quotes confirm NOW.
 import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
+import {automaticChartContext} from './automatic-chart-context.mjs';
 import {causalPatternDirection} from './causal-pattern-direction.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
@@ -155,28 +156,28 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
  // No selector votes or second timed confirmation can delay an entry.
- // Research: compare an actual chart-dependent AUTOMATIC strategy choice
- // against the published base. Strategies are specialized observations, not
- // parallel engines or new blocking gates; one signal lifecycle remains owner.
- if(['adaptive-market-v2a','adaptive-market-v2b','adaptive-market-v2c'].includes(qualityPolicy)){
+ // The observed market base is authoritative. Automatic picks a chart
+ // CONTEXT from the retained four specialists without their voting or delaying
+ // its signal. An explicitly chosen manual specialist can refine the current
+ // direction from its own price evidence on a verified live quote.
+ if(qualityPolicy==='adaptive-market-v17'){
   const input={quoteHistory,price,quoteAt,now,durationMs};
-  const published=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
+  const original=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
+  const context=automaticChartContext({...input,base:original});
+  if(engineId==='automatic')return {...original,engineId,qualityPolicy,
+    contextStrategy:context.strategy,marketShape:context.marketShape,
+    signalOwner:'shared-market-base'};
   const quotes=causalQuotes(quoteHistory,now).filter(q=>q.ts<=Number(quoteAt));
-  const ids=['fibonacci_retest','support_resistance','trend','smart_confluence'];
-  const readings=ids.map(id=>({id,...currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),engineId:id})}));
-  const selected=engineId==='automatic'?
-   readings.find(x=>x.ready===true):
-   readings.find(x=>x.id===engineId&&x.ready===true);
-  if(!selected)return {...published,engineId,qualityPolicy,
-   contextStrategy:engineId==='automatic'?'smart_confluence':engineId};
-  const switchDirection=qualityPolicy==='adaptive-market-v2b'||
-   (qualityPolicy==='adaptive-market-v2a'&&Number(durationMs)===60000&&
-    ['fibonacci_retest','support_resistance'].includes(selected.id));
-  if(!switchDirection)return {...published,engineId,qualityPolicy,
-   contextStrategy:selected.id};
-  return {...published,ready:true,side:selected.side,reason:selected.reason,
-   observedAt:Number(quoteAt),entryPrice:Number(price),engineId,qualityPolicy,
-   contextStrategy:selected.id,signalOwner:'shared-market-base'};
+  const current=quotes.some(q=>q.ts===Number(quoteAt)&&Number(q.price)===Number(price));
+  const specialist=current&&now-Number(quoteAt)<=2500?
+    currentStrategyEvidence({quotes,price:Number(price),quoteAt:Number(quoteAt),engineId}):null;
+  if(specialist?.ready===true)return {...original,...specialist,
+    engineId,qualityPolicy,observedAt:Number(quoteAt),entryPrice:Number(price),
+    expirySeconds:Number(durationMs)/1000,contextStrategy:engineId,
+    signalOwner:'shared-market-base'};
+  return {...original,engineId,qualityPolicy,contextStrategy:engineId,
+    specialistStatus:specialist?.reason||'base-continuation',
+    signalOwner:'shared-market-base'};
  }
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
