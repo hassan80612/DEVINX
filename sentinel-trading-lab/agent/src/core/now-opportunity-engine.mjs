@@ -3,6 +3,7 @@
 // Closed bars decide the structural side; fresh live quotes confirm NOW.
 import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
+import {sharedMarketBase} from './shared-market-base.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -149,7 +150,19 @@ function completedRangeStructure(quotes,now,noise,spot){
 }
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic'}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline'}={}){
+ if(qualityPolicy==='shared-base-v2'){
+  const input={quoteHistory,price,quoteAt,now,durationMs};
+  const baseline=analyzeNowOpportunity({...input,engineId:'automatic'});
+  const shared=sharedMarketBase({...input,selectedStrategy:engineId});
+  // A verified early phase changes the direction/entry instant. Otherwise
+  // the current automatic observation is retained unchanged; no waiting gate
+  // or independent strategy veto is inserted into the decision path.
+  if(shared.ready)return {...baseline,...shared,engineId,qualityPolicy,
+   reason:shared.reason,observedAt:Number(quoteAt),entryPrice:Number(price)};
+  return {...baseline,engineId,qualityPolicy,marketPhase:shared.marketPhase||'unresolved',
+   contextStrategy:shared.contextStrategy||engineId,signalOwner:'shared-market-base'};
+ }
  const seconds=Number(durationMs)/1000;
  let provisionalSide=null;
  const waiting=reason=>({side:null,reason,ready:false,observedAt:Number(quoteAt)||null,
