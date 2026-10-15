@@ -76,9 +76,9 @@ async function replay(Runtime,model,quotes,durationMs){
        !signals.some(s=>s.at===opportunity.entryTriggeredAt)){
     const at=Number(opportunity.entryTriggeredAt);
     // A signal must have a known, actually observed market price at decision.
-    // For 13.9.6 use quote when its old future-entry confirmation fired.
+    // Use the exact source quote for BOTH models, never a projected entry price.
     signals.push({at,side:opportunity.side,entryPrice:
-      Number(opportunity.confirmedEntryPrice||opportunity.entryPrice||snap.price),
+      Number(snap.price),
       exitAt:Number(opportunity.exitAt),plannedEntryAt:Number(opportunity.plannedEntryAt||at)});
    }
   }catch(e){
