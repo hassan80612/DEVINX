@@ -10,6 +10,7 @@ import {expiryDrivenForecast,expiryForecastIdentity} from './expiry-driven-forec
  */
 export const SCENARIO_ENGINES=Object.freeze([
   {id:'automatic',name:'Automático Sentinel',family:'native',description:'Previsão própria de preço e estrutura, sem usar nenhuma estratégia selecionável',research:'market-regime+forward-microstructure'},
+  {id:'automatic_trend_support',name:'Automático combinado · Trend + Suporte/Resistência (teste)',family:'native-combined',description:'Motor automático confirmado por Trend Following nas continuações e Suporte/Resistência nas reversões, sem votos antigos',research:'current-regime-confirmation'},
   {id:'price_action',name:'Price Action',family:'price-action',description:'Estrutura, impulsos, rejeições e sequências de preço fechadas',research:'market-structure+conditional-price-action'},
   {id:'support_resistance',name:'Suporte e Resistência',family:'levels',description:'Reação, rejeição e rompimento em zonas estruturais anteriores',research:'historical-level-reaction'},
   {id:'trend',name:'Trend Following',family:'trend',description:'Persistência, continuidade e perda de aceleração da tendência',research:'trend-persistence+regime'},
