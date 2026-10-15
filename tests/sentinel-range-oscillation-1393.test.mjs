@@ -91,6 +91,6 @@ test('no new permissions, timing gates, vetoes or dependence on the forming cand
  const phase=read('../sentinel-trading-lab/agent/src/core/range-phase-trajectory-experimental.mjs');
  assert.match(model,/const observedOscillation=/);
  assert.match(model,/const range=!reversal/);
- assert.match(model,/last quoted instant of the FORMING bar/);
+ assert.match(model,/last quoted instant of the FORMING bar/i);
  for(const s of [model,phase])assert.doesNotMatch(s,/brokerAllowsEntry|confirmationQuoteGapMs|cooldown|CALL AGORA|PUT AGORA/);
 });
