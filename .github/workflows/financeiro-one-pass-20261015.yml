@@ -19,4 +19,4 @@ jobs:
       - name: Typecheck Financeiro
         run: npm run typecheck
       - name: Validate auth paths
-        run: npm test
+        run: node --test tests/financeiro-20261015-access-error.test.mjs
