@@ -44,3 +44,24 @@ export function completedStreakStage({candles=[],quotePrice=null,asOf=Date.now()
   retreat:Number(retreatStrength.toFixed(3)),
   reason:lateRisk>.28?'mature-streak-with-rejection':'persistent-streak'};
 }
+
+/**
+ * A mature same-side move is NOT a reason to block continuation. However,
+ * a REAL broker-price retreat after the fourth COMPLETED candle, corroborated
+ * by a weakening body or visible rejection wick, means the former momentum
+ * forecast is no longer a sound same-side entry at THIS instant.
+ *
+ * This is not an opposite-direction forecast and cannot generate PUT/CALL.
+ * It only declines a stale continuation attempt at the plan/entry instant.
+ */
+export function observedStreakRejection({stage=null,side=null}={}){
+ if(!stage?.extended||stage.count<4||stage.side!==side||
+    !['CALL','PUT'].includes(side))return null;
+ const retreat=Number(stage.retreat)||0;
+ const taper=Number(stage.taper)||0;
+ const rejection=Number(stage.rejection)||0;
+ const risk=Number(stage.lateRisk)||0;
+ if(retreat<.60||risk<.32||!(taper>=.30||rejection>=.35))return null;
+ return {kind:'observed-completed-streak-rejection',side,
+  risk,retreat,taper,rejection};
+}
