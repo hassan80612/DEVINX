@@ -1975,6 +1975,7 @@ export class LocalPlaywrightDriver{
                   ${((d.visibleStrategies||[]).map(e=>'<option value="'+esc(e.id)+'" '+(d.engine===e.id?'selected':'')+'>'+esc(tr(e.name))+' · '+esc(tr(e.short))+'</option>')).join('')}
                 </select>
                 <small data-sentinel-strategy-when style="display:block;font-size:9px;line-height:1.4;color:${muted}">${esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.engine)?.when||(d.visibleStrategies||[])[0]?.when||''))}</small>
+                ${d.engine==='automatic'&&d.vnext?.nowObservation?.contextStrategy?'<small data-sentinel-automatic-context style="display:block;font-size:9px;color:'+goldSoft+'">'+esc(tr('Contexto observado pelo Automático'))+': '+esc(tr((d.visibleStrategies||[]).find(e=>e.id===d.vnext.nowObservation.contextStrategy)?.name||'Smart Confluence'))+'</small>':''}
               </label>
               <label style="display:grid;gap:6px;font-size:10px;font-weight:750;color:${goldSoft}">${tr(nowMode?'DURAÇÃO DA OPERAÇÃO':'ENTRADA DAQUI A')}
                 <select data-sentinel-setting="duration" title="${tr('Prazo da previsão selecionado por você')}" style="width:100%;min-width:0;height:35px;padding:0 7px;border:1px solid ${fieldBorder};border-radius:8px;background:${fieldBg};color:${fieldInk};font-size:11px;font-weight:750">
