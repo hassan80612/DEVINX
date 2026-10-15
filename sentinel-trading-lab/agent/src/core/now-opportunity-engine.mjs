@@ -55,6 +55,17 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  if(!bars)return waiting('completed-structure-not-ready');
  const moves=bars.map(b=>Math.log(b.close/b.open));
  const net=Math.log(bars.at(-1).close/bars[0].open);
+ // Directional efficiency distinguishes a persistent move from price
+ // zigzags of similar amplitude. A weak sideways swing must not trigger
+ // CALL/PUT merely because 3 of 4 small candle bodies share a colour.
+ const route=quotes.filter(q=>q.ts>=bars[0].from&&q.ts<bars.at(-1).to);
+ let travelled=0;
+ for(let i=1;i<route.length;i++){
+  if(route[i].ts-route[i-1].ts>3000)continue;
+  travelled+=Math.abs(Math.log(route[i].price/route[i-1].price));
+ }
+ if(!(travelled>0)||Math.abs(net)/travelled<.20)
+  return waiting('choppy-sideways-structure');
  const side=sideOf(net);
  if(!side)return waiting('neutral-closed-structure');
  const aligned=moves.filter(m=>sign(side)*m>0).length;
