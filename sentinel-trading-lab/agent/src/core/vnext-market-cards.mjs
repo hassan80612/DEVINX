@@ -70,3 +70,30 @@ export function lightweightDashboard({quoteHistory=[],receipt=null,now=Date.now(
   return Object.freeze({cards:Object.freeze([market,history,total]),projection});
 }
 export const lightweightReadings=options=>lightweightDashboard(options).cards;
+
+// View-only fixed slots for the broker PC and the linked phone.
+// When a new cycle momentarily has no completed market readings,
+// render current empty readings in the SAME slots. Do not cache the old
+// direction, synthesize percentages, delay a signal or change the engine.
+export const MARKET_READING_SLOTS=Object.freeze([
+ Object.freeze({id:'market-now',label:'TOTAL MERCADO AGORA',
+  hint:'Força atual observada em 8 segundos'}),
+ Object.freeze({id:'prior-structure',label:'TOTAL ESTRUTURA ANTERIOR',
+  hint:'Movimento anterior observado em 60 segundos'}),
+ Object.freeze({id:'total-of-totals',label:'ESTRUTURA ANTERIOR + MERCADO AGORA',
+  hint:'Média das duas leituras anteriores'})
+]);
+export function presentableMarketCards(cards=[]){
+ const incoming=Array.isArray(cards)?cards:[];
+ return MARKET_READING_SLOTS.map(slot=>{
+  const c=incoming.find(x=>x?.id===slot.id);
+  const call=Number(c?.callPct),put=Number(c?.putPct);
+  const available=c?.callPct!=null&&c?.putPct!=null&&
+    Number.isFinite(call)&&Number.isFinite(put);
+  return {
+   ...slot,
+   side:available&&['CALL','PUT','NEUTRO'].includes(c?.side)?c.side:'AGUARDAR',
+   callPct:available?call:null,putPct:available?put:null
+  };
+ });
+}
