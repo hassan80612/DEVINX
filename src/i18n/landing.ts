@@ -38,7 +38,7 @@ const pt = {
   "landing.preview.available": "Disponível hoje",
   "landing.preview.bills": "Contas nos próximos 5 dias",
   "landing.preview.gap": "Falta cobrir",
-  "landing.preview.caption": "Neste exemplo, o valor que falta é distribuído em 5 dias. No seu painel, cada vencimento entra no cálculo.",
+  "landing.preview.caption": "Painel ilustrativo sem valores reais. Seus saldos, metas e contas aparecem após entrar na sua conta.",
 };
 
 type LandingCatalog = Record<keyof typeof pt, string>;
@@ -80,7 +80,7 @@ const en: LandingCatalog = {
   "landing.preview.available": "Available today",
   "landing.preview.bills": "Bills due in the next 5 days",
   "landing.preview.gap": "Still to cover",
-  "landing.preview.caption": "In this example, the remaining amount is spread over 5 days. Your dashboard accounts for each individual due date.",
+  "landing.preview.caption": "Illustrative dashboard with no real amounts. Your balances, targets and bills appear when you sign in.",
 };
 
 const es: LandingCatalog = {
@@ -120,7 +120,7 @@ const es: LandingCatalog = {
   "landing.preview.available": "Disponible hoy",
   "landing.preview.bills": "Cuentas en los próximos 5 días",
   "landing.preview.gap": "Falta cubrir",
-  "landing.preview.caption": "En este ejemplo, el importe pendiente se distribuye en 5 días. Tu panel tiene en cuenta cada vencimiento.",
+  "landing.preview.caption": "Vista ilustrativa sin importes reales. Tus saldos, metas y cuentas aparecerán al iniciar sesión.",
 };
 
 const fr: LandingCatalog = {
@@ -160,7 +160,7 @@ const fr: LandingCatalog = {
   "landing.preview.available": "Disponible aujourd’hui",
   "landing.preview.bills": "Factures des 5 prochains jours",
   "landing.preview.gap": "Reste à couvrir",
-  "landing.preview.caption": "Dans cet exemple, le montant restant est réparti sur 5 jours. Votre tableau de bord tient compte de chaque échéance.",
+  "landing.preview.caption": "Aperçu illustratif sans montants réels. Vos soldes, objectifs et factures s'affichent après connexion.",
 };
 
 const de: LandingCatalog = {
@@ -200,7 +200,7 @@ const de: LandingCatalog = {
   "landing.preview.available": "Heute verfügbar",
   "landing.preview.bills": "Rechnungen der nächsten 5 Tage",
   "landing.preview.gap": "Noch zu decken",
-  "landing.preview.caption": "In diesem Beispiel wird der fehlende Betrag auf 5 Tage verteilt. Dein Dashboard berücksichtigt jede einzelne Fälligkeit.",
+  "landing.preview.caption": "Illustration ohne reale Beträge. Deine Salden, Ziele und Rechnungen erscheinen nach der Anmeldung.",
 };
 
 const ar: LandingCatalog = {
@@ -240,7 +240,7 @@ const ar: LandingCatalog = {
   "landing.preview.available": "المتاح اليوم",
   "landing.preview.bills": "فواتير الأيام الخمسة المقبلة",
   "landing.preview.gap": "المبلغ المتبقي لتغطيتها",
-  "landing.preview.caption": "في هذا المثال، يُوزّع المبلغ المتبقي على 5 أيام. في لوحتك، يُراعى كل موعد استحقاق في الحساب.",
+  "landing.preview.caption": "عرض توضيحي دون مبالغ حقيقية. ستظهر أرصدتك وأهدافك وفواتيرك بعد تسجيل الدخول.",
 };
 
 export const landingCatalogs: Record<Locale, LandingCatalog> = {'pt-BR': pt, en, es, fr, ar, de};
