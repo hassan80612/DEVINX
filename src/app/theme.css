@@ -926,3 +926,9 @@ select option{background:var(--surface-1);color:var(--text)}
 @media (min-width:901px){
   .financeApp .financeWorkspace .financeContent{width:100%;max-width:none;margin:0;padding:4px 0 0}
 }
+
+/* The Financeiro offer has exactly one public monthly card across layouts. */
+.subscriptionPlanGrid.singlePlan,
+.subscriptionPlans.compact .subscriptionPlanGrid.singlePlan,
+.authSubscriptionPlans .subscriptionPlanGrid.singlePlan{grid-template-columns:minmax(0,430px)!important;justify-content:center}
+@media(max-width:520px){.subscriptionPlanGrid.singlePlan,.subscriptionPlans.compact .subscriptionPlanGrid.singlePlan,.authSubscriptionPlans .subscriptionPlanGrid.singlePlan{grid-template-columns:minmax(0,1fr)!important}}
