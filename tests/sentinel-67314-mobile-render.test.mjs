@@ -37,7 +37,7 @@ function render(s,now){
 }
 test('phone retains PC projection after estimated entry time while its real window is open',()=>{
  const html=render(state(),start+20000);
- assert.match(html,/1\.23456/);assert.match(html,/1\.23478/);
+  assert.match(html,/1\.23456/);assert.doesNotMatch(html,/1\.23478|PREÇO AO VENCER|PREÇO ESTIMADO AO VENCER/);
  assert.match(html,/00:10/);assert.match(html,/CALL · JANELA ABERTA · AGUARDE/);
  assert.doesNotMatch(html,/ENTRADA AGORA/);
 });
