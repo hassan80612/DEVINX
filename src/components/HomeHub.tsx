@@ -41,7 +41,8 @@ const COPY={
     sentinelText:"Análise em tempo real, estrutura de velas, tendências, retrações e cenários CALL/PUT. Um painel profissional para acompanhar IQ Option e Exnova com clareza; as operações são manuais.",
     sentinelPrimary:"Conhecer o analista",
     sentinelLogin:"Já tenho acesso · Entrar",
-    sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE"
+    sentinelFeaturesTitle:"SENTINEL · O QUE ELE OFERECE",
+    sentinelAccess:"ACESSO AO ANALISTA",sentinelCycle:"30 dias · compra única",sentinelPreview:"PRÉVIA ILUSTRATIVA",sentinelPreviewTitle:"PAINEL DE ANÁLISE",sentinelPreviewDetail:"Estrutura · tendência · cenários"
   },
   en:{
     control:"DEVINX · YOU'RE IN CONTROL",
@@ -76,7 +77,8 @@ const COPY={
     sentinelText:"Live prices, completed candle structure, trends, retracements and CALL/PUT scenarios for IQ Option and Exnova. You remain in control of every trade.",
     sentinelPrimary:"Explore Sentinel",
     sentinelLogin:"I have access · Sign in",
-    sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS"
+    sentinelFeaturesTitle:"SENTINEL · WHAT IT OFFERS",
+    sentinelAccess:"ANALYST ACCESS",sentinelCycle:"30 days · one-time purchase",sentinelPreview:"ILLUSTRATIVE PREVIEW",sentinelPreviewTitle:"MARKET ANALYSIS",sentinelPreviewDetail:"Structure · trend · scenarios"
   },
   es:{
     control:"DEVINX · TÚ TIENES EL CONTROL",
@@ -111,7 +113,8 @@ const COPY={
     sentinelText:"Sigue escenarios CALL/PUT, cambios de precio y alertas. El análisis es informativo; operas manualmente.",
     sentinelPrimary:"Conocer Sentinel",
     sentinelLogin:"Ya tengo acceso · Entrar",
-    sentinelFeaturesTitle:"SENTINEL · CARACTERÍSTICAS"
+    sentinelFeaturesTitle:"SENTINEL · CARACTERÍSTICAS",
+    sentinelAccess:"ACCESO AL ANALISTA",sentinelCycle:"30 días · compra única",sentinelPreview:"VISTA ILUSTRATIVA",sentinelPreviewTitle:"ANÁLISIS DE MERCADO",sentinelPreviewDetail:"Estructura · tendencia · escenarios"
   },
   fr:{
     control:"DEVINX · VOUS GARDEZ LE CONTRÔLE",
@@ -146,7 +149,8 @@ const COPY={
     sentinelText:"Suivez les scénarios CALL/PUT, les variations de prix et les alertes. Analyse informative ; ordres manuels.",
     sentinelPrimary:"Découvrir Sentinel",
     sentinelLogin:"J'ai un accès · Connexion",
-    sentinelFeaturesTitle:"SENTINEL · FONCTIONNALITÉS"
+    sentinelFeaturesTitle:"SENTINEL · FONCTIONNALITÉS",
+    sentinelAccess:"ACCÈS ANALYSTE",sentinelCycle:"30 jours · achat unique",sentinelPreview:"APERÇU ILLUSTRATIF",sentinelPreviewTitle:"ANALYSE DU MARCHÉ",sentinelPreviewDetail:"Structure · tendance · scénarios"
   },
   de:{
     control:"DEVINX · DU HAST DIE KONTROLLE",
@@ -181,7 +185,8 @@ const COPY={
     sentinelText:"Verfolgen Sie CALL/PUT-Szenarien, Kursbewegungen und Warnungen. Nur informative Analyse; Trades bleiben manuell.",
     sentinelPrimary:"Sentinel entdecken",
     sentinelLogin:"Zugang vorhanden · Anmelden",
-    sentinelFeaturesTitle:"SENTINEL · FUNKTIONEN"
+    sentinelFeaturesTitle:"SENTINEL · FUNKTIONEN",
+    sentinelAccess:"ANALYSTENZUGANG",sentinelCycle:"30 Tage · Einmalkauf",sentinelPreview:"BEISPIELANSICHT",sentinelPreviewTitle:"MARKTANALYSE",sentinelPreviewDetail:"Struktur · Trend · Szenarien"
   },
   ar:{
     control:"DEVINX · أنت المتحكم",
@@ -216,7 +221,8 @@ const COPY={
     sentinelText:"تابع سيناريوهات CALL و PUT وتحركات الأسعار وتنبيهات السوق. التحليل معلوماتي والصفقات تتم يدوياً.",
     sentinelPrimary:"تعرف على Sentinel",
     sentinelLogin:"لدي حساب · دخول",
-    sentinelFeaturesTitle:"SENTINEL · المزايا"
+    sentinelFeaturesTitle:"SENTINEL · المزايا",
+    sentinelAccess:"الوصول إلى المحلل",sentinelCycle:"30 يومًا · شراء لمرة واحدة",sentinelPreview:"عرض توضيحي",sentinelPreviewTitle:"تحليل السوق",sentinelPreviewDetail:"الهيكل · الاتجاه · السيناريوهات"
   }
 } as const;
 
@@ -390,18 +396,56 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
     <section id="sentinel" className={`${styles.product} ${styles.sentinelProduct}`} aria-label="Sentinel Trading Lab">
       <div className={styles.productGlow}/>
       <div className={styles.independent}><b>{c.independent}</b><span>{c.ownPlan}</span></div>
-      <div className={styles.copy}>
-        <span className={styles.tag}><i/>{c.sentinelTag}</span>
-        <h2>{c.sentinelLine1}</h2>
-        <p>{c.sentinelText}</p>
-        <div className={styles.sentinelBrokerBrands} aria-label="IQ Option e Exnova">
-          <span className={styles.sentinelIq}>IQ <b>OPTION</b></span>
-          <span className={styles.sentinelExnova}>EXNOVA</span>
+      <div className={styles.sentinelHeroGrid}>
+        <div className={styles.copy}>
+          <span className={styles.tag}><i/>{c.sentinelTag}</span>
+          <h2>{c.sentinelLine1}</h2>
+          <p>{c.sentinelText}</p>
+          <div className={styles.sentinelBrokerBrands} aria-label="IQ Option e Exnova">
+            <span className={styles.sentinelIq}>IQ <b>OPTION</b></span>
+            <span className={styles.sentinelExnova}>EXNOVA</span>
+          </div>
+          <div className={styles.sentinelOffer}>
+            <div>
+              <small>{c.sentinelAccess}</small>
+              <strong>{intl?'US$ 10':'R$ 55'}</strong>
+            </div>
+            <span>{c.sentinelCycle}</span>
+          </div>
+          <div className={styles.actions}>
+            <a className={styles.primary} href="/sentinel">{c.sentinelPrimary} <span aria-hidden="true">↗</span></a>
+            <a className={styles.secondary} href="/sentinel?next=login">{c.sentinelLogin}</a>
+          </div>
         </div>
-        <div className={styles.actions}>
-          <a className={styles.primary} href="/sentinel">{c.sentinelPrimary}</a>
-          <a className={styles.secondary} href="/sentinel?next=login">{c.sentinelLogin}</a>
-        </div>
+        <aside className={styles.sentinelPreview} aria-label={c.sentinelPreview}>
+          <div className={styles.sentinelPreviewTop}>
+            <span className={styles.sentinelPreviewPulse} aria-hidden="true"/>
+            <div><strong>DEVINX · SENTINEL</strong><small>{c.sentinelPreviewTitle}</small></div>
+            <span className={styles.sentinelDemoBadge}>{c.sentinelPreview}</span>
+          </div>
+          <div className={styles.sentinelPreviewChart} aria-hidden="true">
+            <svg viewBox="0 0 480 210" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="sentinelChartFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#e3c374" stopOpacity=".26"/>
+                  <stop offset="100%" stopColor="#e3c374" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <g stroke="#b9d8c9" strokeOpacity=".1" strokeWidth="1">
+                <path d="M0 42H480 M0 84H480 M0 126H480 M0 168H480 M80 0V210 M160 0V210 M240 0V210 M320 0V210 M400 0V210"/>
+              </g>
+              <path d="M0 175L34 159L67 168L102 128L137 145L172 122L205 131L239 92L271 103L302 74L339 94L365 60L397 71L432 37L480 49V210H0Z" fill="url(#sentinelChartFill)"/>
+              <path className={styles.sentinelChartLine} d="M0 175L34 159L67 168L102 128L137 145L172 122L205 131L239 92L271 103L302 74L339 94L365 60L397 71L432 37L480 49" fill="none" stroke="#e6c474" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="432" cy="37" r="5" fill="#f5db93"/>
+              <circle className={styles.sentinelChartHalo} cx="432" cy="37" r="12" fill="none" stroke="#f5db93" strokeWidth="2"/>
+            </svg>
+          </div>
+          <div className={styles.sentinelPreviewFoot}>
+            <div><span className={styles.sentinelPreviewSymbol}>↗</span><strong>CALL <span>/</span> PUT</strong><small>{c.sentinelPreviewDetail}</small></div>
+            <span className={styles.sentinelPreviewBar} aria-hidden="true"><i/><i/><i/><i/><i/></span>
+          </div>
+          <span className={styles.sentinelPreviewNote}>{c.sentinelPreview}</span>
+        </aside>
       </div>
       <FeatureGrid title={c.sentinelFeaturesTitle} items={SENTINEL_FEATURES[activeLocale]}/>
       <p className={styles.sentinelRisk}>{locale==='pt-BR'?'Não executa ordens e não garante resultados. Mercado envolve risco de perdas.': 'No automatic orders or guaranteed returns. Trading involves risk.'}</p>
