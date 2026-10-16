@@ -10,9 +10,12 @@ export const dynamic='force-dynamic';
 // variable before its paid webhooks are permitted to activate an account.
 // Unknown products remain ignored; signature verification is unchanged.
 const PRODUCT_ID='c05e1f00-c469-11f1-8fdf-3f2670dd515f';
-function isApprovedSentinelProduct(id:string){
+const BR_CHECKOUT_CODE='SQku9Rd';
+function isApprovedSentinelProduct(id:string,checkoutCode:string){
   const brId=String(process.env.SENTINEL_KIWIFY_BR_PRODUCT_ID||'').trim();
-  return id===PRODUCT_ID||(!!brId&&id===brId);
+  return id===PRODUCT_ID||(!!brId&&id===brId)||
+    (checkoutCode===BR_CHECKOUT_CODE&&
+     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
 }
 const MAX_BYTES=128_000;
 const reply=(body:Record<string,unknown>,status=200)=>NextResponse.json(body,{status,headers:{'cache-control':'no-store'}});
@@ -62,7 +65,10 @@ export async function POST(req:NextRequest){
   if(!verifyKiwifySignature(raw,signature,secret))return reply({ok:false,error:'invalid_signature'},401);
   let payload:any;try{payload=JSON.parse(raw)}catch{return reply({ok:false,error:'invalid_json'},400)}
   const productId=String(payload?.Product?.product_id||payload?.product?.product_id||payload?.product_id||'');
-  if(!isApprovedSentinelProduct(productId))return reply({ok:true,ignored:'other_product'});
+  // Kiwify signs the checkout_link with the rest of the payload. BR product
+  // identity is bound on first signed event and cannot be remapped later.
+  const checkoutCode=String(payload?.checkout_link||'').trim();
+  if(!isApprovedSentinelProduct(productId,checkoutCode))return reply({ok:true,ignored:'other_product'});
   const kind=paymentKind(payload);
   if(!kind)return reply({ok:true,ignored:'unhandled_event'});
   const orderId=String(payload?.order_id||'').trim();
@@ -76,9 +82,14 @@ export async function POST(req:NextRequest){
     p_event_at:new Date().toISOString(),p_internal_token:internalToken
   };
   try{
-    const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/sentinel_kiwify_paid_verified',{
+    const isNewBrazilianProduct=productId!==PRODUCT_ID&&checkoutCode===BR_CHECKOUT_CODE;
+    const rpcName=isNewBrazilianProduct
+      ?'sentinel_kiwify_paid_verified_checkout'
+      :'sentinel_kiwify_paid_verified';
+    const rpcPayload=isNewBrazilianProduct?{...body,p_checkout_code:BR_CHECKOUT_CODE}:body;
+    const r=await fetch(SUPABASE_URL+'/rest/v1/rpc/'+rpcName,{
       method:'POST',headers:{'content-type':'application/json',apikey:SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+SUPABASE_PUBLISHABLE_KEY},
-      body:JSON.stringify(body),cache:'no-store',signal:AbortSignal.timeout(12000)
+      body:JSON.stringify(rpcPayload),cache:'no-store',signal:AbortSignal.timeout(12000)
     });
     const result=await r.json().catch(()=>({ok:false}));
     if(!r.ok||result?.ok!==true){
