@@ -1,0 +1,4337 @@
+{
+  "hypothesis": {
+    "horizonMs": 30000,
+    "windowMs": 180000,
+    "minimumPoints": 60,
+    "gridMs": 1000,
+    "maximumPastQuoteAgeMs": 500,
+    "minimumPeriodSeconds": 12,
+    "maximumPeriodSeconds": 90,
+    "periodStepSeconds": 2,
+    "minimumObservedCycles": 2,
+    "criterion": "Gaussian residual BIC plus 2*log(searched-period-count)",
+    "decision": "Sign of model(t+30s)-model(t), anchored to actual entry price",
+    "evaluation": "Own non-overlapping cycles and exactly the published entry times; no retuning after results"
+  },
+  "candleHypothesis": {
+    "windowMs": 180000,
+    "horizonMs": 30000,
+    "observedBarsSeconds": 10,
+    "featureCount": 16,
+    "target": "Binary sign at actual 30s expiry",
+    "ridgePenalty": 5,
+    "trainingCadenceMs": 5000,
+    "minCompletedSamples": 8,
+    "admission": "Identical published entry times; structural fallback when unavailable"
+  },
+  "scope": "Same user video, retrospective research. No independent market validation.",
+  "fixtures": {
+    "sentinel-user-video-20261016.json": {
+      "full": {
+        "reports": {
+          "published": {
+            "signals": 14,
+            "wins": 7,
+            "losses": 6,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 53.84615384615385,
+            "computationMs": {
+              "p50": 0.18119799999999486,
+              "p95": 0.43408399999998437,
+              "max": 2.113946999999996
+            },
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804000,
+                "side": "CALL",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864000,
+                "side": "PUT",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 14,
+            "wins": 10,
+            "losses": 3,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 76.92307692307692,
+            "computationMs": {
+              "p50": 0.2586639999999534,
+              "p95": 2.120541000000003,
+              "max": 12.791967
+            },
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169609000,
+                "side": "PUT",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8431043130419702,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843128025335668,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430330351006713,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169713000,
+                "side": "CALL",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428984402090116,
+                "fittedPeriodSeconds": 82
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.842767119965434,
+                "fittedPeriodSeconds": 68
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.842812244140503,
+                "fittedPeriodSeconds": 88
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843002195095789,
+                "fittedPeriodSeconds": 58
+              },
+              {
+                "at": 1792169834000,
+                "side": "PUT",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430951710965544,
+                "fittedPeriodSeconds": 74
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429032659737024,
+                "fittedPeriodSeconds": 72
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8426729478390386,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 15,
+            "wins": 7,
+            "losses": 7,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 50,
+            "computationMs": {
+              "p50": 1.243714999999952,
+              "p95": 2.2907990000001064,
+              "max": 7.074289000000022
+            },
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169605000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84317,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8432073923489017,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169635000,
+                "side": "CALL",
+                "entry": 0.84317,
+                "exit": 0.8432,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8431776343360757,
+                "fittedPeriodSeconds": 46
+              },
+              {
+                "at": 1792169665000,
+                "side": "CALL",
+                "entry": 0.8432,
+                "exit": 0.84303,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8432708055808107,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169695000,
+                "side": "PUT",
+                "entry": 0.84303,
+                "exit": 0.84289,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429735149102273,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169725000,
+                "side": "PUT",
+                "entry": 0.84289,
+                "exit": 0.84296,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.84287037763257,
+                "fittedPeriodSeconds": 78
+              },
+              {
+                "at": 1792169755000,
+                "side": "PUT",
+                "entry": 0.84296,
+                "exit": 0.84303,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427950334701916,
+                "fittedPeriodSeconds": 72
+              },
+              {
+                "at": 1792169785000,
+                "side": "PUT",
+                "entry": 0.84303,
+                "exit": 0.84313,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429193317369331,
+                "fittedPeriodSeconds": 90
+              },
+              {
+                "at": 1792169815000,
+                "side": "PUT",
+                "entry": 0.84313,
+                "exit": 0.84298,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430250494449473,
+                "fittedPeriodSeconds": 70
+              },
+              {
+                "at": 1792169845000,
+                "side": "CALL",
+                "entry": 0.84298,
+                "exit": 0.84281,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430521392696336,
+                "fittedPeriodSeconds": 72
+              },
+              {
+                "at": 1792169875000,
+                "side": "CALL",
+                "entry": 0.84281,
+                "exit": 0.84278,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429211794423396,
+                "fittedPeriodSeconds": 76
+              },
+              {
+                "at": 1792169905000,
+                "side": "PUT",
+                "entry": 0.84278,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8426935255528342,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 14,
+            "wins": 7,
+            "losses": 6,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 53.84615384615385,
+            "computationMs": {
+              "p50": 0.2731950000000438,
+              "p95": 0.914135999999985,
+              "max": 4.8598320000000115
+            },
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          }
+        },
+        "matched": {
+          "published": {
+            "signals": 14,
+            "wins": 7,
+            "losses": 6,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 53.84615384615385,
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed"
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169804000,
+                "side": "CALL",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169864000,
+                "side": "PUT",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue"
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 14,
+            "wins": 10,
+            "losses": 3,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 76.92307692307692,
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed"
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169609000,
+                "side": "PUT",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169713000,
+                "side": "CALL",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834000,
+                "side": "PUT",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 14,
+            "wins": 10,
+            "losses": 3,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 76.92307692307692,
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed"
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169609000,
+                "side": "PUT",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169713000,
+                "side": "CALL",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834000,
+                "side": "PUT",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 14,
+            "wins": 7,
+            "losses": 6,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 53.84615384615385,
+            "entries": [
+              {
+                "at": 1792169460000,
+                "side": "CALL",
+                "entry": 0.84335,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169514000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84325,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed"
+              },
+              {
+                "at": 1792169544000,
+                "side": "CALL",
+                "entry": 0.84325,
+                "exit": 0.84332,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes"
+              }
+            ]
+          }
+        }
+      },
+      "after180s": {
+        "reports": {
+          "published": {
+            "signals": 11,
+            "wins": 5,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 50,
+            "computationMs": {
+              "p50": 0.12570600000026388,
+              "p95": 0.2683990000000449,
+              "max": 1.3983350000003156
+            },
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804000,
+                "side": "CALL",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864000,
+                "side": "PUT",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 11,
+            "wins": 8,
+            "losses": 2,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 80,
+            "computationMs": {
+              "p50": 0.18316200000003846,
+              "p95": 1.778809999999794,
+              "max": 2.9068230000000312
+            },
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169609000,
+                "side": "PUT",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8431043130419702,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843128025335668,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430330351006713,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169713000,
+                "side": "CALL",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428984402090116,
+                "fittedPeriodSeconds": 82
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.842767119965434,
+                "fittedPeriodSeconds": 68
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.842812244140503,
+                "fittedPeriodSeconds": 88
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843002195095789,
+                "fittedPeriodSeconds": 58
+              },
+              {
+                "at": 1792169834000,
+                "side": "PUT",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430951710965544,
+                "fittedPeriodSeconds": 74
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429032659737024,
+                "fittedPeriodSeconds": 72
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8426729478390386,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 12,
+            "wins": 5,
+            "losses": 6,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 45.45454545454545,
+            "computationMs": {
+              "p50": 1.1908480000001873,
+              "p95": 1.9992569999999432,
+              "max": 3.600633000000016
+            },
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169605000,
+                "side": "PUT",
+                "entry": 0.8433,
+                "exit": 0.84317,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8432073923489017,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169635000,
+                "side": "CALL",
+                "entry": 0.84317,
+                "exit": 0.8432,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8431776343360757,
+                "fittedPeriodSeconds": 46
+              },
+              {
+                "at": 1792169665000,
+                "side": "CALL",
+                "entry": 0.8432,
+                "exit": 0.84303,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8432708055808107,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169695000,
+                "side": "PUT",
+                "entry": 0.84303,
+                "exit": 0.84289,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429735149102273,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169725000,
+                "side": "PUT",
+                "entry": 0.84289,
+                "exit": 0.84296,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.84287037763257,
+                "fittedPeriodSeconds": 78
+              },
+              {
+                "at": 1792169755000,
+                "side": "PUT",
+                "entry": 0.84296,
+                "exit": 0.84303,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427950334701916,
+                "fittedPeriodSeconds": 72
+              },
+              {
+                "at": 1792169785000,
+                "side": "PUT",
+                "entry": 0.84303,
+                "exit": 0.84313,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429193317369331,
+                "fittedPeriodSeconds": 90
+              },
+              {
+                "at": 1792169815000,
+                "side": "PUT",
+                "entry": 0.84313,
+                "exit": 0.84298,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430250494449473,
+                "fittedPeriodSeconds": 70
+              },
+              {
+                "at": 1792169845000,
+                "side": "CALL",
+                "entry": 0.84298,
+                "exit": 0.84281,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430521392696336,
+                "fittedPeriodSeconds": 72
+              },
+              {
+                "at": 1792169875000,
+                "side": "CALL",
+                "entry": 0.84281,
+                "exit": 0.84278,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429211794423396,
+                "fittedPeriodSeconds": 76
+              },
+              {
+                "at": 1792169905000,
+                "side": "PUT",
+                "entry": 0.84278,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8426935255528342,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 11,
+            "wins": 5,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 50,
+            "computationMs": {
+              "p50": 0.19644199999993361,
+              "p95": 0.4747549999997318,
+              "max": 1.2541810000000169
+            },
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          }
+        },
+        "matched": {
+          "published": {
+            "signals": 11,
+            "wins": 5,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 50,
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169804000,
+                "side": "CALL",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169864000,
+                "side": "PUT",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue"
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 11,
+            "wins": 8,
+            "losses": 2,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 80,
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169609000,
+                "side": "PUT",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169713000,
+                "side": "CALL",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834000,
+                "side": "PUT",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 11,
+            "wins": 8,
+            "losses": 2,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 0,
+            "rate": 80,
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169609000,
+                "side": "PUT",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169713000,
+                "side": "CALL",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834000,
+                "side": "PUT",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 11,
+            "wins": 5,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 50,
+            "entries": [
+              {
+                "at": 1792169575000,
+                "side": "CALL",
+                "entry": 0.84328,
+                "exit": 0.8433,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169609000,
+                "side": "CALL",
+                "entry": 0.84322,
+                "exit": 0.84318,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169653000,
+                "side": "PUT",
+                "entry": 0.8432,
+                "exit": 0.8431,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169683000,
+                "side": "PUT",
+                "entry": 0.8431,
+                "exit": 0.84286,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169713000,
+                "side": "PUT",
+                "entry": 0.84286,
+                "exit": 0.84295,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.84295,
+                "exit": 0.84293,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169774000,
+                "side": "PUT",
+                "entry": 0.84298,
+                "exit": 0.84308,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169804000,
+                "side": "PUT",
+                "entry": 0.84308,
+                "exit": 0.84315,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169834000,
+                "side": "CALL",
+                "entry": 0.84315,
+                "exit": 0.84276,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169864000,
+                "side": "CALL",
+                "entry": 0.84276,
+                "exit": 0.84278,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169915000,
+                "side": "PUT",
+                "entry": 0.84284,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "sentinel-user-video-broker-6dp-20261016.json": {
+      "full": {
+        "reports": {
+          "published": {
+            "signals": 15,
+            "wins": 9,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 1000,
+            "rate": 64.28571428571429,
+            "computationMs": {
+              "p50": 0.20822899999984656,
+              "p95": 0.3888969999998153,
+              "max": 2.6149249999998574
+            },
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169450000,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169513500,
+                "side": "PUT",
+                "entry": 0.843305,
+                "exit": 0.843255,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169543500,
+                "side": "CALL",
+                "entry": 0.843255,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864500,
+                "side": "PUT",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 15,
+            "wins": 10,
+            "losses": 4,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 1000,
+            "rate": 71.42857142857143,
+            "computationMs": {
+              "p50": 0.34316900000021633,
+              "p95": 2.1190950000000157,
+              "max": 3.5254509999999755
+            },
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169450000,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8433419368954395,
+                "fittedPeriodSeconds": 40
+              },
+              {
+                "at": 1792169513500,
+                "side": "CALL",
+                "entry": 0.843305,
+                "exit": 0.843255,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843416742874415,
+                "fittedPeriodSeconds": 68
+              },
+              {
+                "at": 1792169543500,
+                "side": "CALL",
+                "entry": 0.843255,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8434932471298487,
+                "fittedPeriodSeconds": 58
+              },
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843285864593328,
+                "fittedPeriodSeconds": 64
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8432282879282682,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843107383274145,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430268272570872,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169712500,
+                "side": "CALL",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429068333262312,
+                "fittedPeriodSeconds": 82
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427655843356271,
+                "fittedPeriodSeconds": 70
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428087738174996,
+                "fittedPeriodSeconds": 88
+              },
+              {
+                "at": 1792169804500,
+                "side": "PUT",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430126028159893,
+                "fittedPeriodSeconds": 60
+              },
+              {
+                "at": 1792169834500,
+                "side": "PUT",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8431021383837284,
+                "fittedPeriodSeconds": 74
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428019246927921,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427154558575479,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 18,
+            "wins": 11,
+            "losses": 6,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 64.70588235294117,
+            "computationMs": {
+              "p50": 1.3745200000003024,
+              "p95": 2.3518300000000636,
+              "max": 5.520722999999634
+            },
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169440500,
+                "side": "CALL",
+                "entry": 0.843065,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8431856266022634,
+                "fittedPeriodSeconds": 36
+              },
+              {
+                "at": 1792169470500,
+                "side": "CALL",
+                "entry": 0.843315,
+                "exit": 0.843185,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8434830286403233,
+                "fittedPeriodSeconds": 34
+              },
+              {
+                "at": 1792169500500,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843205,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8434657257761982,
+                "fittedPeriodSeconds": 66
+              },
+              {
+                "at": 1792169530500,
+                "side": "CALL",
+                "entry": 0.843205,
+                "exit": 0.843415,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8432485909271381,
+                "fittedPeriodSeconds": 60
+              },
+              {
+                "at": 1792169560500,
+                "side": "CALL",
+                "entry": 0.843415,
+                "exit": 0.843325,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8434547845302414,
+                "fittedPeriodSeconds": 58
+              },
+              {
+                "at": 1792169590500,
+                "side": "CALL",
+                "entry": 0.843325,
+                "exit": 0.843195,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8435177318527085,
+                "fittedPeriodSeconds": 54
+              },
+              {
+                "at": 1792169620500,
+                "side": "CALL",
+                "entry": 0.843195,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8433151971409274,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169650500,
+                "side": "PUT",
+                "entry": 0.843175,
+                "exit": 0.843135,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843079873514051,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169680500,
+                "side": "PUT",
+                "entry": 0.843135,
+                "exit": 0.842915,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430836417769053,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169710500,
+                "side": "CALL",
+                "entry": 0.842915,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429546236235924,
+                "fittedPeriodSeconds": 84
+              },
+              {
+                "at": 1792169740500,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842905,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427610708656611,
+                "fittedPeriodSeconds": 68
+              },
+              {
+                "at": 1792169770500,
+                "side": "PUT",
+                "entry": 0.842905,
+                "exit": 0.843065,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427290660671822,
+                "fittedPeriodSeconds": 86
+              },
+              {
+                "at": 1792169800500,
+                "side": "PUT",
+                "entry": 0.843065,
+                "exit": 0.843135,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429693177933619,
+                "fittedPeriodSeconds": 58
+              },
+              {
+                "at": 1792169830500,
+                "side": "PUT",
+                "entry": 0.843135,
+                "exit": 0.842805,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430551725267943,
+                "fittedPeriodSeconds": 74
+              },
+              {
+                "at": 1792169860500,
+                "side": "CALL",
+                "entry": 0.842805,
+                "exit": 0.842835,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428928448605262,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169890500,
+                "side": "CALL",
+                "entry": 0.842835,
+                "exit": 0.842975,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429099697272774,
+                "fittedPeriodSeconds": 88
+              },
+              {
+                "at": 1792169920500,
+                "side": "PUT",
+                "entry": 0.842975,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427811107064143,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 15,
+            "wins": 9,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 1,
+            "medianExtraWaitMs": 1000,
+            "rate": 64.28571428571429,
+            "computationMs": {
+              "p50": 0.3495679999996355,
+              "p95": 0.8239130000001751,
+              "max": 4.231510000000071
+            },
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169450000,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169513500,
+                "side": "PUT",
+                "entry": 0.843305,
+                "exit": 0.843255,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169543500,
+                "side": "CALL",
+                "entry": 0.843255,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169605500,
+                "side": "CALL",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915500,
+                "side": "CALL",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          }
+        },
+        "matched": {
+          "published": {
+            "signals": 15,
+            "wins": 9,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 1000,
+            "rate": 64.28571428571429,
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169450000,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169513500,
+                "side": "PUT",
+                "entry": 0.843305,
+                "exit": 0.843255,
+                "outcome": "wins",
+                "reason": "closed-range-extreme-reversal-confirmed"
+              },
+              {
+                "at": 1792169543500,
+                "side": "CALL",
+                "entry": 0.843255,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169864500,
+                "side": "PUT",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue"
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 15,
+            "wins": 10,
+            "losses": 4,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 1000,
+            "rate": 71.42857142857143,
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169450000,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169513500,
+                "side": "CALL",
+                "entry": 0.843305,
+                "exit": 0.843255,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169543500,
+                "side": "CALL",
+                "entry": 0.843255,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169712500,
+                "side": "CALL",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804500,
+                "side": "PUT",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834500,
+                "side": "PUT",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 15,
+            "wins": 10,
+            "losses": 4,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 1000,
+            "rate": 71.42857142857143,
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169450000,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169513500,
+                "side": "CALL",
+                "entry": 0.843305,
+                "exit": 0.843255,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169543500,
+                "side": "CALL",
+                "entry": 0.843255,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169712500,
+                "side": "CALL",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804500,
+                "side": "PUT",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834500,
+                "side": "PUT",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 15,
+            "wins": 9,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 1,
+            "medianExtraWaitMs": 1000,
+            "rate": 64.28571428571429,
+            "entries": [
+              {
+                "at": 1792169410500,
+                "side": "CALL",
+                "entry": 0.842995,
+                "exit": 0.843065,
+                "outcome": "wins",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169450000,
+                "side": "CALL",
+                "entry": 0.843185,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169513500,
+                "side": "PUT",
+                "entry": 0.843305,
+                "exit": 0.843255,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169543500,
+                "side": "CALL",
+                "entry": 0.843255,
+                "exit": 0.843315,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169605500,
+                "side": "CALL",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169915500,
+                "side": "CALL",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes"
+              }
+            ]
+          }
+        }
+      },
+      "after180s": {
+        "reports": {
+          "published": {
+            "signals": 11,
+            "wins": 6,
+            "losses": 4,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 500,
+            "rate": 60,
+            "computationMs": {
+              "p50": 0.1955599999992046,
+              "p95": 0.35623800000030315,
+              "max": 3.2130580000002738
+            },
+            "entries": [
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864500,
+                "side": "PUT",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 11,
+            "wins": 8,
+            "losses": 2,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 500,
+            "rate": 80,
+            "computationMs": {
+              "p50": 0.27006099999925937,
+              "p95": 2.1066759999994247,
+              "max": 4.756117999999333
+            },
+            "entries": [
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843285864593328,
+                "fittedPeriodSeconds": 64
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8432282879282682,
+                "fittedPeriodSeconds": 50
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843107383274145,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430268272570872,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169712500,
+                "side": "CALL",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429068333262312,
+                "fittedPeriodSeconds": 82
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427655843356271,
+                "fittedPeriodSeconds": 70
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428087738174996,
+                "fittedPeriodSeconds": 88
+              },
+              {
+                "at": 1792169804500,
+                "side": "PUT",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430126028159893,
+                "fittedPeriodSeconds": 60
+              },
+              {
+                "at": 1792169834500,
+                "side": "PUT",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8431021383837284,
+                "fittedPeriodSeconds": 74
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428019246927921,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427154558575479,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 13,
+            "wins": 7,
+            "losses": 5,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 3,
+            "medianExtraWaitMs": 0,
+            "rate": 58.333333333333336,
+            "computationMs": {
+              "p50": 1.282612999999401,
+              "p95": 2.322277000000213,
+              "max": 5.1609690000004775
+            },
+            "entries": [
+              {
+                "at": 1792169560500,
+                "side": "CALL",
+                "entry": 0.843415,
+                "exit": 0.843325,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8434547845302414,
+                "fittedPeriodSeconds": 58
+              },
+              {
+                "at": 1792169590500,
+                "side": "CALL",
+                "entry": 0.843325,
+                "exit": 0.843195,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8435177318527085,
+                "fittedPeriodSeconds": 54
+              },
+              {
+                "at": 1792169620500,
+                "side": "CALL",
+                "entry": 0.843195,
+                "exit": 0.843175,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8433151971409274,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169650500,
+                "side": "PUT",
+                "entry": 0.843175,
+                "exit": 0.843135,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.843079873514051,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169680500,
+                "side": "PUT",
+                "entry": 0.843135,
+                "exit": 0.842915,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430836417769053,
+                "fittedPeriodSeconds": 44
+              },
+              {
+                "at": 1792169710500,
+                "side": "CALL",
+                "entry": 0.842915,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429546236235924,
+                "fittedPeriodSeconds": 84
+              },
+              {
+                "at": 1792169740500,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842905,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427610708656611,
+                "fittedPeriodSeconds": 68
+              },
+              {
+                "at": 1792169770500,
+                "side": "PUT",
+                "entry": 0.842905,
+                "exit": 0.843065,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427290660671822,
+                "fittedPeriodSeconds": 86
+              },
+              {
+                "at": 1792169800500,
+                "side": "PUT",
+                "entry": 0.843065,
+                "exit": 0.843135,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429693177933619,
+                "fittedPeriodSeconds": 58
+              },
+              {
+                "at": 1792169830500,
+                "side": "PUT",
+                "entry": 0.843135,
+                "exit": 0.842805,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8430551725267943,
+                "fittedPeriodSeconds": 74
+              },
+              {
+                "at": 1792169860500,
+                "side": "CALL",
+                "entry": 0.842805,
+                "exit": 0.842835,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8428928448605262,
+                "fittedPeriodSeconds": 48
+              },
+              {
+                "at": 1792169890500,
+                "side": "CALL",
+                "entry": 0.842835,
+                "exit": 0.842975,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8429099697272774,
+                "fittedPeriodSeconds": 88
+              },
+              {
+                "at": 1792169920500,
+                "side": "PUT",
+                "entry": 0.842975,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase",
+                "predictedPrice": 0.8427811107064143,
+                "fittedPeriodSeconds": 90
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 11,
+            "wins": 6,
+            "losses": 4,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 1,
+            "medianExtraWaitMs": 500,
+            "rate": 60,
+            "computationMs": {
+              "p50": 0.24530400000003283,
+              "p95": 0.7549600000002101,
+              "max": 1.6314309999997931
+            },
+            "entries": [
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169605500,
+                "side": "CALL",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              },
+              {
+                "at": 1792169915500,
+                "side": "CALL",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes",
+                "predictedPrice": null,
+                "fittedPeriodSeconds": null
+              }
+            ]
+          }
+        },
+        "matched": {
+          "published": {
+            "signals": 11,
+            "wins": 6,
+            "losses": 4,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 500,
+            "rate": 60,
+            "entries": [
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "causal-expiry-analogue"
+              },
+              {
+                "at": 1792169864500,
+                "side": "PUT",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "losses",
+                "reason": "closed-structure-and-live-impulse"
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "causal-expiry-analogue"
+              }
+            ]
+          },
+          "cycle_direction_same_entries": {
+            "signals": 11,
+            "wins": 8,
+            "losses": 2,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 500,
+            "rate": 80,
+            "entries": [
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169712500,
+                "side": "CALL",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804500,
+                "side": "PUT",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834500,
+                "side": "PUT",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "cycle_forecast_entries": {
+            "signals": 11,
+            "wins": 8,
+            "losses": 2,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 2,
+            "medianExtraWaitMs": 500,
+            "rate": 80,
+            "entries": [
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169605500,
+                "side": "PUT",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169712500,
+                "side": "CALL",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169804500,
+                "side": "PUT",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "losses",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169834500,
+                "side": "PUT",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-trend-and-cycle-phase"
+              },
+              {
+                "at": 1792169915500,
+                "side": "PUT",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-trend-and-cycle-phase"
+              }
+            ]
+          },
+          "candle_direction_same_entries": {
+            "signals": 11,
+            "wins": 6,
+            "losses": 4,
+            "ties": 0,
+            "unknown": 1,
+            "maxLossStreak": 1,
+            "medianExtraWaitMs": 500,
+            "rate": 60,
+            "entries": [
+              {
+                "at": 1792169574500,
+                "side": "CALL",
+                "entry": 0.843285,
+                "exit": 0.843305,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169605500,
+                "side": "CALL",
+                "entry": 0.843325,
+                "exit": 0.843165,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169652500,
+                "side": "PUT",
+                "entry": 0.843205,
+                "exit": 0.843095,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169682500,
+                "side": "PUT",
+                "entry": 0.843095,
+                "exit": 0.842865,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169712500,
+                "side": "PUT",
+                "entry": 0.842865,
+                "exit": 0.842945,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169743000,
+                "side": "PUT",
+                "entry": 0.842945,
+                "exit": 0.842935,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169773500,
+                "side": "PUT",
+                "entry": 0.842985,
+                "exit": 0.843085,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169804500,
+                "side": "CALL",
+                "entry": 0.843105,
+                "exit": 0.843155,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169834500,
+                "side": "CALL",
+                "entry": 0.843155,
+                "exit": 0.842755,
+                "outcome": "losses",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169864500,
+                "side": "CALL",
+                "entry": 0.842755,
+                "exit": 0.842815,
+                "outcome": "wins",
+                "reason": "research-30s-candle-binary-outcomes"
+              },
+              {
+                "at": 1792169915500,
+                "side": "CALL",
+                "entry": 0.842895,
+                "exit": null,
+                "outcome": "unknown",
+                "reason": "research-30s-candle-binary-outcomes"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "ingestion": {
+    "scope": "Generated engineering diagnostic; actual user tick frequency is unknown. This is not a win-rate measurement.",
+    "cases": [
+      {
+        "quotesPerSecond": 2,
+        "browserInput": {
+          "quotes": 361,
+          "spanMs": 180000,
+          "ready": true,
+          "reason": "causal-completed-pattern-outcomes",
+          "analogues": 21
+        },
+        "runtimeInput": {
+          "quotes": 361,
+          "spanMs": 180000,
+          "ready": true,
+          "reason": "causal-completed-pattern-outcomes",
+          "analogues": 21
+        }
+      },
+      {
+        "quotesPerSecond": 10,
+        "browserInput": {
+          "quotes": 1801,
+          "spanMs": 180000,
+          "ready": true,
+          "reason": "causal-completed-pattern-outcomes",
+          "analogues": 21
+        },
+        "runtimeInput": {
+          "quotes": 1801,
+          "spanMs": 180000,
+          "ready": true,
+          "reason": "causal-completed-pattern-outcomes",
+          "analogues": 21
+        }
+      },
+      {
+        "quotesPerSecond": 20,
+        "browserInput": {
+          "quotes": 3601,
+          "spanMs": 180000,
+          "ready": true,
+          "reason": "causal-completed-pattern-outcomes",
+          "analogues": 21
+        },
+        "runtimeInput": {
+          "quotes": 2400,
+          "spanMs": 119950,
+          "ready": false,
+          "reason": "insufficient-completed-analogues",
+          "analogues": null
+        }
+      },
+      {
+        "quotesPerSecond": 40,
+        "browserInput": {
+          "quotes": 6800,
+          "spanMs": 169975,
+          "ready": true,
+          "reason": "causal-completed-pattern-outcomes",
+          "analogues": 18
+        },
+        "runtimeInput": {
+          "quotes": 2400,
+          "spanMs": 59975,
+          "ready": false,
+          "reason": "insufficient-context",
+          "analogues": null
+        }
+      }
+    ]
+  }
+}

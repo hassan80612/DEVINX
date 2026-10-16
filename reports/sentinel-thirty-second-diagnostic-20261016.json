@@ -1,0 +1,248 @@
+{
+  "scope": "Generated diagnostic paths only. Do not combine into a market accuracy claim.",
+  "seeds": [
+    929,
+    937,
+    941
+  ],
+  "families": {
+    "up": {
+      "published": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "cycle_direction_same_entries": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "cycle_forecast_entries": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "candle_direction_same_entries": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      }
+    },
+    "down": {
+      "published": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "cycle_direction_same_entries": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "cycle_forecast_entries": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "candle_direction_same_entries": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      }
+    },
+    "turn": {
+      "published": {
+        "wins": 27,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 90
+      },
+      "cycle_direction_same_entries": {
+        "wins": 20,
+        "losses": 10,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 66.66666666666667
+      },
+      "cycle_forecast_entries": {
+        "wins": 21,
+        "losses": 12,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 63.63636363636363
+      },
+      "candle_direction_same_entries": {
+        "wins": 24,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 80
+      }
+    },
+    "reverse-turn": {
+      "published": {
+        "wins": 28,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 34,
+        "rate": 90.3225806451613
+      },
+      "cycle_direction_same_entries": {
+        "wins": 21,
+        "losses": 10,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 34,
+        "rate": 67.74193548387096
+      },
+      "cycle_forecast_entries": {
+        "wins": 23,
+        "losses": 10,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 69.6969696969697
+      },
+      "candle_direction_same_entries": {
+        "wins": 27,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 34,
+        "rate": 87.09677419354838
+      }
+    },
+    "range": {
+      "published": {
+        "wins": 30,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 90.9090909090909
+      },
+      "cycle_direction_same_entries": {
+        "wins": 32,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 96.96969696969697
+      },
+      "cycle_forecast_entries": {
+        "wins": 30,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 90.9090909090909
+      },
+      "candle_direction_same_entries": {
+        "wins": 32,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 96.96969696969697
+      }
+    },
+    "irregular": {
+      "published": {
+        "wins": 30,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 90.9090909090909
+      },
+      "cycle_direction_same_entries": {
+        "wins": 29,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 87.87878787878788
+      },
+      "cycle_forecast_entries": {
+        "wins": 29,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 87.87878787878788
+      },
+      "candle_direction_same_entries": {
+        "wins": 31,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 93.93939393939394
+      }
+    },
+    "random-walk": {
+      "published": {
+        "wins": 16,
+        "losses": 14,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 53.333333333333336
+      },
+      "cycle_direction_same_entries": {
+        "wins": 18,
+        "losses": 12,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 60
+      },
+      "cycle_forecast_entries": {
+        "wins": 15,
+        "losses": 18,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 45.45454545454545
+      },
+      "candle_direction_same_entries": {
+        "wins": 18,
+        "losses": 12,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 60
+      }
+    }
+  }
+}
