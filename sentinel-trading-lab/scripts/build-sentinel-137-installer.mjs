@@ -81,15 +81,16 @@ try{
   '  exit /b 1',
   ')',
   'exit /b 0',''
- ].join('\\r\\n');
- writeFileSync(join(altDir,'Instalar-Sentinel.cmd'),cmd.replaceAll('\\\\r\\\\n','\\r\\n'),'ascii');
- writeFileSync(join(altDir,'LEIA-ME.txt'),
-  'Sentinel Trading Lab '+release.version+'\\n\\n'+
-  '1. Extraia TODOS os arquivos deste ZIP em uma pasta.\\n'+
-  '2. No Windows, clique duas vezes em Instalar-Sentinel.cmd.\\n'+
-  '3. O instalador utiliza o pacote local incluido.\\n'+
-  '4. Se falhar, consulte %LOCALAPPDATA%\\\\SentinelTradingLab\\\\install.log.\\n'+
-  'Nao e necessario executar o EXE bloqueado pelo navegador.\\n');
+ ].join('\r\n');
+ writeFileSync(join(altDir,'Instalar-Sentinel.cmd'),cmd,'ascii');
+ writeFileSync(join(altDir,'LEIA-ME.txt'),[
+  'Sentinel Trading Lab '+release.version,'',
+  '1. Extraia TODOS os arquivos deste ZIP em uma pasta.',
+  '2. No Windows, clique duas vezes em Instalar-Sentinel.cmd.',
+  '3. O instalador utiliza o pacote local incluido.',
+  '4. Se falhar, consulte %LOCALAPPDATA%\\SentinelTradingLab\\install.log.',
+  'Nao e necessario executar o EXE bloqueado pelo navegador.',''
+ ].join('\r\n'));
  rmSync(alternative,{force:true});
  tool('zip',['-q',alternative,'Instalar-Sentinel.cmd','install-agent-v88.ps1','agent_payload_v88.zip','LEIA-ME.txt'],{cwd:altDir});
  if(statSync(alternative).size<50000)throw Error('invalid_alternative_installer_archive');

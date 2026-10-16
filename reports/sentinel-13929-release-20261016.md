@@ -26,4 +26,6 @@ Medição local de ingestão mais `_signalValidationGate` real, com 100 cotaçõ
 
 O instalador local foi compilado com Go 1.24.9, 2.664.960 bytes. Verificados o cabeçalho Windows, o ZIP embarcado, sua identidade SHA256 e a igualdade dos arquivos de runtime, seleção, retenção, projeção e driver com as fontes revisadas. O ZIP alternativo inclui o mesmo payload. O build remoto recria esses pacotes a partir do commit publicado; a conferência pública é feita após o deployment READY.
 
+A conferência do ZIP alternativo revelou uma falha pré-existente no gerador: o CMD possuía os caracteres literais de escape em vez de quebras de linha. O gerador foi corrigido e o arquivo produzido foi conferido com dez quebras CRLF reais, a versão/build esperados e o mesmo payload. As instruções de texto também usam quebras reais. Não foi realizado um teste de instalação em uma máquina Windows nesta sessão.
+
 É necessário instalar o **Agent Windows 13.9.29**; o site sozinho não muda o motor que roda no computador. O preço de referência é o da emissão do sinal. O sistema não confirma o preço ou o vencimento de um clique manual posterior.
