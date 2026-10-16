@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import {BrandLogo} from '@/components/BrandLogo';
 import styles from './SeoLanding.module.css';
+import {DEVINX_SUBSCRIPTION_PLANS} from '@/lib/subscription-plans';
 
 type SeoCard={title:string;text:string};
 type SeoSection={title:string;text:string};
@@ -49,10 +50,10 @@ export function SeoLanding({
         <h1>{title}</h1>
         <p>{intro}</p>
         <div className={styles.actions}>
-          <Link className={styles.primary} href="/entrar?trial=1">Testar 3 dias grátis</Link>
-          <Link className={styles.secondary} href="/#planos">Ver planos</Link>
+          <Link className={styles.primary} href={DEVINX_SUBSCRIPTION_PLANS[0].checkoutUrl}>Comprar plano mensal</Link>
+          <Link className={styles.secondary} href="/financeiro#planos">Ver plano mensal</Link>
         </div>
-        <small className={styles.note}>Sem cartão e sem cobrança automática no teste grátis.</small>
+        <small className={styles.note}>Confira o preço final e as condições no checkout da Kiwify.</small>
       </section>
 
       <section className={styles.grid} aria-label="Recursos do DevinX">
