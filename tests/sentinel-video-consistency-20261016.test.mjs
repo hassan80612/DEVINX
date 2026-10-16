@@ -32,9 +32,11 @@ test('reproduces the two wrong historical overrides in the video and declines in
   assert.equal(next.ready,false);assert.equal(next.side,null);
  }
 });
-test('retains comparable favorable PUT setups without adding a signal timer',()=>{
+test('the retained analogue base preserves favorable PUT evidence before the 13.9.24 expiry projection',()=>{
  for(const time of ['13:53:20','13:54:52']){
-  const input=at(time),a=analyzeNowOpportunity(input);
+  // This checks the unchanged 13.9.23 learner. The final v17 direction now
+  // uses the separately tested 30s projection and can override this evidence.
+  const input=at(time),a=analyzeNowOpportunity({...input,qualityPolicy:'adaptive-market-v1'});
   assert.equal(a.side,'PUT');assert.equal(a.ready,true);
   assert.equal(a.observedAt,input.quoteAt);assert.equal(a.entryPrice,input.price);
   assert.ok(rows.find(q=>q.ts===input.now+30000).price<input.price);

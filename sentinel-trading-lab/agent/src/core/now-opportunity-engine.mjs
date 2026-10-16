@@ -1,10 +1,11 @@
-// Read-only present-time entry analysis for the Sentinel Agent.
-// Never forecasts a future price, sends an order, or schedules a future entry.
-// Closed bars decide the structural side; fresh live quotes confirm NOW.
+// Read-only current-entry analysis for the Sentinel Agent. Never sends orders
+// or schedules a future entry. The 30s projection uses observed past prices;
+// the shared lifecycle owns the current entry and immutable holding window.
 import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 import {automaticChartContext} from './automatic-chart-context.mjs';
 import {causalPatternDirection} from './causal-pattern-direction.mjs';
+import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -165,7 +166,13 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const input={quoteHistory,price,quoteAt,now,durationMs};
   const original=analyzeNowOpportunity({...input,engineId:'automatic',qualityPolicy:'adaptive-market-v1'});
   const context=automaticChartContext({...input,base:original});
-  return {...original,engineId,qualityPolicy,
+  // Preserve the existing admission and exact entry timestamp. Only the 30s
+  // direction can use a projection fitted entirely to observed past prices.
+  // The one-shot lifecycle below continues to hold a single immutable call.
+  const forecast=Number(durationMs)===30000&&original.ready?
+   thirtySecondCycleForecast(input):null;
+  const decision=forecast?.ready?{...original,...forecast}:original;
+  return {...decision,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?context.strategy:engineId,
    marketShape:context.marketShape,
    signalOwner:'shared-market-base'};
