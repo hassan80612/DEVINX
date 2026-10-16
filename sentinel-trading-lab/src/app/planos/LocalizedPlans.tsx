@@ -2,6 +2,7 @@
 import styles from '../landing.module.css';
 import {useEffect,useState} from 'react';
 import {T,useSentinelLocale} from '../../components/SentinelLocale';
+import {SENTINEL_PLANS} from '../../lib/commercial';
 
 // Language chooses the advertised market and its REAL checkout, not geolocation.
 // The server validates both checkout URLs before passing them to this component.
@@ -21,7 +22,7 @@ export default function LocalizedPlans({brCheckout,intlCheckout}:{brCheckout:str
     setLanguage(usd?'en':'pt');
   },[setLanguage]);
   const international=market?market==='INTL':language==='en';
-  const price=international?'US$ 50':'R$ 280';
+  const price=international?SENTINEL_PLANS.INTL.priceDisplay:SENTINEL_PLANS.BR.priceDisplay;
   const checkout=international?intlCheckout:brCheckout;
   return <div className={styles.plansCard} data-testid="localized-plan-price" data-currency={international?'USD':'BRL'}>
     <div className={styles.plansTop}><div><span><T>PLANO SENTINEL</T></span><h2>DevinX Trading Lab</h2></div><span className={styles.plansCycle}><T>RENOVAÇÃO MANUAL</T></span></div>
