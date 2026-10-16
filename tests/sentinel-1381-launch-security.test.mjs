@@ -74,8 +74,8 @@ test('Passive observer preserves historical responses and coalesces selected liv
  assert.match(block,/Number\(aid\)!==Number\(st\.activeId\)/);
  assert.match(block,/this\.ingest\(provider,frame,'page-in'\)/);
  // Clock is authoritative protocol timeSync; UI scans of body text were removed.
- assert.doesNotMatch(src,/readBrokerTimingFromText\\(raw/);
- assert.match(src,/payload\\.brokerTiming=this\\.readBrokerTimingSnapshot\\(provider,st\\)/);
+ assert.equal(src.includes('readBrokerTimingFromText(raw'),false);
+ assert.equal(src.includes('payload.brokerTiming=this.readBrokerTimingSnapshot(provider,st)'),true);
  assert.match(src,/await s\.page\.evaluate\(\(d\)=>/);
 });
 
