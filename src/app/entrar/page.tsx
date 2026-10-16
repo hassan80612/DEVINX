@@ -4,7 +4,6 @@ import type {Metadata} from 'next';
 import {redirect} from 'next/navigation';
 import {createServerSupabaseClient} from '@/lib/supabase/server';
 import {AuthForm} from './AuthForm';
-import {TrialActivation} from '@/components/TrialActivation';
 import {AccessGateCard} from '@/components/AccessGateCard';
 
 export const dynamic='force-dynamic';
@@ -33,7 +32,6 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
   const{data}=await supabase.auth.getClaims();
 
   if(data?.claims){
-    if(trial==='claim')return <TrialActivation/>;
     const{data:accessData,error:accessError}=await supabase.rpc('get_devinx_access_status');
     const access=Array.isArray(accessData)?accessData[0]:accessData;
     // An RPC outage must never masquerade as a blocked plan or billing failure.
@@ -50,5 +48,5 @@ export default async function EntrarPage({searchParams}:{searchParams:Promise<{n
     ?'Esse link de recuperação é inválido ou expirou. Solicite um novo.'
     :'';
 
-  return <AuthForm nextPath={nextPath} initialError={initialError} initialTrial={trial==='1'}/>;
+  return <AuthForm nextPath={nextPath} initialError={initialError}/>;
 }
