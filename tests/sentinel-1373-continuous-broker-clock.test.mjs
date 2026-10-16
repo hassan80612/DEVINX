@@ -69,5 +69,6 @@ test('visible broker time is explicit and does not impersonate a prediction dead
  const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  assert.match(driver,/data-sentinel-broker-clock-status/);
  assert.doesNotMatch(driver,/shown=pad\(Math\.floor\(secondsLeft\/60\)\)/);
- assert.match(driver,/const instrumentKind=\/\\bblitz\\b\/i\.test/);
+ assert.equal(driver.includes('readBrokerTimingSnapshot(provider,st)'),true);
+ assert.equal(driver.includes("locator('body').innerText"),false);
 });
