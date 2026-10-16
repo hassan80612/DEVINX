@@ -1,24 +1,14 @@
 'use client';
 
 import {useI18n} from '@/i18n/provider';
-import {
-  DEVINX_SUBSCRIPTION_PLANS,
-  monthlyEquivalentMinor,
-  pricingForLocale,
-  savingsPercent,
-  type DevinxPlanId
-} from '@/lib/subscription-plans';
-
-function planLabel(t:(key:string)=>string,id:DevinxPlanId){
-  if(id==='quarterly')return t('subscription.quarterly');
-  if(id==='semiannual')return t('subscription.semiannual');
-  if(id==='annual')return t('subscription.annual');
-  return t('subscription.monthly');
-}
+import {DEVINX_SUBSCRIPTION_PLANS,pricingForLocale} from '@/lib/subscription-plans';
 
 export function SubscriptionPlans({variant='landing'}:{variant?:'landing'|'compact'}){
-  const{t,locale}=useI18n();
-  const money=(minor:number,currency:string)=>new Intl.NumberFormat(locale,{style:'currency',currency}).format(minor/100);
+  const {t,locale}=useI18n();
+  const plan=DEVINX_SUBSCRIPTION_PLANS[0];
+  const pricing=pricingForLocale(plan,locale);
+  const price=new Intl.NumberFormat(locale,{style:'currency',currency:pricing.currencyCode})
+    .format(pricing.amountMinor/100);
 
   return <div className={'subscriptionPlans '+(variant==='compact'?'compact':'landing')}>
     {variant==='landing'&&<div className="subscriptionPlansIntro">
@@ -26,40 +16,26 @@ export function SubscriptionPlans({variant='landing'}:{variant?:'landing'|'compa
       <h2>{t('subscription.plansTitle')}</h2>
       <p>{t('subscription.plansText')}</p>
     </div>}
-    {variant==='compact'&&<div className="subscriptionPlansCompactTitle"><b>{t('subscription.choosePlan')}</b><small>{t('subscription.sameAccess')}</small></div>}
-
-    <div className="subscriptionPlanGrid">
-      {DEVINX_SUBSCRIPTION_PLANS.map(plan=>{
-        const featured=plan.id==='annual';
-        const pricing=pricingForLocale(plan,locale);
-        const saving=savingsPercent(plan,locale);
-        const equivalent=monthlyEquivalentMinor(plan,locale);
-        return <article className={'subscriptionPlanCard '+(featured?'featured':'')} key={plan.id}>
-          <div className="subscriptionPlanTop">
-            <div>
-              <small>{plan.id==='monthly'?t('subscription.flexible'):featured?t('subscription.bestValue'):t('subscription.fullAccess')}</small>
-              <h3>{planLabel(t,plan.id)}</h3>
-            </div>
-            {saving>0&&<span className="subscriptionSaving">{t('subscription.save')} {saving}%</span>}
-          </div>
-
-          <div className="subscriptionPlanPrice">
-            <strong>{money(pricing.amountMinor,pricing.currencyCode)}</strong>
-            <span>{plan.months===1?t('subscription.perMonth'):t('subscription.totalPeriod')}</span>
-          </div>
-
-          <div className="subscriptionPlanMeta">
-            {plan.months===1
-              ?<span>{t('subscription.cancelAnytime')}</span>
-              :<span>{t('subscription.equivalent')} <b>{money(equivalent,pricing.currencyCode)}{t('subscription.perMonth')}</b></span>}
-            <span>✓ {t('subscription.sameAccess')}</span>
-          </div>
-
-          <a className={featured?'goldButton subscriptionPlanCta':'primary subscriptionPlanCta'} href={pricing.checkoutUrl}>
-            {t('subscription.choose')}
-          </a>
-        </article>;
-      })}
+    {variant==='compact'&&<div className="subscriptionPlansCompactTitle">
+      <b>{t('subscription.choosePlan')}</b>
+      <small>{t('subscription.sameAccess')}</small>
+    </div>}
+    <div className="subscriptionPlanGrid singlePlan">
+      <article className="subscriptionPlanCard featured">
+        <div className="subscriptionPlanTop">
+          <div><small>{t('subscription.fullAccess')}</small><h3>{t('subscription.monthly')}</h3></div>
+        </div>
+        <div className="subscriptionPlanPrice">
+          <strong>{price}</strong><span>{t('subscription.perMonth')}</span>
+        </div>
+        <div className="subscriptionPlanMeta">
+          <span>✓ {t('subscription.sameAccess')}</span>
+        </div>
+        <a className="goldButton subscriptionPlanCta" href={pricing.checkoutUrl}
+           rel="noopener noreferrer" data-market={locale==='pt-BR'?'BR':'INTL'}>
+          {t('subscription.choose')}
+        </a>
+      </article>
     </div>
   </div>;
 }
