@@ -2,8 +2,9 @@
 // Local deadlines are translated from verified broker time, never re-dated
 // from a stale quote, a purchase countdown or a visually rounded clock.
 import {brokerClockView} from '../../worker/broker-clock-view.mjs';
-// Only the displayed :00 / :30 second is eligible. This is a maximum allowed
-// lateness, never a programmed wait. Typical quote scheduling remains 80ms.
+// Only the broker's displayed :30 second is eligible; :00 is NEVER
+// an entry boundary for synchronized 30s. Expiry remains at next :00.
+// The 1s tolerance is maximum processing latency, not a programmed wait.
 export const BROKER_ENTRY_TOLERANCE_MS=1000;
 export function brokerEntryBoundary({clockMode='current',durationMs=30000,timing=null,
  now=Date.now(),quoteAt=null,asset='',provider='',lastBoundary=null}={}){
@@ -15,6 +16,8 @@ export function brokerEntryBoundary({clockMode='current',durationMs=30000,timing
    !Number.isFinite(clock.wallTimeMs)||clock.wallTimeMs<=0)
   return no('waiting-verified-broker-clock');
  const period=30000,brokerBoundaryAt=Math.floor(clock.wallTimeMs/period)*period;
+ // Broker-clock phase only. No change to the local clock, analysis, or quote pacing.
+ if(brokerBoundaryAt%60000!==30000)return no('waiting-broker-second-30');
  const elapsed=clock.wallTimeMs-brokerBoundaryAt,localBoundaryAt=now-elapsed;
  const context=[String(provider),String(asset).toUpperCase(),period].join('|');
  if(lastBoundary?.context===context&&brokerBoundaryAt<=lastBoundary.brokerBoundaryAt)
