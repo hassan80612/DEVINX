@@ -19,7 +19,7 @@ export const DEVINX_APPROX_BRL_TO_USD_RATE=0.20;
 export const DEVINX_SUBSCRIPTION_PLANS:readonly DevinxSubscriptionPlan[]=[
   {
     id:'monthly',months:1,
-    amountMinor:3990,checkoutUrl:'https://pay.kiwify.com.br/S2uuSUA',
+    amountMinor:3990,checkoutUrl:'https://pay.kiwify.com.br/ahV8lXM',
     internationalAmountMinor:800,internationalCheckoutUrl:'https://pay.kiwify.com/4ueSB2b'
   }
 ] as const;
