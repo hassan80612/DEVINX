@@ -168,6 +168,12 @@ test('the actual React card keeps the PC deadline and drops late entry text even
  const render=now=>{const save=Date.now;Date.now=()=>now;try{return renderToStaticMarkup(React.createElement(component.exports.LiveScenarioCard,
   {s:state,busy:false,act:async()=>{},compact:true,onToggleCompact:()=>{}}));}finally{Date.now=save;}};
  assert.match(render(at+100),/ENTRADA AGORA/);
- const late=render(T+31100);assert.doesNotMatch(late,/ENTRADA AGORA/);
- assert.match(late,/OPERAÇÃO EM ANDAMENTO/);assert.match(late,/00:29/);
+ const late=render(T+31100);
+ // Only the actual decision is actionable. A description or help text may
+ // contain the words ENTRADA AGORA without constituting an active signal.
+ const decision=late.match(/data-testid="future-entry-decision"[^>]*>([\\s\\S]*?)<\\/strong>/)?.[1]||'';
+ assert.ok(decision,'missing decision in live card');
+ assert.doesNotMatch(decision,/ENTRADA AGORA/);
+ assert.match(decision,/OPERAÇÃO EM ANDAMENTO/);
+ assert.match(late,/00:29/);
 });
