@@ -1437,7 +1437,7 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextMobileReadingsGrid small{line-height:1.15;max-height:33px;overflow:hidden}
 @media(max-width:390px){
  .liveScenario .vnextMobileReadingsGrid>div{height:47px;min-height:47px;max-height:47px;align-content:center}
- .liveScenario .vnextFutureReceipt{grid-template-rows:20px 27px 74px 49px 27px 24px}
+ .liveScenario .vnextFutureReceipt{gap:7px}
 }
 
 /* V13.4.63: zero does not change timer typography or push target column.
