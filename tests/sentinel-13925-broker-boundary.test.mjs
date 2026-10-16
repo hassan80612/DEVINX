@@ -29,12 +29,16 @@ function evaluate(r,now,{quoteAt=now,rows=history(quoteAt),clock=timing(now),mon
  r.lastResult={asset:r.settings.asset,analysis:result};r.lastEvalMs=now;
  return result.vnext;
 }
-test('synchronized 30s admission uses only the displayed :00 or :30 second and never a pre-boundary quote',()=>{
+test('synchronized 30s admission uses ONLY broker :30, never :00, and never a pre-boundary quote',()=>{
+ assert.equal(boundary(T).allowed,false);
+ assert.equal(boundary(T+500).allowed,false);
  assert.equal(boundary(T+29999).allowed,false);
  assert.equal(boundary(T+30000).allowed,true);
  assert.equal(boundary(T+30999).allowed,true);
  assert.equal(boundary(T+31000).allowed,false);
- assert.equal(boundary(T+60000).allowed,true);
+ assert.equal(boundary(T+60000).allowed,false);
+ assert.equal(boundary(T+60900).allowed,false);
+ assert.equal(boundary(T+90000).allowed,true);
  const stale=boundary(T+30100,{quoteAt:T+29999});
  assert.equal(stale.allowed,false);assert.equal(stale.reason,'waiting-new-quote-at-broker-boundary');
 });
@@ -60,7 +64,9 @@ test('a known expired or different fixed broker expiry cannot be presented as th
 });
 test('clock current keeps immediate admission; broker mode still requires actual directional evidence',()=>{
  assert.equal(evaluate(runtime('current'),T+17000).futureEntryAnchor.entryReadyNow,true);
+ assert.equal(evaluate(runtime('current'),T+60000).futureEntryAnchor.entryReadyNow,true);
  assert.equal(evaluate(runtime(),T+17000).futureEntryAnchor,null);
+ assert.equal(evaluate(runtime(),T+60000).futureEntryAnchor,null);
  const r=runtime(),now=T+30000;
  const v=evaluate(r,now,{rows:[{ts:now,price:1}]});assert.equal(v.futureEntryAnchor,null);
 });
@@ -73,8 +79,10 @@ test('the runtime pins expiry to the next boundary, holds the side and never rep
  assert.equal(held.side,first.side);assert.equal(held.exitAt,first.exitAt);assert.equal(held.entryReadyNow,false);
  const duplicate=runtime();evaluate(duplicate,now);duplicate.vnextWindowState=null;
  assert.equal(evaluate(duplicate,now+100).futureEntryAnchor,null);
- const next=evaluate(r,T+60100).futureEntryAnchor;
- assert.equal(next.entryReadyNow,true);assert.equal(next.exitAt,T+90000);
+ const noEntryAtMinuteStart=evaluate(r,T+60100).futureEntryAnchor;
+ assert.equal(noEntryAtMinuteStart,null,'synchronized mode must never fire at :00');
+ const next=evaluate(r,T+90100).futureEntryAnchor;
+ assert.equal(next.entryReadyNow,true);assert.equal(next.exitAt,T+120000);
 });
 test('an evaluation that finishes after the eligible second cannot produce a late entry',()=>{
  const r=runtime(),values=[0,200];
