@@ -1,0 +1,1403 @@
+{
+  "scope": "Generated engineering diagnostics, not a market accuracy estimate. No regime aggregation.",
+  "baseline": "Production a83ac46f40e448595070dc21511d3f9739708dc8 / 13.9.28",
+  "protocol": "Same analytic price path at 2Hz and 40Hz; matched decision times at three 30s phases after 180s. Each decision uses only observations already received. No outcome used in model selection.",
+  "seeds": [
+    1013,
+    1019,
+    1021
+  ],
+  "phases": [
+    0,
+    7,
+    17
+  ],
+  "results": {
+    "slow-trend": {
+      "2": {
+        "published_13928": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.4243659999992815,
+            "p95": 2.203899999999976,
+            "max": 3.0267210000001796
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "time_retention": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.4189470000001165,
+            "p95": 2.3383820000003652,
+            "max": 4.933952999999747
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "completed_selector": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.4277620000000297,
+            "p95": 2.179172999999537,
+            "max": 3.885093000000097
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_band": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 6.834266999999954,
+            "p95": 10.732348000000457,
+            "max": 12.743624000000182
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_selector": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 6.834266999999954,
+            "p95": 10.732348000000457,
+            "max": 12.743624000000182
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        }
+      },
+      "40": {
+        "published_13928": {
+          "wins": 48,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 54,
+          "maxLossStreak": 0,
+          "reasons": {
+            "current-impulse-against-structure": 4,
+            "observed-trend-and-30s-cycle-projection": 48,
+            "choppy-sideways-structure": 50
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.137283000000025,
+            "p95": 1.5039660000002186,
+            "max": 2.4234509999987495
+          },
+          "historySpanSeconds": {
+            "min": 59.975,
+            "max": 59.975
+          }
+        },
+        "time_retention": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.9824659999994765,
+            "p95": 2.395479000002524,
+            "max": 3.182235000000219
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "completed_selector": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.9995920000001206,
+            "p95": 2.5193959999996878,
+            "max": 2.8118560000002617
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_band": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 7.345825000000332,
+            "p95": 8.26088499999969,
+            "max": 9.091967000000295
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_selector": {
+          "wins": 102,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 0,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 102
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 7.345825000000332,
+            "p95": 8.26088499999969,
+            "max": 9.091967000000295
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        }
+      }
+    },
+    "fast-trend": {
+      "2": {
+        "published_13928": {
+          "wins": 58,
+          "losses": 19,
+          "ties": 0,
+          "waiting": 25,
+          "maxLossStreak": 2,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 77,
+            "choppy-sideways-structure": 18,
+            "irregular-range-awaiting-current-turn": 6,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 75.32467532467533,
+          "decisionMs": {
+            "p50": 1.3311150000008638,
+            "p95": 1.774452999998175,
+            "max": 3.359199999998964
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "time_retention": {
+          "wins": 58,
+          "losses": 19,
+          "ties": 0,
+          "waiting": 25,
+          "maxLossStreak": 2,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 77,
+            "choppy-sideways-structure": 18,
+            "irregular-range-awaiting-current-turn": 6,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 75.32467532467533,
+          "decisionMs": {
+            "p50": 1.3134380000010424,
+            "p95": 1.7917789999992237,
+            "max": 2.358423000001494
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "completed_selector": {
+          "wins": 56,
+          "losses": 21,
+          "ties": 0,
+          "waiting": 25,
+          "maxLossStreak": 2,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 77,
+            "choppy-sideways-structure": 18,
+            "irregular-range-awaiting-current-turn": 6,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 72.72727272727273,
+          "decisionMs": {
+            "p50": 1.3327080000017304,
+            "p95": 1.8672129999977187,
+            "max": 3.536917999997968
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_band": {
+          "wins": 76,
+          "losses": 1,
+          "ties": 0,
+          "waiting": 25,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 77,
+            "choppy-sideways-structure": 18,
+            "irregular-range-awaiting-current-turn": 6,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 98.7012987012987,
+          "decisionMs": {
+            "p50": 6.469596000002639,
+            "p95": 8.311440999998013,
+            "max": 10.07719200000065
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_selector": {
+          "wins": 67,
+          "losses": 10,
+          "ties": 0,
+          "waiting": 25,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 77,
+            "choppy-sideways-structure": 18,
+            "irregular-range-awaiting-current-turn": 6,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 87.01298701298701,
+          "decisionMs": {
+            "p50": 6.469596000002639,
+            "p95": 8.311440999998013,
+            "max": 10.07719200000065
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        }
+      },
+      "40": {
+        "published_13928": {
+          "wins": 0,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 102,
+          "maxLossStreak": 0,
+          "reasons": {
+            "range-awaiting-third-confirmed-turn": 48,
+            "choppy-sideways-structure": 54
+          },
+          "rate": null,
+          "decisionMs": {
+            "p50": 1.018264000002091,
+            "p95": 1.3040540000001783,
+            "max": 1.6414130000011937
+          },
+          "historySpanSeconds": {
+            "min": 59.975,
+            "max": 59.975
+          }
+        },
+        "time_retention": {
+          "wins": 57,
+          "losses": 19,
+          "ties": 0,
+          "waiting": 26,
+          "maxLossStreak": 2,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 76,
+            "choppy-sideways-structure": 20,
+            "irregular-range-awaiting-current-turn": 5,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 75,
+          "decisionMs": {
+            "p50": 1.848535000000993,
+            "p95": 2.2451419999997597,
+            "max": 2.6249139999999898
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "completed_selector": {
+          "wins": 55,
+          "losses": 21,
+          "ties": 0,
+          "waiting": 26,
+          "maxLossStreak": 2,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 76,
+            "choppy-sideways-structure": 20,
+            "irregular-range-awaiting-current-turn": 5,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 72.36842105263158,
+          "decisionMs": {
+            "p50": 1.8396509999947739,
+            "p95": 2.398514000000432,
+            "max": 5.49396699999852
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_band": {
+          "wins": 75,
+          "losses": 1,
+          "ties": 0,
+          "waiting": 26,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 76,
+            "choppy-sideways-structure": 20,
+            "irregular-range-awaiting-current-turn": 5,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 98.6842105263158,
+          "decisionMs": {
+            "p50": 7.034836999999243,
+            "p95": 8.665494000000763,
+            "max": 11.18200699999943
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_selector": {
+          "wins": 67,
+          "losses": 9,
+          "ties": 0,
+          "waiting": 26,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 76,
+            "choppy-sideways-structure": 20,
+            "irregular-range-awaiting-current-turn": 5,
+            "range-extreme-awaiting-confirmed-turn": 1
+          },
+          "rate": 88.15789473684211,
+          "decisionMs": {
+            "p50": 7.034836999999243,
+            "p95": 8.665494000000763,
+            "max": 11.18200699999943
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        }
+      }
+    },
+    "fast-range": {
+      "2": {
+        "published_13928": {
+          "wins": 79,
+          "losses": 16,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 4,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 83.15789473684211,
+          "decisionMs": {
+            "p50": 1.284494999999879,
+            "p95": 1.5952130000005127,
+            "max": 1.9428370000023278
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "time_retention": {
+          "wins": 79,
+          "losses": 16,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 4,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 83.15789473684211,
+          "decisionMs": {
+            "p50": 1.285476999997627,
+            "p95": 1.5303649999987101,
+            "max": 2.1509900000019115
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "completed_selector": {
+          "wins": 79,
+          "losses": 16,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 4,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 83.15789473684211,
+          "decisionMs": {
+            "p50": 1.3193580000006477,
+            "p95": 1.665378999998211,
+            "max": 1.935036000002583
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_band": {
+          "wins": 95,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 6.3738329999978305,
+            "p95": 7.3680810000005295,
+            "max": 7.875024000000849
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_selector": {
+          "wins": 93,
+          "losses": 2,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 97.89473684210526,
+          "decisionMs": {
+            "p50": 6.3738329999978305,
+            "p95": 7.3680810000005295,
+            "max": 7.875024000000849
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        }
+      },
+      "40": {
+        "published_13928": {
+          "wins": 14,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 88,
+          "maxLossStreak": 0,
+          "reasons": {
+            "irregular-range-awaiting-current-turn": 85,
+            "observed-trend-and-30s-cycle-projection": 14,
+            "range-extreme-awaiting-confirmed-turn": 3
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.123171999999613,
+            "p95": 1.6785089999975753,
+            "max": 2.5038019999992684
+          },
+          "historySpanSeconds": {
+            "min": 59.975,
+            "max": 59.975
+          }
+        },
+        "time_retention": {
+          "wins": 79,
+          "losses": 16,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 4,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 83.15789473684211,
+          "decisionMs": {
+            "p50": 1.9981299999999464,
+            "p95": 2.703602999994473,
+            "max": 3.4586209999979474
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "completed_selector": {
+          "wins": 79,
+          "losses": 16,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 4,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 83.15789473684211,
+          "decisionMs": {
+            "p50": 1.9613140000001295,
+            "p95": 2.6322650000001886,
+            "max": 4.594873000001826
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_band": {
+          "wins": 95,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 0,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 7.356250999997428,
+            "p95": 9.127651999995578,
+            "max": 11.692706000001635
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_selector": {
+          "wins": 93,
+          "losses": 2,
+          "ties": 0,
+          "waiting": 7,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 95,
+            "irregular-range-awaiting-current-turn": 7
+          },
+          "rate": 97.89473684210526,
+          "decisionMs": {
+            "p50": 7.356250999997428,
+            "p95": 9.127651999995578,
+            "max": 11.692706000001635
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        }
+      }
+    },
+    "changing-range": {
+      "2": {
+        "published_13928": {
+          "wins": 42,
+          "losses": 32,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 27,
+            "irregular-range-awaiting-current-turn": 1
+          },
+          "rate": 56.75675675675676,
+          "decisionMs": {
+            "p50": 1.2884819999962929,
+            "p95": 1.8071019999988494,
+            "max": 2.7568439999959082
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "time_retention": {
+          "wins": 42,
+          "losses": 32,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 27,
+            "irregular-range-awaiting-current-turn": 1
+          },
+          "rate": 56.75675675675676,
+          "decisionMs": {
+            "p50": 1.2678200000009383,
+            "p95": 2.076768999999331,
+            "max": 2.5027100000006612
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "completed_selector": {
+          "wins": 43,
+          "losses": 31,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 27,
+            "irregular-range-awaiting-current-turn": 1
+          },
+          "rate": 58.108108108108105,
+          "decisionMs": {
+            "p50": 1.301461000002746,
+            "p95": 1.7551240000029793,
+            "max": 2.8286210000005667
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_band": {
+          "wins": 46,
+          "losses": 28,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 27,
+            "irregular-range-awaiting-current-turn": 1
+          },
+          "rate": 62.16216216216216,
+          "decisionMs": {
+            "p50": 6.576247999997577,
+            "p95": 8.075907000005827,
+            "max": 13.114125000007334
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_selector": {
+          "wins": 42,
+          "losses": 32,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 27,
+            "irregular-range-awaiting-current-turn": 1
+          },
+          "rate": 56.75675675675676,
+          "decisionMs": {
+            "p50": 6.576247999997577,
+            "p95": 8.075907000005827,
+            "max": 13.114125000007334
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        }
+      },
+      "40": {
+        "published_13928": {
+          "wins": 7,
+          "losses": 0,
+          "ties": 0,
+          "waiting": 95,
+          "maxLossStreak": 0,
+          "reasons": {
+            "range-awaiting-third-confirmed-turn": 25,
+            "range-extreme-awaiting-confirmed-turn": 69,
+            "observed-trend-and-30s-cycle-projection": 7,
+            "irregular-range-awaiting-current-turn": 1
+          },
+          "rate": 100,
+          "decisionMs": {
+            "p50": 1.0433009999978822,
+            "p95": 1.4319269999978133,
+            "max": 1.9406640000015614
+          },
+          "historySpanSeconds": {
+            "min": 59.975,
+            "max": 59.975
+          }
+        },
+        "time_retention": {
+          "wins": 42,
+          "losses": 32,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 26,
+            "irregular-range-awaiting-current-turn": 2
+          },
+          "rate": 56.75675675675676,
+          "decisionMs": {
+            "p50": 1.8447090000045137,
+            "p95": 2.516551000000618,
+            "max": 3.763349000000744
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "completed_selector": {
+          "wins": 42,
+          "losses": 32,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 26,
+            "irregular-range-awaiting-current-turn": 2
+          },
+          "rate": 56.75675675675676,
+          "decisionMs": {
+            "p50": 1.8498970000000554,
+            "p95": 2.274537000004784,
+            "max": 3.459912999998778
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_band": {
+          "wins": 46,
+          "losses": 28,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 26,
+            "irregular-range-awaiting-current-turn": 2
+          },
+          "rate": 62.16216216216216,
+          "decisionMs": {
+            "p50": 7.040696999996726,
+            "p95": 7.956295999996655,
+            "max": 8.376178999998956
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_selector": {
+          "wins": 43,
+          "losses": 31,
+          "ties": 0,
+          "waiting": 28,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 74,
+            "range-extreme-awaiting-confirmed-turn": 26,
+            "irregular-range-awaiting-current-turn": 2
+          },
+          "rate": 58.108108108108105,
+          "decisionMs": {
+            "p50": 7.040696999996726,
+            "p95": 7.956295999996655,
+            "max": 8.376178999998956
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        }
+      }
+    },
+    "sharp-reversals": {
+      "2": {
+        "published_13928": {
+          "wins": 12,
+          "losses": 69,
+          "ties": 0,
+          "waiting": 21,
+          "maxLossStreak": 11,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 81,
+            "irregular-range-awaiting-current-turn": 6,
+            "current-impulse-against-structure": 7,
+            "current-price-retracing": 3,
+            "choppy-sideways-structure": 2,
+            "lateral-or-mixed-structure": 3
+          },
+          "rate": 14.814814814814815,
+          "decisionMs": {
+            "p50": 1.2725469999859342,
+            "p95": 1.6434359999984736,
+            "max": 2.132432999991579
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "time_retention": {
+          "wins": 12,
+          "losses": 69,
+          "ties": 0,
+          "waiting": 21,
+          "maxLossStreak": 11,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 81,
+            "irregular-range-awaiting-current-turn": 6,
+            "current-impulse-against-structure": 7,
+            "current-price-retracing": 3,
+            "choppy-sideways-structure": 2,
+            "lateral-or-mixed-structure": 3
+          },
+          "rate": 14.814814814814815,
+          "decisionMs": {
+            "p50": 1.253989000004367,
+            "p95": 1.493610000004992,
+            "max": 1.7001209999871207
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "completed_selector": {
+          "wins": 30,
+          "losses": 51,
+          "ties": 0,
+          "waiting": 21,
+          "maxLossStreak": 5,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 81,
+            "irregular-range-awaiting-current-turn": 6,
+            "current-impulse-against-structure": 7,
+            "current-price-retracing": 3,
+            "choppy-sideways-structure": 2,
+            "lateral-or-mixed-structure": 3
+          },
+          "rate": 37.03703703703704,
+          "decisionMs": {
+            "p50": 1.2991380000021309,
+            "p95": 1.611176999998861,
+            "max": 4.414910999999847
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_band": {
+          "wins": 71,
+          "losses": 10,
+          "ties": 0,
+          "waiting": 21,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 81,
+            "irregular-range-awaiting-current-turn": 6,
+            "current-impulse-against-structure": 7,
+            "current-price-retracing": 3,
+            "choppy-sideways-structure": 2,
+            "lateral-or-mixed-structure": 3
+          },
+          "rate": 87.65432098765432,
+          "decisionMs": {
+            "p50": 6.529787999999826,
+            "p95": 7.608031000010669,
+            "max": 11.376107999996748
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_selector": {
+          "wins": 63,
+          "losses": 18,
+          "ties": 0,
+          "waiting": 21,
+          "maxLossStreak": 2,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 81,
+            "irregular-range-awaiting-current-turn": 6,
+            "current-impulse-against-structure": 7,
+            "current-price-retracing": 3,
+            "choppy-sideways-structure": 2,
+            "lateral-or-mixed-structure": 3
+          },
+          "rate": 77.77777777777777,
+          "decisionMs": {
+            "p50": 6.529787999999826,
+            "p95": 7.608031000010669,
+            "max": 11.376107999996748
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        }
+      },
+      "40": {
+        "published_13928": {
+          "wins": 13,
+          "losses": 17,
+          "ties": 0,
+          "waiting": 72,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 30,
+            "current-impulse-against-structure": 27,
+            "choppy-sideways-structure": 18,
+            "irregular-range-awaiting-current-turn": 4,
+            "lateral-or-mixed-structure": 4,
+            "range-awaiting-third-confirmed-turn": 17,
+            "current-price-retracing": 2
+          },
+          "rate": 43.333333333333336,
+          "decisionMs": {
+            "p50": 1.0548490000073798,
+            "p95": 1.484625999990385,
+            "max": 1.728663999994751
+          },
+          "historySpanSeconds": {
+            "min": 59.975,
+            "max": 59.975
+          }
+        },
+        "time_retention": {
+          "wins": 12,
+          "losses": 67,
+          "ties": 0,
+          "waiting": 23,
+          "maxLossStreak": 7,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 79,
+            "irregular-range-awaiting-current-turn": 12,
+            "current-impulse-against-structure": 5,
+            "choppy-sideways-structure": 4,
+            "lateral-or-mixed-structure": 2
+          },
+          "rate": 15.189873417721518,
+          "decisionMs": {
+            "p50": 1.819670999990194,
+            "p95": 2.1970999999903142,
+            "max": 2.850273999996716
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "completed_selector": {
+          "wins": 34,
+          "losses": 45,
+          "ties": 0,
+          "waiting": 23,
+          "maxLossStreak": 4,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 79,
+            "irregular-range-awaiting-current-turn": 12,
+            "current-impulse-against-structure": 5,
+            "choppy-sideways-structure": 4,
+            "lateral-or-mixed-structure": 2
+          },
+          "rate": 43.037974683544306,
+          "decisionMs": {
+            "p50": 1.8218239999987418,
+            "p95": 2.4685590000008233,
+            "max": 4.463133999990532
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_band": {
+          "wins": 69,
+          "losses": 10,
+          "ties": 0,
+          "waiting": 23,
+          "maxLossStreak": 1,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 79,
+            "irregular-range-awaiting-current-turn": 12,
+            "current-impulse-against-structure": 5,
+            "choppy-sideways-structure": 4,
+            "lateral-or-mixed-structure": 2
+          },
+          "rate": 87.34177215189874,
+          "decisionMs": {
+            "p50": 6.8662940000067465,
+            "p95": 8.304956000007223,
+            "max": 11.408476999989944
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_selector": {
+          "wins": 61,
+          "losses": 18,
+          "ties": 0,
+          "waiting": 23,
+          "maxLossStreak": 2,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 79,
+            "irregular-range-awaiting-current-turn": 12,
+            "current-impulse-against-structure": 5,
+            "choppy-sideways-structure": 4,
+            "lateral-or-mixed-structure": 2
+          },
+          "rate": 77.21518987341773,
+          "decisionMs": {
+            "p50": 6.8662940000067465,
+            "p95": 8.304956000007223,
+            "max": 11.408476999989944
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        }
+      }
+    },
+    "mixed-volatility": {
+      "2": {
+        "published_13928": {
+          "wins": 50,
+          "losses": 25,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 14,
+            "range-extreme-awaiting-confirmed-turn": 9,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 66.66666666666667,
+          "decisionMs": {
+            "p50": 1.2725670000072569,
+            "p95": 1.75813799999014,
+            "max": 2.6299719999951776
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "time_retention": {
+          "wins": 50,
+          "losses": 25,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 14,
+            "range-extreme-awaiting-confirmed-turn": 9,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 66.66666666666667,
+          "decisionMs": {
+            "p50": 1.2340489999915008,
+            "p95": 1.6529609999997774,
+            "max": 2.545785000009346
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "completed_selector": {
+          "wins": 50,
+          "losses": 25,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 14,
+            "range-extreme-awaiting-confirmed-turn": 9,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 66.66666666666667,
+          "decisionMs": {
+            "p50": 1.3061870000092313,
+            "p95": 1.756385999993654,
+            "max": 3.3982790000009118
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_band": {
+          "wins": 62,
+          "losses": 13,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 14,
+            "range-extreme-awaiting-confirmed-turn": 9,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 82.66666666666667,
+          "decisionMs": {
+            "p50": 6.407098000010592,
+            "p95": 8.70996200000809,
+            "max": 15.40032099999371
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        },
+        "wide_selector": {
+          "wins": 58,
+          "losses": 17,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 14,
+            "range-extreme-awaiting-confirmed-turn": 9,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 77.33333333333333,
+          "decisionMs": {
+            "p50": 6.407098000010592,
+            "p95": 8.70996200000809,
+            "max": 15.40032099999371
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 510
+          }
+        }
+      },
+      "40": {
+        "published_13928": {
+          "wins": 19,
+          "losses": 5,
+          "ties": 0,
+          "waiting": 78,
+          "maxLossStreak": 1,
+          "reasons": {
+            "choppy-sideways-structure": 26,
+            "observed-trend-and-30s-cycle-projection": 24,
+            "range-awaiting-third-confirmed-turn": 3,
+            "current-impulse-against-structure": 11,
+            "range-extreme-awaiting-confirmed-turn": 11,
+            "irregular-range-awaiting-current-turn": 27
+          },
+          "rate": 79.16666666666667,
+          "decisionMs": {
+            "p50": 1.0838930000027176,
+            "p95": 1.7245490000059363,
+            "max": 3.4875449999963166
+          },
+          "historySpanSeconds": {
+            "min": 59.975,
+            "max": 59.975
+          }
+        },
+        "time_retention": {
+          "wins": 50,
+          "losses": 25,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 15,
+            "range-extreme-awaiting-confirmed-turn": 8,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 66.66666666666667,
+          "decisionMs": {
+            "p50": 1.8963969999895198,
+            "p95": 2.393114999998943,
+            "max": 3.9309729999949923
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "completed_selector": {
+          "wins": 50,
+          "losses": 25,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 15,
+            "range-extreme-awaiting-confirmed-turn": 8,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 66.66666666666667,
+          "decisionMs": {
+            "p50": 1.9135930000047665,
+            "p95": 2.4933970000129193,
+            "max": 4.665649000002304
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_band": {
+          "wins": 62,
+          "losses": 13,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 15,
+            "range-extreme-awaiting-confirmed-turn": 8,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 82.66666666666667,
+          "decisionMs": {
+            "p50": 7.167579000000842,
+            "p95": 8.850753999999142,
+            "max": 10.96936599999026
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        },
+        "wide_selector": {
+          "wins": 58,
+          "losses": 17,
+          "ties": 0,
+          "waiting": 27,
+          "maxLossStreak": 3,
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 75,
+            "irregular-range-awaiting-current-turn": 15,
+            "range-extreme-awaiting-confirmed-turn": 8,
+            "current-impulse-against-structure": 1,
+            "choppy-sideways-structure": 3
+          },
+          "rate": 77.33333333333333,
+          "decisionMs": {
+            "p50": 7.167579000000842,
+            "p95": 8.850753999999142,
+            "max": 10.96936599999026
+          },
+          "historySpanSeconds": {
+            "min": 180,
+            "max": 300
+          }
+        }
+      }
+    }
+  }
+}

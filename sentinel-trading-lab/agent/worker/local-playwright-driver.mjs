@@ -9,6 +9,7 @@ import {presentableMarketCards} from '../src/core/vnext-market-cards.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
 import {brokerClockView} from './broker-clock-view.mjs';
+import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
 const PC_UI_KEYS=[
@@ -371,7 +372,7 @@ function appendQuoteSample(st,ts,price){
     st.quoteHistory[st.quoteHistory.length-1]={ts:t,price:p};return;
   }
   st.quoteHistory.push({ts:t,price:p});
-  if(st.quoteHistory.length>7200)st.quoteHistory.splice(0,st.quoteHistory.length-6800)
+  if(st.quoteHistory.length>6000)st.quoteHistory=compactObservedQuoteHistory(st.quoteHistory)
 }
 function protocolScan(data,st,direction='in'){
   if(!data||typeof data!=='object')return;
@@ -454,7 +455,8 @@ function protocolScan(data,st,direction='in'){
         if(ts>receivedAt||ts<receivedAt-300000||known.has(ts))continue;
         known.set(ts,{ts,price:Number(c.close),receivedAt,source:'broker-closed-1s'});
       }
-      st.quoteHistory=[...known.values()].sort((a,b)=>a.ts-b.ts).slice(-6800);
+      const observed=[...known.values()].sort((a,b)=>a.ts-b.ts);
+      st.quoteHistory=observed.length>6000?compactObservedQuoteHistory(observed):observed;
       st.lastQuoteBackfillAt=receivedAt;
       if(rid)st.marketRequests.delete(rid);
       return;

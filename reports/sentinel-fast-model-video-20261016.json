@@ -1,0 +1,793 @@
+{
+  "scope": "Two OCR readings of the SAME user video; not independent market validation. No quotes interpolated.",
+  "fixtures": {
+    "sentinel-user-video-20261016.json": {
+      "published_13928": {
+        "signals": 14,
+        "wins": 10,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "rate": 76.92307692307692,
+        "entries": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169713000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169864000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      },
+      "completed_selector": {
+        "signals": 14,
+        "wins": 9,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "rate": 69.23076923076923,
+        "entries": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169653000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "trend"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169713000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "trend"
+          },
+          {
+            "at": 1792169864000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      },
+      "wide_band": {
+        "signals": 14,
+        "wins": 6,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 3,
+        "rate": 46.15384615384615,
+        "entries": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169653000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169683000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915000,
+            "side": "CALL",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      },
+      "wide_selector": {
+        "signals": 14,
+        "wins": 10,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "rate": 76.92307692307692,
+        "entries": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169713000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804000,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169864000,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      }
+    },
+    "sentinel-user-video-broker-6dp-20261016.json": {
+      "published_13928": {
+        "signals": 15,
+        "wins": 10,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "rate": 71.42857142857143,
+        "entries": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169712500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      },
+      "completed_selector": {
+        "signals": 15,
+        "wins": 10,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "rate": 71.42857142857143,
+        "entries": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169712500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "trend"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      },
+      "wide_band": {
+        "signals": 15,
+        "wins": 8,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "rate": 57.142857142857146,
+        "entries": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169450000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169652500,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169682500,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169712500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915500,
+            "side": "CALL",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      },
+      "wide_selector": {
+        "signals": 15,
+        "wins": 10,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "rate": 71.42857142857143,
+        "entries": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "outcome": "losses",
+            "selected": "trend"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "trend"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169712500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "outcome": "losses",
+            "selected": "base"
+          },
+          {
+            "at": 1792169834500,
+            "side": "PUT",
+            "outcome": "wins",
+            "selected": "trend"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "outcome": "wins",
+            "selected": "base"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "outcome": "unknown",
+            "selected": "base"
+          }
+        ]
+      }
+    }
+  }
+}

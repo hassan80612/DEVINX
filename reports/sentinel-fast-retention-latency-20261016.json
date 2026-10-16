@@ -1,0 +1,9 @@
+{
+  "scope": "Local Node runtime ingestion only; excludes broker, Windows, transport and rendering.",
+  "inputRows": 6000,
+  "retainedRows": 1280,
+  "trials": 100,
+  "p50Ms": 0.3818249999999921,
+  "p95Ms": 0.8570509999999985,
+  "maxMs": 1.7329909999999984
+}

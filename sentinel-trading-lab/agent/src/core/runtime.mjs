@@ -1,4 +1,5 @@
 import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
+import {compactObservedQuoteHistory} from './observed-quote-history.mjs';
 import {reviewScenario,scenarioAdmission} from './scenario-review.mjs';
 import {canRenewExpiredScenario} from './scenario-renewal.mjs';
 import {scenarioInvalidation} from './scenario-invalidation.mjs';
@@ -115,7 +116,9 @@ export class DemoTradingRuntime{
       this.nextEvalMs=0
     }
     const candles=Array.isArray(market.candles)?market.candles.filter(c=>[c?.open,c?.high,c?.low,c?.close].every(v=>Number.isFinite(Number(v)))):[];
-    const quoteHistory=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number.isFinite(Number(x?.price))&&Number(x.price)>0).slice(this.settings.engine?-2400:-900):[];
+    const observedQuotes=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number.isFinite(Number(x?.price))&&Number(x.price)>0):[];
+    const quoteHistory=this.settings.engine?
+      (observedQuotes.length>2400?compactObservedQuoteHistory(observedQuotes):observedQuotes):observedQuotes.slice(-900);
     this.externalMarket={...market,candles,quoteHistory,quote:Number(market.quote??market.price??quoteHistory.at(-1)?.price??candles.at(-1)?.close),quoteTs:Number(market.quoteTs||market.lastQuoteAt||0),source:market.source||String(market.provider||'LIVE').toUpperCase()};
     return this
   }
@@ -953,12 +956,16 @@ export class DemoTradingRuntime{
     if(settings.engine&&this.forecastModel==='now-structural-v1'){
       const synchronized=settings.clockMode==='broker'&&Number(settings.orderDurationMs)===30000;
       const calculationStarted=synchronized?monotonicNow():0;
+      const projectionBoundary=synchronized?brokerEntryBoundary({clockMode:settings.clockMode,
+        durationMs:settings.orderDurationMs,timing:snap.brokerTiming,now,quoteAt:snap.quoteTs,
+        asset:settings.asset,provider:snap.provider,lastBoundary:this.vnextBrokerBoundary}):null;
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
       const observation=analyzeNowOpportunity({
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
-        qualityPolicy:'adaptive-market-v17'
+        qualityPolicy:'adaptive-market-v17',
+        projectionTargetAt:projectionBoundary?.allowed?projectionBoundary.exitAt:null
       });
       if(synchronized)now+=Math.ceil(Math.max(0,monotonicNow()-calculationStarted));
       const duration=brokerDurationGuard({snap,settings,now});
