@@ -1,14 +1,14 @@
 {
-  "version": "13.9.28",
-  "build": "13.9.28-synced-protocol-lightweight-entry-second-27",
+  "version": "13.9.29",
+  "build": "13.9.29-fast-feed-context-adaptive-expiry-direction",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "shared-market-base-one-decision-vnext",
-    "modelValidation": "13.9.24-30s-video-replay-and-runtime-parity",
+    "modelValidation": "13.9.29-reversal-diagnostics-original-video-preserved-not-live-accuracy",
     "forecastModel": "now-structural-v1",
-    "clockPolicy": "verified-broker-alert-27-expiry-00-no-dom-poll-v3"
+    "clockPolicy": "verified-broker-alert-27-expiry-00-matched-projection-v4"
   }
 }

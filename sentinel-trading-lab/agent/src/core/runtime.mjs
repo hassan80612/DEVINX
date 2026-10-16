@@ -1,5 +1,6 @@
 import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
 import {compactObservedQuoteHistory} from './observed-quote-history.mjs';
+import {CompletedExpiryDirection} from './completed-expiry-direction.mjs';
 import {reviewScenario,scenarioAdmission} from './scenario-review.mjs';
 import {canRenewExpiredScenario} from './scenario-renewal.mjs';
 import {scenarioInvalidation} from './scenario-invalidation.mjs';
@@ -78,6 +79,7 @@ function newPriceStructure(main,side,snap,strict=false){
 
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
+    this.expiryDirectionSelector=new CompletedExpiryDirection();
     this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
@@ -956,6 +958,8 @@ export class DemoTradingRuntime{
     if(settings.engine&&this.forecastModel==='now-structural-v1'){
       const synchronized=settings.clockMode==='broker'&&Number(settings.orderDurationMs)===30000;
       const calculationStarted=synchronized?monotonicNow():0;
+      const expiryDirectionContext=[snap.provider,settings.asset,settings.orderDurationMs,settings.clockMode].join('|');
+      if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
       const projectionBoundary=synchronized?brokerEntryBoundary({clockMode:settings.clockMode,
         durationMs:settings.orderDurationMs,timing:snap.brokerTiming,now,quoteAt:snap.quoteTs,
         asset:settings.asset,provider:snap.provider,lastBoundary:this.vnextBrokerBoundary}):null;
@@ -965,7 +969,8 @@ export class DemoTradingRuntime{
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
         qualityPolicy:'adaptive-market-v17',
-        projectionTargetAt:projectionBoundary?.allowed?projectionBoundary.exitAt:null
+        projectionTargetAt:projectionBoundary?.allowed?projectionBoundary.exitAt:null,
+        expiryDirectionSelector:this.expiryDirectionSelector,expiryDirectionContext
       });
       if(synchronized)now+=Math.ceil(Math.max(0,monotonicNow()-calculationStarted));
       const duration=brokerDurationGuard({snap,settings,now});

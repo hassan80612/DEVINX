@@ -1,5 +1,7 @@
 # Sentinel: movimentos rápidos e alvo de vencimento
 
+Checkpoint de pesquisa anterior à autorização de publicação. A integração e o lançamento posteriores estão documentados em `sentinel-13929-release-20261016.md`.
+
 Base verificada: produção **13.9.28**, commit `a83ac46f40e448595070dc21511d3f9739708dc8`, deployment `dpl_AVULTRJPeGiyjEQChgzuE6BVFbyT`, manifesto público 13.9.28. Esta investigação parte dessa versão e **não publicou outro Agent nem substituiu o site**.
 
 ## O que foi encontrado e corrigido no código candidato

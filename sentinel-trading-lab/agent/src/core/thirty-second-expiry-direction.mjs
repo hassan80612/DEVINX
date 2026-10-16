@@ -30,7 +30,7 @@ function fit(points,period){
  const sse=points.reduce((s,p)=>s+(p.y-predict(p.t))**2,0);
  return {period,coefficients,sse,predict};
 }
-export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quoteAt,durationMs=30000,projectionTargetAt=null}={}){
+export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quoteAt,durationMs=30000,projectionTargetAt=null,periodSearch='baseline'}={}){
  const none=reason=>({ready:false,side:null,reason});
  if(durationMs!==30000||!(Number.isFinite(price)&&price>0&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=1450))return none('invalid-30s-input');
  const horizonMs=projectionTargetAt==null?30000:Number(projectionTargetAt)-quoteAt;
@@ -47,7 +47,8 @@ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quo
  if(points.some((p,i)=>i&&p.t-points[i-1].t>3))return none('observed-cycle-history-gap');
  const line=fit(points,null);if(!line||line.sse<1e-20)return none('insufficient-nonlinear-variation');
  const span=-points[0].t,periods=[];
- for(let period=12;period<=Math.min(90,span/2);period+=2)periods.push(period);
+ const wide=periodSearch==='wide';
+ for(let period=wide?4:12;period<=Math.min(wide?180:90,span/(wide?1:2));period+=wide?1:2)periods.push(period);
  const n=points.length,criterion=(model,count,searchPenalty=0)=>n*Math.log(Math.max(model.sse/n,1e-30))+count*Math.log(n)+searchPenalty;
  let selected=line,best=criterion(line,2);
  for(const period of periods){

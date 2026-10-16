@@ -152,7 +152,7 @@ function completedRangeStructure(quotes,now,noise,spot){
 }
 
 export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
- now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null}={}){
+ now=Date.now(),durationMs=30000,engineId='automatic',qualityPolicy='baseline',projectionTargetAt=null,expiryDirectionSelector=null,expiryDirectionContext=null}={}){
  // A SINGLE common market-base decides the direction for every strategy.
  // 30s may learn from already-closed 30s outcome analogues; 60s conserves
  // the original causal structural decision while its local samples are sparse.
@@ -171,7 +171,9 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // The one-shot lifecycle below continues to hold a single immutable call.
   const forecast=Number(durationMs)===30000&&original.ready?
    thirtySecondCycleForecast({...input,projectionTargetAt}):null;
-  const decision=forecast?.ready?{...original,...forecast}:original;
+  const baseline=forecast?.ready?{...original,...forecast}:original;
+  const decision=Number(durationMs)===30000&&expiryDirectionSelector?
+   expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt}):baseline;
   return {...decision,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?context.strategy:engineId,
    marketShape:context.marketShape,
