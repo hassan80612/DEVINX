@@ -1,0 +1,127 @@
+{
+  "source": "generated engineering diagnostics, not market observations",
+  "seeds": [
+    101,
+    109,
+    127,
+    139,
+    151,
+    163,
+    181,
+    193
+  ],
+  "groups": {
+    "up": {
+      "baseline": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8
+      },
+      "candidate": {
+        "signals": 143,
+        "wins": 134,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 8
+      }
+    },
+    "down": {
+      "baseline": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8
+      },
+      "candidate": {
+        "signals": 144,
+        "wins": 135,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 8
+      }
+    },
+    "turn": {
+      "baseline": {
+        "signals": 144,
+        "wins": 120,
+        "losses": 16,
+        "ties": 0,
+        "unknown": 8
+      },
+      "candidate": {
+        "signals": 141,
+        "wins": 126,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8
+      }
+    },
+    "reverse-turn": {
+      "baseline": {
+        "signals": 144,
+        "wins": 119,
+        "losses": 17,
+        "ties": 0,
+        "unknown": 8
+      },
+      "candidate": {
+        "signals": 139,
+        "wins": 121,
+        "losses": 10,
+        "ties": 0,
+        "unknown": 8
+      }
+    },
+    "range": {
+      "baseline": {
+        "signals": 141,
+        "wins": 120,
+        "losses": 13,
+        "ties": 0,
+        "unknown": 8
+      },
+      "candidate": {
+        "signals": 143,
+        "wins": 124,
+        "losses": 11,
+        "ties": 0,
+        "unknown": 8
+      }
+    },
+    "irregular": {
+      "baseline": {
+        "signals": 144,
+        "wins": 126,
+        "losses": 10,
+        "ties": 0,
+        "unknown": 8
+      },
+      "candidate": {
+        "signals": 144,
+        "wins": 127,
+        "losses": 9,
+        "ties": 0,
+        "unknown": 8
+      }
+    },
+    "random-walk": {
+      "baseline": {
+        "signals": 134,
+        "wins": 59,
+        "losses": 67,
+        "ties": 0,
+        "unknown": 8
+      },
+      "candidate": {
+        "signals": 133,
+        "wins": 62,
+        "losses": 63,
+        "ties": 0,
+        "unknown": 8
+      }
+    }
+  }
+}
