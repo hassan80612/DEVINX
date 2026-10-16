@@ -62,4 +62,36 @@ tool(goBinary,['build','-trimpath','-ldflags=-s -w -buildid=','-o',exe,'agent-la
 if(statSync(exe).size<1000000)throw Error('invalid_windows_executable');
 for(const alias of ['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe'])
  copyFileSync(exe,join(dl,alias));
+// Alternate offline-from-Sentinel installer packaging for Edge / Defender
+// browser-download failures. It contains the same checked payload and the
+// EXISTING PowerShell installer, with no additional runtime logic or new URL.
+const alternative=join(dl,'Sentinel-Agent-'+release.version+'-Alternativo.zip');
+const altDir=join(root,'.sentinel-alternative-installer');
+rmSync(altDir,{recursive:true,force:true});
+mkdirSync(altDir,{recursive:true});
+try{
+ copyFileSync(join(dl,'install-agent-v88.ps1'),join(altDir,'install-agent-v88.ps1'));
+ copyFileSync(zip,join(altDir,'agent_payload_v88.zip'));
+ const cmd=[
+  '@echo off','setlocal','cd /d "%~dp0"',
+  'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-agent-v88.ps1" -LocalPayload "%~dp0agent_payload_v88.zip" -ExpectedVersion "'+release.version+'" -ExpectedBuild "'+release.build+'"',
+  'if errorlevel 1 (',
+  '  echo O instalador nao concluiu. Consulte %LOCALAPPDATA%\\SentinelTradingLab\\install.log',
+  '  pause',
+  '  exit /b 1',
+  ')',
+  'exit /b 0',''
+ ].join('\\r\\n');
+ writeFileSync(join(altDir,'Instalar-Sentinel.cmd'),cmd.replaceAll('\\\\r\\\\n','\\r\\n'),'ascii');
+ writeFileSync(join(altDir,'LEIA-ME.txt'),
+  'Sentinel Trading Lab '+release.version+'\\n\\n'+
+  '1. Extraia TODOS os arquivos deste ZIP em uma pasta.\\n'+
+  '2. No Windows, clique duas vezes em Instalar-Sentinel.cmd.\\n'+
+  '3. O instalador utiliza o pacote local incluido.\\n'+
+  '4. Se falhar, consulte %LOCALAPPDATA%\\\\SentinelTradingLab\\\\install.log.\\n'+
+  'Nao e necessario executar o EXE bloqueado pelo navegador.\\n');
+ rmSync(alternative,{force:true});
+ tool('zip',['-q',alternative,'Instalar-Sentinel.cmd','install-agent-v88.ps1','agent_payload_v88.zip','LEIA-ME.txt'],{cwd:altDir});
+ if(statSync(alternative).size<50000)throw Error('invalid_alternative_installer_archive');
+}finally{rmSync(altDir,{recursive:true,force:true});}
 console.log('Sentinel 13.7 installer ready: '+statSync(exe).size+' bytes, ZIP SHA256 '+sha);
