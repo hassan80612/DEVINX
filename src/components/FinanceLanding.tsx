@@ -5,6 +5,7 @@ import {LanguageMenu} from "@/components/LanguageMenu";
 import {BrandLogo} from "@/components/BrandLogo";
 import {SubscriptionPlans} from "@/components/SubscriptionPlans";
 import {LandingDemoVideo} from "@/components/LandingDemoVideo";
+import {DEVINX_SUBSCRIPTION_PLANS,pricingForLocale} from "@/lib/subscription-plans";
 import styles from "@/app/page.module.css";
 
 const features=[
@@ -16,12 +17,9 @@ const features=[
   {icon:"◎",key:"goals"},
 ] as const;
 
-const example={available:40000,bills:130000,days:5};
-const exampleGap=example.bills-example.available;
-const exampleDailyTarget=exampleGap/example.days;
-
 export function FinanceLanding(){
-  const{t,currency,locale}=useI18n();
+  const{t,locale}=useI18n();
+  const checkout=pricingForLocale(DEVINX_SUBSCRIPTION_PLANS[0],locale).checkoutUrl;
   return <main className="landingV2">
     <header className="top landingTop">
       <a className="brand" href="/"><BrandLogo/></a>
@@ -34,10 +32,7 @@ export function FinanceLanding(){
         <h1 id="landing-title">{t("landing.title")} <em>{t("landing.accent")}</em></h1>
         <p>{t("landing.desc")}</p>
         <div className="heroActions heroAccessOnly">
-          <div className={styles.trialAction}>
-            <a className="primary landingAccessCta" href="/entrar?trial=1" aria-describedby="trial-conditions">{t("trial.cta")}</a>
-            <small id="trial-conditions" className={styles.trialNote}>{t("trial.noCard")}</small>
-          </div>
+          <a className="primary landingAccessCta" href={checkout} rel="noopener noreferrer">{t("subscription.choose")}</a>
           <a className="secondary landingAccessCta" href="/entrar">{t("landing.login")}</a>
         </div>
         <a className="howLink" href="#como">{t("landing.how")}</a>
@@ -50,11 +45,14 @@ export function FinanceLanding(){
         <div className="previewTop"><small>DEVINX FINANCEIRO</small><span className={styles.exampleLabel}>{t("landing.preview.example")}</span></div>
         <div className={styles.dailyTarget}>
           <h2 id="preview-title">{t("landing.preview.title")}</h2>
-          <strong><bdi>{currency(exampleDailyTarget)}</bdi></strong>
+          <div className={styles.previewPlaceholder} aria-hidden="true"><i/><i/><i/></div>
           <span>{t("landing.preview.adapts")}</span>
         </div>
-        <div className="previewBalance"><span>{t("landing.preview.available")}</span><strong><bdi>{currency(example.available)}</bdi></strong></div>
-        <div className="previewRows"><div><span>{t("landing.preview.bills")}</span><b><bdi>{currency(example.bills)}</bdi></b></div><div><span>{t("landing.preview.gap")}</span><b><bdi>{currency(exampleGap)}</bdi></b></div></div>
+        <div className="previewBalance"><span>{t("landing.preview.available")}</span><span className={styles.previewDash} aria-hidden="true"/></div>
+        <div className="previewRows">
+          <div><span>{t("landing.preview.bills")}</span><span className={styles.previewDash} aria-hidden="true"/></div>
+          <div><span>{t("landing.preview.gap")}</span><span className={styles.previewDash} aria-hidden="true"/></div>
+        </div>
         <p id="preview-caption" className={styles.exampleCaption}>{t("landing.preview.caption")}</p>
       </aside>
     </section>
