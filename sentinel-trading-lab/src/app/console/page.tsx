@@ -16,6 +16,14 @@ type Status=any;
 const WEB_RELEASE_VERSION=agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
 const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-Windows.exe?v=${encodeURIComponent(AVAILABLE_AGENT_VERSION)}`;
+const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
+function AgentZipDownload(){
+ const {language}=useSentinelLocale();
+ return <div className="sentinelPcOnly" style={{maxWidth:270}}>
+  <a className="secondary linkbtn" href={AGENT_ZIP_DOWNLOAD_URL} download>{language==='en'?'Download ZIP installer':'Baixar instalador em ZIP'}</a>
+  <small className="muted" style={{display:'block',marginTop:5,lineHeight:1.4}}>{language==='en'?'Extract all files and open Instalar-Sentinel.cmd.':'Extraia todos os arquivos e abra Instalar-Sentinel.cmd.'}</small>
+ </div>;
+}
 const tabDefs=[
   {key:'Market Analysis',label:'Mercado',icon:'⌁',group:'Análise',title:'Analista em tempo real',subtitle:'Cenário, sinais, reversões e controles em uma única tela.'},
   {key:'Strategies',label:'Estratégias',icon:'◇',group:'Análise',title:'Estratégias',subtitle:'Escolha uma estratégia de previsão.'},
@@ -327,7 +335,7 @@ export default function Page(){
         <div className="runtimeBadges"><span className="privateBadge">🔒 {account?.profile?.role==='master'?'MASTER':t('PRIVADO')}</span><Pill tone={agent.process?'good':'neutral'}>{t(agent.process?'AGENT ONLINE':'AGENT OFF')}</Pill><Pill tone={agent.worker?'good':'neutral'}>{t(agent.worker?'WORKER ONLINE':'WORKER OFF')}</Pill><Pill tone={String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='demo'?'good':String(s?.liveBroker?.mode||s?.mode||'').toLowerCase()==='real'?'bad':'neutral'}>{t('CONTA')} {t(modeLabel(s?.liveBroker?.mode||s?.mode||'—'))}</Pill><Pill tone={s?.state==='error'?'bad':s?.state==='running'?'good':'neutral'}>{t(String(s?.state||'offline').toUpperCase())}</Pill></div>
         <div className="topUtility"><LanguageSwitcher/><button className="themeToggle" onClick={()=>setTheme(theme==='light'?'dark':'light')} title={t("Alternar tema")} aria-label={t("Alternar tema")}>{theme==='light'?t('Escuro'):t('Claro')}</button><button className="kill" disabled={busy||!s} onClick={()=>window.confirm('Ativar KILL SWITCH e parar imediatamente?')&&act('control/kill')}>KILL SWITCH</button><button className="secondary logoutBtn" onClick={async()=>{try{const response=await fetch('/api/auth/logout',{method:'POST'});if(!response.ok)throw new Error('logout_unconfirmed');window.location.replace('/')}catch{setErr(language==='en'?'Logout could not be confirmed. Please try again.':'Não foi possível confirmar a saída. Tente novamente.')}}}>{t('Sair')}</button></div>
       </div></header>
-      {(!agent.process||tab==='Market Analysis')&&<div className="agentbanner"><div className="agentIcon">↓</div><div className="agentText"><b>{language==='en'?'Start here: install the Windows Agent':'Comece por aqui: instale o Agent Windows'}</b><span>{language==='en'?'Download and open the installer on your computer. Then choose IQ Option or Exnova in Broker. Your account is recognized automatically.':'Baixe e abra o instalador no computador. Depois, escolha IQ Option ou Exnova em Corretora. Sua conta é reconhecida automaticamente.'}</span></div><div className="agentActions sentinelPcOnly">{agentAccess?<a className="primary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{language==='en'?'Install Agent':'Instalar Agent'} · {AVAILABLE_AGENT_VERSION}</a>:<a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Ativar acesso')}</a>}</div></div>}
+      {(!agent.process||tab==='Market Analysis')&&<div className="agentbanner"><div className="agentIcon">↓</div><div className="agentText"><b>{language==='en'?'Start here: install the Windows Agent':'Comece por aqui: instale o Agent Windows'}</b><span>{language==='en'?'Download and open the installer on your computer. Then choose IQ Option or Exnova in Broker. Your account is recognized automatically.':'Baixe e abra o instalador no computador. Depois, escolha IQ Option ou Exnova em Corretora. Sua conta é reconhecida automaticamente.'}</span></div><div className="agentActions sentinelPcOnly">{agentAccess?<><a className="primary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{language==='en'?'Install Agent':'Instalar Agent'} · {AVAILABLE_AGENT_VERSION}</a><AgentZipDownload/></>:<a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Ativar acesso')}</a>}</div></div>}
       {agent.process&&!agent.worker&&source==='local'&&<div className="alert"><b>{t('Agent aberto, worker parado.')}</b> <button className="secondary" disabled={busy} onClick={()=>agentCommand('restart')}>{t('Reiniciar Agent')}</button></div>}
       {notice&&<div className="notice"><span className="noticeDot"/><b>{notice}</b></div>}{err&&<div className="alert"><b>Sentinel:</b> {err}</div>}{(compactAnalyst||tab==='Market Analysis')&&<LiveScenarioCard s={s} busy={busy} act={act} compact={compactAnalyst} onToggleCompact={toggleCompactAnalyst}/>} {!compactAnalyst&&content}</main>
       <nav className="mobileDock">{mobileMain.map(([k,l,i])=><button key={k} className={tab===k?'active':''} onClick={()=>{setTab(k);setMobileMore(false)}}><i>{i}</i><span>{t(l)}</span></button>)}<button className={mobileMore?'active':''} onClick={()=>setMobileMore(v=>!v)}><i>•••</i><span>{t('Mais')}</span></button></nav>{mobileMore&&<div className="mobileMorePanel">{visibleTabs.filter(x=>!mobileMain.some(([k])=>k===x.key)).map(x=><button key={x.key} onClick={()=>{if(x.key==='Membership')window.location.assign('/api/checkout?market='+(language==='en'?'INTL':'BR'));else setTab(x.key);setMobileMore(false)}}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div>}
@@ -439,6 +447,7 @@ function Broker({s,act,busy,account}:{s:Status,act:any,busy:boolean,account:any}
      </div>
      {!connected&&<div className="actions topgap sentinelPcOnly">
        <a className="secondary linkbtn" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{t('Baixar Agent Windows')}</a>
+       <AgentZipDownload/>
      </div>}
    </section>
  </div>
@@ -565,6 +574,7 @@ function Settings({s,agent,agentCommand,busy,account}:{s:Status,agent:any,agentC
      <div className="actions topgap">
        <a className="primary linkbtn" href={'/api/checkout?market='+(language==='en'?'INTL':'BR')}>{t('Renovar acesso na Kiwify')}</a>
        <a className="secondary linkbtn accountAgentDownload" href={AGENT_DOWNLOAD_URL} download="sentinel-agent-windows.exe">{t('Instalar / atualizar Agent')}</a>
+       <AgentZipDownload/>
      </div>
    </section>
    {s?.runtimeKind==='persistent-worker'&&<section className="card span12 accountAgentCard">

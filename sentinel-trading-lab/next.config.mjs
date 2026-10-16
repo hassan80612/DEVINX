@@ -1,4 +1,5 @@
-/** @type {import('next').NextConfig} */
+import {readFileSync} from 'node:fs';
+const currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json',import.meta.url),'utf8'));
 const agentDownloadHeaders=[
   {key:'Content-Type',value:'application/octet-stream'},
   {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
@@ -22,6 +23,12 @@ const nextConfig={
     {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-13.8.9.exe',headers:agentDownloadHeaders},
+    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
+    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
+      {key:'Content-Type',value:'application/zip'},
+      {key:'Content-Disposition',value:'attachment'},
+      {key:'Cache-Control',value:'private, no-store'}
+    ]},
     {source:'/(.*)',headers:[{key:'Permissions-Policy',value:'local-network=(self), loopback-network=(self)'},{key:'X-Content-Type-Options',value:'nosniff'}]}
   ]}
 };
