@@ -8,7 +8,6 @@ import {VISIBLE_STRATEGIES} from '../src/core/visible-strategy-guide.mjs';
 import {presentableMarketCards} from '../src/core/vnext-market-cards.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
-import {readBrokerTimingFromText} from './broker-timing-readonly.mjs';
 import {brokerClockView} from './broker-clock-view.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
@@ -1309,28 +1308,11 @@ export class LocalPlaywrightDriver{
       payload.visualMarketCards=presentableMarketCards(payload.vnext?.cards);
       payload.uiTranslations=PC_UI_EN;
       const st=this.state(provider);
-      // Optional, bounded, read-only UI observation. Never blocks rendering,
-      // requests trading actions or invalidates a pinned forecast.
-      // A full body.innerText can force browser-wide text/layout work.
-      // Keep fast read-only scanning when broker clock is explicitly shown;
-      // for the ordinary local-clock view inspect at a lower frequency.
-      // Neither cadence participates in quote ingestion, entry decisions or
-      // the independently ticking overlay clock.
-      const scanEveryMs=payload.clockMode==='broker'?2500:10000;
-      if(!s.pendingBrokerTimeScan&&
-        Date.now()-Number(s.lastBrokerTimeScanAt||0)>=scanEveryMs){
-        s.lastBrokerTimeScanAt=Date.now();
-        s.pendingBrokerTimeScan=true;
-        void s.page.locator('body').innerText({timeout:650}).then(text=>{
-          const raw=String(text||'').slice(0,30000);
-          const top=raw.slice(0,3000);
-          const instrumentKind=/\bblitz\b/i.test(top)?'blitz':/\bdigital\b/i.test(top)?'digital':'unknown';
-          const observed=readBrokerTimingFromText(raw,{nowMs:Date.now(),instrumentKind});
-          // Stale and unrecognized readings are never treated as broker authority.
-          st.brokerTiming={...observed,symbol:st.symbol};
-        }).catch(()=>{}).finally(()=>{s.pendingBrokerTimeScan=false});
-      }
-      // Timing is observed regardless of the presentation mode.
+      // The authenticated Quadcode timeSync already feeds the analyst and PC.
+      // Never scan the broker DOM (body.innerText) to refresh a display clock:
+      // doing so forces expensive page layout and can freeze the traderoom.
+      // No extra polling/request is needed: project the existing received
+      // protocol timestamp forward using the local monotonic passage of time.
       payload.brokerTiming=this.readBrokerTimingSnapshot(provider,st);
       // Pin a signal's already verified broker expiration independently of
       // the NEXT opportunity window. Window rollover is not option expiry.
