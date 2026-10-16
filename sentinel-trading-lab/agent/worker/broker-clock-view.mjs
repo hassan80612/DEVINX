@@ -1,6 +1,13 @@
 // A single, read-only presentation contract for the PC overlay.
 // NEVER rewrites the analyst's window deadline, entry or option expiry.
 const valid=x=>Number.isFinite(Number(x))&&Number(x)>0;
+/**
+ * @param {{
+ *   timing?: any,
+ *   windowState?: {phase?: string|null, entryTriggeredAt?: number, exitAt?: number, brokerExpiresAt?: number}|null,
+ *   now?: number
+ * }} [args]
+ */
 export function brokerClockView({timing=null,windowState=null,now=Date.now()}={}){
  // One issued CALL/PUT is NOT proof the user clicked a trade. It does,
  // however, carry the exact verified broker deadline when that was used
