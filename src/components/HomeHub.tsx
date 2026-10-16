@@ -6,6 +6,7 @@ import {LanguageMenu} from "@/components/LanguageMenu";
 import {useI18n} from "@/i18n/provider";
 import {createClient} from "@/lib/supabase/client";
 import styles from "./HomeHub.module.css";
+import {DEVINX_SUBSCRIPTION_PLANS,pricingForLocale} from "@/lib/subscription-plans";
 
 const COPY={
   "pt-BR":{
@@ -21,10 +22,10 @@ const COPY={
     financeLine1:"Seu dinheiro organizado.",
     financeLine2:"Sua rotina sob controle.",
     financeText:"Do salário ao negócio, acompanhe dinheiro, metas, contas e trabalho com uma visão clara do que entra, do que sai e do que vem pela frente.",
-    financePrimary:"Teste grátis",
+    financePrimary:"Comprar agora",
     financeSecondary:"Ver por dentro",
     financeLogin:"Já tenho acesso · Entrar",
-    financeFeaturesTitle:"FINANCEIRO · CONTROLE COMPLETO DA SUA ROTINA",
+    financeCycle:"Plano mensal",sentinelBuy:"Comprar agora",financeFeaturesTitle:"FINANCEIRO · CONTROLE COMPLETO DA SUA ROTINA",
     storeTag:"DEVINX LOJA · SUA OPERAÇÃO EM UM SÓ LUGAR",
     storeLine1:"Uma loja bonita para o cliente.",
     storeLine2:"Um negócio organizado para você.",
@@ -57,10 +58,10 @@ const COPY={
     financeLine1:"Your money organized.",
     financeLine2:"Your routine under control.",
     financeText:"From salary to business income, track money, goals, bills and work with a clear view of what comes in, goes out and comes next.",
-    financePrimary:"Free trial",
+    financePrimary:"Buy now",
     financeSecondary:"See inside",
     financeLogin:"I already have access · Sign in",
-    financeFeaturesTitle:"FINANCE · COMPLETE CONTROL OF YOUR ROUTINE",
+    financeCycle:"Monthly plan",sentinelBuy:"Buy now",financeFeaturesTitle:"FINANCE · COMPLETE CONTROL OF YOUR ROUTINE",
     storeTag:"DEVINX STORE · YOUR OPERATION IN ONE PLACE",
     storeLine1:"A beautiful store for your customer.",
     storeLine2:"An organized business for you.",
@@ -93,10 +94,10 @@ const COPY={
     financeLine1:"Tu dinero organizado.",
     financeLine2:"Tu rutina bajo control.",
     financeText:"Del salario al negocio, controla dinero, metas, cuentas y trabajo con una visión clara de lo que entra, sale y viene después.",
-    financePrimary:"Prueba gratis",
+    financePrimary:"Comprar ahora",
     financeSecondary:"Ver por dentro",
     financeLogin:"Ya tengo acceso · Entrar",
-    financeFeaturesTitle:"FINANZAS · CONTROL COMPLETO DE TU RUTINA",
+    financeCycle:"Plan mensual",sentinelBuy:"Comprar ahora",financeFeaturesTitle:"FINANZAS · CONTROL COMPLETO DE TU RUTINA",
     storeTag:"DEVINX TIENDA · TU OPERACIÓN EN UN SOLO LUGAR",
     storeLine1:"Una tienda bonita para el cliente.",
     storeLine2:"Un negocio organizado para ti.",
@@ -129,10 +130,10 @@ const COPY={
     financeLine1:"Votre argent organisé.",
     financeLine2:"Votre quotidien sous contrôle.",
     financeText:"Du salaire à l’activité professionnelle, suivez argent, objectifs, factures et travail avec une vision claire de votre situation.",
-    financePrimary:"Essai gratuit",
+    financePrimary:"Acheter maintenant",
     financeSecondary:"Voir l'intérieur",
     financeLogin:"J'ai déjà accès · Connexion",
-    financeFeaturesTitle:"FINANCE · CONTRÔLE COMPLET DE VOTRE QUOTIDIEN",
+    financeCycle:"Offre mensuelle",sentinelBuy:"Acheter maintenant",financeFeaturesTitle:"FINANCE · CONTRÔLE COMPLET DE VOTRE QUOTIDIEN",
     storeTag:"DEVINX BOUTIQUE · VOTRE ACTIVITÉ EN UN SEUL ENDROIT",
     storeLine1:"Une belle boutique pour le client.",
     storeLine2:"Une activité organisée pour vous.",
@@ -165,10 +166,10 @@ const COPY={
     financeLine1:"Dein Geld organisiert.",
     financeLine2:"Dein Alltag unter Kontrolle.",
     financeText:"Von Gehalt bis Geschäftseinnahmen: Geld, Ziele, Rechnungen und Arbeit mit klarem Überblick verwalten.",
-    financePrimary:"Kostenlos testen",
+    financePrimary:"Jetzt kaufen",
     financeSecondary:"Innen ansehen",
     financeLogin:"Ich habe Zugang · Anmelden",
-    financeFeaturesTitle:"FINANZEN · VOLLE KONTROLLE ÜBER DEINEN ALLTAG",
+    financeCycle:"Monatlicher Tarif",sentinelBuy:"Jetzt kaufen",financeFeaturesTitle:"FINANZEN · VOLLE KONTROLLE ÜBER DEINEN ALLTAG",
     storeTag:"DEVINX SHOP · DEIN GESCHÄFT AN EINEM ORT",
     storeLine1:"Ein schöner Shop für Kunden.",
     storeLine2:"Ein organisiertes Geschäft für dich.",
@@ -201,10 +202,10 @@ const COPY={
     financeLine1:"أموالك منظمة.",
     financeLine2:"روتينك تحت السيطرة.",
     financeText:"من الراتب إلى دخل العمل، تابع أموالك وأهدافك وفواتيرك وعملك برؤية واضحة لما يدخل ويخرج وما هو قادم.",
-    financePrimary:"تجربة مجانية",
+    financePrimary:"اشترِ الآن",
     financeSecondary:"شاهد من الداخل",
     financeLogin:"لدي وصول · دخول",
-    financeFeaturesTitle:"المالي · تحكم كامل في روتينك",
+    financeCycle:"خطة شهرية",sentinelBuy:"اشترِ الآن",financeFeaturesTitle:"المالي · تحكم كامل في روتينك",
     storeTag:"DEVINX المتجر · نشاطك في مكان واحد",
     storeLine1:"متجر جميل لعميلك.",
     storeLine2:"ونشاط منظم لك.",
@@ -369,6 +370,10 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
   const showStore=locale==="pt-BR";
   const intl=locale!=="pt-BR";
   const financeFeatures=FINANCE_FEATURES[activeLocale];
+  const financePrice=pricingForLocale(DEVINX_SUBSCRIPTION_PLANS[0],locale);
+  const financeCheckout=financePrice.checkoutUrl;
+  const financePriceLabel=new Intl.NumberFormat(locale,{style:"currency",currency:financePrice.currencyCode}).format(financePrice.amountMinor/100);
+  const sentinelCheckout=`https://trading.devinx.com.br/api/checkout?market=${intl?"INTL":"BR"}`;
 
   const jumpTo=(id:string)=>(event:MouseEvent<HTMLAnchorElement>)=>{
     event.preventDefault();
@@ -413,8 +418,8 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
             <span>{c.sentinelCycle}</span>
           </div>
           <div className={styles.actions}>
-            <a className={styles.primary} href="/sentinel">{c.sentinelPrimary} <span aria-hidden="true">↗</span></a>
-            <a className={styles.secondary} href="/sentinel?next=login">{c.sentinelLogin}</a>
+            <a className={styles.primary} href={sentinelCheckout} rel="noopener noreferrer">{c.sentinelBuy} <span aria-hidden="true">↗</span></a>
+            <a className={styles.secondary} href="/sentinel">{c.sentinelPrimary}</a>
           </div>
         </div>
         <aside className={styles.sentinelPreview} aria-label={c.sentinelPreview}>
@@ -459,8 +464,12 @@ export function HomeHub({financeVisible:initialFinanceVisible=true}:{financeVisi
           <span className={styles.tag}><i></i>{c.financeTag}</span>
           <h2>{c.financeLine1}<br/><em>{c.financeLine2}</em></h2>
           <p>{c.financeText}</p>
+          <div className={styles.financeOffer}>
+            <span>{c.financeCycle}</span>
+            <strong>{financePriceLabel}</strong>
+          </div>
           <div className={styles.actions}>
-            <a className={`${styles.primary} ${styles.trialPrimary}`} href="/entrar?trial=1">{c.financePrimary}</a>
+            <a className={`${styles.primary} ${styles.trialPrimary}`} href={financeCheckout} rel="noopener noreferrer">{c.financePrimary} ↗</a>
             <a className={styles.secondary} href="/financeiro">{c.financeSecondary}</a>
           </div>
           <a className={styles.accessButton} href="/entrar">{c.financeLogin} →</a>
