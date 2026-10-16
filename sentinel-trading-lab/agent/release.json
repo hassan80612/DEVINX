@@ -1,6 +1,6 @@
 {
-  "version": "13.9.29",
-  "build": "13.9.29-fast-feed-context-adaptive-expiry-direction",
+  "version": "13.9.30",
+  "build": "13.9.30-shared-install-completion-stable-package",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

@@ -21,6 +21,10 @@ test('installer succeeds and terminates; Worker and tray are started independent
  const success=src.indexOf('Write-Host "`nAgent V$expectedVersion pronto."');
  const exit=src.indexOf('  exit 0',success);
  assert.ok(manager>=0&&verify>manager&&tray>verify&&success>tray&&exit>success);
+ const open=src.indexOf('if ($OpenSiteAfterInstall',success);
+ assert.ok(open>success&&open<exit,'navigation follows verified installation success');
+ assert.match(src.slice(open,exit),/Write-Warning \("Agent instalado/);
+ assert.doesNotMatch(src.slice(open,exit),/throw|Fail\(/,'browser failure must not report an installed Agent as uninstalled');
  assert.doesNotMatch(src.slice(success,exit),/Read-Host|Wait-Process|WaitForExit|ReadKey/);
  assert.match(src,/Start-Transcript -Path/);
  assert.match(src,/Stop-Transcript \| Out-Null/);

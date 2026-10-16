@@ -133,7 +133,9 @@ test('real runtime keeps analyzing through 30s expiry and reissues on first new 
 test('Windows installer and updater use the existing canonical product domain',()=>{
  const root='sentinel-trading-lab/';
  const go=readFileSync(root+'agent-launcher.go','utf8');
- assert.ok(go.includes('https://trading.devinx.com.br/console?tab=Broker%20Connection'));
+ assert.ok(go.includes('"-OpenSiteAfterInstall"'));
+ const completion=readFileSync(root+'public/downloads/install-agent-v88.ps1','utf8');
+ assert.ok(completion.includes("$consoleUrl = $site + '/console?tab=Broker%20Connection'"));
  for(const path of ['public/downloads/install-agent-v88.ps1','agent/worker/install-agent-update.ps1',
   'agent/worker/auto-update.ps1','agent/worker/tray-host.ps1']){
   assert.match(readFileSync(root+path,'utf8'),/\$site\s*=\s*'https:\/\/trading\.devinx\.com\.br'/);

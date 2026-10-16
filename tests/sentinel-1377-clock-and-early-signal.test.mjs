@@ -43,14 +43,18 @@ test('clock chooser never sends settings action or gets overwritten by delayed r
  assert.ok(source.includes("shown=pad(Math.floor(left/60))+':'+pad(left%60)"),
   'the broker-synchronized clock displays the remaining actual expiration');
 });
-test('single browser opening belongs to Go launcher; PowerShell never opens another page',()=>{
+test('interactive launchers delegate one post-install page opening to their shared installer',()=>{
  const go=read('agent-launcher.go');
  const install=read('public/downloads/install-agent-v88.ps1');
  const updater=read('agent/worker/install-agent-update.ps1');
  assert.equal(install,updater);
- const matches=[...go.matchAll(/_ = exec\.Command\("rundll32\.exe", "url\.dll,FileProtocolHandler", "([^"]+)"\)\.Start\(\)/g)];
- assert.equal(matches.length,1);
- assert.equal(matches[0][1],'https://trading.devinx.com.br/console?tab=Broker%20Connection');
+ assert.match(go,/"-OpenSiteAfterInstall"/);
+ assert.doesNotMatch(go,/rundll32\.exe/);
+ assert.match(install,/\$OpenSiteAfterInstall -and \$env:SENTINEL_INSTALL_TEST -ne '1' -and \$env:CI -ne 'true'/);
+ assert.equal((install.match(/Start-Process -FilePath \$consoleUrl/g)||[]).length,1);
+ assert.match(install,/\$consoleUrl = \$site \+ '\/console\?tab=Broker%20Connection'/);
+ const autoUpdate=read('agent/worker/auto-update.ps1');
+ assert.doesNotMatch(autoUpdate,/-OpenSiteAfterInstall/);
  assert.doesNotMatch(install,/Start-Process\s+['"]https:\/\/sentinel-trading-lab\.vercel\.app/);
  assert.doesNotMatch(updater,/Start-Process\s+['"]https:\/\/sentinel-trading-lab\.vercel\.app/);
 });

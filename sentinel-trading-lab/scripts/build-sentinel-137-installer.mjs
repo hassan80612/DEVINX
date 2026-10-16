@@ -3,7 +3,7 @@
 // the compiler or payload cannot be verified: never publish a false version.
 import {execFileSync,spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {readFileSync,writeFileSync,mkdirSync,rmSync,copyFileSync,statSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,rmSync,copyFileSync,statSync,readdirSync,lstatSync,chmodSync,utimesSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join,resolve} from 'node:path';
 
@@ -46,7 +46,27 @@ const zip=join(dl,'agent_payload_v88.zip');
 rmSync(zip,{force:true});
 // ZIP root must contain release.json, package.json, worker/ and source files
 // directly. Do not package installed sessions, secrets, logs or node_modules.
-tool('zip',['-qr',zip,'.','-x','node_modules/*','worker/data/*','*.log','*.enc','*.secret','.env*'],{cwd:agent});
+// Stable ZIP ordering, permissions and timestamps preserve installer identity
+// when only the website changes. Keep actual source bytes, never installed data.
+const payloadStage=join(root,'.sentinel-payload-stage'),payloadFiles=[];
+const archiveTime=new Date('2026-01-01T00:00:00Z');
+rmSync(payloadStage,{recursive:true,force:true});mkdirSync(payloadStage,{recursive:true});
+function copyPayload(directory,relative=''){
+ for(const name of readdirSync(directory).sort()){
+  const rel=relative?relative+'/'+name:name;
+  if(name==='node_modules'||rel==='worker/data'||name.startsWith('.env')||/\.(?:log|enc|secret)$/.test(name))continue;
+  const source=join(directory,name),info=lstatSync(source);
+  if(info.isDirectory())copyPayload(source,rel);
+  else if(info.isFile()){
+   const target=join(payloadStage,rel);mkdirSync(dirname(target),{recursive:true});
+   copyFileSync(source,target);chmodSync(target,0o644);utimesSync(target,archiveTime,archiveTime);payloadFiles.push(rel);
+  }
+ }
+}
+try{
+ copyPayload(agent);
+ tool('zip',['-X','-q',zip,...payloadFiles],{cwd:payloadStage,env:{...process.env,TZ:'UTC'}});
+}finally{rmSync(payloadStage,{recursive:true,force:true});}
 const manifest=JSON.parse(readFileSync(join(agent,'release.json'),'utf8'));
 if(manifest.version!==release.version||manifest.build!==release.build||statSync(zip).size<50000)throw Error('invalid_agent_payload');
 const sha=createHash('sha256').update(readFileSync(zip)).digest('hex');
@@ -74,7 +94,7 @@ try{
  copyFileSync(zip,join(altDir,'agent_payload_v88.zip'));
  const cmd=[
   '@echo off','setlocal','cd /d "%~dp0"',
-  'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-agent-v88.ps1" -LocalPayload "%~dp0agent_payload_v88.zip" -ExpectedVersion "'+release.version+'" -ExpectedBuild "'+release.build+'"',
+  'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install-agent-v88.ps1" -LocalPayload "%~dp0agent_payload_v88.zip" -ExpectedVersion "'+release.version+'" -ExpectedBuild "'+release.build+'" -OpenSiteAfterInstall',
   'if errorlevel 1 (',
   '  echo O instalador nao concluiu. Consulte %LOCALAPPDATA%\\SentinelTradingLab\\install.log',
   '  pause',
@@ -92,7 +112,9 @@ try{
   'Nao e necessario executar o EXE bloqueado pelo navegador.',''
  ].join('\r\n'));
  rmSync(alternative,{force:true});
- tool('zip',['-q',alternative,'Instalar-Sentinel.cmd','install-agent-v88.ps1','agent_payload_v88.zip','LEIA-ME.txt'],{cwd:altDir});
+ const alternativeFiles=['Instalar-Sentinel.cmd','LEIA-ME.txt','agent_payload_v88.zip','install-agent-v88.ps1'];
+ for(const name of alternativeFiles){const file=join(altDir,name);chmodSync(file,0o644);utimesSync(file,archiveTime,archiveTime);}
+ tool('zip',['-X','-q',alternative,...alternativeFiles],{cwd:altDir,env:{...process.env,TZ:'UTC'}});
  if(statSync(alternative).size<50000)throw Error('invalid_alternative_installer_archive');
 }finally{rmSync(altDir,{recursive:true,force:true});}
 console.log('Sentinel 13.7 installer ready: '+statSync(exe).size+' bytes, ZIP SHA256 '+sha);

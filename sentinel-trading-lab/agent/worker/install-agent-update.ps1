@@ -2,7 +2,8 @@ param(
   [string]$LocalPayload='',
   [string]$ExpectedVersion='',
   [string]$ExpectedBuild='',
-  [switch]$VerifyPayloadOnly
+  [switch]$VerifyPayloadOnly,
+  [switch]$OpenSiteAfterInstall
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -236,9 +237,19 @@ try {
     Write-Host 'O icone S fica na bandeja ao lado do relogio.' -ForegroundColor Green
     Write-Host 'Botao direito no icone: Abrir Sentinel, Ligar, Desligar, Reiniciar ou Desinstalar completamente.' -ForegroundColor Cyan
     Write-Host 'Se o Windows esconder o icone, clique na setinha ^ ao lado do relogio.' -ForegroundColor Yellow
-    # The enclosing Go launcher owns the ONE post-install browser tab.
-    # Silent auto-updates must not launch or duplicate browser pages.
     Start-Sleep -Seconds 2
+  }
+  # Both interactive launchers request this ONE shared completion action.
+  # Silent auto-updates omit the switch; verification and CI never navigate.
+  if ($OpenSiteAfterInstall -and $env:SENTINEL_INSTALL_TEST -ne '1' -and $env:CI -ne 'true') {
+    $consoleUrl = $site + '/console?tab=Broker%20Connection'
+    try {
+      Start-Process -FilePath $consoleUrl -ErrorAction Stop | Out-Null
+      Write-Host 'Sentinel aberto no navegador padrao.' -ForegroundColor Green
+    } catch {
+      Write-Warning ("Agent instalado. Nao foi possivel abrir o navegador: " + $_.Exception.Message)
+      Write-Host ("Abra o Sentinel em: " + $consoleUrl) -ForegroundColor Yellow
+    }
   }
   exit 0
 } catch { Fail $_.Exception.Message } finally {

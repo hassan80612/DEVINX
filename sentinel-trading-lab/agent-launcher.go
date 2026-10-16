@@ -71,6 +71,7 @@ func main() {
         "-LocalPayload", payloadPath,
         "-ExpectedVersion", expected.Version,
         "-ExpectedBuild", expected.Build,
+        "-OpenSiteAfterInstall",
     }
     // CI validates the actual embedded ZIP + script on Windows without
     // stopping processes or altering the installed Agent.
@@ -94,13 +95,8 @@ func main() {
         fail("A instalação do Sentinel Agent não foi concluída. Detalhes em " + logPath, err)
     }
 
-    // Exactly ONE navigation after success; the PowerShell installer and
-    // tray never launch another page automatically. Users choose their
-    // broker manually in Sentinel instead of auto-starting IQ Option.
-    if os.Getenv("SENTINEL_INSTALL_TEST") != "1" && os.Getenv("CI") != "true" {
-        _ = exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", "https://trading.devinx.com.br/console?tab=Broker%20Connection").Start()
-    }
-
+    // The shared installer opens the site once after verified success.
+    // ZIP and EXE use that same path; background updates omit the switch.
     _ = os.Remove(installerPath)
     _ = os.Remove(payloadPath)
     _ = os.Remove(tmpRoot)
