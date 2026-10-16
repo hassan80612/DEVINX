@@ -1,0 +1,90 @@
+{
+  "source": "same user video with clock-origin perturbation, not independent observations",
+  "results": [
+    {
+      "shiftMs": -1000,
+      "signals": 15,
+      "wins": 8,
+      "losses": 6,
+      "ties": 0,
+      "unknown": 1,
+      "maxLossStreak": 2,
+      "medianExtraWaitMs": 3000,
+      "maxExtraWaitMs": 23500,
+      "latencyMs": {
+        "p50": 0.464478999999983,
+        "p95": 0.7364830000000211,
+        "max": 3.622314999999986
+      },
+      "rate": 57.142857142857146
+    },
+    {
+      "shiftMs": -500,
+      "signals": 15,
+      "wins": 7,
+      "losses": 7,
+      "ties": 0,
+      "unknown": 1,
+      "maxLossStreak": 2,
+      "medianExtraWaitMs": 2000,
+      "maxExtraWaitMs": 33000,
+      "latencyMs": {
+        "p50": 0.3632590000000846,
+        "p95": 0.5195210000000543,
+        "max": 3.678068000000053
+      },
+      "rate": 50
+    },
+    {
+      "shiftMs": 0,
+      "signals": 15,
+      "wins": 9,
+      "losses": 5,
+      "ties": 0,
+      "unknown": 1,
+      "maxLossStreak": 2,
+      "medianExtraWaitMs": 1000,
+      "maxExtraWaitMs": 33500,
+      "latencyMs": {
+        "p50": 0.23883500000010827,
+        "p95": 0.39045999999984815,
+        "max": 2.5502950000000055
+      },
+      "rate": 64.28571428571429
+    },
+    {
+      "shiftMs": 500,
+      "signals": 14,
+      "wins": 8,
+      "losses": 5,
+      "ties": 0,
+      "unknown": 1,
+      "maxLossStreak": 2,
+      "medianExtraWaitMs": 500,
+      "maxExtraWaitMs": 45500,
+      "latencyMs": {
+        "p50": 0.22661699999980556,
+        "p95": 0.518980000000056,
+        "max": 6.604355999999825
+      },
+      "rate": 61.53846153846154
+    },
+    {
+      "shiftMs": 1000,
+      "signals": 14,
+      "wins": 8,
+      "losses": 5,
+      "ties": 0,
+      "unknown": 1,
+      "maxLossStreak": 2,
+      "medianExtraWaitMs": 500,
+      "maxExtraWaitMs": 45500,
+      "latencyMs": {
+        "p50": 0.1911330000000362,
+        "p95": 0.3889470000001438,
+        "max": 1.9525879999998779
+      },
+      "rate": 61.53846153846154
+    }
+  ]
+}

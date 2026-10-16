@@ -1,0 +1,916 @@
+{
+  "sentinel-user-video-20261016.json": {
+    "full": {
+      "published": {
+        "signals": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 24000,
+        "latencyMs": {
+          "p50": 0.18073799999999096,
+          "p95": 0.405350999999996,
+          "max": 1.2343510000000038
+        },
+        "entries": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.84335,
+            "exit": 0.84318,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "reason": "closed-range-extreme-reversal-confirmed",
+            "entry": 0.8433,
+            "exit": 0.84325,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84325,
+            "exit": 0.84332,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84328,
+            "exit": 0.8433,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84322,
+            "exit": 0.84318,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.8432,
+            "exit": 0.8431,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.8431,
+            "exit": 0.84286,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84286,
+            "exit": 0.84295,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84295,
+            "exit": 0.84293,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84298,
+            "exit": 0.84308,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84308,
+            "exit": 0.84315,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84315,
+            "exit": 0.84276,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.84276,
+            "exit": 0.84278,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84284,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      },
+      "rolling_clock": {
+        "signals": 14,
+        "wins": 6,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 4,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 30000,
+        "latencyMs": {
+          "p50": 0.18482499999998936,
+          "p95": 0.41930200000001605,
+          "max": 0.925422999999995
+        },
+        "entries": [
+          {
+            "at": 1792169454000,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.8432,
+            "exit": 0.84317,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "reason": "closed-range-extreme-reversal-confirmed",
+            "entry": 0.8433,
+            "exit": 0.84325,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84325,
+            "exit": 0.84332,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84328,
+            "exit": 0.8433,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84322,
+            "exit": 0.84318,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169643000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84318,
+            "exit": 0.84311,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169673000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84311,
+            "exit": 0.84291,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169703000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84291,
+            "exit": 0.84298,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169733000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84298,
+            "exit": 0.84291,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169763000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84291,
+            "exit": 0.843,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169798000,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.84315,
+            "exit": 0.84313,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169828000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84313,
+            "exit": 0.84279,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169858000,
+            "side": "PUT",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.84279,
+            "exit": 0.84286,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169898000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84283,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 46.15384615384615
+      }
+    },
+    "matched": {
+      "calls": 11,
+      "wins": 6,
+      "losses": 4,
+      "ties": 0,
+      "unknown": 1,
+      "abstained": 3,
+      "decisions": [
+        {
+          "at": 1792169460000,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169514000,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169544000,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169575000,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169609000,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169653000,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169683000,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169713000,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169743000,
+          "side": null,
+          "ready": false,
+          "outcome": "abstained"
+        },
+        {
+          "at": 1792169774000,
+          "side": null,
+          "ready": false,
+          "outcome": "abstained"
+        },
+        {
+          "at": 1792169804000,
+          "side": null,
+          "ready": false,
+          "outcome": "abstained"
+        },
+        {
+          "at": 1792169834000,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169864000,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169915000,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "unknown"
+        }
+      ],
+      "rate": 60
+    },
+    "sensitivity": [
+      {
+        "shiftMs": -1000,
+        "signals": 14,
+        "wins": 6,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 4,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 30000,
+        "latencyMs": {
+          "p50": 0.14669800000001487,
+          "p95": 0.30542299999996203,
+          "max": 0.8152900000000045
+        },
+        "rate": 46.15384615384615
+      },
+      {
+        "shiftMs": -500,
+        "signals": 14,
+        "wins": 6,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 4,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 30000,
+        "latencyMs": {
+          "p50": 0.14292199999999866,
+          "p95": 0.2665659999999548,
+          "max": 0.9232299999999896
+        },
+        "rate": 46.15384615384615
+      },
+      {
+        "shiftMs": 0,
+        "signals": 14,
+        "wins": 6,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 4,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 30000,
+        "latencyMs": {
+          "p50": 0.14158999999995103,
+          "p95": 0.2568710000000465,
+          "max": 0.41063899999994646
+        },
+        "rate": 46.15384615384615
+      },
+      {
+        "shiftMs": 500,
+        "signals": 14,
+        "wins": 6,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 4,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 30000,
+        "latencyMs": {
+          "p50": 0.12823100000002796,
+          "p95": 0.22712699999999586,
+          "max": 0.6393489999999247
+        },
+        "rate": 46.15384615384615
+      },
+      {
+        "shiftMs": 1000,
+        "signals": 14,
+        "wins": 6,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 4,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 30000,
+        "latencyMs": {
+          "p50": 0.1087320000000318,
+          "p95": 0.229129999999941,
+          "max": 0.7462080000000242
+        },
+        "rate": 46.15384615384615
+      }
+    ]
+  },
+  "sentinel-user-video-broker-6dp-20261016.json": {
+    "full": {
+      "published": {
+        "signals": 15,
+        "wins": 9,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "medianExtraWaitMs": 1000,
+        "maxExtraWaitMs": 33500,
+        "latencyMs": {
+          "p50": 0.2597760000001017,
+          "p95": 0.4741840000000366,
+          "max": 0.9993130000000292
+        },
+        "entries": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.842995,
+            "exit": 0.843065,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.843185,
+            "exit": 0.843175,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "reason": "closed-range-extreme-reversal-confirmed",
+            "entry": 0.843305,
+            "exit": 0.843255,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843255,
+            "exit": 0.843315,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843285,
+            "exit": 0.843305,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843325,
+            "exit": 0.843165,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843205,
+            "exit": 0.843095,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843095,
+            "exit": 0.842865,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842865,
+            "exit": 0.842945,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842945,
+            "exit": 0.842935,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842985,
+            "exit": 0.843085,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843105,
+            "exit": 0.843155,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843155,
+            "exit": 0.842755,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.842755,
+            "exit": 0.842815,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842895,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 64.28571428571429
+      },
+      "rolling_clock": {
+        "signals": 15,
+        "wins": 7,
+        "losses": 6,
+        "ties": 1,
+        "unknown": 1,
+        "maxLossStreak": 5,
+        "medianExtraWaitMs": 2500,
+        "maxExtraWaitMs": 30500,
+        "latencyMs": {
+          "p50": 0.20573500000000422,
+          "p95": 0.3688570000000482,
+          "max": 1.720213000000058
+        },
+        "entries": [
+          {
+            "at": 1792169407500,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.842995,
+            "exit": 0.843035,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169445000,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.843125,
+            "exit": 0.843175,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169505500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843245,
+            "exit": 0.843245,
+            "outcome": "ties"
+          },
+          {
+            "at": 1792169535500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843245,
+            "exit": 0.843375,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169565500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843375,
+            "exit": 0.843355,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169598000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843335,
+            "exit": 0.843195,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169631500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843175,
+            "exit": 0.843185,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169665500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843155,
+            "exit": 0.843035,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169695500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843035,
+            "exit": 0.842685,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169725500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842685,
+            "exit": 0.842925,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169755500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842925,
+            "exit": 0.843035,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169797500,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.843145,
+            "exit": 0.843135,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169827500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843135,
+            "exit": 0.842805,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169857500,
+            "side": "PUT",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.842805,
+            "exit": 0.842855,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842895,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      }
+    },
+    "matched": {
+      "calls": 13,
+      "wins": 7,
+      "losses": 5,
+      "ties": 0,
+      "unknown": 1,
+      "abstained": 2,
+      "decisions": [
+        {
+          "at": 1792169410500,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169450000,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169513500,
+          "side": null,
+          "ready": false,
+          "outcome": "abstained"
+        },
+        {
+          "at": 1792169543500,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169574500,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169605500,
+          "side": null,
+          "ready": false,
+          "outcome": "abstained"
+        },
+        {
+          "at": 1792169652500,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169682500,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169712500,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169743000,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169773500,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169804500,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "wins"
+        },
+        {
+          "at": 1792169834500,
+          "side": "CALL",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169864500,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "losses"
+        },
+        {
+          "at": 1792169915500,
+          "side": "PUT",
+          "ready": true,
+          "outcome": "unknown"
+        }
+      ],
+      "rate": 58.333333333333336
+    },
+    "sensitivity": [
+      {
+        "shiftMs": -1000,
+        "signals": 15,
+        "wins": 7,
+        "losses": 6,
+        "ties": 1,
+        "unknown": 1,
+        "maxLossStreak": 5,
+        "medianExtraWaitMs": 2500,
+        "maxExtraWaitMs": 30500,
+        "latencyMs": {
+          "p50": 0.19563000000016473,
+          "p95": 0.326073999999835,
+          "max": 2.4392199999999775
+        },
+        "rate": 53.84615384615385
+      },
+      {
+        "shiftMs": -500,
+        "signals": 15,
+        "wins": 7,
+        "losses": 6,
+        "ties": 1,
+        "unknown": 1,
+        "maxLossStreak": 5,
+        "medianExtraWaitMs": 2500,
+        "maxExtraWaitMs": 30500,
+        "latencyMs": {
+          "p50": 0.1870880000001307,
+          "p95": 0.2934660000000804,
+          "max": 0.8449439999999413
+        },
+        "rate": 53.84615384615385
+      },
+      {
+        "shiftMs": 0,
+        "signals": 15,
+        "wins": 7,
+        "losses": 6,
+        "ties": 1,
+        "unknown": 1,
+        "maxLossStreak": 5,
+        "medianExtraWaitMs": 2500,
+        "maxExtraWaitMs": 30500,
+        "latencyMs": {
+          "p50": 0.19220500000005813,
+          "p95": 0.30061700000010205,
+          "max": 1.1464210000001458
+        },
+        "rate": 53.84615384615385
+      },
+      {
+        "shiftMs": 500,
+        "signals": 15,
+        "wins": 7,
+        "losses": 6,
+        "ties": 1,
+        "unknown": 1,
+        "maxLossStreak": 5,
+        "medianExtraWaitMs": 2500,
+        "maxExtraWaitMs": 30500,
+        "latencyMs": {
+          "p50": 0.19096400000012181,
+          "p95": 0.2822989999999663,
+          "max": 1.0409950000000663
+        },
+        "rate": 53.84615384615385
+      },
+      {
+        "shiftMs": 1000,
+        "signals": 15,
+        "wins": 7,
+        "losses": 6,
+        "ties": 1,
+        "unknown": 1,
+        "maxLossStreak": 5,
+        "medianExtraWaitMs": 2500,
+        "maxExtraWaitMs": 30500,
+        "latencyMs": {
+          "p50": 0.19045299999970666,
+          "p95": 0.2897899999998117,
+          "max": 3.4053539999999884
+        },
+        "rate": 53.84615384615385
+      }
+    ]
+  }
+}

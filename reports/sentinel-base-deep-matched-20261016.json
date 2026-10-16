@@ -1,0 +1,2706 @@
+{
+  "sentinel-user-video-20261016.json": {
+    "ownCycles": {
+      "published": {
+        "signals": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 24000,
+        "latencyMs": {
+          "p50": 0.15568099999995866,
+          "p95": 0.3795330000000092,
+          "max": 1.1135330000000039
+        },
+        "entries": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.84335,
+            "exit": 0.84318,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "reason": "closed-range-extreme-reversal-confirmed",
+            "entry": 0.8433,
+            "exit": 0.84325,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84325,
+            "exit": 0.84332,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84328,
+            "exit": 0.8433,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84322,
+            "exit": 0.84318,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.8432,
+            "exit": 0.8431,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.8431,
+            "exit": 0.84286,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84286,
+            "exit": 0.84295,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84295,
+            "exit": 0.84293,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84298,
+            "exit": 0.84308,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84308,
+            "exit": 0.84315,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84315,
+            "exit": 0.84276,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.84276,
+            "exit": 0.84278,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.84284,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      },
+      "published_entry_flow_direction": {
+        "signals": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "medianExtraWaitMs": 0,
+        "maxExtraWaitMs": 24000,
+        "latencyMs": {
+          "p50": 0.16078899999999408,
+          "p95": 0.36154600000000414,
+          "max": 5.052883999999992
+        },
+        "entries": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84335,
+            "exit": 0.84318,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.8433,
+            "exit": 0.84325,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84325,
+            "exit": 0.84332,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84328,
+            "exit": 0.8433,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84322,
+            "exit": 0.84318,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.8432,
+            "exit": 0.8431,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.8431,
+            "exit": 0.84286,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84286,
+            "exit": 0.84295,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84295,
+            "exit": 0.84293,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84298,
+            "exit": 0.84308,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84308,
+            "exit": 0.84315,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84315,
+            "exit": 0.84276,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84276,
+            "exit": 0.84278,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.84284,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      }
+    },
+    "matched": {
+      "original": {
+        "calls": 12,
+        "wins": 7,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 0,
+        "abstained": 2,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169915000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          }
+        ],
+        "rate": 58.333333333333336
+      },
+      "published": {
+        "calls": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      },
+      "contextual_neighbours": {
+        "calls": 9,
+        "wins": 3,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 5,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169575000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169834000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 37.5
+      },
+      "contextual_ridge": {
+        "calls": 10,
+        "wins": 4,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 0,
+        "abstained": 4,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          }
+        ],
+        "rate": 40
+      },
+      "settlement_exact": {
+        "calls": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      },
+      "independent_outcomes": {
+        "calls": 12,
+        "wins": 5,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 2,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 45.45454545454545
+      },
+      "recency_weighted": {
+        "calls": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      },
+      "balanced_recent": {
+        "calls": 12,
+        "wins": 5,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 2,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169653000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 45.45454545454545
+      },
+      "horizon_momentum": {
+        "calls": 14,
+        "wins": 5,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169544000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169653000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169774000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 38.46153846153846
+      },
+      "fast_slow_flow": {
+        "calls": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      },
+      "published_entry_flow_direction": {
+        "calls": 14,
+        "wins": 7,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169514000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 53.84615384615385
+      }
+    }
+  },
+  "sentinel-user-video-broker-6dp-20261016.json": {
+    "ownCycles": {
+      "published": {
+        "signals": 15,
+        "wins": 9,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "medianExtraWaitMs": 1000,
+        "maxExtraWaitMs": 33500,
+        "latencyMs": {
+          "p50": 0.2321750000000975,
+          "p95": 0.45045899999996664,
+          "max": 2.8705999999999676
+        },
+        "entries": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.842995,
+            "exit": 0.843065,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.843185,
+            "exit": 0.843175,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "reason": "closed-range-extreme-reversal-confirmed",
+            "entry": 0.843305,
+            "exit": 0.843255,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843255,
+            "exit": 0.843315,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843285,
+            "exit": 0.843305,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843325,
+            "exit": 0.843165,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843205,
+            "exit": 0.843095,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843095,
+            "exit": 0.842865,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842865,
+            "exit": 0.842945,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842945,
+            "exit": 0.842935,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842985,
+            "exit": 0.843085,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843105,
+            "exit": 0.843155,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.843155,
+            "exit": 0.842755,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "reason": "closed-structure-and-live-impulse",
+            "entry": 0.842755,
+            "exit": 0.842815,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "reason": "causal-expiry-analogue",
+            "entry": 0.842895,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 64.28571428571429
+      },
+      "published_entry_flow_direction": {
+        "signals": 15,
+        "wins": 7,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "maxLossStreak": 2,
+        "medianExtraWaitMs": 1000,
+        "maxExtraWaitMs": 33500,
+        "latencyMs": {
+          "p50": 0.24661600000001727,
+          "p95": 0.47562599999992017,
+          "max": 1.4592150000000856
+        },
+        "entries": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.842995,
+            "exit": 0.843065,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843185,
+            "exit": 0.843175,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843305,
+            "exit": 0.843255,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843255,
+            "exit": 0.843315,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843285,
+            "exit": 0.843305,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843325,
+            "exit": 0.843165,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843205,
+            "exit": 0.843095,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843095,
+            "exit": 0.842865,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.842865,
+            "exit": 0.842945,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.842945,
+            "exit": 0.842935,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.842985,
+            "exit": 0.843085,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843105,
+            "exit": 0.843155,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.843155,
+            "exit": 0.842755,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.842755,
+            "exit": 0.842815,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "reason": "research-published-entry-current-flow",
+            "entry": 0.842895,
+            "exit": null,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 50
+      }
+    },
+    "matched": {
+      "original": {
+        "calls": 12,
+        "wins": 8,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 0,
+        "abstained": 3,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169915500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          }
+        ],
+        "rate": 66.66666666666667
+      },
+      "published": {
+        "calls": 15,
+        "wins": 9,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 64.28571428571429
+      },
+      "contextual_neighbours": {
+        "calls": 13,
+        "wins": 5,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 2,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169652500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169682500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169834500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 41.666666666666664
+      },
+      "contextual_ridge": {
+        "calls": 10,
+        "wins": 6,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 0,
+        "abstained": 5,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169804500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169834500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          }
+        ],
+        "rate": 60
+      },
+      "settlement_exact": {
+        "calls": 15,
+        "wins": 9,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 64.28571428571429
+      },
+      "independent_outcomes": {
+        "calls": 14,
+        "wins": 8,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 1,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 61.53846153846154
+      },
+      "recency_weighted": {
+        "calls": 15,
+        "wins": 9,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 64.28571428571429
+      },
+      "balanced_recent": {
+        "calls": 14,
+        "wins": 8,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 1,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169652500,
+            "side": null,
+            "ready": false,
+            "outcome": "abstained"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 61.53846153846154
+      },
+      "horizon_momentum": {
+        "calls": 15,
+        "wins": 5,
+        "losses": 9,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169543500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169652500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169773500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 35.714285714285715
+      },
+      "fast_slow_flow": {
+        "calls": 15,
+        "wins": 7,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 50
+      },
+      "published_entry_flow_direction": {
+        "calls": 15,
+        "wins": 7,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 1,
+        "abstained": 0,
+        "decisions": [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169450000,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169605500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "wins"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169864500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "losses"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "ready": true,
+            "outcome": "unknown"
+          }
+        ],
+        "rate": 50
+      }
+    }
+  }
+}

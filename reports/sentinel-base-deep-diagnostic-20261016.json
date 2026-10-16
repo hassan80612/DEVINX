@@ -1,0 +1,911 @@
+{
+  "source": "generated diagnostic paths, NOT measured market performance",
+  "seeds": [
+    811,
+    823,
+    827,
+    839,
+    871,
+    883,
+    907,
+    919
+  ],
+  "groups": {
+    "up": {
+      "original": {
+        "signals": 144,
+        "wins": 135,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.829812999999831,
+        "rate": 99.26470588235294
+      },
+      "published": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 6.2490530000000035,
+        "rate": 98.52941176470588
+      },
+      "rolling_clock": {
+        "signals": 144,
+        "wins": 135,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.5959060000000136,
+        "rate": 99.26470588235294
+      },
+      "relative_learning": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.286851999999726,
+        "rate": 98.52941176470588
+      },
+      "rolling_structure": {
+        "signals": 144,
+        "wins": 135,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 6.6154319999996005,
+        "rate": 99.26470588235294
+      },
+      "contextual_neighbours": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.0845570000001317,
+        "rate": 98.52941176470588
+      },
+      "contextual_ridge": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.1010369999999057,
+        "rate": 98.52941176470588
+      },
+      "settlement_exact": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.161154999999781,
+        "rate": 98.52941176470588
+      },
+      "independent_outcomes": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.4007510000001275,
+        "rate": 98.52941176470588
+      },
+      "recency_weighted": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.5949940000000424,
+        "rate": 98.52941176470588
+      },
+      "balanced_recent": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.984719000000041,
+        "rate": 98.52941176470588
+      },
+      "horizon_momentum": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.5262050000001182,
+        "rate": 100
+      },
+      "fast_slow_flow": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.241080000000693,
+        "rate": 100
+      },
+      "published_entry_flow_direction": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 18.32033600000068,
+        "rate": 98.52941176470588
+      }
+    },
+    "down": {
+      "original": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 8.254007999999885,
+        "rate": 100
+      },
+      "published": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.5438610000001063,
+        "rate": 100
+      },
+      "rolling_clock": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.8465180000002874,
+        "rate": 98.52941176470588
+      },
+      "relative_learning": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.4739509999999427,
+        "rate": 100
+      },
+      "rolling_structure": {
+        "signals": 144,
+        "wins": 134,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.073522000000594,
+        "rate": 98.52941176470588
+      },
+      "contextual_neighbours": {
+        "signals": 144,
+        "wins": 135,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.726545999999871,
+        "rate": 99.26470588235294
+      },
+      "contextual_ridge": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.581905999999435,
+        "rate": 100
+      },
+      "settlement_exact": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.7291829999994661,
+        "rate": 100
+      },
+      "independent_outcomes": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.8715629999987868,
+        "rate": 100
+      },
+      "recency_weighted": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.823656000000483,
+        "rate": 100
+      },
+      "balanced_recent": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 5.1889699999992445,
+        "rate": 100
+      },
+      "horizon_momentum": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.28412199999911536,
+        "rate": 100
+      },
+      "fast_slow_flow": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.8030820000003587,
+        "rate": 100
+      },
+      "published_entry_flow_direction": {
+        "signals": 144,
+        "wins": 136,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.1904299999987416,
+        "rate": 100
+      }
+    },
+    "turn": {
+      "original": {
+        "signals": 144,
+        "wins": 120,
+        "losses": 16,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.264157999998133,
+        "rate": 88.23529411764706
+      },
+      "published": {
+        "signals": 138,
+        "wins": 122,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 6.143346000000747,
+        "rate": 93.84615384615384
+      },
+      "rolling_clock": {
+        "signals": 143,
+        "wins": 128,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.2692779999997583,
+        "rate": 94.81481481481481
+      },
+      "relative_learning": {
+        "signals": 138,
+        "wins": 121,
+        "losses": 9,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.255847000000358,
+        "rate": 93.07692307692308
+      },
+      "rolling_structure": {
+        "signals": 143,
+        "wins": 128,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.2799029999987397,
+        "rate": 94.81481481481481
+      },
+      "contextual_neighbours": {
+        "signals": 144,
+        "wins": 115,
+        "losses": 21,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.2080469999964407,
+        "rate": 84.55882352941177
+      },
+      "contextual_ridge": {
+        "signals": 144,
+        "wins": 121,
+        "losses": 15,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.994170000001759,
+        "rate": 88.97058823529412
+      },
+      "settlement_exact": {
+        "signals": 138,
+        "wins": 122,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.229278000002523,
+        "rate": 93.84615384615384
+      },
+      "independent_outcomes": {
+        "signals": 138,
+        "wins": 122,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.597010000001319,
+        "rate": 93.84615384615384
+      },
+      "recency_weighted": {
+        "signals": 138,
+        "wins": 122,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.779822999998942,
+        "rate": 93.84615384615384
+      },
+      "balanced_recent": {
+        "signals": 138,
+        "wins": 122,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.171142000002874,
+        "rate": 93.84615384615384
+      },
+      "horizon_momentum": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.34295900000142865,
+        "rate": 94.11764705882354
+      },
+      "fast_slow_flow": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.2206519999999728,
+        "rate": 94.11764705882354
+      },
+      "published_entry_flow_direction": {
+        "signals": 138,
+        "wins": 123,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.737632999997004,
+        "rate": 94.61538461538461
+      }
+    },
+    "reverse-turn": {
+      "original": {
+        "signals": 144,
+        "wins": 119,
+        "losses": 17,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.9892320000035397,
+        "rate": 87.5
+      },
+      "published": {
+        "signals": 139,
+        "wins": 124,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.4230309999984456,
+        "rate": 94.65648854961832
+      },
+      "rolling_clock": {
+        "signals": 143,
+        "wins": 128,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.3513899999998102,
+        "rate": 94.81481481481481
+      },
+      "relative_learning": {
+        "signals": 140,
+        "wins": 123,
+        "losses": 9,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.6634680000024673,
+        "rate": 93.18181818181819
+      },
+      "rolling_structure": {
+        "signals": 143,
+        "wins": 128,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.284072999998898,
+        "rate": 94.81481481481481
+      },
+      "contextual_neighbours": {
+        "signals": 144,
+        "wins": 117,
+        "losses": 19,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 10.075052000000142,
+        "rate": 86.02941176470588
+      },
+      "contextual_ridge": {
+        "signals": 144,
+        "wins": 122,
+        "losses": 14,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.6371129999970435,
+        "rate": 89.70588235294117
+      },
+      "settlement_exact": {
+        "signals": 139,
+        "wins": 124,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.385506999999052,
+        "rate": 94.65648854961832
+      },
+      "independent_outcomes": {
+        "signals": 139,
+        "wins": 124,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.121456000000762,
+        "rate": 94.65648854961832
+      },
+      "recency_weighted": {
+        "signals": 139,
+        "wins": 124,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.1992539999992005,
+        "rate": 94.65648854961832
+      },
+      "balanced_recent": {
+        "signals": 139,
+        "wins": 124,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.413540000001376,
+        "rate": 94.65648854961832
+      },
+      "horizon_momentum": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.38649399999849265,
+        "rate": 94.11764705882354
+      },
+      "fast_slow_flow": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.3896280000008119,
+        "rate": 94.11764705882354
+      },
+      "published_entry_flow_direction": {
+        "signals": 139,
+        "wins": 124,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.202193000000989,
+        "rate": 94.65648854961832
+      }
+    },
+    "range": {
+      "original": {
+        "signals": 139,
+        "wins": 116,
+        "losses": 16,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 2.902096999998321,
+        "rate": 87.87878787878788
+      },
+      "published": {
+        "signals": 141,
+        "wins": 123,
+        "losses": 11,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 3.385052999998152,
+        "rate": 91.7910447761194
+      },
+      "rolling_clock": {
+        "signals": 142,
+        "wins": 124,
+        "losses": 10,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.3173139999998966,
+        "rate": 92.53731343283582
+      },
+      "relative_learning": {
+        "signals": 142,
+        "wins": 125,
+        "losses": 9,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.8459700000021257,
+        "rate": 93.28358208955224
+      },
+      "rolling_structure": {
+        "signals": 141,
+        "wins": 122,
+        "losses": 12,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 3.211135000005015,
+        "rate": 91.04477611940298
+      },
+      "contextual_neighbours": {
+        "signals": 144,
+        "wins": 129,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.175838000002841,
+        "rate": 94.8529411764706
+      },
+      "contextual_ridge": {
+        "signals": 144,
+        "wins": 127,
+        "losses": 9,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.603503999998793,
+        "rate": 93.38235294117646
+      },
+      "settlement_exact": {
+        "signals": 141,
+        "wins": 123,
+        "losses": 11,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 3.6503519999969285,
+        "rate": 91.7910447761194
+      },
+      "independent_outcomes": {
+        "signals": 144,
+        "wins": 129,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.8232019999995828,
+        "rate": 94.8529411764706
+      },
+      "recency_weighted": {
+        "signals": 142,
+        "wins": 128,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 1.0069750000002387,
+        "rate": 94.81481481481481
+      },
+      "balanced_recent": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.4836600000053295,
+        "rate": 94.11764705882354
+      },
+      "horizon_momentum": {
+        "signals": 144,
+        "wins": 28,
+        "losses": 108,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.4230779999998049,
+        "rate": 20.58823529411765
+      },
+      "fast_slow_flow": {
+        "signals": 144,
+        "wins": 26,
+        "losses": 110,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.4351749999987078,
+        "rate": 19.11764705882353
+      },
+      "published_entry_flow_direction": {
+        "signals": 141,
+        "wins": 22,
+        "losses": 112,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 3.389680000000226,
+        "rate": 16.417910447761194
+      }
+    },
+    "irregular": {
+      "original": {
+        "signals": 144,
+        "wins": 132,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 5.754568999996991,
+        "rate": 97.05882352941177
+      },
+      "published": {
+        "signals": 144,
+        "wins": 132,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 11.758621000000858,
+        "rate": 97.05882352941177
+      },
+      "rolling_clock": {
+        "signals": 141,
+        "wins": 129,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.449708999993163,
+        "rate": 96.99248120300751
+      },
+      "relative_learning": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.6704370000006747,
+        "rate": 94.11764705882354
+      },
+      "rolling_structure": {
+        "signals": 142,
+        "wins": 129,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 6.844818000005034,
+        "rate": 96.26865671641791
+      },
+      "contextual_neighbours": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.554174000004423,
+        "rate": 94.11764705882354
+      },
+      "contextual_ridge": {
+        "signals": 144,
+        "wins": 132,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 9.9518390000012,
+        "rate": 97.05882352941177
+      },
+      "settlement_exact": {
+        "signals": 144,
+        "wins": 132,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 2.258100999999442,
+        "rate": 97.05882352941177
+      },
+      "independent_outcomes": {
+        "signals": 144,
+        "wins": 131,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.6616120000035153,
+        "rate": 96.32352941176471
+      },
+      "recency_weighted": {
+        "signals": 144,
+        "wins": 133,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 4.290015999999014,
+        "rate": 97.79411764705883
+      },
+      "balanced_recent": {
+        "signals": 144,
+        "wins": 128,
+        "losses": 8,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.993237999995472,
+        "rate": 94.11764705882354
+      },
+      "horizon_momentum": {
+        "signals": 144,
+        "wins": 23,
+        "losses": 113,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.09582200000295416,
+        "rate": 16.91176470588235
+      },
+      "fast_slow_flow": {
+        "signals": 144,
+        "wins": 31,
+        "losses": 105,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.7500230000005104,
+        "rate": 22.794117647058822
+      },
+      "published_entry_flow_direction": {
+        "signals": 144,
+        "wins": 21,
+        "losses": 115,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 6.001025999998092,
+        "rate": 15.441176470588236
+      }
+    },
+    "random-walk": {
+      "original": {
+        "signals": 132,
+        "wins": 67,
+        "losses": 57,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.6575770000054035,
+        "rate": 54.03225806451613
+      },
+      "published": {
+        "signals": 136,
+        "wins": 62,
+        "losses": 67,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 2.1833350000015344,
+        "rate": 48.06201550387597
+      },
+      "rolling_clock": {
+        "signals": 139,
+        "wins": 65,
+        "losses": 66,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.565350999997463,
+        "rate": 49.61832061068702
+      },
+      "relative_learning": {
+        "signals": 139,
+        "wins": 62,
+        "losses": 70,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 3.17078500000207,
+        "rate": 46.96969696969697
+      },
+      "rolling_structure": {
+        "signals": 137,
+        "wins": 62,
+        "losses": 68,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 3.2517359999983455,
+        "rate": 47.69230769230769
+      },
+      "contextual_neighbours": {
+        "signals": 139,
+        "wins": 54,
+        "losses": 78,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 1.7937919999967562,
+        "rate": 40.90909090909091
+      },
+      "contextual_ridge": {
+        "signals": 140,
+        "wins": 70,
+        "losses": 62,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 1.6879149999949732,
+        "rate": 53.03030303030303
+      },
+      "settlement_exact": {
+        "signals": 136,
+        "wins": 62,
+        "losses": 67,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 2.1259849999987637,
+        "rate": 48.06201550387597
+      },
+      "independent_outcomes": {
+        "signals": 137,
+        "wins": 64,
+        "losses": 67,
+        "ties": 0,
+        "unknown": 6,
+        "highestSingleQuoteMs": 1.142534999999043,
+        "rate": 48.85496183206107
+      },
+      "recency_weighted": {
+        "signals": 134,
+        "wins": 58,
+        "losses": 69,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 2.130641999996442,
+        "rate": 45.669291338582674
+      },
+      "balanced_recent": {
+        "signals": 136,
+        "wins": 65,
+        "losses": 65,
+        "ties": 0,
+        "unknown": 6,
+        "highestSingleQuoteMs": 1.3191479999950388,
+        "rate": 50
+      },
+      "horizon_momentum": {
+        "signals": 144,
+        "wins": 76,
+        "losses": 60,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 3.4728029999969294,
+        "rate": 55.88235294117647
+      },
+      "fast_slow_flow": {
+        "signals": 144,
+        "wins": 74,
+        "losses": 62,
+        "ties": 0,
+        "unknown": 8,
+        "highestSingleQuoteMs": 0.28007500000239816,
+        "rate": 54.411764705882355
+      },
+      "published_entry_flow_direction": {
+        "signals": 136,
+        "wins": 68,
+        "losses": 61,
+        "ties": 0,
+        "unknown": 7,
+        "highestSingleQuoteMs": 2.0488809999951627,
+        "rate": 52.713178294573645
+      }
+    }
+  }
+}

@@ -1,0 +1,7557 @@
+{
+  "source": "1001267096.mp4",
+  "sourceSha256": "ccbe82f83d194e1d116745a10781a7c41dacaa2447c20bf03a2fa7f3ba9b71a4",
+  "productionCommit": "bd75d03412ab12ebffbabcfefd226eeb91f5ae0f",
+  "asset": "EUR/GBP OTC",
+  "engineId": "fibonacci_retest",
+  "durationMs": 30000,
+  "visibleSignals": [
+    {
+      "time": "13:52:14",
+      "expiry": "13:52:44",
+      "side": "CALL",
+      "firstVisibleVideoSecond": 188
+    },
+    {
+      "time": "13:52:49",
+      "expiry": "13:53:19",
+      "side": "CALL",
+      "firstVisibleVideoSecond": 201
+    },
+    {
+      "time": "13:53:20",
+      "expiry": "13:53:50",
+      "side": "PUT",
+      "firstVisibleVideoSecond": 233
+    },
+    {
+      "time": "13:53:50",
+      "expiry": "13:54:20",
+      "side": "CALL",
+      "firstVisibleVideoSecond": 263
+    },
+    {
+      "time": "13:54:21",
+      "expiry": "13:54:51",
+      "side": "PUT",
+      "firstVisibleVideoSecond": 294
+    },
+    {
+      "time": "13:54:52",
+      "expiry": "13:55:22",
+      "side": "PUT",
+      "firstVisibleVideoSecond": 325
+    },
+    {
+      "time": "13:55:23",
+      "expiry": "13:55:53",
+      "side": "PUT",
+      "firstVisibleVideoSecond": 356
+    },
+    {
+      "time": "13:55:53",
+      "expiry": "13:56:23",
+      "side": "PUT",
+      "firstVisibleVideoSecond": 386
+    },
+    {
+      "time": "13:56:24",
+      "expiry": "13:56:54",
+      "side": "PUT",
+      "firstVisibleVideoSecond": 417
+    },
+    {
+      "time": "13:56:59",
+      "expiry": "13:57:29",
+      "side": "PUT",
+      "firstVisibleVideoSecond": 452
+    },
+    {
+      "time": "13:57:29",
+      "expiry": "13:57:59",
+      "side": "CALL",
+      "firstVisibleVideoSecond": 482
+    },
+    {
+      "time": "13:58:00",
+      "expiry": "13:58:30",
+      "side": "CALL",
+      "firstVisibleVideoSecond": 513
+    }
+  ],
+  "clockMethod": "Recording origin 13:49:27 BRT plus video seconds; last-analysis text retained separately because it sometimes repeats.",
+  "sourceType": "Broker plot price OCR from user video, sampled at 2Hz; NOT raw broker ticks",
+  "priceResolution": 1e-06,
+  "samplingMs": 500,
+  "manualCorrections": [
+    {
+      "frame": 1091,
+      "ocr": 0.849785,
+      "visuallyVerified": 0.842785
+    }
+  ],
+  "limitations": [
+    "One previously used video; not independent out-of-sample market validation.",
+    "Video clock origin approximated to the second.",
+    "Compressed display text, 2Hz observations, some unreadable frames left as gaps.",
+    "The Agent had higher-frequency quotes and unseen pre-video history.",
+    "Observed price changes are not broker trade-settlement receipts."
+  ],
+  "quoteHistory": [
+    {
+      "ts": 1792169367000,
+      "receivedAt": 1792169367000,
+      "price": 0.842735,
+      "videoSecond": 0.0,
+      "frame": 1
+    },
+    {
+      "ts": 1792169367500,
+      "receivedAt": 1792169367500,
+      "price": 0.842765,
+      "videoSecond": 0.5,
+      "frame": 2
+    },
+    {
+      "ts": 1792169368000,
+      "receivedAt": 1792169368000,
+      "price": 0.842765,
+      "videoSecond": 1.0,
+      "frame": 3
+    },
+    {
+      "ts": 1792169368500,
+      "receivedAt": 1792169368500,
+      "price": 0.842805,
+      "videoSecond": 1.5,
+      "frame": 4
+    },
+    {
+      "ts": 1792169369000,
+      "receivedAt": 1792169369000,
+      "price": 0.842805,
+      "videoSecond": 2.0,
+      "frame": 5
+    },
+    {
+      "ts": 1792169369500,
+      "receivedAt": 1792169369500,
+      "price": 0.842805,
+      "videoSecond": 2.5,
+      "frame": 6
+    },
+    {
+      "ts": 1792169370000,
+      "receivedAt": 1792169370000,
+      "price": 0.842805,
+      "videoSecond": 3.0,
+      "frame": 7
+    },
+    {
+      "ts": 1792169370500,
+      "receivedAt": 1792169370500,
+      "price": 0.842795,
+      "videoSecond": 3.5,
+      "frame": 8
+    },
+    {
+      "ts": 1792169371000,
+      "receivedAt": 1792169371000,
+      "price": 0.842795,
+      "videoSecond": 4.0,
+      "frame": 9
+    },
+    {
+      "ts": 1792169371500,
+      "receivedAt": 1792169371500,
+      "price": 0.842795,
+      "videoSecond": 4.5,
+      "frame": 10
+    },
+    {
+      "ts": 1792169372000,
+      "receivedAt": 1792169372000,
+      "price": 0.842795,
+      "videoSecond": 5.0,
+      "frame": 11
+    },
+    {
+      "ts": 1792169372500,
+      "receivedAt": 1792169372500,
+      "price": 0.842785,
+      "videoSecond": 5.5,
+      "frame": 12
+    },
+    {
+      "ts": 1792169373000,
+      "receivedAt": 1792169373000,
+      "price": 0.842785,
+      "videoSecond": 6.0,
+      "frame": 13
+    },
+    {
+      "ts": 1792169373500,
+      "receivedAt": 1792169373500,
+      "price": 0.842795,
+      "videoSecond": 6.5,
+      "frame": 14
+    },
+    {
+      "ts": 1792169374000,
+      "receivedAt": 1792169374000,
+      "price": 0.842795,
+      "videoSecond": 7.0,
+      "frame": 15
+    },
+    {
+      "ts": 1792169374500,
+      "receivedAt": 1792169374500,
+      "price": 0.842805,
+      "videoSecond": 7.5,
+      "frame": 16
+    },
+    {
+      "ts": 1792169375000,
+      "receivedAt": 1792169375000,
+      "price": 0.842805,
+      "videoSecond": 8.0,
+      "frame": 17
+    },
+    {
+      "ts": 1792169375500,
+      "receivedAt": 1792169375500,
+      "price": 0.842825,
+      "videoSecond": 8.5,
+      "frame": 18
+    },
+    {
+      "ts": 1792169376000,
+      "receivedAt": 1792169376000,
+      "price": 0.842825,
+      "videoSecond": 9.0,
+      "frame": 19
+    },
+    {
+      "ts": 1792169376500,
+      "receivedAt": 1792169376500,
+      "price": 0.842815,
+      "videoSecond": 9.5,
+      "frame": 20
+    },
+    {
+      "ts": 1792169377000,
+      "receivedAt": 1792169377000,
+      "price": 0.842815,
+      "videoSecond": 10.0,
+      "frame": 21
+    },
+    {
+      "ts": 1792169377500,
+      "receivedAt": 1792169377500,
+      "price": 0.842815,
+      "videoSecond": 10.5,
+      "frame": 22
+    },
+    {
+      "ts": 1792169378000,
+      "receivedAt": 1792169378000,
+      "price": 0.842815,
+      "videoSecond": 11.0,
+      "frame": 23
+    },
+    {
+      "ts": 1792169378500,
+      "receivedAt": 1792169378500,
+      "price": 0.842835,
+      "videoSecond": 11.5,
+      "frame": 24
+    },
+    {
+      "ts": 1792169379000,
+      "receivedAt": 1792169379000,
+      "price": 0.842835,
+      "videoSecond": 12.0,
+      "frame": 25
+    },
+    {
+      "ts": 1792169379500,
+      "receivedAt": 1792169379500,
+      "price": 0.842835,
+      "videoSecond": 12.5,
+      "frame": 26
+    },
+    {
+      "ts": 1792169380000,
+      "receivedAt": 1792169380000,
+      "price": 0.842835,
+      "videoSecond": 13.0,
+      "frame": 27
+    },
+    {
+      "ts": 1792169380500,
+      "receivedAt": 1792169380500,
+      "price": 0.842835,
+      "videoSecond": 13.5,
+      "frame": 28
+    },
+    {
+      "ts": 1792169381000,
+      "receivedAt": 1792169381000,
+      "price": 0.842835,
+      "videoSecond": 14.0,
+      "frame": 29
+    },
+    {
+      "ts": 1792169381500,
+      "receivedAt": 1792169381500,
+      "price": 0.842885,
+      "videoSecond": 14.5,
+      "frame": 30
+    },
+    {
+      "ts": 1792169382000,
+      "receivedAt": 1792169382000,
+      "price": 0.842885,
+      "videoSecond": 15.0,
+      "frame": 31
+    },
+    {
+      "ts": 1792169382500,
+      "receivedAt": 1792169382500,
+      "price": 0.842895,
+      "videoSecond": 15.5,
+      "frame": 32
+    },
+    {
+      "ts": 1792169383000,
+      "receivedAt": 1792169383000,
+      "price": 0.842895,
+      "videoSecond": 16.0,
+      "frame": 33
+    },
+    {
+      "ts": 1792169383500,
+      "receivedAt": 1792169383500,
+      "price": 0.842905,
+      "videoSecond": 16.5,
+      "frame": 34
+    },
+    {
+      "ts": 1792169384000,
+      "receivedAt": 1792169384000,
+      "price": 0.842905,
+      "videoSecond": 17.0,
+      "frame": 35
+    },
+    {
+      "ts": 1792169384500,
+      "receivedAt": 1792169384500,
+      "price": 0.842925,
+      "videoSecond": 17.5,
+      "frame": 36
+    },
+    {
+      "ts": 1792169385000,
+      "receivedAt": 1792169385000,
+      "price": 0.842925,
+      "videoSecond": 18.0,
+      "frame": 37
+    },
+    {
+      "ts": 1792169385500,
+      "receivedAt": 1792169385500,
+      "price": 0.842915,
+      "videoSecond": 18.5,
+      "frame": 38
+    },
+    {
+      "ts": 1792169386000,
+      "receivedAt": 1792169386000,
+      "price": 0.842915,
+      "videoSecond": 19.0,
+      "frame": 39
+    },
+    {
+      "ts": 1792169386500,
+      "receivedAt": 1792169386500,
+      "price": 0.842935,
+      "videoSecond": 19.5,
+      "frame": 40
+    },
+    {
+      "ts": 1792169387000,
+      "receivedAt": 1792169387000,
+      "price": 0.842935,
+      "videoSecond": 20.0,
+      "frame": 41
+    },
+    {
+      "ts": 1792169387500,
+      "receivedAt": 1792169387500,
+      "price": 0.842995,
+      "videoSecond": 20.5,
+      "frame": 42
+    },
+    {
+      "ts": 1792169388000,
+      "receivedAt": 1792169388000,
+      "price": 0.842995,
+      "videoSecond": 21.0,
+      "frame": 43
+    },
+    {
+      "ts": 1792169388500,
+      "receivedAt": 1792169388500,
+      "price": 0.843025,
+      "videoSecond": 21.5,
+      "frame": 44
+    },
+    {
+      "ts": 1792169389000,
+      "receivedAt": 1792169389000,
+      "price": 0.843025,
+      "videoSecond": 22.0,
+      "frame": 45
+    },
+    {
+      "ts": 1792169389500,
+      "receivedAt": 1792169389500,
+      "price": 0.843015,
+      "videoSecond": 22.5,
+      "frame": 46
+    },
+    {
+      "ts": 1792169390000,
+      "receivedAt": 1792169390000,
+      "price": 0.843015,
+      "videoSecond": 23.0,
+      "frame": 47
+    },
+    {
+      "ts": 1792169390500,
+      "receivedAt": 1792169390500,
+      "price": 0.843045,
+      "videoSecond": 23.5,
+      "frame": 48
+    },
+    {
+      "ts": 1792169391000,
+      "receivedAt": 1792169391000,
+      "price": 0.843045,
+      "videoSecond": 24.0,
+      "frame": 49
+    },
+    {
+      "ts": 1792169391500,
+      "receivedAt": 1792169391500,
+      "price": 0.843045,
+      "videoSecond": 24.5,
+      "frame": 50
+    },
+    {
+      "ts": 1792169392000,
+      "receivedAt": 1792169392000,
+      "price": 0.843045,
+      "videoSecond": 25.0,
+      "frame": 51
+    },
+    {
+      "ts": 1792169392500,
+      "receivedAt": 1792169392500,
+      "price": 0.843045,
+      "videoSecond": 25.5,
+      "frame": 52
+    },
+    {
+      "ts": 1792169393000,
+      "receivedAt": 1792169393000,
+      "price": 0.843045,
+      "videoSecond": 26.0,
+      "frame": 53
+    },
+    {
+      "ts": 1792169393500,
+      "receivedAt": 1792169393500,
+      "price": 0.843055,
+      "videoSecond": 26.5,
+      "frame": 54
+    },
+    {
+      "ts": 1792169394000,
+      "receivedAt": 1792169394000,
+      "price": 0.843055,
+      "videoSecond": 27.0,
+      "frame": 55
+    },
+    {
+      "ts": 1792169394500,
+      "receivedAt": 1792169394500,
+      "price": 0.843045,
+      "videoSecond": 27.5,
+      "frame": 56
+    },
+    {
+      "ts": 1792169395000,
+      "receivedAt": 1792169395000,
+      "price": 0.843045,
+      "videoSecond": 28.0,
+      "frame": 57
+    },
+    {
+      "ts": 1792169395500,
+      "receivedAt": 1792169395500,
+      "price": 0.843015,
+      "videoSecond": 28.5,
+      "frame": 58
+    },
+    {
+      "ts": 1792169396000,
+      "receivedAt": 1792169396000,
+      "price": 0.843015,
+      "videoSecond": 29.0,
+      "frame": 59
+    },
+    {
+      "ts": 1792169396500,
+      "receivedAt": 1792169396500,
+      "price": 0.843005,
+      "videoSecond": 29.5,
+      "frame": 60
+    },
+    {
+      "ts": 1792169397000,
+      "receivedAt": 1792169397000,
+      "price": 0.843005,
+      "videoSecond": 30.0,
+      "frame": 61
+    },
+    {
+      "ts": 1792169397500,
+      "receivedAt": 1792169397500,
+      "price": 0.843005,
+      "videoSecond": 30.5,
+      "frame": 62
+    },
+    {
+      "ts": 1792169398000,
+      "receivedAt": 1792169398000,
+      "price": 0.843005,
+      "videoSecond": 31.0,
+      "frame": 63
+    },
+    {
+      "ts": 1792169398500,
+      "receivedAt": 1792169398500,
+      "price": 0.843005,
+      "videoSecond": 31.5,
+      "frame": 64
+    },
+    {
+      "ts": 1792169399000,
+      "receivedAt": 1792169399000,
+      "price": 0.843005,
+      "videoSecond": 32.0,
+      "frame": 65
+    },
+    {
+      "ts": 1792169399500,
+      "receivedAt": 1792169399500,
+      "price": 0.842975,
+      "videoSecond": 32.5,
+      "frame": 66
+    },
+    {
+      "ts": 1792169400000,
+      "receivedAt": 1792169400000,
+      "price": 0.842975,
+      "videoSecond": 33.0,
+      "frame": 67
+    },
+    {
+      "ts": 1792169400500,
+      "receivedAt": 1792169400500,
+      "price": 0.842975,
+      "videoSecond": 33.5,
+      "frame": 68
+    },
+    {
+      "ts": 1792169401000,
+      "receivedAt": 1792169401000,
+      "price": 0.842975,
+      "videoSecond": 34.0,
+      "frame": 69
+    },
+    {
+      "ts": 1792169401500,
+      "receivedAt": 1792169401500,
+      "price": 0.842975,
+      "videoSecond": 34.5,
+      "frame": 70
+    },
+    {
+      "ts": 1792169402000,
+      "receivedAt": 1792169402000,
+      "price": 0.842975,
+      "videoSecond": 35.0,
+      "frame": 71
+    },
+    {
+      "ts": 1792169402500,
+      "receivedAt": 1792169402500,
+      "price": 0.842975,
+      "videoSecond": 35.5,
+      "frame": 72
+    },
+    {
+      "ts": 1792169403000,
+      "receivedAt": 1792169403000,
+      "price": 0.842975,
+      "videoSecond": 36.0,
+      "frame": 73
+    },
+    {
+      "ts": 1792169403500,
+      "receivedAt": 1792169403500,
+      "price": 0.842975,
+      "videoSecond": 36.5,
+      "frame": 74
+    },
+    {
+      "ts": 1792169404000,
+      "receivedAt": 1792169404000,
+      "price": 0.842975,
+      "videoSecond": 37.0,
+      "frame": 75
+    },
+    {
+      "ts": 1792169404500,
+      "receivedAt": 1792169404500,
+      "price": 0.842965,
+      "videoSecond": 37.5,
+      "frame": 76
+    },
+    {
+      "ts": 1792169405000,
+      "receivedAt": 1792169405000,
+      "price": 0.842965,
+      "videoSecond": 38.0,
+      "frame": 77
+    },
+    {
+      "ts": 1792169405500,
+      "receivedAt": 1792169405500,
+      "price": 0.842975,
+      "videoSecond": 38.5,
+      "frame": 78
+    },
+    {
+      "ts": 1792169406000,
+      "receivedAt": 1792169406000,
+      "price": 0.842975,
+      "videoSecond": 39.0,
+      "frame": 79
+    },
+    {
+      "ts": 1792169406500,
+      "receivedAt": 1792169406500,
+      "price": 0.842985,
+      "videoSecond": 39.5,
+      "frame": 80
+    },
+    {
+      "ts": 1792169407000,
+      "receivedAt": 1792169407000,
+      "price": 0.842985,
+      "videoSecond": 40.0,
+      "frame": 81
+    },
+    {
+      "ts": 1792169407500,
+      "receivedAt": 1792169407500,
+      "price": 0.842995,
+      "videoSecond": 40.5,
+      "frame": 82
+    },
+    {
+      "ts": 1792169408000,
+      "receivedAt": 1792169408000,
+      "price": 0.842995,
+      "videoSecond": 41.0,
+      "frame": 83
+    },
+    {
+      "ts": 1792169408500,
+      "receivedAt": 1792169408500,
+      "price": 0.842995,
+      "videoSecond": 41.5,
+      "frame": 84
+    },
+    {
+      "ts": 1792169409000,
+      "receivedAt": 1792169409000,
+      "price": 0.842995,
+      "videoSecond": 42.0,
+      "frame": 85
+    },
+    {
+      "ts": 1792169409500,
+      "receivedAt": 1792169409500,
+      "price": 0.842985,
+      "videoSecond": 42.5,
+      "frame": 86
+    },
+    {
+      "ts": 1792169410000,
+      "receivedAt": 1792169410000,
+      "price": 0.842985,
+      "videoSecond": 43.0,
+      "frame": 87
+    },
+    {
+      "ts": 1792169410500,
+      "receivedAt": 1792169410500,
+      "price": 0.842995,
+      "videoSecond": 43.5,
+      "frame": 88
+    },
+    {
+      "ts": 1792169411000,
+      "receivedAt": 1792169411000,
+      "price": 0.842995,
+      "videoSecond": 44.0,
+      "frame": 89
+    },
+    {
+      "ts": 1792169411500,
+      "receivedAt": 1792169411500,
+      "price": 0.842975,
+      "videoSecond": 44.5,
+      "frame": 90
+    },
+    {
+      "ts": 1792169412000,
+      "receivedAt": 1792169412000,
+      "price": 0.842975,
+      "videoSecond": 45.0,
+      "frame": 91
+    },
+    {
+      "ts": 1792169412500,
+      "receivedAt": 1792169412500,
+      "price": 0.842955,
+      "videoSecond": 45.5,
+      "frame": 92
+    },
+    {
+      "ts": 1792169413000,
+      "receivedAt": 1792169413000,
+      "price": 0.842955,
+      "videoSecond": 46.0,
+      "frame": 93
+    },
+    {
+      "ts": 1792169413500,
+      "receivedAt": 1792169413500,
+      "price": 0.842965,
+      "videoSecond": 46.5,
+      "frame": 94
+    },
+    {
+      "ts": 1792169414000,
+      "receivedAt": 1792169414000,
+      "price": 0.842965,
+      "videoSecond": 47.0,
+      "frame": 95
+    },
+    {
+      "ts": 1792169414500,
+      "receivedAt": 1792169414500,
+      "price": 0.842955,
+      "videoSecond": 47.5,
+      "frame": 96
+    },
+    {
+      "ts": 1792169415000,
+      "receivedAt": 1792169415000,
+      "price": 0.842955,
+      "videoSecond": 48.0,
+      "frame": 97
+    },
+    {
+      "ts": 1792169415500,
+      "receivedAt": 1792169415500,
+      "price": 0.842905,
+      "videoSecond": 48.5,
+      "frame": 98
+    },
+    {
+      "ts": 1792169416000,
+      "receivedAt": 1792169416000,
+      "price": 0.842905,
+      "videoSecond": 49.0,
+      "frame": 99
+    },
+    {
+      "ts": 1792169416500,
+      "receivedAt": 1792169416500,
+      "price": 0.842915,
+      "videoSecond": 49.5,
+      "frame": 100
+    },
+    {
+      "ts": 1792169417000,
+      "receivedAt": 1792169417000,
+      "price": 0.842915,
+      "videoSecond": 50.0,
+      "frame": 101
+    },
+    {
+      "ts": 1792169417500,
+      "receivedAt": 1792169417500,
+      "price": 0.842915,
+      "videoSecond": 50.5,
+      "frame": 102
+    },
+    {
+      "ts": 1792169418000,
+      "receivedAt": 1792169418000,
+      "price": 0.842915,
+      "videoSecond": 51.0,
+      "frame": 103
+    },
+    {
+      "ts": 1792169418500,
+      "receivedAt": 1792169418500,
+      "price": 0.842935,
+      "videoSecond": 51.5,
+      "frame": 104
+    },
+    {
+      "ts": 1792169419000,
+      "receivedAt": 1792169419000,
+      "price": 0.842935,
+      "videoSecond": 52.0,
+      "frame": 105
+    },
+    {
+      "ts": 1792169419500,
+      "receivedAt": 1792169419500,
+      "price": 0.842935,
+      "videoSecond": 52.5,
+      "frame": 106
+    },
+    {
+      "ts": 1792169420000,
+      "receivedAt": 1792169420000,
+      "price": 0.842935,
+      "videoSecond": 53.0,
+      "frame": 107
+    },
+    {
+      "ts": 1792169420500,
+      "receivedAt": 1792169420500,
+      "price": 0.842935,
+      "videoSecond": 53.5,
+      "frame": 108
+    },
+    {
+      "ts": 1792169421000,
+      "receivedAt": 1792169421000,
+      "price": 0.842935,
+      "videoSecond": 54.0,
+      "frame": 109
+    },
+    {
+      "ts": 1792169421500,
+      "receivedAt": 1792169421500,
+      "price": 0.842975,
+      "videoSecond": 54.5,
+      "frame": 110
+    },
+    {
+      "ts": 1792169422000,
+      "receivedAt": 1792169422000,
+      "price": 0.842975,
+      "videoSecond": 55.0,
+      "frame": 111
+    },
+    {
+      "ts": 1792169422500,
+      "receivedAt": 1792169422500,
+      "price": 0.842995,
+      "videoSecond": 55.5,
+      "frame": 112
+    },
+    {
+      "ts": 1792169424000,
+      "receivedAt": 1792169424000,
+      "price": 0.842995,
+      "videoSecond": 57.0,
+      "frame": 115
+    },
+    {
+      "ts": 1792169426000,
+      "receivedAt": 1792169426000,
+      "price": 0.843005,
+      "videoSecond": 59.0,
+      "frame": 119
+    },
+    {
+      "ts": 1792169426500,
+      "receivedAt": 1792169426500,
+      "price": 0.842995,
+      "videoSecond": 59.5,
+      "frame": 120
+    },
+    {
+      "ts": 1792169427000,
+      "receivedAt": 1792169427000,
+      "price": 0.842995,
+      "videoSecond": 60.0,
+      "frame": 121
+    },
+    {
+      "ts": 1792169427500,
+      "receivedAt": 1792169427500,
+      "price": 0.842995,
+      "videoSecond": 60.5,
+      "frame": 122
+    },
+    {
+      "ts": 1792169428000,
+      "receivedAt": 1792169428000,
+      "price": 0.842995,
+      "videoSecond": 61.0,
+      "frame": 123
+    },
+    {
+      "ts": 1792169428500,
+      "receivedAt": 1792169428500,
+      "price": 0.842995,
+      "videoSecond": 61.5,
+      "frame": 124
+    },
+    {
+      "ts": 1792169429000,
+      "receivedAt": 1792169429000,
+      "price": 0.842995,
+      "videoSecond": 62.0,
+      "frame": 125
+    },
+    {
+      "ts": 1792169429500,
+      "receivedAt": 1792169429500,
+      "price": 0.843015,
+      "videoSecond": 62.5,
+      "frame": 126
+    },
+    {
+      "ts": 1792169430000,
+      "receivedAt": 1792169430000,
+      "price": 0.843015,
+      "videoSecond": 63.0,
+      "frame": 127
+    },
+    {
+      "ts": 1792169430500,
+      "receivedAt": 1792169430500,
+      "price": 0.843025,
+      "videoSecond": 63.5,
+      "frame": 128
+    },
+    {
+      "ts": 1792169431000,
+      "receivedAt": 1792169431000,
+      "price": 0.843025,
+      "videoSecond": 64.0,
+      "frame": 129
+    },
+    {
+      "ts": 1792169431500,
+      "receivedAt": 1792169431500,
+      "price": 0.843015,
+      "videoSecond": 64.5,
+      "frame": 130
+    },
+    {
+      "ts": 1792169432000,
+      "receivedAt": 1792169432000,
+      "price": 0.843015,
+      "videoSecond": 65.0,
+      "frame": 131
+    },
+    {
+      "ts": 1792169432500,
+      "receivedAt": 1792169432500,
+      "price": 0.843015,
+      "videoSecond": 65.5,
+      "frame": 132
+    },
+    {
+      "ts": 1792169433000,
+      "receivedAt": 1792169433000,
+      "price": 0.843015,
+      "videoSecond": 66.0,
+      "frame": 133
+    },
+    {
+      "ts": 1792169433500,
+      "receivedAt": 1792169433500,
+      "price": 0.843075,
+      "videoSecond": 66.5,
+      "frame": 134
+    },
+    {
+      "ts": 1792169434000,
+      "receivedAt": 1792169434000,
+      "price": 0.843075,
+      "videoSecond": 67.0,
+      "frame": 135
+    },
+    {
+      "ts": 1792169434500,
+      "receivedAt": 1792169434500,
+      "price": 0.843075,
+      "videoSecond": 67.5,
+      "frame": 136
+    },
+    {
+      "ts": 1792169435000,
+      "receivedAt": 1792169435000,
+      "price": 0.843075,
+      "videoSecond": 68.0,
+      "frame": 137
+    },
+    {
+      "ts": 1792169435500,
+      "receivedAt": 1792169435500,
+      "price": 0.843035,
+      "videoSecond": 68.5,
+      "frame": 138
+    },
+    {
+      "ts": 1792169436000,
+      "receivedAt": 1792169436000,
+      "price": 0.843035,
+      "videoSecond": 69.0,
+      "frame": 139
+    },
+    {
+      "ts": 1792169436500,
+      "receivedAt": 1792169436500,
+      "price": 0.843045,
+      "videoSecond": 69.5,
+      "frame": 140
+    },
+    {
+      "ts": 1792169437000,
+      "receivedAt": 1792169437000,
+      "price": 0.843045,
+      "videoSecond": 70.0,
+      "frame": 141
+    },
+    {
+      "ts": 1792169437500,
+      "receivedAt": 1792169437500,
+      "price": 0.843035,
+      "videoSecond": 70.5,
+      "frame": 142
+    },
+    {
+      "ts": 1792169438000,
+      "receivedAt": 1792169438000,
+      "price": 0.843035,
+      "videoSecond": 71.0,
+      "frame": 143
+    },
+    {
+      "ts": 1792169438500,
+      "receivedAt": 1792169438500,
+      "price": 0.843055,
+      "videoSecond": 71.5,
+      "frame": 144
+    },
+    {
+      "ts": 1792169439000,
+      "receivedAt": 1792169439000,
+      "price": 0.843055,
+      "videoSecond": 72.0,
+      "frame": 145
+    },
+    {
+      "ts": 1792169439500,
+      "receivedAt": 1792169439500,
+      "price": 0.843065,
+      "videoSecond": 72.5,
+      "frame": 146
+    },
+    {
+      "ts": 1792169440000,
+      "receivedAt": 1792169440000,
+      "price": 0.843065,
+      "videoSecond": 73.0,
+      "frame": 147
+    },
+    {
+      "ts": 1792169440500,
+      "receivedAt": 1792169440500,
+      "price": 0.843065,
+      "videoSecond": 73.5,
+      "frame": 148
+    },
+    {
+      "ts": 1792169441000,
+      "receivedAt": 1792169441000,
+      "price": 0.843065,
+      "videoSecond": 74.0,
+      "frame": 149
+    },
+    {
+      "ts": 1792169441500,
+      "receivedAt": 1792169441500,
+      "price": 0.843065,
+      "videoSecond": 74.5,
+      "frame": 150
+    },
+    {
+      "ts": 1792169442000,
+      "receivedAt": 1792169442000,
+      "price": 0.843065,
+      "videoSecond": 75.0,
+      "frame": 151
+    },
+    {
+      "ts": 1792169442500,
+      "receivedAt": 1792169442500,
+      "price": 0.843125,
+      "videoSecond": 75.5,
+      "frame": 152
+    },
+    {
+      "ts": 1792169443000,
+      "receivedAt": 1792169443000,
+      "price": 0.843125,
+      "videoSecond": 76.0,
+      "frame": 153
+    },
+    {
+      "ts": 1792169443500,
+      "receivedAt": 1792169443500,
+      "price": 0.843118,
+      "videoSecond": 76.5,
+      "frame": 154
+    },
+    {
+      "ts": 1792169444000,
+      "receivedAt": 1792169444000,
+      "price": 0.843115,
+      "videoSecond": 77.0,
+      "frame": 155
+    },
+    {
+      "ts": 1792169444500,
+      "receivedAt": 1792169444500,
+      "price": 0.843125,
+      "videoSecond": 77.5,
+      "frame": 156
+    },
+    {
+      "ts": 1792169445000,
+      "receivedAt": 1792169445000,
+      "price": 0.843125,
+      "videoSecond": 78.0,
+      "frame": 157
+    },
+    {
+      "ts": 1792169445500,
+      "receivedAt": 1792169445500,
+      "price": 0.843095,
+      "videoSecond": 78.5,
+      "frame": 158
+    },
+    {
+      "ts": 1792169446000,
+      "receivedAt": 1792169446000,
+      "price": 0.843095,
+      "videoSecond": 79.0,
+      "frame": 159
+    },
+    {
+      "ts": 1792169446500,
+      "receivedAt": 1792169446500,
+      "price": 0.843115,
+      "videoSecond": 79.5,
+      "frame": 160
+    },
+    {
+      "ts": 1792169447000,
+      "receivedAt": 1792169447000,
+      "price": 0.843115,
+      "videoSecond": 80.0,
+      "frame": 161
+    },
+    {
+      "ts": 1792169447500,
+      "receivedAt": 1792169447500,
+      "price": 0.843135,
+      "videoSecond": 80.5,
+      "frame": 162
+    },
+    {
+      "ts": 1792169448000,
+      "receivedAt": 1792169448000,
+      "price": 0.843135,
+      "videoSecond": 81.0,
+      "frame": 163
+    },
+    {
+      "ts": 1792169448500,
+      "receivedAt": 1792169448500,
+      "price": 0.843175,
+      "videoSecond": 81.5,
+      "frame": 164
+    },
+    {
+      "ts": 1792169449000,
+      "receivedAt": 1792169449000,
+      "price": 0.843175,
+      "videoSecond": 82.0,
+      "frame": 165
+    },
+    {
+      "ts": 1792169449500,
+      "receivedAt": 1792169449500,
+      "price": 0.843185,
+      "videoSecond": 82.5,
+      "frame": 166
+    },
+    {
+      "ts": 1792169450000,
+      "receivedAt": 1792169450000,
+      "price": 0.843185,
+      "videoSecond": 83.0,
+      "frame": 167
+    },
+    {
+      "ts": 1792169450500,
+      "receivedAt": 1792169450500,
+      "price": 0.843215,
+      "videoSecond": 83.5,
+      "frame": 168
+    },
+    {
+      "ts": 1792169451000,
+      "receivedAt": 1792169451000,
+      "price": 0.843215,
+      "videoSecond": 84.0,
+      "frame": 169
+    },
+    {
+      "ts": 1792169451500,
+      "receivedAt": 1792169451500,
+      "price": 0.843165,
+      "videoSecond": 84.5,
+      "frame": 170
+    },
+    {
+      "ts": 1792169452000,
+      "receivedAt": 1792169452000,
+      "price": 0.843165,
+      "videoSecond": 85.0,
+      "frame": 171
+    },
+    {
+      "ts": 1792169452500,
+      "receivedAt": 1792169452500,
+      "price": 0.843174,
+      "videoSecond": 85.5,
+      "frame": 172
+    },
+    {
+      "ts": 1792169453000,
+      "receivedAt": 1792169453000,
+      "price": 0.843185,
+      "videoSecond": 86.0,
+      "frame": 173
+    },
+    {
+      "ts": 1792169453500,
+      "receivedAt": 1792169453500,
+      "price": 0.843195,
+      "videoSecond": 86.5,
+      "frame": 174
+    },
+    {
+      "ts": 1792169454000,
+      "receivedAt": 1792169454000,
+      "price": 0.843195,
+      "videoSecond": 87.0,
+      "frame": 175
+    },
+    {
+      "ts": 1792169454500,
+      "receivedAt": 1792169454500,
+      "price": 0.843205,
+      "videoSecond": 87.5,
+      "frame": 176
+    },
+    {
+      "ts": 1792169455000,
+      "receivedAt": 1792169455000,
+      "price": 0.843205,
+      "videoSecond": 88.0,
+      "frame": 177
+    },
+    {
+      "ts": 1792169455500,
+      "receivedAt": 1792169455500,
+      "price": 0.843245,
+      "videoSecond": 88.5,
+      "frame": 178
+    },
+    {
+      "ts": 1792169456000,
+      "receivedAt": 1792169456000,
+      "price": 0.843245,
+      "videoSecond": 89.0,
+      "frame": 179
+    },
+    {
+      "ts": 1792169456500,
+      "receivedAt": 1792169456500,
+      "price": 0.843265,
+      "videoSecond": 89.5,
+      "frame": 180
+    },
+    {
+      "ts": 1792169457000,
+      "receivedAt": 1792169457000,
+      "price": 0.843265,
+      "videoSecond": 90.0,
+      "frame": 181
+    },
+    {
+      "ts": 1792169457500,
+      "receivedAt": 1792169457500,
+      "price": 0.843265,
+      "videoSecond": 90.5,
+      "frame": 182
+    },
+    {
+      "ts": 1792169458000,
+      "receivedAt": 1792169458000,
+      "price": 0.843265,
+      "videoSecond": 91.0,
+      "frame": 183
+    },
+    {
+      "ts": 1792169458500,
+      "receivedAt": 1792169458500,
+      "price": 0.843345,
+      "videoSecond": 91.5,
+      "frame": 184
+    },
+    {
+      "ts": 1792169459000,
+      "receivedAt": 1792169459000,
+      "price": 0.843345,
+      "videoSecond": 92.0,
+      "frame": 185
+    },
+    {
+      "ts": 1792169459500,
+      "receivedAt": 1792169459500,
+      "price": 0.843345,
+      "videoSecond": 92.5,
+      "frame": 186
+    },
+    {
+      "ts": 1792169460000,
+      "receivedAt": 1792169460000,
+      "price": 0.843345,
+      "videoSecond": 93.0,
+      "frame": 187
+    },
+    {
+      "ts": 1792169460500,
+      "receivedAt": 1792169460500,
+      "price": 0.843355,
+      "videoSecond": 93.5,
+      "frame": 188
+    },
+    {
+      "ts": 1792169461000,
+      "receivedAt": 1792169461000,
+      "price": 0.843355,
+      "videoSecond": 94.0,
+      "frame": 189
+    },
+    {
+      "ts": 1792169461500,
+      "receivedAt": 1792169461500,
+      "price": 0.843355,
+      "videoSecond": 94.5,
+      "frame": 190
+    },
+    {
+      "ts": 1792169462000,
+      "receivedAt": 1792169462000,
+      "price": 0.843355,
+      "videoSecond": 95.0,
+      "frame": 191
+    },
+    {
+      "ts": 1792169462500,
+      "receivedAt": 1792169462500,
+      "price": 0.843395,
+      "videoSecond": 95.5,
+      "frame": 192
+    },
+    {
+      "ts": 1792169464500,
+      "receivedAt": 1792169464500,
+      "price": 0.843385,
+      "videoSecond": 97.5,
+      "frame": 196
+    },
+    {
+      "ts": 1792169465000,
+      "receivedAt": 1792169465000,
+      "price": 0.843385,
+      "videoSecond": 98.0,
+      "frame": 197
+    },
+    {
+      "ts": 1792169465500,
+      "receivedAt": 1792169465500,
+      "price": 0.843365,
+      "videoSecond": 98.5,
+      "frame": 198
+    },
+    {
+      "ts": 1792169466000,
+      "receivedAt": 1792169466000,
+      "price": 0.843365,
+      "videoSecond": 99.0,
+      "frame": 199
+    },
+    {
+      "ts": 1792169466500,
+      "receivedAt": 1792169466500,
+      "price": 0.843365,
+      "videoSecond": 99.5,
+      "frame": 200
+    },
+    {
+      "ts": 1792169467000,
+      "receivedAt": 1792169467000,
+      "price": 0.843365,
+      "videoSecond": 100.0,
+      "frame": 201
+    },
+    {
+      "ts": 1792169467500,
+      "receivedAt": 1792169467500,
+      "price": 0.843325,
+      "videoSecond": 100.5,
+      "frame": 202
+    },
+    {
+      "ts": 1792169468000,
+      "receivedAt": 1792169468000,
+      "price": 0.843325,
+      "videoSecond": 101.0,
+      "frame": 203
+    },
+    {
+      "ts": 1792169468500,
+      "receivedAt": 1792169468500,
+      "price": 0.843315,
+      "videoSecond": 101.5,
+      "frame": 204
+    },
+    {
+      "ts": 1792169469000,
+      "receivedAt": 1792169469000,
+      "price": 0.843315,
+      "videoSecond": 102.0,
+      "frame": 205
+    },
+    {
+      "ts": 1792169469500,
+      "receivedAt": 1792169469500,
+      "price": 0.843295,
+      "videoSecond": 102.5,
+      "frame": 206
+    },
+    {
+      "ts": 1792169470000,
+      "receivedAt": 1792169470000,
+      "price": 0.843295,
+      "videoSecond": 103.0,
+      "frame": 207
+    },
+    {
+      "ts": 1792169470500,
+      "receivedAt": 1792169470500,
+      "price": 0.843315,
+      "videoSecond": 103.5,
+      "frame": 208
+    },
+    {
+      "ts": 1792169471000,
+      "receivedAt": 1792169471000,
+      "price": 0.843315,
+      "videoSecond": 104.0,
+      "frame": 209
+    },
+    {
+      "ts": 1792169471500,
+      "receivedAt": 1792169471500,
+      "price": 0.843265,
+      "videoSecond": 104.5,
+      "frame": 210
+    },
+    {
+      "ts": 1792169472000,
+      "receivedAt": 1792169472000,
+      "price": 0.843265,
+      "videoSecond": 105.0,
+      "frame": 211
+    },
+    {
+      "ts": 1792169472500,
+      "receivedAt": 1792169472500,
+      "price": 0.843255,
+      "videoSecond": 105.5,
+      "frame": 212
+    },
+    {
+      "ts": 1792169473000,
+      "receivedAt": 1792169473000,
+      "price": 0.843255,
+      "videoSecond": 106.0,
+      "frame": 213
+    },
+    {
+      "ts": 1792169473500,
+      "receivedAt": 1792169473500,
+      "price": 0.843235,
+      "videoSecond": 106.5,
+      "frame": 214
+    },
+    {
+      "ts": 1792169474000,
+      "receivedAt": 1792169474000,
+      "price": 0.843235,
+      "videoSecond": 107.0,
+      "frame": 215
+    },
+    {
+      "ts": 1792169474500,
+      "receivedAt": 1792169474500,
+      "price": 0.843175,
+      "videoSecond": 107.5,
+      "frame": 216
+    },
+    {
+      "ts": 1792169475000,
+      "receivedAt": 1792169475000,
+      "price": 0.843175,
+      "videoSecond": 108.0,
+      "frame": 217
+    },
+    {
+      "ts": 1792169475500,
+      "receivedAt": 1792169475500,
+      "price": 0.843165,
+      "videoSecond": 108.5,
+      "frame": 218
+    },
+    {
+      "ts": 1792169476000,
+      "receivedAt": 1792169476000,
+      "price": 0.843165,
+      "videoSecond": 109.0,
+      "frame": 219
+    },
+    {
+      "ts": 1792169476500,
+      "receivedAt": 1792169476500,
+      "price": 0.843155,
+      "videoSecond": 109.5,
+      "frame": 220
+    },
+    {
+      "ts": 1792169477000,
+      "receivedAt": 1792169477000,
+      "price": 0.843155,
+      "videoSecond": 110.0,
+      "frame": 221
+    },
+    {
+      "ts": 1792169477500,
+      "receivedAt": 1792169477500,
+      "price": 0.843145,
+      "videoSecond": 110.5,
+      "frame": 222
+    },
+    {
+      "ts": 1792169478000,
+      "receivedAt": 1792169478000,
+      "price": 0.843145,
+      "videoSecond": 111.0,
+      "frame": 223
+    },
+    {
+      "ts": 1792169479500,
+      "receivedAt": 1792169479500,
+      "price": 0.843175,
+      "videoSecond": 112.5,
+      "frame": 226
+    },
+    {
+      "ts": 1792169480000,
+      "receivedAt": 1792169480000,
+      "price": 0.843175,
+      "videoSecond": 113.0,
+      "frame": 227
+    },
+    {
+      "ts": 1792169480500,
+      "receivedAt": 1792169480500,
+      "price": 0.843168,
+      "videoSecond": 113.5,
+      "frame": 228
+    },
+    {
+      "ts": 1792169481000,
+      "receivedAt": 1792169481000,
+      "price": 0.843155,
+      "videoSecond": 114.0,
+      "frame": 229
+    },
+    {
+      "ts": 1792169481500,
+      "receivedAt": 1792169481500,
+      "price": 0.843155,
+      "videoSecond": 114.5,
+      "frame": 230
+    },
+    {
+      "ts": 1792169482000,
+      "receivedAt": 1792169482000,
+      "price": 0.843155,
+      "videoSecond": 115.0,
+      "frame": 231
+    },
+    {
+      "ts": 1792169482500,
+      "receivedAt": 1792169482500,
+      "price": 0.843169,
+      "videoSecond": 115.5,
+      "frame": 232
+    },
+    {
+      "ts": 1792169483000,
+      "receivedAt": 1792169483000,
+      "price": 0.843205,
+      "videoSecond": 116.0,
+      "frame": 233
+    },
+    {
+      "ts": 1792169483500,
+      "receivedAt": 1792169483500,
+      "price": 0.843165,
+      "videoSecond": 116.5,
+      "frame": 234
+    },
+    {
+      "ts": 1792169484000,
+      "receivedAt": 1792169484000,
+      "price": 0.843165,
+      "videoSecond": 117.0,
+      "frame": 235
+    },
+    {
+      "ts": 1792169484500,
+      "receivedAt": 1792169484500,
+      "price": 0.843165,
+      "videoSecond": 117.5,
+      "frame": 236
+    },
+    {
+      "ts": 1792169485000,
+      "receivedAt": 1792169485000,
+      "price": 0.843165,
+      "videoSecond": 118.0,
+      "frame": 237
+    },
+    {
+      "ts": 1792169485500,
+      "receivedAt": 1792169485500,
+      "price": 0.843165,
+      "videoSecond": 118.5,
+      "frame": 238
+    },
+    {
+      "ts": 1792169486000,
+      "receivedAt": 1792169486000,
+      "price": 0.843165,
+      "videoSecond": 119.0,
+      "frame": 239
+    },
+    {
+      "ts": 1792169486500,
+      "receivedAt": 1792169486500,
+      "price": 0.843185,
+      "videoSecond": 119.5,
+      "frame": 240
+    },
+    {
+      "ts": 1792169487000,
+      "receivedAt": 1792169487000,
+      "price": 0.843185,
+      "videoSecond": 120.0,
+      "frame": 241
+    },
+    {
+      "ts": 1792169487500,
+      "receivedAt": 1792169487500,
+      "price": 0.843185,
+      "videoSecond": 120.5,
+      "frame": 242
+    },
+    {
+      "ts": 1792169488000,
+      "receivedAt": 1792169488000,
+      "price": 0.843185,
+      "videoSecond": 121.0,
+      "frame": 243
+    },
+    {
+      "ts": 1792169488500,
+      "receivedAt": 1792169488500,
+      "price": 0.843175,
+      "videoSecond": 121.5,
+      "frame": 244
+    },
+    {
+      "ts": 1792169489000,
+      "receivedAt": 1792169489000,
+      "price": 0.843175,
+      "videoSecond": 122.0,
+      "frame": 245
+    },
+    {
+      "ts": 1792169489500,
+      "receivedAt": 1792169489500,
+      "price": 0.843165,
+      "videoSecond": 122.5,
+      "frame": 246
+    },
+    {
+      "ts": 1792169490000,
+      "receivedAt": 1792169490000,
+      "price": 0.843165,
+      "videoSecond": 123.0,
+      "frame": 247
+    },
+    {
+      "ts": 1792169490500,
+      "receivedAt": 1792169490500,
+      "price": 0.843165,
+      "videoSecond": 123.5,
+      "frame": 248
+    },
+    {
+      "ts": 1792169491000,
+      "receivedAt": 1792169491000,
+      "price": 0.843165,
+      "videoSecond": 124.0,
+      "frame": 249
+    },
+    {
+      "ts": 1792169491500,
+      "receivedAt": 1792169491500,
+      "price": 0.843175,
+      "videoSecond": 124.5,
+      "frame": 250
+    },
+    {
+      "ts": 1792169492000,
+      "receivedAt": 1792169492000,
+      "price": 0.843175,
+      "videoSecond": 125.0,
+      "frame": 251
+    },
+    {
+      "ts": 1792169492500,
+      "receivedAt": 1792169492500,
+      "price": 0.843185,
+      "videoSecond": 125.5,
+      "frame": 252
+    },
+    {
+      "ts": 1792169493000,
+      "receivedAt": 1792169493000,
+      "price": 0.843185,
+      "videoSecond": 126.0,
+      "frame": 253
+    },
+    {
+      "ts": 1792169493500,
+      "receivedAt": 1792169493500,
+      "price": 0.843185,
+      "videoSecond": 126.5,
+      "frame": 254
+    },
+    {
+      "ts": 1792169494000,
+      "receivedAt": 1792169494000,
+      "price": 0.843185,
+      "videoSecond": 127.0,
+      "frame": 255
+    },
+    {
+      "ts": 1792169494500,
+      "receivedAt": 1792169494500,
+      "price": 0.843185,
+      "videoSecond": 127.5,
+      "frame": 256
+    },
+    {
+      "ts": 1792169495000,
+      "receivedAt": 1792169495000,
+      "price": 0.843185,
+      "videoSecond": 128.0,
+      "frame": 257
+    },
+    {
+      "ts": 1792169495500,
+      "receivedAt": 1792169495500,
+      "price": 0.843175,
+      "videoSecond": 128.5,
+      "frame": 258
+    },
+    {
+      "ts": 1792169496000,
+      "receivedAt": 1792169496000,
+      "price": 0.843175,
+      "videoSecond": 129.0,
+      "frame": 259
+    },
+    {
+      "ts": 1792169496500,
+      "receivedAt": 1792169496500,
+      "price": 0.843185,
+      "videoSecond": 129.5,
+      "frame": 260
+    },
+    {
+      "ts": 1792169497000,
+      "receivedAt": 1792169497000,
+      "price": 0.843185,
+      "videoSecond": 130.0,
+      "frame": 261
+    },
+    {
+      "ts": 1792169497500,
+      "receivedAt": 1792169497500,
+      "price": 0.843175,
+      "videoSecond": 130.5,
+      "frame": 262
+    },
+    {
+      "ts": 1792169498000,
+      "receivedAt": 1792169498000,
+      "price": 0.843175,
+      "videoSecond": 131.0,
+      "frame": 263
+    },
+    {
+      "ts": 1792169498500,
+      "receivedAt": 1792169498500,
+      "price": 0.843155,
+      "videoSecond": 131.5,
+      "frame": 264
+    },
+    {
+      "ts": 1792169499000,
+      "receivedAt": 1792169499000,
+      "price": 0.843155,
+      "videoSecond": 132.0,
+      "frame": 265
+    },
+    {
+      "ts": 1792169499500,
+      "receivedAt": 1792169499500,
+      "price": 0.843185,
+      "videoSecond": 132.5,
+      "frame": 266
+    },
+    {
+      "ts": 1792169500000,
+      "receivedAt": 1792169500000,
+      "price": 0.843185,
+      "videoSecond": 133.0,
+      "frame": 267
+    },
+    {
+      "ts": 1792169500500,
+      "receivedAt": 1792169500500,
+      "price": 0.843185,
+      "videoSecond": 133.5,
+      "frame": 268
+    },
+    {
+      "ts": 1792169501000,
+      "receivedAt": 1792169501000,
+      "price": 0.843205,
+      "videoSecond": 134.0,
+      "frame": 269
+    },
+    {
+      "ts": 1792169501500,
+      "receivedAt": 1792169501500,
+      "price": 0.843215,
+      "videoSecond": 134.5,
+      "frame": 270
+    },
+    {
+      "ts": 1792169502000,
+      "receivedAt": 1792169502000,
+      "price": 0.843215,
+      "videoSecond": 135.0,
+      "frame": 271
+    },
+    {
+      "ts": 1792169502500,
+      "receivedAt": 1792169502500,
+      "price": 0.843215,
+      "videoSecond": 135.5,
+      "frame": 272
+    },
+    {
+      "ts": 1792169503000,
+      "receivedAt": 1792169503000,
+      "price": 0.843215,
+      "videoSecond": 136.0,
+      "frame": 273
+    },
+    {
+      "ts": 1792169503500,
+      "receivedAt": 1792169503500,
+      "price": 0.843215,
+      "videoSecond": 136.5,
+      "frame": 274
+    },
+    {
+      "ts": 1792169504000,
+      "receivedAt": 1792169504000,
+      "price": 0.843215,
+      "videoSecond": 137.0,
+      "frame": 275
+    },
+    {
+      "ts": 1792169504500,
+      "receivedAt": 1792169504500,
+      "price": 0.843235,
+      "videoSecond": 137.5,
+      "frame": 276
+    },
+    {
+      "ts": 1792169505000,
+      "receivedAt": 1792169505000,
+      "price": 0.843235,
+      "videoSecond": 138.0,
+      "frame": 277
+    },
+    {
+      "ts": 1792169505500,
+      "receivedAt": 1792169505500,
+      "price": 0.843245,
+      "videoSecond": 138.5,
+      "frame": 278
+    },
+    {
+      "ts": 1792169506000,
+      "receivedAt": 1792169506000,
+      "price": 0.843245,
+      "videoSecond": 139.0,
+      "frame": 279
+    },
+    {
+      "ts": 1792169506500,
+      "receivedAt": 1792169506500,
+      "price": 0.843265,
+      "videoSecond": 139.5,
+      "frame": 280
+    },
+    {
+      "ts": 1792169507000,
+      "receivedAt": 1792169507000,
+      "price": 0.843265,
+      "videoSecond": 140.0,
+      "frame": 281
+    },
+    {
+      "ts": 1792169507500,
+      "receivedAt": 1792169507500,
+      "price": 0.843295,
+      "videoSecond": 140.5,
+      "frame": 282
+    },
+    {
+      "ts": 1792169508000,
+      "receivedAt": 1792169508000,
+      "price": 0.843295,
+      "videoSecond": 141.0,
+      "frame": 283
+    },
+    {
+      "ts": 1792169508500,
+      "receivedAt": 1792169508500,
+      "price": 0.843315,
+      "videoSecond": 141.5,
+      "frame": 284
+    },
+    {
+      "ts": 1792169509000,
+      "receivedAt": 1792169509000,
+      "price": 0.843315,
+      "videoSecond": 142.0,
+      "frame": 285
+    },
+    {
+      "ts": 1792169509500,
+      "receivedAt": 1792169509500,
+      "price": 0.843315,
+      "videoSecond": 142.5,
+      "frame": 286
+    },
+    {
+      "ts": 1792169510000,
+      "receivedAt": 1792169510000,
+      "price": 0.843315,
+      "videoSecond": 143.0,
+      "frame": 287
+    },
+    {
+      "ts": 1792169510500,
+      "receivedAt": 1792169510500,
+      "price": 0.843315,
+      "videoSecond": 143.5,
+      "frame": 288
+    },
+    {
+      "ts": 1792169511000,
+      "receivedAt": 1792169511000,
+      "price": 0.843325,
+      "videoSecond": 144.0,
+      "frame": 289
+    },
+    {
+      "ts": 1792169511500,
+      "receivedAt": 1792169511500,
+      "price": 0.843345,
+      "videoSecond": 144.5,
+      "frame": 290
+    },
+    {
+      "ts": 1792169512000,
+      "receivedAt": 1792169512000,
+      "price": 0.843345,
+      "videoSecond": 145.0,
+      "frame": 291
+    },
+    {
+      "ts": 1792169512500,
+      "receivedAt": 1792169512500,
+      "price": 0.843335,
+      "videoSecond": 145.5,
+      "frame": 292
+    },
+    {
+      "ts": 1792169513000,
+      "receivedAt": 1792169513000,
+      "price": 0.843335,
+      "videoSecond": 146.0,
+      "frame": 293
+    },
+    {
+      "ts": 1792169513500,
+      "receivedAt": 1792169513500,
+      "price": 0.843305,
+      "videoSecond": 146.5,
+      "frame": 294
+    },
+    {
+      "ts": 1792169514000,
+      "receivedAt": 1792169514000,
+      "price": 0.843305,
+      "videoSecond": 147.0,
+      "frame": 295
+    },
+    {
+      "ts": 1792169514500,
+      "receivedAt": 1792169514500,
+      "price": 0.843325,
+      "videoSecond": 147.5,
+      "frame": 296
+    },
+    {
+      "ts": 1792169515000,
+      "receivedAt": 1792169515000,
+      "price": 0.843325,
+      "videoSecond": 148.0,
+      "frame": 297
+    },
+    {
+      "ts": 1792169515500,
+      "receivedAt": 1792169515500,
+      "price": 0.843335,
+      "videoSecond": 148.5,
+      "frame": 298
+    },
+    {
+      "ts": 1792169516000,
+      "receivedAt": 1792169516000,
+      "price": 0.843335,
+      "videoSecond": 149.0,
+      "frame": 299
+    },
+    {
+      "ts": 1792169516500,
+      "receivedAt": 1792169516500,
+      "price": 0.843335,
+      "videoSecond": 149.5,
+      "frame": 300
+    },
+    {
+      "ts": 1792169517000,
+      "receivedAt": 1792169517000,
+      "price": 0.843335,
+      "videoSecond": 150.0,
+      "frame": 301
+    },
+    {
+      "ts": 1792169517500,
+      "receivedAt": 1792169517500,
+      "price": 0.843325,
+      "videoSecond": 150.5,
+      "frame": 302
+    },
+    {
+      "ts": 1792169518000,
+      "receivedAt": 1792169518000,
+      "price": 0.843325,
+      "videoSecond": 151.0,
+      "frame": 303
+    },
+    {
+      "ts": 1792169518500,
+      "receivedAt": 1792169518500,
+      "price": 0.843335,
+      "videoSecond": 151.5,
+      "frame": 304
+    },
+    {
+      "ts": 1792169519000,
+      "receivedAt": 1792169519000,
+      "price": 0.843335,
+      "videoSecond": 152.0,
+      "frame": 305
+    },
+    {
+      "ts": 1792169519500,
+      "receivedAt": 1792169519500,
+      "price": 0.843355,
+      "videoSecond": 152.5,
+      "frame": 306
+    },
+    {
+      "ts": 1792169520000,
+      "receivedAt": 1792169520000,
+      "price": 0.843355,
+      "videoSecond": 153.0,
+      "frame": 307
+    },
+    {
+      "ts": 1792169520500,
+      "receivedAt": 1792169520500,
+      "price": 0.843355,
+      "videoSecond": 153.5,
+      "frame": 308
+    },
+    {
+      "ts": 1792169521000,
+      "receivedAt": 1792169521000,
+      "price": 0.843355,
+      "videoSecond": 154.0,
+      "frame": 309
+    },
+    {
+      "ts": 1792169521500,
+      "receivedAt": 1792169521500,
+      "price": 0.843305,
+      "videoSecond": 154.5,
+      "frame": 310
+    },
+    {
+      "ts": 1792169522000,
+      "receivedAt": 1792169522000,
+      "price": 0.843305,
+      "videoSecond": 155.0,
+      "frame": 311
+    },
+    {
+      "ts": 1792169523500,
+      "receivedAt": 1792169523500,
+      "price": 0.843315,
+      "videoSecond": 156.5,
+      "frame": 314
+    },
+    {
+      "ts": 1792169524000,
+      "receivedAt": 1792169524000,
+      "price": 0.843315,
+      "videoSecond": 157.0,
+      "frame": 315
+    },
+    {
+      "ts": 1792169524500,
+      "receivedAt": 1792169524500,
+      "price": 0.843335,
+      "videoSecond": 157.5,
+      "frame": 316
+    },
+    {
+      "ts": 1792169525000,
+      "receivedAt": 1792169525000,
+      "price": 0.843335,
+      "videoSecond": 158.0,
+      "frame": 317
+    },
+    {
+      "ts": 1792169525500,
+      "receivedAt": 1792169525500,
+      "price": 0.843265,
+      "videoSecond": 158.5,
+      "frame": 318
+    },
+    {
+      "ts": 1792169526000,
+      "receivedAt": 1792169526000,
+      "price": 0.843265,
+      "videoSecond": 159.0,
+      "frame": 319
+    },
+    {
+      "ts": 1792169527000,
+      "receivedAt": 1792169527000,
+      "price": 0.843235,
+      "videoSecond": 160.0,
+      "frame": 321
+    },
+    {
+      "ts": 1792169527500,
+      "receivedAt": 1792169527500,
+      "price": 0.843255,
+      "videoSecond": 160.5,
+      "frame": 322
+    },
+    {
+      "ts": 1792169528500,
+      "receivedAt": 1792169528500,
+      "price": 0.843225,
+      "videoSecond": 161.5,
+      "frame": 324
+    },
+    {
+      "ts": 1792169529000,
+      "receivedAt": 1792169529000,
+      "price": 0.843225,
+      "videoSecond": 162.0,
+      "frame": 325
+    },
+    {
+      "ts": 1792169529500,
+      "receivedAt": 1792169529500,
+      "price": 0.843245,
+      "videoSecond": 162.5,
+      "frame": 326
+    },
+    {
+      "ts": 1792169530000,
+      "receivedAt": 1792169530000,
+      "price": 0.843245,
+      "videoSecond": 163.0,
+      "frame": 327
+    },
+    {
+      "ts": 1792169530500,
+      "receivedAt": 1792169530500,
+      "price": 0.843205,
+      "videoSecond": 163.5,
+      "frame": 328
+    },
+    {
+      "ts": 1792169531000,
+      "receivedAt": 1792169531000,
+      "price": 0.843205,
+      "videoSecond": 164.0,
+      "frame": 329
+    },
+    {
+      "ts": 1792169531500,
+      "receivedAt": 1792169531500,
+      "price": 0.843225,
+      "videoSecond": 164.5,
+      "frame": 330
+    },
+    {
+      "ts": 1792169532000,
+      "receivedAt": 1792169532000,
+      "price": 0.843225,
+      "videoSecond": 165.0,
+      "frame": 331
+    },
+    {
+      "ts": 1792169532500,
+      "receivedAt": 1792169532500,
+      "price": 0.843265,
+      "videoSecond": 165.5,
+      "frame": 332
+    },
+    {
+      "ts": 1792169533000,
+      "receivedAt": 1792169533000,
+      "price": 0.843265,
+      "videoSecond": 166.0,
+      "frame": 333
+    },
+    {
+      "ts": 1792169533500,
+      "receivedAt": 1792169533500,
+      "price": 0.843265,
+      "videoSecond": 166.5,
+      "frame": 334
+    },
+    {
+      "ts": 1792169534000,
+      "receivedAt": 1792169534000,
+      "price": 0.843265,
+      "videoSecond": 167.0,
+      "frame": 335
+    },
+    {
+      "ts": 1792169534500,
+      "receivedAt": 1792169534500,
+      "price": 0.843255,
+      "videoSecond": 167.5,
+      "frame": 336
+    },
+    {
+      "ts": 1792169535000,
+      "receivedAt": 1792169535000,
+      "price": 0.843255,
+      "videoSecond": 168.0,
+      "frame": 337
+    },
+    {
+      "ts": 1792169535500,
+      "receivedAt": 1792169535500,
+      "price": 0.843245,
+      "videoSecond": 168.5,
+      "frame": 338
+    },
+    {
+      "ts": 1792169536000,
+      "receivedAt": 1792169536000,
+      "price": 0.843245,
+      "videoSecond": 169.0,
+      "frame": 339
+    },
+    {
+      "ts": 1792169536500,
+      "receivedAt": 1792169536500,
+      "price": 0.843245,
+      "videoSecond": 169.5,
+      "frame": 340
+    },
+    {
+      "ts": 1792169537000,
+      "receivedAt": 1792169537000,
+      "price": 0.843245,
+      "videoSecond": 170.0,
+      "frame": 341
+    },
+    {
+      "ts": 1792169537500,
+      "receivedAt": 1792169537500,
+      "price": 0.843255,
+      "videoSecond": 170.5,
+      "frame": 342
+    },
+    {
+      "ts": 1792169538000,
+      "receivedAt": 1792169538000,
+      "price": 0.843255,
+      "videoSecond": 171.0,
+      "frame": 343
+    },
+    {
+      "ts": 1792169538500,
+      "receivedAt": 1792169538500,
+      "price": 0.843255,
+      "videoSecond": 171.5,
+      "frame": 344
+    },
+    {
+      "ts": 1792169539000,
+      "receivedAt": 1792169539000,
+      "price": 0.843255,
+      "videoSecond": 172.0,
+      "frame": 345
+    },
+    {
+      "ts": 1792169539500,
+      "receivedAt": 1792169539500,
+      "price": 0.843245,
+      "videoSecond": 172.5,
+      "frame": 346
+    },
+    {
+      "ts": 1792169540000,
+      "receivedAt": 1792169540000,
+      "price": 0.843245,
+      "videoSecond": 173.0,
+      "frame": 347
+    },
+    {
+      "ts": 1792169540500,
+      "receivedAt": 1792169540500,
+      "price": 0.843235,
+      "videoSecond": 173.5,
+      "frame": 348
+    },
+    {
+      "ts": 1792169541000,
+      "receivedAt": 1792169541000,
+      "price": 0.843235,
+      "videoSecond": 174.0,
+      "frame": 349
+    },
+    {
+      "ts": 1792169541500,
+      "receivedAt": 1792169541500,
+      "price": 0.843235,
+      "videoSecond": 174.5,
+      "frame": 350
+    },
+    {
+      "ts": 1792169542000,
+      "receivedAt": 1792169542000,
+      "price": 0.843235,
+      "videoSecond": 175.0,
+      "frame": 351
+    },
+    {
+      "ts": 1792169542500,
+      "receivedAt": 1792169542500,
+      "price": 0.843245,
+      "videoSecond": 175.5,
+      "frame": 352
+    },
+    {
+      "ts": 1792169543000,
+      "receivedAt": 1792169543000,
+      "price": 0.843245,
+      "videoSecond": 176.0,
+      "frame": 353
+    },
+    {
+      "ts": 1792169543500,
+      "receivedAt": 1792169543500,
+      "price": 0.843255,
+      "videoSecond": 176.5,
+      "frame": 354
+    },
+    {
+      "ts": 1792169544000,
+      "receivedAt": 1792169544000,
+      "price": 0.843255,
+      "videoSecond": 177.0,
+      "frame": 355
+    },
+    {
+      "ts": 1792169544500,
+      "receivedAt": 1792169544500,
+      "price": 0.843265,
+      "videoSecond": 177.5,
+      "frame": 356
+    },
+    {
+      "ts": 1792169545000,
+      "receivedAt": 1792169545000,
+      "price": 0.843265,
+      "videoSecond": 178.0,
+      "frame": 357
+    },
+    {
+      "ts": 1792169545500,
+      "receivedAt": 1792169545500,
+      "price": 0.843265,
+      "videoSecond": 178.5,
+      "frame": 358
+    },
+    {
+      "ts": 1792169546000,
+      "receivedAt": 1792169546000,
+      "price": 0.843265,
+      "videoSecond": 179.0,
+      "frame": 359
+    },
+    {
+      "ts": 1792169546500,
+      "receivedAt": 1792169546500,
+      "price": 0.843285,
+      "videoSecond": 179.5,
+      "frame": 360
+    },
+    {
+      "ts": 1792169547000,
+      "receivedAt": 1792169547000,
+      "price": 0.843285,
+      "videoSecond": 180.0,
+      "frame": 361
+    },
+    {
+      "ts": 1792169547500,
+      "receivedAt": 1792169547500,
+      "price": 0.843295,
+      "videoSecond": 180.5,
+      "frame": 362
+    },
+    {
+      "ts": 1792169548000,
+      "receivedAt": 1792169548000,
+      "price": 0.843295,
+      "videoSecond": 181.0,
+      "frame": 363
+    },
+    {
+      "ts": 1792169548500,
+      "receivedAt": 1792169548500,
+      "price": 0.843305,
+      "videoSecond": 181.5,
+      "frame": 364
+    },
+    {
+      "ts": 1792169549000,
+      "receivedAt": 1792169549000,
+      "price": 0.843305,
+      "videoSecond": 182.0,
+      "frame": 365
+    },
+    {
+      "ts": 1792169549500,
+      "receivedAt": 1792169549500,
+      "price": 0.843265,
+      "videoSecond": 182.5,
+      "frame": 366
+    },
+    {
+      "ts": 1792169550000,
+      "receivedAt": 1792169550000,
+      "price": 0.843265,
+      "videoSecond": 183.0,
+      "frame": 367
+    },
+    {
+      "ts": 1792169550500,
+      "receivedAt": 1792169550500,
+      "price": 0.843275,
+      "videoSecond": 183.5,
+      "frame": 368
+    },
+    {
+      "ts": 1792169551000,
+      "receivedAt": 1792169551000,
+      "price": 0.843275,
+      "videoSecond": 184.0,
+      "frame": 369
+    },
+    {
+      "ts": 1792169551500,
+      "receivedAt": 1792169551500,
+      "price": 0.843285,
+      "videoSecond": 184.5,
+      "frame": 370
+    },
+    {
+      "ts": 1792169552000,
+      "receivedAt": 1792169552000,
+      "price": 0.843285,
+      "videoSecond": 185.0,
+      "frame": 371
+    },
+    {
+      "ts": 1792169552500,
+      "receivedAt": 1792169552500,
+      "price": 0.843315,
+      "videoSecond": 185.5,
+      "frame": 372
+    },
+    {
+      "ts": 1792169553000,
+      "receivedAt": 1792169553000,
+      "price": 0.843315,
+      "videoSecond": 186.0,
+      "frame": 373
+    },
+    {
+      "ts": 1792169553500,
+      "receivedAt": 1792169553500,
+      "price": 0.843305,
+      "videoSecond": 186.5,
+      "frame": 374
+    },
+    {
+      "ts": 1792169554000,
+      "receivedAt": 1792169554000,
+      "price": 0.843305,
+      "videoSecond": 187.0,
+      "frame": 375
+    },
+    {
+      "ts": 1792169554500,
+      "receivedAt": 1792169554500,
+      "price": 0.843365,
+      "videoSecond": 187.5,
+      "frame": 376
+    },
+    {
+      "ts": 1792169555000,
+      "receivedAt": 1792169555000,
+      "price": 0.843365,
+      "videoSecond": 188.0,
+      "frame": 377
+    },
+    {
+      "ts": 1792169555500,
+      "receivedAt": 1792169555500,
+      "price": 0.843355,
+      "videoSecond": 188.5,
+      "frame": 378
+    },
+    {
+      "ts": 1792169556000,
+      "receivedAt": 1792169556000,
+      "price": 0.843355,
+      "videoSecond": 189.0,
+      "frame": 379
+    },
+    {
+      "ts": 1792169556500,
+      "receivedAt": 1792169556500,
+      "price": 0.843355,
+      "videoSecond": 189.5,
+      "frame": 380
+    },
+    {
+      "ts": 1792169557000,
+      "receivedAt": 1792169557000,
+      "price": 0.843355,
+      "videoSecond": 190.0,
+      "frame": 381
+    },
+    {
+      "ts": 1792169557500,
+      "receivedAt": 1792169557500,
+      "price": 0.843375,
+      "videoSecond": 190.5,
+      "frame": 382
+    },
+    {
+      "ts": 1792169558000,
+      "receivedAt": 1792169558000,
+      "price": 0.843375,
+      "videoSecond": 191.0,
+      "frame": 383
+    },
+    {
+      "ts": 1792169558500,
+      "receivedAt": 1792169558500,
+      "price": 0.843395,
+      "videoSecond": 191.5,
+      "frame": 384
+    },
+    {
+      "ts": 1792169559000,
+      "receivedAt": 1792169559000,
+      "price": 0.843395,
+      "videoSecond": 192.0,
+      "frame": 385
+    },
+    {
+      "ts": 1792169559500,
+      "receivedAt": 1792169559500,
+      "price": 0.843405,
+      "videoSecond": 192.5,
+      "frame": 386
+    },
+    {
+      "ts": 1792169560000,
+      "receivedAt": 1792169560000,
+      "price": 0.843405,
+      "videoSecond": 193.0,
+      "frame": 387
+    },
+    {
+      "ts": 1792169560500,
+      "receivedAt": 1792169560500,
+      "price": 0.843415,
+      "videoSecond": 193.5,
+      "frame": 388
+    },
+    {
+      "ts": 1792169561000,
+      "receivedAt": 1792169561000,
+      "price": 0.843415,
+      "videoSecond": 194.0,
+      "frame": 389
+    },
+    {
+      "ts": 1792169561500,
+      "receivedAt": 1792169561500,
+      "price": 0.843405,
+      "videoSecond": 194.5,
+      "frame": 390
+    },
+    {
+      "ts": 1792169563000,
+      "receivedAt": 1792169563000,
+      "price": 0.843405,
+      "videoSecond": 196.0,
+      "frame": 393
+    },
+    {
+      "ts": 1792169563500,
+      "receivedAt": 1792169563500,
+      "price": 0.843395,
+      "videoSecond": 196.5,
+      "frame": 394
+    },
+    {
+      "ts": 1792169564000,
+      "receivedAt": 1792169564000,
+      "price": 0.843395,
+      "videoSecond": 197.0,
+      "frame": 395
+    },
+    {
+      "ts": 1792169564500,
+      "receivedAt": 1792169564500,
+      "price": 0.843395,
+      "videoSecond": 197.5,
+      "frame": 396
+    },
+    {
+      "ts": 1792169565000,
+      "receivedAt": 1792169565000,
+      "price": 0.843395,
+      "videoSecond": 198.0,
+      "frame": 397
+    },
+    {
+      "ts": 1792169565500,
+      "receivedAt": 1792169565500,
+      "price": 0.843375,
+      "videoSecond": 198.5,
+      "frame": 398
+    },
+    {
+      "ts": 1792169566000,
+      "receivedAt": 1792169566000,
+      "price": 0.843375,
+      "videoSecond": 199.0,
+      "frame": 399
+    },
+    {
+      "ts": 1792169566500,
+      "receivedAt": 1792169566500,
+      "price": 0.843375,
+      "videoSecond": 199.5,
+      "frame": 400
+    },
+    {
+      "ts": 1792169567000,
+      "receivedAt": 1792169567000,
+      "price": 0.843375,
+      "videoSecond": 200.0,
+      "frame": 401
+    },
+    {
+      "ts": 1792169567500,
+      "receivedAt": 1792169567500,
+      "price": 0.843355,
+      "videoSecond": 200.5,
+      "frame": 402
+    },
+    {
+      "ts": 1792169568000,
+      "receivedAt": 1792169568000,
+      "price": 0.843355,
+      "videoSecond": 201.0,
+      "frame": 403
+    },
+    {
+      "ts": 1792169568500,
+      "receivedAt": 1792169568500,
+      "price": 0.843325,
+      "videoSecond": 201.5,
+      "frame": 404
+    },
+    {
+      "ts": 1792169569000,
+      "receivedAt": 1792169569000,
+      "price": 0.843325,
+      "videoSecond": 202.0,
+      "frame": 405
+    },
+    {
+      "ts": 1792169569500,
+      "receivedAt": 1792169569500,
+      "price": 0.843335,
+      "videoSecond": 202.5,
+      "frame": 406
+    },
+    {
+      "ts": 1792169570000,
+      "receivedAt": 1792169570000,
+      "price": 0.843335,
+      "videoSecond": 203.0,
+      "frame": 407
+    },
+    {
+      "ts": 1792169570500,
+      "receivedAt": 1792169570500,
+      "price": 0.843335,
+      "videoSecond": 203.5,
+      "frame": 408
+    },
+    {
+      "ts": 1792169571000,
+      "receivedAt": 1792169571000,
+      "price": 0.843335,
+      "videoSecond": 204.0,
+      "frame": 409
+    },
+    {
+      "ts": 1792169571500,
+      "receivedAt": 1792169571500,
+      "price": 0.843325,
+      "videoSecond": 204.5,
+      "frame": 410
+    },
+    {
+      "ts": 1792169572000,
+      "receivedAt": 1792169572000,
+      "price": 0.843325,
+      "videoSecond": 205.0,
+      "frame": 411
+    },
+    {
+      "ts": 1792169572500,
+      "receivedAt": 1792169572500,
+      "price": 0.843325,
+      "videoSecond": 205.5,
+      "frame": 412
+    },
+    {
+      "ts": 1792169573000,
+      "receivedAt": 1792169573000,
+      "price": 0.843335,
+      "videoSecond": 206.0,
+      "frame": 413
+    },
+    {
+      "ts": 1792169573500,
+      "receivedAt": 1792169573500,
+      "price": 0.843315,
+      "videoSecond": 206.5,
+      "frame": 414
+    },
+    {
+      "ts": 1792169574000,
+      "receivedAt": 1792169574000,
+      "price": 0.843315,
+      "videoSecond": 207.0,
+      "frame": 415
+    },
+    {
+      "ts": 1792169574500,
+      "receivedAt": 1792169574500,
+      "price": 0.843285,
+      "videoSecond": 207.5,
+      "frame": 416
+    },
+    {
+      "ts": 1792169575000,
+      "receivedAt": 1792169575000,
+      "price": 0.843285,
+      "videoSecond": 208.0,
+      "frame": 417
+    },
+    {
+      "ts": 1792169575500,
+      "receivedAt": 1792169575500,
+      "price": 0.843285,
+      "videoSecond": 208.5,
+      "frame": 418
+    },
+    {
+      "ts": 1792169576000,
+      "receivedAt": 1792169576000,
+      "price": 0.843285,
+      "videoSecond": 209.0,
+      "frame": 419
+    },
+    {
+      "ts": 1792169576500,
+      "receivedAt": 1792169576500,
+      "price": 0.843293,
+      "videoSecond": 209.5,
+      "frame": 420
+    },
+    {
+      "ts": 1792169577000,
+      "receivedAt": 1792169577000,
+      "price": 0.843295,
+      "videoSecond": 210.0,
+      "frame": 421
+    },
+    {
+      "ts": 1792169579500,
+      "receivedAt": 1792169579500,
+      "price": 0.843285,
+      "videoSecond": 212.5,
+      "frame": 426
+    },
+    {
+      "ts": 1792169580000,
+      "receivedAt": 1792169580000,
+      "price": 0.843285,
+      "videoSecond": 213.0,
+      "frame": 427
+    },
+    {
+      "ts": 1792169580500,
+      "receivedAt": 1792169580500,
+      "price": 0.843245,
+      "videoSecond": 213.5,
+      "frame": 428
+    },
+    {
+      "ts": 1792169581000,
+      "receivedAt": 1792169581000,
+      "price": 0.843245,
+      "videoSecond": 214.0,
+      "frame": 429
+    },
+    {
+      "ts": 1792169581500,
+      "receivedAt": 1792169581500,
+      "price": 0.843245,
+      "videoSecond": 214.5,
+      "frame": 430
+    },
+    {
+      "ts": 1792169582000,
+      "receivedAt": 1792169582000,
+      "price": 0.843245,
+      "videoSecond": 215.0,
+      "frame": 431
+    },
+    {
+      "ts": 1792169582500,
+      "receivedAt": 1792169582500,
+      "price": 0.843245,
+      "videoSecond": 215.5,
+      "frame": 432
+    },
+    {
+      "ts": 1792169583000,
+      "receivedAt": 1792169583000,
+      "price": 0.843215,
+      "videoSecond": 216.0,
+      "frame": 433
+    },
+    {
+      "ts": 1792169583500,
+      "receivedAt": 1792169583500,
+      "price": 0.843215,
+      "videoSecond": 216.5,
+      "frame": 434
+    },
+    {
+      "ts": 1792169584000,
+      "receivedAt": 1792169584000,
+      "price": 0.843254,
+      "videoSecond": 217.0,
+      "frame": 435
+    },
+    {
+      "ts": 1792169584500,
+      "receivedAt": 1792169584500,
+      "price": 0.843246,
+      "videoSecond": 217.5,
+      "frame": 436
+    },
+    {
+      "ts": 1792169585000,
+      "receivedAt": 1792169585000,
+      "price": 0.843245,
+      "videoSecond": 218.0,
+      "frame": 437
+    },
+    {
+      "ts": 1792169585500,
+      "receivedAt": 1792169585500,
+      "price": 0.843245,
+      "videoSecond": 218.5,
+      "frame": 438
+    },
+    {
+      "ts": 1792169586000,
+      "receivedAt": 1792169586000,
+      "price": 0.843315,
+      "videoSecond": 219.0,
+      "frame": 439
+    },
+    {
+      "ts": 1792169586500,
+      "receivedAt": 1792169586500,
+      "price": 0.843308,
+      "videoSecond": 219.5,
+      "frame": 440
+    },
+    {
+      "ts": 1792169587000,
+      "receivedAt": 1792169587000,
+      "price": 0.843285,
+      "videoSecond": 220.0,
+      "frame": 441
+    },
+    {
+      "ts": 1792169587500,
+      "receivedAt": 1792169587500,
+      "price": 0.843294,
+      "videoSecond": 220.5,
+      "frame": 442
+    },
+    {
+      "ts": 1792169588000,
+      "receivedAt": 1792169588000,
+      "price": 0.843295,
+      "videoSecond": 221.0,
+      "frame": 443
+    },
+    {
+      "ts": 1792169588500,
+      "receivedAt": 1792169588500,
+      "price": 0.843305,
+      "videoSecond": 221.5,
+      "frame": 444
+    },
+    {
+      "ts": 1792169589000,
+      "receivedAt": 1792169589000,
+      "price": 0.843305,
+      "videoSecond": 222.0,
+      "frame": 445
+    },
+    {
+      "ts": 1792169589500,
+      "receivedAt": 1792169589500,
+      "price": 0.843315,
+      "videoSecond": 222.5,
+      "frame": 446
+    },
+    {
+      "ts": 1792169590000,
+      "receivedAt": 1792169590000,
+      "price": 0.843315,
+      "videoSecond": 223.0,
+      "frame": 447
+    },
+    {
+      "ts": 1792169590500,
+      "receivedAt": 1792169590500,
+      "price": 0.843325,
+      "videoSecond": 223.5,
+      "frame": 448
+    },
+    {
+      "ts": 1792169591000,
+      "receivedAt": 1792169591000,
+      "price": 0.843325,
+      "videoSecond": 224.0,
+      "frame": 449
+    },
+    {
+      "ts": 1792169591500,
+      "receivedAt": 1792169591500,
+      "price": 0.843344,
+      "videoSecond": 224.5,
+      "frame": 450
+    },
+    {
+      "ts": 1792169592000,
+      "receivedAt": 1792169592000,
+      "price": 0.843345,
+      "videoSecond": 225.0,
+      "frame": 451
+    },
+    {
+      "ts": 1792169592500,
+      "receivedAt": 1792169592500,
+      "price": 0.843345,
+      "videoSecond": 225.5,
+      "frame": 452
+    },
+    {
+      "ts": 1792169593000,
+      "receivedAt": 1792169593000,
+      "price": 0.843335,
+      "videoSecond": 226.0,
+      "frame": 453
+    },
+    {
+      "ts": 1792169593500,
+      "receivedAt": 1792169593500,
+      "price": 0.843335,
+      "videoSecond": 226.5,
+      "frame": 454
+    },
+    {
+      "ts": 1792169594000,
+      "receivedAt": 1792169594000,
+      "price": 0.843335,
+      "videoSecond": 227.0,
+      "frame": 455
+    },
+    {
+      "ts": 1792169594500,
+      "receivedAt": 1792169594500,
+      "price": 0.843335,
+      "videoSecond": 227.5,
+      "frame": 456
+    },
+    {
+      "ts": 1792169595000,
+      "receivedAt": 1792169595000,
+      "price": 0.843335,
+      "videoSecond": 228.0,
+      "frame": 457
+    },
+    {
+      "ts": 1792169595500,
+      "receivedAt": 1792169595500,
+      "price": 0.843355,
+      "videoSecond": 228.5,
+      "frame": 458
+    },
+    {
+      "ts": 1792169596000,
+      "receivedAt": 1792169596000,
+      "price": 0.843355,
+      "videoSecond": 229.0,
+      "frame": 459
+    },
+    {
+      "ts": 1792169596500,
+      "receivedAt": 1792169596500,
+      "price": 0.843346,
+      "videoSecond": 229.5,
+      "frame": 460
+    },
+    {
+      "ts": 1792169597000,
+      "receivedAt": 1792169597000,
+      "price": 0.843345,
+      "videoSecond": 230.0,
+      "frame": 461
+    },
+    {
+      "ts": 1792169597500,
+      "receivedAt": 1792169597500,
+      "price": 0.843335,
+      "videoSecond": 230.5,
+      "frame": 462
+    },
+    {
+      "ts": 1792169598000,
+      "receivedAt": 1792169598000,
+      "price": 0.843335,
+      "videoSecond": 231.0,
+      "frame": 463
+    },
+    {
+      "ts": 1792169598500,
+      "receivedAt": 1792169598500,
+      "price": 0.843355,
+      "videoSecond": 231.5,
+      "frame": 464
+    },
+    {
+      "ts": 1792169599000,
+      "receivedAt": 1792169599000,
+      "price": 0.843355,
+      "videoSecond": 232.0,
+      "frame": 465
+    },
+    {
+      "ts": 1792169599500,
+      "receivedAt": 1792169599500,
+      "price": 0.843375,
+      "videoSecond": 232.5,
+      "frame": 466
+    },
+    {
+      "ts": 1792169600000,
+      "receivedAt": 1792169600000,
+      "price": 0.843375,
+      "videoSecond": 233.0,
+      "frame": 467
+    },
+    {
+      "ts": 1792169600500,
+      "receivedAt": 1792169600500,
+      "price": 0.843395,
+      "videoSecond": 233.5,
+      "frame": 468
+    },
+    {
+      "ts": 1792169601000,
+      "receivedAt": 1792169601000,
+      "price": 0.843395,
+      "videoSecond": 234.0,
+      "frame": 469
+    },
+    {
+      "ts": 1792169601500,
+      "receivedAt": 1792169601500,
+      "price": 0.843395,
+      "videoSecond": 234.5,
+      "frame": 470
+    },
+    {
+      "ts": 1792169602000,
+      "receivedAt": 1792169602000,
+      "price": 0.843395,
+      "videoSecond": 235.0,
+      "frame": 471
+    },
+    {
+      "ts": 1792169602500,
+      "receivedAt": 1792169602500,
+      "price": 0.843395,
+      "videoSecond": 235.5,
+      "frame": 472
+    },
+    {
+      "ts": 1792169603000,
+      "receivedAt": 1792169603000,
+      "price": 0.843296,
+      "videoSecond": 236.0,
+      "frame": 473
+    },
+    {
+      "ts": 1792169603500,
+      "receivedAt": 1792169603500,
+      "price": 0.843285,
+      "videoSecond": 236.5,
+      "frame": 474
+    },
+    {
+      "ts": 1792169604000,
+      "receivedAt": 1792169604000,
+      "price": 0.843285,
+      "videoSecond": 237.0,
+      "frame": 475
+    },
+    {
+      "ts": 1792169604500,
+      "receivedAt": 1792169604500,
+      "price": 0.843305,
+      "videoSecond": 237.5,
+      "frame": 476
+    },
+    {
+      "ts": 1792169605500,
+      "receivedAt": 1792169605500,
+      "price": 0.843325,
+      "videoSecond": 238.5,
+      "frame": 478
+    },
+    {
+      "ts": 1792169606000,
+      "receivedAt": 1792169606000,
+      "price": 0.843325,
+      "videoSecond": 239.0,
+      "frame": 479
+    },
+    {
+      "ts": 1792169606500,
+      "receivedAt": 1792169606500,
+      "price": 0.843295,
+      "videoSecond": 239.5,
+      "frame": 480
+    },
+    {
+      "ts": 1792169607000,
+      "receivedAt": 1792169607000,
+      "price": 0.843295,
+      "videoSecond": 240.0,
+      "frame": 481
+    },
+    {
+      "ts": 1792169607500,
+      "receivedAt": 1792169607500,
+      "price": 0.843295,
+      "videoSecond": 240.5,
+      "frame": 482
+    },
+    {
+      "ts": 1792169608000,
+      "receivedAt": 1792169608000,
+      "price": 0.843295,
+      "videoSecond": 241.0,
+      "frame": 483
+    },
+    {
+      "ts": 1792169608500,
+      "receivedAt": 1792169608500,
+      "price": 0.843215,
+      "videoSecond": 241.5,
+      "frame": 484
+    },
+    {
+      "ts": 1792169609000,
+      "receivedAt": 1792169609000,
+      "price": 0.843215,
+      "videoSecond": 242.0,
+      "frame": 485
+    },
+    {
+      "ts": 1792169609500,
+      "receivedAt": 1792169609500,
+      "price": 0.843235,
+      "videoSecond": 242.5,
+      "frame": 486
+    },
+    {
+      "ts": 1792169610000,
+      "receivedAt": 1792169610000,
+      "price": 0.843235,
+      "videoSecond": 243.0,
+      "frame": 487
+    },
+    {
+      "ts": 1792169610500,
+      "receivedAt": 1792169610500,
+      "price": 0.843235,
+      "videoSecond": 243.5,
+      "frame": 488
+    },
+    {
+      "ts": 1792169611000,
+      "receivedAt": 1792169611000,
+      "price": 0.843235,
+      "videoSecond": 244.0,
+      "frame": 489
+    },
+    {
+      "ts": 1792169611500,
+      "receivedAt": 1792169611500,
+      "price": 0.843225,
+      "videoSecond": 244.5,
+      "frame": 490
+    },
+    {
+      "ts": 1792169612000,
+      "receivedAt": 1792169612000,
+      "price": 0.843225,
+      "videoSecond": 245.0,
+      "frame": 491
+    },
+    {
+      "ts": 1792169612500,
+      "receivedAt": 1792169612500,
+      "price": 0.843225,
+      "videoSecond": 245.5,
+      "frame": 492
+    },
+    {
+      "ts": 1792169613000,
+      "receivedAt": 1792169613000,
+      "price": 0.843225,
+      "videoSecond": 246.0,
+      "frame": 493
+    },
+    {
+      "ts": 1792169613500,
+      "receivedAt": 1792169613500,
+      "price": 0.843215,
+      "videoSecond": 246.5,
+      "frame": 494
+    },
+    {
+      "ts": 1792169614000,
+      "receivedAt": 1792169614000,
+      "price": 0.843215,
+      "videoSecond": 247.0,
+      "frame": 495
+    },
+    {
+      "ts": 1792169614500,
+      "receivedAt": 1792169614500,
+      "price": 0.843235,
+      "videoSecond": 247.5,
+      "frame": 496
+    },
+    {
+      "ts": 1792169615000,
+      "receivedAt": 1792169615000,
+      "price": 0.843235,
+      "videoSecond": 248.0,
+      "frame": 497
+    },
+    {
+      "ts": 1792169615500,
+      "receivedAt": 1792169615500,
+      "price": 0.843225,
+      "videoSecond": 248.5,
+      "frame": 498
+    },
+    {
+      "ts": 1792169616000,
+      "receivedAt": 1792169616000,
+      "price": 0.843225,
+      "videoSecond": 249.0,
+      "frame": 499
+    },
+    {
+      "ts": 1792169616500,
+      "receivedAt": 1792169616500,
+      "price": 0.843235,
+      "videoSecond": 249.5,
+      "frame": 500
+    },
+    {
+      "ts": 1792169617000,
+      "receivedAt": 1792169617000,
+      "price": 0.843235,
+      "videoSecond": 250.0,
+      "frame": 501
+    },
+    {
+      "ts": 1792169617500,
+      "receivedAt": 1792169617500,
+      "price": 0.843235,
+      "videoSecond": 250.5,
+      "frame": 502
+    },
+    {
+      "ts": 1792169618000,
+      "receivedAt": 1792169618000,
+      "price": 0.843235,
+      "videoSecond": 251.0,
+      "frame": 503
+    },
+    {
+      "ts": 1792169618500,
+      "receivedAt": 1792169618500,
+      "price": 0.843235,
+      "videoSecond": 251.5,
+      "frame": 504
+    },
+    {
+      "ts": 1792169619000,
+      "receivedAt": 1792169619000,
+      "price": 0.843235,
+      "videoSecond": 252.0,
+      "frame": 505
+    },
+    {
+      "ts": 1792169619500,
+      "receivedAt": 1792169619500,
+      "price": 0.843215,
+      "videoSecond": 252.5,
+      "frame": 506
+    },
+    {
+      "ts": 1792169620000,
+      "receivedAt": 1792169620000,
+      "price": 0.843215,
+      "videoSecond": 253.0,
+      "frame": 507
+    },
+    {
+      "ts": 1792169620500,
+      "receivedAt": 1792169620500,
+      "price": 0.843195,
+      "videoSecond": 253.5,
+      "frame": 508
+    },
+    {
+      "ts": 1792169621000,
+      "receivedAt": 1792169621000,
+      "price": 0.843195,
+      "videoSecond": 254.0,
+      "frame": 509
+    },
+    {
+      "ts": 1792169621500,
+      "receivedAt": 1792169621500,
+      "price": 0.843185,
+      "videoSecond": 254.5,
+      "frame": 510
+    },
+    {
+      "ts": 1792169622000,
+      "receivedAt": 1792169622000,
+      "price": 0.843185,
+      "videoSecond": 255.0,
+      "frame": 511
+    },
+    {
+      "ts": 1792169622500,
+      "receivedAt": 1792169622500,
+      "price": 0.843185,
+      "videoSecond": 255.5,
+      "frame": 512
+    },
+    {
+      "ts": 1792169623000,
+      "receivedAt": 1792169623000,
+      "price": 0.843235,
+      "videoSecond": 256.0,
+      "frame": 513
+    },
+    {
+      "ts": 1792169623500,
+      "receivedAt": 1792169623500,
+      "price": 0.843215,
+      "videoSecond": 256.5,
+      "frame": 514
+    },
+    {
+      "ts": 1792169624000,
+      "receivedAt": 1792169624000,
+      "price": 0.843215,
+      "videoSecond": 257.0,
+      "frame": 515
+    },
+    {
+      "ts": 1792169624500,
+      "receivedAt": 1792169624500,
+      "price": 0.843205,
+      "videoSecond": 257.5,
+      "frame": 516
+    },
+    {
+      "ts": 1792169625000,
+      "receivedAt": 1792169625000,
+      "price": 0.843205,
+      "videoSecond": 258.0,
+      "frame": 517
+    },
+    {
+      "ts": 1792169625500,
+      "receivedAt": 1792169625500,
+      "price": 0.843205,
+      "videoSecond": 258.5,
+      "frame": 518
+    },
+    {
+      "ts": 1792169626000,
+      "receivedAt": 1792169626000,
+      "price": 0.843205,
+      "videoSecond": 259.0,
+      "frame": 519
+    },
+    {
+      "ts": 1792169626500,
+      "receivedAt": 1792169626500,
+      "price": 0.843225,
+      "videoSecond": 259.5,
+      "frame": 520
+    },
+    {
+      "ts": 1792169627000,
+      "receivedAt": 1792169627000,
+      "price": 0.843225,
+      "videoSecond": 260.0,
+      "frame": 521
+    },
+    {
+      "ts": 1792169627500,
+      "receivedAt": 1792169627500,
+      "price": 0.843195,
+      "videoSecond": 260.5,
+      "frame": 522
+    },
+    {
+      "ts": 1792169628000,
+      "receivedAt": 1792169628000,
+      "price": 0.843195,
+      "videoSecond": 261.0,
+      "frame": 523
+    },
+    {
+      "ts": 1792169628500,
+      "receivedAt": 1792169628500,
+      "price": 0.843215,
+      "videoSecond": 261.5,
+      "frame": 524
+    },
+    {
+      "ts": 1792169629000,
+      "receivedAt": 1792169629000,
+      "price": 0.843215,
+      "videoSecond": 262.0,
+      "frame": 525
+    },
+    {
+      "ts": 1792169629500,
+      "receivedAt": 1792169629500,
+      "price": 0.843225,
+      "videoSecond": 262.5,
+      "frame": 526
+    },
+    {
+      "ts": 1792169630000,
+      "receivedAt": 1792169630000,
+      "price": 0.843225,
+      "videoSecond": 263.0,
+      "frame": 527
+    },
+    {
+      "ts": 1792169630500,
+      "receivedAt": 1792169630500,
+      "price": 0.843205,
+      "videoSecond": 263.5,
+      "frame": 528
+    },
+    {
+      "ts": 1792169631000,
+      "receivedAt": 1792169631000,
+      "price": 0.843205,
+      "videoSecond": 264.0,
+      "frame": 529
+    },
+    {
+      "ts": 1792169631500,
+      "receivedAt": 1792169631500,
+      "price": 0.843175,
+      "videoSecond": 264.5,
+      "frame": 530
+    },
+    {
+      "ts": 1792169632000,
+      "receivedAt": 1792169632000,
+      "price": 0.843175,
+      "videoSecond": 265.0,
+      "frame": 531
+    },
+    {
+      "ts": 1792169632500,
+      "receivedAt": 1792169632500,
+      "price": 0.843158,
+      "videoSecond": 265.5,
+      "frame": 532
+    },
+    {
+      "ts": 1792169633000,
+      "receivedAt": 1792169633000,
+      "price": 0.843145,
+      "videoSecond": 266.0,
+      "frame": 533
+    },
+    {
+      "ts": 1792169633500,
+      "receivedAt": 1792169633500,
+      "price": 0.843175,
+      "videoSecond": 266.5,
+      "frame": 534
+    },
+    {
+      "ts": 1792169634000,
+      "receivedAt": 1792169634000,
+      "price": 0.843175,
+      "videoSecond": 267.0,
+      "frame": 535
+    },
+    {
+      "ts": 1792169634500,
+      "receivedAt": 1792169634500,
+      "price": 0.843165,
+      "videoSecond": 267.5,
+      "frame": 536
+    },
+    {
+      "ts": 1792169635000,
+      "receivedAt": 1792169635000,
+      "price": 0.843165,
+      "videoSecond": 268.0,
+      "frame": 537
+    },
+    {
+      "ts": 1792169635500,
+      "receivedAt": 1792169635500,
+      "price": 0.843165,
+      "videoSecond": 268.5,
+      "frame": 538
+    },
+    {
+      "ts": 1792169636000,
+      "receivedAt": 1792169636000,
+      "price": 0.843165,
+      "videoSecond": 269.0,
+      "frame": 539
+    },
+    {
+      "ts": 1792169636500,
+      "receivedAt": 1792169636500,
+      "price": 0.843175,
+      "videoSecond": 269.5,
+      "frame": 540
+    },
+    {
+      "ts": 1792169637000,
+      "receivedAt": 1792169637000,
+      "price": 0.843175,
+      "videoSecond": 270.0,
+      "frame": 541
+    },
+    {
+      "ts": 1792169637500,
+      "receivedAt": 1792169637500,
+      "price": 0.843165,
+      "videoSecond": 270.5,
+      "frame": 542
+    },
+    {
+      "ts": 1792169638000,
+      "receivedAt": 1792169638000,
+      "price": 0.843165,
+      "videoSecond": 271.0,
+      "frame": 543
+    },
+    {
+      "ts": 1792169638500,
+      "receivedAt": 1792169638500,
+      "price": 0.843175,
+      "videoSecond": 271.5,
+      "frame": 544
+    },
+    {
+      "ts": 1792169639000,
+      "receivedAt": 1792169639000,
+      "price": 0.843175,
+      "videoSecond": 272.0,
+      "frame": 545
+    },
+    {
+      "ts": 1792169639500,
+      "receivedAt": 1792169639500,
+      "price": 0.843185,
+      "videoSecond": 272.5,
+      "frame": 546
+    },
+    {
+      "ts": 1792169640000,
+      "receivedAt": 1792169640000,
+      "price": 0.843185,
+      "videoSecond": 273.0,
+      "frame": 547
+    },
+    {
+      "ts": 1792169640500,
+      "receivedAt": 1792169640500,
+      "price": 0.843175,
+      "videoSecond": 273.5,
+      "frame": 548
+    },
+    {
+      "ts": 1792169641000,
+      "receivedAt": 1792169641000,
+      "price": 0.843175,
+      "videoSecond": 274.0,
+      "frame": 549
+    },
+    {
+      "ts": 1792169641500,
+      "receivedAt": 1792169641500,
+      "price": 0.843165,
+      "videoSecond": 274.5,
+      "frame": 550
+    },
+    {
+      "ts": 1792169642000,
+      "receivedAt": 1792169642000,
+      "price": 0.843165,
+      "videoSecond": 275.0,
+      "frame": 551
+    },
+    {
+      "ts": 1792169642500,
+      "receivedAt": 1792169642500,
+      "price": 0.843175,
+      "videoSecond": 275.5,
+      "frame": 552
+    },
+    {
+      "ts": 1792169643000,
+      "receivedAt": 1792169643000,
+      "price": 0.843175,
+      "videoSecond": 276.0,
+      "frame": 553
+    },
+    {
+      "ts": 1792169643500,
+      "receivedAt": 1792169643500,
+      "price": 0.843175,
+      "videoSecond": 276.5,
+      "frame": 554
+    },
+    {
+      "ts": 1792169644000,
+      "receivedAt": 1792169644000,
+      "price": 0.843175,
+      "videoSecond": 277.0,
+      "frame": 555
+    },
+    {
+      "ts": 1792169644500,
+      "receivedAt": 1792169644500,
+      "price": 0.843185,
+      "videoSecond": 277.5,
+      "frame": 556
+    },
+    {
+      "ts": 1792169645000,
+      "receivedAt": 1792169645000,
+      "price": 0.843185,
+      "videoSecond": 278.0,
+      "frame": 557
+    },
+    {
+      "ts": 1792169645500,
+      "receivedAt": 1792169645500,
+      "price": 0.843185,
+      "videoSecond": 278.5,
+      "frame": 558
+    },
+    {
+      "ts": 1792169646000,
+      "receivedAt": 1792169646000,
+      "price": 0.843185,
+      "videoSecond": 279.0,
+      "frame": 559
+    },
+    {
+      "ts": 1792169646500,
+      "receivedAt": 1792169646500,
+      "price": 0.843195,
+      "videoSecond": 279.5,
+      "frame": 560
+    },
+    {
+      "ts": 1792169647000,
+      "receivedAt": 1792169647000,
+      "price": 0.843195,
+      "videoSecond": 280.0,
+      "frame": 561
+    },
+    {
+      "ts": 1792169647500,
+      "receivedAt": 1792169647500,
+      "price": 0.843185,
+      "videoSecond": 280.5,
+      "frame": 562
+    },
+    {
+      "ts": 1792169648000,
+      "receivedAt": 1792169648000,
+      "price": 0.843185,
+      "videoSecond": 281.0,
+      "frame": 563
+    },
+    {
+      "ts": 1792169648500,
+      "receivedAt": 1792169648500,
+      "price": 0.843165,
+      "videoSecond": 281.5,
+      "frame": 564
+    },
+    {
+      "ts": 1792169649000,
+      "receivedAt": 1792169649000,
+      "price": 0.843165,
+      "videoSecond": 282.0,
+      "frame": 565
+    },
+    {
+      "ts": 1792169649500,
+      "receivedAt": 1792169649500,
+      "price": 0.843175,
+      "videoSecond": 282.5,
+      "frame": 566
+    },
+    {
+      "ts": 1792169650000,
+      "receivedAt": 1792169650000,
+      "price": 0.843175,
+      "videoSecond": 283.0,
+      "frame": 567
+    },
+    {
+      "ts": 1792169650500,
+      "receivedAt": 1792169650500,
+      "price": 0.843175,
+      "videoSecond": 283.5,
+      "frame": 568
+    },
+    {
+      "ts": 1792169651000,
+      "receivedAt": 1792169651000,
+      "price": 0.843175,
+      "videoSecond": 284.0,
+      "frame": 569
+    },
+    {
+      "ts": 1792169651500,
+      "receivedAt": 1792169651500,
+      "price": 0.843175,
+      "videoSecond": 284.5,
+      "frame": 570
+    },
+    {
+      "ts": 1792169652000,
+      "receivedAt": 1792169652000,
+      "price": 0.843175,
+      "videoSecond": 285.0,
+      "frame": 571
+    },
+    {
+      "ts": 1792169652500,
+      "receivedAt": 1792169652500,
+      "price": 0.843205,
+      "videoSecond": 285.5,
+      "frame": 572
+    },
+    {
+      "ts": 1792169653000,
+      "receivedAt": 1792169653000,
+      "price": 0.843205,
+      "videoSecond": 286.0,
+      "frame": 573
+    },
+    {
+      "ts": 1792169653500,
+      "receivedAt": 1792169653500,
+      "price": 0.843205,
+      "videoSecond": 286.5,
+      "frame": 574
+    },
+    {
+      "ts": 1792169654000,
+      "receivedAt": 1792169654000,
+      "price": 0.843205,
+      "videoSecond": 287.0,
+      "frame": 575
+    },
+    {
+      "ts": 1792169654500,
+      "receivedAt": 1792169654500,
+      "price": 0.843175,
+      "videoSecond": 287.5,
+      "frame": 576
+    },
+    {
+      "ts": 1792169655000,
+      "receivedAt": 1792169655000,
+      "price": 0.843175,
+      "videoSecond": 288.0,
+      "frame": 577
+    },
+    {
+      "ts": 1792169655500,
+      "receivedAt": 1792169655500,
+      "price": 0.843195,
+      "videoSecond": 288.5,
+      "frame": 578
+    },
+    {
+      "ts": 1792169656000,
+      "receivedAt": 1792169656000,
+      "price": 0.843195,
+      "videoSecond": 289.0,
+      "frame": 579
+    },
+    {
+      "ts": 1792169656500,
+      "receivedAt": 1792169656500,
+      "price": 0.843215,
+      "videoSecond": 289.5,
+      "frame": 580
+    },
+    {
+      "ts": 1792169657000,
+      "receivedAt": 1792169657000,
+      "price": 0.843215,
+      "videoSecond": 290.0,
+      "frame": 581
+    },
+    {
+      "ts": 1792169657500,
+      "receivedAt": 1792169657500,
+      "price": 0.843195,
+      "videoSecond": 290.5,
+      "frame": 582
+    },
+    {
+      "ts": 1792169658000,
+      "receivedAt": 1792169658000,
+      "price": 0.843195,
+      "videoSecond": 291.0,
+      "frame": 583
+    },
+    {
+      "ts": 1792169658500,
+      "receivedAt": 1792169658500,
+      "price": 0.843215,
+      "videoSecond": 291.5,
+      "frame": 584
+    },
+    {
+      "ts": 1792169659000,
+      "receivedAt": 1792169659000,
+      "price": 0.843215,
+      "videoSecond": 292.0,
+      "frame": 585
+    },
+    {
+      "ts": 1792169659500,
+      "receivedAt": 1792169659500,
+      "price": 0.843235,
+      "videoSecond": 292.5,
+      "frame": 586
+    },
+    {
+      "ts": 1792169660000,
+      "receivedAt": 1792169660000,
+      "price": 0.843235,
+      "videoSecond": 293.0,
+      "frame": 587
+    },
+    {
+      "ts": 1792169660500,
+      "receivedAt": 1792169660500,
+      "price": 0.843195,
+      "videoSecond": 293.5,
+      "frame": 588
+    },
+    {
+      "ts": 1792169661000,
+      "receivedAt": 1792169661000,
+      "price": 0.843185,
+      "videoSecond": 294.0,
+      "frame": 589
+    },
+    {
+      "ts": 1792169661500,
+      "receivedAt": 1792169661500,
+      "price": 0.843185,
+      "videoSecond": 294.5,
+      "frame": 590
+    },
+    {
+      "ts": 1792169662000,
+      "receivedAt": 1792169662000,
+      "price": 0.843185,
+      "videoSecond": 295.0,
+      "frame": 591
+    },
+    {
+      "ts": 1792169662500,
+      "receivedAt": 1792169662500,
+      "price": 0.843175,
+      "videoSecond": 295.5,
+      "frame": 592
+    },
+    {
+      "ts": 1792169663000,
+      "receivedAt": 1792169663000,
+      "price": 0.843175,
+      "videoSecond": 296.0,
+      "frame": 593
+    },
+    {
+      "ts": 1792169663500,
+      "receivedAt": 1792169663500,
+      "price": 0.843185,
+      "videoSecond": 296.5,
+      "frame": 594
+    },
+    {
+      "ts": 1792169664000,
+      "receivedAt": 1792169664000,
+      "price": 0.843185,
+      "videoSecond": 297.0,
+      "frame": 595
+    },
+    {
+      "ts": 1792169664500,
+      "receivedAt": 1792169664500,
+      "price": 0.843195,
+      "videoSecond": 297.5,
+      "frame": 596
+    },
+    {
+      "ts": 1792169665000,
+      "receivedAt": 1792169665000,
+      "price": 0.843195,
+      "videoSecond": 298.0,
+      "frame": 597
+    },
+    {
+      "ts": 1792169665500,
+      "receivedAt": 1792169665500,
+      "price": 0.843155,
+      "videoSecond": 298.5,
+      "frame": 598
+    },
+    {
+      "ts": 1792169666000,
+      "receivedAt": 1792169666000,
+      "price": 0.843155,
+      "videoSecond": 299.0,
+      "frame": 599
+    },
+    {
+      "ts": 1792169666500,
+      "receivedAt": 1792169666500,
+      "price": 0.843145,
+      "videoSecond": 299.5,
+      "frame": 600
+    },
+    {
+      "ts": 1792169667000,
+      "receivedAt": 1792169667000,
+      "price": 0.843145,
+      "videoSecond": 300.0,
+      "frame": 601
+    },
+    {
+      "ts": 1792169667500,
+      "receivedAt": 1792169667500,
+      "price": 0.843135,
+      "videoSecond": 300.5,
+      "frame": 602
+    },
+    {
+      "ts": 1792169668000,
+      "receivedAt": 1792169668000,
+      "price": 0.843135,
+      "videoSecond": 301.0,
+      "frame": 603
+    },
+    {
+      "ts": 1792169668500,
+      "receivedAt": 1792169668500,
+      "price": 0.843135,
+      "videoSecond": 301.5,
+      "frame": 604
+    },
+    {
+      "ts": 1792169669000,
+      "receivedAt": 1792169669000,
+      "price": 0.843135,
+      "videoSecond": 302.0,
+      "frame": 605
+    },
+    {
+      "ts": 1792169669500,
+      "receivedAt": 1792169669500,
+      "price": 0.843135,
+      "videoSecond": 302.5,
+      "frame": 606
+    },
+    {
+      "ts": 1792169670000,
+      "receivedAt": 1792169670000,
+      "price": 0.843135,
+      "videoSecond": 303.0,
+      "frame": 607
+    },
+    {
+      "ts": 1792169670500,
+      "receivedAt": 1792169670500,
+      "price": 0.843125,
+      "videoSecond": 303.5,
+      "frame": 608
+    },
+    {
+      "ts": 1792169671000,
+      "receivedAt": 1792169671000,
+      "price": 0.843125,
+      "videoSecond": 304.0,
+      "frame": 609
+    },
+    {
+      "ts": 1792169671500,
+      "receivedAt": 1792169671500,
+      "price": 0.843135,
+      "videoSecond": 304.5,
+      "frame": 610
+    },
+    {
+      "ts": 1792169672000,
+      "receivedAt": 1792169672000,
+      "price": 0.843135,
+      "videoSecond": 305.0,
+      "frame": 611
+    },
+    {
+      "ts": 1792169672500,
+      "receivedAt": 1792169672500,
+      "price": 0.843115,
+      "videoSecond": 305.5,
+      "frame": 612
+    },
+    {
+      "ts": 1792169673000,
+      "receivedAt": 1792169673000,
+      "price": 0.843115,
+      "videoSecond": 306.0,
+      "frame": 613
+    },
+    {
+      "ts": 1792169673500,
+      "receivedAt": 1792169673500,
+      "price": 0.843105,
+      "videoSecond": 306.5,
+      "frame": 614
+    },
+    {
+      "ts": 1792169674000,
+      "receivedAt": 1792169674000,
+      "price": 0.843105,
+      "videoSecond": 307.0,
+      "frame": 615
+    },
+    {
+      "ts": 1792169674500,
+      "receivedAt": 1792169674500,
+      "price": 0.843105,
+      "videoSecond": 307.5,
+      "frame": 616
+    },
+    {
+      "ts": 1792169675000,
+      "receivedAt": 1792169675000,
+      "price": 0.843105,
+      "videoSecond": 308.0,
+      "frame": 617
+    },
+    {
+      "ts": 1792169675500,
+      "receivedAt": 1792169675500,
+      "price": 0.843155,
+      "videoSecond": 308.5,
+      "frame": 618
+    },
+    {
+      "ts": 1792169676000,
+      "receivedAt": 1792169676000,
+      "price": 0.843155,
+      "videoSecond": 309.0,
+      "frame": 619
+    },
+    {
+      "ts": 1792169676500,
+      "receivedAt": 1792169676500,
+      "price": 0.843165,
+      "videoSecond": 309.5,
+      "frame": 620
+    },
+    {
+      "ts": 1792169677000,
+      "receivedAt": 1792169677000,
+      "price": 0.843165,
+      "videoSecond": 310.0,
+      "frame": 621
+    },
+    {
+      "ts": 1792169677500,
+      "receivedAt": 1792169677500,
+      "price": 0.843155,
+      "videoSecond": 310.5,
+      "frame": 622
+    },
+    {
+      "ts": 1792169678000,
+      "receivedAt": 1792169678000,
+      "price": 0.843155,
+      "videoSecond": 311.0,
+      "frame": 623
+    },
+    {
+      "ts": 1792169678500,
+      "receivedAt": 1792169678500,
+      "price": 0.843185,
+      "videoSecond": 311.5,
+      "frame": 624
+    },
+    {
+      "ts": 1792169679000,
+      "receivedAt": 1792169679000,
+      "price": 0.843185,
+      "videoSecond": 312.0,
+      "frame": 625
+    },
+    {
+      "ts": 1792169679500,
+      "receivedAt": 1792169679500,
+      "price": 0.843125,
+      "videoSecond": 312.5,
+      "frame": 626
+    },
+    {
+      "ts": 1792169680000,
+      "receivedAt": 1792169680000,
+      "price": 0.843125,
+      "videoSecond": 313.0,
+      "frame": 627
+    },
+    {
+      "ts": 1792169680500,
+      "receivedAt": 1792169680500,
+      "price": 0.843135,
+      "videoSecond": 313.5,
+      "frame": 628
+    },
+    {
+      "ts": 1792169681000,
+      "receivedAt": 1792169681000,
+      "price": 0.843135,
+      "videoSecond": 314.0,
+      "frame": 629
+    },
+    {
+      "ts": 1792169681500,
+      "receivedAt": 1792169681500,
+      "price": 0.843135,
+      "videoSecond": 314.5,
+      "frame": 630
+    },
+    {
+      "ts": 1792169682000,
+      "receivedAt": 1792169682000,
+      "price": 0.843135,
+      "videoSecond": 315.0,
+      "frame": 631
+    },
+    {
+      "ts": 1792169682500,
+      "receivedAt": 1792169682500,
+      "price": 0.843095,
+      "videoSecond": 315.5,
+      "frame": 632
+    },
+    {
+      "ts": 1792169683000,
+      "receivedAt": 1792169683000,
+      "price": 0.843095,
+      "videoSecond": 316.0,
+      "frame": 633
+    },
+    {
+      "ts": 1792169683500,
+      "receivedAt": 1792169683500,
+      "price": 0.843115,
+      "videoSecond": 316.5,
+      "frame": 634
+    },
+    {
+      "ts": 1792169684000,
+      "receivedAt": 1792169684000,
+      "price": 0.843115,
+      "videoSecond": 317.0,
+      "frame": 635
+    },
+    {
+      "ts": 1792169684500,
+      "receivedAt": 1792169684500,
+      "price": 0.843045,
+      "videoSecond": 317.5,
+      "frame": 636
+    },
+    {
+      "ts": 1792169685000,
+      "receivedAt": 1792169685000,
+      "price": 0.843045,
+      "videoSecond": 318.0,
+      "frame": 637
+    },
+    {
+      "ts": 1792169685500,
+      "receivedAt": 1792169685500,
+      "price": 0.843035,
+      "videoSecond": 318.5,
+      "frame": 638
+    },
+    {
+      "ts": 1792169686000,
+      "receivedAt": 1792169686000,
+      "price": 0.843035,
+      "videoSecond": 319.0,
+      "frame": 639
+    },
+    {
+      "ts": 1792169686500,
+      "receivedAt": 1792169686500,
+      "price": 0.843055,
+      "videoSecond": 319.5,
+      "frame": 640
+    },
+    {
+      "ts": 1792169687000,
+      "receivedAt": 1792169687000,
+      "price": 0.843055,
+      "videoSecond": 320.0,
+      "frame": 641
+    },
+    {
+      "ts": 1792169687500,
+      "receivedAt": 1792169687500,
+      "price": 0.843035,
+      "videoSecond": 320.5,
+      "frame": 642
+    },
+    {
+      "ts": 1792169688000,
+      "receivedAt": 1792169688000,
+      "price": 0.843035,
+      "videoSecond": 321.0,
+      "frame": 643
+    },
+    {
+      "ts": 1792169688500,
+      "receivedAt": 1792169688500,
+      "price": 0.843045,
+      "videoSecond": 321.5,
+      "frame": 644
+    },
+    {
+      "ts": 1792169689000,
+      "receivedAt": 1792169689000,
+      "price": 0.843045,
+      "videoSecond": 322.0,
+      "frame": 645
+    },
+    {
+      "ts": 1792169689500,
+      "receivedAt": 1792169689500,
+      "price": 0.843025,
+      "videoSecond": 322.5,
+      "frame": 646
+    },
+    {
+      "ts": 1792169690000,
+      "receivedAt": 1792169690000,
+      "price": 0.843025,
+      "videoSecond": 323.0,
+      "frame": 647
+    },
+    {
+      "ts": 1792169690500,
+      "receivedAt": 1792169690500,
+      "price": 0.843035,
+      "videoSecond": 323.5,
+      "frame": 648
+    },
+    {
+      "ts": 1792169691000,
+      "receivedAt": 1792169691000,
+      "price": 0.843035,
+      "videoSecond": 324.0,
+      "frame": 649
+    },
+    {
+      "ts": 1792169691500,
+      "receivedAt": 1792169691500,
+      "price": 0.843035,
+      "videoSecond": 324.5,
+      "frame": 650
+    },
+    {
+      "ts": 1792169692000,
+      "receivedAt": 1792169692000,
+      "price": 0.843035,
+      "videoSecond": 325.0,
+      "frame": 651
+    },
+    {
+      "ts": 1792169692500,
+      "receivedAt": 1792169692500,
+      "price": 0.843055,
+      "videoSecond": 325.5,
+      "frame": 652
+    },
+    {
+      "ts": 1792169693000,
+      "receivedAt": 1792169693000,
+      "price": 0.843055,
+      "videoSecond": 326.0,
+      "frame": 653
+    },
+    {
+      "ts": 1792169693500,
+      "receivedAt": 1792169693500,
+      "price": 0.843045,
+      "videoSecond": 326.5,
+      "frame": 654
+    },
+    {
+      "ts": 1792169694000,
+      "receivedAt": 1792169694000,
+      "price": 0.843045,
+      "videoSecond": 327.0,
+      "frame": 655
+    },
+    {
+      "ts": 1792169694500,
+      "receivedAt": 1792169694500,
+      "price": 0.843036,
+      "videoSecond": 327.5,
+      "frame": 656
+    },
+    {
+      "ts": 1792169695000,
+      "receivedAt": 1792169695000,
+      "price": 0.843035,
+      "videoSecond": 328.0,
+      "frame": 657
+    },
+    {
+      "ts": 1792169695500,
+      "receivedAt": 1792169695500,
+      "price": 0.843035,
+      "videoSecond": 328.5,
+      "frame": 658
+    },
+    {
+      "ts": 1792169696000,
+      "receivedAt": 1792169696000,
+      "price": 0.843035,
+      "videoSecond": 329.0,
+      "frame": 659
+    },
+    {
+      "ts": 1792169696500,
+      "receivedAt": 1792169696500,
+      "price": 0.843055,
+      "videoSecond": 329.5,
+      "frame": 660
+    },
+    {
+      "ts": 1792169697000,
+      "receivedAt": 1792169697000,
+      "price": 0.843055,
+      "videoSecond": 330.0,
+      "frame": 661
+    },
+    {
+      "ts": 1792169697500,
+      "receivedAt": 1792169697500,
+      "price": 0.842995,
+      "videoSecond": 330.5,
+      "frame": 662
+    },
+    {
+      "ts": 1792169698000,
+      "receivedAt": 1792169698000,
+      "price": 0.842995,
+      "videoSecond": 331.0,
+      "frame": 663
+    },
+    {
+      "ts": 1792169698500,
+      "receivedAt": 1792169698500,
+      "price": 0.842965,
+      "videoSecond": 331.5,
+      "frame": 664
+    },
+    {
+      "ts": 1792169699000,
+      "receivedAt": 1792169699000,
+      "price": 0.842965,
+      "videoSecond": 332.0,
+      "frame": 665
+    },
+    {
+      "ts": 1792169699500,
+      "receivedAt": 1792169699500,
+      "price": 0.842945,
+      "videoSecond": 332.5,
+      "frame": 666
+    },
+    {
+      "ts": 1792169700000,
+      "receivedAt": 1792169700000,
+      "price": 0.842945,
+      "videoSecond": 333.0,
+      "frame": 667
+    },
+    {
+      "ts": 1792169700500,
+      "receivedAt": 1792169700500,
+      "price": 0.842965,
+      "videoSecond": 333.5,
+      "frame": 668
+    },
+    {
+      "ts": 1792169701000,
+      "receivedAt": 1792169701000,
+      "price": 0.842965,
+      "videoSecond": 334.0,
+      "frame": 669
+    },
+    {
+      "ts": 1792169701500,
+      "receivedAt": 1792169701500,
+      "price": 0.842891,
+      "videoSecond": 334.5,
+      "frame": 670
+    },
+    {
+      "ts": 1792169702000,
+      "receivedAt": 1792169702000,
+      "price": 0.842885,
+      "videoSecond": 335.0,
+      "frame": 671
+    },
+    {
+      "ts": 1792169702500,
+      "receivedAt": 1792169702500,
+      "price": 0.842905,
+      "videoSecond": 335.5,
+      "frame": 672
+    },
+    {
+      "ts": 1792169703000,
+      "receivedAt": 1792169703000,
+      "price": 0.842905,
+      "videoSecond": 336.0,
+      "frame": 673
+    },
+    {
+      "ts": 1792169703500,
+      "receivedAt": 1792169703500,
+      "price": 0.842905,
+      "videoSecond": 336.5,
+      "frame": 674
+    },
+    {
+      "ts": 1792169704000,
+      "receivedAt": 1792169704000,
+      "price": 0.842905,
+      "videoSecond": 337.0,
+      "frame": 675
+    },
+    {
+      "ts": 1792169704500,
+      "receivedAt": 1792169704500,
+      "price": 0.842895,
+      "videoSecond": 337.5,
+      "frame": 676
+    },
+    {
+      "ts": 1792169705000,
+      "receivedAt": 1792169705000,
+      "price": 0.842895,
+      "videoSecond": 338.0,
+      "frame": 677
+    },
+    {
+      "ts": 1792169705500,
+      "receivedAt": 1792169705500,
+      "price": 0.842895,
+      "videoSecond": 338.5,
+      "frame": 678
+    },
+    {
+      "ts": 1792169706000,
+      "receivedAt": 1792169706000,
+      "price": 0.842895,
+      "videoSecond": 339.0,
+      "frame": 679
+    },
+    {
+      "ts": 1792169706500,
+      "receivedAt": 1792169706500,
+      "price": 0.842904,
+      "videoSecond": 339.5,
+      "frame": 680
+    },
+    {
+      "ts": 1792169707000,
+      "receivedAt": 1792169707000,
+      "price": 0.842905,
+      "videoSecond": 340.0,
+      "frame": 681
+    },
+    {
+      "ts": 1792169707500,
+      "receivedAt": 1792169707500,
+      "price": 0.842915,
+      "videoSecond": 340.5,
+      "frame": 682
+    },
+    {
+      "ts": 1792169708000,
+      "receivedAt": 1792169708000,
+      "price": 0.842915,
+      "videoSecond": 341.0,
+      "frame": 683
+    },
+    {
+      "ts": 1792169708500,
+      "receivedAt": 1792169708500,
+      "price": 0.842905,
+      "videoSecond": 341.5,
+      "frame": 684
+    },
+    {
+      "ts": 1792169709000,
+      "receivedAt": 1792169709000,
+      "price": 0.842905,
+      "videoSecond": 342.0,
+      "frame": 685
+    },
+    {
+      "ts": 1792169709500,
+      "receivedAt": 1792169709500,
+      "price": 0.842915,
+      "videoSecond": 342.5,
+      "frame": 686
+    },
+    {
+      "ts": 1792169710000,
+      "receivedAt": 1792169710000,
+      "price": 0.842915,
+      "videoSecond": 343.0,
+      "frame": 687
+    },
+    {
+      "ts": 1792169710500,
+      "receivedAt": 1792169710500,
+      "price": 0.842915,
+      "videoSecond": 343.5,
+      "frame": 688
+    },
+    {
+      "ts": 1792169711000,
+      "receivedAt": 1792169711000,
+      "price": 0.842915,
+      "videoSecond": 344.0,
+      "frame": 689
+    },
+    {
+      "ts": 1792169711500,
+      "receivedAt": 1792169711500,
+      "price": 0.842815,
+      "videoSecond": 344.5,
+      "frame": 690
+    },
+    {
+      "ts": 1792169712000,
+      "receivedAt": 1792169712000,
+      "price": 0.842815,
+      "videoSecond": 345.0,
+      "frame": 691
+    },
+    {
+      "ts": 1792169712500,
+      "receivedAt": 1792169712500,
+      "price": 0.842865,
+      "videoSecond": 345.5,
+      "frame": 692
+    },
+    {
+      "ts": 1792169713000,
+      "receivedAt": 1792169713000,
+      "price": 0.842865,
+      "videoSecond": 346.0,
+      "frame": 693
+    },
+    {
+      "ts": 1792169713500,
+      "receivedAt": 1792169713500,
+      "price": 0.842865,
+      "videoSecond": 346.5,
+      "frame": 694
+    },
+    {
+      "ts": 1792169714000,
+      "receivedAt": 1792169714000,
+      "price": 0.842865,
+      "videoSecond": 347.0,
+      "frame": 695
+    },
+    {
+      "ts": 1792169714500,
+      "receivedAt": 1792169714500,
+      "price": 0.842865,
+      "videoSecond": 347.5,
+      "frame": 696
+    },
+    {
+      "ts": 1792169715000,
+      "receivedAt": 1792169715000,
+      "price": 0.842865,
+      "videoSecond": 348.0,
+      "frame": 697
+    },
+    {
+      "ts": 1792169715500,
+      "receivedAt": 1792169715500,
+      "price": 0.842865,
+      "videoSecond": 348.5,
+      "frame": 698
+    },
+    {
+      "ts": 1792169716000,
+      "receivedAt": 1792169716000,
+      "price": 0.842865,
+      "videoSecond": 349.0,
+      "frame": 699
+    },
+    {
+      "ts": 1792169716500,
+      "receivedAt": 1792169716500,
+      "price": 0.842865,
+      "videoSecond": 349.5,
+      "frame": 700
+    },
+    {
+      "ts": 1792169717000,
+      "receivedAt": 1792169717000,
+      "price": 0.842865,
+      "videoSecond": 350.0,
+      "frame": 701
+    },
+    {
+      "ts": 1792169717500,
+      "receivedAt": 1792169717500,
+      "price": 0.842925,
+      "videoSecond": 350.5,
+      "frame": 702
+    },
+    {
+      "ts": 1792169718000,
+      "receivedAt": 1792169718000,
+      "price": 0.842925,
+      "videoSecond": 351.0,
+      "frame": 703
+    },
+    {
+      "ts": 1792169718500,
+      "receivedAt": 1792169718500,
+      "price": 0.842905,
+      "videoSecond": 351.5,
+      "frame": 704
+    },
+    {
+      "ts": 1792169719000,
+      "receivedAt": 1792169719000,
+      "price": 0.842905,
+      "videoSecond": 352.0,
+      "frame": 705
+    },
+    {
+      "ts": 1792169719500,
+      "receivedAt": 1792169719500,
+      "price": 0.842905,
+      "videoSecond": 352.5,
+      "frame": 706
+    },
+    {
+      "ts": 1792169720000,
+      "receivedAt": 1792169720000,
+      "price": 0.842905,
+      "videoSecond": 353.0,
+      "frame": 707
+    },
+    {
+      "ts": 1792169720500,
+      "receivedAt": 1792169720500,
+      "price": 0.842915,
+      "videoSecond": 353.5,
+      "frame": 708
+    },
+    {
+      "ts": 1792169721000,
+      "receivedAt": 1792169721000,
+      "price": 0.842915,
+      "videoSecond": 354.0,
+      "frame": 709
+    },
+    {
+      "ts": 1792169721500,
+      "receivedAt": 1792169721500,
+      "price": 0.842915,
+      "videoSecond": 354.5,
+      "frame": 710
+    },
+    {
+      "ts": 1792169722000,
+      "receivedAt": 1792169722000,
+      "price": 0.842915,
+      "videoSecond": 355.0,
+      "frame": 711
+    },
+    {
+      "ts": 1792169722500,
+      "receivedAt": 1792169722500,
+      "price": 0.842945,
+      "videoSecond": 355.5,
+      "frame": 712
+    },
+    {
+      "ts": 1792169723000,
+      "receivedAt": 1792169723000,
+      "price": 0.842945,
+      "videoSecond": 356.0,
+      "frame": 713
+    },
+    {
+      "ts": 1792169725000,
+      "receivedAt": 1792169725000,
+      "price": 0.842895,
+      "videoSecond": 358.0,
+      "frame": 717
+    },
+    {
+      "ts": 1792169725500,
+      "receivedAt": 1792169725500,
+      "price": 0.842685,
+      "videoSecond": 358.5,
+      "frame": 718
+    },
+    {
+      "ts": 1792169726000,
+      "receivedAt": 1792169726000,
+      "price": 0.842885,
+      "videoSecond": 359.0,
+      "frame": 719
+    },
+    {
+      "ts": 1792169726500,
+      "receivedAt": 1792169726500,
+      "price": 0.842925,
+      "videoSecond": 359.5,
+      "frame": 720
+    },
+    {
+      "ts": 1792169727000,
+      "receivedAt": 1792169727000,
+      "price": 0.842925,
+      "videoSecond": 360.0,
+      "frame": 721
+    },
+    {
+      "ts": 1792169727500,
+      "receivedAt": 1792169727500,
+      "price": 0.842925,
+      "videoSecond": 360.5,
+      "frame": 722
+    },
+    {
+      "ts": 1792169728000,
+      "receivedAt": 1792169728000,
+      "price": 0.842925,
+      "videoSecond": 361.0,
+      "frame": 723
+    },
+    {
+      "ts": 1792169728500,
+      "receivedAt": 1792169728500,
+      "price": 0.842945,
+      "videoSecond": 361.5,
+      "frame": 724
+    },
+    {
+      "ts": 1792169729000,
+      "receivedAt": 1792169729000,
+      "price": 0.842945,
+      "videoSecond": 362.0,
+      "frame": 725
+    },
+    {
+      "ts": 1792169729500,
+      "receivedAt": 1792169729500,
+      "price": 0.842955,
+      "videoSecond": 362.5,
+      "frame": 726
+    },
+    {
+      "ts": 1792169730000,
+      "receivedAt": 1792169730000,
+      "price": 0.842955,
+      "videoSecond": 363.0,
+      "frame": 727
+    },
+    {
+      "ts": 1792169730500,
+      "receivedAt": 1792169730500,
+      "price": 0.842965,
+      "videoSecond": 363.5,
+      "frame": 728
+    },
+    {
+      "ts": 1792169731000,
+      "receivedAt": 1792169731000,
+      "price": 0.842965,
+      "videoSecond": 364.0,
+      "frame": 729
+    },
+    {
+      "ts": 1792169731500,
+      "receivedAt": 1792169731500,
+      "price": 0.842955,
+      "videoSecond": 364.5,
+      "frame": 730
+    },
+    {
+      "ts": 1792169732000,
+      "receivedAt": 1792169732000,
+      "price": 0.842955,
+      "videoSecond": 365.0,
+      "frame": 731
+    },
+    {
+      "ts": 1792169732500,
+      "receivedAt": 1792169732500,
+      "price": 0.842985,
+      "videoSecond": 365.5,
+      "frame": 732
+    },
+    {
+      "ts": 1792169733000,
+      "receivedAt": 1792169733000,
+      "price": 0.842985,
+      "videoSecond": 366.0,
+      "frame": 733
+    },
+    {
+      "ts": 1792169733500,
+      "receivedAt": 1792169733500,
+      "price": 0.842985,
+      "videoSecond": 366.5,
+      "frame": 734
+    },
+    {
+      "ts": 1792169734000,
+      "receivedAt": 1792169734000,
+      "price": 0.842985,
+      "videoSecond": 367.0,
+      "frame": 735
+    },
+    {
+      "ts": 1792169734500,
+      "receivedAt": 1792169734500,
+      "price": 0.842995,
+      "videoSecond": 367.5,
+      "frame": 736
+    },
+    {
+      "ts": 1792169735000,
+      "receivedAt": 1792169735000,
+      "price": 0.842995,
+      "videoSecond": 368.0,
+      "frame": 737
+    },
+    {
+      "ts": 1792169735500,
+      "receivedAt": 1792169735500,
+      "price": 0.843005,
+      "videoSecond": 368.5,
+      "frame": 738
+    },
+    {
+      "ts": 1792169736000,
+      "receivedAt": 1792169736000,
+      "price": 0.843005,
+      "videoSecond": 369.0,
+      "frame": 739
+    },
+    {
+      "ts": 1792169736500,
+      "receivedAt": 1792169736500,
+      "price": 0.843035,
+      "videoSecond": 369.5,
+      "frame": 740
+    },
+    {
+      "ts": 1792169737000,
+      "receivedAt": 1792169737000,
+      "price": 0.843035,
+      "videoSecond": 370.0,
+      "frame": 741
+    },
+    {
+      "ts": 1792169737500,
+      "receivedAt": 1792169737500,
+      "price": 0.843025,
+      "videoSecond": 370.5,
+      "frame": 742
+    },
+    {
+      "ts": 1792169739500,
+      "receivedAt": 1792169739500,
+      "price": 0.842925,
+      "videoSecond": 372.5,
+      "frame": 746
+    },
+    {
+      "ts": 1792169740000,
+      "receivedAt": 1792169740000,
+      "price": 0.842925,
+      "videoSecond": 373.0,
+      "frame": 747
+    },
+    {
+      "ts": 1792169740500,
+      "receivedAt": 1792169740500,
+      "price": 0.842945,
+      "videoSecond": 373.5,
+      "frame": 748
+    },
+    {
+      "ts": 1792169741000,
+      "receivedAt": 1792169741000,
+      "price": 0.842945,
+      "videoSecond": 374.0,
+      "frame": 749
+    },
+    {
+      "ts": 1792169741500,
+      "receivedAt": 1792169741500,
+      "price": 0.842955,
+      "videoSecond": 374.5,
+      "frame": 750
+    },
+    {
+      "ts": 1792169743000,
+      "receivedAt": 1792169743000,
+      "price": 0.842945,
+      "videoSecond": 376.0,
+      "frame": 753
+    },
+    {
+      "ts": 1792169743500,
+      "receivedAt": 1792169743500,
+      "price": 0.842945,
+      "videoSecond": 376.5,
+      "frame": 754
+    },
+    {
+      "ts": 1792169744000,
+      "receivedAt": 1792169744000,
+      "price": 0.842945,
+      "videoSecond": 377.0,
+      "frame": 755
+    },
+    {
+      "ts": 1792169744500,
+      "receivedAt": 1792169744500,
+      "price": 0.842955,
+      "videoSecond": 377.5,
+      "frame": 756
+    },
+    {
+      "ts": 1792169745000,
+      "receivedAt": 1792169745000,
+      "price": 0.842955,
+      "videoSecond": 378.0,
+      "frame": 757
+    },
+    {
+      "ts": 1792169745500,
+      "receivedAt": 1792169745500,
+      "price": 0.842945,
+      "videoSecond": 378.5,
+      "frame": 758
+    },
+    {
+      "ts": 1792169746000,
+      "receivedAt": 1792169746000,
+      "price": 0.842945,
+      "videoSecond": 379.0,
+      "frame": 759
+    },
+    {
+      "ts": 1792169746500,
+      "receivedAt": 1792169746500,
+      "price": 0.842985,
+      "videoSecond": 379.5,
+      "frame": 760
+    },
+    {
+      "ts": 1792169747000,
+      "receivedAt": 1792169747000,
+      "price": 0.842985,
+      "videoSecond": 380.0,
+      "frame": 761
+    },
+    {
+      "ts": 1792169747500,
+      "receivedAt": 1792169747500,
+      "price": 0.842985,
+      "videoSecond": 380.5,
+      "frame": 762
+    },
+    {
+      "ts": 1792169749000,
+      "receivedAt": 1792169749000,
+      "price": 0.842985,
+      "videoSecond": 382.0,
+      "frame": 765
+    },
+    {
+      "ts": 1792169749500,
+      "receivedAt": 1792169749500,
+      "price": 0.843005,
+      "videoSecond": 382.5,
+      "frame": 766
+    },
+    {
+      "ts": 1792169750000,
+      "receivedAt": 1792169750000,
+      "price": 0.843005,
+      "videoSecond": 383.0,
+      "frame": 767
+    },
+    {
+      "ts": 1792169750500,
+      "receivedAt": 1792169750500,
+      "price": 0.843035,
+      "videoSecond": 383.5,
+      "frame": 768
+    },
+    {
+      "ts": 1792169751000,
+      "receivedAt": 1792169751000,
+      "price": 0.843035,
+      "videoSecond": 384.0,
+      "frame": 769
+    },
+    {
+      "ts": 1792169751500,
+      "receivedAt": 1792169751500,
+      "price": 0.842945,
+      "videoSecond": 384.5,
+      "frame": 770
+    },
+    {
+      "ts": 1792169752000,
+      "receivedAt": 1792169752000,
+      "price": 0.842945,
+      "videoSecond": 385.0,
+      "frame": 771
+    },
+    {
+      "ts": 1792169752500,
+      "receivedAt": 1792169752500,
+      "price": 0.842945,
+      "videoSecond": 385.5,
+      "frame": 772
+    },
+    {
+      "ts": 1792169753000,
+      "receivedAt": 1792169753000,
+      "price": 0.842945,
+      "videoSecond": 386.0,
+      "frame": 773
+    },
+    {
+      "ts": 1792169753500,
+      "receivedAt": 1792169753500,
+      "price": 0.842935,
+      "videoSecond": 386.5,
+      "frame": 774
+    },
+    {
+      "ts": 1792169754000,
+      "receivedAt": 1792169754000,
+      "price": 0.842935,
+      "videoSecond": 387.0,
+      "frame": 775
+    },
+    {
+      "ts": 1792169754500,
+      "receivedAt": 1792169754500,
+      "price": 0.842955,
+      "videoSecond": 387.5,
+      "frame": 776
+    },
+    {
+      "ts": 1792169755000,
+      "receivedAt": 1792169755000,
+      "price": 0.842955,
+      "videoSecond": 388.0,
+      "frame": 777
+    },
+    {
+      "ts": 1792169755500,
+      "receivedAt": 1792169755500,
+      "price": 0.842925,
+      "videoSecond": 388.5,
+      "frame": 778
+    },
+    {
+      "ts": 1792169756000,
+      "receivedAt": 1792169756000,
+      "price": 0.842925,
+      "videoSecond": 389.0,
+      "frame": 779
+    },
+    {
+      "ts": 1792169756500,
+      "receivedAt": 1792169756500,
+      "price": 0.842955,
+      "videoSecond": 389.5,
+      "frame": 780
+    },
+    {
+      "ts": 1792169757000,
+      "receivedAt": 1792169757000,
+      "price": 0.842955,
+      "videoSecond": 390.0,
+      "frame": 781
+    },
+    {
+      "ts": 1792169757500,
+      "receivedAt": 1792169757500,
+      "price": 0.842925,
+      "videoSecond": 390.5,
+      "frame": 782
+    },
+    {
+      "ts": 1792169758000,
+      "receivedAt": 1792169758000,
+      "price": 0.842925,
+      "videoSecond": 391.0,
+      "frame": 783
+    },
+    {
+      "ts": 1792169758500,
+      "receivedAt": 1792169758500,
+      "price": 0.842945,
+      "videoSecond": 391.5,
+      "frame": 784
+    },
+    {
+      "ts": 1792169759000,
+      "receivedAt": 1792169759000,
+      "price": 0.842945,
+      "videoSecond": 392.0,
+      "frame": 785
+    },
+    {
+      "ts": 1792169759500,
+      "receivedAt": 1792169759500,
+      "price": 0.842955,
+      "videoSecond": 392.5,
+      "frame": 786
+    },
+    {
+      "ts": 1792169760000,
+      "receivedAt": 1792169760000,
+      "price": 0.842955,
+      "videoSecond": 393.0,
+      "frame": 787
+    },
+    {
+      "ts": 1792169760500,
+      "receivedAt": 1792169760500,
+      "price": 0.842955,
+      "videoSecond": 393.5,
+      "frame": 788
+    },
+    {
+      "ts": 1792169761000,
+      "receivedAt": 1792169761000,
+      "price": 0.842955,
+      "videoSecond": 394.0,
+      "frame": 789
+    },
+    {
+      "ts": 1792169761500,
+      "receivedAt": 1792169761500,
+      "price": 0.842905,
+      "videoSecond": 394.5,
+      "frame": 790
+    },
+    {
+      "ts": 1792169762000,
+      "receivedAt": 1792169762000,
+      "price": 0.842905,
+      "videoSecond": 395.0,
+      "frame": 791
+    },
+    {
+      "ts": 1792169762500,
+      "receivedAt": 1792169762500,
+      "price": 0.842905,
+      "videoSecond": 395.5,
+      "frame": 792
+    },
+    {
+      "ts": 1792169763000,
+      "receivedAt": 1792169763000,
+      "price": 0.842905,
+      "videoSecond": 396.0,
+      "frame": 793
+    },
+    {
+      "ts": 1792169763500,
+      "receivedAt": 1792169763500,
+      "price": 0.842915,
+      "videoSecond": 396.5,
+      "frame": 794
+    },
+    {
+      "ts": 1792169764000,
+      "receivedAt": 1792169764000,
+      "price": 0.842915,
+      "videoSecond": 397.0,
+      "frame": 795
+    },
+    {
+      "ts": 1792169764500,
+      "receivedAt": 1792169764500,
+      "price": 0.842925,
+      "videoSecond": 397.5,
+      "frame": 796
+    },
+    {
+      "ts": 1792169765000,
+      "receivedAt": 1792169765000,
+      "price": 0.842925,
+      "videoSecond": 398.0,
+      "frame": 797
+    },
+    {
+      "ts": 1792169765500,
+      "receivedAt": 1792169765500,
+      "price": 0.842915,
+      "videoSecond": 398.5,
+      "frame": 798
+    },
+    {
+      "ts": 1792169766000,
+      "receivedAt": 1792169766000,
+      "price": 0.842915,
+      "videoSecond": 399.0,
+      "frame": 799
+    },
+    {
+      "ts": 1792169766500,
+      "receivedAt": 1792169766500,
+      "price": 0.842955,
+      "videoSecond": 399.5,
+      "frame": 800
+    },
+    {
+      "ts": 1792169767000,
+      "receivedAt": 1792169767000,
+      "price": 0.842955,
+      "videoSecond": 400.0,
+      "frame": 801
+    },
+    {
+      "ts": 1792169767500,
+      "receivedAt": 1792169767500,
+      "price": 0.842965,
+      "videoSecond": 400.5,
+      "frame": 802
+    },
+    {
+      "ts": 1792169768000,
+      "receivedAt": 1792169768000,
+      "price": 0.842965,
+      "videoSecond": 401.0,
+      "frame": 803
+    },
+    {
+      "ts": 1792169768500,
+      "receivedAt": 1792169768500,
+      "price": 0.842955,
+      "videoSecond": 401.5,
+      "frame": 804
+    },
+    {
+      "ts": 1792169769000,
+      "receivedAt": 1792169769000,
+      "price": 0.842955,
+      "videoSecond": 402.0,
+      "frame": 805
+    },
+    {
+      "ts": 1792169769500,
+      "receivedAt": 1792169769500,
+      "price": 0.842895,
+      "videoSecond": 402.5,
+      "frame": 806
+    },
+    {
+      "ts": 1792169770000,
+      "receivedAt": 1792169770000,
+      "price": 0.842895,
+      "videoSecond": 403.0,
+      "frame": 807
+    },
+    {
+      "ts": 1792169770500,
+      "receivedAt": 1792169770500,
+      "price": 0.842905,
+      "videoSecond": 403.5,
+      "frame": 808
+    },
+    {
+      "ts": 1792169771000,
+      "receivedAt": 1792169771000,
+      "price": 0.842905,
+      "videoSecond": 404.0,
+      "frame": 809
+    },
+    {
+      "ts": 1792169771500,
+      "receivedAt": 1792169771500,
+      "price": 0.842925,
+      "videoSecond": 404.5,
+      "frame": 810
+    },
+    {
+      "ts": 1792169772000,
+      "receivedAt": 1792169772000,
+      "price": 0.842925,
+      "videoSecond": 405.0,
+      "frame": 811
+    },
+    {
+      "ts": 1792169772500,
+      "receivedAt": 1792169772500,
+      "price": 0.842935,
+      "videoSecond": 405.5,
+      "frame": 812
+    },
+    {
+      "ts": 1792169773000,
+      "receivedAt": 1792169773000,
+      "price": 0.842935,
+      "videoSecond": 406.0,
+      "frame": 813
+    },
+    {
+      "ts": 1792169773500,
+      "receivedAt": 1792169773500,
+      "price": 0.842985,
+      "videoSecond": 406.5,
+      "frame": 814
+    },
+    {
+      "ts": 1792169774000,
+      "receivedAt": 1792169774000,
+      "price": 0.842985,
+      "videoSecond": 407.0,
+      "frame": 815
+    },
+    {
+      "ts": 1792169774500,
+      "receivedAt": 1792169774500,
+      "price": 0.843054,
+      "videoSecond": 407.5,
+      "frame": 816
+    },
+    {
+      "ts": 1792169775000,
+      "receivedAt": 1792169775000,
+      "price": 0.843055,
+      "videoSecond": 408.0,
+      "frame": 817
+    },
+    {
+      "ts": 1792169775500,
+      "receivedAt": 1792169775500,
+      "price": 0.843045,
+      "videoSecond": 408.5,
+      "frame": 818
+    },
+    {
+      "ts": 1792169776000,
+      "receivedAt": 1792169776000,
+      "price": 0.843045,
+      "videoSecond": 409.0,
+      "frame": 819
+    },
+    {
+      "ts": 1792169776500,
+      "receivedAt": 1792169776500,
+      "price": 0.843045,
+      "videoSecond": 409.5,
+      "frame": 820
+    },
+    {
+      "ts": 1792169777000,
+      "receivedAt": 1792169777000,
+      "price": 0.843045,
+      "videoSecond": 410.0,
+      "frame": 821
+    },
+    {
+      "ts": 1792169777500,
+      "receivedAt": 1792169777500,
+      "price": 0.843085,
+      "videoSecond": 410.5,
+      "frame": 822
+    },
+    {
+      "ts": 1792169778000,
+      "receivedAt": 1792169778000,
+      "price": 0.843085,
+      "videoSecond": 411.0,
+      "frame": 823
+    },
+    {
+      "ts": 1792169779500,
+      "receivedAt": 1792169779500,
+      "price": 0.843045,
+      "videoSecond": 412.5,
+      "frame": 826
+    },
+    {
+      "ts": 1792169780000,
+      "receivedAt": 1792169780000,
+      "price": 0.843045,
+      "videoSecond": 413.0,
+      "frame": 827
+    },
+    {
+      "ts": 1792169780500,
+      "receivedAt": 1792169780500,
+      "price": 0.843045,
+      "videoSecond": 413.5,
+      "frame": 828
+    },
+    {
+      "ts": 1792169781000,
+      "receivedAt": 1792169781000,
+      "price": 0.843045,
+      "videoSecond": 414.0,
+      "frame": 829
+    },
+    {
+      "ts": 1792169781500,
+      "receivedAt": 1792169781500,
+      "price": 0.843065,
+      "videoSecond": 414.5,
+      "frame": 830
+    },
+    {
+      "ts": 1792169782000,
+      "receivedAt": 1792169782000,
+      "price": 0.843065,
+      "videoSecond": 415.0,
+      "frame": 831
+    },
+    {
+      "ts": 1792169782500,
+      "receivedAt": 1792169782500,
+      "price": 0.843045,
+      "videoSecond": 415.5,
+      "frame": 832
+    },
+    {
+      "ts": 1792169783000,
+      "receivedAt": 1792169783000,
+      "price": 0.843045,
+      "videoSecond": 416.0,
+      "frame": 833
+    },
+    {
+      "ts": 1792169783500,
+      "receivedAt": 1792169783500,
+      "price": 0.843025,
+      "videoSecond": 416.5,
+      "frame": 834
+    },
+    {
+      "ts": 1792169784000,
+      "receivedAt": 1792169784000,
+      "price": 0.843025,
+      "videoSecond": 417.0,
+      "frame": 835
+    },
+    {
+      "ts": 1792169784500,
+      "receivedAt": 1792169784500,
+      "price": 0.843035,
+      "videoSecond": 417.5,
+      "frame": 836
+    },
+    {
+      "ts": 1792169785000,
+      "receivedAt": 1792169785000,
+      "price": 0.843035,
+      "videoSecond": 418.0,
+      "frame": 837
+    },
+    {
+      "ts": 1792169785500,
+      "receivedAt": 1792169785500,
+      "price": 0.843035,
+      "videoSecond": 418.5,
+      "frame": 838
+    },
+    {
+      "ts": 1792169786000,
+      "receivedAt": 1792169786000,
+      "price": 0.843035,
+      "videoSecond": 419.0,
+      "frame": 839
+    },
+    {
+      "ts": 1792169786500,
+      "receivedAt": 1792169786500,
+      "price": 0.843055,
+      "videoSecond": 419.5,
+      "frame": 840
+    },
+    {
+      "ts": 1792169787000,
+      "receivedAt": 1792169787000,
+      "price": 0.843055,
+      "videoSecond": 420.0,
+      "frame": 841
+    },
+    {
+      "ts": 1792169787500,
+      "receivedAt": 1792169787500,
+      "price": 0.843045,
+      "videoSecond": 420.5,
+      "frame": 842
+    },
+    {
+      "ts": 1792169788000,
+      "receivedAt": 1792169788000,
+      "price": 0.843045,
+      "videoSecond": 421.0,
+      "frame": 843
+    },
+    {
+      "ts": 1792169788500,
+      "receivedAt": 1792169788500,
+      "price": 0.843035,
+      "videoSecond": 421.5,
+      "frame": 844
+    },
+    {
+      "ts": 1792169789000,
+      "receivedAt": 1792169789000,
+      "price": 0.843035,
+      "videoSecond": 422.0,
+      "frame": 845
+    },
+    {
+      "ts": 1792169789500,
+      "receivedAt": 1792169789500,
+      "price": 0.843035,
+      "videoSecond": 422.5,
+      "frame": 846
+    },
+    {
+      "ts": 1792169790000,
+      "receivedAt": 1792169790000,
+      "price": 0.843035,
+      "videoSecond": 423.0,
+      "frame": 847
+    },
+    {
+      "ts": 1792169790500,
+      "receivedAt": 1792169790500,
+      "price": 0.843015,
+      "videoSecond": 423.5,
+      "frame": 848
+    },
+    {
+      "ts": 1792169791000,
+      "receivedAt": 1792169791000,
+      "price": 0.843015,
+      "videoSecond": 424.0,
+      "frame": 849
+    },
+    {
+      "ts": 1792169791500,
+      "receivedAt": 1792169791500,
+      "price": 0.842995,
+      "videoSecond": 424.5,
+      "frame": 850
+    },
+    {
+      "ts": 1792169792000,
+      "receivedAt": 1792169792000,
+      "price": 0.842995,
+      "videoSecond": 425.0,
+      "frame": 851
+    },
+    {
+      "ts": 1792169792500,
+      "receivedAt": 1792169792500,
+      "price": 0.842995,
+      "videoSecond": 425.5,
+      "frame": 852
+    },
+    {
+      "ts": 1792169793000,
+      "receivedAt": 1792169793000,
+      "price": 0.842995,
+      "videoSecond": 426.0,
+      "frame": 853
+    },
+    {
+      "ts": 1792169793500,
+      "receivedAt": 1792169793500,
+      "price": 0.843075,
+      "videoSecond": 426.5,
+      "frame": 854
+    },
+    {
+      "ts": 1792169794000,
+      "receivedAt": 1792169794000,
+      "price": 0.843075,
+      "videoSecond": 427.0,
+      "frame": 855
+    },
+    {
+      "ts": 1792169794500,
+      "receivedAt": 1792169794500,
+      "price": 0.843065,
+      "videoSecond": 427.5,
+      "frame": 856
+    },
+    {
+      "ts": 1792169795000,
+      "receivedAt": 1792169795000,
+      "price": 0.843065,
+      "videoSecond": 428.0,
+      "frame": 857
+    },
+    {
+      "ts": 1792169795500,
+      "receivedAt": 1792169795500,
+      "price": 0.843055,
+      "videoSecond": 428.5,
+      "frame": 858
+    },
+    {
+      "ts": 1792169796000,
+      "receivedAt": 1792169796000,
+      "price": 0.843055,
+      "videoSecond": 429.0,
+      "frame": 859
+    },
+    {
+      "ts": 1792169796500,
+      "receivedAt": 1792169796500,
+      "price": 0.843085,
+      "videoSecond": 429.5,
+      "frame": 860
+    },
+    {
+      "ts": 1792169797000,
+      "receivedAt": 1792169797000,
+      "price": 0.843085,
+      "videoSecond": 430.0,
+      "frame": 861
+    },
+    {
+      "ts": 1792169797500,
+      "receivedAt": 1792169797500,
+      "price": 0.843145,
+      "videoSecond": 430.5,
+      "frame": 862
+    },
+    {
+      "ts": 1792169798000,
+      "receivedAt": 1792169798000,
+      "price": 0.843145,
+      "videoSecond": 431.0,
+      "frame": 863
+    },
+    {
+      "ts": 1792169798500,
+      "receivedAt": 1792169798500,
+      "price": 0.843145,
+      "videoSecond": 431.5,
+      "frame": 864
+    },
+    {
+      "ts": 1792169799000,
+      "receivedAt": 1792169799000,
+      "price": 0.843145,
+      "videoSecond": 432.0,
+      "frame": 865
+    },
+    {
+      "ts": 1792169799500,
+      "receivedAt": 1792169799500,
+      "price": 0.843085,
+      "videoSecond": 432.5,
+      "frame": 866
+    },
+    {
+      "ts": 1792169800000,
+      "receivedAt": 1792169800000,
+      "price": 0.843085,
+      "videoSecond": 433.0,
+      "frame": 867
+    },
+    {
+      "ts": 1792169800500,
+      "receivedAt": 1792169800500,
+      "price": 0.843065,
+      "videoSecond": 433.5,
+      "frame": 868
+    },
+    {
+      "ts": 1792169801000,
+      "receivedAt": 1792169801000,
+      "price": 0.843065,
+      "videoSecond": 434.0,
+      "frame": 869
+    },
+    {
+      "ts": 1792169801500,
+      "receivedAt": 1792169801500,
+      "price": 0.843045,
+      "videoSecond": 434.5,
+      "frame": 870
+    },
+    {
+      "ts": 1792169802000,
+      "receivedAt": 1792169802000,
+      "price": 0.843045,
+      "videoSecond": 435.0,
+      "frame": 871
+    },
+    {
+      "ts": 1792169802500,
+      "receivedAt": 1792169802500,
+      "price": 0.843055,
+      "videoSecond": 435.5,
+      "frame": 872
+    },
+    {
+      "ts": 1792169803000,
+      "receivedAt": 1792169803000,
+      "price": 0.843055,
+      "videoSecond": 436.0,
+      "frame": 873
+    },
+    {
+      "ts": 1792169803500,
+      "receivedAt": 1792169803500,
+      "price": 0.843085,
+      "videoSecond": 436.5,
+      "frame": 874
+    },
+    {
+      "ts": 1792169804000,
+      "receivedAt": 1792169804000,
+      "price": 0.843085,
+      "videoSecond": 437.0,
+      "frame": 875
+    },
+    {
+      "ts": 1792169804500,
+      "receivedAt": 1792169804500,
+      "price": 0.843105,
+      "videoSecond": 437.5,
+      "frame": 876
+    },
+    {
+      "ts": 1792169805000,
+      "receivedAt": 1792169805000,
+      "price": 0.843105,
+      "videoSecond": 438.0,
+      "frame": 877
+    },
+    {
+      "ts": 1792169805500,
+      "receivedAt": 1792169805500,
+      "price": 0.843085,
+      "videoSecond": 438.5,
+      "frame": 878
+    },
+    {
+      "ts": 1792169806000,
+      "receivedAt": 1792169806000,
+      "price": 0.843085,
+      "videoSecond": 439.0,
+      "frame": 879
+    },
+    {
+      "ts": 1792169806500,
+      "receivedAt": 1792169806500,
+      "price": 0.843095,
+      "videoSecond": 439.5,
+      "frame": 880
+    },
+    {
+      "ts": 1792169807000,
+      "receivedAt": 1792169807000,
+      "price": 0.843095,
+      "videoSecond": 440.0,
+      "frame": 881
+    },
+    {
+      "ts": 1792169807500,
+      "receivedAt": 1792169807500,
+      "price": 0.843085,
+      "videoSecond": 440.5,
+      "frame": 882
+    },
+    {
+      "ts": 1792169808000,
+      "receivedAt": 1792169808000,
+      "price": 0.843085,
+      "videoSecond": 441.0,
+      "frame": 883
+    },
+    {
+      "ts": 1792169808500,
+      "receivedAt": 1792169808500,
+      "price": 0.843075,
+      "videoSecond": 441.5,
+      "frame": 884
+    },
+    {
+      "ts": 1792169809000,
+      "receivedAt": 1792169809000,
+      "price": 0.843075,
+      "videoSecond": 442.0,
+      "frame": 885
+    },
+    {
+      "ts": 1792169809500,
+      "receivedAt": 1792169809500,
+      "price": 0.843085,
+      "videoSecond": 442.5,
+      "frame": 886
+    },
+    {
+      "ts": 1792169810000,
+      "receivedAt": 1792169810000,
+      "price": 0.843085,
+      "videoSecond": 443.0,
+      "frame": 887
+    },
+    {
+      "ts": 1792169810500,
+      "receivedAt": 1792169810500,
+      "price": 0.843095,
+      "videoSecond": 443.5,
+      "frame": 888
+    },
+    {
+      "ts": 1792169811000,
+      "receivedAt": 1792169811000,
+      "price": 0.843095,
+      "videoSecond": 444.0,
+      "frame": 889
+    },
+    {
+      "ts": 1792169811500,
+      "receivedAt": 1792169811500,
+      "price": 0.843105,
+      "videoSecond": 444.5,
+      "frame": 890
+    },
+    {
+      "ts": 1792169812000,
+      "receivedAt": 1792169812000,
+      "price": 0.843105,
+      "videoSecond": 445.0,
+      "frame": 891
+    },
+    {
+      "ts": 1792169812500,
+      "receivedAt": 1792169812500,
+      "price": 0.843115,
+      "videoSecond": 445.5,
+      "frame": 892
+    },
+    {
+      "ts": 1792169813000,
+      "receivedAt": 1792169813000,
+      "price": 0.843115,
+      "videoSecond": 446.0,
+      "frame": 893
+    },
+    {
+      "ts": 1792169814000,
+      "receivedAt": 1792169814000,
+      "price": 0.843125,
+      "videoSecond": 447.0,
+      "frame": 895
+    },
+    {
+      "ts": 1792169814500,
+      "receivedAt": 1792169814500,
+      "price": 0.843135,
+      "videoSecond": 447.5,
+      "frame": 896
+    },
+    {
+      "ts": 1792169815000,
+      "receivedAt": 1792169815000,
+      "price": 0.843135,
+      "videoSecond": 448.0,
+      "frame": 897
+    },
+    {
+      "ts": 1792169815500,
+      "receivedAt": 1792169815500,
+      "price": 0.843135,
+      "videoSecond": 448.5,
+      "frame": 898
+    },
+    {
+      "ts": 1792169816000,
+      "receivedAt": 1792169816000,
+      "price": 0.843135,
+      "videoSecond": 449.0,
+      "frame": 899
+    },
+    {
+      "ts": 1792169816500,
+      "receivedAt": 1792169816500,
+      "price": 0.843145,
+      "videoSecond": 449.5,
+      "frame": 900
+    },
+    {
+      "ts": 1792169817000,
+      "receivedAt": 1792169817000,
+      "price": 0.843145,
+      "videoSecond": 450.0,
+      "frame": 901
+    },
+    {
+      "ts": 1792169817500,
+      "receivedAt": 1792169817500,
+      "price": 0.843155,
+      "videoSecond": 450.5,
+      "frame": 902
+    },
+    {
+      "ts": 1792169818000,
+      "receivedAt": 1792169818000,
+      "price": 0.843155,
+      "videoSecond": 451.0,
+      "frame": 903
+    },
+    {
+      "ts": 1792169818500,
+      "receivedAt": 1792169818500,
+      "price": 0.843175,
+      "videoSecond": 451.5,
+      "frame": 904
+    },
+    {
+      "ts": 1792169819000,
+      "receivedAt": 1792169819000,
+      "price": 0.843175,
+      "videoSecond": 452.0,
+      "frame": 905
+    },
+    {
+      "ts": 1792169819500,
+      "receivedAt": 1792169819500,
+      "price": 0.843175,
+      "videoSecond": 452.5,
+      "frame": 906
+    },
+    {
+      "ts": 1792169820000,
+      "receivedAt": 1792169820000,
+      "price": 0.843175,
+      "videoSecond": 453.0,
+      "frame": 907
+    },
+    {
+      "ts": 1792169820500,
+      "receivedAt": 1792169820500,
+      "price": 0.843165,
+      "videoSecond": 453.5,
+      "frame": 908
+    },
+    {
+      "ts": 1792169821000,
+      "receivedAt": 1792169821000,
+      "price": 0.843165,
+      "videoSecond": 454.0,
+      "frame": 909
+    },
+    {
+      "ts": 1792169821500,
+      "receivedAt": 1792169821500,
+      "price": 0.843155,
+      "videoSecond": 454.5,
+      "frame": 910
+    },
+    {
+      "ts": 1792169822000,
+      "receivedAt": 1792169822000,
+      "price": 0.843155,
+      "videoSecond": 455.0,
+      "frame": 911
+    },
+    {
+      "ts": 1792169822500,
+      "receivedAt": 1792169822500,
+      "price": 0.843145,
+      "videoSecond": 455.5,
+      "frame": 912
+    },
+    {
+      "ts": 1792169824000,
+      "receivedAt": 1792169824000,
+      "price": 0.843125,
+      "videoSecond": 457.0,
+      "frame": 915
+    },
+    {
+      "ts": 1792169825000,
+      "receivedAt": 1792169825000,
+      "price": 0.843145,
+      "videoSecond": 458.0,
+      "frame": 917
+    },
+    {
+      "ts": 1792169825500,
+      "receivedAt": 1792169825500,
+      "price": 0.843145,
+      "videoSecond": 458.5,
+      "frame": 918
+    },
+    {
+      "ts": 1792169826000,
+      "receivedAt": 1792169826000,
+      "price": 0.843145,
+      "videoSecond": 459.0,
+      "frame": 919
+    },
+    {
+      "ts": 1792169826500,
+      "receivedAt": 1792169826500,
+      "price": 0.843125,
+      "videoSecond": 459.5,
+      "frame": 920
+    },
+    {
+      "ts": 1792169827000,
+      "receivedAt": 1792169827000,
+      "price": 0.843125,
+      "videoSecond": 460.0,
+      "frame": 921
+    },
+    {
+      "ts": 1792169827500,
+      "receivedAt": 1792169827500,
+      "price": 0.843135,
+      "videoSecond": 460.5,
+      "frame": 922
+    },
+    {
+      "ts": 1792169828000,
+      "receivedAt": 1792169828000,
+      "price": 0.843135,
+      "videoSecond": 461.0,
+      "frame": 923
+    },
+    {
+      "ts": 1792169828500,
+      "receivedAt": 1792169828500,
+      "price": 0.843125,
+      "videoSecond": 461.5,
+      "frame": 924
+    },
+    {
+      "ts": 1792169829000,
+      "receivedAt": 1792169829000,
+      "price": 0.843125,
+      "videoSecond": 462.0,
+      "frame": 925
+    },
+    {
+      "ts": 1792169829500,
+      "receivedAt": 1792169829500,
+      "price": 0.843115,
+      "videoSecond": 462.5,
+      "frame": 926
+    },
+    {
+      "ts": 1792169830000,
+      "receivedAt": 1792169830000,
+      "price": 0.843115,
+      "videoSecond": 463.0,
+      "frame": 927
+    },
+    {
+      "ts": 1792169830500,
+      "receivedAt": 1792169830500,
+      "price": 0.843135,
+      "videoSecond": 463.5,
+      "frame": 928
+    },
+    {
+      "ts": 1792169831000,
+      "receivedAt": 1792169831000,
+      "price": 0.843135,
+      "videoSecond": 464.0,
+      "frame": 929
+    },
+    {
+      "ts": 1792169831500,
+      "receivedAt": 1792169831500,
+      "price": 0.843155,
+      "videoSecond": 464.5,
+      "frame": 930
+    },
+    {
+      "ts": 1792169832000,
+      "receivedAt": 1792169832000,
+      "price": 0.843155,
+      "videoSecond": 465.0,
+      "frame": 931
+    },
+    {
+      "ts": 1792169832500,
+      "receivedAt": 1792169832500,
+      "price": 0.843165,
+      "videoSecond": 465.5,
+      "frame": 932
+    },
+    {
+      "ts": 1792169833000,
+      "receivedAt": 1792169833000,
+      "price": 0.843165,
+      "videoSecond": 466.0,
+      "frame": 933
+    },
+    {
+      "ts": 1792169833500,
+      "receivedAt": 1792169833500,
+      "price": 0.843145,
+      "videoSecond": 466.5,
+      "frame": 934
+    },
+    {
+      "ts": 1792169834000,
+      "receivedAt": 1792169834000,
+      "price": 0.843145,
+      "videoSecond": 467.0,
+      "frame": 935
+    },
+    {
+      "ts": 1792169834500,
+      "receivedAt": 1792169834500,
+      "price": 0.843155,
+      "videoSecond": 467.5,
+      "frame": 936
+    },
+    {
+      "ts": 1792169835000,
+      "receivedAt": 1792169835000,
+      "price": 0.843155,
+      "videoSecond": 468.0,
+      "frame": 937
+    },
+    {
+      "ts": 1792169835500,
+      "receivedAt": 1792169835500,
+      "price": 0.843435,
+      "videoSecond": 468.5,
+      "frame": 938
+    },
+    {
+      "ts": 1792169836000,
+      "receivedAt": 1792169836000,
+      "price": 0.843435,
+      "videoSecond": 469.0,
+      "frame": 939
+    },
+    {
+      "ts": 1792169836500,
+      "receivedAt": 1792169836500,
+      "price": 0.843145,
+      "videoSecond": 469.5,
+      "frame": 940
+    },
+    {
+      "ts": 1792169837000,
+      "receivedAt": 1792169837000,
+      "price": 0.843145,
+      "videoSecond": 470.0,
+      "frame": 941
+    },
+    {
+      "ts": 1792169837500,
+      "receivedAt": 1792169837500,
+      "price": 0.843125,
+      "videoSecond": 470.5,
+      "frame": 942
+    },
+    {
+      "ts": 1792169838000,
+      "receivedAt": 1792169838000,
+      "price": 0.843125,
+      "videoSecond": 471.0,
+      "frame": 943
+    },
+    {
+      "ts": 1792169838500,
+      "receivedAt": 1792169838500,
+      "price": 0.843115,
+      "videoSecond": 471.5,
+      "frame": 944
+    },
+    {
+      "ts": 1792169839000,
+      "receivedAt": 1792169839000,
+      "price": 0.843115,
+      "videoSecond": 472.0,
+      "frame": 945
+    },
+    {
+      "ts": 1792169839500,
+      "receivedAt": 1792169839500,
+      "price": 0.843125,
+      "videoSecond": 472.5,
+      "frame": 946
+    },
+    {
+      "ts": 1792169840000,
+      "receivedAt": 1792169840000,
+      "price": 0.843125,
+      "videoSecond": 473.0,
+      "frame": 947
+    },
+    {
+      "ts": 1792169840500,
+      "receivedAt": 1792169840500,
+      "price": 0.843115,
+      "videoSecond": 473.5,
+      "frame": 948
+    },
+    {
+      "ts": 1792169841000,
+      "receivedAt": 1792169841000,
+      "price": 0.843115,
+      "videoSecond": 474.0,
+      "frame": 949
+    },
+    {
+      "ts": 1792169841500,
+      "receivedAt": 1792169841500,
+      "price": 0.843015,
+      "videoSecond": 474.5,
+      "frame": 950
+    },
+    {
+      "ts": 1792169842000,
+      "receivedAt": 1792169842000,
+      "price": 0.843015,
+      "videoSecond": 475.0,
+      "frame": 951
+    },
+    {
+      "ts": 1792169842500,
+      "receivedAt": 1792169842500,
+      "price": 0.842975,
+      "videoSecond": 475.5,
+      "frame": 952
+    },
+    {
+      "ts": 1792169843000,
+      "receivedAt": 1792169843000,
+      "price": 0.842975,
+      "videoSecond": 476.0,
+      "frame": 953
+    },
+    {
+      "ts": 1792169843500,
+      "receivedAt": 1792169843500,
+      "price": 0.842965,
+      "videoSecond": 476.5,
+      "frame": 954
+    },
+    {
+      "ts": 1792169844000,
+      "receivedAt": 1792169844000,
+      "price": 0.842965,
+      "videoSecond": 477.0,
+      "frame": 955
+    },
+    {
+      "ts": 1792169846000,
+      "receivedAt": 1792169846000,
+      "price": 0.842955,
+      "videoSecond": 479.0,
+      "frame": 959
+    },
+    {
+      "ts": 1792169846500,
+      "receivedAt": 1792169846500,
+      "price": 0.842955,
+      "videoSecond": 479.5,
+      "frame": 960
+    },
+    {
+      "ts": 1792169847000,
+      "receivedAt": 1792169847000,
+      "price": 0.842955,
+      "videoSecond": 480.0,
+      "frame": 961
+    },
+    {
+      "ts": 1792169847500,
+      "receivedAt": 1792169847500,
+      "price": 0.842945,
+      "videoSecond": 480.5,
+      "frame": 962
+    },
+    {
+      "ts": 1792169848000,
+      "receivedAt": 1792169848000,
+      "price": 0.842945,
+      "videoSecond": 481.0,
+      "frame": 963
+    },
+    {
+      "ts": 1792169848500,
+      "receivedAt": 1792169848500,
+      "price": 0.842955,
+      "videoSecond": 481.5,
+      "frame": 964
+    },
+    {
+      "ts": 1792169849000,
+      "receivedAt": 1792169849000,
+      "price": 0.842955,
+      "videoSecond": 482.0,
+      "frame": 965
+    },
+    {
+      "ts": 1792169851000,
+      "receivedAt": 1792169851000,
+      "price": 0.842965,
+      "videoSecond": 484.0,
+      "frame": 969
+    },
+    {
+      "ts": 1792169851500,
+      "receivedAt": 1792169851500,
+      "price": 0.842955,
+      "videoSecond": 484.5,
+      "frame": 970
+    },
+    {
+      "ts": 1792169852000,
+      "receivedAt": 1792169852000,
+      "price": 0.842955,
+      "videoSecond": 485.0,
+      "frame": 971
+    },
+    {
+      "ts": 1792169852500,
+      "receivedAt": 1792169852500,
+      "price": 0.842935,
+      "videoSecond": 485.5,
+      "frame": 972
+    },
+    {
+      "ts": 1792169853000,
+      "receivedAt": 1792169853000,
+      "price": 0.842935,
+      "videoSecond": 486.0,
+      "frame": 973
+    },
+    {
+      "ts": 1792169853500,
+      "receivedAt": 1792169853500,
+      "price": 0.842905,
+      "videoSecond": 486.5,
+      "frame": 974
+    },
+    {
+      "ts": 1792169854000,
+      "receivedAt": 1792169854000,
+      "price": 0.842905,
+      "videoSecond": 487.0,
+      "frame": 975
+    },
+    {
+      "ts": 1792169854500,
+      "receivedAt": 1792169854500,
+      "price": 0.842885,
+      "videoSecond": 487.5,
+      "frame": 976
+    },
+    {
+      "ts": 1792169855000,
+      "receivedAt": 1792169855000,
+      "price": 0.842885,
+      "videoSecond": 488.0,
+      "frame": 977
+    },
+    {
+      "ts": 1792169855500,
+      "receivedAt": 1792169855500,
+      "price": 0.842805,
+      "videoSecond": 488.5,
+      "frame": 978
+    },
+    {
+      "ts": 1792169856000,
+      "receivedAt": 1792169856000,
+      "price": 0.842805,
+      "videoSecond": 489.0,
+      "frame": 979
+    },
+    {
+      "ts": 1792169856500,
+      "receivedAt": 1792169856500,
+      "price": 0.842795,
+      "videoSecond": 489.5,
+      "frame": 980
+    },
+    {
+      "ts": 1792169857000,
+      "receivedAt": 1792169857000,
+      "price": 0.842795,
+      "videoSecond": 490.0,
+      "frame": 981
+    },
+    {
+      "ts": 1792169857500,
+      "receivedAt": 1792169857500,
+      "price": 0.842805,
+      "videoSecond": 490.5,
+      "frame": 982
+    },
+    {
+      "ts": 1792169858000,
+      "receivedAt": 1792169858000,
+      "price": 0.842805,
+      "videoSecond": 491.0,
+      "frame": 983
+    },
+    {
+      "ts": 1792169858500,
+      "receivedAt": 1792169858500,
+      "price": 0.842805,
+      "videoSecond": 491.5,
+      "frame": 984
+    },
+    {
+      "ts": 1792169859000,
+      "receivedAt": 1792169859000,
+      "price": 0.842805,
+      "videoSecond": 492.0,
+      "frame": 985
+    },
+    {
+      "ts": 1792169859500,
+      "receivedAt": 1792169859500,
+      "price": 0.842805,
+      "videoSecond": 492.5,
+      "frame": 986
+    },
+    {
+      "ts": 1792169860000,
+      "receivedAt": 1792169860000,
+      "price": 0.842805,
+      "videoSecond": 493.0,
+      "frame": 987
+    },
+    {
+      "ts": 1792169860500,
+      "receivedAt": 1792169860500,
+      "price": 0.842805,
+      "videoSecond": 493.5,
+      "frame": 988
+    },
+    {
+      "ts": 1792169861000,
+      "receivedAt": 1792169861000,
+      "price": 0.842805,
+      "videoSecond": 494.0,
+      "frame": 989
+    },
+    {
+      "ts": 1792169861500,
+      "receivedAt": 1792169861500,
+      "price": 0.842785,
+      "videoSecond": 494.5,
+      "frame": 990
+    },
+    {
+      "ts": 1792169862000,
+      "receivedAt": 1792169862000,
+      "price": 0.842785,
+      "videoSecond": 495.0,
+      "frame": 991
+    },
+    {
+      "ts": 1792169862500,
+      "receivedAt": 1792169862500,
+      "price": 0.842795,
+      "videoSecond": 495.5,
+      "frame": 992
+    },
+    {
+      "ts": 1792169863000,
+      "receivedAt": 1792169863000,
+      "price": 0.842795,
+      "videoSecond": 496.0,
+      "frame": 993
+    },
+    {
+      "ts": 1792169863500,
+      "receivedAt": 1792169863500,
+      "price": 0.842765,
+      "videoSecond": 496.5,
+      "frame": 994
+    },
+    {
+      "ts": 1792169864000,
+      "receivedAt": 1792169864000,
+      "price": 0.842765,
+      "videoSecond": 497.0,
+      "frame": 995
+    },
+    {
+      "ts": 1792169864500,
+      "receivedAt": 1792169864500,
+      "price": 0.842755,
+      "videoSecond": 497.5,
+      "frame": 996
+    },
+    {
+      "ts": 1792169865000,
+      "receivedAt": 1792169865000,
+      "price": 0.842755,
+      "videoSecond": 498.0,
+      "frame": 997
+    },
+    {
+      "ts": 1792169865500,
+      "receivedAt": 1792169865500,
+      "price": 0.842735,
+      "videoSecond": 498.5,
+      "frame": 998
+    },
+    {
+      "ts": 1792169866000,
+      "receivedAt": 1792169866000,
+      "price": 0.842735,
+      "videoSecond": 499.0,
+      "frame": 999
+    },
+    {
+      "ts": 1792169866500,
+      "receivedAt": 1792169866500,
+      "price": 0.842805,
+      "videoSecond": 499.5,
+      "frame": 1000
+    },
+    {
+      "ts": 1792169867000,
+      "receivedAt": 1792169867000,
+      "price": 0.842805,
+      "videoSecond": 500.0,
+      "frame": 1001
+    },
+    {
+      "ts": 1792169867500,
+      "receivedAt": 1792169867500,
+      "price": 0.842805,
+      "videoSecond": 500.5,
+      "frame": 1002
+    },
+    {
+      "ts": 1792169868000,
+      "receivedAt": 1792169868000,
+      "price": 0.842805,
+      "videoSecond": 501.0,
+      "frame": 1003
+    },
+    {
+      "ts": 1792169868500,
+      "receivedAt": 1792169868500,
+      "price": 0.842805,
+      "videoSecond": 501.5,
+      "frame": 1004
+    },
+    {
+      "ts": 1792169869000,
+      "receivedAt": 1792169869000,
+      "price": 0.842805,
+      "videoSecond": 502.0,
+      "frame": 1005
+    },
+    {
+      "ts": 1792169869500,
+      "receivedAt": 1792169869500,
+      "price": 0.842805,
+      "videoSecond": 502.5,
+      "frame": 1006
+    },
+    {
+      "ts": 1792169870000,
+      "receivedAt": 1792169870000,
+      "price": 0.842805,
+      "videoSecond": 503.0,
+      "frame": 1007
+    },
+    {
+      "ts": 1792169870500,
+      "receivedAt": 1792169870500,
+      "price": 0.842815,
+      "videoSecond": 503.5,
+      "frame": 1008
+    },
+    {
+      "ts": 1792169871000,
+      "receivedAt": 1792169871000,
+      "price": 0.842815,
+      "videoSecond": 504.0,
+      "frame": 1009
+    },
+    {
+      "ts": 1792169871500,
+      "receivedAt": 1792169871500,
+      "price": 0.842815,
+      "videoSecond": 504.5,
+      "frame": 1010
+    },
+    {
+      "ts": 1792169872000,
+      "receivedAt": 1792169872000,
+      "price": 0.842815,
+      "videoSecond": 505.0,
+      "frame": 1011
+    },
+    {
+      "ts": 1792169872500,
+      "receivedAt": 1792169872500,
+      "price": 0.842805,
+      "videoSecond": 505.5,
+      "frame": 1012
+    },
+    {
+      "ts": 1792169873000,
+      "receivedAt": 1792169873000,
+      "price": 0.842805,
+      "videoSecond": 506.0,
+      "frame": 1013
+    },
+    {
+      "ts": 1792169873500,
+      "receivedAt": 1792169873500,
+      "price": 0.842805,
+      "videoSecond": 506.5,
+      "frame": 1014
+    },
+    {
+      "ts": 1792169874000,
+      "receivedAt": 1792169874000,
+      "price": 0.842805,
+      "videoSecond": 507.0,
+      "frame": 1015
+    },
+    {
+      "ts": 1792169874500,
+      "receivedAt": 1792169874500,
+      "price": 0.842805,
+      "videoSecond": 507.5,
+      "frame": 1016
+    },
+    {
+      "ts": 1792169875000,
+      "receivedAt": 1792169875000,
+      "price": 0.842805,
+      "videoSecond": 508.0,
+      "frame": 1017
+    },
+    {
+      "ts": 1792169875500,
+      "receivedAt": 1792169875500,
+      "price": 0.842795,
+      "videoSecond": 508.5,
+      "frame": 1018
+    },
+    {
+      "ts": 1792169876000,
+      "receivedAt": 1792169876000,
+      "price": 0.842795,
+      "videoSecond": 509.0,
+      "frame": 1019
+    },
+    {
+      "ts": 1792169876500,
+      "receivedAt": 1792169876500,
+      "price": 0.842805,
+      "videoSecond": 509.5,
+      "frame": 1020
+    },
+    {
+      "ts": 1792169877000,
+      "receivedAt": 1792169877000,
+      "price": 0.842805,
+      "videoSecond": 510.0,
+      "frame": 1021
+    },
+    {
+      "ts": 1792169877500,
+      "receivedAt": 1792169877500,
+      "price": 0.842775,
+      "videoSecond": 510.5,
+      "frame": 1022
+    },
+    {
+      "ts": 1792169878000,
+      "receivedAt": 1792169878000,
+      "price": 0.842775,
+      "videoSecond": 511.0,
+      "frame": 1023
+    },
+    {
+      "ts": 1792169878500,
+      "receivedAt": 1792169878500,
+      "price": 0.842775,
+      "videoSecond": 511.5,
+      "frame": 1024
+    },
+    {
+      "ts": 1792169879000,
+      "receivedAt": 1792169879000,
+      "price": 0.842775,
+      "videoSecond": 512.0,
+      "frame": 1025
+    },
+    {
+      "ts": 1792169879500,
+      "receivedAt": 1792169879500,
+      "price": 0.842795,
+      "videoSecond": 512.5,
+      "frame": 1026
+    },
+    {
+      "ts": 1792169880000,
+      "receivedAt": 1792169880000,
+      "price": 0.842795,
+      "videoSecond": 513.0,
+      "frame": 1027
+    },
+    {
+      "ts": 1792169880500,
+      "receivedAt": 1792169880500,
+      "price": 0.842795,
+      "videoSecond": 513.5,
+      "frame": 1028
+    },
+    {
+      "ts": 1792169881000,
+      "receivedAt": 1792169881000,
+      "price": 0.842795,
+      "videoSecond": 514.0,
+      "frame": 1029
+    },
+    {
+      "ts": 1792169881500,
+      "receivedAt": 1792169881500,
+      "price": 0.842825,
+      "videoSecond": 514.5,
+      "frame": 1030
+    },
+    {
+      "ts": 1792169882000,
+      "receivedAt": 1792169882000,
+      "price": 0.842825,
+      "videoSecond": 515.0,
+      "frame": 1031
+    },
+    {
+      "ts": 1792169882500,
+      "receivedAt": 1792169882500,
+      "price": 0.842845,
+      "videoSecond": 515.5,
+      "frame": 1032
+    },
+    {
+      "ts": 1792169883000,
+      "receivedAt": 1792169883000,
+      "price": 0.842845,
+      "videoSecond": 516.0,
+      "frame": 1033
+    },
+    {
+      "ts": 1792169883500,
+      "receivedAt": 1792169883500,
+      "price": 0.842875,
+      "videoSecond": 516.5,
+      "frame": 1034
+    },
+    {
+      "ts": 1792169884000,
+      "receivedAt": 1792169884000,
+      "price": 0.842875,
+      "videoSecond": 517.0,
+      "frame": 1035
+    },
+    {
+      "ts": 1792169884500,
+      "receivedAt": 1792169884500,
+      "price": 0.842875,
+      "videoSecond": 517.5,
+      "frame": 1036
+    },
+    {
+      "ts": 1792169885000,
+      "receivedAt": 1792169885000,
+      "price": 0.842875,
+      "videoSecond": 518.0,
+      "frame": 1037
+    },
+    {
+      "ts": 1792169885500,
+      "receivedAt": 1792169885500,
+      "price": 0.842855,
+      "videoSecond": 518.5,
+      "frame": 1038
+    },
+    {
+      "ts": 1792169886000,
+      "receivedAt": 1792169886000,
+      "price": 0.842855,
+      "videoSecond": 519.0,
+      "frame": 1039
+    },
+    {
+      "ts": 1792169886500,
+      "receivedAt": 1792169886500,
+      "price": 0.842865,
+      "videoSecond": 519.5,
+      "frame": 1040
+    },
+    {
+      "ts": 1792169887000,
+      "receivedAt": 1792169887000,
+      "price": 0.842865,
+      "videoSecond": 520.0,
+      "frame": 1041
+    },
+    {
+      "ts": 1792169887500,
+      "receivedAt": 1792169887500,
+      "price": 0.842855,
+      "videoSecond": 520.5,
+      "frame": 1042
+    },
+    {
+      "ts": 1792169888000,
+      "receivedAt": 1792169888000,
+      "price": 0.842855,
+      "videoSecond": 521.0,
+      "frame": 1043
+    },
+    {
+      "ts": 1792169888500,
+      "receivedAt": 1792169888500,
+      "price": 0.842855,
+      "videoSecond": 521.5,
+      "frame": 1044
+    },
+    {
+      "ts": 1792169889000,
+      "receivedAt": 1792169889000,
+      "price": 0.842855,
+      "videoSecond": 522.0,
+      "frame": 1045
+    },
+    {
+      "ts": 1792169889500,
+      "receivedAt": 1792169889500,
+      "price": 0.842835,
+      "videoSecond": 522.5,
+      "frame": 1046
+    },
+    {
+      "ts": 1792169890000,
+      "receivedAt": 1792169890000,
+      "price": 0.842835,
+      "videoSecond": 523.0,
+      "frame": 1047
+    },
+    {
+      "ts": 1792169890500,
+      "receivedAt": 1792169890500,
+      "price": 0.842835,
+      "videoSecond": 523.5,
+      "frame": 1048
+    },
+    {
+      "ts": 1792169891000,
+      "receivedAt": 1792169891000,
+      "price": 0.842835,
+      "videoSecond": 524.0,
+      "frame": 1049
+    },
+    {
+      "ts": 1792169891500,
+      "receivedAt": 1792169891500,
+      "price": 0.842832,
+      "videoSecond": 524.5,
+      "frame": 1050
+    },
+    {
+      "ts": 1792169892000,
+      "receivedAt": 1792169892000,
+      "price": 0.842815,
+      "videoSecond": 525.0,
+      "frame": 1051
+    },
+    {
+      "ts": 1792169892500,
+      "receivedAt": 1792169892500,
+      "price": 0.842795,
+      "videoSecond": 525.5,
+      "frame": 1052
+    },
+    {
+      "ts": 1792169893000,
+      "receivedAt": 1792169893000,
+      "price": 0.842795,
+      "videoSecond": 526.0,
+      "frame": 1053
+    },
+    {
+      "ts": 1792169893500,
+      "receivedAt": 1792169893500,
+      "price": 0.842775,
+      "videoSecond": 526.5,
+      "frame": 1054
+    },
+    {
+      "ts": 1792169894000,
+      "receivedAt": 1792169894000,
+      "price": 0.842775,
+      "videoSecond": 527.0,
+      "frame": 1055
+    },
+    {
+      "ts": 1792169894500,
+      "receivedAt": 1792169894500,
+      "price": 0.842815,
+      "videoSecond": 527.5,
+      "frame": 1056
+    },
+    {
+      "ts": 1792169895000,
+      "receivedAt": 1792169895000,
+      "price": 0.842815,
+      "videoSecond": 528.0,
+      "frame": 1057
+    },
+    {
+      "ts": 1792169895500,
+      "receivedAt": 1792169895500,
+      "price": 0.842795,
+      "videoSecond": 528.5,
+      "frame": 1058
+    },
+    {
+      "ts": 1792169896000,
+      "receivedAt": 1792169896000,
+      "price": 0.842795,
+      "videoSecond": 529.0,
+      "frame": 1059
+    },
+    {
+      "ts": 1792169896500,
+      "receivedAt": 1792169896500,
+      "price": 0.842825,
+      "videoSecond": 529.5,
+      "frame": 1060
+    },
+    {
+      "ts": 1792169897000,
+      "receivedAt": 1792169897000,
+      "price": 0.842825,
+      "videoSecond": 530.0,
+      "frame": 1061
+    },
+    {
+      "ts": 1792169898000,
+      "receivedAt": 1792169898000,
+      "price": 0.842825,
+      "videoSecond": 531.0,
+      "frame": 1063
+    },
+    {
+      "ts": 1792169898500,
+      "receivedAt": 1792169898500,
+      "price": 0.842835,
+      "videoSecond": 531.5,
+      "frame": 1064
+    },
+    {
+      "ts": 1792169899000,
+      "receivedAt": 1792169899000,
+      "price": 0.842835,
+      "videoSecond": 532.0,
+      "frame": 1065
+    },
+    {
+      "ts": 1792169899500,
+      "receivedAt": 1792169899500,
+      "price": 0.842815,
+      "videoSecond": 532.5,
+      "frame": 1066
+    },
+    {
+      "ts": 1792169900000,
+      "receivedAt": 1792169900000,
+      "price": 0.842815,
+      "videoSecond": 533.0,
+      "frame": 1067
+    },
+    {
+      "ts": 1792169901000,
+      "receivedAt": 1792169901000,
+      "price": 0.842795,
+      "videoSecond": 534.0,
+      "frame": 1069
+    },
+    {
+      "ts": 1792169901500,
+      "receivedAt": 1792169901500,
+      "price": 0.842775,
+      "videoSecond": 534.5,
+      "frame": 1070
+    },
+    {
+      "ts": 1792169902000,
+      "receivedAt": 1792169902000,
+      "price": 0.842775,
+      "videoSecond": 535.0,
+      "frame": 1071
+    },
+    {
+      "ts": 1792169902500,
+      "receivedAt": 1792169902500,
+      "price": 0.842775,
+      "videoSecond": 535.5,
+      "frame": 1072
+    },
+    {
+      "ts": 1792169903000,
+      "receivedAt": 1792169903000,
+      "price": 0.842775,
+      "videoSecond": 536.0,
+      "frame": 1073
+    },
+    {
+      "ts": 1792169903500,
+      "receivedAt": 1792169903500,
+      "price": 0.842775,
+      "videoSecond": 536.5,
+      "frame": 1074
+    },
+    {
+      "ts": 1792169904000,
+      "receivedAt": 1792169904000,
+      "price": 0.842775,
+      "videoSecond": 537.0,
+      "frame": 1075
+    },
+    {
+      "ts": 1792169904500,
+      "receivedAt": 1792169904500,
+      "price": 0.842775,
+      "videoSecond": 537.5,
+      "frame": 1076
+    },
+    {
+      "ts": 1792169905000,
+      "receivedAt": 1792169905000,
+      "price": 0.842775,
+      "videoSecond": 538.0,
+      "frame": 1077
+    },
+    {
+      "ts": 1792169905500,
+      "receivedAt": 1792169905500,
+      "price": 0.842775,
+      "videoSecond": 538.5,
+      "frame": 1078
+    },
+    {
+      "ts": 1792169906000,
+      "receivedAt": 1792169906000,
+      "price": 0.842775,
+      "videoSecond": 539.0,
+      "frame": 1079
+    },
+    {
+      "ts": 1792169906500,
+      "receivedAt": 1792169906500,
+      "price": 0.842795,
+      "videoSecond": 539.5,
+      "frame": 1080
+    },
+    {
+      "ts": 1792169907000,
+      "receivedAt": 1792169907000,
+      "price": 0.842795,
+      "videoSecond": 540.0,
+      "frame": 1081
+    },
+    {
+      "ts": 1792169907500,
+      "receivedAt": 1792169907500,
+      "price": 0.842795,
+      "videoSecond": 540.5,
+      "frame": 1082
+    },
+    {
+      "ts": 1792169908000,
+      "receivedAt": 1792169908000,
+      "price": 0.842795,
+      "videoSecond": 541.0,
+      "frame": 1083
+    },
+    {
+      "ts": 1792169908500,
+      "receivedAt": 1792169908500,
+      "price": 0.842775,
+      "videoSecond": 541.5,
+      "frame": 1084
+    },
+    {
+      "ts": 1792169909000,
+      "receivedAt": 1792169909000,
+      "price": 0.842775,
+      "videoSecond": 542.0,
+      "frame": 1085
+    },
+    {
+      "ts": 1792169909500,
+      "receivedAt": 1792169909500,
+      "price": 0.842775,
+      "videoSecond": 542.5,
+      "frame": 1086
+    },
+    {
+      "ts": 1792169910000,
+      "receivedAt": 1792169910000,
+      "price": 0.842775,
+      "videoSecond": 543.0,
+      "frame": 1087
+    },
+    {
+      "ts": 1792169910500,
+      "receivedAt": 1792169910500,
+      "price": 0.842795,
+      "videoSecond": 543.5,
+      "frame": 1088
+    },
+    {
+      "ts": 1792169911000,
+      "receivedAt": 1792169911000,
+      "price": 0.842795,
+      "videoSecond": 544.0,
+      "frame": 1089
+    },
+    {
+      "ts": 1792169911500,
+      "receivedAt": 1792169911500,
+      "price": 0.842785,
+      "videoSecond": 544.5,
+      "frame": 1090
+    },
+    {
+      "ts": 1792169912000,
+      "receivedAt": 1792169912000,
+      "price": 0.842785,
+      "videoSecond": 545.0,
+      "frame": 1091
+    },
+    {
+      "ts": 1792169912500,
+      "receivedAt": 1792169912500,
+      "price": 0.842815,
+      "videoSecond": 545.5,
+      "frame": 1092
+    },
+    {
+      "ts": 1792169913000,
+      "receivedAt": 1792169913000,
+      "price": 0.842815,
+      "videoSecond": 546.0,
+      "frame": 1093
+    },
+    {
+      "ts": 1792169913500,
+      "receivedAt": 1792169913500,
+      "price": 0.842815,
+      "videoSecond": 546.5,
+      "frame": 1094
+    },
+    {
+      "ts": 1792169914000,
+      "receivedAt": 1792169914000,
+      "price": 0.842815,
+      "videoSecond": 547.0,
+      "frame": 1095
+    },
+    {
+      "ts": 1792169914500,
+      "receivedAt": 1792169914500,
+      "price": 0.842835,
+      "videoSecond": 547.5,
+      "frame": 1096
+    },
+    {
+      "ts": 1792169915000,
+      "receivedAt": 1792169915000,
+      "price": 0.842835,
+      "videoSecond": 548.0,
+      "frame": 1097
+    },
+    {
+      "ts": 1792169915500,
+      "receivedAt": 1792169915500,
+      "price": 0.842895,
+      "videoSecond": 548.5,
+      "frame": 1098
+    },
+    {
+      "ts": 1792169916000,
+      "receivedAt": 1792169916000,
+      "price": 0.842895,
+      "videoSecond": 549.0,
+      "frame": 1099
+    },
+    {
+      "ts": 1792169916500,
+      "receivedAt": 1792169916500,
+      "price": 0.842905,
+      "videoSecond": 549.5,
+      "frame": 1100
+    },
+    {
+      "ts": 1792169917000,
+      "receivedAt": 1792169917000,
+      "price": 0.842905,
+      "videoSecond": 550.0,
+      "frame": 1101
+    },
+    {
+      "ts": 1792169917500,
+      "receivedAt": 1792169917500,
+      "price": 0.842955,
+      "videoSecond": 550.5,
+      "frame": 1102
+    },
+    {
+      "ts": 1792169918000,
+      "receivedAt": 1792169918000,
+      "price": 0.842955,
+      "videoSecond": 551.0,
+      "frame": 1103
+    },
+    {
+      "ts": 1792169918500,
+      "receivedAt": 1792169918500,
+      "price": 0.842955,
+      "videoSecond": 551.5,
+      "frame": 1104
+    },
+    {
+      "ts": 1792169919000,
+      "receivedAt": 1792169919000,
+      "price": 0.842955,
+      "videoSecond": 552.0,
+      "frame": 1105
+    },
+    {
+      "ts": 1792169919500,
+      "receivedAt": 1792169919500,
+      "price": 0.842965,
+      "videoSecond": 552.5,
+      "frame": 1106
+    },
+    {
+      "ts": 1792169920000,
+      "receivedAt": 1792169920000,
+      "price": 0.842965,
+      "videoSecond": 553.0,
+      "frame": 1107
+    },
+    {
+      "ts": 1792169920500,
+      "receivedAt": 1792169920500,
+      "price": 0.842975,
+      "videoSecond": 553.5,
+      "frame": 1108
+    },
+    {
+      "ts": 1792169921000,
+      "receivedAt": 1792169921000,
+      "price": 0.842975,
+      "videoSecond": 554.0,
+      "frame": 1109
+    },
+    {
+      "ts": 1792169921500,
+      "receivedAt": 1792169921500,
+      "price": 0.842985,
+      "videoSecond": 554.5,
+      "frame": 1110
+    }
+  ]
+}
