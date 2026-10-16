@@ -1,4 +1,4 @@
-export type DevinxPlanId='monthly'|'quarterly'|'semiannual'|'annual';
+export type DevinxPlanId='monthly';
 
 export type DevinxSubscriptionPlan={
   id:DevinxPlanId;
@@ -16,30 +16,17 @@ export const DEVINX_KIWIFY_INTERNATIONAL_PRODUCT_ID='abf1b7b0-b75e-11f1-b984-a1f
 // International pricing is fixed in USD and no longer derived from BRL.
 export const DEVINX_APPROX_BRL_TO_USD_RATE=0.20;
 
+export const DEVINX_SUBSCRIPTION_P// One public Financeiro plan only. The Kiwify products retain their verified
+// BR and international links; checkout prices must also be updated at Kiwify.
 export const DEVINX_SUBSCRIPTION_PLANS:readonly DevinxSubscriptionPlan[]=[
   {
     id:'monthly',months:1,
-    amountMinor:1990,checkoutUrl:'https://pay.kiwify.com.br/S2uuSUA',
-    internationalAmountMinor:500,internationalCheckoutUrl:'https://pay.kiwify.com/4ueSB2b'
-  },
-  {
-    id:'quarterly',months:3,
-    amountMinor:4990,checkoutUrl:'https://pay.kiwify.com.br/KHaoP9n',
-    internationalAmountMinor:1290,internationalCheckoutUrl:'https://pay.kiwify.com/5mYoTiS'
-  },
-  {
-    id:'semiannual',months:6,
-    amountMinor:8990,checkoutUrl:'https://pay.kiwify.com.br/7pINKHM',
-    internationalAmountMinor:2290,internationalCheckoutUrl:'https://pay.kiwify.com/QFAn4UI'
-  },
-  {
-    id:'annual',months:12,
-    amountMinor:14990,checkoutUrl:'https://pay.kiwify.com.br/i8YAXiI',
-    internationalAmountMinor:3790,internationalCheckoutUrl:'https://pay.kiwify.com/XFbIajq'
+    amountMinor:3990,checkoutUrl:'https://pay.kiwify.com.br/S2uuSUA',
+    internationalAmountMinor:800,internationalCheckoutUrl:'https://pay.kiwify.com/4ueSB2b'
   }
 ] as const;
 
-function internationalCheckoutUrl(url:string){
+url:string){
   const checkout=new URL(url);
   checkout.searchParams.set('region','intl');
   return checkout.toString();
