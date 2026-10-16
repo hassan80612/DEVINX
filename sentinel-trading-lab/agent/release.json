@@ -1,6 +1,6 @@
 {
-  "version": "13.9.27",
-  "build": "13.9.27-synchronized-30s-entry-at-second-30-only",
+  "version": "13.9.28",
+  "build": "13.9.28-synced-protocol-lightweight-entry-second-27",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
@@ -9,6 +9,6 @@
     "engineArchitecture": "shared-market-base-one-decision-vnext",
     "modelValidation": "13.9.24-30s-video-replay-and-runtime-parity",
     "forecastModel": "now-structural-v1",
-    "clockPolicy": "verified-broker-only-second-30-v2"
+    "clockPolicy": "verified-broker-alert-27-expiry-00-no-dom-poll-v3"
   }
 }
