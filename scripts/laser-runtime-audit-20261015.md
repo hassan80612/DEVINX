@@ -21,7 +21,26 @@ Verification after commit:
 | Laser tables retained | 22 |
 | Laser-specific Realtime/Storage policies | none |
 
-This blocks API-driven Laser operations at the database even if an old installed agent resumes. It does not remove the Edge Function deployments or stop an already-running Windows process. Permanent cleanup is prepared separately in `purge-retired-laser.sql` and requires confirmation.
+This blocked API-driven Laser operations before permanent cleanup. It did not stop an already-running Windows process.
+
+## Permanent cleanup completed after explicit confirmation
+
+The user explicitly confirmed permanent deletion, conditional on preserving all other systems. Executed `purge-retired-laser.sql` successfully with RESTRICT and a transaction: 71 Laser SQL functions, 22 exclusive Laser tables and the `devinx_laser` schema were removed. The Laser-specific trigger was removed within that same transaction. No CASCADE was used.
+
+All 15 `laser-*` Edge Functions were deleted through their individual Supabase confirmation dialogs. The remaining deployment list contains only `store-media-import-once`, which was preserved.
+
+Final database verification:
+
+| Check | Result |
+| --- | --- |
+| Laser functions remaining | 0 |
+| Laser tables remaining | 0 |
+| Laser schema remaining | false |
+| Finance access permission retained | true |
+| Profiles, financial transactions and work sessions present | true |
+| Shared Auth users table and profile bootstrap function present | true |
+
+Accounts, login, finance data and its access roles were not mutated by these scripts. The retired Laser UI/API continued returning 410, while the login and Store pages returned 200. Full authenticated Finance operation cannot be verified until the existing provider billing restriction is removed.
 
 ## Separate Supabase workload audit
 

@@ -1,4 +1,5 @@
--- Pending explicit confirmation for permanent deletion. Do not run implicitly.
+-- Executed after explicit user confirmation on 15 October 2026 (Brazil time).
+-- Destructive one-time operation; do not run implicitly or rerun on another project.
 -- Target: DEVINX jubiwhtnhxluetzkzomm. Auth, public finance tables, and Store stay.
 -- RESTRICT deliberately aborts the whole transaction on external dependencies.
 begin;
