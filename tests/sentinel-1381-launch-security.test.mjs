@@ -77,13 +77,15 @@ test('Passive observer preserves historical responses and coalesces selected liv
  assert.match(src,/await s\.page\.evaluate\(\(d\)=>/);
 });
 
-test('US$50 offer forces English on Sentinel plan page independently from prior browser language',()=>{
+test('US$10 offer forces English on Sentinel plan page independently from prior browser language',()=>{
  const plans=readFileSync(new URL('../sentinel-trading-lab/src/app/planos/LocalizedPlans.tsx',import.meta.url),'utf8');
  const commercial=readFileSync(new URL('../sentinel-trading-lab/src/lib/commercial.ts',import.meta.url),'utf8');
  assert.match(plans,/chosen==='intl'\|\|chosen==='international'/);
  assert.match(plans,/setLanguage\(usd\?'en':'pt'\)/);
  assert.match(plans,/const international=market\?market==='INTL':language==='en'/);
- assert.match(plans,/international\?'US\$ 50':'R\$ 280'/);
+ assert.match(plans,/const price=international\?SENTINEL_PLANS\.INTL\.priceDisplay:SENTINEL_PLANS\.BR\.priceDisplay/);
+ assert.match(commercial,/BR:\{name:'DevinX Trading Lab',amount:55,currency:'BRL'/);
+ assert.match(commercial,/INTL:\{name:'DevinX Trading Lab',amount:10,currency:'USD'/);
  assert.match(commercial,/url\.searchParams\.set\('region','intl'\)/);
  assert.doesNotMatch(commercial,/url\.searchParams\.set\('intl','1'\)/);
  // Native text belongs to the third-party Kiwify page, not the Sentinel.
