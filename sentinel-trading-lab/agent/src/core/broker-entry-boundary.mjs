@@ -2,9 +2,9 @@
 // Local deadlines are translated from verified broker time, never re-dated
 // from a stale quote, a purchase countdown or a visually rounded clock.
 import {brokerClockView} from '../../worker/broker-clock-view.mjs';
-// Only the broker's displayed :30 second is eligible; :00 is NEVER
-// an entry boundary for synchronized 30s. Expiry remains at next :00.
-// The 1s tolerance is maximum processing latency, not a programmed wait.
+// Signal at the broker's :27 second: 3 seconds of manual click lead before
+// :30, target fixed expiry at next :00. There is NO extra polling or timer.
+// The 1s tolerance is maximum processing latency, never a programmed wait.
 export const BROKER_ENTRY_TOLERANCE_MS=1000;
 export function brokerEntryBoundary({clockMode='current',durationMs=30000,timing=null,
  now=Date.now(),quoteAt=null,asset='',provider='',lastBoundary=null}={}){
@@ -15,11 +15,12 @@ export function brokerEntryBoundary({clockMode='current',durationMs=30000,timing
  if(clock.verified!==true||clock.source!=='broker-protocol-timesync'||
    !Number.isFinite(clock.wallTimeMs)||clock.wallTimeMs<=0)
   return no('waiting-verified-broker-clock');
- const period=30000,brokerBoundaryAt=Math.floor(clock.wallTimeMs/period)*period;
- // Broker-clock phase only. No change to the local clock, analysis, or quote pacing.
- if(brokerBoundaryAt%60000!==30000)return no('waiting-broker-second-30');
+ const minuteMs=60000,signalAtSecondMs=27000,leadToExpiryMs=33000;
+ // The signal is released at :27 to allow a manual click near :30.
+ // Both UI and runtime use the same authenticated broker timeSync clock.
+ const brokerBoundaryAt=Math.floor(clock.wallTimeMs/minuteMs)*minuteMs+signalAtSecondMs;
  const elapsed=clock.wallTimeMs-brokerBoundaryAt,localBoundaryAt=now-elapsed;
- const context=[String(provider),String(asset).toUpperCase(),period].join('|');
+ const context=[String(provider),String(asset).toUpperCase(),minuteMs,signalAtSecondMs].join('|');
  if(lastBoundary?.context===context&&brokerBoundaryAt<=lastBoundary.brokerBoundaryAt)
   return no('broker-boundary-already-signalled');
  if(elapsed<0||elapsed>=BROKER_ENTRY_TOLERANCE_MS)return no('waiting-next-broker-boundary');
@@ -31,10 +32,10 @@ export function brokerEntryBoundary({clockMode='current',durationMs=30000,timing
  if(expiryFresh&&expiry?.kind==='fixed-clock'&&Number(expiry.confidence)>=.7&&
    Number(expiry.expiresAt)>0){
   if(Number(expiry.expiresAt)<=now)return no('broker-selected-expiry-passed');
-  if(Math.abs(Number(expiry.expiresAt)-(localBoundaryAt+period))>1000)
+  if(Math.abs(Number(expiry.expiresAt)-(localBoundaryAt+leadToExpiryMs))>1000)
    return no('broker-selected-expiry-not-next-30s-boundary');
  }
  return {enabled:true,allowed:true,reason:'verified-broker-boundary',context,brokerBoundaryAt,
-  localBoundaryAt,brokerEntryAt:clock.wallTimeMs,brokerWallExpiryAt:brokerBoundaryAt+period,
-  exitAt:localBoundaryAt+period,entryValidUntil:localBoundaryAt+BROKER_ENTRY_TOLERANCE_MS};
+  localBoundaryAt,brokerEntryAt:clock.wallTimeMs,brokerWallExpiryAt:brokerBoundaryAt+leadToExpiryMs,
+  exitAt:localBoundaryAt+leadToExpiryMs,entryValidUntil:localBoundaryAt+BROKER_ENTRY_TOLERANCE_MS};
 }
