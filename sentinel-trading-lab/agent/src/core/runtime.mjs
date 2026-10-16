@@ -832,6 +832,11 @@ export class DemoTradingRuntime{
         Number(patch.orderDurationMs)!==Number(this.settings.orderDurationMs))||
       (Object.prototype.hasOwnProperty.call(patch,'engine')&&
         patch.engine!==this.settings.engine)||
+      // An old CURRENT-clock signal is not an eligible BROKER-clock signal.
+      // Clear it atomically on opt-in, never resurrect it as CALL/PUT at :00.
+      (Object.prototype.hasOwnProperty.call(patch,'clockMode')&&
+        patch.clockMode==='broker'&&this.settings.clockMode!=='broker'&&
+        Number(patch.orderDurationMs??this.settings.orderDurationMs)===30000)||
       (Object.prototype.hasOwnProperty.call(patch,'asset')&&
         patch.asset!==this.settings.asset);
     if(changedForecastContext){
