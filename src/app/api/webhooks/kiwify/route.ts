@@ -10,7 +10,7 @@ import {
 // confirmed Brazilian monthly payment, derive a fixed 30-day entitlement
 // from the authenticated payment timestamp if Kiwify omitted all expiry
 // fields. This never modifies refunds, cancellations or a native expiry.
-export function monthlyAccessFromApprovedOrder(payload:any){
+function monthlyAccessFromApprovedOrder(payload:any){
   const event=String(payload?.webhook_event_type||payload?.event_type||payload?.event||'').toLowerCase();
   const status=String(payload?.order_status||payload?.status||'').toLowerCase();
   if(!['order_approved','compra_aprovada','order_paid'].includes(event))return payload;
@@ -23,7 +23,7 @@ export function monthlyAccessFromApprovedOrder(payload:any){
   const raw=String(payload?.approved_date||'').trim();
   if(!raw)return payload; // Never grant based on an unverified timestamp.
   // Kiwify documents naive local timestamps in Brazilian time.
-  const normalized=/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}(?::\\d{2})?$/.test(raw)
+  const normalized=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?$/.test(raw)
     ?raw.replace(' ','T')+'-03:00':raw;
   const paidAt=Date.parse(normalized);
   if(!Number.isFinite(paidAt)||paidAt>Date.now()+3600000||
