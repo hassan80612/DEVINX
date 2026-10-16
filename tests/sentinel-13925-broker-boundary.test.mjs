@@ -29,23 +29,33 @@ function evaluate(r,now,{quoteAt=now,rows=history(quoteAt),clock=timing(now),mon
  r.lastResult={asset:r.settings.asset,analysis:result};r.lastEvalMs=now;
  return result.vnext;
 }
-test('synchronized 30s admission uses ONLY broker :30, never :00, and never a pre-boundary quote',()=>{
+test('synchronized 30s releases only at broker :27 for manual click before :30',()=>{
  assert.equal(boundary(T).allowed,false);
  assert.equal(boundary(T+500).allowed,false);
- assert.equal(boundary(T+29999).allowed,false);
- assert.equal(boundary(T+30000).allowed,true);
- assert.equal(boundary(T+30999).allowed,true);
- assert.equal(boundary(T+31000).allowed,false);
+ assert.equal(boundary(T+26999).allowed,false);
+ assert.equal(boundary(T+27000).allowed,true);
+ assert.equal(boundary(T+27999).allowed,true);
+ assert.equal(boundary(T+28000).allowed,false);
+ assert.equal(boundary(T+30000).allowed,false);
+ assert.equal(boundary(T+30999).allowed,false);
  assert.equal(boundary(T+60000).allowed,false);
  assert.equal(boundary(T+60900).allowed,false);
- assert.equal(boundary(T+90000).allowed,true);
- const stale=boundary(T+30100,{quoteAt:T+29999});
+ assert.equal(boundary(T+87000).allowed,true);
+ assert.equal(boundary(T+90000).allowed,false);
+ const stale=boundary(T+27100,{quoteAt:T+26999});
  assert.equal(stale.allowed,false);assert.equal(stale.reason,'waiting-new-quote-at-broker-boundary');
 });
+test('broker sync reuses protocol timeSync without ever scanning the broker page for its clock',()=>{
+ const source=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
+ const begin=source.indexOf('async updateOverlay(provider,data={})'),end=source.indexOf('payload.brokerTiming=this.readBrokerTimingSnapshot(provider,st);',begin);
+ assert.ok(begin>0&&end>begin);
+ assert.doesNotMatch(source.slice(begin,end),/body['"]\)\.innerText|readBrokerTimingFromText|pendingBrokerTimeScan/);
+ assert.match(source,/payload\.brokerTiming=this\.readBrokerTimingSnapshot\(provider,st\)/);
+});
 test('broker time offset advances once and translates the fixed deadline into the PC clock',()=>{
- const now=T+18100,b=boundary(now,{timing:timing(now,12000)});
+ const now=T+18100,b=boundary(now,{timing:timing(now,9000)});
  assert.equal(b.allowed,true);assert.equal(b.localBoundaryAt,T+18000);
- assert.equal(b.brokerBoundaryAt,T+30000);assert.equal(b.exitAt,T+48000);
+ assert.equal(b.brokerBoundaryAt,T+27000);assert.equal(b.exitAt,T+51000);
  assert.equal(b.brokerWallExpiryAt,T+60000);assert.equal(b.entryValidUntil,T+19000);
 });
 test('unknown, stale and visually rounded clocks cannot authorize a synchronized entry',()=>{
@@ -55,7 +65,7 @@ test('unknown, stale and visually rounded clocks cannot authorize a synchronized
   assert.equal(boundary(T+30000,{timing:clock}).allowed,false);
 });
 test('a known expired or different fixed broker expiry cannot be presented as the next 30s option',()=>{
- const now=T+30100;
+ const now=T+27100;
  for(const expiresAt of [now-1,T+120000]){
   const t={...timing(now),selectedExpiration:{kind:'fixed-clock',confidence:1,expiresAt}};
   assert.equal(boundary(now,{timing:t}).allowed,false);
@@ -67,13 +77,13 @@ test('clock current keeps immediate admission; broker mode still requires actual
  assert.equal(evaluate(runtime('current'),T+60000).futureEntryAnchor.entryReadyNow,true);
  assert.equal(evaluate(runtime(),T+17000).futureEntryAnchor,null);
  assert.equal(evaluate(runtime(),T+60000).futureEntryAnchor,null);
- const r=runtime(),now=T+30000;
+ const r=runtime(),now=T+27000;
  const v=evaluate(r,now,{rows:[{ts:now,price:1}]});assert.equal(v.futureEntryAnchor,null);
 });
 test('the runtime pins expiry to the next boundary, holds the side and never repeats a consumed boundary',()=>{
- const r=runtime(),now=T+30100,v=evaluate(r,now),first=v.futureEntryAnchor;
+ const r=runtime(),now=T+27100,v=evaluate(r,now),first=v.futureEntryAnchor;
  assert.equal(first.entryReadyNow,true);assert.equal(first.entryAt,now);
- assert.equal(first.exitAt,T+60000);assert.equal(first.entryValidUntil,T+31000);
+ assert.equal(first.exitAt,T+60000);assert.equal(first.entryValidUntil,T+28000);
  assert.equal(first.brokerExpiresAt,first.exitAt);
  const held=evaluate(r,T+45000).futureEntryAnchor;
  assert.equal(held.side,first.side);assert.equal(held.exitAt,first.exitAt);assert.equal(held.entryReadyNow,false);
@@ -81,7 +91,7 @@ test('the runtime pins expiry to the next boundary, holds the side and never rep
  assert.equal(evaluate(duplicate,now+100).futureEntryAnchor,null);
  const noEntryAtMinuteStart=evaluate(r,T+60100).futureEntryAnchor;
  assert.equal(noEntryAtMinuteStart,null,'synchronized mode must never fire at :00');
- const next=evaluate(r,T+90100).futureEntryAnchor;
+ const next=evaluate(r,T+87100).futureEntryAnchor;
  assert.equal(next.entryReadyNow,true);assert.equal(next.exitAt,T+120000);
 });
 test('switching to synchronized mode cannot show a prior current-clock signal at :00',()=>{
@@ -92,17 +102,17 @@ test('switching to synchronized mode cannot show a prior current-clock signal at
  assert.equal(r.vnextWindowState,null);
  assert.equal(r.vnextFutureEntryAnchor,null);
  assert.equal(evaluate(r,T+60100).futureEntryAnchor,null);
- const next=evaluate(r,T+90100).futureEntryAnchor;
+ const next=evaluate(r,T+87100).futureEntryAnchor;
  assert.equal(next.entryReadyNow,true);
  assert.equal(next.exitAt,T+120000);
 });
 test('an evaluation that finishes after the eligible second cannot produce a late entry',()=>{
  const r=runtime(),values=[0,200];
- const v=evaluate(r,T+30900,{monotonicNow:()=>values.shift()});
+ const v=evaluate(r,T+27900,{monotonicNow:()=>values.shift()});
  assert.equal(v.futureEntryAnchor,null);assert.equal(v.nowObservation.reason,'waiting-next-broker-boundary');
 });
 test('PC-to-mobile compact frame preserves the original deadline and refuses a delayed ENTRY NOW',()=>{
- const r=runtime(),now=T+30100,v=evaluate(r,now),first=v.futureEntryAnchor;
+ const r=runtime(),now=T+27100,v=evaluate(r,now),first=v.futureEntryAnchor;
  const save=Date.now;let frame;
  try{Date.now=()=>now;frame=analystSnapshot({state:'running',settings:r.settings,lastEvalMs:now,lastResult:r.lastResult},
   {symbol:r.settings.asset,validatedSymbol:r.settings.asset,assetValidated:true,analysisFeedValidated:true,
@@ -126,9 +136,9 @@ test('the actual PC timer clears an expired entry indication without a new frame
  const source=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
  const begin=source.indexOf('const tickTargetClock=()=>{'),end=source.indexOf('el.__sentinelTargetClockTick=',begin);
  assert.ok(begin>0&&end>begin);
- let now=T+30100;const value={textContent:'',style:{}},decision={textContent:''},status={textContent:''},brokerStatus={textContent:''};
- const attrs={'data-deadline':T+60000,'data-issued':T+30100,'data-triggered-at':T+30100,
-  'data-entry-valid-until':T+31000,'data-broker-expiry':T+60000,'data-entry-ready':'1',
+ let now=T+27100;const value={textContent:'',style:{}},decision={textContent:''},status={textContent:''},brokerStatus={textContent:''};
+ const attrs={'data-deadline':T+60000,'data-issued':T+27100,'data-triggered-at':T+27100,
+  'data-entry-valid-until':T+28000,'data-broker-expiry':T+60000,'data-entry-ready':'1',
   'data-live-quote':'1','data-mode':'now','data-side':'CALL','data-window-phase':'fired'};
  const action={querySelector:q=>q==='[data-sentinel-decision-label]'?decision:null};
  const pane={getAttribute:k=>String(attrs[k]??''),closest:()=>({querySelector:()=>action}),
@@ -137,7 +147,7 @@ test('the actual PC timer clears an expired entry indication without a new frame
   window:{__sentinelLastOverlayData:{clockMode:'broker',vnext:{mode:'now'},
    brokerClockView:brokerClockView({timing:timing(now),now})}}};
  vm.createContext(context);vm.runInContext(source.slice(begin,end)+'globalThis.tick=tickTargetClock;',context);
- context.tick();assert.match(decision.textContent,/ENTRADA AGORA/);assert.equal(value.textContent,'00:30');
+ context.tick();assert.match(decision.textContent,/ENTRADA AGORA/);assert.equal(value.textContent,'00:33');
  now=T+31000;context.tick();assert.match(decision.textContent,/OPERAÇÃO EM ANDAMENTO/);
  assert.doesNotMatch(decision.textContent,/ENTRADA AGORA/);assert.equal(value.textContent,'00:29');
  now=T+36000;context.tick();assert.equal(value.textContent,'00:24');
@@ -151,7 +161,7 @@ test('the actual React card keeps the PC deadline and drops late entry text even
   name==='../lib/live-card-model'?require('../lib/live-card-model.ts'):require(name);
  component._compile(ts.transpileModule(readFileSync(url,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,
   target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText,fileURLToPath(url));
- const r=runtime(),at=T+30100;evaluate(r,at);
+ const r=runtime(),at=T+27100;evaluate(r,at);
  const state={state:'running',runtimeKind:'remote-agent',remote:{online:true},settings:r.settings,lastEvalMs:at,
   lastResult:r.lastResult,liveBroker:{symbol:r.settings.asset,assetValidated:true,analysisFeedValidated:true,
    lastQuoteAt:at,quote:1.1,brokerTiming:timing(at)}};
