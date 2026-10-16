@@ -54,7 +54,8 @@ test('broker sync reuses protocol timeSync without ever scanning the broker page
 });
 test('only the versioned offline installer ZIP is publicly downloadable; self-update remains protected',()=>{
  const src=readFileSync(new URL('../sentinel-trading-lab/src/middleware.ts',import.meta.url),'utf8');
- assert.ok(src.includes('if(installerFile||alternativeInstaller)return NextResponse.next();'));
+ assert.ok(src.includes('if(installerFile)return NextResponse.next();'));
+ assert.ok(src.includes('if(alternativeInstaller)return NextResponse.next();'));
  assert.ok(src.includes('Alternativo[.]zip'));
  assert.ok(src.includes("if(p==='/downloads/agent_payload_v88.zip'&&req.headers.has('x-sentinel-agent-install'))"));
 });
