@@ -314,3 +314,8 @@
 @media(max-width:920px){.sentinelHeroGrid{grid-template-columns:minmax(0,1fr);gap:21px}.sentinelProduct .copy{max-width:100%}.sentinelPreview{max-width:650px;width:100%;box-sizing:border-box;margin:0 auto}}
 @media(max-width:500px){.sentinelPreview{padding:12px;border-radius:16px}.sentinelPreviewChart{height:168px}.sentinelPreviewTop strong{font-size:9px}.sentinelPreviewTop small{font-size:8px}.sentinelDemoBadge{font-size:7px;padding:5px}.sentinelPreviewFoot{padding:9px}.sentinelOffer strong{font-size:33px}.sentinelOffer{gap:12px}.sentinelPreviewBar{display:none}}
 @media(prefers-reduced-motion:reduce){.sentinelPreviewPulse,.sentinelChartHalo,.sentinelPreviewChart::after,.sentinelPreviewBar i{animation:none}}
+
+/* A single visible monthly offer on the Financeiro portal card. */
+.financeOffer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:19px 0 0;padding:15px 17px;border:1px solid rgba(237,201,103,.36);border-radius:15px;background:rgba(23,22,17,.75)}
+.financeOffer span{font-size:12px;color:#f2d78b;font-weight:800}
+.financeOffer strong{font-size:clamp(27px,3vw,36px);line-height:1.08;color:#ffe5a4;letter-spacing:-.04em}
