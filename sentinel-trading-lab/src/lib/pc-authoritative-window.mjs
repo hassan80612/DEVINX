@@ -3,7 +3,7 @@
 // a CALL/PUT after the Agent's 1.5-second confirmed-entry indication.
 export function pcAuthoritativeWindow({
   windowStartedAt=0,windowEndsAt=0,phase=null,side=null,
-  entryTriggeredAt=0,quoteAt=0,now=Date.now()
+  entryTriggeredAt=0,quoteAt=0,now=Date.now(),entryValidUntil=0
 }={}){
   const start=Number(windowStartedAt),end=Number(windowEndsAt),time=Number(now);
   const valid=Number.isFinite(start)&&Number.isFinite(end)&&Number.isFinite(time)&&
@@ -15,7 +15,8 @@ export function pcAuthoritativeWindow({
   // Signaling is impossible before the PC reports a confirmed trigger.
   const enterNow=valid&&phase==='fired'&&!!direction&&tick>0&&
     time>=tick&&time-tick<3500&&triggered>0&&
-    time>=triggered&&time<=triggered+1500;
+    time>=triggered&&time<=triggered+1500&&
+    (!(Number(entryValidUntil)>0)||time<Number(entryValidUntil));
   const active=withinDeadline||enterNow;
   // The PC's old countdown may have just reached its real deadline while
   // the next authenticated frame is in flight. Display 00:00, never a

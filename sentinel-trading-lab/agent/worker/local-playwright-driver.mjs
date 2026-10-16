@@ -1945,8 +1945,12 @@ export class LocalPlaywrightDriver{
           Number(pinnedEntry.delaySeconds)*1000===duration&&
           ['CALL','PUT'].includes(pinnedEntry.side));
         const triggeredAt=Number(pinnedEntry?.entryTriggeredAt||0);
+        const entryValidUntil=Number(pinnedEntry?.entryValidUntil||0);
+        const displayedEntryAt=d.clockMode==='broker'&&Number(pinnedEntry?.brokerEntryAt)>0?Number(pinnedEntry.brokerEntryAt):triggeredAt;
+        const displayedExitAt=d.clockMode==='broker'&&Number(pinnedEntry?.brokerWallExpiryAt)>0?Number(pinnedEntry.brokerWallExpiryAt):Number(pinnedEntry?.exitAt||0);
         const entryMoment=entryPlanReady&&opportunityPhase==='fired'&&liveNow&&
-          triggeredAt>0&&Date.now()>=triggeredAt&&Date.now()<=triggeredAt+1500;
+          triggeredAt>0&&Date.now()>=triggeredAt&&Date.now()<=triggeredAt+1500&&
+          (!(entryValidUntil>0)||Date.now()<entryValidUntil);
         const entryPlanActive=entryPlanReady&&windowRunning;
         const scheduledSide=entryPlanActive?pinnedEntry.side:null;
         // A confirmed trigger always carries its OWN side, even if the 30s
@@ -2004,9 +2008,9 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr('Preço atual')+': '+price(d.price)+' · '+tr('Última análise')+': '+esc(new Date(Number(d.vnext?.nowObservation?.evaluatedAt||0)).toLocaleTimeString('pt-BR',{hour12:false})):tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div>
-              <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
+              <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-valid-until="${entryValidUntil}" data-broker-expiry="${Number(windowState?.brokerExpiresAt||0)}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
                 <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-broker-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
-                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">${tr('MOMENTO DE ENTRADA')}</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(triggeredAt).toLocaleTimeString('pt-BR',{hour12:false})):tr('AGUARDANDO')}</b><small style="font-size:9px;color:${muted};white-space:nowrap">${tr('VENCIMENTO')} ${opportunityPhase==='fired'&&scheduledExit?new Date(scheduledExit).toLocaleTimeString('pt-BR',{hour12:false}):tr('após a entrada')}</small></div>
+                <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">${tr('MOMENTO DE ENTRADA')}</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(displayedEntryAt).toLocaleTimeString('pt-BR',{hour12:false})):tr('AGUARDANDO')}</b><small style="font-size:9px;color:${muted};white-space:nowrap">${tr('VENCIMENTO')} ${opportunityPhase==='fired'&&scheduledExit?new Date(displayedExitAt).toLocaleTimeString('pt-BR',{hour12:false}):tr('após a entrada')}</small></div>
               </div>
               <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;height:47px">
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${tr(nowMode?'PREÇO DA ENTRADA':'PREÇO FUTURO DE ENTRADA')}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
@@ -2264,9 +2268,11 @@ export class LocalPlaywrightDriver{
             const cycleStatus=pane.querySelector('[data-sentinel-cycle-status]');
             const nowClock=Date.now();
             const firedAt=Number(pane.getAttribute('data-triggered-at')||0);
+            const validUntil=Number(pane.getAttribute('data-entry-valid-until')||0);
             const verifiedNow=pane.getAttribute('data-entry-ready')==='1'&&
               pane.getAttribute('data-live-quote')==='1'&&
-              firedAt>0&&nowClock>=firedAt&&nowClock<=firedAt+1500;
+              firedAt>0&&nowClock>=firedAt&&nowClock<=firedAt+1500&&
+              (!(validUntil>0)||nowClock<validUntil);
             const active=Number.isFinite(target)&&Number.isFinite(issued)&&issued>0&&
               target>issued&&(target>nowClock||verifiedNow);
             const nowAnalysisMode=pane.getAttribute('data-mode')==='now';
@@ -2300,6 +2306,9 @@ export class LocalPlaywrightDriver{
               decision.textContent=tr(side==='CALL'?'ENTRADA AGORA · ↑ CALL':
                  side==='PUT'?'ENTRADA AGORA · ↓ PUT':
                  nowAnalysisMode?'ANALISANDO':'JANELA ABERTA · ANALISANDO');
+            }else if(nowAnalysisMode&&active&&decision){
+              const side=String(pane.getAttribute('data-side')||'');
+              decision.textContent=tr('OPERAÇÃO EM ANDAMENTO · '+(side==='CALL'?'↑ CALL':'↓ PUT'));
             }
             let shown='—:—';
             if(active){
@@ -2319,16 +2328,17 @@ export class LocalPlaywrightDriver{
               const verified=view?.verified===true&&age>=0&&age<=4500;
               const pad=n=>String(n).padStart(2,'0');
               if(!verified){
-                shown='—:—';
-                if(cycleStatus)cycleStatus.textContent='HORA DA CORRETORA';
-                if(brokerStatus)brokerStatus.textContent='CORRETORA · NÃO SINCRONIZADO';
+                const pinned=nowAnalysisMode&&active&&Number(pane.getAttribute('data-broker-expiry'))===target;
+                if(!pinned)shown='—:—';
+                if(cycleStatus)cycleStatus.textContent=pinned?tr('ATÉ O VENCIMENTO'):'HORA DA CORRETORA';
+                if(brokerStatus)brokerStatus.textContent=pinned?'PRAZO DO SINAL · CORRETORA':'CORRETORA · NÃO SINCRONIZADO';
               }else{
                 const secs=(Number(view.timeSeconds)+Math.floor(age/1000)+86400)%86400;
                 const time=pad(Math.floor(secs/3600))+':'+
                   pad(Math.floor((secs%3600)/60))+':'+pad(secs%60);
                 if(nowAnalysisMode&&active){
                   if(cycleStatus)cycleStatus.textContent=tr('ATÉ O VENCIMENTO');
-                  if(brokerStatus)brokerStatus.textContent=time+' · '+tr('SINCRONIZADO');
+                  if(brokerStatus)brokerStatus.textContent=Number.isFinite(Number(view.timeSeconds))?time+' · '+tr('SINCRONIZADO'):'PRAZO DO SINAL · CORRETORA';
                 }else if(view.kind==='expiry'||view.kind==='expired'){
                   const deadline=Number(view.expiresAt);
                   const left=Math.max(0,Math.ceil((deadline-nowClock)/1000));

@@ -35,7 +35,9 @@ export function analystSnapshot(runtimeStatus,live){
     Number(e.projectedEntryPrice)||0,Number(e.projectedExitPrice)||0,
     Number(e.issuedAt)||0,Number(e.holdingSeconds)||0,
     Number(e.entryAt)||0,Number(e.exitAt)||0,e.entryReadyNow===true?1:0,
-    e.phase||'open',Number(e.entryTriggeredAt)||0
+    e.phase||'open',Number(e.entryTriggeredAt)||0,
+    ...(Number(e.entryValidUntil)>0?[Number(e.entryValidUntil),
+      Number(e.brokerEntryAt)||0,Number(e.brokerWallExpiryAt)||0]:[])
   ]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
     ...(vnext.mode==='now'?{mode:'now'}:{}),engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,

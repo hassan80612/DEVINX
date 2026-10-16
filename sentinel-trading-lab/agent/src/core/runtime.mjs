@@ -25,6 +25,7 @@ import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuar
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
+import {brokerEntryBoundary} from './broker-entry-boundary.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 
@@ -943,8 +944,10 @@ export class DemoTradingRuntime{
     });
     this.signalValidation.pending=this.signalValidation.pending.slice(-240);
   }
-  _signalValidationGate({analysis,snap,settings,now}){
+  _signalValidationGate({analysis,snap,settings,now,monotonicNow=()=>performance.now()}){
     if(settings.engine&&this.forecastModel==='now-structural-v1'){
+      const synchronized=settings.clockMode==='broker'&&Number(settings.orderDurationMs)===30000;
+      const calculationStarted=synchronized?monotonicNow():0;
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
       const observation=analyzeNowOpportunity({
@@ -952,6 +955,7 @@ export class DemoTradingRuntime{
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
         qualityPolicy:'adaptive-market-v17'
       });
+      if(synchronized)now+=Math.ceil(Math.max(0,monotonicNow()-calculationStarted));
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
       // Never display a new entry from a quote that sat in an analysis queue.
@@ -961,16 +965,31 @@ export class DemoTradingRuntime{
         Number(settings.orderDurationMs)<=30000?1450:
         Number(settings.orderDurationMs)<=60000?1950:2500;
       const entryQuoteFresh=quoteAgeMs>=0&&quoteAgeMs<=maxEntryQuoteAgeMs;
+      const boundary=brokerEntryBoundary({clockMode:settings.clockMode,
+        durationMs:settings.orderDurationMs,timing:snap.brokerTiming,now,quoteAt:snap.quoteTs,
+        asset:settings.asset,provider:snap.provider,lastBoundary:this.vnextBrokerBoundary});
       const eligible=!duration.allowed?
         {...observation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
         {...observation,side:null,ready:false,reason:'late-quote-no-entry'}:
+        !boundary.allowed?
+        {...observation,side:null,ready:false,reason:boundary.reason}:
         observation;
-      const next=advanceNowOpportunity({
+      let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,engineId:settings.engine,durationMs:settings.orderDurationMs
       });
       const old=this.vnextWindowState;
+      const newBoundarySignal=boundary.enabled&&boundary.allowed&&next?.phase==='fired'&&
+        (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
+      if(newBoundarySignal){
+        // Keep the actual emission time. The end remains the broker's NEXT
+        // boundary rather than now+30s, so processing cannot slide the counter.
+        next={...next,exitAt:boundary.exitAt,windowEndsAt:boundary.exitAt,
+          brokerExpiresAt:boundary.exitAt,brokerEntryAt:boundary.brokerEntryAt,
+          brokerWallExpiryAt:boundary.brokerWallExpiryAt,entryValidUntil:boundary.entryValidUntil};
+        this.vnextBrokerBoundary={context:boundary.context,brokerBoundaryAt:boundary.brokerBoundaryAt};
+      }
       this.vnextWindowState=next;
       const freshSignal=next?.phase==='fired'&&
         (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
@@ -1012,7 +1031,9 @@ export class DemoTradingRuntime{
         opportunityWindow:next?{
           phase:next.phase,reason:next.reason,windowStartedAt:next.windowStartedAt,
           windowEndsAt:next.windowEndsAt,entryAt:next.entryAt,
-          exitAt:next.exitAt,side:next.side
+          exitAt:next.exitAt,side:next.side,
+          ...(next.brokerExpiresAt?{entryTriggeredAt:next.entryTriggeredAt,
+            brokerExpiresAt:next.brokerExpiresAt,brokerWallExpiryAt:next.brokerWallExpiryAt}:{})
         }:null,nowObservation:{
           side:observation.side,provisionalSide:observation.side||observation.provisionalSide||null,
           ready:observation.ready,reason:eligible.reason,
@@ -1362,7 +1383,7 @@ export class DemoTradingRuntime{
       const pendingExternalDemo=this.pending.some(p=>p.external===true&&Number(p.settleAt||0)>now);
       const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;
       const cycleSettings={...this.settings,demoAutopilot:false};
-      this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:cycleSettings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
+      this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:cycleSettings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate({...ctx,now:cycleSettings.clockMode==='broker'&&Number(cycleSettings.orderDurationMs)===30000?now+Math.max(0,Date.now()-evaluationStartedAt):ctx.now}),now});
       let strategyPanel=null;
       if(result.analysis&&!result.analysis.operationalSignal){
         strategyPanel=this._strategyPanel(snap,now);

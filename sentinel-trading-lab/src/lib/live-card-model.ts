@@ -65,7 +65,9 @@ export function liveCardModel(s:any,now:number,averageThreshold=60,localNow=now)
     issuedAt:Number(v[4])||0,holdingSeconds:Number(v[5])||0,
     entryAt:Number(v[6])||((Number(v[4])||0)+(Number(v[0])||0)*1000),
     exitAt:Number(v[7])||((Number(v[4])||0)+((Number(v[0])||0)+(Number(v[5])||0))*1000),
-    entryReadyNow:v[8]===1,phase:v[9]||'open',entryTriggeredAt:Number(v[10])||null
+    entryReadyNow:v[8]===1,phase:v[9]||'open',entryTriggeredAt:Number(v[10])||null,
+    ...(Number(v[11])>0?{entryValidUntil:Number(v[11]),brokerEntryAt:Number(v[12])||0,
+      brokerWallExpiryAt:Number(v[13])||0}:{})
   }:v;
   const entryAnchor=entryFromTuple(vnext?.ea||vnext?.futureEntryAnchor);
   const rawWindow=vnext?.ow||vnext?.opportunityWindow;

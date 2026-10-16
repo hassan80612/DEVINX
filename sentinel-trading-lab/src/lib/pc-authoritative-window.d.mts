@@ -1,7 +1,7 @@
 export type PcWindowPhase='scanning'|'open'|'cancelled'|'fired'|null;
 export type PcWindowArgs={
  windowStartedAt?:number;windowEndsAt?:number;phase?:string|null;
- side?:string|null;entryTriggeredAt?:number;quoteAt?:number;now?:number;
+ side?:string|null;entryTriggeredAt?:number;quoteAt?:number;now?:number;entryValidUntil?:number;
 };
 export type PcWindowView={
  active:boolean;enterNow:boolean;withinDeadline:boolean;
