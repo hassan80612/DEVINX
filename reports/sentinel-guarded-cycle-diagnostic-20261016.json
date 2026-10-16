@@ -1,0 +1,306 @@
+{
+  "scope": "New fixed generated diagnostic seeds, not measured market performance. Do not aggregate regimes into advertised accuracy.",
+  "seeds": [
+    953,
+    967,
+    971,
+    977,
+    983
+  ],
+  "families": {
+    "up": {
+      "published": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "phase_unguarded": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "velocity_guard": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "residual_guard": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "combined_guard": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      }
+    },
+    "down": {
+      "published": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "phase_unguarded": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "velocity_guard": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "residual_guard": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      },
+      "combined_guard": {
+        "wins": 55,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 100
+      }
+    },
+    "turn": {
+      "published": {
+        "wins": 46,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 88.46153846153847
+      },
+      "phase_unguarded": {
+        "wins": 37,
+        "losses": 15,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 71.15384615384616
+      },
+      "velocity_guard": {
+        "wins": 45,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 86.53846153846153
+      },
+      "residual_guard": {
+        "wins": 45,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 86.53846153846153
+      },
+      "combined_guard": {
+        "wins": 45,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 86.53846153846153
+      }
+    },
+    "reverse-turn": {
+      "published": {
+        "wins": 47,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 90.38461538461539
+      },
+      "phase_unguarded": {
+        "wins": 36,
+        "losses": 16,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 69.23076923076923
+      },
+      "velocity_guard": {
+        "wins": 45,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 86.53846153846153
+      },
+      "residual_guard": {
+        "wins": 45,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 86.53846153846153
+      },
+      "combined_guard": {
+        "wins": 45,
+        "losses": 7,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 57,
+        "rate": 86.53846153846153
+      }
+    },
+    "range": {
+      "published": {
+        "wins": 50,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 58,
+        "rate": 94.33962264150944
+      },
+      "phase_unguarded": {
+        "wins": 51,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 58,
+        "rate": 96.22641509433963
+      },
+      "velocity_guard": {
+        "wins": 51,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 58,
+        "rate": 96.22641509433963
+      },
+      "residual_guard": {
+        "wins": 51,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 58,
+        "rate": 96.22641509433963
+      },
+      "combined_guard": {
+        "wins": 51,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 58,
+        "rate": 96.22641509433963
+      }
+    },
+    "irregular": {
+      "published": {
+        "wins": 52,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 94.54545454545455
+      },
+      "phase_unguarded": {
+        "wins": 50,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 90.9090909090909
+      },
+      "velocity_guard": {
+        "wins": 50,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 90.9090909090909
+      },
+      "residual_guard": {
+        "wins": 52,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 94.54545454545455
+      },
+      "combined_guard": {
+        "wins": 52,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 5,
+        "signals": 60,
+        "rate": 94.54545454545455
+      }
+    },
+    "random-walk": {
+      "published": {
+        "wins": 29,
+        "losses": 20,
+        "ties": 0,
+        "unknown": 4,
+        "signals": 53,
+        "rate": 59.183673469387756
+      },
+      "phase_unguarded": {
+        "wins": 30,
+        "losses": 19,
+        "ties": 0,
+        "unknown": 4,
+        "signals": 53,
+        "rate": 61.224489795918366
+      },
+      "velocity_guard": {
+        "wins": 28,
+        "losses": 21,
+        "ties": 0,
+        "unknown": 4,
+        "signals": 53,
+        "rate": 57.142857142857146
+      },
+      "residual_guard": {
+        "wins": 30,
+        "losses": 19,
+        "ties": 0,
+        "unknown": 4,
+        "signals": 53,
+        "rate": 61.224489795918366
+      },
+      "combined_guard": {
+        "wins": 28,
+        "losses": 21,
+        "ties": 0,
+        "unknown": 4,
+        "signals": 53,
+        "rate": 57.142857142857146
+      }
+    }
+  }
+}

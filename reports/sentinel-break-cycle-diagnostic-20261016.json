@@ -1,0 +1,192 @@
+{
+  "scope": "New fixed generated diagnostic seeds, not measured market performance. Do not aggregate regimes into advertised accuracy.",
+  "seeds": [
+    991,
+    997,
+    1009
+  ],
+  "families": {
+    "up": {
+      "published": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "phase_unguarded": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      },
+      "break_aware": {
+        "wins": 33,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 100
+      }
+    },
+    "down": {
+      "published": {
+        "wins": 32,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 35,
+        "rate": 100
+      },
+      "phase_unguarded": {
+        "wins": 32,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 35,
+        "rate": 100
+      },
+      "break_aware": {
+        "wins": 32,
+        "losses": 0,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 35,
+        "rate": 100
+      }
+    },
+    "turn": {
+      "published": {
+        "wins": 26,
+        "losses": 4,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 86.66666666666667
+      },
+      "phase_unguarded": {
+        "wins": 20,
+        "losses": 10,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 66.66666666666667
+      },
+      "break_aware": {
+        "wins": 27,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 90
+      }
+    },
+    "reverse-turn": {
+      "published": {
+        "wins": 27,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 90
+      },
+      "phase_unguarded": {
+        "wins": 19,
+        "losses": 11,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 63.333333333333336
+      },
+      "break_aware": {
+        "wins": 27,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 90
+      }
+    },
+    "range": {
+      "published": {
+        "wins": 27,
+        "losses": 6,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 81.81818181818181
+      },
+      "phase_unguarded": {
+        "wins": 32,
+        "losses": 1,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 96.96969696969697
+      },
+      "break_aware": {
+        "wins": 30,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 90.9090909090909
+      }
+    },
+    "irregular": {
+      "published": {
+        "wins": 31,
+        "losses": 2,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 93.93939393939394
+      },
+      "phase_unguarded": {
+        "wins": 28,
+        "losses": 5,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 84.84848484848484
+      },
+      "break_aware": {
+        "wins": 30,
+        "losses": 3,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 36,
+        "rate": 90.9090909090909
+      }
+    },
+    "random-walk": {
+      "published": {
+        "wins": 15,
+        "losses": 15,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 50
+      },
+      "phase_unguarded": {
+        "wins": 17,
+        "losses": 13,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 56.666666666666664
+      },
+      "break_aware": {
+        "wins": 16,
+        "losses": 14,
+        "ties": 0,
+        "unknown": 3,
+        "signals": 33,
+        "rate": 53.333333333333336
+      }
+    }
+  }
+}

@@ -28,7 +28,7 @@ function fit(points,period){
  const sse=points.reduce((s,p)=>s+(p.y-predict(p.t))**2,0);
  return {period,coefficients,sse,predict};
 }
-export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quoteAt,durationMs=30000}={}){
+export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quoteAt,durationMs=30000}={}, {withDiagnostics=false}={}){
  const none=reason=>({ready:false,side:null,reason});
  if(durationMs!==30000||!(Number.isFinite(price)&&price>0&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=1450))return none('invalid-30s-input');
  const rows=quoteHistory.filter(q=>q.ts<=quoteAt&&(q.receivedAt??q.ts)<=now&&q.ts>=quoteAt-180000&&Number.isFinite(q.price)&&q.price>0).sort((a,b)=>a.ts-b.ts);
@@ -55,8 +55,12 @@ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quo
  if(!Number.isFinite(expectedLogMove)||Math.abs(expectedLogMove)<1e-12)return none('neutral-30s-cycle-expectation');
  const predictedPrice=price*Math.exp(expectedLogMove);
  if(!(Number.isFinite(predictedPrice)&&predictedPrice>0))return none('invalid-30s-cycle-expectation');
+ const observedMove=h=>{const q=points.findLast(q=>q.t<=-h);return q&&-h-q.t<=1.5?-q.y:null;};
+ const diagnostics=withDiagnostics?{observed3:observedMove(3),observed10:observedMove(10),
+  fitted3:selected.predict(0)-selected.predict(-3),fitted10:selected.predict(0)-selected.predict(-10),
+  currentResidual:-selected.predict(0),residualRms:Math.sqrt(selected.sse/n)}:null;
  return {ready:true,side:expectedLogMove>0?'CALL':'PUT',reason:'research-30s-trend-and-cycle-phase',
   observedAt:quoteAt,entryPrice:price,predictedPrice,expectedLogMove,horizonMs:30000,
   fittedPeriodSeconds:selected.period,observedPoints:n,fitResidual:Math.sqrt(selected.sse/n),
-  fitSelectionCriterion:best};
+  fitSelectionCriterion:best,...(withDiagnostics?{diagnostics}:{})};
 }

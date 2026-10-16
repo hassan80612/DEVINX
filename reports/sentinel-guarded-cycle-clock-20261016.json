@@ -1,0 +1,480 @@
+{
+  "scope": "Same price path and intervals, shifts of estimated time origin.",
+  "cases": [
+    {
+      "shiftMs": -1000,
+      "reports": {
+        "published": {
+          "signals": 15,
+          "wins": 8,
+          "losses": 6,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 0,
+          "rate": 57.142857142857146,
+          "computationMs": {
+            "p50": 0.324641999999983,
+            "p95": 0.6665590000000066,
+            "max": 4.897328000000016
+          }
+        },
+        "phase_unguarded": {
+          "signals": 15,
+          "wins": 8,
+          "losses": 6,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 3,
+          "retainedByGuard": 0,
+          "rate": 57.142857142857146,
+          "computationMs": {
+            "p50": 0.33249399999999696,
+            "p95": 2.264120000000048,
+            "max": 11.49597899999992
+          }
+        },
+        "velocity_guard": {
+          "signals": 15,
+          "wins": 7,
+          "losses": 7,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 3,
+          "retainedByGuard": 6,
+          "rate": 50,
+          "computationMs": {
+            "p50": 0.24390199999993456,
+            "p95": 1.851987999999892,
+            "max": 7.036001999999826
+          }
+        },
+        "residual_guard": {
+          "signals": 15,
+          "wins": 6,
+          "losses": 8,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 4,
+          "retainedByGuard": 4,
+          "rate": 42.857142857142854,
+          "computationMs": {
+            "p50": 0.36183699999992314,
+            "p95": 2.3527109999999993,
+            "max": 3.468127000000095
+          }
+        },
+        "combined_guard": {
+          "signals": 15,
+          "wins": 7,
+          "losses": 7,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 3,
+          "retainedByGuard": 6,
+          "rate": 50,
+          "computationMs": {
+            "p50": 0.3011470000001282,
+            "p95": 2.261515000000145,
+            "max": 3.191324999999779
+          }
+        },
+        "break_aware": {
+          "signals": 15,
+          "wins": 7,
+          "losses": 7,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 4,
+          "retainedByGuard": 0,
+          "rate": 50,
+          "computationMs": {
+            "p50": 0.33318400000007387,
+            "p95": 4.646764999999505,
+            "max": 15.70218400000067
+          }
+        }
+      }
+    },
+    {
+      "shiftMs": -500,
+      "reports": {
+        "published": {
+          "signals": 15,
+          "wins": 7,
+          "losses": 7,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 0,
+          "rate": 50,
+          "computationMs": {
+            "p50": 0.20683700000063254,
+            "p95": 0.36703399999987596,
+            "max": 1.3971330000003945
+          }
+        },
+        "phase_unguarded": {
+          "signals": 15,
+          "wins": 9,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 0,
+          "rate": 64.28571428571429,
+          "computationMs": {
+            "p50": 0.21492899999975634,
+            "p95": 1.6471940000001268,
+            "max": 2.6152099999999336
+          }
+        },
+        "velocity_guard": {
+          "signals": 15,
+          "wins": 9,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 6,
+          "rate": 64.28571428571429,
+          "computationMs": {
+            "p50": 0.3117529999999533,
+            "p95": 2.2892469999997047,
+            "max": 5.306093000000146
+          }
+        },
+        "residual_guard": {
+          "signals": 15,
+          "wins": 7,
+          "losses": 7,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 5,
+          "rate": 50,
+          "computationMs": {
+            "p50": 0.21959599999991042,
+            "p95": 1.723667999999634,
+            "max": 2.832792999999583
+          }
+        },
+        "combined_guard": {
+          "signals": 15,
+          "wins": 8,
+          "losses": 6,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 7,
+          "rate": 57.142857142857146,
+          "computationMs": {
+            "p50": 0.21870400000079826,
+            "p95": 1.6764579999999114,
+            "max": 2.9397319999998217
+          }
+        },
+        "break_aware": {
+          "signals": 15,
+          "wins": 5,
+          "losses": 9,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 4,
+          "retainedByGuard": 0,
+          "rate": 35.714285714285715,
+          "computationMs": {
+            "p50": 0.22667600000022503,
+            "p95": 4.322315000001254,
+            "max": 5.478375000000597
+          }
+        }
+      }
+    },
+    {
+      "shiftMs": 0,
+      "reports": {
+        "published": {
+          "signals": 15,
+          "wins": 9,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 0,
+          "rate": 64.28571428571429,
+          "computationMs": {
+            "p50": 0.18471400000089488,
+            "p95": 0.36510199999975157,
+            "max": 3.2105740000006335
+          }
+        },
+        "phase_unguarded": {
+          "signals": 15,
+          "wins": 10,
+          "losses": 4,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 0,
+          "rate": 71.42857142857143,
+          "computationMs": {
+            "p50": 0.21922500000073342,
+            "p95": 1.8453179999996792,
+            "max": 2.8144069999998464
+          }
+        },
+        "velocity_guard": {
+          "signals": 15,
+          "wins": 10,
+          "losses": 4,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 8,
+          "rate": 71.42857142857143,
+          "computationMs": {
+            "p50": 0.2060460000011517,
+            "p95": 1.9368240000003425,
+            "max": 2.874325000000681
+          }
+        },
+        "residual_guard": {
+          "signals": 15,
+          "wins": 9,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 5,
+          "rate": 64.28571428571429,
+          "computationMs": {
+            "p50": 0.21230499999910535,
+            "p95": 1.6707289999994828,
+            "max": 3.059329000001526
+          }
+        },
+        "combined_guard": {
+          "signals": 15,
+          "wins": 10,
+          "losses": 4,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 8,
+          "rate": 71.42857142857143,
+          "computationMs": {
+            "p50": 0.334445999998934,
+            "p95": 1.769094999999652,
+            "max": 4.1371129999988625
+          }
+        },
+        "break_aware": {
+          "signals": 15,
+          "wins": 6,
+          "losses": 8,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 4,
+          "retainedByGuard": 0,
+          "rate": 42.857142857142854,
+          "computationMs": {
+            "p50": 0.21717200000057346,
+            "p95": 3.55538499999966,
+            "max": 6.529396999998426
+          }
+        }
+      }
+    },
+    {
+      "shiftMs": 500,
+      "reports": {
+        "published": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 0,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.18206000000100175,
+            "p95": 0.2683679999991,
+            "max": 2.3432170000014594
+          }
+        },
+        "phase_unguarded": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 3,
+          "retainedByGuard": 0,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.2069969999993191,
+            "p95": 1.6842299999989336,
+            "max": 3.767831000001024
+          }
+        },
+        "velocity_guard": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 8,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.2055049999999028,
+            "p95": 1.6710000000002765,
+            "max": 4.794695000000502
+          }
+        },
+        "residual_guard": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 4,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.2023300000000745,
+            "p95": 1.5723940000007133,
+            "max": 6.278086999998777
+          }
+        },
+        "combined_guard": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 9,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.20233999999982188,
+            "p95": 1.628696999996464,
+            "max": 5.066578000001755
+          }
+        },
+        "break_aware": {
+          "signals": 14,
+          "wins": 5,
+          "losses": 8,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 4,
+          "retainedByGuard": 0,
+          "rate": 38.46153846153846,
+          "computationMs": {
+            "p50": 0.2120039999972505,
+            "p95": 3.3992639999996754,
+            "max": 12.140525999999227
+          }
+        }
+      }
+    },
+    {
+      "shiftMs": 1000,
+      "reports": {
+        "published": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 2,
+          "retainedByGuard": 0,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.1855150000010326,
+            "p95": 0.2777119999991555,
+            "max": 0.7881300000008196
+          }
+        },
+        "phase_unguarded": {
+          "signals": 14,
+          "wins": 7,
+          "losses": 6,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 4,
+          "retainedByGuard": 0,
+          "rate": 53.84615384615385,
+          "computationMs": {
+            "p50": 0.20113900000069407,
+            "p95": 1.6307300000007672,
+            "max": 3.3372029999991355
+          }
+        },
+        "velocity_guard": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 3,
+          "retainedByGuard": 4,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.1988149999997404,
+            "p95": 1.5668550000009418,
+            "max": 3.299855999997817
+          }
+        },
+        "residual_guard": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 3,
+          "retainedByGuard": 3,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.2068970000000263,
+            "p95": 1.5956979999973555,
+            "max": 2.065173999999388
+          }
+        },
+        "combined_guard": {
+          "signals": 14,
+          "wins": 8,
+          "losses": 5,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 3,
+          "retainedByGuard": 5,
+          "rate": 61.53846153846154,
+          "computationMs": {
+            "p50": 0.1999260000011418,
+            "p95": 1.646532999999181,
+            "max": 4.961693000001105
+          }
+        },
+        "break_aware": {
+          "signals": 14,
+          "wins": 5,
+          "losses": 8,
+          "ties": 0,
+          "unknown": 1,
+          "maxLossStreak": 4,
+          "retainedByGuard": 0,
+          "rate": 38.46153846153846,
+          "computationMs": {
+            "p50": 0.20582500000091386,
+            "p95": 3.090896999998222,
+            "max": 6.048005000000558
+          }
+        }
+      }
+    }
+  ]
+}
