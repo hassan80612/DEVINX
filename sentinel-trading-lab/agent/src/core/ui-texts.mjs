@@ -1,6 +1,16 @@
 // One deterministic PT/EN catalog for Sentinel website, mobile and Agent.
 // UI translations are presentation only: no signal/forecast logic reads this.
 export const translations=Object.freeze({en:Object.freeze({
+  "ANÁLISE EM TEMPO REAL": "REAL-TIME ANALYSIS",
+  "ATÉ O VENCIMENTO": "UNTIL EXPIRY",
+  "OPERAÇÃO EM ANDAMENTO · ↑ CALL": "OPERATION IN PROGRESS · ↑ CALL",
+  "OPERAÇÃO EM ANDAMENTO · ↓ PUT": "OPERATION IN PROGRESS · ↓ PUT",
+  "PREÇO NA ENTRADA": "ENTRY PRICE",
+  "PREÇO AO VENCER · AGUARDANDO": "EXPIRY PRICE · WAITING",
+  "HORA DA CORRETORA": "BROKER TIME",
+  "Duração da operação": "Operation duration",
+  "EM ANDAMENTO": "IN PROGRESS",
+
   "Contexto observado pelo Automático": "Chart context observed by Automatic",
 
   "Sugestão: Fibonacci Retest + Trend Following; use Smart Confluence separadamente (validar em DEMO).": "Suggestion: Fibonacci Retest + Trend Following; use Smart Confluence separately (validate in DEMO).",

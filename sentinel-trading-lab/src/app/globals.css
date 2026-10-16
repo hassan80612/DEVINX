@@ -1390,17 +1390,17 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextInstantObservation .vnextCompactDirection{font-size:19px!important;line-height:26px!important;white-space:nowrap;letter-spacing:0;min-height:26px}
 .liveScenario .vnextInstantObservation .vnextCompactLine{display:block;height:16px;line-height:16px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d7e6dd}
 .liveScenario .vnextFutureReceipt{
-  display:grid;grid-template-rows:20px 27px 74px 49px 27px 24px;
+  display:flex;flex-direction:column;align-items:stretch;
   gap:5px;padding:9px 10px;margin:7px 0;align-content:start;
 }
-.liveScenario .vnextReceiptTitle{height:20px;min-height:20px;gap:5px;flex-wrap:nowrap;overflow:hidden}
+.liveScenario .vnextReceiptTitle{height:auto;min-height:20px;gap:5px;flex-wrap:wrap;min-width:0}
 .liveScenario .vnextReceiptTitle b{font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0}
 .liveScenario .vnextReceiptTitle small{font-size:9px;white-space:nowrap;flex-shrink:0}
-.liveScenario .vnextFutureDirection{height:27px;min-height:27px;max-height:27px;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:6px;margin:0;overflow:hidden}
-.liveScenario .vnextFutureDirection strong,.liveScenarioCompact .vnextFutureDirection strong{font-size:18px!important;line-height:27px!important;min-width:0;white-space:nowrap}
+.liveScenario .vnextFutureDirection{height:auto;min-height:30px;max-height:none;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;margin:0;overflow:visible}
+.liveScenario .vnextFutureDirection strong,.liveScenarioCompact .vnextFutureDirection strong{font-size:18px!important;line-height:1.3!important;min-width:0;white-space:normal;overflow-wrap:anywhere}
 .liveScenario .vnextFutureDirection span{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:auto}
 .liveScenario .vnextTargetCountdown,.liveScenarioCompact .vnextTargetCountdown{
-  height:74px;min-height:74px;max-height:74px;padding:6px 8px;margin:0;
+  height:auto;min-height:80px;max-height:none;padding:9px 10px;margin:0;
   gap:6px;grid-template-columns:minmax(90px,.8fr) minmax(0,1.2fr);
   overflow:hidden;
 }
@@ -1415,15 +1415,15 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextTargetCountdown span{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .liveScenario .vnextProjectionValues,.liveScenarioCompact .vnextProjectionValues{
   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
-  height:49px;min-height:49px;max-height:49px;overflow:hidden;
+  height:auto;min-height:56px;max-height:none;overflow:visible;
 }
-.liveScenario .vnextProjectionValues>div{padding:5px 7px;gap:2px;min-height:0;overflow:hidden}
-.liveScenario .vnextProjectionValues small{font-size:8px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liveScenario .vnextProjectionValues>div{padding:7px 8px;gap:4px;min-height:0;overflow:hidden}
+.liveScenario .vnextProjectionValues small{font-size:9px!important;line-height:1.25;white-space:normal;overflow-wrap:anywhere}
 .liveScenario .vnextProjectionValues strong,.liveScenarioCompact .vnextProjectionValues strong{font-size:14px!important;white-space:nowrap}
-.liveScenario .vnextProjectionBias{height:27px;min-height:27px;max-height:27px;padding:3px 7px;gap:6px;flex-wrap:nowrap;overflow:hidden}
-.liveScenario .vnextProjectionBias span{font-size:10px;white-space:nowrap}
+.liveScenario .vnextProjectionBias{height:auto;min-height:31px;max-height:none;padding:5px 8px;gap:6px 12px;flex-wrap:wrap;overflow:visible}
+.liveScenario .vnextProjectionBias span{font-size:10px;white-space:normal}
 .liveScenario .vnextProjectionBias b{font-size:12px}
-.liveScenario .vnextForecastDetails{min-height:24px;align-self:start;position:relative}
+.liveScenario .vnextForecastDetails{min-height:24px;align-self:stretch;position:static}
 .liveScenario .vnextForecastDetails summary{
   display:block;min-height:24px;height:24px;padding:5px 7px;border:1px solid #91a08b73;
   border-radius:6px;font-size:10px;color:#e1d6b5;cursor:pointer;
@@ -1476,7 +1476,7 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
 .liveScenario .vnextForwardHorizons[open]{display:grid;grid-template-rows:16px 1fr 12px;height:160px!important;min-height:160px!important;max-height:160px!important}
 .liveScenario .vnextForwardHorizons>summary{font-size:10px;line-height:21px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e4cc94;cursor:pointer}
 .liveScenario .vnextForwardHorizons[open]>summary{line-height:16px}
-.liveScenario .vnextFutureDirection strong{font-size:clamp(15px,4vw,20px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.liveScenario .vnextFutureDirection strong{font-size:clamp(15px,4vw,20px);white-space:normal;overflow-wrap:anywhere;max-width:100%}
 
 /* Strategy, forecast mode and entry time stay on one compact row. */
 .vnextEngineToolbar,.liveScenarioCompact .vnextEngineToolbar{grid-template-columns:minmax(0,1.3fr) minmax(0,.85fr) minmax(0,.85fr)}
@@ -1602,15 +1602,14 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
    margin-top:9px;font-size:11px;
  }
 }
-/* A genuine mobile layout defect: expanded card details were constrained to
-   a 24px grid row and could overlap the three readings beneath. The mobile
-   clock and its PC-authoritative data are intentionally unchanged. */
+/* Mobile receipt: seven content sections, never six fixed grid rows.
+   No broker timers, model decisions or signal state are changed. */
 @media(max-width:900px){
- .liveScenario .vnextFutureReceipt:has(> .vnextForecastDetails[open]){
-   grid-template-rows:20px 27px 74px 49px 27px auto;
- }
- .liveScenario .vnextFutureReceipt:has(> .vnextForecastDetails[open]) .vnextForecastDetails{
-   align-self:stretch;position:static;min-height:24px;
-   box-sizing:border-box;z-index:auto;
- }
+ .liveScenario .vnextFutureReceipt{display:flex;flex-direction:column;gap:7px;min-width:0}
+ .liveScenario .vnextReceiptTitle{height:auto;min-height:20px;max-height:none}
+ .liveScenario .vnextFutureDirection{height:auto;min-height:30px;max-height:none}
+ .liveScenario .vnextTargetCountdown{height:auto;min-height:80px;max-height:none;overflow:visible}
+ .liveScenario .vnextProjectionValues{height:auto;min-height:56px;max-height:none;overflow:visible}
+ .liveScenario .vnextProjectionBias{height:auto;min-height:31px;max-height:none;overflow:visible}
+ .liveScenario .vnextForecastDetails[open]{position:static;align-self:stretch;min-height:24px}
 }
