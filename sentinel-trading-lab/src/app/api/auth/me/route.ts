@@ -7,6 +7,6 @@ export async function GET(req:NextRequest){
     const j=await r.json().catch(()=>null);
     if(r.status===401||r.status===403||j?.error==='unauthorized')return NextResponse.json({ok:false,error:'unauthorized'},{status:401,headers:{'cache-control':'no-store'}});
     if(!r.ok||j?.ok!==true||!j?.account)return NextResponse.json({ok:false,error:'session_check_unavailable'},{status:503,headers:{'cache-control':'no-store','retry-after':'3'}});
-    const a=j.account;return NextResponse.json({ok:true,user:{id:a.id,email:a.email},profile:{role:a.role,plan:a.plan,max_devices:a.maxDevices,agent_enabled:a.agentEnabled,access_expires_at:a.accessExpiresAt,access_active:a.accessActive}},{headers:{'cache-control':'no-store'}});
+    const a=j.account;return NextResponse.json({ok:true,user:{id:a.id,email:a.email},profile:{role:a.role,plan:a.plan,agent_enabled:a.agentEnabled,access_expires_at:a.accessExpiresAt,access_active:a.accessActive}},{headers:{'cache-control':'no-store'}});
   }catch{return NextResponse.json({ok:false,error:'session_check_unavailable'},{status:503,headers:{'cache-control':'no-store','retry-after':'3'}})}
 }

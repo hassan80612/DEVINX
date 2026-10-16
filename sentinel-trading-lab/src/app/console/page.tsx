@@ -39,8 +39,6 @@ function friendlyError(error:any){
     agent_access_inactive:'O acesso deste Agent está bloqueado ou vencido.',
     subscription_inactive:'O acesso deste Agent está bloqueado ou vencido.',
     agent_not_paired:'O Agent ainda não está vinculado à conta.',
-    limite_de_pcs:'O limite de computadores desta conta foi atingido.',
-    replace_device_required:'Escolha qual computador antigo deseja substituir antes de vincular este.',
     broker_open_requires_manual_action:'Use o botão Abrir corretora para iniciar a primeira sessão.',
     broker_open_timeout:'O Agent tentou abrir a corretora, mas o navegador não respondeu a tempo. Reinicie o Agent e tente novamente.',
     chrome_or_edge_not_found:'O Agent não encontrou Google Chrome ou Microsoft Edge neste PC. Instale um dos dois e reinicie o Agent.',
@@ -86,7 +84,7 @@ function normalizeStatus(data:any){
 export default function Page(){
   const {t,language}=useSentinelLocale();
 
-  const[tab,setTab]=useState('Market Analysis');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[pairCode,setPairCode]=useState('');const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
+  const[tab,setTab]=useState('Market Analysis');const[s,setS]=useState<Status|null>(null);const[err,setErr]=useState('');const[notice,setNotice]=useState('');const[busy,setBusy]=useState(false);const[source,setSource]=useState<'remote'|'local'>('remote');const[agent,setAgent]=useState<any>({process:false,worker:false,remote:false});const[account,setAccount]=useState<any>(null);const[mobileMore,setMobileMore]=useState(false);const[theme,setTheme]=useState<'light'|'dark'>('light');const[compactAnalyst,setCompactAnalyst]=useState(false);const refreshBusy=useRef(false);
   const autoLinkedDevice=useRef(new Set<string>());
   const remotePolledAt=useRef(0);
   const liveFrameAt=useRef(0);
@@ -122,7 +120,6 @@ export default function Page(){
       if(localResult.status==='fulfilled'){
         const data=normalizeStatus(localResult.value);setS(reconcileStatus(data));setSource('local');setErr('');
         setAgent((v:any)=>({...v,process:true,worker:true,remote:false,version:data.agentVersion||v.version,lastSeen:Date.now(),pairingCode:data.remoteRelay?.pairingCode||null,paired:data.remoteRelay?.paired}));
-        if(data.remoteRelay?.paired===false&&data.remoteRelay?.pairingCode)setPairCode((v:string)=>v||String(data.remoteRelay.pairingCode).toUpperCase());
         return
       }
       if(mh?.ok){
@@ -233,7 +230,7 @@ export default function Page(){
   };
   useEffect(()=>{try{const saved=localStorage.getItem('sentinel-theme');const next=saved==='light'?'light':'dark';setTheme(next);document.documentElement.dataset.theme=next}catch{}},[]);
   useEffect(()=>{try{document.documentElement.dataset.theme=theme;localStorage.setItem('sentinel-theme',theme)}catch{}},[theme]);
-  useEffect(()=>{refreshMe();try{const q=new URLSearchParams(window.location.search);const c=q.get('pair');if(c)setPairCode(c.toUpperCase())}catch{};refresh();const id=setInterval(refresh,2500);return()=>clearInterval(id)},[refresh,refreshMe]);
+  useEffect(()=>{refreshMe();refresh();const id=setInterval(refresh,2500);return()=>clearInterval(id)},[refresh,refreshMe]);
   const act=async(path:string,body:any={})=>{
     const previous=s;
     setBusy(true);setErr('');
@@ -297,7 +294,6 @@ export default function Page(){
     return()=>{disposed=true;if(retryTimer)clearTimeout(retryTimer)};
   },[language,source,agent.worker,agent.version,s?.agentVersion,s?.settings?.uiLanguage]);
   const agentCommand=async(action:'restart'|'exit')=>{if(source!=='local'){setErr('Reiniciar/desligar o Agent exige acesso ao PC. Pelo celular você controla o Bot: iniciar, pausar, parar e Kill Switch.');return}setBusy(true);try{await managerFetch(action,'POST',{});if(action==='exit'){setAgent({process:false,worker:false});setSource('remote')}setTimeout(refresh,700);setErr('')}catch(e:any){setErr(`Agent: ${String(e?.message||e)}`)}finally{setBusy(false)}};
-  const claimPair=async()=>{if(!pairCode.trim())return;setBusy(true);const send=async(replaceExisting=false)=>{const r=await fetch('/api/devices/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:pairCode,replaceExisting})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||'Falha ao vincular PC');return j};try{let j:any;try{j=await send(false)}catch(e:any){if(String(e?.message||e)==='limite_de_pcs'){const ok=window.confirm('Esta conta já atingiu o limite de computadores. Substituir o PC antigo por este novo computador?');if(!ok)throw e;j=await send(true)}else throw e}setPairCode('');setErr('');setNotice(j?.replaced?'Novo computador vinculado. O PC antigo foi substituído.':'Computador vinculado com sucesso.');setTimeout(refresh,300);setTimeout(()=>setNotice(''),4200)}catch(e:any){setErr(friendlyError(e))}finally{setBusy(false)}};
   // Pair the authenticated local Windows Agent automatically with the paid
   // account. The proof is read only from the local loopback worker; a remote
   // mobile browser cannot silently claim a random PC.
@@ -315,14 +311,7 @@ export default function Page(){
     };
     void (async()=>{
       try{await claim();setNotice('Agent autorizado automaticamente para esta conta.');setTimeout(refresh,600)}
-      catch(err:any){
-        if(String(err?.message||'')==='limite_de_pcs'){
-          if(window.confirm('Você já tem um PC autorizado. Substituí-lo por este computador?')){
-            try{await claim(true);setNotice('Novo PC autorizado.');setTimeout(refresh,600)}
-            catch{setErr('Não foi possível autorizar este computador. Verifique sua conta.')}
-          }
-        }else setErr('A autorização automática do Agent não foi concluída. Faça login novamente no PC.');
-      }
+      catch{setErr('Não foi possível autorizar automaticamente o Agent. Verifique sua conta no PC.');}
     })();
   },[source,agentAccess,agent?.paired,agent?.pairingCode,account?.user?.id,refresh]);
   const current=visibleTabs.find(x=>x.key===tab)??visibleTabs[0];const content=useMemo(()=>{
@@ -330,8 +319,8 @@ export default function Page(){
     // only render the analyst; build the other tab AFTER navigating there.
     if(compactAnalyst||tab==='Market Analysis')return null;
     return tab==='Master Console'?<Master s={s} act={act} busy={busy}/>:
-      (s||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} pairCode={pairCode} setPairCode={setPairCode} claimPair={claimPair} onNavigate={setTab}/>:<OfflinePanel/>;
-  },[compactAnalyst,tab,s,busy,agent,account,pairCode,isMaster,source]);
+      (s||tab==='Membership')?<Panel name={tab} s={s||{}} act={act} busy={busy} agent={agent} agentCommand={agentCommand} account={account} onNavigate={setTab}/>:<OfflinePanel/>;
+  },[compactAnalyst,tab,s,busy,agent,account,isMaster,source]);
   const mobileMain=[['Market Analysis','Mercado','⌁'],['Strategies','Estratégias','◇'],['Broker Connection','Corretora','⇄'],['Settings','Conta','⚙']] as const;
   return <div className={`app ${compactAnalyst?"compactAnalyst":""} ${tab==='Market Analysis'?"marketWorkspace":""}`}><ActiveBrowserSession/><aside className="sidebar"><div className="brand"><div className="brandmark"><img src="/devinx-icon.svg" alt="DevinX Trading Lab"/></div><div><span>DEVINX</span><strong>Trading Lab</strong><small>{t('Análise em tempo real')}</small></div></div><nav className="navGroups" aria-label={t('Navegação')}><div className="navGroup">{visibleTabs.map(x=><button key={x.key} className={tab===x.key?'active':''} onClick={()=>x.key==='Membership'?window.location.assign('/api/checkout?market='+(language==='en'?'INTL':'BR')):setTab(x.key)}><i>{x.icon}</i><span>{t(x.label)}</span></button>)}</div></nav><div className="sidefoot"><div className="masterBadge"><span className={`statusDot ${agent.worker?'online':''}`}/>{isMaster?'MASTER':t('CONTA')}</div><span>{account?.user?.email||'Sentinel'} · {t(source==='local'?'PC local':'PC remoto')}</span></div></aside>
     <main className="main"><header className="topbar"><div className="pageHeading"><div className="eyebrow">{'DEVINX TRADING LAB'} · WEB {WEB_RELEASE_VERSION}</div><h1>{t(current.title)}</h1><p>{t(current.subtitle)}</p></div><div className="topactions">
@@ -351,7 +340,7 @@ function OfflinePanel(){return <div className="grid"><section className="card sp
   <p className="muted"><T>Depois de entrar nesta conta, instale ou abra o Sentinel Agent. O acesso autorizado é reconhecido automaticamente e o card passa a acompanhar a corretora escolhida.</T></p>
 </section></div>}
 
-function Panel({name,s,act,busy,agent,agentCommand,account,pairCode,setPairCode,claimPair,onNavigate}:{name:string,s:Status,act:(p:string,b?:any)=>Promise<any>,busy:boolean,agent:any,agentCommand:any,account:any,pairCode:string,setPairCode:any,claimPair:any,onNavigate:(v:string)=>void}){
+function Panel({name,s,act,busy,agent,agentCommand,account,onNavigate}:{name:string,s:Status,act:(p:string,b?:any)=>Promise<any>,busy:boolean,agent:any,agentCommand:any,account:any,onNavigate:(v:string)=>void}){
    if(name==='Market Analysis')return null;
    if(name==='Broker Connection')return <Broker s={s} act={act} busy={busy} account={account}/>;
    if(name==='Strategies')return <Strategies s={s} act={act} busy={busy}/>;
@@ -511,7 +500,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
 
     {filteredAccounts.map((x:any)=><MasterAccount key={x.id} a={x} admin={admin} busy={adminBusy}/>)}
     {!filteredAccounts.length&&<section className="card span12"><Empty text={accounts.length?'Nenhuma conta corresponde ao filtro.':'Carregando contas da Master...'}/></section>}
-    {(data?.unpairedDevices||[]).length>0&&<section className="card span12"><div className="split"><div><div className="eyebrow"><T>PCs AINDA NÃO VINCULADOS</T></div><h3><T>Instalações aguardando conta</T></h3></div><Pill tone="warn">{String(data.unpairedDevices.length)}</Pill></div><div className="timeline topgap">{data.unpairedDevices.map((d:any)=><div className="event" key={d.id}><time>{d.online?'ONLINE':'OFF'}</time><div><b>{d.displayName||'PC Sentinel'}</b><span>Agent {d.agentVersion||'—'} · aguardando vínculo por código</span></div></div>)}</div></section>}
+    {(data?.unpairedDevices||[]).length>0&&<section className="card span12"><div className="split"><div><div className="eyebrow"><T>INSTALAÇÕES SEM CONTA</T></div><h3><T>Instalações aguardando conta</T></h3></div><Pill tone="warn">{String(data.unpairedDevices.length)}</Pill></div><div className="timeline topgap">{data.unpairedDevices.map((d:any)=><div className="event" key={d.id}><time>{d.online?'ONLINE':'OFF'}</time><div><b>{d.displayName||'PC Sentinel'}</b><span>Agent {d.agentVersion||'—'} · aguardando autorização no painel do PC</span></div></div>)}</div></section>}
 
     <section className="card span12">
       <div className="split"><div><h3><T>Auditoria Master</T></h3><p className="muted"><T>Liberações, bloqueios, alterações e comandos ficam registrados. Senhas e credenciais da corretora não aparecem aqui.</T></p></div><Pill>{String(data?.audit?.length||0)} eventos</Pill></div>
@@ -522,8 +511,7 @@ function Master({s,act,busy}:{s:Status|null,act:any,busy:boolean}){
 
 function MasterAccount({a,admin,busy}:{a:any,admin:any,busy:boolean}){
   const[plan,setPlan]=useState(String(a.plan||'free'));
-  const[max,setMax]=useState(String(a.maxDevices||1));
-  useEffect(()=>{setPlan(String(a.plan||'free'));setMax(String(a.maxDevices||1))},[a.plan,a.maxDevices]);
+  useEffect(()=>{setPlan(String(a.plan||'free'))},[a.plan]);
   const cmd=(d:any,command:string)=>admin({action:'device_command',accountId:a.id,deviceId:d.id,value:{command}});
   const grant30=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:new Date(Date.now()+30*86400000).toISOString()}});
   const grantForever=()=>admin({action:'set_agent_access',accountId:a.id,value:{enabled:true,expiresAt:null}});
@@ -535,12 +523,11 @@ function MasterAccount({a,admin,busy}:{a:any,admin:any,busy:boolean}){
 
     <div className="formgrid three">
       <label className="field"><span><T>Plano</T></span><input value={plan} disabled={a.role==='master'} onChange={e=>setPlan(e.target.value)}/></label>
-      <label className="field"><span><T>Limite de PCs</T></span><input type="number" min="1" max="50" value={max} disabled={a.role==='master'} onChange={e=>setMax(e.target.value)}/></label>
       <div className="field"><span><T>Validade do Agent</T></span><div className="row"><span>{a.agentEnabled?'Habilitado':'Desabilitado'}</span><b>{a.role==='master'?'Permanente':expiry}</b></div></div>
     </div>
 
     <div className="actions topgap">
-      {a.role!=='master'&&<><button className="primary" disabled={busy} onClick={grant30}><T>Liberar 30 dias</T></button><button className="secondary" disabled={busy} onClick={grantForever}><T>Liberar sem vencimento</T></button><button className="kill" disabled={busy||!a.agentEnabled} onClick={blockAgent}><T>Bloquear Agent</T></button><button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}><T>Salvar plano</T></button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_max_devices',accountId:a.id,value:{maxDevices:Number(max)}})}><T>Salvar PCs</T></button></>}
+      {a.role!=='master'&&<><button className="primary" disabled={busy} onClick={grant30}><T>Liberar 30 dias</T></button><button className="secondary" disabled={busy} onClick={grantForever}><T>Liberar sem vencimento</T></button><button className="kill" disabled={busy||!a.agentEnabled} onClick={blockAgent}><T>Bloquear Agent</T></button><button className={a.status==='active'?'kill':'primary'} disabled={busy} onClick={()=>admin({action:'set_status',accountId:a.id,value:{status:a.status==='active'?'suspended':'active'}})}>{a.status==='active'?'Suspender conta':'Reativar conta'}</button><button className="secondary" disabled={busy} onClick={()=>admin({action:'set_plan',accountId:a.id,value:{plan}})}><T>Salvar plano</T></button></>}
       <button className="secondary" disabled={busy} onClick={()=>window.confirm('Encerrar as outras sessões desta conta?')&&admin({action:'revoke_sessions',accountId:a.id,value:{}})}><T>Encerrar sessões</T></button>
     </div>
 
