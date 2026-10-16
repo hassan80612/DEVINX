@@ -6,6 +6,32 @@ import {
   DEVINX_KIWIFY_PRODUCT_ID
 } from '@/lib/subscription-plans';
 
+// Kiwify also sells one-time offers without a Subscription object. For a
+// confirmed Brazilian monthly payment, derive a fixed 30-day entitlement
+// from the authenticated payment timestamp if Kiwify omitted all expiry
+// fields. This never modifies refunds, cancellations or a native expiry.
+export function monthlyAccessFromApprovedOrder(payload:any){
+  const event=String(payload?.webhook_event_type||payload?.event_type||payload?.event||'').toLowerCase();
+  const status=String(payload?.order_status||payload?.status||'').toLowerCase();
+  if(!['order_approved','compra_aprovada','order_paid'].includes(event))return payload;
+  if(status&&!['paid','approved'].includes(status))return payload;
+  const sub=payload?.Subscription||payload?.subscription||{};
+  const access=sub?.customer_access||{};
+  if(access?.has_access===false||String(access?.has_access).toLowerCase()==='false')return payload;
+  if(access?.access_until||sub?.next_payment||payload?.subscription?.customer_access?.access_until||
+    payload?.subscription?.next_payment)return payload;
+  const raw=String(payload?.approved_date||'').trim();
+  if(!raw)return payload; // Never grant based on an unverified timestamp.
+  // Kiwify documents naive local timestamps in Brazilian time.
+  const normalized=/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}(?::\\d{2})?$/.test(raw)
+    ?raw.replace(' ','T')+'-03:00':raw;
+  const paidAt=Date.parse(normalized);
+  if(!Number.isFinite(paidAt)||paidAt>Date.now()+3600000||
+     paidAt<Date.now()-366*86400000)return payload;
+  const expiry=new Date(paidAt+30*86400000).toISOString();
+  return {...payload,Subscription:{...sub,customer_access:{...access,has_access:true,access_until:expiry}}};
+}
+
 export const runtime='nodejs';
 
 function safeHexEqual(a:string,b:string){
@@ -76,7 +102,8 @@ export async function POST(request:NextRequest){
   }
 
   const rpcName=isInternational?'process_kiwify_international_purchase':'process_kiwify_webhook';
-  const{data,error}=await supabase.rpc(rpcName,{p_payload:payload,p_token_hash:tokenHash});
+  const verifiedPayload=isBrazil?monthlyAccessFromApprovedOrder(payload):payload;
+  const{data,error}=await supabase.rpc(rpcName,{p_payload:verifiedPayload,p_token_hash:tokenHash});
   if(error){
     await supabase.rpc('record_kiwify_webhook_attempt',{
       p_token_hash:tokenHash,p_outcome:'error',p_event_type:eventType,p_product_id:productId,p_note:error.code||'processing_failed'
