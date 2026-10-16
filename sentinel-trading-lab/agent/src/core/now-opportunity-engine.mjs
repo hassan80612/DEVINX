@@ -4,7 +4,7 @@
 import {observedNoise} from './forward-direction-quality.mjs';
 import {currentStrategyEvidence} from './now-strategy-evidence.mjs';
 import {automaticChartContext} from './automatic-chart-context.mjs';
-import {causalPatternDirection} from './causal-pattern-direction.mjs';
+// Historical quote analogues no longer override the executable direction.
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -173,14 +173,10 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
  if(qualityPolicy==='adaptive-market-v1'&&engineId){
   const input={quoteHistory,price,quoteAt,now,durationMs};
   const structural=analyzeNowOpportunity({...input,engineId:'automatic'});
-  const learning=Number(durationMs)===30000?causalPatternDirection(input):null;
-  const useLearning=learning?.ready===true&&Number(learning.strength)>=.4;
-  const contextStrategy=useLearning?'mean_reversion':'trend';
-  if(useLearning)return {...structural,...learning,engineId,qualityPolicy,
-   reason:'causal-expiry-analogue',observedAt:Number(quoteAt),
-   entryPrice:Number(price),expirySeconds:Number(durationMs)/1000,
-   contextStrategy:engineId==='automatic'?contextStrategy:engineId,
-   signalOwner:'shared-market-base'};
+  // The 30s lookback's 4-second-spaced outcomes overlap. That evidence
+  // is not independent, so it must never replace a causal closed-structure
+  // decision or convert a WAIT into an unverified CALL/PUT.
+  // Candidate only: no additional market veto, delay, or cooldown.
   return {...structural,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?'trend':engineId,
    signalOwner:'shared-market-base'};
