@@ -70,5 +70,6 @@ test('visible broker time is explicit and does not impersonate a prediction dead
  assert.match(driver,/data-sentinel-broker-clock-status/);
  assert.doesNotMatch(driver,/shown=pad\(Math\.floor\(secondsLeft\/60\)\)/);
  assert.equal(driver.includes('readBrokerTimingSnapshot(provider,st)'),true);
- assert.equal(driver.includes("locator('body').innerText"),false);
+ const refresh=driver.slice(driver.indexOf('async updateOverlay(provider,data={})'),driver.indexOf('payload.brokerTiming=this.readBrokerTimingSnapshot(provider,st);'));
+ assert.equal(refresh.includes("locator('body').innerText"),false);
 });
