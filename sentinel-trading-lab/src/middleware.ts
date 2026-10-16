@@ -35,10 +35,12 @@ export async function middleware(req:NextRequest){
   // same Agent. They do NOT grant access to paid analysis, APIs or updates.
   // File downloads must not silently redirect to /login and save HTML as ZIP.
   // Keep the raw self-update payload protected by the device/license checks.
+  const installerFile=/^\/downloads\/(?:Sentinel-Agent-[A-Za-z0-9.-]+|sentinel-agent-windows)\.exe$/i.test(p);
+  if(installerFile)return NextResponse.next();
+  // Exact public fallback archive only; raw self-update ZIP remains gated.
   const fileName=p.startsWith('/downloads/')?p.slice('/downloads/'.length):'';
-  const installerFile=/^(?:Sentinel-Agent-[A-Za-z0-9.-]+|sentinel-agent-windows)[.]exe$/i.test(fileName);
   const alternativeInstaller=/^Sentinel-Agent-[0-9]+[.][0-9]+[.][0-9]+-Alternativo[.]zip$/i.test(fileName);
-  if(installerFile||alternativeInstaller)return NextResponse.next();
+  if(alternativeInstaller)return NextResponse.next();
   if(p==='/'||p==='/planos'||p==='/termos'||p==='/privacidade'||p==='/api/checkout'||(p==='/favicon.ico'||p==='/devinx-icon.svg')||p==='/downloads/agent-update.json'||p.startsWith('/_next/'))return NextResponse.next();
   // Authenticated installed Agents can fetch signed release packages to
   // update themselves without a browser session. Non-paying users cannot.
