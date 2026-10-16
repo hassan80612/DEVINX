@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import {LanguageSwitcher,useSentinelLocale} from '../components/SentinelLocale';
 import styles from './launch-home.module.css';
+import {SENTINEL_PLANS} from '../lib/commercial';
 
 export default function Home(){
  const {language}=useSentinelLocale();
@@ -12,7 +13,7 @@ export default function Home(){
   lead:'DevinX Trading Lab combines real-time quotes, completed market structure, trends, retracements and projected CALL/PUT scenarios into one clear view. Instead of switching between tools, focus on what the market is doing and your chosen entry and expiry.',
   brokerIntro:'READS MARKET DATA FROM',
   call:'Buy 30-day access',login:'Sign in',create:'Create my account',
-  price:'US$ 50',cycle:'30 days · manual renewal',
+  price:SENTINEL_PLANS.INTL.priceDisplay,cycle:'30 days · manual renewal',
   bullets:[['Forward scenarios','Price and time projections for your selected expiry.'],['Trend & reversal context','Completed-candle structure, retracements and directional changes.'],['Live dashboard','Windows Agent and the same account on PC or mobile.']],
   how:'A straightforward way to start',steps:[['01','Purchase','Complete the secure Kiwify checkout.'],['02','Create your account','Use the SAME email address as on your payment.'],['03','Connect','Install the Windows Agent, sign in and choose your broker.']],
   disclaimer:'Professional analysis software, not a guarantee of accuracy, profit, or suitable investment advice. Trades are placed manually. IQ Option and Exnova are independent trademarks; Sentinel is not affiliated with or endorsed by them.',
@@ -46,7 +47,7 @@ export default function Home(){
   lead:'O DevinX Trading Lab reúne cotações em tempo real, estrutura anterior do mercado, tendências, retrações e projeções de cenários CALL/PUT em uma leitura objetiva. Você acompanha o comportamento do ativo e o momento previsto para entrada e vencimento, sem precisar alternar entre várias ferramentas.',
   brokerIntro:'ANÁLISE PARA OS MERCADOS DE',
   call:'Comprar acesso por 30 dias',login:'Entrar',create:'Criar minha conta',
-  price:'R$ 280',cycle:'30 dias · renovação manual',
+  price:SENTINEL_PLANS.BR.priceDisplay,cycle:'30 dias · renovação manual',
   bullets:[['Cenários futuros','Projeções de preço e horário para o vencimento escolhido.'],['Tendências e reversões','Leitura da estrutura das velas concluídas, retrações e possíveis viradas.'],['Painel ao vivo','Agent Windows e acompanhamento na mesma conta pelo PC ou celular.']],
   how:'Como começar sem complicação',steps:[['01','Compre','Finalize o pagamento seguro na Kiwify.'],['02','Crie sua conta','Use o MESMO e-mail informado no pagamento.'],['03','Conecte','Instale o Agent Windows, entre na conta e escolha a corretora.']],
   disclaimer:'Não garante assertividade nem ganhos. Software de análise profissional, sem promessa de lucro ou aconselhamento personalizado. Operações são manuais e podem gerar perdas. IQ Option e Exnova são marcas de terceiros; o Sentinel não é afiliado ou endossado por elas.',
