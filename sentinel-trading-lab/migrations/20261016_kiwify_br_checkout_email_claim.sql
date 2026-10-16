@@ -62,8 +62,7 @@ BEGIN
   RETURN jsonb_build_object('ok',true,'kind',v_kind,'orderProcessed',true,
     'accountLinked',v_result->'accountLinked','accessActive',v_result->'accessActive',
     'expiresAt',v_result->'expiresAt');
-END $function$
-
+END $function$;
 
 REVOKE ALL ON FUNCTION public.sentinel_kiwify_apply_prepaid(text,text,text,text,timestamptz,timestamptz) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.sentinel_kiwify_apply_prepaid(text,text,text,text,timestamptz,timestamptz) TO service_role;
