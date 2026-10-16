@@ -866,9 +866,9 @@ const arInteractionRelease=replace(arPreferencesRelease,{
 });
 
 const ptPlansRelease=replace(ptInteractionRelease,{
-'subscription.plansEyebrow':'PLANOS DEVINX',
-'subscription.plansTitle':'Escolha o plano que combina com seu ritmo',
-'subscription.plansText':'O DevinX completo em todos os planos. Quanto maior o período, menor o custo mensal equivalente.',
+'subscription.plansEyebrow':'DEVINX MENSAL',
+'subscription.plansTitle':'Um plano mensal, todos os recursos',
+'subscription.plansText':'Acesse o DevinX Financeiro pelo valor mensal anunciado para o seu mercado.',
 'subscription.quarterly':'Trimestral',
 'subscription.semiannual':'Semestral',
 'subscription.annual':'Anual',
@@ -880,13 +880,13 @@ const ptPlansRelease=replace(ptInteractionRelease,{
 'subscription.equivalent':'Equivale a',
 'subscription.perMonth':'/mês',
 'subscription.sameAccess':'Todos os recursos do DevinX',
-'subscription.choosePlan':'Escolha seu plano',
-'subscription.choose':'Escolher plano'
+'subscription.choosePlan':'Plano mensal',
+'subscription.choose':'Comprar plano mensal'
 });
 const enPlansRelease=replace(enInteractionRelease,{
-'subscription.plansEyebrow':'DEVINX PLANS',
-'subscription.plansTitle':'Choose the plan that fits your rhythm',
-'subscription.plansText':'Full DevinX access on every plan. Longer periods lower the equivalent monthly cost.',
+'subscription.plansEyebrow':'DEVINX MONTHLY',
+'subscription.plansTitle':'One monthly plan, every feature',
+'subscription.plansText':'Get DevinX Finance for the advertised monthly price in your market.',
 'subscription.quarterly':'Quarterly',
 'subscription.semiannual':'6 months',
 'subscription.annual':'Annual',
@@ -898,13 +898,13 @@ const enPlansRelease=replace(enInteractionRelease,{
 'subscription.equivalent':'Equivalent to',
 'subscription.perMonth':'/month',
 'subscription.sameAccess':'All DevinX features',
-'subscription.choosePlan':'Choose your plan',
-'subscription.choose':'Choose plan'
+'subscription.choosePlan':'Monthly plan',
+'subscription.choose':'Buy monthly plan'
 });
 const esPlansRelease=replace(esInteractionRelease,{
-'subscription.plansEyebrow':'PLANES DEVINX',
-'subscription.plansTitle':'Elige el plan que se adapta a tu ritmo',
-'subscription.plansText':'DevinX completo en todos los planes. Cuanto mayor sea el período, menor será el costo mensual equivalente.',
+'subscription.plansEyebrow':'DEVINX MENSUAL',
+'subscription.plansTitle':'Un plan mensual, todas las funciones',
+'subscription.plansText':'Accede a DevinX Finanzas por el precio mensual anunciado para tu mercado.',
 'subscription.quarterly':'Trimestral',
 'subscription.semiannual':'Semestral',
 'subscription.annual':'Anual',
@@ -916,13 +916,13 @@ const esPlansRelease=replace(esInteractionRelease,{
 'subscription.equivalent':'Equivale a',
 'subscription.perMonth':'/mes',
 'subscription.sameAccess':'Todas las funciones de DevinX',
-'subscription.choosePlan':'Elige tu plan',
-'subscription.choose':'Elegir plan'
+'subscription.choosePlan':'Plan mensual',
+'subscription.choose':'Comprar plan mensual'
 });
 const frPlansRelease=replace(frInteractionRelease,{
-'subscription.plansEyebrow':'OFFRES DEVINX',
-'subscription.plansTitle':'Choisissez la formule adaptée à votre rythme',
-'subscription.plansText':'DevinX complet avec chaque formule. Plus la durée est longue, plus le coût mensuel équivalent diminue.',
+'subscription.plansEyebrow':'DEVINX MENSUEL',
+'subscription.plansTitle':'Une seule formule mensuelle, toutes les fonctions',
+'subscription.plansText':'Accédez à DevinX Finance au prix mensuel affiché pour votre marché.',
 'subscription.quarterly':'Trimestriel',
 'subscription.semiannual':'Semestriel',
 'subscription.annual':'Annuel',
@@ -934,13 +934,13 @@ const frPlansRelease=replace(frInteractionRelease,{
 'subscription.equivalent':'Équivaut à',
 'subscription.perMonth':'/mois',
 'subscription.sameAccess':'Toutes les fonctions DevinX',
-'subscription.choosePlan':'Choisissez votre formule',
-'subscription.choose':'Choisir'
+'subscription.choosePlan':'Offre mensuelle',
+'subscription.choose':'Acheter la formule mensuelle'
 });
 const dePlansRelease=replace(deInteractionRelease,{
-'subscription.plansEyebrow':'DEVINX TARIFE',
-'subscription.plansTitle':'Wähle den Tarif, der zu deinem Rhythmus passt',
-'subscription.plansText':'Voller DevinX-Zugang in jedem Tarif. Längere Laufzeiten senken den entsprechenden Monatspreis.',
+'subscription.plansEyebrow':'DEVINX MONATLICH',
+'subscription.plansTitle':'Ein Monatstarif mit allen Funktionen',
+'subscription.plansText':'Nutze DevinX Finanzen zum angezeigten Monatspreis für deinen Markt.',
 'subscription.quarterly':'Vierteljährlich',
 'subscription.semiannual':'Halbjährlich',
 'subscription.annual':'Jährlich',
@@ -952,13 +952,13 @@ const dePlansRelease=replace(deInteractionRelease,{
 'subscription.equivalent':'Entspricht',
 'subscription.perMonth':'/Monat',
 'subscription.sameAccess':'Alle DevinX-Funktionen',
-'subscription.choosePlan':'Wähle deinen Tarif',
-'subscription.choose':'Tarif wählen'
+'subscription.choosePlan':'Monatstarif',
+'subscription.choose':'Monatstarif kaufen'
 });
 const arPlansRelease=replace(arInteractionRelease,{
-'subscription.plansEyebrow':'خطط DEVINX',
-'subscription.plansTitle':'اختر الخطة المناسبة لإيقاعك',
-'subscription.plansText':'جميع مزايا Devinx متاحة في كل الخطط. كلما طالت المدة انخفضت التكلفة الشهرية المكافئة.',
+'subscription.plansEyebrow':'DEVINX شهريًا',
+'subscription.plansTitle':'خطة شهرية واحدة بكل المزايا',
+'subscription.plansText':'استمتع بجميع مزايا DevinX المالي بالسعر الشهري المعلن لسوقك.',
 'subscription.quarterly':'ربع سنوي',
 'subscription.semiannual':'نصف سنوي',
 'subscription.annual':'سنوي',
@@ -970,8 +970,8 @@ const arPlansRelease=replace(arInteractionRelease,{
 'subscription.equivalent':'يعادل',
 'subscription.perMonth':'/شهرياً',
 'subscription.sameAccess':'جميع مزايا Devinx',
-'subscription.choosePlan':'اختر خطتك',
-'subscription.choose':'اختيار الخطة'
+'subscription.choosePlan':'الخطة الشهرية',
+'subscription.choose':'شراء الخطة الشهرية'
 });
 
 const ptFutureRelease=replace(ptPlansRelease,{
