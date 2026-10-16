@@ -1613,3 +1613,49 @@ html[data-theme='dark'] .mobileMorePanel button{background:#164144!important;bor
  .liveScenario .vnextProjectionBias{height:auto;min-height:31px;max-height:none;overflow:visible}
  .liveScenario .vnextForecastDetails[open]{position:static;align-self:stretch;min-height:24px}
 }
+
+/* Small Android floating browser windows over IQ Option/Exnova:
+   keep the actual PC signal, entry/expiry clock, and quote before configuration.
+   Viewport-only presentation; never changes the runtime, countdown or signals. */
+@media (max-width:760px) and (max-height:600px){
+  .app.marketWorkspace .liveScenario,
+  .app.compactAnalyst .liveScenarioCompact{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    min-width:0;
+    gap:5px;
+  }
+  .app.marketWorkspace .liveScenario > header,
+  .app.compactAnalyst .liveScenarioCompact > header{
+    order:-3;
+    flex:none;
+  }
+  .app.marketWorkspace .liveScenario > .vnextFutureReceipt,
+  .app.compactAnalyst .liveScenarioCompact > .vnextFutureReceipt{
+    order:-2;
+    flex:none;
+    margin:4px 0 6px;
+  }
+  .app.compactAnalyst .liveScenarioCompact > .mobileCurrentQuoteOnly{
+    order:-1;
+    flex:none;
+  }
+  .app.marketWorkspace .liveScenario > .vnextEngineToolbar,
+  .app.compactAnalyst .liveScenarioCompact > .vnextEngineToolbar{
+    order:5;
+    flex:none;
+    margin-top:8px;
+    grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr) minmax(0,.75fr);
+    gap:5px;
+    padding:8px;
+  }
+  .app.marketWorkspace .liveScenario .vnextEngineToolbar label:first-child > small,
+  .app.compactAnalyst .liveScenarioCompact .vnextEngineToolbar label:first-child > small{
+    display:none!important;
+  }
+  .app.marketWorkspace .liveScenario > footer,
+  .app.compactAnalyst .liveScenarioCompact > footer{
+    order:6;
+  }
+}
