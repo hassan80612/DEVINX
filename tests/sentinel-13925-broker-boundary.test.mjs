@@ -84,6 +84,18 @@ test('the runtime pins expiry to the next boundary, holds the side and never rep
  const next=evaluate(r,T+90100).futureEntryAnchor;
  assert.equal(next.entryReadyNow,true);assert.equal(next.exitAt,T+120000);
 });
+test('switching to synchronized mode cannot show a prior current-clock signal at :00',()=>{
+ const r=runtime('current');
+ const before=evaluate(r,T+60000).futureEntryAnchor;
+ assert.equal(before.entryReadyNow,true);
+ r.patchSettings({clockMode:'broker'});
+ assert.equal(r.vnextWindowState,null);
+ assert.equal(r.vnextFutureEntryAnchor,null);
+ assert.equal(evaluate(r,T+60100).futureEntryAnchor,null);
+ const next=evaluate(r,T+90100).futureEntryAnchor;
+ assert.equal(next.entryReadyNow,true);
+ assert.equal(next.exitAt,T+120000);
+});
 test('an evaluation that finishes after the eligible second cannot produce a late entry',()=>{
  const r=runtime(),values=[0,200];
  const v=evaluate(r,T+30900,{monotonicNow:()=>values.shift()});
