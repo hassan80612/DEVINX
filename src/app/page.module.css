@@ -63,3 +63,11 @@
   .trialAction {flex-basis: auto; max-width: none; width: 100%}
   .dailyTarget {padding: 18px}
 }
+
+/* Intentional number-free illustration: examples cannot be mistaken for live finances. */
+.previewPlaceholder{height:58px;display:flex;align-items:flex-end;gap:10px;padding:6px 0}
+.previewPlaceholder i{display:block;width:28%;max-width:90px;border-radius:9px 9px 3px 3px;background:linear-gradient(180deg,var(--accent-strong),rgb(var(--accent-rgb) / .14));opacity:.75}
+.previewPlaceholder i:nth-child(1){height:38%}
+.previewPlaceholder i:nth-child(2){height:68%}
+.previewPlaceholder i:nth-child(3){height:90%}
+.previewDash{display:inline-block;flex:0 0 auto;width:66px;max-width:34%;height:12px;border-radius:8px;background:linear-gradient(90deg,rgb(var(--accent-rgb) / .35),rgb(var(--accent-rgb) / .08))}
