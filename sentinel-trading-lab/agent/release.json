@@ -1,13 +1,13 @@
 {
-  "version": "13.9.32",
-  "build": "13.9.32-selected-expiry-historical-consistency",
+  "version": "13.9.33",
+  "build": "13.9.33-defended-levels-observed-reversal-continuation",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "shared-market-base-one-decision-vnext",
-    "modelValidation": "13.9.32-selected-projection-structure-regression-not-live-accuracy",
+    "modelValidation": "13.9.33-synthetic-improvement-replay-no-live-accuracy-claim",
     "forecastModel": "now-structural-v1",
     "historicalStructure": {
       "closedCandles": 100,
@@ -16,7 +16,16 @@
         50,
         100
       ],
-      "timing": "received-history-no-collection-reset"
+      "timing": "received-history-no-collection-reset",
+      "windows": [
+        3,
+        10,
+        20,
+        50,
+        100
+      ],
+      "levelEvidence": "confirmed-pivots-independent-rejections",
+      "liveSequence": "break-reclaim-structure-change-or-break-retest-continuation"
     }
   }
 }

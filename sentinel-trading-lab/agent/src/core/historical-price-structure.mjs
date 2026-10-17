@@ -1,6 +1,7 @@
 // Price structure from the last 100 CLOSED, actually received candles.
 // Older levels remain spatial evidence; they are neither guaranteed barriers
 // nor a reason to wait for 100 new candles. No broker calls or clock lookup.
+import {buildCandleLevelMap} from './candle-level-map.mjs';
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0;
 const epoch=x=>{const n=Number(x);return n>0?(n<1e12?n*1000:n):0;};
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:0;};
@@ -54,10 +55,14 @@ export function historicalPriceStructure({candles=[],now=Date.now()}={}){
   z.high=p.price;z.level=(z.low+z.high)/2;z.weight+=p.weight;
   z.pivots+=p.pivot?1:0;z.ages.push(p.age);z.indices.add(p.index);z.touches=z.indices.size;
  }
+ const candleLevelMap=buildCandleLevelMap({rows,zones,tolerance});
  return {candles:rows.length,periodMs:rows.at(-1).to-rows.at(-1).from,
   asOf:rows.at(-1).to,atr:scale,tolerance,
+  candleLevelMap,
   averages:[20,50,100].map(p=>ema(rows,p)).filter(Boolean),
-  zones:zones.map(({indices,...z})=>z)};
+  zones:zones.map(({indices,...z},i)=>({...z,
+   confirmedPivots:candleLevelMap.levels[i].confirmedPivots,
+   independentRejections:candleLevelMap.levels[i].independentRejections}))};
 }
 function priceBefore(rows,at){
  for(let i=rows.length-1;i>=0;i--)if(rows[i].ts<=at)
@@ -82,7 +87,8 @@ export function applyHistoricalPriceStructure({candidate,structure,quoteHistory=
  const move=spot-earlier,step=spot-previous;
  const tolerance=Math.max(structure.tolerance,spot*1e-8);
  const minReaction=Math.max(tolerance*.5,structure.atr*.025);
- const relevant=structure.zones.filter(z=>z.touches>=2||z.pivots>0);
+ const relevant=structure.zones.filter(z=>z.confirmedPivots==null?
+  z.touches>=2||z.pivots>0:z.confirmedPivots>0||z.independentRejections>=2);
  const below=relevant.filter(z=>z.level<=spot).sort((a,b)=>b.level-a.level);
  const above=relevant.filter(z=>z.level>=spot).sort((a,b)=>a.level-b.level);
  const describe=z=>z?{level:z.level,touches:z.touches,oldestBarsAgo:Math.max(...z.ages),newestBarsAgo:Math.min(...z.ages)}:null;
