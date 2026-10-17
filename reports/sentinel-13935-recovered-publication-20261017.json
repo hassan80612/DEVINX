@@ -1,0 +1,56 @@
+{
+  "verifiedAt": "2026-10-17T22:25:24.741622+00:00",
+  "version": "13.9.35",
+  "build": "13.9.35-bounded-session-and-indexed-level-work",
+  "commit": "406c8f6b7ffa6fa90cad6575c0903ba78205b697",
+  "tree": "cf3710f28b6088cc246bf72361c0c3181eff2604",
+  "deployment": "dpl_2V2umnmTKkRTJPUpzg9rcGaAVpPz",
+  "downloads": {
+    "agent-update.json": {
+      "bytes": 194,
+      "sha256": "d3ab25d8e157746968799b40b34dc9480a13915c501384b48faaa8e3f5b1ec70"
+    },
+    "Sentinel-Agent-13.9.35.exe": {
+      "bytes": 2658304,
+      "sha256": "b9717ffafcf5985b947ea0ffb98a54a0d354fb72e0beef2744e75125293f7bd4"
+    },
+    "Sentinel-Agent-13.9.35-Alternativo.zip": {
+      "bytes": 391968,
+      "sha256": "390c64128453492d4ec1ab91afd183e563673182902d91e834ffd0203cb8b11e"
+    },
+    "Sentinel-Agent-Windows.exe": {
+      "bytes": 2658304,
+      "sha256": "b9717ffafcf5985b947ea0ffb98a54a0d354fb72e0beef2744e75125293f7bd4"
+    },
+    "sentinel-agent-windows.exe": {
+      "bytes": 2658304,
+      "sha256": "b9717ffafcf5985b947ea0ffb98a54a0d354fb72e0beef2744e75125293f7bd4"
+    }
+  },
+  "payloadSha256": "451015a18934c835574cd357f027f988ca63106b184090794aa68313164dda1d",
+  "exactSourceFiles": [
+    "src/core/observed-level-sequence.mjs",
+    "src/core/runtime.mjs",
+    "worker/local-playwright-driver.mjs",
+    "src/core/completed-expiry-direction.mjs",
+    "src/core/now-opportunity-engine.mjs",
+    "src/core/thirty-second-expiry-direction.mjs",
+    "src/core/historical-price-structure.mjs",
+    "worker/runtime-market.mjs"
+  ],
+  "genericAliases": "byte-identical",
+  "zipCRC": "passed",
+  "embeddedPayload": "exact-match",
+  "range": "bytes 0-1023/2658304",
+  "nativeWindowsLaunch": "not-tested",
+  "userEdgeDownloadFailure": "not-reproduced-on-users-machine; not claimed fixed by server byte checks",
+  "productionState": "READY",
+  "canonicalHost": "trading.devinx.com.br",
+  "tests": {
+    "localTargetedPassed": 23,
+    "fullPrebuildPassed": 276,
+    "fullPrebuildBasis": "78+20+139+39 tests; production build success includes the sequential prebuild checks"
+  },
+  "libraryAttachment": "libfile_63577a67ac1c8191a5166e0580c4a33e",
+  "runtimeErrorScan": "No error/fatal logs found in initial 10-minute query; short observation window."
+}
