@@ -1,0 +1,706 @@
+{
+  "purpose": "Controlled broker-message ingestion regression, NOT market accuracy or trade outcomes.",
+  "baselineVersion": "13.9.33",
+  "cases": 24,
+  "previouslyDiscardedContext": 16,
+  "previouslyUsableContextPreserved": 8,
+  "ordersSent": 0,
+  "rows": [
+    {
+      "provider": "iq_option",
+      "count": 3,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 3,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 3,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 3,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 10,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 10,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 10,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 10,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 20,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 20,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 20,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 20,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 49,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 49,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 49,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 49,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 50,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 50,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 100,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "iq_option",
+      "count": 100,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 3,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 3,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 3,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 3,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 3,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 10,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 10,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 10,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 10,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 10,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 20,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 20,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 20,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 20,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 20,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 49,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 49,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 49,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": false,
+          "consumed": 0,
+          "side": null,
+          "entryAt": null,
+          "exitAt": null
+        },
+        {
+          "name": "candidate",
+          "received": 49,
+          "legacyReadiness": false,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 49,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 50,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 50,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 50,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 50,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 100,
+      "mirror": false,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "CALL",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    },
+    {
+      "provider": "exnova",
+      "count": 100,
+      "mirror": true,
+      "outputs": [
+        {
+          "name": "production33",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        },
+        {
+          "name": "candidate",
+          "received": 100,
+          "legacyReadiness": true,
+          "quoteVerified": true,
+          "historyVerified": true,
+          "consumed": 100,
+          "side": "PUT",
+          "entryAt": 1792264539000,
+          "exitAt": 1792264569000
+        }
+      ]
+    }
+  ]
+}

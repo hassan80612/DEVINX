@@ -34,7 +34,19 @@ export class CompletedExpiryDirection{
    this.lastIssued=ts;this.pending.push({at:ts,dueAt:projectionTargetAt==null?ts+30000:Number(projectionTargetAt),
     price:spot,base:baseline.side,wide:alternative.side});
   }
+  // Before enough completed outcomes exist, use strong penalized-fit evidence
+  // instead of automatically favoring the narrower period search. Both
+  // fits must describe the SAME received observations and expiry horizon.
+  // A cycle at the available search/coverage boundary is not identified
+  // well enough for this bootstrap; retain the existing decision instead.
+  const cycleCovered=Number.isFinite(wide?.fittedPeriodSeconds)&&
+   wide.fittedPeriodSeconds<Math.min(180,wide.observedPoints-1);
+  const bootstrap=this.completed<5&&wide?.ready&&cycleCovered&&
+   baseline.observedPoints===wide.observedPoints&&baseline.horizonMs===wide.horizonMs&&
+   Number.isFinite(baseline.fitSelectionCriterion)&&Number.isFinite(wide.fitSelectionCriterion)&&
+   wide.fitSelectionCriterion+10<baseline.fitSelectionCriterion;
   const selected=this.completed>=5&&this.loss.wide+.1<this.loss.base&&wide?.ready;
-  return selected?{...baseline,...wide,reason:'completed-expiry-outcomes-adaptive-cycle'}:baseline;
+  return bootstrap||selected?{...baseline,...wide,reason:bootstrap?
+   'bootstrap-expiry-penalized-fit':'completed-expiry-outcomes-adaptive-cycle'}:baseline;
  }
 }
