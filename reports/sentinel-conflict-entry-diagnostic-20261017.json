@@ -1,0 +1,200 @@
+{
+  "purpose": "Counterfactual at exactly the baseline entry timestamps; not a changed-policy replay or live accuracy.",
+  "results": [
+    {
+      "at": 1792169410500,
+      "videoSecond": 43.5,
+      "selected": "CALL",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "CALL",
+        "ready": true,
+        "reason": "closed-structure-and-live-impulse",
+        "strength": 66
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169450000,
+      "videoSecond": 83,
+      "selected": "PUT",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "CALL",
+        "ready": true,
+        "reason": "closed-structure-and-live-impulse",
+        "strength": 100
+      },
+      "structuralCorrect": false
+    },
+    {
+      "at": 1792169513500,
+      "videoSecond": 146.5,
+      "selected": "CALL",
+      "selectedCorrect": false,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "closed-range-extreme-reversal-confirmed",
+        "strength": null
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169543500,
+      "videoSecond": 176.5,
+      "selected": "CALL",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "CALL",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 1
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169574500,
+      "videoSecond": 207.5,
+      "selected": "CALL",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "CALL",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.7543013104188779
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169605500,
+      "videoSecond": 238.5,
+      "selected": "PUT",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.43852924594523296
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169652500,
+      "videoSecond": 285.5,
+      "selected": "PUT",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.6332700904287762
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169682500,
+      "videoSecond": 315.5,
+      "selected": "PUT",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.6124230363370559
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169712500,
+      "videoSecond": 345.5,
+      "selected": "CALL",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.6114347531550689
+      },
+      "structuralCorrect": false
+    },
+    {
+      "at": 1792169743000,
+      "videoSecond": 376,
+      "selected": "PUT",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.9451842534331136
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169773500,
+      "videoSecond": 406.5,
+      "selected": "PUT",
+      "selectedCorrect": false,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.9250175307243275
+      },
+      "structuralCorrect": false
+    },
+    {
+      "at": 1792169804500,
+      "videoSecond": 437.5,
+      "selected": "PUT",
+      "selectedCorrect": false,
+      "structural": {
+        "side": "CALL",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.415766317690101
+      },
+      "structuralCorrect": true
+    },
+    {
+      "at": 1792169834500,
+      "videoSecond": 467.5,
+      "selected": "PUT",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "CALL",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.934733298071438
+      },
+      "structuralCorrect": false
+    },
+    {
+      "at": 1792169864500,
+      "videoSecond": 497.5,
+      "selected": "CALL",
+      "selectedCorrect": true,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "closed-structure-and-live-impulse",
+        "strength": 45
+      },
+      "structuralCorrect": false
+    },
+    {
+      "at": 1792169915500,
+      "videoSecond": 548.5,
+      "selected": "PUT",
+      "selectedCorrect": null,
+      "structural": {
+        "side": "PUT",
+        "ready": true,
+        "reason": "causal-expiry-analogue",
+        "strength": 0.5736770065717449
+      },
+      "structuralCorrect": null
+    }
+  ]
+}
