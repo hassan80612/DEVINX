@@ -1,0 +1,25 @@
+name: Sentinel original 13.9.34 direct download integrity
+on:
+  push:
+    branches: [fix/sentinel-13934-exe-delivery-20261017]
+    paths: ['.github/workflows/sentinel-13934-download-http-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-http-download:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify external raw EXE downloads intact and without brotli encoding
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://raw.githubusercontent.com/hassan80612/DEVINX/a74d602b75e7f70cca1ed2fb5f7af25e75ee8295/sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe"
+          curl --fail --location --retry 6 --retry-all-errors --retry-delay 2 --max-time 120 --dump-header /tmp/headers --output /tmp/Sentinel-Agent-Windows.exe "$url"
+          file /tmp/Sentinel-Agent-Windows.exe
+          cmp /tmp/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          test "$(stat -c%s /tmp/Sentinel-Agent-Windows.exe)" -gt 1000000
+          ! grep -i '^content-encoding: br' /tmp/headers
+          printf '\nVerified exact EXE bytes through public CDN\n'
+          grep -Ei '^HTTP/|^content-length:|^content-encoding:|^accept-ranges:|^content-type:' /tmp/headers || :
