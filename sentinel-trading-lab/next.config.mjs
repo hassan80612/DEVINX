@@ -3,7 +3,10 @@ const currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json'
 const agentDownloadHeaders=[
   {key:'Content-Type',value:'application/octet-stream'},
   {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
-  {key:'Cache-Control',value:'private, no-store'}
+  {key:'Cache-Control',value:'private, no-store, no-transform'},
+  // Tell the CDN the binary is already encoded. Brotli encoding plus chunked
+  // delivery causes interrupted executable downloads in Chromium/Edge.
+  {key:'Content-Encoding',value:'identity'}
 ];
 // Retired binaries no longer take up production deployment space. Existing
 // authenticated direct download links still work via an explicit 307 redirect.
