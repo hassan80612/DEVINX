@@ -3,17 +3,13 @@ const currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json'
 const agentDownloadHeaders=[
   {key:'Content-Type',value:'application/octet-stream'},
   {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
-  {key:'Cache-Control',value:'private, no-store, no-transform'},
-  // Tell the CDN the binary is already encoded. Brotli encoding plus chunked
-  // delivery causes interrupted executable downloads in Chromium/Edge.
-  {key:'Content-Encoding',value:'identity'}
+  {key:'Cache-Control',value:'private, no-store'}
 ];
 // Retired binaries no longer take up production deployment space. Existing
 // authenticated direct download links still work via an explicit 307 redirect.
 // Keep 67.1 rollback, 67.18-67.21, the signed update zip and stable aliases.
 const retiredInstallerVersions=[2,3,4,5,6,7,9,10,11,12,13,14,15,16,17];
 const nextConfig={
-  outputFileTracingIncludes:{'/api/agent/windows-exe':['./public/downloads/Sentinel-Agent-Windows.exe','./public/downloads/sentinel-windows-exe-integrity.json']},
   reactStrictMode:true,
   async redirects(){return [{source:'/console',destination:'/painel',permanent:false},...['13.8.0','13.8.1','13.8.2','13.8.3','13.8.4','13.8.5','13.8.6','13.8.7','13.8.8'].map(version=>({
     source:'/downloads/Sentinel-Agent-'+version+'.exe',
