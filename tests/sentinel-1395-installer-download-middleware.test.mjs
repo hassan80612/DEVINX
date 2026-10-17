@@ -49,3 +49,21 @@ test('downloaded installer still includes entitlement-gated runtime and signed a
  assert.match(updater,/Get-FileHash \$zip -Algorithm SHA256/);
  assert.match(updater,/X-Sentinel-Agent-Install/);
 });
+
+test('approved 13.9.30 delivery is reused for the current EXE release, without the experimental API route',async()=>{
+ const release=JSON.parse(readFileSync('sentinel-trading-lab/agent/release.json','utf8'));
+ const page=readFileSync('sentinel-trading-lab/src/app/console/page.tsx','utf8');
+ const config=readFileSync('sentinel-trading-lab/next.config.mjs','utf8');
+ assert.equal(release.version,'13.9.34');
+ assert.match(page,/AGENT_DOWNLOAD_URL=\x60\/downloads\/Sentinel-Agent-\$\{encodeURIComponent\(AVAILABLE_AGENT_VERSION\)\}\.exe\x60/);
+ assert.doesNotMatch(page,/AGENT_DOWNLOAD_URL=['"]\/api\/agent\/windows-exe/);
+ assert.doesNotMatch(middleware,/if\(p==='\/api\/agent\/windows-exe'\)return NextResponse\.next/);
+ assert.doesNotMatch(config,/Content-Encoding|outputFileTracingIncludes/);
+ const headers=await nextConfig.headers();
+ const target='/downloads/Sentinel-Agent-'+release.version+'.exe';
+ const rule=headers.find(x=>x.source===target);
+ assert.ok(rule, 'current versioned EXE must be a static downloadable asset');
+ assert.equal(rule.headers.find(x=>x.key==='Content-Type')?.value,'application/octet-stream');
+ assert.match(rule.headers.find(x=>x.key==='Content-Disposition')?.value||'',/attachment/);
+ assert.equal(rule.headers.find(x=>x.key==='Cache-Control')?.value,'private, no-store');
+});
