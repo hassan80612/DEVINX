@@ -1,0 +1,52 @@
+diff --git a/sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs b/sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs
+index 3353abb..ab02d6b 100644
+--- a/sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs
++++ b/sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs
+@@ -3,9 +3,9 @@ import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
+ // wait for training, or modify the side already held by the signal lifecycle.
+ export class CompletedExpiryDirection{
+  constructor(){this.reset(null);}
+- reset(context){this.context=context;this.pending=[];this.loss={base:.5,wide:.5};
++ reset(context){this.context=context;this.pending=[];this.loss={base:.5,wide:.5,structure:.5};this.structureCompleted=0;
+   this.completed=0;this.lastIssued=-Infinity;this.lastQuoteAt=-Infinity;this.cache=null;}
+- observe({context,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt=null}){
++ observe({context,quoteHistory,quoteAt,price,now,baseline,structural=null,projectionTargetAt=null}){
+   if(this.context!==context)this.reset(context);
+   const ts=Number(quoteAt),spot=Number(price);
+   if(!(Number.isFinite(ts)&&ts>0&&ts<=now&&now-ts<=1450&&Number.isFinite(spot)&&spot>0)||ts<this.lastQuoteAt)return baseline;
+@@ -16,6 +16,7 @@ export class CompletedExpiryDirection{
+     if(ts>p.dueAt+1000||spot===p.price)continue;
+     const side=spot>p.price?'CALL':'PUT';
+     for(const name of ['base','wide'])this.loss[name]=.8*this.loss[name]+.2*(p[name]===side?0:1);
++    if(p.structure){this.loss.structure=.8*this.loss.structure+.2*(p.structure===side?0:1);this.structureCompleted++;}
+     this.completed++;
+    }
+    this.pending=pending;this.lastQuoteAt=ts;
+@@ -32,9 +33,14 @@ export class CompletedExpiryDirection{
+   const alternative=wide?.ready?wide:baseline;
+   if(ts-this.lastIssued>=5000){
+    this.lastIssued=ts;this.pending.push({at:ts,dueAt:projectionTargetAt==null?ts+30000:Number(projectionTargetAt),
+-    price:spot,base:baseline.side,wide:alternative.side});
++    price:spot,base:baseline.side,wide:alternative.side,
++    structure:structural?.ready?structural.side:null});
+   }
+   const selected=this.completed>=5&&this.loss.wide+.1<this.loss.base&&wide?.ready;
+-  return selected?{...baseline,...wide,reason:'completed-expiry-outcomes-adaptive-cycle'}:baseline;
++  const decision=selected?{...baseline,...wide,reason:'completed-expiry-outcomes-adaptive-cycle'}:baseline;
++  if(structural?.ready&&this.structureCompleted>=5&&this.loss.structure+.1<this.loss[selected?'wide':'base'])
++   return {...decision,...structural,predictedPrice:null,expectedLogMove:null,fitResidual:null,
++    reason:'completed-expiry-outcomes-original-structure'};
++  return decision;
+  }
+ }
+--- a/sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
++++ b/sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+@@ -177,7 +177,7 @@
+   // can admit directly from current quotes without four newly closed bars.
+   const baseline=forecast?.ready&&original.ready?{...original,...forecast}:original;
+   const decision=Number(durationMs)===30000&&expiryDirectionSelector?
+-   expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt}):baseline;
++   expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,structural:original,projectionTargetAt}):baseline;
+   const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
+   // Historical reactions must agree with the projection actually selected
+   // above. Comparing against the discarded narrow forecast can both veto

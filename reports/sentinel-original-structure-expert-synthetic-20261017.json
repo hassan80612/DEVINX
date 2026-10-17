@@ -1,0 +1,1884 @@
+{
+  "purpose": "Synthetic coherent closed OHLC and quotes only; NOT real or independent market accuracy.",
+  "productionVersion": "13.9.32",
+  "candidate": "REJECTED: candle map plus original-structure outcome selector",
+  "results": [
+    {
+      "kind": "uptrend",
+      "outputs": [
+        {
+          "name": "production32",
+          "signals": 24,
+          "wins": 23,
+          "losses": 1,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 5.862268944444448,
+            "p95": 8.950954999999965,
+            "max": 14.328564999999983
+          },
+          "reasons": {
+            "historical-trend-and-live-forecast": 1,
+            "observed-trend-and-30s-cycle-projection": 23
+          },
+          "entries": [
+            {
+              "t": 0,
+              "side": "CALL",
+              "reason": "historical-trend-and-live-forecast",
+              "outcome": "win"
+            },
+            {
+              "t": 30,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 60,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 90,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 120,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 150,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 180,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 210,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 240,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 270,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 300,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 330,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 360,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 390,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 428,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 458,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 488,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 518,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 548,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 578,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 608,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 638,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 668,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 698,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            }
+          ]
+        },
+        {
+          "name": "candidate",
+          "signals": 24,
+          "wins": 23,
+          "losses": 1,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 6.057345877777785,
+            "p95": 9.282610000000204,
+            "max": 12.161478000000898
+          },
+          "reasons": {
+            "historical-trend-and-live-forecast": 1,
+            "observed-trend-and-30s-cycle-projection": 23
+          },
+          "entries": [
+            {
+              "t": 0,
+              "side": "CALL",
+              "reason": "historical-trend-and-live-forecast",
+              "outcome": "win"
+            },
+            {
+              "t": 30,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 60,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 90,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 120,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 150,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 180,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 210,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 240,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 270,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 300,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 330,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 360,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 390,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 428,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 458,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 488,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 518,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 548,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 578,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 608,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 638,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 668,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 698,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "downtrend",
+      "outputs": [
+        {
+          "name": "production32",
+          "signals": 24,
+          "wins": 24,
+          "losses": 0,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 6.084139711111114,
+            "p95": 8.394662000000608,
+            "max": 13.614488999999594
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 20,
+            "completed-expiry-outcomes-adaptive-cycle": 3,
+            "historical-level-breakout": 1
+          },
+          "entries": [
+            {
+              "t": 4,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 34,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 64,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 94,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 124,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 154,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 184,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 214,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 244,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 274,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 304,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 339,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 369,
+              "side": "PUT",
+              "reason": "historical-level-breakout",
+              "outcome": "win"
+            },
+            {
+              "t": 399,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 429,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 459,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 489,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 519,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 549,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 579,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 609,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 639,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 669,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 699,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            }
+          ]
+        },
+        {
+          "name": "candidate",
+          "signals": 24,
+          "wins": 24,
+          "losses": 0,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 5.947498590277731,
+            "p95": 7.7067950000000565,
+            "max": 15.74806400000125
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 20,
+            "completed-expiry-outcomes-adaptive-cycle": 3,
+            "historical-level-breakout": 1
+          },
+          "entries": [
+            {
+              "t": 4,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 34,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 64,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 94,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 124,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 154,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 184,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 214,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 244,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 274,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 304,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 339,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 369,
+              "side": "PUT",
+              "reason": "historical-level-breakout",
+              "outcome": "win"
+            },
+            {
+              "t": 399,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 429,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 459,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 489,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 519,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 549,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 579,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 609,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 639,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 669,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 699,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "regular-range",
+      "outputs": [
+        {
+          "name": "production32",
+          "signals": 20,
+          "wins": 20,
+          "losses": 0,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 5.745952024999976,
+            "p95": 7.958964999997988,
+            "max": 10.474505999998655
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 4,
+            "historical-level-rejection": 7,
+            "completed-expiry-outcomes-adaptive-cycle": 9
+          },
+          "entries": [
+            {
+              "t": 20,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 67,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 97,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 127,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 157,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 189,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 227,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 257,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 296,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 341,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 371,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 403,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 447,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 477,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 510,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 547,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 577,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 617,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 661,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 691,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            }
+          ]
+        },
+        {
+          "name": "candidate",
+          "signals": 20,
+          "wins": 20,
+          "losses": 0,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 5.900693931944549,
+            "p95": 8.58434699999998,
+            "max": 14.055873999997857
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 4,
+            "multiscale-candle-rejection": 3,
+            "historical-level-rejection": 4,
+            "completed-expiry-outcomes-adaptive-cycle": 9
+          },
+          "entries": [
+            {
+              "t": 20,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 67,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 97,
+              "side": "CALL",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 127,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 157,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 189,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 227,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 257,
+              "side": "PUT",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 296,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 341,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 371,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 403,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 447,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 477,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 510,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 547,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 577,
+              "side": "PUT",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 617,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 661,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 691,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "changing-range",
+      "outputs": [
+        {
+          "name": "production32",
+          "signals": 22,
+          "wins": 16,
+          "losses": 6,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 5.720995081944496,
+            "p95": 7.725432999999612,
+            "max": 40.958528999999544
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 4,
+            "historical-level-rejection": 6,
+            "completed-expiry-outcomes-adaptive-cycle": 11,
+            "historical-level-breakout": 1
+          },
+          "entries": [
+            {
+              "t": 6,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 37,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 75,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 105,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 135,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 171,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 201,
+              "side": "CALL",
+              "reason": "historical-level-breakout",
+              "outcome": "win"
+            },
+            {
+              "t": 240,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 270,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 300,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 330,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 363,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 396,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 435,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 465,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 495,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 525,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 577,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 614,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 644,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 674,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 704,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            }
+          ]
+        },
+        {
+          "name": "candidate",
+          "signals": 22,
+          "wins": 13,
+          "losses": 9,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 5.895606386110956,
+            "p95": 8.739720999998099,
+            "max": 15.070052999995823
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 4,
+            "multiscale-candle-rejection": 4,
+            "historical-level-rejection": 3,
+            "completed-expiry-outcomes-adaptive-cycle": 8,
+            "completed-expiry-outcomes-original-structure": 3
+          },
+          "entries": [
+            {
+              "t": 6,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 37,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 75,
+              "side": "PUT",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 105,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 135,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 168,
+              "side": "CALL",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 198,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 228,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 267,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 297,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 330,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 363,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "win"
+            },
+            {
+              "t": 396,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 426,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "loss"
+            },
+            {
+              "t": 461,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 493,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 523,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "loss"
+            },
+            {
+              "t": 577,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 614,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 645,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "loss"
+            },
+            {
+              "t": 675,
+              "side": "PUT",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 705,
+              "side": "PUT",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "sharp-turns",
+      "outputs": [
+        {
+          "name": "production32",
+          "signals": 22,
+          "wins": 7,
+          "losses": 15,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 6.148678450000009,
+            "p95": 8.302213000002666,
+            "max": 13.319003000004159
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 14,
+            "completed-expiry-outcomes-adaptive-cycle": 8
+          },
+          "entries": [
+            {
+              "t": 0,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 30,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 60,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 100,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 130,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 160,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 190,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 231,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 261,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 291,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 321,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 370,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 400,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 430,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 460,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 501,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 531,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 561,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 591,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 640,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 670,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 700,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            }
+          ]
+        },
+        {
+          "name": "candidate",
+          "signals": 22,
+          "wins": 8,
+          "losses": 14,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 5.976262680555354,
+            "p95": 7.563098999999056,
+            "max": 11.94545300000027
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 4,
+            "completed-expiry-outcomes-original-structure": 10,
+            "completed-expiry-outcomes-adaptive-cycle": 8
+          },
+          "entries": [
+            {
+              "t": 0,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 30,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 60,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "loss"
+            },
+            {
+              "t": 100,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 130,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 160,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            },
+            {
+              "t": 190,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "loss"
+            },
+            {
+              "t": 231,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 261,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 291,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            },
+            {
+              "t": 321,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            },
+            {
+              "t": 370,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 400,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 430,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            },
+            {
+              "t": 460,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "loss"
+            },
+            {
+              "t": 501,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 531,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 561,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            },
+            {
+              "t": 591,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            },
+            {
+              "t": 640,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 670,
+              "side": "CALL",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            },
+            {
+              "t": 700,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "random-walk",
+      "outputs": [
+        {
+          "name": "production32",
+          "signals": 22,
+          "wins": 9,
+          "losses": 13,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 4.164525916666561,
+            "p95": 7.3676439999981085,
+            "max": 11.712480999995023
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 12,
+            "historical-level-breakout": 2,
+            "historical-level-rejection": 7,
+            "completed-expiry-outcomes-adaptive-cycle": 1
+          },
+          "entries": [
+            {
+              "t": 0,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 30,
+              "side": "PUT",
+              "reason": "historical-level-breakout",
+              "outcome": "loss"
+            },
+            {
+              "t": 62,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 93,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 123,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 158,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 188,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 218,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 260,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 290,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 321,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 351,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 383,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 413,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 443,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 473,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 503,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 534,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 570,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 600,
+              "side": "PUT",
+              "reason": "historical-level-breakout",
+              "outcome": "win"
+            },
+            {
+              "t": 646,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 676,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-adaptive-cycle",
+              "outcome": "loss"
+            }
+          ]
+        },
+        {
+          "name": "candidate",
+          "signals": 23,
+          "wins": 10,
+          "losses": 13,
+          "ties": 0,
+          "cpuMs": {
+            "mean": 3.993738841666699,
+            "p95": 6.895812000002479,
+            "max": 8.984920999995666
+          },
+          "reasons": {
+            "observed-trend-and-30s-cycle-projection": 12,
+            "historical-level-breakout": 1,
+            "historical-level-rejection": 7,
+            "completed-expiry-outcomes-original-structure": 1,
+            "multiscale-candle-rejection": 2
+          },
+          "entries": [
+            {
+              "t": 0,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 30,
+              "side": "PUT",
+              "reason": "historical-level-breakout",
+              "outcome": "loss"
+            },
+            {
+              "t": 62,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 93,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 123,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 158,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 188,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 218,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 260,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 290,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 321,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 351,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 383,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 413,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 443,
+              "side": "CALL",
+              "reason": "historical-level-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 473,
+              "side": "PUT",
+              "reason": "historical-level-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 503,
+              "side": "CALL",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            },
+            {
+              "t": 534,
+              "side": "PUT",
+              "reason": "completed-expiry-outcomes-original-structure",
+              "outcome": "win"
+            },
+            {
+              "t": 568,
+              "side": "CALL",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "loss"
+            },
+            {
+              "t": 599,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 631,
+              "side": "PUT",
+              "reason": "multiscale-candle-rejection",
+              "outcome": "win"
+            },
+            {
+              "t": 661,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "win"
+            },
+            {
+              "t": 691,
+              "side": "PUT",
+              "reason": "observed-trend-and-30s-cycle-projection",
+              "outcome": "loss"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "decision": "Rejected: coarse video replay fell from 10 wins / 3 losses to 8 wins / 5 losses; no high-precision video gain."
+}

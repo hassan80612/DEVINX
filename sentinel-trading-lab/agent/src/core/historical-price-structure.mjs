@@ -1,6 +1,7 @@
 // Price structure from the last 100 CLOSED, actually received candles.
 // Older levels remain spatial evidence; they are neither guaranteed barriers
 // nor a reason to wait for 100 new candles. No broker calls or clock lookup.
+import {buildCandleLevelMap} from './candle-level-map.mjs';
 const positive=x=>Number.isFinite(Number(x))&&Number(x)>0;
 const epoch=x=>{const n=Number(x);return n>0?(n<1e12?n*1000:n):0;};
 const median=a=>{const s=[...a].sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:0;};
@@ -56,6 +57,7 @@ export function historicalPriceStructure({candles=[],now=Date.now()}={}){
  }
  return {candles:rows.length,periodMs:rows.at(-1).to-rows.at(-1).from,
   asOf:rows.at(-1).to,atr:scale,tolerance,
+  candleLevelMap:buildCandleLevelMap({rows,zones,tolerance}),
   averages:[20,50,100].map(p=>ema(rows,p)).filter(Boolean),
   zones:zones.map(({indices,...z})=>z)};
 }

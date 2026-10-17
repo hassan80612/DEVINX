@@ -1,0 +1,31 @@
+{
+  "version": "13.9.32",
+  "commit": "ab91fab743ab52763d73fbd21d36802c60868e42",
+  "deployment": "dpl_CX947CwvF3i1TiQ7MZJqyXWspuNh",
+  "url": "https://trading.devinx.com.br",
+  "status": "READY",
+  "files": {
+    "Sentinel-Agent-13.9.32.exe": {
+      "bytes": 2651136,
+      "sha256": "f0487f2ad6cd29729976fde36269c0617711aea2dd1bb5a6532f09086c8fc690"
+    },
+    "Sentinel-Agent-13.9.32-Alternativo.zip": {
+      "bytes": 385469,
+      "sha256": "88b890af7a99e9497fa2d35b9c24a9276fe9f02b1170defd7f68a048ff5ba153"
+    },
+    "agent-update.json": {
+      "bytes": 194,
+      "sha256": "46b8da5f193106981cb655409ea36c52e28c83f1afe90fe4142dac6d8878758d"
+    }
+  },
+  "payloadSha256": "341b17bbf1d71bcb86cad2d7e180fefd7f0d614f7d9958cba1f805243d9e8d58",
+  "checks": {
+    "payloadMatchesReviewedSource": true,
+    "exeEmbedsMatchingPayload": true,
+    "alternateCrcAndPayload": true,
+    "httpRange206": true,
+    "rawUpdatePayloadRequiresAuthenticatedAgent": true,
+    "nativeWindowsTested": false
+  },
+  "runtimeErrorScan": "no error/fatal logs in initial deployment-scoped scan"
+}

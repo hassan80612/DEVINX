@@ -1,0 +1,201 @@
+{
+  "purpose": "Experimental hypothesis evaluated on reused video, no pre-video candles; not independent market validation",
+  "results": [
+    {
+      "name": "sentinel-user-video-broker-6dp-20261016.json",
+      "counts": {
+        "win": 10,
+        "loss": 4,
+        "tie": 0,
+        "missing": 1
+      },
+      "entries": [
+        {
+          "at": 1792169410500,
+          "side": "CALL",
+          "reason": "closed-structure-and-live-impulse",
+          "result": "win"
+        },
+        {
+          "at": 1792169450000,
+          "side": "CALL",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "loss"
+        },
+        {
+          "at": 1792169513500,
+          "side": "CALL",
+          "reason": "completed-expiry-outcomes-adaptive-cycle",
+          "result": "loss"
+        },
+        {
+          "at": 1792169543500,
+          "side": "CALL",
+          "reason": "completed-expiry-outcomes-adaptive-cycle",
+          "result": "win"
+        },
+        {
+          "at": 1792169574500,
+          "side": "CALL",
+          "reason": "completed-expiry-outcomes-original-structure",
+          "result": "win"
+        },
+        {
+          "at": 1792169605500,
+          "side": "PUT",
+          "reason": "completed-expiry-outcomes-original-structure",
+          "result": "win"
+        },
+        {
+          "at": 1792169652500,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169682500,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169712500,
+          "side": "CALL",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169743000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169773500,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "loss"
+        },
+        {
+          "at": 1792169804500,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "loss"
+        },
+        {
+          "at": 1792169834500,
+          "side": "PUT",
+          "reason": "completed-expiry-outcomes-adaptive-cycle",
+          "result": "win"
+        },
+        {
+          "at": 1792169864500,
+          "side": "CALL",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169915500,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "missing"
+        }
+      ]
+    },
+    {
+      "name": "sentinel-user-video-20261016.json",
+      "counts": {
+        "win": 8,
+        "loss": 5,
+        "tie": 0,
+        "missing": 1
+      },
+      "entries": [
+        {
+          "at": 1792169460000,
+          "side": "CALL",
+          "reason": "closed-structure-and-live-impulse",
+          "result": "loss"
+        },
+        {
+          "at": 1792169514000,
+          "side": "PUT",
+          "reason": "closed-range-extreme-reversal-confirmed",
+          "result": "win"
+        },
+        {
+          "at": 1792169544000,
+          "side": "CALL",
+          "reason": "causal-expiry-analogue",
+          "result": "win"
+        },
+        {
+          "at": 1792169575000,
+          "side": "CALL",
+          "reason": "causal-expiry-analogue",
+          "result": "win"
+        },
+        {
+          "at": 1792169609000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169653000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169683000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169713000,
+          "side": "PUT",
+          "reason": "completed-expiry-outcomes-original-structure",
+          "result": "loss"
+        },
+        {
+          "at": 1792169743000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169774000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "loss"
+        },
+        {
+          "at": 1792169804000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "loss"
+        },
+        {
+          "at": 1792169834000,
+          "side": "CALL",
+          "reason": "completed-expiry-outcomes-original-structure",
+          "result": "loss"
+        },
+        {
+          "at": 1792169864000,
+          "side": "CALL",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "win"
+        },
+        {
+          "at": 1792169915000,
+          "side": "PUT",
+          "reason": "observed-trend-and-30s-cycle-projection",
+          "result": "missing"
+        }
+      ]
+    }
+  ]
+}
