@@ -35,7 +35,7 @@ test('the stable downloadable filename is announced as a binary attachment',asyn
   '/downloads/sentinel-agent-windows.exe']){
   const rule=all.find(x=>x.source===url);
   assert.equal(rule?.headers.find(x=>x.key==='Content-Type')?.value,
-   'application/octet-stream',url);
+   'application/x-msdownload',url);
   assert.match(rule?.headers.find(x=>x.key==='Content-Disposition')?.value||'',
    /attachment/);
  }
