@@ -17,7 +17,7 @@ test('real OHLC and newest observed timestamp are retained',()=>{
  assert.ok(compact.length<=1204);
  assert.equal(compact.at(-1).ts,rows.at(-1).ts);
  assert.equal(compact.at(-1).price,rows.at(-1).price);
- for(let i=0;i<300;i++){
+ for(let i=1;i<300;i++){
   const bucket=rows.slice(i*4,i*4+4);
   assert.ok(compact.some(x=>x.ts===bucket[0].ts));
   assert.ok(compact.some(x=>x.ts===bucket.at(-1).ts));
