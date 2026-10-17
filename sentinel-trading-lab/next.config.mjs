@@ -13,7 +13,7 @@ const agentDownloadHeaders=[
 // Keep 67.1 rollback, 67.18-67.21, the signed update zip and stable aliases.
 const retiredInstallerVersions=[2,3,4,5,6,7,9,10,11,12,13,14,15,16,17];
 const nextConfig={
-  outputFileTracingIncludes:{'/api/agent/windows-exe':['./public/downloads/Sentinel-Agent-Windows.exe']},
+  outputFileTracingIncludes:{'/api/agent/windows-exe':['./public/downloads/Sentinel-Agent-Windows.exe','./public/downloads/sentinel-windows-exe-integrity.json']},
   reactStrictMode:true,
   async redirects(){return [{source:'/console',destination:'/painel',permanent:false},...['13.8.0','13.8.1','13.8.2','13.8.3','13.8.4','13.8.5','13.8.6','13.8.7','13.8.8'].map(version=>({
     source:'/downloads/Sentinel-Agent-'+version+'.exe',
