@@ -1,5 +1,8 @@
 import {readFileSync} from 'node:fs';
-// Serve Windows executables as immutable-style static assets with their real\n// Content-Length and byte ranges. Forced octet-stream / no-store headers made\n// Vercel serve EXEs with Brotli+chunked transfer, unlike working static builds.\n// Keep the alternative ZIP and all existing security/login gates unchanged.\nconst currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json',import.meta.url),'utf8'));
+// Serve Windows EXEs as native static files with their real Content-Length and ranges.
+// Explicit binary response headers previously triggered Brotli+chunked transfer on Vercel.
+// Keep the alternative ZIP, security headers and login gates unchanged.
+const currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json',import.meta.url),'utf8'));
 // Retired binaries no longer take up production deployment space. Existing
 // authenticated direct download links still work via an explicit 307 redirect.
 // Keep 67.1 rollback, 67.18-67.21, the signed update zip and stable aliases.
