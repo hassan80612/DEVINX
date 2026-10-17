@@ -1,0 +1,85 @@
+name: Verify original Sentinel 13.9.34 direct EXE
+on:
+  push:
+    branches:
+      - release/sentinel-13934-original-direct-exe-20261017
+    paths:
+      - '.github/workflows/sentinel-13934-direct-exe.yml'
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-13934-original-direct-exe
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.9'
+      - name: Assert original 13.9.34 unchanged
+        run: |
+          node -e "const r=require('./sentinel-trading-lab/agent/release.json'),p=require('./sentinel-trading-lab/agent/package.json');if(r.version!=='13.9.34'||r.version!==p.version)process.exit(1)"
+          node --test tests/sentinel-received-history-ingestion.test.mjs tests/sentinel-bootstrap-fit.test.mjs tests/sentinel-fast-feed-history.test.mjs
+      - name: Rebuild original binary from preserved source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node sentinel-trading-lab/scripts/build-sentinel-137-installer.mjs
+          node -e "const r=require('./sentinel-trading-lab/public/downloads/agent-update.json');if(r.version!=='13.9.34'||r.zipSha256!=='35cc58b79493b58d802fa7d78b0bb7885debb1863765decc8d37fc3473a6460e')throw new Error('Original 13.9.34 payload hash differs from verified production')"
+          test -s sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.34.exe
+          sha256sum sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.34.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-sentinel-13934-exe
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.34.exe
+          if-no-files-found: error
+          retention-days: 5
+  windows-smoke:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: original-sentinel-13934-exe
+          path: installer
+      - name: Verify embedded 13.9.34 package on Windows
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $exe=Join-Path $PWD 'installer/Sentinel-Agent-13.9.34.exe'
+          if(-not (Test-Path $exe)){throw 'Original executable is missing'}
+          & $exe
+          if($LASTEXITCODE -ne 0){throw "Installer verification failed: $LASTEXITCODE"}
+  publish-direct-binary:
+    needs: windows-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: original-sentinel-13934-exe
+          path: sentinel-trading-lab/public/downloads
+      - name: Store verified original EXE on isolated release branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=release/sentinel-13934-original-direct-exe-20261017
+          current="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [[ "$current" != "$GITHUB_SHA" ]]; then echo "Source moved; abort release"; exit 1; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-13.9.34.exe
+          if git diff --cached --quiet; then echo "EXE unchanged"; exit 0; fi
+          git commit -m 'build(sentinel): original verified 13.9.34 direct download binary'
+          git push origin "HEAD:$branch"
