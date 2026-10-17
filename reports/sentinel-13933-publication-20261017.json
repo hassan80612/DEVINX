@@ -1,0 +1,68 @@
+{
+  "verifiedAt": "2026-10-17T18:27:41.713434+00:00",
+  "version": "13.9.33",
+  "deploymentId": "dpl_JEAN5Ev1eUojheCrsPYa33URRjCt",
+  "commit": "8df7b48bc1dad41e46bd6f14e2c9a95d443ec093",
+  "tree": "4ff367daea2139c6e2e0aa665e30aaeab36f157c",
+  "tests": {
+    "passed": 253,
+    "failed": 0
+  },
+  "downloads": {
+    "agent-update.json": {
+      "bytes": 202,
+      "sha256": "f9d846708dee522f30af3e1b51525a5c54cd2540f3a58c595f5a3ac39daa76bb"
+    },
+    "Sentinel-Agent-13.9.33.exe": {
+      "bytes": 2657792,
+      "sha256": "3630d797cb8272b1c3da9fcfefb2436cb679437467a72bb7cbe8e5f977c2ca81"
+    },
+    "Sentinel-Agent-13.9.33-Alternativo.zip": {
+      "bytes": 391215,
+      "sha256": "cfab57962fbbf961f3d1bb4732cbf884283ce4055df02600b8f7035b653fda5a"
+    },
+    "Sentinel-Agent-Windows.exe": {
+      "bytes": 2657792,
+      "sha256": "3630d797cb8272b1c3da9fcfefb2436cb679437467a72bb7cbe8e5f977c2ca81"
+    },
+    "sentinel-agent-windows.exe": {
+      "bytes": 2657792,
+      "sha256": "3630d797cb8272b1c3da9fcfefb2436cb679437467a72bb7cbe8e5f977c2ca81"
+    }
+  },
+  "manifest": {
+    "format": "sentinel-agent-update-v1",
+    "version": "13.9.33",
+    "build": "13.9.33-defended-levels-observed-reversal-continuation",
+    "zipSha256": "79acf1a64ac8650622631c101c734acacf73de793fbb7015ecc88f2bea7b7f35"
+  },
+  "payloadBytes": 385218,
+  "exactSourceFiles": [
+    "src/core/candle-level-map.mjs",
+    "src/core/observed-level-sequence.mjs",
+    "src/core/historical-price-structure.mjs",
+    "src/core/now-opportunity-engine.mjs",
+    "worker/local-playwright-driver.mjs"
+  ],
+  "zipCRC": "passed",
+  "genericAliases": "identical",
+  "embeddedPayload": "exact-match",
+  "range": "bytes 0-1023/2657792",
+  "windowsNativeLaunch": "not-tested-on-this-linux-host",
+  "accuracy": "synthetic improvement only; no new real-market accuracy measurement",
+  "site": {
+    "status": 200,
+    "url": "https://trading.devinx.com.br",
+    "versionPresent": false
+  },
+  "initialRuntimeErrorScan": {
+    "deploymentScoped": true,
+    "level": [
+      "error",
+      "fatal"
+    ],
+    "since": "10m",
+    "entries": 0,
+    "longTermMonitoring": false
+  }
+}
