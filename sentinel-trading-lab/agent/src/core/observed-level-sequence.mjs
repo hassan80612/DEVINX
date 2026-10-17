@@ -42,6 +42,15 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  rows=rows.slice(contiguous);
  const changes=rows.slice(1).map((q,i)=>Math.abs(q.price-rows[i].price)).filter(x=>x>0);
  const amplitude=Math.max(spot*1e-8,median(changes)*2),turns=observedSwings(rows,amplitude);
+ const previousTurn=new Map(turns.map((turn,i)=>[turn,turns[i-1]??null]));
+ let cursor=0,high=null,low=null;
+ const timeline=rows.map(q=>{
+  while(cursor<turns.length&&turns[cursor].confirmedAt<=q.ts){
+   const turn=turns[cursor++];
+   if(turn.kind==='high')high=turn;else low=turn;
+  }
+  return {q,high,low};
+ });
  const tolerance=map.tolerance;
  const levels=map.levels.filter(z=>z.confirmedPivots>0||
   (z.independentRejections??z.independentTests)>=2);
@@ -56,7 +65,7 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
   confirmedPivots:z.confirmedPivots});
  for(const z of levels){
   let initial=0,brokenAt=null,reclaimedAt=null,retestAt=null,breakExtreme=null;
-  for(const q of rows){
+  for(const {q,high,low} of timeline){
    const position=q.price>z.high+tolerance?1:q.price<z.low-tolerance?-1:0;
    if(!initial){if(position)initial=position;continue;}
    if(!brokenAt&&position===-initial){brokenAt=q.ts;breakExtreme=q.price;continue;}
@@ -67,9 +76,9 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
    }
    if(position===initial&&!reclaimedAt)reclaimedAt=q.ts;
    if(reclaimedAt){
-    const extremeKind=initial>0?'low':'high';
-    const extreme=turns.filter(p=>p.kind===extremeKind&&p.at>=brokenAt&&p.confirmedAt<=q.ts).at(-1);
-    const pivot=extreme&&turns.filter(p=>p.kind!==extremeKind&&p.at<extreme.at&&p.confirmedAt<=q.ts).at(-1);
+    const currentExtreme=initial>0?low:high;
+    const extreme=currentExtreme&&currentExtreme.at>=brokenAt?currentExtreme:null;
+    const pivot=extreme&&previousTurn.get(extreme);
     if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial)
      events.push({kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
       level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});

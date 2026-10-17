@@ -119,7 +119,9 @@ export class DemoTradingRuntime{
       this.nextEvalMs=0
     }
     const candles=Array.isArray(market.candles)?market.candles.filter(c=>[c?.open,c?.high,c?.low,c?.close].every(v=>Number.isFinite(Number(v)))):[];
-    const observedQuotes=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number.isFinite(Number(x?.price))&&Number(x.price)>0):[];
+    const lastReceivedQuoteAt=Number(market.quoteHistory?.at(-1)?.ts);
+    const historyCutoff=this.settings.engine&&Number.isFinite(lastReceivedQuoteAt)?lastReceivedQuoteAt-300000:-Infinity;
+    const observedQuotes=Array.isArray(market.quoteHistory)?market.quoteHistory.filter(x=>Number.isFinite(Number(x?.ts))&&Number(x.ts)>=historyCutoff&&Number.isFinite(Number(x?.price))&&Number(x.price)>0):[];
     const quoteHistory=this.settings.engine?
       (observedQuotes.length>2400?compactObservedQuoteHistory(observedQuotes):observedQuotes):observedQuotes.slice(-900);
     this.externalMarket={...market,candles,quoteHistory,quote:Number(market.quote??market.price??quoteHistory.at(-1)?.price??candles.at(-1)?.close),quoteTs:Number(market.quoteTs||market.lastQuoteAt||0),source:market.source||String(market.provider||'LIVE').toUpperCase()};

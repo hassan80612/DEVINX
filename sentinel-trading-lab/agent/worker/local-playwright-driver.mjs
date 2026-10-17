@@ -369,6 +369,8 @@ function appendQuoteSample(st,ts,price){
     st.quoteHistory[st.quoteHistory.length-1]={ts:t,price:p};return;
   }
   st.quoteHistory.push({ts:t,price:p});
+  let expired=0;while(expired<st.quoteHistory.length&&Number(st.quoteHistory[expired].ts)<t-300000)expired++;
+  if(expired)st.quoteHistory.splice(0,expired);
   if(st.quoteHistory.length>6000)st.quoteHistory=compactObservedQuoteHistory(st.quoteHistory)
 }
 function protocolScan(data,st,direction='in'){
@@ -452,7 +454,7 @@ function protocolScan(data,st,direction='in'){
         if(ts>receivedAt||ts<receivedAt-300000||known.has(ts))continue;
         known.set(ts,{ts,price:Number(c.close),receivedAt,source:'broker-closed-1s'});
       }
-      const observed=[...known.values()].sort((a,b)=>a.ts-b.ts);
+      const observed=[...known.values()].filter(q=>Number(q.ts)>=receivedAt-300000).sort((a,b)=>a.ts-b.ts);
       st.quoteHistory=observed.length>6000?compactObservedQuoteHistory(observed):observed;
       st.lastQuoteBackfillAt=receivedAt;
       if(rid)st.marketRequests.delete(rid);
@@ -1305,9 +1307,9 @@ export class LocalPlaywrightDriver{
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.9.34'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.9.35'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.34';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.35';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');

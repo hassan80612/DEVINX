@@ -15,7 +15,7 @@ type Status=any;
 // authenticated worker/manager status and may legitimately be older.
 const WEB_RELEASE_VERSION=agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-Windows.exe?v=${encodeURIComponent(AVAILABLE_AGENT_VERSION)}`;
+const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${encodeURIComponent(AVAILABLE_AGENT_VERSION)}.exe?build=${encodeURIComponent(agentRelease.build)}`;
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();
@@ -597,4 +597,5 @@ function Text({label,value,onChange,type='text'}:{label:string,value:any,onChang
 function Num({label,value,onChange}:{label:string,value:any,onChange:any}){const {t}=useSentinelLocale();return <label className="field"><span>{t(label)}</span><input type="number" value={value??''} onChange={onChange}/></label>}
 function Select({label,value,onChange,options}:{label:string,value:any,onChange:any,options:string[][]}){const {t}=useSentinelLocale();return <label className="field"><span>{t(label)}</span><select value={value} onChange={onChange}>{options.map(([v,l])=><option key={v} value={v}>{t(l)}</option>)}</select></label>}
 function fmt(v:any,d=5){return Number.isFinite(Number(v))?Number(v).toFixed(d):'—'}
+
 
