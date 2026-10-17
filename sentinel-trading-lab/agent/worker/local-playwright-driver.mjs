@@ -369,7 +369,15 @@ function appendQuoteSample(st,ts,price){
     st.quoteHistory[st.quoteHistory.length-1]={ts:t,price:p};return;
   }
   st.quoteHistory.push({ts:t,price:p});
-  if(st.quoteHistory.length>6000)st.quoteHistory=compactObservedQuoteHistory(st.quoteHistory)
+  // Keep only the last five minutes in RAM. Compact once per second at most;
+  // retain real first/high/low/last prices per second, not synthetic candles.
+  // The latest genuine quote (and its timestamp) remains available to the model.
+  const oldestTs=Number(st.quoteHistory[0]?.ts||t);
+  if((st.quoteHistory.length>1500||t-oldestTs>300000)&&
+     (t-Number(st.lastQuoteCompactionAt||0)>=1000||st.quoteHistory.length>1800)){
+    st.quoteHistory=compactObservedQuoteHistory(st.quoteHistory,{windowMs:300000,bucketMs:1000});
+    st.lastQuoteCompactionAt=t;
+  }
 }
 function protocolScan(data,st,direction='in'){
   if(!data||typeof data!=='object')return;
