@@ -1,10 +1,5 @@
 import {readFileSync} from 'node:fs';
-const currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json',import.meta.url),'utf8'));
-const agentDownloadHeaders=[
-  {key:'Content-Type',value:'application/octet-stream'},
-  {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
-  {key:'Cache-Control',value:'private, no-store'}
-];
+// Serve Windows executables as immutable-style static assets with their real\n// Content-Length and byte ranges. Forced octet-stream / no-store headers made\n// Vercel serve EXEs with Brotli+chunked transfer, unlike working static builds.\n// Keep the alternative ZIP and all existing security/login gates unchanged.\nconst currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json',import.meta.url),'utf8'));
 // Retired binaries no longer take up production deployment space. Existing
 // authenticated direct download links still work via an explicit 307 redirect.
 // Keep 67.1 rollback, 67.18-67.21, the signed update zip and stable aliases.
@@ -20,10 +15,6 @@ const nextConfig={
     permanent:false
   }))]},
   async headers(){return[
-    {source:'/downloads/sentinel-agent-windows.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-Windows.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-13.8.9.exe',headers:agentDownloadHeaders},
-    {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'.exe',headers:agentDownloadHeaders},
     {source:'/downloads/Sentinel-Agent-'+currentAgentRelease.version+'-Alternativo.zip',headers:[
       {key:'Content-Type',value:'application/zip'},
       {key:'Content-Disposition',value:'attachment'},
