@@ -1,0 +1,92 @@
+name: Sentinel 13.9.34 original EXE delivery
+on:
+  push:
+    branches: [fix/sentinel-13934-exe-delivery-20261017]
+    paths:
+      - '.github/workflows/sentinel-13934-original-exe.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-13934-original-exe
+  cancel-in-progress: false
+jobs:
+  build-original:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Validate unchanged 13.9.34 agent code
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test tests/sentinel-fast-feed-history.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-received-history-ingestion.test.mjs tests/sentinel-bootstrap-fit.test.mjs
+          node -e "const r=require('./sentinel-trading-lab/agent/release.json'),p=require('./sentinel-trading-lab/agent/package.json'); if(r.version!=='13.9.34'||p.version!==r.version)process.exit(1)"
+      - name: Package original 13.9.34 installer unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          cp public/downloads/install-agent-v88.ps1 agent/worker/install-agent-update.ps1
+          (
+            cd agent
+            zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store'
+          )
+          export RELEASE_SHA="$(sha256sum public/downloads/agent_payload_v88.zip | cut -d' ' -f1)"
+          python3 -c 'import json,os;r=json.load(open("agent/release.json"));print(json.dumps({"format":"sentinel-agent-update-v1","version":r["version"],"build":r["build"],"zipSha256":os.environ["RELEASE_SHA"]},separators=(",",":")))' > public/downloads/agent-update.json
+          rm -f agent/worker/install-agent-update.ps1
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/Sentinel-Agent-Windows.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-13934-original-exe-verification
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          if-no-files-found: error
+          retention-days: 3
+      - name: Preserve built original 13.9.34 executable in Git
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=fix/sentinel-13934-exe-delivery-20261017
+          actual="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          test "$actual" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe
+          if ! git diff --cached --quiet; then
+            git commit -m "build(sentinel): restore original 13.9.34 executable without analyst changes [skip ci]"
+            git push origin "HEAD:$branch"
+          fi
+  verify-original-windows:
+    needs: build-original
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-13934-original-exe-verification
+          path: installer
+      - name: Validate EXE embedded original agent without installing
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $exe=Join-Path $PWD 'installer/Sentinel-Agent-Windows.exe'
+          if(-not (Test-Path $exe)){throw 'Installer not present'}
+          & $exe
+          if($LASTEXITCODE -ne 0){throw "Installer verification failed: $LASTEXITCODE"}
