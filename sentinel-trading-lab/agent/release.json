@@ -1,13 +1,13 @@
 {
-  "version": "13.9.31",
-  "build": "13.9.31-historical-levels-100-local-signal-clock",
+  "version": "13.9.32",
+  "build": "13.9.32-selected-expiry-historical-consistency",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "shared-market-base-one-decision-vnext",
-    "modelValidation": "13.9.31-observed-level-reactions-breakouts-replay-not-live-accuracy",
+    "modelValidation": "13.9.32-selected-projection-structure-regression-not-live-accuracy",
     "forecastModel": "now-structural-v1",
     "historicalStructure": {
       "closedCandles": 100,

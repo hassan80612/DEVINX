@@ -178,7 +178,11 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   const decision=Number(durationMs)===30000&&expiryDirectionSelector?
    expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt}):baseline;
   const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
-  const located=applyHistoricalPriceStructure({candidate:{...decision,pendingForecast:forecast},structure,...input});
+  // Historical reactions must agree with the projection actually selected
+  // above. Comparing against the discarded narrow forecast can both veto
+  // an agreeing reaction and allow one that contradicts the selected side.
+  const selectedForecast=forecast?.ready&&decision.ready?decision:forecast;
+  const located=applyHistoricalPriceStructure({candidate:{...decision,pendingForecast:selectedForecast},structure,...input});
   delete located.pendingForecast;
   return {...located,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(located.priceStructure?.reaction?'support_resistance':context.strategy):engineId,
