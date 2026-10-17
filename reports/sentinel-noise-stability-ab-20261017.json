@@ -1,0 +1,312 @@
+{
+  "spec": {
+    "baseCommit": "406c8f6b7ffa6fa90cad6575c0903ba78205b697",
+    "mode": "noise-gate",
+    "rule": "Suppress an unstable projection only when the past 90s path length at 1s resolution is >=2 times the path length at 5s resolution. Otherwise preserve the released direction. No fixed wait.",
+    "development": "Rule motivated by the previous synthetic random-walk benefit and structured-path regressions. Previous seed 2026101761 is development data.",
+    "seed": 2026101762,
+    "families": [
+      "trend",
+      "range",
+      "variable-range",
+      "sharp-turns",
+      "trend-switch",
+      "jump-retrace",
+      "random-walk",
+      "volatility-switch"
+    ],
+    "label": "",
+    "caveats": [
+      "Video is development data.",
+      "Two video extracts are one source.",
+      "Synthetic trajectories do not measure real trading accuracy.",
+      "No broker settlement, manual click or Windows scheduling modeled."
+    ]
+  },
+  "results": [
+    {
+      "kind": "known-video",
+      "file": "sentinel-user-video-broker-6dp-20261016.json",
+      "metrics": [
+        {
+          "win": 11,
+          "loss": 3,
+          "tie": 0,
+          "missing": 1,
+          "completed": 14,
+          "winRate": 0.7857142857142857,
+          "maxLossStreak": 2
+        },
+        {
+          "win": 9,
+          "loss": 4,
+          "tie": 0,
+          "missing": 1,
+          "completed": 13,
+          "winRate": 0.6923076923076923,
+          "maxLossStreak": 3
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 2,
+          "newCandidateEntries": 2
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 140,
+          "changed": 0,
+          "suppressed": 48,
+          "noiseEligible": 48
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 0,
+      "removedBaseWins": 2,
+      "newCandidateEntries": 2,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 1.4654209999998784,
+          "p95Ms": 6.198236999999608
+        },
+        {
+          "medianMs": 1.4918190000007598,
+          "p95Ms": 9.737345999999889
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "price": 0.842995,
+            "dueAt": 1792169440500,
+            "result": "win"
+          },
+          {
+            "at": 1792169450000,
+            "side": "PUT",
+            "price": 0.843185,
+            "dueAt": 1792169480000,
+            "result": "win"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "price": 0.843305,
+            "dueAt": 1792169543500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "price": 0.843255,
+            "dueAt": 1792169573500,
+            "result": "win"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "price": 0.843285,
+            "dueAt": 1792169604500,
+            "result": "win"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "price": 0.843325,
+            "dueAt": 1792169635500,
+            "result": "win"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "price": 0.843205,
+            "dueAt": 1792169682500,
+            "result": "win"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "price": 0.843095,
+            "dueAt": 1792169712500,
+            "result": "win"
+          },
+          {
+            "at": 1792169712500,
+            "side": "CALL",
+            "price": 0.842865,
+            "dueAt": 1792169742500,
+            "result": "win"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "price": 0.842945,
+            "dueAt": 1792169773000,
+            "result": "win"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "price": 0.842985,
+            "dueAt": 1792169803500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "price": 0.843105,
+            "dueAt": 1792169834500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169834500,
+            "side": "PUT",
+            "price": 0.843155,
+            "dueAt": 1792169864500,
+            "result": "win"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "price": 0.842755,
+            "dueAt": 1792169894500,
+            "result": "win"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "price": 0.842895,
+            "dueAt": 1792169945500,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "price": 0.842995,
+            "dueAt": 1792169440500,
+            "result": "win"
+          },
+          {
+            "at": 1792169450000,
+            "side": "PUT",
+            "price": 0.843185,
+            "dueAt": 1792169480000,
+            "result": "win"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "price": 0.843305,
+            "dueAt": 1792169543500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "price": 0.843255,
+            "dueAt": 1792169573500,
+            "result": "win"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "price": 0.843285,
+            "dueAt": 1792169604500,
+            "result": "win"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "price": 0.843325,
+            "dueAt": 1792169635500,
+            "result": "win"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "price": 0.843205,
+            "dueAt": 1792169682500,
+            "result": "win"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "price": 0.843095,
+            "dueAt": 1792169712500,
+            "result": "win"
+          },
+          {
+            "at": 1792169725000,
+            "side": "PUT",
+            "price": 0.842895,
+            "dueAt": 1792169755000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169755000,
+            "side": "PUT",
+            "price": 0.842955,
+            "dueAt": 1792169785000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "price": 0.843105,
+            "dueAt": 1792169834500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169834500,
+            "side": "PUT",
+            "price": 0.843155,
+            "dueAt": 1792169864500,
+            "result": "win"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "price": 0.842755,
+            "dueAt": 1792169894500,
+            "result": "win"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "price": 0.842895,
+            "dueAt": 1792169945500,
+            "result": "missing"
+          }
+        ]
+      ]
+    }
+  ],
+  "summary": {
+    "stoppedEarly": true,
+    "changedSessions": 1,
+    "totals": [
+      {
+        "win": 0,
+        "loss": 0
+      },
+      {
+        "win": 0,
+        "loss": 0
+      }
+    ],
+    "regressions": [
+      "sentinel-user-video-broker-6dp-20261016.json"
+    ]
+  }
+}

@@ -1,0 +1,6404 @@
+{
+  "spec": {
+    "baseCommit": "406c8f6b7ffa6fa90cad6575c0903ba78205b697",
+    "variants": [
+      "released",
+      "median-90-120-180",
+      "suspend-unstable-projection"
+    ],
+    "rule": "Only when both shorter-window forecasts are ready and oppose the selected released forecast. Median chooses their median move; gate removes only the projection and retains independent confirmed level reactions.",
+    "seed": 2026101761,
+    "families": [
+      "trend",
+      "range",
+      "variable-range",
+      "sharp-turns",
+      "trend-switch",
+      "jump-retrace",
+      "random-walk",
+      "volatility-switch"
+    ],
+    "caveats": [
+      "The video is already used in development, not independent validation.",
+      "Both video extractions represent the same source.",
+      "Generated trajectories are stress tests, not real accuracy.",
+      "Runtime gate and actual entry/expiry lifecycle run; no broker orders or Windows scheduling modeled."
+    ]
+  },
+  "results": [
+    {
+      "kind": "known-video",
+      "file": "sentinel-user-video-broker-6dp-20261016.json",
+      "metrics": [
+        {
+          "win": 11,
+          "loss": 3,
+          "tie": 0,
+          "missing": 1,
+          "completed": 14,
+          "winRate": 0.7857142857142857,
+          "maxLossStreak": 2
+        },
+        {
+          "win": 10,
+          "loss": 4,
+          "tie": 0,
+          "missing": 1,
+          "completed": 14,
+          "winRate": 0.7142857142857143,
+          "maxLossStreak": 1
+        },
+        {
+          "win": 8,
+          "loss": 4,
+          "tie": 0,
+          "missing": 1,
+          "completed": 12,
+          "winRate": 0.6666666666666666,
+          "maxLossStreak": 2
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 1,
+          "spoiled": 2,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 4,
+          "newCandidateEntries": 4
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 140,
+          "changed": 140,
+          "suppressed": 0
+        },
+        {
+          "unstable": 140,
+          "changed": 0,
+          "suppressed": 140
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 1,
+      "spoiledAtSameTime": 2,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 1.400021999999808,
+          "p95Ms": 6.088279999999941
+        },
+        {
+          "medianMs": 1.4158349999997881,
+          "p95Ms": 9.669887000000017
+        },
+        {
+          "medianMs": 1.4107169999997495,
+          "p95Ms": 6.51310199999989
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "price": 0.842995,
+            "dueAt": 1792169440500,
+            "result": "win"
+          },
+          {
+            "at": 1792169450000,
+            "side": "PUT",
+            "price": 0.843185,
+            "dueAt": 1792169480000,
+            "result": "win"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "price": 0.843305,
+            "dueAt": 1792169543500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "price": 0.843255,
+            "dueAt": 1792169573500,
+            "result": "win"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "price": 0.843285,
+            "dueAt": 1792169604500,
+            "result": "win"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "price": 0.843325,
+            "dueAt": 1792169635500,
+            "result": "win"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "price": 0.843205,
+            "dueAt": 1792169682500,
+            "result": "win"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "price": 0.843095,
+            "dueAt": 1792169712500,
+            "result": "win"
+          },
+          {
+            "at": 1792169712500,
+            "side": "CALL",
+            "price": 0.842865,
+            "dueAt": 1792169742500,
+            "result": "win"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "price": 0.842945,
+            "dueAt": 1792169773000,
+            "result": "win"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "price": 0.842985,
+            "dueAt": 1792169803500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169804500,
+            "side": "PUT",
+            "price": 0.843105,
+            "dueAt": 1792169834500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169834500,
+            "side": "PUT",
+            "price": 0.843155,
+            "dueAt": 1792169864500,
+            "result": "win"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "price": 0.842755,
+            "dueAt": 1792169894500,
+            "result": "win"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "price": 0.842895,
+            "dueAt": 1792169945500,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "price": 0.842995,
+            "dueAt": 1792169440500,
+            "result": "win"
+          },
+          {
+            "at": 1792169450000,
+            "side": "PUT",
+            "price": 0.843185,
+            "dueAt": 1792169480000,
+            "result": "win"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "price": 0.843305,
+            "dueAt": 1792169543500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "price": 0.843255,
+            "dueAt": 1792169573500,
+            "result": "win"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "price": 0.843285,
+            "dueAt": 1792169604500,
+            "result": "win"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "price": 0.843325,
+            "dueAt": 1792169635500,
+            "result": "win"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "price": 0.843205,
+            "dueAt": 1792169682500,
+            "result": "win"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "price": 0.843095,
+            "dueAt": 1792169712500,
+            "result": "win"
+          },
+          {
+            "at": 1792169712500,
+            "side": "PUT",
+            "price": 0.842865,
+            "dueAt": 1792169742500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "price": 0.842945,
+            "dueAt": 1792169773000,
+            "result": "win"
+          },
+          {
+            "at": 1792169773500,
+            "side": "PUT",
+            "price": 0.842985,
+            "dueAt": 1792169803500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169804500,
+            "side": "CALL",
+            "price": 0.843105,
+            "dueAt": 1792169834500,
+            "result": "win"
+          },
+          {
+            "at": 1792169834500,
+            "side": "CALL",
+            "price": 0.843155,
+            "dueAt": 1792169864500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169864500,
+            "side": "CALL",
+            "price": 0.842755,
+            "dueAt": 1792169894500,
+            "result": "win"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "price": 0.842895,
+            "dueAt": 1792169945500,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792169410500,
+            "side": "CALL",
+            "price": 0.842995,
+            "dueAt": 1792169440500,
+            "result": "win"
+          },
+          {
+            "at": 1792169450000,
+            "side": "PUT",
+            "price": 0.843185,
+            "dueAt": 1792169480000,
+            "result": "win"
+          },
+          {
+            "at": 1792169513500,
+            "side": "CALL",
+            "price": 0.843305,
+            "dueAt": 1792169543500,
+            "result": "loss"
+          },
+          {
+            "at": 1792169543500,
+            "side": "CALL",
+            "price": 0.843255,
+            "dueAt": 1792169573500,
+            "result": "win"
+          },
+          {
+            "at": 1792169574500,
+            "side": "CALL",
+            "price": 0.843285,
+            "dueAt": 1792169604500,
+            "result": "win"
+          },
+          {
+            "at": 1792169605500,
+            "side": "PUT",
+            "price": 0.843325,
+            "dueAt": 1792169635500,
+            "result": "win"
+          },
+          {
+            "at": 1792169652500,
+            "side": "PUT",
+            "price": 0.843205,
+            "dueAt": 1792169682500,
+            "result": "win"
+          },
+          {
+            "at": 1792169682500,
+            "side": "PUT",
+            "price": 0.843095,
+            "dueAt": 1792169712500,
+            "result": "win"
+          },
+          {
+            "at": 1792169725000,
+            "side": "PUT",
+            "price": 0.842895,
+            "dueAt": 1792169755000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169755000,
+            "side": "PUT",
+            "price": 0.842955,
+            "dueAt": 1792169785000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169817500,
+            "side": "PUT",
+            "price": 0.843155,
+            "dueAt": 1792169847500,
+            "result": "win"
+          },
+          {
+            "at": 1792169851000,
+            "side": "CALL",
+            "price": 0.842965,
+            "dueAt": 1792169881000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169915500,
+            "side": "PUT",
+            "price": 0.842895,
+            "dueAt": 1792169945500,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "known-video",
+      "file": "sentinel-user-video-20261016.json",
+      "metrics": [
+        {
+          "win": 10,
+          "loss": 3,
+          "tie": 0,
+          "missing": 1,
+          "completed": 13,
+          "winRate": 0.7692307692307693,
+          "maxLossStreak": 2
+        },
+        {
+          "win": 8,
+          "loss": 5,
+          "tie": 0,
+          "missing": 1,
+          "completed": 13,
+          "winRate": 0.6153846153846154,
+          "maxLossStreak": 1
+        },
+        {
+          "win": 5,
+          "loss": 6,
+          "tie": 0,
+          "missing": 1,
+          "completed": 11,
+          "winRate": 0.45454545454545453,
+          "maxLossStreak": 4
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 1,
+          "spoiled": 3,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 5,
+          "newCandidateEntries": 5
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 74,
+          "changed": 74,
+          "suppressed": 0
+        },
+        {
+          "unstable": 74,
+          "changed": 0,
+          "suppressed": 74
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 1,
+      "spoiledAtSameTime": 3,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 1.1845250000005763,
+          "p95Ms": 5.966399999999339
+        },
+        {
+          "medianMs": 1.1793679999991582,
+          "p95Ms": 7.163113000000521
+        },
+        {
+          "medianMs": 1.181391000000076,
+          "p95Ms": 6.32673799999975
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "price": 0.84335,
+            "dueAt": 1792169490000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "price": 0.8433,
+            "dueAt": 1792169544000,
+            "result": "win"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "price": 0.84325,
+            "dueAt": 1792169574000,
+            "result": "win"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "price": 0.84328,
+            "dueAt": 1792169605000,
+            "result": "win"
+          },
+          {
+            "at": 1792169609000,
+            "side": "PUT",
+            "price": 0.84322,
+            "dueAt": 1792169639000,
+            "result": "win"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "price": 0.8432,
+            "dueAt": 1792169683000,
+            "result": "win"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "price": 0.8431,
+            "dueAt": 1792169713000,
+            "result": "win"
+          },
+          {
+            "at": 1792169713000,
+            "side": "CALL",
+            "price": 0.84286,
+            "dueAt": 1792169743000,
+            "result": "win"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "price": 0.84295,
+            "dueAt": 1792169773000,
+            "result": "win"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "price": 0.84298,
+            "dueAt": 1792169804000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169804000,
+            "side": "PUT",
+            "price": 0.84308,
+            "dueAt": 1792169834000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169834000,
+            "side": "PUT",
+            "price": 0.84315,
+            "dueAt": 1792169864000,
+            "result": "win"
+          },
+          {
+            "at": 1792169864000,
+            "side": "CALL",
+            "price": 0.84276,
+            "dueAt": 1792169894000,
+            "result": "win"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "price": 0.84284,
+            "dueAt": 1792169945000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "price": 0.84335,
+            "dueAt": 1792169490000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "price": 0.8433,
+            "dueAt": 1792169544000,
+            "result": "win"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "price": 0.84325,
+            "dueAt": 1792169574000,
+            "result": "win"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "price": 0.84328,
+            "dueAt": 1792169605000,
+            "result": "win"
+          },
+          {
+            "at": 1792169609000,
+            "side": "CALL",
+            "price": 0.84322,
+            "dueAt": 1792169639000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "price": 0.8432,
+            "dueAt": 1792169683000,
+            "result": "win"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "price": 0.8431,
+            "dueAt": 1792169713000,
+            "result": "win"
+          },
+          {
+            "at": 1792169713000,
+            "side": "PUT",
+            "price": 0.84286,
+            "dueAt": 1792169743000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169743000,
+            "side": "PUT",
+            "price": 0.84295,
+            "dueAt": 1792169773000,
+            "result": "win"
+          },
+          {
+            "at": 1792169774000,
+            "side": "PUT",
+            "price": 0.84298,
+            "dueAt": 1792169804000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169804000,
+            "side": "CALL",
+            "price": 0.84308,
+            "dueAt": 1792169834000,
+            "result": "win"
+          },
+          {
+            "at": 1792169834000,
+            "side": "CALL",
+            "price": 0.84315,
+            "dueAt": 1792169864000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169864000,
+            "side": "CALL",
+            "price": 0.84276,
+            "dueAt": 1792169894000,
+            "result": "win"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "price": 0.84284,
+            "dueAt": 1792169945000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792169460000,
+            "side": "CALL",
+            "price": 0.84335,
+            "dueAt": 1792169490000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169514000,
+            "side": "PUT",
+            "price": 0.8433,
+            "dueAt": 1792169544000,
+            "result": "win"
+          },
+          {
+            "at": 1792169544000,
+            "side": "CALL",
+            "price": 0.84325,
+            "dueAt": 1792169574000,
+            "result": "win"
+          },
+          {
+            "at": 1792169575000,
+            "side": "CALL",
+            "price": 0.84328,
+            "dueAt": 1792169605000,
+            "result": "win"
+          },
+          {
+            "at": 1792169615000,
+            "side": "CALL",
+            "price": 0.84322,
+            "dueAt": 1792169645000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169653000,
+            "side": "PUT",
+            "price": 0.8432,
+            "dueAt": 1792169683000,
+            "result": "win"
+          },
+          {
+            "at": 1792169683000,
+            "side": "PUT",
+            "price": 0.8431,
+            "dueAt": 1792169713000,
+            "result": "win"
+          },
+          {
+            "at": 1792169725000,
+            "side": "PUT",
+            "price": 0.84289,
+            "dueAt": 1792169755000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169755000,
+            "side": "PUT",
+            "price": 0.84296,
+            "dueAt": 1792169785000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169791000,
+            "side": "PUT",
+            "price": 0.84301,
+            "dueAt": 1792169821000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169842000,
+            "side": "CALL",
+            "price": 0.84301,
+            "dueAt": 1792169872000,
+            "result": "loss"
+          },
+          {
+            "at": 1792169915000,
+            "side": "PUT",
+            "price": 0.84284,
+            "dueAt": 1792169945000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "trend",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 30,
+          "loss": 0,
+          "tie": 0,
+          "missing": 1,
+          "completed": 30,
+          "winRate": 1,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 30,
+          "loss": 0,
+          "tie": 0,
+          "missing": 1,
+          "completed": 30,
+          "winRate": 1,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 30,
+          "loss": 0,
+          "tie": 0,
+          "missing": 1,
+          "completed": 30,
+          "winRate": 1,
+          "maxLossStreak": 0
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 0,
+          "changed": 0,
+          "suppressed": 0
+        },
+        {
+          "unstable": 0,
+          "changed": 0,
+          "suppressed": 0
+        }
+      ],
+      "sameEntries": true,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 0,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 5.858282000001054,
+          "p95Ms": 6.874781000002258
+        },
+        {
+          "medianMs": 7.130801999999676,
+          "p95Ms": 8.127926999997726
+        },
+        {
+          "medianMs": 6.354717999998684,
+          "p95Ms": 7.706599000001006
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0999974126681242,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.100033258314927,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "CALL",
+            "price": 1.1000889677669943,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "CALL",
+            "price": 1.100159113397644,
+            "dueAt": 1792250160000,
+            "result": "win"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.1002136536037435,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "CALL",
+            "price": 1.1002462310767518,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "CALL",
+            "price": 1.100280966454407,
+            "dueAt": 1792250250000,
+            "result": "win"
+          },
+          {
+            "at": 1792250250000,
+            "side": "CALL",
+            "price": 1.1003390031711664,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "CALL",
+            "price": 1.1004098024154738,
+            "dueAt": 1792250310000,
+            "result": "win"
+          },
+          {
+            "at": 1792250310000,
+            "side": "CALL",
+            "price": 1.100457917273594,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "CALL",
+            "price": 1.1004899776537371,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250370000,
+            "side": "CALL",
+            "price": 1.1005273339102455,
+            "dueAt": 1792250400000,
+            "result": "win"
+          },
+          {
+            "at": 1792250400000,
+            "side": "CALL",
+            "price": 1.1005880217531034,
+            "dueAt": 1792250430000,
+            "result": "win"
+          },
+          {
+            "at": 1792250430000,
+            "side": "CALL",
+            "price": 1.1006553160301047,
+            "dueAt": 1792250460000,
+            "result": "win"
+          },
+          {
+            "at": 1792250460000,
+            "side": "CALL",
+            "price": 1.1007061998012635,
+            "dueAt": 1792250490000,
+            "result": "win"
+          },
+          {
+            "at": 1792250490000,
+            "side": "CALL",
+            "price": 1.1007372366287085,
+            "dueAt": 1792250520000,
+            "result": "win"
+          },
+          {
+            "at": 1792250520000,
+            "side": "CALL",
+            "price": 1.10077520798458,
+            "dueAt": 1792250550000,
+            "result": "win"
+          },
+          {
+            "at": 1792250550000,
+            "side": "CALL",
+            "price": 1.1008384811540293,
+            "dueAt": 1792250580000,
+            "result": "win"
+          },
+          {
+            "at": 1792250580000,
+            "side": "CALL",
+            "price": 1.1009060773115698,
+            "dueAt": 1792250610000,
+            "result": "win"
+          },
+          {
+            "at": 1792250610000,
+            "side": "CALL",
+            "price": 1.1009512222467315,
+            "dueAt": 1792250640000,
+            "result": "win"
+          },
+          {
+            "at": 1792250640000,
+            "side": "CALL",
+            "price": 1.100982585992751,
+            "dueAt": 1792250670000,
+            "result": "win"
+          },
+          {
+            "at": 1792250670000,
+            "side": "CALL",
+            "price": 1.1010222351828103,
+            "dueAt": 1792250700000,
+            "result": "win"
+          },
+          {
+            "at": 1792250700000,
+            "side": "CALL",
+            "price": 1.1010904191874102,
+            "dueAt": 1792250730000,
+            "result": "win"
+          },
+          {
+            "at": 1792250730000,
+            "side": "CALL",
+            "price": 1.1011523665424785,
+            "dueAt": 1792250760000,
+            "result": "win"
+          },
+          {
+            "at": 1792250760000,
+            "side": "CALL",
+            "price": 1.1011982376388973,
+            "dueAt": 1792250790000,
+            "result": "win"
+          },
+          {
+            "at": 1792250790000,
+            "side": "CALL",
+            "price": 1.1012262195171025,
+            "dueAt": 1792250820000,
+            "result": "win"
+          },
+          {
+            "at": 1792250820000,
+            "side": "CALL",
+            "price": 1.1012714584841294,
+            "dueAt": 1792250850000,
+            "result": "win"
+          },
+          {
+            "at": 1792250850000,
+            "side": "CALL",
+            "price": 1.101337507262223,
+            "dueAt": 1792250880000,
+            "result": "win"
+          },
+          {
+            "at": 1792250880000,
+            "side": "CALL",
+            "price": 1.1014042289461319,
+            "dueAt": 1792250910000,
+            "result": "win"
+          },
+          {
+            "at": 1792250910000,
+            "side": "CALL",
+            "price": 1.1014460643255162,
+            "dueAt": 1792250940000,
+            "result": "win"
+          },
+          {
+            "at": 1792250940000,
+            "side": "CALL",
+            "price": 1.1014748884863477,
+            "dueAt": 1792250970000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0999974126681242,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.100033258314927,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "CALL",
+            "price": 1.1000889677669943,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "CALL",
+            "price": 1.100159113397644,
+            "dueAt": 1792250160000,
+            "result": "win"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.1002136536037435,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "CALL",
+            "price": 1.1002462310767518,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "CALL",
+            "price": 1.100280966454407,
+            "dueAt": 1792250250000,
+            "result": "win"
+          },
+          {
+            "at": 1792250250000,
+            "side": "CALL",
+            "price": 1.1003390031711664,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "CALL",
+            "price": 1.1004098024154738,
+            "dueAt": 1792250310000,
+            "result": "win"
+          },
+          {
+            "at": 1792250310000,
+            "side": "CALL",
+            "price": 1.100457917273594,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "CALL",
+            "price": 1.1004899776537371,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250370000,
+            "side": "CALL",
+            "price": 1.1005273339102455,
+            "dueAt": 1792250400000,
+            "result": "win"
+          },
+          {
+            "at": 1792250400000,
+            "side": "CALL",
+            "price": 1.1005880217531034,
+            "dueAt": 1792250430000,
+            "result": "win"
+          },
+          {
+            "at": 1792250430000,
+            "side": "CALL",
+            "price": 1.1006553160301047,
+            "dueAt": 1792250460000,
+            "result": "win"
+          },
+          {
+            "at": 1792250460000,
+            "side": "CALL",
+            "price": 1.1007061998012635,
+            "dueAt": 1792250490000,
+            "result": "win"
+          },
+          {
+            "at": 1792250490000,
+            "side": "CALL",
+            "price": 1.1007372366287085,
+            "dueAt": 1792250520000,
+            "result": "win"
+          },
+          {
+            "at": 1792250520000,
+            "side": "CALL",
+            "price": 1.10077520798458,
+            "dueAt": 1792250550000,
+            "result": "win"
+          },
+          {
+            "at": 1792250550000,
+            "side": "CALL",
+            "price": 1.1008384811540293,
+            "dueAt": 1792250580000,
+            "result": "win"
+          },
+          {
+            "at": 1792250580000,
+            "side": "CALL",
+            "price": 1.1009060773115698,
+            "dueAt": 1792250610000,
+            "result": "win"
+          },
+          {
+            "at": 1792250610000,
+            "side": "CALL",
+            "price": 1.1009512222467315,
+            "dueAt": 1792250640000,
+            "result": "win"
+          },
+          {
+            "at": 1792250640000,
+            "side": "CALL",
+            "price": 1.100982585992751,
+            "dueAt": 1792250670000,
+            "result": "win"
+          },
+          {
+            "at": 1792250670000,
+            "side": "CALL",
+            "price": 1.1010222351828103,
+            "dueAt": 1792250700000,
+            "result": "win"
+          },
+          {
+            "at": 1792250700000,
+            "side": "CALL",
+            "price": 1.1010904191874102,
+            "dueAt": 1792250730000,
+            "result": "win"
+          },
+          {
+            "at": 1792250730000,
+            "side": "CALL",
+            "price": 1.1011523665424785,
+            "dueAt": 1792250760000,
+            "result": "win"
+          },
+          {
+            "at": 1792250760000,
+            "side": "CALL",
+            "price": 1.1011982376388973,
+            "dueAt": 1792250790000,
+            "result": "win"
+          },
+          {
+            "at": 1792250790000,
+            "side": "CALL",
+            "price": 1.1012262195171025,
+            "dueAt": 1792250820000,
+            "result": "win"
+          },
+          {
+            "at": 1792250820000,
+            "side": "CALL",
+            "price": 1.1012714584841294,
+            "dueAt": 1792250850000,
+            "result": "win"
+          },
+          {
+            "at": 1792250850000,
+            "side": "CALL",
+            "price": 1.101337507262223,
+            "dueAt": 1792250880000,
+            "result": "win"
+          },
+          {
+            "at": 1792250880000,
+            "side": "CALL",
+            "price": 1.1014042289461319,
+            "dueAt": 1792250910000,
+            "result": "win"
+          },
+          {
+            "at": 1792250910000,
+            "side": "CALL",
+            "price": 1.1014460643255162,
+            "dueAt": 1792250940000,
+            "result": "win"
+          },
+          {
+            "at": 1792250940000,
+            "side": "CALL",
+            "price": 1.1014748884863477,
+            "dueAt": 1792250970000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0999974126681242,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.100033258314927,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "CALL",
+            "price": 1.1000889677669943,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "CALL",
+            "price": 1.100159113397644,
+            "dueAt": 1792250160000,
+            "result": "win"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.1002136536037435,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "CALL",
+            "price": 1.1002462310767518,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "CALL",
+            "price": 1.100280966454407,
+            "dueAt": 1792250250000,
+            "result": "win"
+          },
+          {
+            "at": 1792250250000,
+            "side": "CALL",
+            "price": 1.1003390031711664,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "CALL",
+            "price": 1.1004098024154738,
+            "dueAt": 1792250310000,
+            "result": "win"
+          },
+          {
+            "at": 1792250310000,
+            "side": "CALL",
+            "price": 1.100457917273594,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "CALL",
+            "price": 1.1004899776537371,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250370000,
+            "side": "CALL",
+            "price": 1.1005273339102455,
+            "dueAt": 1792250400000,
+            "result": "win"
+          },
+          {
+            "at": 1792250400000,
+            "side": "CALL",
+            "price": 1.1005880217531034,
+            "dueAt": 1792250430000,
+            "result": "win"
+          },
+          {
+            "at": 1792250430000,
+            "side": "CALL",
+            "price": 1.1006553160301047,
+            "dueAt": 1792250460000,
+            "result": "win"
+          },
+          {
+            "at": 1792250460000,
+            "side": "CALL",
+            "price": 1.1007061998012635,
+            "dueAt": 1792250490000,
+            "result": "win"
+          },
+          {
+            "at": 1792250490000,
+            "side": "CALL",
+            "price": 1.1007372366287085,
+            "dueAt": 1792250520000,
+            "result": "win"
+          },
+          {
+            "at": 1792250520000,
+            "side": "CALL",
+            "price": 1.10077520798458,
+            "dueAt": 1792250550000,
+            "result": "win"
+          },
+          {
+            "at": 1792250550000,
+            "side": "CALL",
+            "price": 1.1008384811540293,
+            "dueAt": 1792250580000,
+            "result": "win"
+          },
+          {
+            "at": 1792250580000,
+            "side": "CALL",
+            "price": 1.1009060773115698,
+            "dueAt": 1792250610000,
+            "result": "win"
+          },
+          {
+            "at": 1792250610000,
+            "side": "CALL",
+            "price": 1.1009512222467315,
+            "dueAt": 1792250640000,
+            "result": "win"
+          },
+          {
+            "at": 1792250640000,
+            "side": "CALL",
+            "price": 1.100982585992751,
+            "dueAt": 1792250670000,
+            "result": "win"
+          },
+          {
+            "at": 1792250670000,
+            "side": "CALL",
+            "price": 1.1010222351828103,
+            "dueAt": 1792250700000,
+            "result": "win"
+          },
+          {
+            "at": 1792250700000,
+            "side": "CALL",
+            "price": 1.1010904191874102,
+            "dueAt": 1792250730000,
+            "result": "win"
+          },
+          {
+            "at": 1792250730000,
+            "side": "CALL",
+            "price": 1.1011523665424785,
+            "dueAt": 1792250760000,
+            "result": "win"
+          },
+          {
+            "at": 1792250760000,
+            "side": "CALL",
+            "price": 1.1011982376388973,
+            "dueAt": 1792250790000,
+            "result": "win"
+          },
+          {
+            "at": 1792250790000,
+            "side": "CALL",
+            "price": 1.1012262195171025,
+            "dueAt": 1792250820000,
+            "result": "win"
+          },
+          {
+            "at": 1792250820000,
+            "side": "CALL",
+            "price": 1.1012714584841294,
+            "dueAt": 1792250850000,
+            "result": "win"
+          },
+          {
+            "at": 1792250850000,
+            "side": "CALL",
+            "price": 1.101337507262223,
+            "dueAt": 1792250880000,
+            "result": "win"
+          },
+          {
+            "at": 1792250880000,
+            "side": "CALL",
+            "price": 1.1014042289461319,
+            "dueAt": 1792250910000,
+            "result": "win"
+          },
+          {
+            "at": 1792250910000,
+            "side": "CALL",
+            "price": 1.1014460643255162,
+            "dueAt": 1792250940000,
+            "result": "win"
+          },
+          {
+            "at": 1792250940000,
+            "side": "CALL",
+            "price": 1.1014748884863477,
+            "dueAt": 1792250970000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "range",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 29,
+          "loss": 0,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 1,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 29,
+          "loss": 0,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 1,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 29,
+          "loss": 0,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 1,
+          "maxLossStreak": 0
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 0,
+          "changed": 0,
+          "suppressed": 0
+        },
+        {
+          "unstable": 0,
+          "changed": 0,
+          "suppressed": 0
+        }
+      ],
+      "sameEntries": true,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 0,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 5.709894000006898,
+          "p95Ms": 6.458950999993249
+        },
+        {
+          "medianMs": 9.75877099999343,
+          "p95Ms": 10.714761999995972
+        },
+        {
+          "medianMs": 6.2360849999968195,
+          "p95Ms": 6.968157000002975
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0997533227943017,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "PUT",
+            "price": 1.1002998695500077,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "PUT",
+            "price": 1.1002369710614843,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "CALL",
+            "price": 1.0996955973563236,
+            "dueAt": 1792250160000,
+            "result": "win"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.0997673856798036,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "PUT",
+            "price": 1.1003093057018936,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "PUT",
+            "price": 1.1002287102299113,
+            "dueAt": 1792250250000,
+            "result": "win"
+          },
+          {
+            "at": 1792250250000,
+            "side": "CALL",
+            "price": 1.0996875969005409,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "CALL",
+            "price": 1.0997786385617447,
+            "dueAt": 1792250310000,
+            "result": "win"
+          },
+          {
+            "at": 1792250310000,
+            "side": "PUT",
+            "price": 1.1003131961936006,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "PUT",
+            "price": 1.100217102130291,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250383000,
+            "side": "CALL",
+            "price": 1.0996173491662296,
+            "dueAt": 1792250413000,
+            "result": "win"
+          },
+          {
+            "at": 1792250419000,
+            "side": "CALL",
+            "price": 1.100156470534259,
+            "dueAt": 1792250449000,
+            "result": "win"
+          },
+          {
+            "at": 1792250449000,
+            "side": "PUT",
+            "price": 1.1003501298115632,
+            "dueAt": 1792250479000,
+            "result": "win"
+          },
+          {
+            "at": 1792250479000,
+            "side": "PUT",
+            "price": 1.0998376253706668,
+            "dueAt": 1792250509000,
+            "result": "win"
+          },
+          {
+            "at": 1792250509000,
+            "side": "CALL",
+            "price": 1.0996495245721873,
+            "dueAt": 1792250539000,
+            "result": "win"
+          },
+          {
+            "at": 1792250539000,
+            "side": "CALL",
+            "price": 1.1001659586378953,
+            "dueAt": 1792250569000,
+            "result": "win"
+          },
+          {
+            "at": 1792250569000,
+            "side": "PUT",
+            "price": 1.1003453307873918,
+            "dueAt": 1792250599000,
+            "result": "win"
+          },
+          {
+            "at": 1792250599000,
+            "side": "PUT",
+            "price": 1.0998287742886157,
+            "dueAt": 1792250629000,
+            "result": "win"
+          },
+          {
+            "at": 1792250629000,
+            "side": "CALL",
+            "price": 1.099655453256707,
+            "dueAt": 1792250659000,
+            "result": "win"
+          },
+          {
+            "at": 1792250659000,
+            "side": "CALL",
+            "price": 1.1001803305666955,
+            "dueAt": 1792250689000,
+            "result": "win"
+          },
+          {
+            "at": 1792250689000,
+            "side": "PUT",
+            "price": 1.1003405502449726,
+            "dueAt": 1792250719000,
+            "result": "win"
+          },
+          {
+            "at": 1792250719000,
+            "side": "PUT",
+            "price": 1.0998161499318428,
+            "dueAt": 1792250749000,
+            "result": "win"
+          },
+          {
+            "at": 1792250749000,
+            "side": "CALL",
+            "price": 1.0996647858046749,
+            "dueAt": 1792250779000,
+            "result": "win"
+          },
+          {
+            "at": 1792250779000,
+            "side": "CALL",
+            "price": 1.1001896472795898,
+            "dueAt": 1792250809000,
+            "result": "win"
+          },
+          {
+            "at": 1792250809000,
+            "side": "PUT",
+            "price": 1.1003329451437565,
+            "dueAt": 1792250839000,
+            "result": "win"
+          },
+          {
+            "at": 1792250839000,
+            "side": "PUT",
+            "price": 1.0998062508607278,
+            "dueAt": 1792250869000,
+            "result": "win"
+          },
+          {
+            "at": 1792250869000,
+            "side": "CALL",
+            "price": 1.0996681925586838,
+            "dueAt": 1792250899000,
+            "result": "win"
+          },
+          {
+            "at": 1792250899000,
+            "side": "CALL",
+            "price": 1.1001964038177214,
+            "dueAt": 1792250929000,
+            "result": "win"
+          },
+          {
+            "at": 1792250929000,
+            "side": "PUT",
+            "price": 1.1003273553736361,
+            "dueAt": 1792250959000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0997533227943017,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "PUT",
+            "price": 1.1002998695500077,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "PUT",
+            "price": 1.1002369710614843,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "CALL",
+            "price": 1.0996955973563236,
+            "dueAt": 1792250160000,
+            "result": "win"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.0997673856798036,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "PUT",
+            "price": 1.1003093057018936,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "PUT",
+            "price": 1.1002287102299113,
+            "dueAt": 1792250250000,
+            "result": "win"
+          },
+          {
+            "at": 1792250250000,
+            "side": "CALL",
+            "price": 1.0996875969005409,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "CALL",
+            "price": 1.0997786385617447,
+            "dueAt": 1792250310000,
+            "result": "win"
+          },
+          {
+            "at": 1792250310000,
+            "side": "PUT",
+            "price": 1.1003131961936006,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "PUT",
+            "price": 1.100217102130291,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250383000,
+            "side": "CALL",
+            "price": 1.0996173491662296,
+            "dueAt": 1792250413000,
+            "result": "win"
+          },
+          {
+            "at": 1792250419000,
+            "side": "CALL",
+            "price": 1.100156470534259,
+            "dueAt": 1792250449000,
+            "result": "win"
+          },
+          {
+            "at": 1792250449000,
+            "side": "PUT",
+            "price": 1.1003501298115632,
+            "dueAt": 1792250479000,
+            "result": "win"
+          },
+          {
+            "at": 1792250479000,
+            "side": "PUT",
+            "price": 1.0998376253706668,
+            "dueAt": 1792250509000,
+            "result": "win"
+          },
+          {
+            "at": 1792250509000,
+            "side": "CALL",
+            "price": 1.0996495245721873,
+            "dueAt": 1792250539000,
+            "result": "win"
+          },
+          {
+            "at": 1792250539000,
+            "side": "CALL",
+            "price": 1.1001659586378953,
+            "dueAt": 1792250569000,
+            "result": "win"
+          },
+          {
+            "at": 1792250569000,
+            "side": "PUT",
+            "price": 1.1003453307873918,
+            "dueAt": 1792250599000,
+            "result": "win"
+          },
+          {
+            "at": 1792250599000,
+            "side": "PUT",
+            "price": 1.0998287742886157,
+            "dueAt": 1792250629000,
+            "result": "win"
+          },
+          {
+            "at": 1792250629000,
+            "side": "CALL",
+            "price": 1.099655453256707,
+            "dueAt": 1792250659000,
+            "result": "win"
+          },
+          {
+            "at": 1792250659000,
+            "side": "CALL",
+            "price": 1.1001803305666955,
+            "dueAt": 1792250689000,
+            "result": "win"
+          },
+          {
+            "at": 1792250689000,
+            "side": "PUT",
+            "price": 1.1003405502449726,
+            "dueAt": 1792250719000,
+            "result": "win"
+          },
+          {
+            "at": 1792250719000,
+            "side": "PUT",
+            "price": 1.0998161499318428,
+            "dueAt": 1792250749000,
+            "result": "win"
+          },
+          {
+            "at": 1792250749000,
+            "side": "CALL",
+            "price": 1.0996647858046749,
+            "dueAt": 1792250779000,
+            "result": "win"
+          },
+          {
+            "at": 1792250779000,
+            "side": "CALL",
+            "price": 1.1001896472795898,
+            "dueAt": 1792250809000,
+            "result": "win"
+          },
+          {
+            "at": 1792250809000,
+            "side": "PUT",
+            "price": 1.1003329451437565,
+            "dueAt": 1792250839000,
+            "result": "win"
+          },
+          {
+            "at": 1792250839000,
+            "side": "PUT",
+            "price": 1.0998062508607278,
+            "dueAt": 1792250869000,
+            "result": "win"
+          },
+          {
+            "at": 1792250869000,
+            "side": "CALL",
+            "price": 1.0996681925586838,
+            "dueAt": 1792250899000,
+            "result": "win"
+          },
+          {
+            "at": 1792250899000,
+            "side": "CALL",
+            "price": 1.1001964038177214,
+            "dueAt": 1792250929000,
+            "result": "win"
+          },
+          {
+            "at": 1792250929000,
+            "side": "PUT",
+            "price": 1.1003273553736361,
+            "dueAt": 1792250959000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0997533227943017,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "PUT",
+            "price": 1.1002998695500077,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "PUT",
+            "price": 1.1002369710614843,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "CALL",
+            "price": 1.0996955973563236,
+            "dueAt": 1792250160000,
+            "result": "win"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.0997673856798036,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "PUT",
+            "price": 1.1003093057018936,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "PUT",
+            "price": 1.1002287102299113,
+            "dueAt": 1792250250000,
+            "result": "win"
+          },
+          {
+            "at": 1792250250000,
+            "side": "CALL",
+            "price": 1.0996875969005409,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "CALL",
+            "price": 1.0997786385617447,
+            "dueAt": 1792250310000,
+            "result": "win"
+          },
+          {
+            "at": 1792250310000,
+            "side": "PUT",
+            "price": 1.1003131961936006,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "PUT",
+            "price": 1.100217102130291,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250383000,
+            "side": "CALL",
+            "price": 1.0996173491662296,
+            "dueAt": 1792250413000,
+            "result": "win"
+          },
+          {
+            "at": 1792250419000,
+            "side": "CALL",
+            "price": 1.100156470534259,
+            "dueAt": 1792250449000,
+            "result": "win"
+          },
+          {
+            "at": 1792250449000,
+            "side": "PUT",
+            "price": 1.1003501298115632,
+            "dueAt": 1792250479000,
+            "result": "win"
+          },
+          {
+            "at": 1792250479000,
+            "side": "PUT",
+            "price": 1.0998376253706668,
+            "dueAt": 1792250509000,
+            "result": "win"
+          },
+          {
+            "at": 1792250509000,
+            "side": "CALL",
+            "price": 1.0996495245721873,
+            "dueAt": 1792250539000,
+            "result": "win"
+          },
+          {
+            "at": 1792250539000,
+            "side": "CALL",
+            "price": 1.1001659586378953,
+            "dueAt": 1792250569000,
+            "result": "win"
+          },
+          {
+            "at": 1792250569000,
+            "side": "PUT",
+            "price": 1.1003453307873918,
+            "dueAt": 1792250599000,
+            "result": "win"
+          },
+          {
+            "at": 1792250599000,
+            "side": "PUT",
+            "price": 1.0998287742886157,
+            "dueAt": 1792250629000,
+            "result": "win"
+          },
+          {
+            "at": 1792250629000,
+            "side": "CALL",
+            "price": 1.099655453256707,
+            "dueAt": 1792250659000,
+            "result": "win"
+          },
+          {
+            "at": 1792250659000,
+            "side": "CALL",
+            "price": 1.1001803305666955,
+            "dueAt": 1792250689000,
+            "result": "win"
+          },
+          {
+            "at": 1792250689000,
+            "side": "PUT",
+            "price": 1.1003405502449726,
+            "dueAt": 1792250719000,
+            "result": "win"
+          },
+          {
+            "at": 1792250719000,
+            "side": "PUT",
+            "price": 1.0998161499318428,
+            "dueAt": 1792250749000,
+            "result": "win"
+          },
+          {
+            "at": 1792250749000,
+            "side": "CALL",
+            "price": 1.0996647858046749,
+            "dueAt": 1792250779000,
+            "result": "win"
+          },
+          {
+            "at": 1792250779000,
+            "side": "CALL",
+            "price": 1.1001896472795898,
+            "dueAt": 1792250809000,
+            "result": "win"
+          },
+          {
+            "at": 1792250809000,
+            "side": "PUT",
+            "price": 1.1003329451437565,
+            "dueAt": 1792250839000,
+            "result": "win"
+          },
+          {
+            "at": 1792250839000,
+            "side": "PUT",
+            "price": 1.0998062508607278,
+            "dueAt": 1792250869000,
+            "result": "win"
+          },
+          {
+            "at": 1792250869000,
+            "side": "CALL",
+            "price": 1.0996681925586838,
+            "dueAt": 1792250899000,
+            "result": "win"
+          },
+          {
+            "at": 1792250899000,
+            "side": "CALL",
+            "price": 1.1001964038177214,
+            "dueAt": 1792250929000,
+            "result": "win"
+          },
+          {
+            "at": 1792250929000,
+            "side": "PUT",
+            "price": 1.1003273553736361,
+            "dueAt": 1792250959000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "variable-range",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 20,
+          "loss": 8,
+          "tie": 0,
+          "missing": 1,
+          "completed": 28,
+          "winRate": 0.7142857142857143,
+          "maxLossStreak": 1
+        },
+        {
+          "win": 13,
+          "loss": 15,
+          "tie": 0,
+          "missing": 1,
+          "completed": 28,
+          "winRate": 0.4642857142857143,
+          "maxLossStreak": 4
+        },
+        {
+          "win": 17,
+          "loss": 7,
+          "tie": 0,
+          "missing": 1,
+          "completed": 24,
+          "winRate": 0.7083333333333334,
+          "maxLossStreak": 2
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 5,
+          "removedBaseWins": 8,
+          "newCandidateEntries": 11
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 16,
+          "newCandidateEntries": 19
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 217,
+          "changed": 217,
+          "suppressed": 0
+        },
+        {
+          "unstable": 217,
+          "changed": 0,
+          "suppressed": 217
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 5,
+      "removedBaseWins": 8,
+      "newCandidateEntries": 11,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 5.671800000003714,
+          "p95Ms": 6.253508999994665
+        },
+        {
+          "medianMs": 7.2149869999993825,
+          "p95Ms": 10.231608999994933
+        },
+        {
+          "medianMs": 6.200920999996015,
+          "p95Ms": 6.806386999996903
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250041000,
+            "side": "PUT",
+            "price": 1.100381821973763,
+            "dueAt": 1792250071000,
+            "result": "win"
+          },
+          {
+            "at": 1792250071000,
+            "side": "PUT",
+            "price": 1.1001089381512257,
+            "dueAt": 1792250101000,
+            "result": "win"
+          },
+          {
+            "at": 1792250101000,
+            "side": "CALL",
+            "price": 1.0997007343131444,
+            "dueAt": 1792250131000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250134000,
+            "side": "CALL",
+            "price": 1.0997501243540326,
+            "dueAt": 1792250164000,
+            "result": "win"
+          },
+          {
+            "at": 1792250164000,
+            "side": "PUT",
+            "price": 1.1001671652117653,
+            "dueAt": 1792250194000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250197000,
+            "side": "PUT",
+            "price": 1.100405067453957,
+            "dueAt": 1792250227000,
+            "result": "win"
+          },
+          {
+            "at": 1792250227000,
+            "side": "PUT",
+            "price": 1.1000857550912815,
+            "dueAt": 1792250257000,
+            "result": "win"
+          },
+          {
+            "at": 1792250257000,
+            "side": "CALL",
+            "price": 1.099711092183745,
+            "dueAt": 1792250287000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250300000,
+            "side": "CALL",
+            "price": 1.0997309138866738,
+            "dueAt": 1792250330000,
+            "result": "win"
+          },
+          {
+            "at": 1792250330000,
+            "side": "CALL",
+            "price": 1.1001973981556614,
+            "dueAt": 1792250360000,
+            "result": "win"
+          },
+          {
+            "at": 1792250361000,
+            "side": "PUT",
+            "price": 1.100384631293719,
+            "dueAt": 1792250391000,
+            "result": "win"
+          },
+          {
+            "at": 1792250391000,
+            "side": "PUT",
+            "price": 1.1000204206521125,
+            "dueAt": 1792250421000,
+            "result": "win"
+          },
+          {
+            "at": 1792250423000,
+            "side": "PUT",
+            "price": 1.0996439729356622,
+            "dueAt": 1792250453000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250453000,
+            "side": "CALL",
+            "price": 1.0998986552167909,
+            "dueAt": 1792250483000,
+            "result": "win"
+          },
+          {
+            "at": 1792250483000,
+            "side": "PUT",
+            "price": 1.1003825055191794,
+            "dueAt": 1792250513000,
+            "result": "win"
+          },
+          {
+            "at": 1792250523000,
+            "side": "PUT",
+            "price": 1.0996842735314662,
+            "dueAt": 1792250553000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250553000,
+            "side": "CALL",
+            "price": 1.0999856123040759,
+            "dueAt": 1792250583000,
+            "result": "win"
+          },
+          {
+            "at": 1792250583000,
+            "side": "PUT",
+            "price": 1.1002692833233612,
+            "dueAt": 1792250613000,
+            "result": "win"
+          },
+          {
+            "at": 1792250616000,
+            "side": "CALL",
+            "price": 1.0996354859618451,
+            "dueAt": 1792250646000,
+            "result": "win"
+          },
+          {
+            "at": 1792250650000,
+            "side": "PUT",
+            "price": 1.1003853159072376,
+            "dueAt": 1792250680000,
+            "result": "win"
+          },
+          {
+            "at": 1792250682000,
+            "side": "CALL",
+            "price": 1.0996304508111954,
+            "dueAt": 1792250712000,
+            "result": "win"
+          },
+          {
+            "at": 1792250718000,
+            "side": "PUT",
+            "price": 1.1003785021693533,
+            "dueAt": 1792250748000,
+            "result": "win"
+          },
+          {
+            "at": 1792250748000,
+            "side": "CALL",
+            "price": 1.0997008794542682,
+            "dueAt": 1792250778000,
+            "result": "win"
+          },
+          {
+            "at": 1792250781000,
+            "side": "PUT",
+            "price": 1.1000645066672814,
+            "dueAt": 1792250811000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250812000,
+            "side": "PUT",
+            "price": 1.100320033483169,
+            "dueAt": 1792250842000,
+            "result": "win"
+          },
+          {
+            "at": 1792250842000,
+            "side": "CALL",
+            "price": 1.0997366199237806,
+            "dueAt": 1792250872000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250872000,
+            "side": "CALL",
+            "price": 1.0997307744134481,
+            "dueAt": 1792250902000,
+            "result": "win"
+          },
+          {
+            "at": 1792250902000,
+            "side": "PUT",
+            "price": 1.100188601863499,
+            "dueAt": 1792250932000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250932000,
+            "side": "PUT",
+            "price": 1.1003837360873148,
+            "dueAt": 1792250962000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.1003601939265903,
+            "dueAt": 1792250070000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250070000,
+            "side": "PUT",
+            "price": 1.1001322025314293,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "CALL",
+            "price": 1.099702211031585,
+            "dueAt": 1792250130000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250134000,
+            "side": "CALL",
+            "price": 1.0997501243540326,
+            "dueAt": 1792250164000,
+            "result": "win"
+          },
+          {
+            "at": 1792250164000,
+            "side": "PUT",
+            "price": 1.1001671652117653,
+            "dueAt": 1792250194000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250197000,
+            "side": "PUT",
+            "price": 1.100405067453957,
+            "dueAt": 1792250227000,
+            "result": "win"
+          },
+          {
+            "at": 1792250227000,
+            "side": "CALL",
+            "price": 1.1000857550912815,
+            "dueAt": 1792250257000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250257000,
+            "side": "CALL",
+            "price": 1.099711092183745,
+            "dueAt": 1792250287000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250300000,
+            "side": "PUT",
+            "price": 1.0997309138866738,
+            "dueAt": 1792250330000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250330000,
+            "side": "PUT",
+            "price": 1.1001973981556614,
+            "dueAt": 1792250360000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250361000,
+            "side": "PUT",
+            "price": 1.100384631293719,
+            "dueAt": 1792250391000,
+            "result": "win"
+          },
+          {
+            "at": 1792250391000,
+            "side": "CALL",
+            "price": 1.1000204206521125,
+            "dueAt": 1792250421000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250432000,
+            "side": "CALL",
+            "price": 1.0996010984992546,
+            "dueAt": 1792250462000,
+            "result": "win"
+          },
+          {
+            "at": 1792250462000,
+            "side": "CALL",
+            "price": 1.1001169510389597,
+            "dueAt": 1792250492000,
+            "result": "win"
+          },
+          {
+            "at": 1792250499000,
+            "side": "PUT",
+            "price": 1.1002703105764893,
+            "dueAt": 1792250529000,
+            "result": "win"
+          },
+          {
+            "at": 1792250529000,
+            "side": "PUT",
+            "price": 1.0996184612779685,
+            "dueAt": 1792250559000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250559000,
+            "side": "PUT",
+            "price": 1.1001240281419353,
+            "dueAt": 1792250589000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250589000,
+            "side": "PUT",
+            "price": 1.1001586049050494,
+            "dueAt": 1792250619000,
+            "result": "win"
+          },
+          {
+            "at": 1792250622000,
+            "side": "PUT",
+            "price": 1.0997507744798258,
+            "dueAt": 1792250652000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250652000,
+            "side": "PUT",
+            "price": 1.1003422765004638,
+            "dueAt": 1792250682000,
+            "result": "win"
+          },
+          {
+            "at": 1792250682000,
+            "side": "CALL",
+            "price": 1.0996304508111954,
+            "dueAt": 1792250712000,
+            "result": "win"
+          },
+          {
+            "at": 1792250718000,
+            "side": "PUT",
+            "price": 1.1003785021693533,
+            "dueAt": 1792250748000,
+            "result": "win"
+          },
+          {
+            "at": 1792250748000,
+            "side": "CALL",
+            "price": 1.0997008794542682,
+            "dueAt": 1792250778000,
+            "result": "win"
+          },
+          {
+            "at": 1792250781000,
+            "side": "PUT",
+            "price": 1.1000645066672814,
+            "dueAt": 1792250811000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250812000,
+            "side": "PUT",
+            "price": 1.100320033483169,
+            "dueAt": 1792250842000,
+            "result": "win"
+          },
+          {
+            "at": 1792250842000,
+            "side": "CALL",
+            "price": 1.0997366199237806,
+            "dueAt": 1792250872000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250872000,
+            "side": "PUT",
+            "price": 1.0997307744134481,
+            "dueAt": 1792250902000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250902000,
+            "side": "PUT",
+            "price": 1.100188601863499,
+            "dueAt": 1792250932000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250932000,
+            "side": "PUT",
+            "price": 1.1003837360873148,
+            "dueAt": 1792250962000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250043000,
+            "side": "PUT",
+            "price": 1.1004000751650342,
+            "dueAt": 1792250073000,
+            "result": "win"
+          },
+          {
+            "at": 1792250073000,
+            "side": "PUT",
+            "price": 1.1000648082711917,
+            "dueAt": 1792250103000,
+            "result": "win"
+          },
+          {
+            "at": 1792250103000,
+            "side": "CALL",
+            "price": 1.0996802384374282,
+            "dueAt": 1792250133000,
+            "result": "win"
+          },
+          {
+            "at": 1792250134000,
+            "side": "CALL",
+            "price": 1.0997501243540326,
+            "dueAt": 1792250164000,
+            "result": "win"
+          },
+          {
+            "at": 1792250164000,
+            "side": "PUT",
+            "price": 1.1001671652117653,
+            "dueAt": 1792250194000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250197000,
+            "side": "PUT",
+            "price": 1.100405067453957,
+            "dueAt": 1792250227000,
+            "result": "win"
+          },
+          {
+            "at": 1792250252000,
+            "side": "CALL",
+            "price": 1.099787134242357,
+            "dueAt": 1792250282000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250282000,
+            "side": "CALL",
+            "price": 1.0995990545853571,
+            "dueAt": 1792250312000,
+            "result": "win"
+          },
+          {
+            "at": 1792250347000,
+            "side": "CALL",
+            "price": 1.1003838625841666,
+            "dueAt": 1792250377000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250377000,
+            "side": "PUT",
+            "price": 1.100232852572632,
+            "dueAt": 1792250407000,
+            "result": "win"
+          },
+          {
+            "at": 1792250432000,
+            "side": "CALL",
+            "price": 1.0996010984992546,
+            "dueAt": 1792250462000,
+            "result": "win"
+          },
+          {
+            "at": 1792250462000,
+            "side": "CALL",
+            "price": 1.1001169510389597,
+            "dueAt": 1792250492000,
+            "result": "win"
+          },
+          {
+            "at": 1792250499000,
+            "side": "PUT",
+            "price": 1.1002703105764893,
+            "dueAt": 1792250529000,
+            "result": "win"
+          },
+          {
+            "at": 1792250529000,
+            "side": "PUT",
+            "price": 1.0996184612779685,
+            "dueAt": 1792250559000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250559000,
+            "side": "PUT",
+            "price": 1.1001240281419353,
+            "dueAt": 1792250589000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250589000,
+            "side": "PUT",
+            "price": 1.1001586049050494,
+            "dueAt": 1792250619000,
+            "result": "win"
+          },
+          {
+            "at": 1792250624000,
+            "side": "CALL",
+            "price": 1.0998232444825164,
+            "dueAt": 1792250654000,
+            "result": "win"
+          },
+          {
+            "at": 1792250654000,
+            "side": "PUT",
+            "price": 1.1002890365689155,
+            "dueAt": 1792250684000,
+            "result": "win"
+          },
+          {
+            "at": 1792250684000,
+            "side": "CALL",
+            "price": 1.099650303492861,
+            "dueAt": 1792250714000,
+            "result": "win"
+          },
+          {
+            "at": 1792250718000,
+            "side": "PUT",
+            "price": 1.1003785021693533,
+            "dueAt": 1792250748000,
+            "result": "win"
+          },
+          {
+            "at": 1792250748000,
+            "side": "CALL",
+            "price": 1.0997008794542682,
+            "dueAt": 1792250778000,
+            "result": "win"
+          },
+          {
+            "at": 1792250781000,
+            "side": "PUT",
+            "price": 1.1000645066672814,
+            "dueAt": 1792250811000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250819000,
+            "side": "PUT",
+            "price": 1.1002423343611893,
+            "dueAt": 1792250849000,
+            "result": "win"
+          },
+          {
+            "at": 1792250882000,
+            "side": "PUT",
+            "price": 1.0998446358437852,
+            "dueAt": 1792250912000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250917000,
+            "side": "PUT",
+            "price": 1.100361852398996,
+            "dueAt": 1792250947000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "sharp-turns",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 29,
+          "loss": 0,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 1,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 18,
+          "loss": 11,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 0.6206896551724138,
+          "maxLossStreak": 1
+        },
+        {
+          "win": 12,
+          "loss": 12,
+          "tie": 0,
+          "missing": 1,
+          "completed": 24,
+          "winRate": 0.5,
+          "maxLossStreak": 1
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 11,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 28,
+          "newCandidateEntries": 24
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 247,
+          "changed": 247,
+          "suppressed": 0
+        },
+        {
+          "unstable": 247,
+          "changed": 0,
+          "suppressed": 247
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 11,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 5.699066000001039,
+          "p95Ms": 6.3131869999924675
+        },
+        {
+          "medianMs": 9.791832000002614,
+          "p95Ms": 10.495384000008926
+        },
+        {
+          "medianMs": 6.253657000008388,
+          "p95Ms": 6.91023700000369
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0998254879817535,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.1001376357397739,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "PUT",
+            "price": 1.100322101635385,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "PUT",
+            "price": 1.1000181657008445,
+            "dueAt": 1792250160000,
+            "result": "win"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.0997136885372458,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "CALL",
+            "price": 1.0998266198918183,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "CALL",
+            "price": 1.1001312427173353,
+            "dueAt": 1792250250000,
+            "result": "win"
+          },
+          {
+            "at": 1792250250000,
+            "side": "PUT",
+            "price": 1.1003317726895976,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "PUT",
+            "price": 1.1000304585524356,
+            "dueAt": 1792250310000,
+            "result": "win"
+          },
+          {
+            "at": 1792250310000,
+            "side": "CALL",
+            "price": 1.09971572253108,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "CALL",
+            "price": 1.0998139827346323,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250370000,
+            "side": "CALL",
+            "price": 1.1001203622296902,
+            "dueAt": 1792250400000,
+            "result": "win"
+          },
+          {
+            "at": 1792250400000,
+            "side": "PUT",
+            "price": 1.1003382498229204,
+            "dueAt": 1792250430000,
+            "result": "win"
+          },
+          {
+            "at": 1792250430000,
+            "side": "PUT",
+            "price": 1.100029382870524,
+            "dueAt": 1792250460000,
+            "result": "win"
+          },
+          {
+            "at": 1792250460000,
+            "side": "CALL",
+            "price": 1.0997289780114972,
+            "dueAt": 1792250490000,
+            "result": "win"
+          },
+          {
+            "at": 1792250490000,
+            "side": "CALL",
+            "price": 1.0998103572481277,
+            "dueAt": 1792250520000,
+            "result": "win"
+          },
+          {
+            "at": 1792250520000,
+            "side": "CALL",
+            "price": 1.1001125760185186,
+            "dueAt": 1792250550000,
+            "result": "win"
+          },
+          {
+            "at": 1792250550000,
+            "side": "PUT",
+            "price": 1.1003481812047249,
+            "dueAt": 1792250580000,
+            "result": "win"
+          },
+          {
+            "at": 1792250580000,
+            "side": "PUT",
+            "price": 1.1000427840913072,
+            "dueAt": 1792250610000,
+            "result": "win"
+          },
+          {
+            "at": 1792250610000,
+            "side": "CALL",
+            "price": 1.0997339994447035,
+            "dueAt": 1792250640000,
+            "result": "win"
+          },
+          {
+            "at": 1792250640000,
+            "side": "CALL",
+            "price": 1.0998011967988548,
+            "dueAt": 1792250670000,
+            "result": "win"
+          },
+          {
+            "at": 1792250670000,
+            "side": "CALL",
+            "price": 1.100101615164998,
+            "dueAt": 1792250700000,
+            "result": "win"
+          },
+          {
+            "at": 1792250700000,
+            "side": "PUT",
+            "price": 1.100361764838209,
+            "dueAt": 1792250730000,
+            "result": "win"
+          },
+          {
+            "at": 1792250730000,
+            "side": "PUT",
+            "price": 1.1000448118906931,
+            "dueAt": 1792250760000,
+            "result": "win"
+          },
+          {
+            "at": 1792250760000,
+            "side": "CALL",
+            "price": 1.099744711969873,
+            "dueAt": 1792250790000,
+            "result": "win"
+          },
+          {
+            "at": 1792250791000,
+            "side": "CALL",
+            "price": 1.0998020128276615,
+            "dueAt": 1792250821000,
+            "result": "win"
+          },
+          {
+            "at": 1792250821000,
+            "side": "CALL",
+            "price": 1.100106213318761,
+            "dueAt": 1792250851000,
+            "result": "win"
+          },
+          {
+            "at": 1792250851000,
+            "side": "PUT",
+            "price": 1.1003578018517983,
+            "dueAt": 1792250881000,
+            "result": "win"
+          },
+          {
+            "at": 1792250881000,
+            "side": "PUT",
+            "price": 1.1000561725947948,
+            "dueAt": 1792250911000,
+            "result": "win"
+          },
+          {
+            "at": 1792250911000,
+            "side": "CALL",
+            "price": 1.099742669305132,
+            "dueAt": 1792250941000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0998254879817535,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "PUT",
+            "price": 1.1001376357397739,
+            "dueAt": 1792250100000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250100000,
+            "side": "PUT",
+            "price": 1.100322101635385,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "CALL",
+            "price": 1.1000181657008445,
+            "dueAt": 1792250160000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250160000,
+            "side": "CALL",
+            "price": 1.0997136885372458,
+            "dueAt": 1792250190000,
+            "result": "win"
+          },
+          {
+            "at": 1792250190000,
+            "side": "CALL",
+            "price": 1.0998266198918183,
+            "dueAt": 1792250220000,
+            "result": "win"
+          },
+          {
+            "at": 1792250220000,
+            "side": "PUT",
+            "price": 1.1001312427173353,
+            "dueAt": 1792250250000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250250000,
+            "side": "PUT",
+            "price": 1.1003317726895976,
+            "dueAt": 1792250280000,
+            "result": "win"
+          },
+          {
+            "at": 1792250280000,
+            "side": "CALL",
+            "price": 1.1000304585524356,
+            "dueAt": 1792250310000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250310000,
+            "side": "CALL",
+            "price": 1.09971572253108,
+            "dueAt": 1792250340000,
+            "result": "win"
+          },
+          {
+            "at": 1792250340000,
+            "side": "CALL",
+            "price": 1.0998139827346323,
+            "dueAt": 1792250370000,
+            "result": "win"
+          },
+          {
+            "at": 1792250370000,
+            "side": "PUT",
+            "price": 1.1001203622296902,
+            "dueAt": 1792250400000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250400000,
+            "side": "PUT",
+            "price": 1.1003382498229204,
+            "dueAt": 1792250430000,
+            "result": "win"
+          },
+          {
+            "at": 1792250430000,
+            "side": "CALL",
+            "price": 1.100029382870524,
+            "dueAt": 1792250460000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250460000,
+            "side": "CALL",
+            "price": 1.0997289780114972,
+            "dueAt": 1792250490000,
+            "result": "win"
+          },
+          {
+            "at": 1792250490000,
+            "side": "CALL",
+            "price": 1.0998103572481277,
+            "dueAt": 1792250520000,
+            "result": "win"
+          },
+          {
+            "at": 1792250520000,
+            "side": "PUT",
+            "price": 1.1001125760185186,
+            "dueAt": 1792250550000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250550000,
+            "side": "PUT",
+            "price": 1.1003481812047249,
+            "dueAt": 1792250580000,
+            "result": "win"
+          },
+          {
+            "at": 1792250580000,
+            "side": "CALL",
+            "price": 1.1000427840913072,
+            "dueAt": 1792250610000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250610000,
+            "side": "CALL",
+            "price": 1.0997339994447035,
+            "dueAt": 1792250640000,
+            "result": "win"
+          },
+          {
+            "at": 1792250640000,
+            "side": "CALL",
+            "price": 1.0998011967988548,
+            "dueAt": 1792250670000,
+            "result": "win"
+          },
+          {
+            "at": 1792250670000,
+            "side": "PUT",
+            "price": 1.100101615164998,
+            "dueAt": 1792250700000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250700000,
+            "side": "PUT",
+            "price": 1.100361764838209,
+            "dueAt": 1792250730000,
+            "result": "win"
+          },
+          {
+            "at": 1792250730000,
+            "side": "CALL",
+            "price": 1.1000448118906931,
+            "dueAt": 1792250760000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250760000,
+            "side": "CALL",
+            "price": 1.099744711969873,
+            "dueAt": 1792250790000,
+            "result": "win"
+          },
+          {
+            "at": 1792250791000,
+            "side": "CALL",
+            "price": 1.0998020128276615,
+            "dueAt": 1792250821000,
+            "result": "win"
+          },
+          {
+            "at": 1792250821000,
+            "side": "PUT",
+            "price": 1.100106213318761,
+            "dueAt": 1792250851000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250851000,
+            "side": "PUT",
+            "price": 1.1003578018517983,
+            "dueAt": 1792250881000,
+            "result": "win"
+          },
+          {
+            "at": 1792250881000,
+            "side": "PUT",
+            "price": 1.1000561725947948,
+            "dueAt": 1792250911000,
+            "result": "win"
+          },
+          {
+            "at": 1792250911000,
+            "side": "CALL",
+            "price": 1.099742669305132,
+            "dueAt": 1792250941000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0998254879817535,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250071000,
+            "side": "PUT",
+            "price": 1.1001488805277835,
+            "dueAt": 1792250101000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250101000,
+            "side": "PUT",
+            "price": 1.1003203733374063,
+            "dueAt": 1792250131000,
+            "result": "win"
+          },
+          {
+            "at": 1792250145000,
+            "side": "CALL",
+            "price": 1.0998641969366076,
+            "dueAt": 1792250175000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250175000,
+            "side": "CALL",
+            "price": 1.0996687214576495,
+            "dueAt": 1792250205000,
+            "result": "win"
+          },
+          {
+            "at": 1792250222000,
+            "side": "PUT",
+            "price": 1.1001516537545417,
+            "dueAt": 1792250252000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250252000,
+            "side": "PUT",
+            "price": 1.1003103238420144,
+            "dueAt": 1792250282000,
+            "result": "win"
+          },
+          {
+            "at": 1792250296000,
+            "side": "CALL",
+            "price": 1.0998582839614681,
+            "dueAt": 1792250326000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250326000,
+            "side": "CALL",
+            "price": 1.0996765033056248,
+            "dueAt": 1792250356000,
+            "result": "win"
+          },
+          {
+            "at": 1792250372000,
+            "side": "PUT",
+            "price": 1.1001452025851064,
+            "dueAt": 1792250402000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250402000,
+            "side": "PUT",
+            "price": 1.1003147109601554,
+            "dueAt": 1792250432000,
+            "result": "win"
+          },
+          {
+            "at": 1792250447000,
+            "side": "CALL",
+            "price": 1.099860047226277,
+            "dueAt": 1792250477000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250477000,
+            "side": "CALL",
+            "price": 1.099678764410424,
+            "dueAt": 1792250507000,
+            "result": "win"
+          },
+          {
+            "at": 1792250522000,
+            "side": "PUT",
+            "price": 1.100131784238197,
+            "dueAt": 1792250552000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250552000,
+            "side": "PUT",
+            "price": 1.1003307126515451,
+            "dueAt": 1792250582000,
+            "result": "win"
+          },
+          {
+            "at": 1792250598000,
+            "side": "CALL",
+            "price": 1.0998583742482668,
+            "dueAt": 1792250628000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250628000,
+            "side": "CALL",
+            "price": 1.0996819589280131,
+            "dueAt": 1792250658000,
+            "result": "win"
+          },
+          {
+            "at": 1792250673000,
+            "side": "PUT",
+            "price": 1.1001358874690983,
+            "dueAt": 1792250703000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250703000,
+            "side": "PUT",
+            "price": 1.1003242426508313,
+            "dueAt": 1792250733000,
+            "result": "win"
+          },
+          {
+            "at": 1792250749000,
+            "side": "CALL",
+            "price": 1.0998609030292115,
+            "dueAt": 1792250779000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250779000,
+            "side": "CALL",
+            "price": 1.0996816304833728,
+            "dueAt": 1792250809000,
+            "result": "win"
+          },
+          {
+            "at": 1792250824000,
+            "side": "PUT",
+            "price": 1.1001389539500135,
+            "dueAt": 1792250854000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250854000,
+            "side": "PUT",
+            "price": 1.1003216957095574,
+            "dueAt": 1792250884000,
+            "result": "win"
+          },
+          {
+            "at": 1792250900000,
+            "side": "CALL",
+            "price": 1.0998617684037941,
+            "dueAt": 1792250930000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250930000,
+            "side": "CALL",
+            "price": 1.0996777153416366,
+            "dueAt": 1792250960000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "trend-switch",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 20,
+          "loss": 9,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 0.6896551724137931,
+          "maxLossStreak": 2
+        },
+        {
+          "win": 19,
+          "loss": 10,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 0.6551724137931034,
+          "maxLossStreak": 2
+        },
+        {
+          "win": 18,
+          "loss": 11,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 0.6206896551724138,
+          "maxLossStreak": 3
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 1,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 2,
+          "newCandidateEntries": 3
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 21,
+          "changed": 21,
+          "suppressed": 0
+        },
+        {
+          "unstable": 21,
+          "changed": 0,
+          "suppressed": 21
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 1,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 5.721088999998756,
+          "p95Ms": 6.2945310000068275
+        },
+        {
+          "medianMs": 7.050106000009691,
+          "p95Ms": 9.971368999991682
+        },
+        {
+          "medianMs": 6.265087000007043,
+          "p95Ms": 6.835319000005256
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0999935053493357,
+            "dueAt": 1792250070000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.0999299500706465,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250101000,
+            "side": "PUT",
+            "price": 1.099970612868184,
+            "dueAt": 1792250131000,
+            "result": "win"
+          },
+          {
+            "at": 1792250131000,
+            "side": "CALL",
+            "price": 1.0998341047218825,
+            "dueAt": 1792250161000,
+            "result": "win"
+          },
+          {
+            "at": 1792250161000,
+            "side": "PUT",
+            "price": 1.0998675262790254,
+            "dueAt": 1792250191000,
+            "result": "win"
+          },
+          {
+            "at": 1792250191000,
+            "side": "CALL",
+            "price": 1.0998007404168653,
+            "dueAt": 1792250221000,
+            "result": "win"
+          },
+          {
+            "at": 1792250221000,
+            "side": "PUT",
+            "price": 1.099817263686966,
+            "dueAt": 1792250251000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250251000,
+            "side": "CALL",
+            "price": 1.0999328913976887,
+            "dueAt": 1792250281000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250281000,
+            "side": "CALL",
+            "price": 1.0998738872638378,
+            "dueAt": 1792250311000,
+            "result": "win"
+          },
+          {
+            "at": 1792250311000,
+            "side": "PUT",
+            "price": 1.099996108745309,
+            "dueAt": 1792250341000,
+            "result": "win"
+          },
+          {
+            "at": 1792250341000,
+            "side": "CALL",
+            "price": 1.0999931472786142,
+            "dueAt": 1792250371000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250371000,
+            "side": "CALL",
+            "price": 1.099932612834691,
+            "dueAt": 1792250401000,
+            "result": "win"
+          },
+          {
+            "at": 1792250406000,
+            "side": "PUT",
+            "price": 1.099960071127893,
+            "dueAt": 1792250436000,
+            "result": "win"
+          },
+          {
+            "at": 1792250436000,
+            "side": "CALL",
+            "price": 1.0998400367625494,
+            "dueAt": 1792250466000,
+            "result": "win"
+          },
+          {
+            "at": 1792250467000,
+            "side": "PUT",
+            "price": 1.099830023154118,
+            "dueAt": 1792250497000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250498000,
+            "side": "PUT",
+            "price": 1.099847327377084,
+            "dueAt": 1792250528000,
+            "result": "win"
+          },
+          {
+            "at": 1792250528000,
+            "side": "PUT",
+            "price": 1.0998062608537515,
+            "dueAt": 1792250558000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250558000,
+            "side": "CALL",
+            "price": 1.0999458108745788,
+            "dueAt": 1792250588000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250588000,
+            "side": "CALL",
+            "price": 1.0998999204441793,
+            "dueAt": 1792250618000,
+            "result": "win"
+          },
+          {
+            "at": 1792250618000,
+            "side": "CALL",
+            "price": 1.0999711058657704,
+            "dueAt": 1792250648000,
+            "result": "win"
+          },
+          {
+            "at": 1792250648000,
+            "side": "PUT",
+            "price": 1.100012231038282,
+            "dueAt": 1792250678000,
+            "result": "win"
+          },
+          {
+            "at": 1792250678000,
+            "side": "PUT",
+            "price": 1.0999028269889402,
+            "dueAt": 1792250708000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250708000,
+            "side": "PUT",
+            "price": 1.0999584971493204,
+            "dueAt": 1792250738000,
+            "result": "win"
+          },
+          {
+            "at": 1792250738000,
+            "side": "CALL",
+            "price": 1.099834339497248,
+            "dueAt": 1792250768000,
+            "result": "win"
+          },
+          {
+            "at": 1792250771000,
+            "side": "CALL",
+            "price": 1.099814354135623,
+            "dueAt": 1792250801000,
+            "result": "win"
+          },
+          {
+            "at": 1792250803000,
+            "side": "PUT",
+            "price": 1.0998619092917794,
+            "dueAt": 1792250833000,
+            "result": "win"
+          },
+          {
+            "at": 1792250833000,
+            "side": "CALL",
+            "price": 1.099807834757965,
+            "dueAt": 1792250863000,
+            "result": "win"
+          },
+          {
+            "at": 1792250863000,
+            "side": "PUT",
+            "price": 1.0999304069597613,
+            "dueAt": 1792250893000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250893000,
+            "side": "CALL",
+            "price": 1.0999323030577544,
+            "dueAt": 1792250923000,
+            "result": "win"
+          },
+          {
+            "at": 1792250923000,
+            "side": "CALL",
+            "price": 1.0999606099256565,
+            "dueAt": 1792250953000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0999935053493357,
+            "dueAt": 1792250070000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.0999299500706465,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250101000,
+            "side": "PUT",
+            "price": 1.099970612868184,
+            "dueAt": 1792250131000,
+            "result": "win"
+          },
+          {
+            "at": 1792250131000,
+            "side": "CALL",
+            "price": 1.0998341047218825,
+            "dueAt": 1792250161000,
+            "result": "win"
+          },
+          {
+            "at": 1792250161000,
+            "side": "PUT",
+            "price": 1.0998675262790254,
+            "dueAt": 1792250191000,
+            "result": "win"
+          },
+          {
+            "at": 1792250191000,
+            "side": "CALL",
+            "price": 1.0998007404168653,
+            "dueAt": 1792250221000,
+            "result": "win"
+          },
+          {
+            "at": 1792250221000,
+            "side": "PUT",
+            "price": 1.099817263686966,
+            "dueAt": 1792250251000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250251000,
+            "side": "CALL",
+            "price": 1.0999328913976887,
+            "dueAt": 1792250281000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250281000,
+            "side": "CALL",
+            "price": 1.0998738872638378,
+            "dueAt": 1792250311000,
+            "result": "win"
+          },
+          {
+            "at": 1792250311000,
+            "side": "CALL",
+            "price": 1.099996108745309,
+            "dueAt": 1792250341000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250341000,
+            "side": "CALL",
+            "price": 1.0999931472786142,
+            "dueAt": 1792250371000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250371000,
+            "side": "CALL",
+            "price": 1.099932612834691,
+            "dueAt": 1792250401000,
+            "result": "win"
+          },
+          {
+            "at": 1792250406000,
+            "side": "PUT",
+            "price": 1.099960071127893,
+            "dueAt": 1792250436000,
+            "result": "win"
+          },
+          {
+            "at": 1792250436000,
+            "side": "CALL",
+            "price": 1.0998400367625494,
+            "dueAt": 1792250466000,
+            "result": "win"
+          },
+          {
+            "at": 1792250467000,
+            "side": "PUT",
+            "price": 1.099830023154118,
+            "dueAt": 1792250497000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250498000,
+            "side": "PUT",
+            "price": 1.099847327377084,
+            "dueAt": 1792250528000,
+            "result": "win"
+          },
+          {
+            "at": 1792250528000,
+            "side": "PUT",
+            "price": 1.0998062608537515,
+            "dueAt": 1792250558000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250558000,
+            "side": "CALL",
+            "price": 1.0999458108745788,
+            "dueAt": 1792250588000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250588000,
+            "side": "CALL",
+            "price": 1.0998999204441793,
+            "dueAt": 1792250618000,
+            "result": "win"
+          },
+          {
+            "at": 1792250618000,
+            "side": "CALL",
+            "price": 1.0999711058657704,
+            "dueAt": 1792250648000,
+            "result": "win"
+          },
+          {
+            "at": 1792250648000,
+            "side": "PUT",
+            "price": 1.100012231038282,
+            "dueAt": 1792250678000,
+            "result": "win"
+          },
+          {
+            "at": 1792250678000,
+            "side": "PUT",
+            "price": 1.0999028269889402,
+            "dueAt": 1792250708000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250708000,
+            "side": "PUT",
+            "price": 1.0999584971493204,
+            "dueAt": 1792250738000,
+            "result": "win"
+          },
+          {
+            "at": 1792250738000,
+            "side": "CALL",
+            "price": 1.099834339497248,
+            "dueAt": 1792250768000,
+            "result": "win"
+          },
+          {
+            "at": 1792250771000,
+            "side": "CALL",
+            "price": 1.099814354135623,
+            "dueAt": 1792250801000,
+            "result": "win"
+          },
+          {
+            "at": 1792250803000,
+            "side": "PUT",
+            "price": 1.0998619092917794,
+            "dueAt": 1792250833000,
+            "result": "win"
+          },
+          {
+            "at": 1792250833000,
+            "side": "CALL",
+            "price": 1.099807834757965,
+            "dueAt": 1792250863000,
+            "result": "win"
+          },
+          {
+            "at": 1792250863000,
+            "side": "PUT",
+            "price": 1.0999304069597613,
+            "dueAt": 1792250893000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250893000,
+            "side": "CALL",
+            "price": 1.0999323030577544,
+            "dueAt": 1792250923000,
+            "result": "win"
+          },
+          {
+            "at": 1792250923000,
+            "side": "CALL",
+            "price": 1.0999606099256565,
+            "dueAt": 1792250953000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.0999935053493357,
+            "dueAt": 1792250070000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.0999299500706465,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250101000,
+            "side": "PUT",
+            "price": 1.099970612868184,
+            "dueAt": 1792250131000,
+            "result": "win"
+          },
+          {
+            "at": 1792250131000,
+            "side": "CALL",
+            "price": 1.0998341047218825,
+            "dueAt": 1792250161000,
+            "result": "win"
+          },
+          {
+            "at": 1792250161000,
+            "side": "PUT",
+            "price": 1.0998675262790254,
+            "dueAt": 1792250191000,
+            "result": "win"
+          },
+          {
+            "at": 1792250191000,
+            "side": "CALL",
+            "price": 1.0998007404168653,
+            "dueAt": 1792250221000,
+            "result": "win"
+          },
+          {
+            "at": 1792250221000,
+            "side": "PUT",
+            "price": 1.099817263686966,
+            "dueAt": 1792250251000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250251000,
+            "side": "CALL",
+            "price": 1.0999328913976887,
+            "dueAt": 1792250281000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250281000,
+            "side": "CALL",
+            "price": 1.0998738872638378,
+            "dueAt": 1792250311000,
+            "result": "win"
+          },
+          {
+            "at": 1792250314000,
+            "side": "PUT",
+            "price": 1.099979467873886,
+            "dueAt": 1792250344000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250344000,
+            "side": "CALL",
+            "price": 1.1000087602385211,
+            "dueAt": 1792250374000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250375000,
+            "side": "PUT",
+            "price": 1.0999116232575448,
+            "dueAt": 1792250405000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250406000,
+            "side": "PUT",
+            "price": 1.099960071127893,
+            "dueAt": 1792250436000,
+            "result": "win"
+          },
+          {
+            "at": 1792250436000,
+            "side": "CALL",
+            "price": 1.0998400367625494,
+            "dueAt": 1792250466000,
+            "result": "win"
+          },
+          {
+            "at": 1792250467000,
+            "side": "PUT",
+            "price": 1.099830023154118,
+            "dueAt": 1792250497000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250498000,
+            "side": "PUT",
+            "price": 1.099847327377084,
+            "dueAt": 1792250528000,
+            "result": "win"
+          },
+          {
+            "at": 1792250528000,
+            "side": "PUT",
+            "price": 1.0998062608537515,
+            "dueAt": 1792250558000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250558000,
+            "side": "CALL",
+            "price": 1.0999458108745788,
+            "dueAt": 1792250588000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250588000,
+            "side": "CALL",
+            "price": 1.0998999204441793,
+            "dueAt": 1792250618000,
+            "result": "win"
+          },
+          {
+            "at": 1792250618000,
+            "side": "CALL",
+            "price": 1.0999711058657704,
+            "dueAt": 1792250648000,
+            "result": "win"
+          },
+          {
+            "at": 1792250648000,
+            "side": "PUT",
+            "price": 1.100012231038282,
+            "dueAt": 1792250678000,
+            "result": "win"
+          },
+          {
+            "at": 1792250678000,
+            "side": "PUT",
+            "price": 1.0999028269889402,
+            "dueAt": 1792250708000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250708000,
+            "side": "PUT",
+            "price": 1.0999584971493204,
+            "dueAt": 1792250738000,
+            "result": "win"
+          },
+          {
+            "at": 1792250738000,
+            "side": "CALL",
+            "price": 1.099834339497248,
+            "dueAt": 1792250768000,
+            "result": "win"
+          },
+          {
+            "at": 1792250771000,
+            "side": "CALL",
+            "price": 1.099814354135623,
+            "dueAt": 1792250801000,
+            "result": "win"
+          },
+          {
+            "at": 1792250803000,
+            "side": "PUT",
+            "price": 1.0998619092917794,
+            "dueAt": 1792250833000,
+            "result": "win"
+          },
+          {
+            "at": 1792250833000,
+            "side": "CALL",
+            "price": 1.099807834757965,
+            "dueAt": 1792250863000,
+            "result": "win"
+          },
+          {
+            "at": 1792250863000,
+            "side": "PUT",
+            "price": 1.0999304069597613,
+            "dueAt": 1792250893000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250893000,
+            "side": "CALL",
+            "price": 1.0999323030577544,
+            "dueAt": 1792250923000,
+            "result": "win"
+          },
+          {
+            "at": 1792250923000,
+            "side": "CALL",
+            "price": 1.0999606099256565,
+            "dueAt": 1792250953000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "jump-retrace",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 16,
+          "loss": 9,
+          "tie": 0,
+          "missing": 1,
+          "completed": 25,
+          "winRate": 0.64,
+          "maxLossStreak": 2
+        },
+        {
+          "win": 15,
+          "loss": 10,
+          "tie": 0,
+          "missing": 1,
+          "completed": 25,
+          "winRate": 0.6,
+          "maxLossStreak": 3
+        },
+        {
+          "win": 11,
+          "loss": 12,
+          "tie": 0,
+          "missing": 1,
+          "completed": 23,
+          "winRate": 0.4782608695652174,
+          "maxLossStreak": 7
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 1,
+          "spoiled": 2,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 7,
+          "newCandidateEntries": 8
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 88,
+          "changed": 88,
+          "suppressed": 0
+        },
+        {
+          "unstable": 88,
+          "changed": 0,
+          "suppressed": 88
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 1,
+      "spoiledAtSameTime": 2,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 1.4425200000114273,
+          "p95Ms": 6.135861999995541
+        },
+        {
+          "medianMs": 1.4674969999905443,
+          "p95Ms": 10.07169700000668
+        },
+        {
+          "medianMs": 1.460877999998047,
+          "p95Ms": 6.686683000007179
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250055000,
+            "side": "PUT",
+            "price": 1.100040180794275,
+            "dueAt": 1792250085000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250085000,
+            "side": "PUT",
+            "price": 1.1001930855062187,
+            "dueAt": 1792250115000,
+            "result": "win"
+          },
+          {
+            "at": 1792250145000,
+            "side": "CALL",
+            "price": 1.099971240908201,
+            "dueAt": 1792250175000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250175000,
+            "side": "CALL",
+            "price": 1.0997836503581868,
+            "dueAt": 1792250205000,
+            "result": "win"
+          },
+          {
+            "at": 1792250205000,
+            "side": "CALL",
+            "price": 1.0999338480283736,
+            "dueAt": 1792250235000,
+            "result": "win"
+          },
+          {
+            "at": 1792250235000,
+            "side": "PUT",
+            "price": 1.100009511189144,
+            "dueAt": 1792250265000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250265000,
+            "side": "PUT",
+            "price": 1.1002187633306677,
+            "dueAt": 1792250295000,
+            "result": "win"
+          },
+          {
+            "at": 1792250297000,
+            "side": "PUT",
+            "price": 1.1000438372733192,
+            "dueAt": 1792250327000,
+            "result": "win"
+          },
+          {
+            "at": 1792250330000,
+            "side": "CALL",
+            "price": 1.1000336074973338,
+            "dueAt": 1792250360000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250372000,
+            "side": "CALL",
+            "price": 1.099880894978655,
+            "dueAt": 1792250402000,
+            "result": "win"
+          },
+          {
+            "at": 1792250406000,
+            "side": "PUT",
+            "price": 1.0999934499688722,
+            "dueAt": 1792250436000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250437000,
+            "side": "PUT",
+            "price": 1.1003817980527237,
+            "dueAt": 1792250467000,
+            "result": "win"
+          },
+          {
+            "at": 1792250467000,
+            "side": "CALL",
+            "price": 1.100047824126066,
+            "dueAt": 1792250497000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250499000,
+            "side": "CALL",
+            "price": 1.1000445275834472,
+            "dueAt": 1792250529000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250531000,
+            "side": "CALL",
+            "price": 1.0996785279736863,
+            "dueAt": 1792250561000,
+            "result": "win"
+          },
+          {
+            "at": 1792250561000,
+            "side": "PUT",
+            "price": 1.0999883019276855,
+            "dueAt": 1792250591000,
+            "result": "win"
+          },
+          {
+            "at": 1792250593000,
+            "side": "CALL",
+            "price": 1.0999328344572232,
+            "dueAt": 1792250623000,
+            "result": "win"
+          },
+          {
+            "at": 1792250642000,
+            "side": "CALL",
+            "price": 1.100069929185824,
+            "dueAt": 1792250672000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250673000,
+            "side": "PUT",
+            "price": 1.1000554781860963,
+            "dueAt": 1792250703000,
+            "result": "win"
+          },
+          {
+            "at": 1792250703000,
+            "side": "CALL",
+            "price": 1.0994846674860952,
+            "dueAt": 1792250733000,
+            "result": "win"
+          },
+          {
+            "at": 1792250733000,
+            "side": "PUT",
+            "price": 1.0999563974031663,
+            "dueAt": 1792250763000,
+            "result": "win"
+          },
+          {
+            "at": 1792250774000,
+            "side": "CALL",
+            "price": 1.0999669426445218,
+            "dueAt": 1792250804000,
+            "result": "win"
+          },
+          {
+            "at": 1792250822000,
+            "side": "CALL",
+            "price": 1.1000685157198118,
+            "dueAt": 1792250852000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250852000,
+            "side": "PUT",
+            "price": 1.1000676962467737,
+            "dueAt": 1792250882000,
+            "result": "win"
+          },
+          {
+            "at": 1792250882000,
+            "side": "CALL",
+            "price": 1.0994885752961292,
+            "dueAt": 1792250912000,
+            "result": "win"
+          },
+          {
+            "at": 1792250912000,
+            "side": "PUT",
+            "price": 1.099944972934626,
+            "dueAt": 1792250942000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250055000,
+            "side": "PUT",
+            "price": 1.100040180794275,
+            "dueAt": 1792250085000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250085000,
+            "side": "PUT",
+            "price": 1.1001930855062187,
+            "dueAt": 1792250115000,
+            "result": "win"
+          },
+          {
+            "at": 1792250145000,
+            "side": "CALL",
+            "price": 1.099971240908201,
+            "dueAt": 1792250175000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250175000,
+            "side": "CALL",
+            "price": 1.0997836503581868,
+            "dueAt": 1792250205000,
+            "result": "win"
+          },
+          {
+            "at": 1792250205000,
+            "side": "CALL",
+            "price": 1.0999338480283736,
+            "dueAt": 1792250235000,
+            "result": "win"
+          },
+          {
+            "at": 1792250235000,
+            "side": "PUT",
+            "price": 1.100009511189144,
+            "dueAt": 1792250265000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250265000,
+            "side": "PUT",
+            "price": 1.1002187633306677,
+            "dueAt": 1792250295000,
+            "result": "win"
+          },
+          {
+            "at": 1792250297000,
+            "side": "CALL",
+            "price": 1.1000438372733192,
+            "dueAt": 1792250327000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250330000,
+            "side": "CALL",
+            "price": 1.1000336074973338,
+            "dueAt": 1792250360000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250372000,
+            "side": "PUT",
+            "price": 1.099880894978655,
+            "dueAt": 1792250402000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250406000,
+            "side": "CALL",
+            "price": 1.0999934499688722,
+            "dueAt": 1792250436000,
+            "result": "win"
+          },
+          {
+            "at": 1792250437000,
+            "side": "PUT",
+            "price": 1.1003817980527237,
+            "dueAt": 1792250467000,
+            "result": "win"
+          },
+          {
+            "at": 1792250467000,
+            "side": "CALL",
+            "price": 1.100047824126066,
+            "dueAt": 1792250497000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250499000,
+            "side": "CALL",
+            "price": 1.1000445275834472,
+            "dueAt": 1792250529000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250531000,
+            "side": "CALL",
+            "price": 1.0996785279736863,
+            "dueAt": 1792250561000,
+            "result": "win"
+          },
+          {
+            "at": 1792250561000,
+            "side": "PUT",
+            "price": 1.0999883019276855,
+            "dueAt": 1792250591000,
+            "result": "win"
+          },
+          {
+            "at": 1792250593000,
+            "side": "CALL",
+            "price": 1.0999328344572232,
+            "dueAt": 1792250623000,
+            "result": "win"
+          },
+          {
+            "at": 1792250642000,
+            "side": "CALL",
+            "price": 1.100069929185824,
+            "dueAt": 1792250672000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250673000,
+            "side": "PUT",
+            "price": 1.1000554781860963,
+            "dueAt": 1792250703000,
+            "result": "win"
+          },
+          {
+            "at": 1792250703000,
+            "side": "CALL",
+            "price": 1.0994846674860952,
+            "dueAt": 1792250733000,
+            "result": "win"
+          },
+          {
+            "at": 1792250733000,
+            "side": "PUT",
+            "price": 1.0999563974031663,
+            "dueAt": 1792250763000,
+            "result": "win"
+          },
+          {
+            "at": 1792250774000,
+            "side": "CALL",
+            "price": 1.0999669426445218,
+            "dueAt": 1792250804000,
+            "result": "win"
+          },
+          {
+            "at": 1792250822000,
+            "side": "CALL",
+            "price": 1.1000685157198118,
+            "dueAt": 1792250852000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250852000,
+            "side": "PUT",
+            "price": 1.1000676962467737,
+            "dueAt": 1792250882000,
+            "result": "win"
+          },
+          {
+            "at": 1792250882000,
+            "side": "CALL",
+            "price": 1.0994885752961292,
+            "dueAt": 1792250912000,
+            "result": "win"
+          },
+          {
+            "at": 1792250912000,
+            "side": "PUT",
+            "price": 1.099944972934626,
+            "dueAt": 1792250942000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250055000,
+            "side": "PUT",
+            "price": 1.100040180794275,
+            "dueAt": 1792250085000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250087000,
+            "side": "PUT",
+            "price": 1.1001717538833382,
+            "dueAt": 1792250117000,
+            "result": "win"
+          },
+          {
+            "at": 1792250145000,
+            "side": "CALL",
+            "price": 1.099971240908201,
+            "dueAt": 1792250175000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250192000,
+            "side": "PUT",
+            "price": 1.0998683895031063,
+            "dueAt": 1792250222000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250234000,
+            "side": "PUT",
+            "price": 1.1000087880441998,
+            "dueAt": 1792250264000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250298000,
+            "side": "PUT",
+            "price": 1.1000225893723528,
+            "dueAt": 1792250328000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250330000,
+            "side": "CALL",
+            "price": 1.1000336074973338,
+            "dueAt": 1792250360000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250375000,
+            "side": "PUT",
+            "price": 1.0999067374167708,
+            "dueAt": 1792250405000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250408000,
+            "side": "PUT",
+            "price": 1.0999943525067408,
+            "dueAt": 1792250438000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250438000,
+            "side": "PUT",
+            "price": 1.100371086497215,
+            "dueAt": 1792250468000,
+            "result": "win"
+          },
+          {
+            "at": 1792250468000,
+            "side": "CALL",
+            "price": 1.100045408571639,
+            "dueAt": 1792250498000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250499000,
+            "side": "CALL",
+            "price": 1.1000445275834472,
+            "dueAt": 1792250529000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250531000,
+            "side": "CALL",
+            "price": 1.0996785279736863,
+            "dueAt": 1792250561000,
+            "result": "win"
+          },
+          {
+            "at": 1792250561000,
+            "side": "PUT",
+            "price": 1.0999883019276855,
+            "dueAt": 1792250591000,
+            "result": "win"
+          },
+          {
+            "at": 1792250593000,
+            "side": "CALL",
+            "price": 1.0999328344572232,
+            "dueAt": 1792250623000,
+            "result": "win"
+          },
+          {
+            "at": 1792250642000,
+            "side": "CALL",
+            "price": 1.100069929185824,
+            "dueAt": 1792250672000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250673000,
+            "side": "PUT",
+            "price": 1.1000554781860963,
+            "dueAt": 1792250703000,
+            "result": "win"
+          },
+          {
+            "at": 1792250703000,
+            "side": "CALL",
+            "price": 1.0994846674860952,
+            "dueAt": 1792250733000,
+            "result": "win"
+          },
+          {
+            "at": 1792250733000,
+            "side": "PUT",
+            "price": 1.0999563974031663,
+            "dueAt": 1792250763000,
+            "result": "win"
+          },
+          {
+            "at": 1792250774000,
+            "side": "CALL",
+            "price": 1.0999669426445218,
+            "dueAt": 1792250804000,
+            "result": "win"
+          },
+          {
+            "at": 1792250822000,
+            "side": "CALL",
+            "price": 1.1000685157198118,
+            "dueAt": 1792250852000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250852000,
+            "side": "PUT",
+            "price": 1.1000676962467737,
+            "dueAt": 1792250882000,
+            "result": "win"
+          },
+          {
+            "at": 1792250882000,
+            "side": "CALL",
+            "price": 1.0994885752961292,
+            "dueAt": 1792250912000,
+            "result": "win"
+          },
+          {
+            "at": 1792250912000,
+            "side": "PUT",
+            "price": 1.099944972934626,
+            "dueAt": 1792250942000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "random-walk",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 10,
+          "loss": 19,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 0.3448275862068966,
+          "maxLossStreak": 12
+        },
+        {
+          "win": 11,
+          "loss": 18,
+          "tie": 0,
+          "missing": 1,
+          "completed": 29,
+          "winRate": 0.3793103448275862,
+          "maxLossStreak": 6
+        },
+        {
+          "win": 14,
+          "loss": 14,
+          "tie": 0,
+          "missing": 1,
+          "completed": 28,
+          "winRate": 0.5,
+          "maxLossStreak": 3
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 2,
+          "spoiled": 2,
+          "removedBaseWins": 3,
+          "newCandidateEntries": 9
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 9,
+          "newCandidateEntries": 28
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 163,
+          "changed": 163,
+          "suppressed": 0
+        },
+        {
+          "unstable": 163,
+          "changed": 0,
+          "suppressed": 163
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 2,
+      "spoiledAtSameTime": 2,
+      "removedBaseWins": 3,
+      "newCandidateEntries": 9,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 5.728154999989783,
+          "p95Ms": 6.5295659999974305
+        },
+        {
+          "medianMs": 7.011754000006476,
+          "p95Ms": 10.178023000000394
+        },
+        {
+          "medianMs": 6.243419999998878,
+          "p95Ms": 7.005672999992385
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250040000,
+            "side": "PUT",
+            "price": 1.1006414462079623,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "CALL",
+            "price": 1.1006094085875036,
+            "dueAt": 1792250100000,
+            "result": "win"
+          },
+          {
+            "at": 1792250100000,
+            "side": "CALL",
+            "price": 1.1006153954970332,
+            "dueAt": 1792250130000,
+            "result": "win"
+          },
+          {
+            "at": 1792250130000,
+            "side": "PUT",
+            "price": 1.1006255279556239,
+            "dueAt": 1792250160000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250161000,
+            "side": "CALL",
+            "price": 1.1006406881254467,
+            "dueAt": 1792250191000,
+            "result": "win"
+          },
+          {
+            "at": 1792250192000,
+            "side": "PUT",
+            "price": 1.1006602532787653,
+            "dueAt": 1792250222000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250222000,
+            "side": "CALL",
+            "price": 1.1006934903904837,
+            "dueAt": 1792250252000,
+            "result": "win"
+          },
+          {
+            "at": 1792250252000,
+            "side": "CALL",
+            "price": 1.1007350149443191,
+            "dueAt": 1792250282000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250282000,
+            "side": "PUT",
+            "price": 1.1006793036009583,
+            "dueAt": 1792250312000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250312000,
+            "side": "PUT",
+            "price": 1.1007146206807816,
+            "dueAt": 1792250342000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250342000,
+            "side": "PUT",
+            "price": 1.100715798496727,
+            "dueAt": 1792250372000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250373000,
+            "side": "PUT",
+            "price": 1.1007282883760767,
+            "dueAt": 1792250403000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250404000,
+            "side": "CALL",
+            "price": 1.1007848948949082,
+            "dueAt": 1792250434000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250434000,
+            "side": "PUT",
+            "price": 1.1007784553986915,
+            "dueAt": 1792250464000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250464000,
+            "side": "CALL",
+            "price": 1.1008132551631333,
+            "dueAt": 1792250494000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250495000,
+            "side": "CALL",
+            "price": 1.1007757138936853,
+            "dueAt": 1792250525000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250525000,
+            "side": "PUT",
+            "price": 1.100713143507077,
+            "dueAt": 1792250555000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250555000,
+            "side": "CALL",
+            "price": 1.100807257332724,
+            "dueAt": 1792250585000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250588000,
+            "side": "PUT",
+            "price": 1.1007841964063345,
+            "dueAt": 1792250618000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250619000,
+            "side": "CALL",
+            "price": 1.1008119132840792,
+            "dueAt": 1792250649000,
+            "result": "win"
+          },
+          {
+            "at": 1792250650000,
+            "side": "PUT",
+            "price": 1.100831543988377,
+            "dueAt": 1792250680000,
+            "result": "win"
+          },
+          {
+            "at": 1792250681000,
+            "side": "CALL",
+            "price": 1.1007611618173552,
+            "dueAt": 1792250711000,
+            "result": "win"
+          },
+          {
+            "at": 1792250711000,
+            "side": "CALL",
+            "price": 1.1007793643741013,
+            "dueAt": 1792250741000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250741000,
+            "side": "PUT",
+            "price": 1.1007586837665717,
+            "dueAt": 1792250771000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250771000,
+            "side": "PUT",
+            "price": 1.1007842110364832,
+            "dueAt": 1792250801000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250801000,
+            "side": "CALL",
+            "price": 1.1008199128972325,
+            "dueAt": 1792250831000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250831000,
+            "side": "PUT",
+            "price": 1.1007840408802394,
+            "dueAt": 1792250861000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250864000,
+            "side": "CALL",
+            "price": 1.1007897796378494,
+            "dueAt": 1792250894000,
+            "result": "win"
+          },
+          {
+            "at": 1792250894000,
+            "side": "CALL",
+            "price": 1.1008032473191949,
+            "dueAt": 1792250924000,
+            "result": "win"
+          },
+          {
+            "at": 1792250924000,
+            "side": "PUT",
+            "price": 1.1008319583377535,
+            "dueAt": 1792250954000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "PUT",
+            "price": 1.1006414462079623,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250070000,
+            "side": "PUT",
+            "price": 1.1006094085875036,
+            "dueAt": 1792250100000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250100000,
+            "side": "PUT",
+            "price": 1.1006153954970332,
+            "dueAt": 1792250130000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250130000,
+            "side": "PUT",
+            "price": 1.1006255279556239,
+            "dueAt": 1792250160000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250161000,
+            "side": "CALL",
+            "price": 1.1006406881254467,
+            "dueAt": 1792250191000,
+            "result": "win"
+          },
+          {
+            "at": 1792250192000,
+            "side": "CALL",
+            "price": 1.1006602532787653,
+            "dueAt": 1792250222000,
+            "result": "win"
+          },
+          {
+            "at": 1792250222000,
+            "side": "CALL",
+            "price": 1.1006934903904837,
+            "dueAt": 1792250252000,
+            "result": "win"
+          },
+          {
+            "at": 1792250252000,
+            "side": "CALL",
+            "price": 1.1007350149443191,
+            "dueAt": 1792250282000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250282000,
+            "side": "PUT",
+            "price": 1.1006793036009583,
+            "dueAt": 1792250312000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250312000,
+            "side": "PUT",
+            "price": 1.1007146206807816,
+            "dueAt": 1792250342000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250342000,
+            "side": "PUT",
+            "price": 1.100715798496727,
+            "dueAt": 1792250372000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250373000,
+            "side": "PUT",
+            "price": 1.1007282883760767,
+            "dueAt": 1792250403000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250404000,
+            "side": "CALL",
+            "price": 1.1007848948949082,
+            "dueAt": 1792250434000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250434000,
+            "side": "CALL",
+            "price": 1.1007784553986915,
+            "dueAt": 1792250464000,
+            "result": "win"
+          },
+          {
+            "at": 1792250464000,
+            "side": "CALL",
+            "price": 1.1008132551631333,
+            "dueAt": 1792250494000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250495000,
+            "side": "CALL",
+            "price": 1.1007757138936853,
+            "dueAt": 1792250525000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250525000,
+            "side": "PUT",
+            "price": 1.100713143507077,
+            "dueAt": 1792250555000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250555000,
+            "side": "CALL",
+            "price": 1.100807257332724,
+            "dueAt": 1792250585000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250588000,
+            "side": "PUT",
+            "price": 1.1007841964063345,
+            "dueAt": 1792250618000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250619000,
+            "side": "CALL",
+            "price": 1.1008119132840792,
+            "dueAt": 1792250649000,
+            "result": "win"
+          },
+          {
+            "at": 1792250650000,
+            "side": "PUT",
+            "price": 1.100831543988377,
+            "dueAt": 1792250680000,
+            "result": "win"
+          },
+          {
+            "at": 1792250680000,
+            "side": "PUT",
+            "price": 1.1007661423147983,
+            "dueAt": 1792250710000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250712000,
+            "side": "PUT",
+            "price": 1.100765613227853,
+            "dueAt": 1792250742000,
+            "result": "win"
+          },
+          {
+            "at": 1792250744000,
+            "side": "CALL",
+            "price": 1.1007661919405343,
+            "dueAt": 1792250774000,
+            "result": "win"
+          },
+          {
+            "at": 1792250779000,
+            "side": "CALL",
+            "price": 1.1007638019496218,
+            "dueAt": 1792250809000,
+            "result": "win"
+          },
+          {
+            "at": 1792250810000,
+            "side": "CALL",
+            "price": 1.1008208096744279,
+            "dueAt": 1792250840000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250840000,
+            "side": "CALL",
+            "price": 1.1007691903058867,
+            "dueAt": 1792250870000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250870000,
+            "side": "CALL",
+            "price": 1.1007594524943196,
+            "dueAt": 1792250900000,
+            "result": "win"
+          },
+          {
+            "at": 1792250900000,
+            "side": "PUT",
+            "price": 1.1007886001272413,
+            "dueAt": 1792250930000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250930000,
+            "side": "PUT",
+            "price": 1.1008444151724925,
+            "dueAt": 1792250960000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "PUT",
+            "price": 1.1006414462079623,
+            "dueAt": 1792250070000,
+            "result": "win"
+          },
+          {
+            "at": 1792250078000,
+            "side": "PUT",
+            "price": 1.1006051825138237,
+            "dueAt": 1792250108000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250108000,
+            "side": "PUT",
+            "price": 1.1006165429526853,
+            "dueAt": 1792250138000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250138000,
+            "side": "PUT",
+            "price": 1.1006326182182757,
+            "dueAt": 1792250168000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250168000,
+            "side": "CALL",
+            "price": 1.1006495537095486,
+            "dueAt": 1792250198000,
+            "result": "win"
+          },
+          {
+            "at": 1792250200000,
+            "side": "CALL",
+            "price": 1.100719515829923,
+            "dueAt": 1792250230000,
+            "result": "win"
+          },
+          {
+            "at": 1792250230000,
+            "side": "CALL",
+            "price": 1.100722079105011,
+            "dueAt": 1792250260000,
+            "result": "win"
+          },
+          {
+            "at": 1792250260000,
+            "side": "PUT",
+            "price": 1.1007330959326256,
+            "dueAt": 1792250290000,
+            "result": "win"
+          },
+          {
+            "at": 1792250292000,
+            "side": "CALL",
+            "price": 1.1006937333439382,
+            "dueAt": 1792250322000,
+            "result": "win"
+          },
+          {
+            "at": 1792250322000,
+            "side": "PUT",
+            "price": 1.1007451282922986,
+            "dueAt": 1792250352000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250352000,
+            "side": "CALL",
+            "price": 1.1007876245602137,
+            "dueAt": 1792250382000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250382000,
+            "side": "CALL",
+            "price": 1.100736062304813,
+            "dueAt": 1792250412000,
+            "result": "win"
+          },
+          {
+            "at": 1792250412000,
+            "side": "CALL",
+            "price": 1.1008182559688775,
+            "dueAt": 1792250442000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250442000,
+            "side": "CALL",
+            "price": 1.1007908220734817,
+            "dueAt": 1792250472000,
+            "result": "win"
+          },
+          {
+            "at": 1792250472000,
+            "side": "CALL",
+            "price": 1.1007914452063583,
+            "dueAt": 1792250502000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250503000,
+            "side": "CALL",
+            "price": 1.1007597290345204,
+            "dueAt": 1792250533000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250533000,
+            "side": "CALL",
+            "price": 1.1007258214195443,
+            "dueAt": 1792250563000,
+            "result": "win"
+          },
+          {
+            "at": 1792250563000,
+            "side": "CALL",
+            "price": 1.1008094979729923,
+            "dueAt": 1792250593000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250595000,
+            "side": "CALL",
+            "price": 1.1008012311932651,
+            "dueAt": 1792250625000,
+            "result": "win"
+          },
+          {
+            "at": 1792250626000,
+            "side": "PUT",
+            "price": 1.1008254713210388,
+            "dueAt": 1792250656000,
+            "result": "win"
+          },
+          {
+            "at": 1792250657000,
+            "side": "CALL",
+            "price": 1.1008198816309518,
+            "dueAt": 1792250687000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250691000,
+            "side": "CALL",
+            "price": 1.1007923546351432,
+            "dueAt": 1792250721000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250722000,
+            "side": "CALL",
+            "price": 1.1007883112717756,
+            "dueAt": 1792250752000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250753000,
+            "side": "PUT",
+            "price": 1.100773853371596,
+            "dueAt": 1792250783000,
+            "result": "win"
+          },
+          {
+            "at": 1792250785000,
+            "side": "CALL",
+            "price": 1.100750186778782,
+            "dueAt": 1792250815000,
+            "result": "win"
+          },
+          {
+            "at": 1792250835000,
+            "side": "CALL",
+            "price": 1.1007574650076843,
+            "dueAt": 1792250865000,
+            "result": "win"
+          },
+          {
+            "at": 1792250865000,
+            "side": "CALL",
+            "price": 1.1007952801920338,
+            "dueAt": 1792250895000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250895000,
+            "side": "PUT",
+            "price": 1.100785434521051,
+            "dueAt": 1792250925000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250925000,
+            "side": "CALL",
+            "price": 1.1008368045090935,
+            "dueAt": 1792250955000,
+            "result": "missing"
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "synthetic-stress-not-live",
+      "family": "volatility-switch",
+      "seed": 2026101761,
+      "metrics": [
+        {
+          "win": 10,
+          "loss": 18,
+          "tie": 0,
+          "missing": 1,
+          "completed": 28,
+          "winRate": 0.35714285714285715,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 11,
+          "loss": 17,
+          "tie": 0,
+          "missing": 1,
+          "completed": 28,
+          "winRate": 0.39285714285714285,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 9,
+          "loss": 19,
+          "tie": 0,
+          "missing": 1,
+          "completed": 28,
+          "winRate": 0.32142857142857145,
+          "maxLossStreak": 6
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": false,
+          "corrected": 2,
+          "spoiled": 1,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 9,
+          "newCandidateEntries": 24
+        }
+      ],
+      "candidateDiagnostics": [
+        {
+          "unstable": 80,
+          "changed": 80,
+          "suppressed": 0
+        },
+        {
+          "unstable": 80,
+          "changed": 0,
+          "suppressed": 80
+        }
+      ],
+      "sameEntries": false,
+      "correctedAtSameTime": 2,
+      "spoiledAtSameTime": 1,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 1.6011239999934332,
+          "p95Ms": 6.2996580000035465
+        },
+        {
+          "medianMs": 1.5189929999905871,
+          "p95Ms": 9.79704099999799
+        },
+        {
+          "medianMs": 1.512062000008882,
+          "p95Ms": 6.747707000002265
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.100629069790149,
+            "dueAt": 1792250070000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250074000,
+            "side": "CALL",
+            "price": 1.1005722353520782,
+            "dueAt": 1792250104000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250108000,
+            "side": "PUT",
+            "price": 1.1005264250304696,
+            "dueAt": 1792250138000,
+            "result": "win"
+          },
+          {
+            "at": 1792250138000,
+            "side": "PUT",
+            "price": 1.1005041069143207,
+            "dueAt": 1792250168000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250168000,
+            "side": "CALL",
+            "price": 1.1005856058471488,
+            "dueAt": 1792250198000,
+            "result": "win"
+          },
+          {
+            "at": 1792250198000,
+            "side": "PUT",
+            "price": 1.1006266730069256,
+            "dueAt": 1792250228000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250228000,
+            "side": "CALL",
+            "price": 1.1006381279137993,
+            "dueAt": 1792250258000,
+            "result": "win"
+          },
+          {
+            "at": 1792250258000,
+            "side": "CALL",
+            "price": 1.10068783783288,
+            "dueAt": 1792250288000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250288000,
+            "side": "CALL",
+            "price": 1.1005908951720085,
+            "dueAt": 1792250318000,
+            "result": "win"
+          },
+          {
+            "at": 1792250319000,
+            "side": "CALL",
+            "price": 1.1007320330400658,
+            "dueAt": 1792250349000,
+            "result": "win"
+          },
+          {
+            "at": 1792250349000,
+            "side": "CALL",
+            "price": 1.1007440997822178,
+            "dueAt": 1792250379000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250383000,
+            "side": "CALL",
+            "price": 1.1006804270354171,
+            "dueAt": 1792250413000,
+            "result": "win"
+          },
+          {
+            "at": 1792250413000,
+            "side": "CALL",
+            "price": 1.100882827958178,
+            "dueAt": 1792250443000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250443000,
+            "side": "CALL",
+            "price": 1.1007021721846402,
+            "dueAt": 1792250473000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250473000,
+            "side": "CALL",
+            "price": 1.1005891476409282,
+            "dueAt": 1792250503000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250504000,
+            "side": "PUT",
+            "price": 1.1005486236358903,
+            "dueAt": 1792250534000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250534000,
+            "side": "PUT",
+            "price": 1.1005851019588009,
+            "dueAt": 1792250564000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250566000,
+            "side": "CALL",
+            "price": 1.1007213406174012,
+            "dueAt": 1792250596000,
+            "result": "win"
+          },
+          {
+            "at": 1792250596000,
+            "side": "PUT",
+            "price": 1.1007603674899296,
+            "dueAt": 1792250626000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250628000,
+            "side": "CALL",
+            "price": 1.1008257177050007,
+            "dueAt": 1792250658000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250662000,
+            "side": "CALL",
+            "price": 1.1008948577318276,
+            "dueAt": 1792250692000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250694000,
+            "side": "CALL",
+            "price": 1.1007147192411972,
+            "dueAt": 1792250724000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250724000,
+            "side": "PUT",
+            "price": 1.1007018424658137,
+            "dueAt": 1792250754000,
+            "result": "win"
+          },
+          {
+            "at": 1792250755000,
+            "side": "CALL",
+            "price": 1.1006779212141815,
+            "dueAt": 1792250785000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250786000,
+            "side": "CALL",
+            "price": 1.1005708176158797,
+            "dueAt": 1792250816000,
+            "result": "win"
+          },
+          {
+            "at": 1792250834000,
+            "side": "PUT",
+            "price": 1.100619435691926,
+            "dueAt": 1792250864000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250868000,
+            "side": "CALL",
+            "price": 1.1006758844529847,
+            "dueAt": 1792250898000,
+            "result": "win"
+          },
+          {
+            "at": 1792250899000,
+            "side": "PUT",
+            "price": 1.1006813900897896,
+            "dueAt": 1792250929000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250930000,
+            "side": "CALL",
+            "price": 1.1009295030305248,
+            "dueAt": 1792250960000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.100629069790149,
+            "dueAt": 1792250070000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250074000,
+            "side": "PUT",
+            "price": 1.1005722353520782,
+            "dueAt": 1792250104000,
+            "result": "win"
+          },
+          {
+            "at": 1792250108000,
+            "side": "PUT",
+            "price": 1.1005264250304696,
+            "dueAt": 1792250138000,
+            "result": "win"
+          },
+          {
+            "at": 1792250138000,
+            "side": "PUT",
+            "price": 1.1005041069143207,
+            "dueAt": 1792250168000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250168000,
+            "side": "CALL",
+            "price": 1.1005856058471488,
+            "dueAt": 1792250198000,
+            "result": "win"
+          },
+          {
+            "at": 1792250198000,
+            "side": "PUT",
+            "price": 1.1006266730069256,
+            "dueAt": 1792250228000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250228000,
+            "side": "CALL",
+            "price": 1.1006381279137993,
+            "dueAt": 1792250258000,
+            "result": "win"
+          },
+          {
+            "at": 1792250258000,
+            "side": "CALL",
+            "price": 1.10068783783288,
+            "dueAt": 1792250288000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250288000,
+            "side": "PUT",
+            "price": 1.1005908951720085,
+            "dueAt": 1792250318000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250319000,
+            "side": "CALL",
+            "price": 1.1007320330400658,
+            "dueAt": 1792250349000,
+            "result": "win"
+          },
+          {
+            "at": 1792250349000,
+            "side": "CALL",
+            "price": 1.1007440997822178,
+            "dueAt": 1792250379000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250383000,
+            "side": "CALL",
+            "price": 1.1006804270354171,
+            "dueAt": 1792250413000,
+            "result": "win"
+          },
+          {
+            "at": 1792250413000,
+            "side": "CALL",
+            "price": 1.100882827958178,
+            "dueAt": 1792250443000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250443000,
+            "side": "CALL",
+            "price": 1.1007021721846402,
+            "dueAt": 1792250473000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250473000,
+            "side": "CALL",
+            "price": 1.1005891476409282,
+            "dueAt": 1792250503000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250504000,
+            "side": "PUT",
+            "price": 1.1005486236358903,
+            "dueAt": 1792250534000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250534000,
+            "side": "PUT",
+            "price": 1.1005851019588009,
+            "dueAt": 1792250564000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250566000,
+            "side": "CALL",
+            "price": 1.1007213406174012,
+            "dueAt": 1792250596000,
+            "result": "win"
+          },
+          {
+            "at": 1792250596000,
+            "side": "CALL",
+            "price": 1.1007603674899296,
+            "dueAt": 1792250626000,
+            "result": "win"
+          },
+          {
+            "at": 1792250628000,
+            "side": "CALL",
+            "price": 1.1008257177050007,
+            "dueAt": 1792250658000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250662000,
+            "side": "CALL",
+            "price": 1.1008948577318276,
+            "dueAt": 1792250692000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250694000,
+            "side": "CALL",
+            "price": 1.1007147192411972,
+            "dueAt": 1792250724000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250724000,
+            "side": "PUT",
+            "price": 1.1007018424658137,
+            "dueAt": 1792250754000,
+            "result": "win"
+          },
+          {
+            "at": 1792250755000,
+            "side": "CALL",
+            "price": 1.1006779212141815,
+            "dueAt": 1792250785000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250786000,
+            "side": "CALL",
+            "price": 1.1005708176158797,
+            "dueAt": 1792250816000,
+            "result": "win"
+          },
+          {
+            "at": 1792250834000,
+            "side": "PUT",
+            "price": 1.100619435691926,
+            "dueAt": 1792250864000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250868000,
+            "side": "CALL",
+            "price": 1.1006758844529847,
+            "dueAt": 1792250898000,
+            "result": "win"
+          },
+          {
+            "at": 1792250899000,
+            "side": "PUT",
+            "price": 1.1006813900897896,
+            "dueAt": 1792250929000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250930000,
+            "side": "CALL",
+            "price": 1.1009295030305248,
+            "dueAt": 1792250960000,
+            "result": "missing"
+          }
+        ],
+        [
+          {
+            "at": 1792250040000,
+            "side": "CALL",
+            "price": 1.100629069790149,
+            "dueAt": 1792250070000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250084000,
+            "side": "PUT",
+            "price": 1.10052807277858,
+            "dueAt": 1792250114000,
+            "result": "win"
+          },
+          {
+            "at": 1792250116000,
+            "side": "PUT",
+            "price": 1.1005129107096403,
+            "dueAt": 1792250146000,
+            "result": "win"
+          },
+          {
+            "at": 1792250146000,
+            "side": "PUT",
+            "price": 1.1004677131190779,
+            "dueAt": 1792250176000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250178000,
+            "side": "PUT",
+            "price": 1.1004697625340218,
+            "dueAt": 1792250208000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250213000,
+            "side": "PUT",
+            "price": 1.1004767565401357,
+            "dueAt": 1792250243000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250244000,
+            "side": "PUT",
+            "price": 1.1007109416800114,
+            "dueAt": 1792250274000,
+            "result": "win"
+          },
+          {
+            "at": 1792250274000,
+            "side": "PUT",
+            "price": 1.1005311352552172,
+            "dueAt": 1792250304000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250304000,
+            "side": "CALL",
+            "price": 1.1006770201650136,
+            "dueAt": 1792250334000,
+            "result": "win"
+          },
+          {
+            "at": 1792250337000,
+            "side": "PUT",
+            "price": 1.1006994483039352,
+            "dueAt": 1792250367000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250369000,
+            "side": "PUT",
+            "price": 1.1006912723336186,
+            "dueAt": 1792250399000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250400000,
+            "side": "CALL",
+            "price": 1.100776445302723,
+            "dueAt": 1792250430000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250430000,
+            "side": "PUT",
+            "price": 1.1005147590397055,
+            "dueAt": 1792250460000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250460000,
+            "side": "CALL",
+            "price": 1.100668605138573,
+            "dueAt": 1792250490000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250490000,
+            "side": "CALL",
+            "price": 1.1005612909298108,
+            "dueAt": 1792250520000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250520000,
+            "side": "CALL",
+            "price": 1.1005499430392038,
+            "dueAt": 1792250550000,
+            "result": "win"
+          },
+          {
+            "at": 1792250551000,
+            "side": "CALL",
+            "price": 1.1006738765428463,
+            "dueAt": 1792250581000,
+            "result": "win"
+          },
+          {
+            "at": 1792250581000,
+            "side": "PUT",
+            "price": 1.10073805881962,
+            "dueAt": 1792250611000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250611000,
+            "side": "PUT",
+            "price": 1.1007626277342497,
+            "dueAt": 1792250641000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250641000,
+            "side": "CALL",
+            "price": 1.100876771910282,
+            "dueAt": 1792250671000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250671000,
+            "side": "PUT",
+            "price": 1.1005671554244203,
+            "dueAt": 1792250701000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250701000,
+            "side": "PUT",
+            "price": 1.1005793330360274,
+            "dueAt": 1792250731000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250732000,
+            "side": "PUT",
+            "price": 1.1006025557606565,
+            "dueAt": 1792250762000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250762000,
+            "side": "PUT",
+            "price": 1.1006127939849453,
+            "dueAt": 1792250792000,
+            "result": "win"
+          },
+          {
+            "at": 1792250792000,
+            "side": "CALL",
+            "price": 1.1006098239194333,
+            "dueAt": 1792250822000,
+            "result": "win"
+          },
+          {
+            "at": 1792250834000,
+            "side": "PUT",
+            "price": 1.100619435691926,
+            "dueAt": 1792250864000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250868000,
+            "side": "CALL",
+            "price": 1.1006758844529847,
+            "dueAt": 1792250898000,
+            "result": "win"
+          },
+          {
+            "at": 1792250899000,
+            "side": "PUT",
+            "price": 1.1006813900897896,
+            "dueAt": 1792250929000,
+            "result": "loss"
+          },
+          {
+            "at": 1792250930000,
+            "side": "CALL",
+            "price": 1.1009295030305248,
+            "dueAt": 1792250960000,
+            "result": "missing"
+          }
+        ]
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "name": "released",
+      "win": 164,
+      "loss": 63,
+      "worstLossStreak": 12,
+      "regressions": []
+    },
+    {
+      "name": "median-90-120-180",
+      "win": 146,
+      "loss": 81,
+      "worstLossStreak": 6,
+      "regressions": [
+        "variable-range",
+        "sharp-turns",
+        "trend-switch",
+        "jump-retrace"
+      ]
+    },
+    {
+      "name": "suspend-unstable-projection",
+      "win": 140,
+      "loss": 75,
+      "worstLossStreak": 7,
+      "regressions": [
+        "variable-range",
+        "sharp-turns",
+        "trend-switch",
+        "jump-retrace",
+        "volatility-switch"
+      ]
+    }
+  ]
+}

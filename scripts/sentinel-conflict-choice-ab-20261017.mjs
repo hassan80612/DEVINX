@@ -1,5 +1,6 @@
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {performance} from 'node:perf_hooks';
+import {pathToFileURL} from 'node:url';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 import {ContextCompletedConflictChoice} from '../experiments/context-completed-conflict-choice-20261017.mjs';
 const T=1792250040000,realNow=Date.now;
@@ -15,21 +16,20 @@ const spec={version:'research-only-context-completed-choice-v1',baseCommit:'406c
  'Synthetic sessions are stress tests, not real accuracy or a financial forecast.',
  'Replay uses released validation and entry lifecycle; no broker orders, Windows scheduling or click latency are modeled.',
  'Only received/closed candles and past quotes enter the runtime; future data is used only by the separate scorer.']};
-function metrics(entries){let streak=0,maxLossStreak=0;
+export function metrics(entries){let streak=0,maxLossStreak=0;
  for(const e of entries){if(e.result==='loss')maxLossStreak=Math.max(maxLossStreak,++streak);else if(e.result==='win')streak=0;}
  const win=entries.filter(e=>e.result==='win').length,loss=entries.filter(e=>e.result==='loss').length;
  return {win,loss,tie:entries.filter(e=>e.result==='tie').length,missing:entries.filter(e=>e.result==='missing').length,
   completed:win+loss,winRate:win+loss?win/(win+loss):null,maxLossStreak};}
-function simulate(data){
- const variants=[new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'}),new DemoTradingRuntime({enableVNext:true,forecastModel:'now-structural-v1'})];
- variants[1].expiryDirectionSelector=new ContextCompletedConflictChoice();
- const entries=[[],[]],timing=[[],[]],differences=[],all=data.quotes,targets=data.targets??all;
+export function simulate(data,{Runtime=DemoTradingRuntime,selectors=[null,()=>new ContextCompletedConflictChoice()]}={}){
+ const variants=selectors.map(factory=>{const r=new Runtime({enableVNext:true,forecastModel:'now-structural-v1'});if(factory)r.expiryDirectionSelector=factory();return r;});
+ const entries=variants.map(()=>[]),timing=variants.map(()=>[]),differences=[],all=data.quotes,targets=data.targets??all;
  let ci=0;const candles=[];
  for(let i=0;i<targets.length;i++){
   const q=targets[i],now=q.ts;Date.now=()=>now;
   while(ci<(data.candles?.length??0)&&data.candles[ci].to*1000<=now)candles.push(data.candles[ci++]);
   const history=all.filter(p=>p.ts<=now&&p.ts>=now-300000);
-  for(let n=0;n<2;n++){
+  for(let n=0;n<variants.length;n++){
    const r=variants[n],settings={...r.settings,engine:'automatic',asset:data.asset??'EUR/USD',orderDurationMs:30000};
    const snap={provider:'iq_option',quoteHistory:history,price:q.price,quoteTs:q.ts,
     candles:candles.slice(-100),historicalCandlesVerified:true};
@@ -51,7 +51,13 @@ function simulate(data){
  const percentile=(xs,p)=>[...xs].sort((a,b)=>a-b)[Math.min(xs.length-1,Math.floor(xs.length*p))];
  const baseMap=new Map(entries[0].map(e=>[e.at,e])),candidateMap=new Map(entries[1].map(e=>[e.at,e]));
  const changed=entries[0].filter(e=>candidateMap.get(e.at)?.side!==e.side);
- const score={...data.metadata,metrics:entries.map(metrics),sameEntries:JSON.stringify(entries[0])===JSON.stringify(entries[1]),
+ const comparisons=entries.slice(1).map(es=>{const map=new Map(es.map(e=>[e.at,e]));return {
+  sameEntries:JSON.stringify(entries[0])===JSON.stringify(es),
+  corrected:entries[0].filter(e=>e.result==='loss'&&map.get(e.at)?.result==='win').length,
+  spoiled:entries[0].filter(e=>e.result==='win'&&map.get(e.at)?.result==='loss').length,
+  removedBaseWins:entries[0].filter(e=>e.result==='win'&&!map.has(e.at)).length,
+  newCandidateEntries:es.filter(e=>!baseMap.has(e.at)).length};});
+ const score={...data.metadata,metrics:entries.map(metrics),comparisons,candidateDiagnostics:variants.slice(1).map(r=>r.expiryDirectionSelector.stabilityCounts),sameEntries:JSON.stringify(entries[0])===JSON.stringify(entries[1]),
   correctedAtSameTime:changed.filter(e=>e.result==='loss'&&candidateMap.get(e.at)?.result==='win').length,
   spoiledAtSameTime:changed.filter(e=>e.result==='win'&&candidateMap.get(e.at)?.result==='loss').length,
   removedBaseWins:entries[0].filter(e=>e.result==='win'&&!candidateMap.has(e.at)).length,
@@ -62,7 +68,7 @@ function simulate(data){
  console.log(JSON.stringify({...score,entries:undefined,overrideExamples:undefined}));
  return score;
 }
-function synthetic(family,seed){
+export function synthetic(family,seed){
  let state=seed>>>0;const rand=()=>{state=(1664525*state+1013904223)>>>0;return state/4294967296;};
  const sign=seed%2?1:-1,phase0=rand()*Math.PI*2,quotes=[];let phase=phase0,walk=0,ou=0,drift=0;
  for(let t=-6000;t<=900;t++){
@@ -89,6 +95,7 @@ function synthetic(family,seed){
   candles.push({from:qs[0].ts/1000,to:qs.at(-1).ts/1000,open:ps[0],close:ps.at(-1),high:Math.max(...ps),low:Math.min(...ps),receivedAt:qs.at(-1).ts});}
  return {quotes,targets:quotes.filter(q=>q.ts>=T),candles,metadata:{kind:'synthetic-stress-not-live',family,seed}};
 }
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
 const results=[];
 try{
  for(const file of runLabel==='holdout'?[]:['sentinel-user-video-broker-6dp-20261016.json','sentinel-user-video-20261016.json']){
@@ -107,3 +114,4 @@ const report={spec,results,summary:{changedSessions:results.filter(r=>!r.sameEnt
 mkdirSync(new URL('../reports/',import.meta.url),{recursive:true});
 writeFileSync(new URL('../reports/sentinel-conflict-choice-ab-20261017'+(runLabel?'-'+runLabel:'')+'.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify({summary:report.summary}));
+}

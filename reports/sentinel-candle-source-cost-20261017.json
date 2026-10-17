@@ -1,0 +1,35 @@
+{
+  "purpose": "Interleaved component-only cached structural-context cost; not Windows/browser latency, FPS or entry timing.",
+  "results": [
+    {
+      "name": "100-native-1m-plus-20-native-5m",
+      "currentRows": 100,
+      "preservedRows": 120,
+      "timings": [
+        {
+          "medianMs": 0.04451500000000408,
+          "p95Ms": 0.08648599999999362
+        },
+        {
+          "medianMs": 0.06992199999999116,
+          "p95Ms": 0.11740100000000098
+        }
+      ]
+    },
+    {
+      "name": "bounded-eight-period-pool",
+      "currentRows": 400,
+      "preservedRows": 1920,
+      "timings": [
+        {
+          "medianMs": 0.07058299999999917,
+          "p95Ms": 0.12081599999999071
+        },
+        {
+          "medianMs": 0.20932500000000687,
+          "p95Ms": 0.4493659999999977
+        }
+      ]
+    }
+  ]
+}
