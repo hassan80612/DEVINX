@@ -15,7 +15,10 @@ type Status=any;
 // authenticated worker/manager status and may legitimately be older.
 const WEB_RELEASE_VERSION=agentRelease.version;
 const AVAILABLE_AGENT_VERSION=agentRelease.version;
-const AGENT_DOWNLOAD_URL=`/downloads/Sentinel-Agent-Windows.exe?v=${encodeURIComponent(AVAILABLE_AGENT_VERSION)}`;
+// Reuse the verified ORIGINAL 13.9.34 Windows binary, unchanged.
+// The prior Vercel static route applied Brotli/chunked transfer to EXE downloads.
+// The immutable GitHub CDN asset returns Content-Length and byte-range support.
+const AGENT_DOWNLOAD_URL='https://raw.githubusercontent.com/hassan80612/DEVINX/a74d602b75e7f70cca1ed2fb5f7af25e75ee8295/sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe';
 const AGENT_ZIP_DOWNLOAD_URL=`/downloads/Sentinel-Agent-${AVAILABLE_AGENT_VERSION}-Alternativo.zip`;
 function AgentZipDownload(){
  const {language}=useSentinelLocale();
