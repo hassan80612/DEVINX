@@ -1,0 +1,100 @@
+name: Sentinel 13.9.35 isolated Windows release
+on:
+  push:
+    branches:
+      - fix/sentinel-13935-bounded-feed-20261017
+    paths:
+      - 'sentinel-trading-lab/agent/**'
+      - '.github/workflows/sentinel-13935-windows-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sentinel-13935-isolated-windows-release
+  cancel-in-progress: false
+jobs:
+  validate-and-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+      - name: Test source and unchanged signal contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          find sentinel-trading-lab/agent -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+          node --test tests/sentinel-13935-feed-bound.test.mjs tests/sentinel-fast-feed-history.test.mjs tests/sentinel-1395-quote-race-latency.test.mjs tests/sentinel-1385-asset-history-latency.test.mjs tests/sentinel-13931-historical-structure.test.mjs tests/sentinel-range-oscillation-1393.test.mjs
+          node -e "const r=require('./sentinel-trading-lab/agent/release.json'),p=require('./sentinel-trading-lab/agent/package.json'); if(r.version!==p.version||r.version!=='13.9.35')process.exit(1)"
+      - name: Build embedded signed-version payload and Windows executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd sentinel-trading-lab
+          mkdir -p public/downloads
+          cp public/downloads/install-agent-v88.ps1 agent/worker/install-agent-update.ps1
+          (
+            cd agent
+            zip -qr ../public/downloads/agent_payload_v88.zip . -x 'node_modules/*' 'worker/data/*' '*.log' '.DS_Store'
+          )
+          export RELEASE_SHA="$(sha256sum public/downloads/agent_payload_v88.zip | cut -d' ' -f1)"
+          python3 -c 'import json,os; r=json.load(open("agent/release.json")); print(json.dumps({"format":"sentinel-agent-update-v1","version":r["version"],"build":r["build"],"zipSha256":os.environ["RELEASE_SHA"]},separators=(",",":")))' > public/downloads/agent-update.json
+          rm -f agent/worker/install-agent-update.ps1
+          test -f agent/worker/sentinel.ico
+          go install github.com/akavel/rsrc@latest
+          "$(go env GOPATH)/bin/rsrc" -ico agent/worker/sentinel.ico -arch amd64 -o sentinel_icon.syso
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags='-s -w -buildid=' -o public/downloads/Sentinel-Agent-Windows.exe agent-launcher.go
+          rm -f sentinel_icon.syso
+          cp public/downloads/Sentinel-Agent-Windows.exe public/downloads/sentinel-agent-windows.exe
+          test "$(stat -c%s public/downloads/Sentinel-Agent-Windows.exe)" -gt "$(stat -c%s public/downloads/agent_payload_v88.zip)"
+          sha256sum public/downloads/Sentinel-Agent-Windows.exe
+          cat public/downloads/agent-update.json
+      - name: Publish isolated candidate artifacts to its branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=fix/sentinel-13935-bounded-feed-20261017
+          current="$(git ls-remote origin "refs/heads/$branch" | cut -f1)"
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo 'Source branch advanced before binary packaging completed'
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe sentinel-trading-lab/public/downloads/sentinel-agent-windows.exe sentinel-trading-lab/public/downloads/agent_payload_v88.zip sentinel-trading-lab/public/downloads/agent-update.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(sentinel): verified 13.9.35 Windows agent payload'
+            git push origin "HEAD:$branch"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-13935-bounded-feed-windows-installer
+          path: sentinel-trading-lab/public/downloads/Sentinel-Agent-Windows.exe
+          if-no-files-found: error
+          retention-days: 3
+  verify-on-windows:
+    needs: validate-and-bundle
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sentinel-13935-bounded-feed-windows-installer
+          path: installer
+      - name: Verify embedded source and installer without changing machine state
+        shell: pwsh
+        env:
+          SENTINEL_INSTALL_VERIFY_ONLY: '1'
+          SENTINEL_INSTALL_TEST: '1'
+          CI: 'true'
+        run: |
+          $exe=Join-Path $PWD 'installer/Sentinel-Agent-Windows.exe'
+          if(-not (Test-Path $exe)){ throw 'Installer missing' }
+          & $exe
+          if($LASTEXITCODE -ne 0){ throw "Embedded payload test failed: $LASTEXITCODE" }
