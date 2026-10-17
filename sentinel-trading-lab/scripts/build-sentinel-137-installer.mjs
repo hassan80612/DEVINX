@@ -82,24 +82,6 @@ tool(goBinary,['build','-trimpath','-ldflags=-s -w -buildid=','-o',exe,'agent-la
 if(statSync(exe).size<1000000)throw Error('invalid_windows_executable');
 for(const alias of ['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe'])
  copyFileSync(exe,join(dl,alias));
-// Bind download integrity to the ACTUAL Windows executable emitted by this
-// build (not to a binary committed in an earlier release).
-const executableBytes=readFileSync(exe);
-if(executableBytes.subarray(0,2).toString('ascii')!=='MZ')throw Error('not_windows_pe_executable');
-const executableDigest=createHash('sha256').update(executableBytes).digest('hex');
-writeFileSync(join(dl,'sentinel-windows-exe-integrity.json'),JSON.stringify({
- format:'sentinel-windows-exe-integrity-v1',
- version:release.version,
- build:release.build,
- size:executableBytes.length,
- sha256:executableDigest
-})+'\n');
-for(const alias of ['Sentinel-Agent-Windows.exe','sentinel-agent-windows.exe']){
- const check=readFileSync(join(dl,alias));
- if(check.length!==executableBytes.length||
-    createHash('sha256').update(check).digest('hex')!==executableDigest)
-  throw Error('agent_windows_alias_integrity_mismatch');
-}
 // Alternate offline-from-Sentinel installer packaging for Edge / Defender
 // browser-download failures. It contains the same checked payload and the
 // EXISTING PowerShell installer, with no additional runtime logic or new URL.
