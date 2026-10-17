@@ -1,0 +1,209 @@
+{
+  "sourceCommit": "406c8f6b7ffa6fa90cad6575c0903ba78205b697",
+  "fixtures": [
+    {
+      "path": 0,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.09968950328662,
+        "predictedPrice": 1.099482377273642,
+        "expectedLogMove": -0.00018836728081282579,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 26,
+        "observedPoints": 181,
+        "fitResidual": 0.0000905477583841349,
+        "fitSelectionCriterion": -3341.9154458457997
+      }
+    },
+    {
+      "path": 1,
+      "forecast": {
+        "ready": true,
+        "side": "CALL",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.0996914031881617,
+        "predictedPrice": 1.0997713325537366,
+        "expectedLogMove": 0.00007268080910055011,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 32,
+        "observedPoints": 181,
+        "fitResidual": 0.000041619720442554805,
+        "fitSelectionCriterion": -3623.29924928682
+      }
+    },
+    {
+      "path": 2,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.1002749277034014,
+        "predictedPrice": 1.1000349809053682,
+        "expectedLogMove": -0.00021810273002491394,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 38,
+        "observedPoints": 181,
+        "fitResidual": 0.000020315586201142726,
+        "fitSelectionCriterion": -3882.92047972273
+      }
+    },
+    {
+      "path": 3,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.1002180804254849,
+        "predictedPrice": 1.099724441632494,
+        "expectedLogMove": -0.00044877427144227077,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 44,
+        "observedPoints": 181,
+        "fitResidual": 0.000013759761168458438,
+        "fitSelectionCriterion": -4023.970126850945
+      }
+    },
+    {
+      "path": 4,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.1001177803623163,
+        "predictedPrice": 1.0996248714818677,
+        "expectedLogMove": -0.0004481514128800495,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 50,
+        "observedPoints": 181,
+        "fitResidual": 0.000014628938664915865,
+        "fitSelectionCriterion": -4001.7964713937013
+      }
+    },
+    {
+      "path": 5,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.1003593141400307,
+        "predictedPrice": 1.0997256835141782,
+        "expectedLogMove": -0.0005760056034625556,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 56,
+        "observedPoints": 181,
+        "fitResidual": 0.000020069179874599682,
+        "fitSelectionCriterion": -3887.337996811443
+      }
+    },
+    {
+      "path": 6,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.1002274620079866,
+        "predictedPrice": 1.0996428206943667,
+        "expectedLogMove": -0.0005315234557067064,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 64,
+        "observedPoints": 181,
+        "fitResidual": 0.000014231859536414215,
+        "fitSelectionCriterion": -4011.758199716728
+      }
+    },
+    {
+      "path": 7,
+      "forecast": {
+        "ready": true,
+        "side": "CALL",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.09984738973485,
+        "predictedPrice": 1.1000493014682167,
+        "expectedLogMove": 0.00018356474169075395,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 70,
+        "observedPoints": 181,
+        "fitResidual": 0.000006486481582462008,
+        "fitSelectionCriterion": -4296.20434276272
+      }
+    },
+    {
+      "path": 8,
+      "forecast": {
+        "ready": true,
+        "side": "CALL",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.0997313108658984,
+        "predictedPrice": 1.1002556768022098,
+        "expectedLogMove": 0.00047669913429536684,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 76,
+        "observedPoints": 181,
+        "fitResidual": 0.0000051284889229946635,
+        "fitSelectionCriterion": -4381.24147163842
+      }
+    },
+    {
+      "path": 9,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.1003383387093029,
+        "predictedPrice": 1.0999130113488635,
+        "expectedLogMove": -0.0003866170705687286,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 82,
+        "observedPoints": 181,
+        "fitResidual": 0.000006014993400568286,
+        "fitSelectionCriterion": -4323.52267363033
+      }
+    },
+    {
+      "path": 10,
+      "forecast": {
+        "ready": true,
+        "side": "PUT",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.0998825110038168,
+        "predictedPrice": 1.0997780060321005,
+        "expectedLogMove": -0.00009501918226523022,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 88,
+        "observedPoints": 181,
+        "fitResidual": 0.000007764898091227605,
+        "fitSelectionCriterion": -4231.083048622052
+      }
+    },
+    {
+      "path": 11,
+      "forecast": {
+        "ready": true,
+        "side": "CALL",
+        "reason": "observed-trend-and-30s-cycle-projection",
+        "observedAt": 1792250040000,
+        "entryPrice": 1.0998688510590295,
+        "predictedPrice": 1.1002429583392217,
+        "expectedLogMove": 0.00034008024701258176,
+        "horizonMs": 30000,
+        "fittedPeriodSeconds": 90,
+        "observedPoints": 181,
+        "fitResidual": 0.000037886743407456236,
+        "fitSelectionCriterion": -3657.3174142199423
+      }
+    }
+  ]
+}

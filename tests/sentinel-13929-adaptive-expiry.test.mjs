@@ -10,10 +10,13 @@ const T=Date.UTC(2026,9,16,22),rows=Array.from({length:181},(_,i)=>({ts:T-180000
 const input={quoteHistory:rows,quoteAt:T,now:T,price:rows.at(-1).price,durationMs:30000};
 const base={ready:true,side:'PUT',observedAt:T,entryPrice:input.price};
 const observe=(m,overrides={})=>m.observe({context:'IQ|EUR|30|current',...input,baseline:base,...overrides});
-test('production wide search is the exact wider-cycle candidate evaluated in research',()=>{
- const video=JSON.parse(readFileSync(new URL('./fixtures/sentinel-user-video-broker-6dp-20261016.json',import.meta.url))).quoteHistory;
- for(const i of [200,400,650,950]){
+test('wide model fitting remains identical to the research reference on aligned actual observations',()=>{
+ // 13.9.36 deliberately changes subsecond observation selection. Compare
+ // unchanged model fitting on identical, actually recorded aligned inputs.
+ const video=JSON.parse(readFileSync(new URL('./fixtures/sentinel-user-video-broker-6dp-20261016.json',import.meta.url))).quoteHistory.filter(q=>q.ts%1000===0);
+ for(const i of [100,200,325,475]){
   const q=video[i],args={quoteHistory:video.slice(0,i+1),quoteAt:q.ts,now:q.ts,price:q.price,durationMs:30000};
+  assert.equal(thirtySecondCycleForecast({...args,periodSearch:'wide'}).ready,true);
   assert.deepEqual(thirtySecondCycleForecast({...args,periodSearch:'wide'}),wideBandCycleForecast(args));
  }
 });

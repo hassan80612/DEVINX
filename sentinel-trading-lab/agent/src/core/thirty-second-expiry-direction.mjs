@@ -2,7 +2,7 @@
 // Extrapolate observed trend + cycle phase to
 // t+30s by default, or the explicit verified broker deadline. The signal's
 // :27 manual-click lead must not leave a :57 projection under a :00 counter.
-// Window 180s; observed 1s grid; minimum 60 points; two observed cycle periods.
+// Window 180s; one actual quote per second; minimum 60 points; two observed cycle periods.
 // Search 12..90s in 2s steps. Penalized fit selects a line or ONE harmonic.
 // All fit/selection inputs are past prices. No outcome fitting, orders or timer.
 const TAU=2*Math.PI;
@@ -37,12 +37,13 @@ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quo
  if(!(Number.isFinite(horizonMs)&&horizonMs>0&&horizonMs<=60000))return none('invalid-projection-deadline');
  const rows=quoteHistory.filter(q=>q.ts<=quoteAt&&(q.receivedAt??q.ts)<=now&&q.ts>=quoteAt-180000&&Number.isFinite(q.price)&&q.price>0).sort((a,b)=>a.ts-b.ts);
  if(rows.at(-1)?.ts!==quoteAt||rows.at(-1)?.price!==price)return none('unverified-live-quote');
- const points=[];let j=rows.length-1;
- for(let t=quoteAt;t>=Math.max(rows[0].ts,quoteAt-180000);t-=1000){
-  while(j>=0&&rows[j].ts>t)j--;
-  if(j>=0&&t-rows[j].ts<=500)points.push({t:(t-quoteAt)/1000,y:Math.log(rows[j].price/price)});
- }
- points.reverse();
+ // Keep one actual observation per second with its real timestamp.
+ // A grid anchored to the current quote and a 500ms tolerance can reject
+ // valid 1Hz history solely because that quote arrived at a new ms phase.
+ // Do not fill missing seconds: the gap and freshness guards remain below.
+ const seconds=new Map();
+ for(const q of rows)seconds.set(Math.floor(q.ts/1000),q);
+ const points=[...seconds.values()].map(q=>({t:(q.ts-quoteAt)/1000,y:Math.log(q.price/price)}));
  if(points.length<60)return none('insufficient-observed-cycle-history');
  if(points.some((p,i)=>i&&p.t-points[i-1].t>3))return none('observed-cycle-history-gap');
  const line=fit(points,null);if(!line||line.sse<1e-20)return none('insufficient-nonlinear-variation');

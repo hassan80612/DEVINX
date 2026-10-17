@@ -31,7 +31,10 @@ test('historical rejection cannot override the selected wide projection using th
  assert.equal(result.reason,'historical-level-versus-expiry-conflict');
 });
 test('a reaction agreeing with the selected wide projection is not vetoed by the discarded narrow one',()=>{
- const result=scenario(390,.843415);
+ // Corrected actual-timestamp sampling changes the fits at the old index.
+ // This recorded point still exercises CALL narrow / PUT wide / PUT reaction;
+ // no future outcome is used to choose this integration-contract fixture.
+ const result=scenario(952,.842955);
  assert.equal(result.priceStructure.reaction.side,'PUT');
  assert.equal(result.ready,true);assert.equal(result.side,'PUT');
  assert.equal(result.reason,'historical-level-rejection');
