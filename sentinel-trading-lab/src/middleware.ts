@@ -36,7 +36,6 @@ export async function middleware(req:NextRequest){
   // File downloads must not silently redirect to /login and save HTML as ZIP.
   // Keep the raw self-update payload protected by the device/license checks.
   const installerFile=/^\/downloads\/(?:Sentinel-Agent-[A-Za-z0-9.-]+|sentinel-agent-windows)\.exe$/i.test(p);
-  if(p==='/api/agent/windows-exe')return NextResponse.next();
   if(installerFile)return NextResponse.next();
   // Exact public fallback archive only; raw self-update ZIP remains gated.
   const fileName=p.startsWith('/downloads/')?p.slice('/downloads/'.length):'';
