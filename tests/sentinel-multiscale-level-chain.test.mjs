@@ -56,6 +56,26 @@ test('adjacent candles are one test until the complete range moves away and revi
  m=historicalPriceStructure({candles:bars,now:T}).candleLevelMap;
  assert.equal(m.levels.find(z=>z.level===100).independentTests,2);
 });
+test('a recurring candle boundary passed through without rejection is not a defended barrier',()=>{
+ const bars=Array.from({length:100},(_,i)=>{
+  const phase=i%10,open=100+phase,close=open+1;
+  return {from:T-(100-i)*60000,to:T-(99-i)*60000,open,close,low:open,high:close};
+ });
+ const m=historicalPriceStructure({candles:bars,now:T}).candleLevelMap;
+ const passed=m.levels.find(z=>Math.abs(z.level-105)<.000001);
+ assert.ok(passed.independentTests>=2);
+ assert.equal(passed.confirmedPivots,0);assert.equal(passed.independentRejections,0);
+ const q=quotes([104,104.5,104.9,105,104.9,104.8,104.7]);
+ const r=assessCandleLevelRoute({map:m,...input(q),side:'CALL',targetPrice:108});
+ assert.notEqual(r.event?.zone.level,105);
+});
+test('missing candles cannot fabricate a historical rejection from nonconsecutive observations',()=>{
+ const bars=candles().slice(-3);bars[0].low=103;bars[1].low=100;bars[2].low=103;
+ bars[2].from+=60000;bars[2].to+=60000;
+ const m=historicalPriceStructure({candles:bars,now:T+60000}).candleLevelMap;
+ const z=m.levels.find(l=>l.level===100);
+ assert.equal(z.confirmedPivots,0);assert.equal(z.independentRejections,0);
+});
 test('a confirmed three-candle wick structure works without waiting for an EMA20 or 100 new candles',()=>{
  const bars=candles().slice(-3);bars[0].low=103;bars[1].low=100;bars[2].low=103;
  const rows=quotes([104,103,102,100,100.2,100.4,101]);

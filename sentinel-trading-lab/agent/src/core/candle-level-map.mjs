@@ -3,7 +3,7 @@
 const WINDOWS=[3,10,20,50,100];
 export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
  const levels=zones.map(zone=>{
-  const tests=[];let armed=true;
+  const tests=[];let armed=true,visit=0;
   for(let i=0;i<rows.length;i++){
    const c=rows[i],range=c.high-c.low;
    const high=Math.abs(c.high-zone.level)<=tolerance;
@@ -12,19 +12,29 @@ export function buildCandleLevelMap({rows=[],zones=[],tolerance=0}={}){
    if(away)armed=true;
    if(!high&&!low)continue;
    const previous=rows[i-1],next=rows[i+1];
+   const contiguous=!!previous&&!!next&&previous.to===c.from&&c.to===next.from;
    // A pivot is confirmed only after a received closed candle on each side.
-   const pivot=!!previous&&!!next&&previous.to===c.from&&c.to===next.from&&(
+   const pivot=contiguous&&(
     high&&c.high>previous.high&&c.high>next.high||
     low&&c.low<previous.low&&c.low<next.low);
    const upper=range>0?(c.high-Math.max(c.open,c.close))/range:0;
    const lower=range>0?(Math.min(c.open,c.close)-c.low)/range:0;
-   tests.push({age:rows.length-1-i,independent:armed,pivot,
+   if(armed)visit++;
+   const approachedHigh=!!previous&&previous.close<zone.low-tolerance;
+   const approachedLow=!!previous&&previous.close>zone.high+tolerance;
+   const rejectedHigh=contiguous&&high&&approachedHigh&&next.close<zone.low-tolerance&&
+    (upper>=.5||next.high<=c.high+tolerance);
+   const rejectedLow=contiguous&&low&&approachedLow&&next.close>zone.high+tolerance&&
+    (lower>=.5||next.low>=c.low-tolerance);
+   tests.push({age:rows.length-1-i,independent:armed,visit,pivot,
+    rejected:rejectedHigh||rejectedLow,
     resistanceWick:high?upper:0,supportWick:low?lower:0,
     bodyFraction:range>0?Math.abs(c.close-c.open)/range:0});
    armed=false;
   }
   return {low:zone.low,high:zone.high,level:zone.level,tests,
    independentTests:tests.filter(t=>t.independent).length,
+   independentRejections:new Set(tests.filter(t=>t.rejected).map(t=>t.visit)).size,
    confirmedPivots:tests.filter(t=>t.pivot).length,
    resistanceWick:Math.max(0,...tests.map(t=>t.resistanceWick)),
    supportWick:Math.max(0,...tests.map(t=>t.supportWick)),
@@ -54,11 +64,13 @@ export function assessCandleLevelRoute({map,quoteHistory=[],quoteAt,now=quoteAt,
  const q=[...byTime.values()].sort((a,b)=>a.ts-b.ts);
  if(q.at(-1)?.ts!==ts||q.at(-1).price!==spot)return null;
  const origin=previousPrice(q,ts-6000),earlier=previousPrice(q,ts-2000),last=q.at(-2)?.price;
- const levels=map.levels.filter(z=>z.confirmedPivots>0||z.independentTests>=2);
+ const levels=map.levels.filter(z=>z.confirmedPivots>0||
+  (z.independentRejections??z.independentTests)>=2);
  const sgn=side==='CALL'?1:side==='PUT'?-1:0;
  const ahead=sgn?levels.filter(z=>sgn*(z.level-spot)>0)
   .sort((a,b)=>sgn*(a.level-b.level)):[];
  const describe=z=>({level:z.level,windows:z.windows,independentTests:z.independentTests,
+  independentRejections:z.independentRejections??null,
   confirmedPivots:z.confirmedPivots,
   oldestBarsAgo:Math.max(...z.tests.map(t=>t.age)),newestBarsAgo:Math.min(...z.tests.map(t=>t.age))});
  const route={windows:map.windows.map(({levels,...w})=>({...w,levelCount:levels.length})),side,

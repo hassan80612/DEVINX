@@ -9,7 +9,7 @@ const basePath=process.argv[2];
 if(!basePath)throw Error('Pass the absolute production core directory');
 const {analyzeNowOpportunity:production}=await import(pathToFileURL(basePath+'/now-opportunity-engine.mjs'));
 const {HistoricalPriceStructureCache:ProductionCache}=await import(pathToFileURL(basePath+'/historical-price-structure.mjs'));
-const cases=['uptrend','downtrend','regular-range','changing-range','sharp-turns','random-walk'];
+const cases=process.argv[5]?.split(',')||['uptrend','downtrend','regular-range','changing-range','sharp-turns','random-walk'];
 const results=[];
 for(const kind of cases){
  let seed=1267;const rnd=()=>{seed=(1664525*seed+1013904223)>>>0;return seed/4294967296;};
@@ -18,7 +18,8 @@ for(const kind of cases){
   random+=(rnd()-.5)*.000028;
   const trend=kind==='uptrend'?t*.0000008:kind==='downtrend'?-t*.0000008:0;
   const amplitude=kind==='changing-range'?(.0001+.00012*(1+Math.sin(t/109))):.0002;
-  const wave=kind==='sharp-turns'?.0004*(2/Math.PI)*Math.asin(Math.sin(t/43)):
+  const triangle=kind==='sharp-turns'||kind.startsWith('triangle-');
+  const wave=triangle?.0004*(2/Math.PI)*Math.asin(Math.sin(kind==='sharp-turns'?t/43:t*2*Math.PI/Number(kind.slice(9)))):
    kind.includes('range')?amplitude*Math.sin(t/(kind==='regular-range'?17:31)):
    kind==='random-walk'?random:.000025*Math.sin(t/9);
   prices.set(t,1.1+trend+wave);
@@ -54,9 +55,17 @@ for(const kind of cases){
    losses:entries.filter(e=>e.outcome==='loss').length,ties:entries.filter(e=>e.outcome==='tie').length,
    cpuMs:{mean:cpu.reduce((s,x)=>s+x,0)/cpu.length,p95:cpu[Math.floor(cpu.length*.95)],max:cpu.at(-1)},reasons,entries});
  }
- results.push({kind,outputs});
+ const before=outputs[0].entries,after=outputs[1].entries;
+ const afterByTime=new Map(after.map(e=>[e.t,e]));
+ const common=before.filter(e=>afterByTime.has(e.t));
+ const matched={entries:common.length,
+  productionWins:common.filter(e=>e.outcome==='win').length,
+  candidateWins:common.filter(e=>afterByTime.get(e.t).outcome==='win').length,
+  changedDirections:common.filter(e=>afterByTime.get(e.t).side!==e.side).length,
+  removed:before.length-common.length,added:after.length-common.length};
+ results.push({kind,outputs,matched});
  console.log(kind,JSON.stringify(outputs.map(({entries,...r})=>r)));
 }
-writeFileSync(new URL('../reports/sentinel-multiscale-synthetic-20261017.json',import.meta.url),JSON.stringify({
+writeFileSync(new URL('../reports/'+(process.argv[3]||'sentinel-multiscale-synthetic-20261017.json'),import.meta.url),JSON.stringify({
  purpose:'Synthetic coherent closed OHLC and quotes only; NOT real or independent market accuracy.',
- productionVersion:'13.9.32',candidate:'unreleased candle-level-map',results},null,2)+'\n');
+ productionVersion:'13.9.32',candidate:process.argv[4]||'unreleased candle-level-map',results},null,2)+'\n');

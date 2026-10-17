@@ -8,6 +8,7 @@ import {causalPatternDirection} from './causal-pattern-direction.mjs';
 import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 import {historicalPriceStructure,applyHistoricalPriceStructure} from './historical-price-structure.mjs';
 import {applyCandleLevelRoute} from './candle-level-map.mjs';
+import {applyObservedLevelSequence} from './observed-level-sequence.mjs';
 
 const sideOf=v=>v>0?'CALL':v<0?'PUT':null;
 const sign=side=>side==='CALL'?1:-1;
@@ -184,10 +185,14 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
   // an agreeing reaction and allow one that contradicts the selected side.
   const selectedForecast=forecast?.ready&&decision.ready?decision:forecast;
   const historical=applyHistoricalPriceStructure({candidate:{...decision,pendingForecast:selectedForecast},structure,...input});
-  const located=applyCandleLevelRoute({candidate:historical,map:structure.candleLevelMap,...input});
+  const candleLocated=applyCandleLevelRoute({candidate:historical,map:structure.candleLevelMap,...input});
+  const located=applyObservedLevelSequence({candidate:candleLocated,map:structure.candleLevelMap,...input});
   delete located.pendingForecast;
-  const levelReaction=located.reason==='multiscale-candle-rejection'?
-   located.priceStructure.candleRoute.event:located.priceStructure?.reaction;
+  const sequenceReaction=located.priceStructure?.observedSequence;
+  const levelReaction=['failed-breakout-structure-change','break-retest-continuation','rejection-followthrough-clear-room'].includes(located.reason)?
+   sequenceReaction.structureChange??sequenceReaction.continuation:
+   located.reason==='multiscale-candle-rejection'?
+    located.priceStructure.candleRoute.event:located.priceStructure?.reaction;
   return {...located,engineId,qualityPolicy,
    contextStrategy:engineId==='automatic'?(levelReaction?'support_resistance':context.strategy):engineId,
    marketShape:levelReaction?'historical-level-'+levelReaction.kind:context.marketShape,
