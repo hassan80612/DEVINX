@@ -1,9 +1,9 @@
 import {readFileSync} from 'node:fs';
 const currentAgentRelease=JSON.parse(readFileSync(new URL('./agent/release.json',import.meta.url),'utf8'));
 const agentDownloadHeaders=[
-  {key:'Content-Type',value:'application/octet-stream'},
+  {key:'Content-Type',value:'application/x-msdownload'},
   {key:'Content-Disposition',value:'attachment; filename="sentinel-agent-windows.exe"'},
-  {key:'Cache-Control',value:'private, no-store'}
+  {key:'Cache-Control',value:'private, no-store, no-transform'}
 ];
 // Retired binaries no longer take up production deployment space. Existing
 // authenticated direct download links still work via an explicit 307 redirect.
