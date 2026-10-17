@@ -90,17 +90,28 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
  // room for another 30s BEFORE its next barrier. This estimates distance;
  // it is not a countdown, a guaranteed path, or a hidden future order book.
  let continuation=null;
- const turn=turns.at(-1),sign=turn?.kind==='high'?-1:turn?.kind==='low'?1:0;
- const anchor=turn&&levels.filter(z=>Math.abs(turn.price-z.level)<=tolerance*2)
-  .sort((a,b)=>Math.abs(turn.price-a.level)-Math.abs(turn.price-b.level))[0];
- const next=sign?levels.filter(z=>sign*(z.level-spot)>tolerance)
-  .sort((a,b)=>sign*(a.level-b.level))[0]:null;
- if(anchor&&next&&seconds>=6&&efficiency>=.85&&sign*net>amplitude&&sign*step>=0){
+ // A small intermediate pullback does not erase the last defended major
+ // rejection. Search received swings for an intact historical anchor in
+ // the CURRENT observed direction, rather than only the latest micro-turn.
+ for(const turn of [...turns].reverse()){
+  const sign=turn.kind==='high'?-1:1;
+  const anchor=levels.filter(z=>Math.abs(turn.price-z.level)<=tolerance*2)
+   .sort((a,b)=>Math.abs(turn.price-a.level)-Math.abs(turn.price-b.level))[0];
+  if(!anchor)continue;
+  // The most recent MAJOR reaction owns this context. Never bypass an
+  // opposing or invalidated major turn by reviving an older convenient one.
+  if(!(sign*net>amplitude&&sign*step>=0))break;
+  if(rows.some(q=>q.ts>turn.at&&sign*(q.price-turn.price)<-amplitude))break;
+  const next=levels.filter(z=>sign*(z.level-spot)>tolerance)
+   .sort((a,b)=>sign*(a.level-b.level))[0];
+  if(!(next&&seconds>=6&&efficiency>=.85))break;
   const distance=sign*(next.level-spot),projectedMove=sign*velocity*30;
-  if(projectedMove>0&&distance>projectedMove+tolerance*2)
+  if(projectedMove>0&&distance>projectedMove+tolerance*2){
    continuation={kind:'rejection-followthrough-clear-room',side:sign>0?'CALL':'PUT',
     level:describe(anchor),nextLevel:describe(next),pivotPrice:turn.price,
     confirmedAt:turn.confirmedAt,room:distance,projectedMove,efficiency};
+  }
+  break;
  }
  return {amplitude,turns:turns.slice(-4),structureChange,continuation};
 }

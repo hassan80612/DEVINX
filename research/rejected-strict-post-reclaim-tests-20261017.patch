@@ -1,0 +1,70 @@
+diff --git a/tests/sentinel-local-sustainability.test.mjs b/tests/sentinel-local-sustainability.test.mjs
+new file mode 100644
+index 0000000..8565ebb
+--- /dev/null
++++ b/tests/sentinel-local-sustainability.test.mjs
+@@ -0,0 +1,64 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {observedLevelSequence,applyObservedLevelSequence} from '../sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs';
++const T=1792250000000;
++function input(vertices,mirror=false){
++ const prices=[vertices[0]];
++ for(const end of vertices.slice(1)){
++  const start=prices.at(-1),steps=Math.round(Math.abs(end-start)*10);
++  for(let i=1;i<=steps;i++)prices.push(start+(end-start)*i/steps);
++ }
++ const quoteHistory=prices.map((price,i)=>({ts:T-(prices.length-1-i)*1000,price:mirror?200-price:price}));
++ return {map:{observedCandles:100,asOf:T-60000,tolerance:.15,
++  levels:[90,100,110].map(level=>({low:level,high:level,level,confirmedPivots:2,independentTests:3}))},
++  quoteHistory,quoteAt:T,now:T,price:quoteHistory.at(-1).price,durationMs:30000};
++}
++for(const mirror of [false,true]){
++ const side=mirror?'PUT':'CALL',opposite=mirror?'CALL':'PUT';
++ test(`${side}: a single V reclaim cannot invent the second pullback`,()=>{
++  const args=input([102,100.6,101.3,99.4,101.8],mirror);
++  assert.equal(observedLevelSequence(args).structureChange,null);
++  const baseline={ready:true,side:opposite,observedAt:T,entryPrice:args.price};
++  const result=applyObservedLevelSequence({candidate:baseline,...args});
++  assert.equal(result.ready,true);assert.equal(result.side,opposite);
++  assert.equal(result.observedAt,T);assert.equal(result.entryPrice,args.price);
++ });
++ test(`${side}: no second pullback does not create a new admission`,()=>{
++  const args=input([102,100.6,101.3,99.4,101.8],mirror);
++  const result=applyObservedLevelSequence({candidate:{ready:false,side:null},...args});
++  assert.equal(result.ready,false);assert.equal(result.side,null);
++ });
++ test(`${side}: a genuine second pullback needs to improve the first extreme`,()=>{
++  const event=observedLevelSequence(input([102,100.6,101.3,99.4,100.2,99.9,101.8],mirror)).structureChange;
++  assert.equal(event.side,side);assert.ok(event.pullbackAt>event.reclaimedAt);
++  assert.ok(Math.abs(event.pullbackPrice-(mirror?100.1:99.9))<1e-8);
++  assert.equal(observedLevelSequence(input([102,100.6,101.3,99.4,100.4,99.1,101.8],mirror)).structureChange,null);
++ });
++ test(`${side}: breaking the confirmed pullback invalidates the old event`,()=>{
++  const args=input([102,100.6,101.3,99.4,100.2,99.9,101.8,98.8,102],mirror);
++  assert.notEqual(observedLevelSequence(args).structureChange?.side,side);
++ });
++ test(`${side}: a small intermediate swing does not erase an intact historical rejection`,()=>{
++  const args=input([100,103,102.5,105,103.5,103.8,101.5],!mirror);
++  args.map.levels=[90,105].map(level=>({low:level,high:level,level,confirmedPivots:2,independentTests:3}));
++  if(!mirror)args.map.levels=args.map.levels.map(z=>({...z,low:200-z.high,high:200-z.low,level:200-z.level}));
++  const event=observedLevelSequence(args).continuation;
++  assert.equal(event?.side,side);
++  assert.equal(event.pivotPrice,mirror?105:95);
++  assert.ok(event.room>event.projectedMove);
++  const waiting=applyObservedLevelSequence({candidate:{ready:false,side:null},...args});
++  assert.equal(waiting.ready,false);assert.equal(waiting.side,null);
++ });
++ test(`${side}: a broken major anchor cannot be revived by a later small swing`,()=>{
++  const args=input([100,103,102.5,105,103.5,107,105.5,105.8,103.5],mirror);
++  args.map.levels=[90,105].map(level=>({low:level,high:level,level,confirmedPivots:2,independentTests:3}));
++  if(mirror)args.map.levels=args.map.levels.map(z=>({...z,low:200-z.high,high:200-z.low,level:200-z.level}));
++  assert.equal(observedLevelSequence(args).continuation,null);
++ });
++ test(`${side}: a newer opposing major reaction takes precedence over the older anchor`,()=>{
++  const args=input([100,103,102.5,105,90,103,100],mirror);
++  args.map.levels=[90,105].map(level=>({low:level,high:level,level,confirmedPivots:2,independentTests:3}));
++  if(mirror)args.map.levels=args.map.levels.map(z=>({...z,low:200-z.high,high:200-z.low,level:200-z.level}));
++  assert.equal(observedLevelSequence(args).continuation,null);
++ });
++}

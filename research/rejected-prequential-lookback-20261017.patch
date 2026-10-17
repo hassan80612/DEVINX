@@ -1,0 +1,71 @@
+diff --git a/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs b/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs
+index 2c59070..b4447db 100644
+--- a/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs
++++ b/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs
+@@ -30,6 +30,38 @@ function fit(points,period){
+  const sse=points.reduce((s,p)=>s+(p.y-predict(p.t))**2,0);
+  return {period,coefficients,sse,predict};
+ }
++function chooseModel(points,wide){
++ const span=points.at(-1).t-points[0].t,periods=[];
++ for(let period=wide?4:12;period<=Math.min(wide?180:90,span/(wide?1:2));period+=wide?1:2)periods.push(period);
++ const n=points.length,criterion=(model,count,searchPenalty=0)=>n*Math.log(Math.max(model.sse/n,1e-30))+count*Math.log(n)+searchPenalty;
++ const line=fit(points,null);if(!line)return null;
++ let selected=line,best=criterion(line,2);
++ for(const period of periods){
++  const model=fit(points,period);if(!model)continue;
++  const score=criterion(model,4,2*Math.log(Math.max(1,periods.length)));
++  if(score<best){best=score;selected=model;}
++ }
++ return {model:selected,criterion:best,points:points.length};
++}
++function recentlyValidatedLookback(points){
++ // Compare forecasts made at two already-completed origins. Each model is
++ // fitted ONLY to observations available at its origin, never its outcomes.
++ if(points[0].t>-120)return null;
++ const folds=[];
++ for(const origin of [-60,-30]){
++  const training=points.filter(p=>p.t<=origin),short=training.filter(p=>p.t>=origin-90);
++  const observed=points.filter(p=>p.t>origin&&p.t<=origin+30);
++  if(training.length<60||short.length<60||observed.length<28)return null;
++  const anchor=training.at(-1);if(anchor.t!==origin)return null;
++  const fullFit=chooseModel(training,false),shortFit=chooseModel(short,false);
++  if(!fullFit||!shortFit)return null;
++  const score=m=>observed.reduce((sum,p)=>sum+((p.y-anchor.y)-(m.predict(p.t)-m.predict(origin)))**2,0);
++  const fullError=score(fullFit.model),shortError=score(shortFit.model);
++  folds.push({origin,fullError,shortError});
++  if(!(shortError<fullError*.8&&fullError>1e-20))return null;
++ }
++ return folds;
++}
+ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quoteAt,durationMs=30000,projectionTargetAt=null,periodSearch='baseline'}={}){
+  const none=reason=>({ready:false,side:null,reason});
+  if(durationMs!==30000||!(Number.isFinite(price)&&price>0&&quoteAt>0&&quoteAt<=now&&now-quoteAt<=1450))return none('invalid-30s-input');
+@@ -46,16 +78,10 @@ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quo
+  if(points.length<60)return none('insufficient-observed-cycle-history');
+  if(points.some((p,i)=>i&&p.t-points[i-1].t>3))return none('observed-cycle-history-gap');
+  const line=fit(points,null);if(!line||line.sse<1e-20)return none('insufficient-nonlinear-variation');
+- const span=-points[0].t,periods=[];
+- const wide=periodSearch==='wide';
+- for(let period=wide?4:12;period<=Math.min(wide?180:90,span/(wide?1:2));period+=wide?1:2)periods.push(period);
+- const n=points.length,criterion=(model,count,searchPenalty=0)=>n*Math.log(Math.max(model.sse/n,1e-30))+count*Math.log(n)+searchPenalty;
+- let selected=line,best=criterion(line,2);
+- for(const period of periods){
+-  const model=fit(points,period);if(!model)continue;
+-  const score=criterion(model,4,2*Math.log(Math.max(1,periods.length)));
+-  if(score<best){best=score;selected=model;}
+- }
++ let result=chooseModel(points,periodSearch==='wide');
++ const validation=periodSearch==='baseline'?recentlyValidatedLookback(points):null;
++ if(validation)result=chooseModel(points.filter(p=>p.t>=-90),false)??result;
++ const selected=result.model,best=result.criterion,n=result.points;
+  const expectedLogMove=selected.predict(horizonMs/1000)-selected.predict(0);
+  if(!Number.isFinite(expectedLogMove)||Math.abs(expectedLogMove)<1e-12)return none('neutral-30s-cycle-expectation');
+  const predictedPrice=price*Math.exp(expectedLogMove);
+@@ -64,5 +90,5 @@ export function thirtySecondCycleForecast({quoteHistory=[],quoteAt,price,now=quo
+   observedAt:quoteAt,entryPrice:price,predictedPrice,expectedLogMove,horizonMs,
+   ...(projectionTargetAt==null?{}:{projectionTargetAt:Number(projectionTargetAt)}),
+   fittedPeriodSeconds:selected.period,observedPoints:n,fitResidual:Math.sqrt(selected.sse/n),
+-  fitSelectionCriterion:best};
++  fitSelectionCriterion:best,...(validation?{lookbackValidation:validation,selectedLookbackSeconds:90}:{})};
+ }

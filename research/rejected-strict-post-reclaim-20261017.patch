@@ -1,0 +1,71 @@
+diff --git a/sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs b/sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs
+index 823f222..8f908a9 100644
+--- a/sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs
++++ b/sentinel-trading-lab/agent/src/core/observed-level-sequence.mjs
+@@ -68,11 +68,15 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
+    if(position===initial&&!reclaimedAt)reclaimedAt=q.ts;
+    if(reclaimedAt){
+     const extremeKind=initial>0?'low':'high';
+-    const extreme=turns.filter(p=>p.kind===extremeKind&&p.at>=brokenAt&&p.confirmedAt<=q.ts).at(-1);
+-    const pivot=extreme&&turns.filter(p=>p.kind!==extremeKind&&p.at<extreme.at&&p.confirmedAt<=q.ts).at(-1);
+-    if(pivot&&initial*(q.price-pivot.price)>amplitude&&position===initial)
++    // A V-shaped reclaim has one low/high, not a higher low/lower high.
++    // Require a NEW pullback after the reclaim and its preceding local pivot.
++    const extreme=turns.filter(p=>p.kind===extremeKind&&p.at>reclaimedAt&&p.confirmedAt<=q.ts).at(-1);
++    const pivot=extreme&&turns.filter(p=>p.kind!==extremeKind&&p.at>=reclaimedAt&&p.at<extreme.at&&p.confirmedAt<=q.ts).at(-1);
++    if(pivot&&initial*(extreme.price-breakExtreme)>amplitude&&
++     initial*(q.price-pivot.price)>amplitude&&position===initial)
+      events.push({kind:'failed-breakout-structure-change',side:initial>0?'CALL':'PUT',
+-      level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,confirmedAt:q.ts});
++      level:describe(z),brokenAt,reclaimedAt,pivotPrice:pivot.price,
++      pullbackPrice:extreme.price,pullbackAt:extreme.at,confirmedAt:q.ts});
+    }else if(retestAt&&q.ts>retestAt&&position===-initial&&
+     -initial*(q.price-breakExtreme)>amplitude)
+     events.push({kind:'break-retest-continuation',side:initial>0?'PUT':'CALL',
+@@ -81,7 +85,9 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
+  }
+  const valid=events.filter(e=>{
+   const sign=e.side==='CALL'?1:-1;
+-  return sign*step>=0&&sign*net>amplitude&&sign*(spot-e.pivotPrice)>0&&
++  const intact=e.pullbackPrice==null||!rows.some(q=>q.ts>e.confirmedAt&&
++   sign*(q.price-e.pullbackPrice)<-amplitude);
++  return intact&&sign*step>=0&&sign*net>amplitude&&sign*(spot-e.pivotPrice)>0&&
+    sign*(spot-e.level.level)>tolerance;
+  });
+  valid.sort((a,b)=>b.confirmedAt-a.confirmedAt);
+@@ -90,17 +96,28 @@ export function observedLevelSequence({map,quoteHistory=[],price,quoteAt,now=quo
+  // room for another 30s BEFORE its next barrier. This estimates distance;
+  // it is not a countdown, a guaranteed path, or a hidden future order book.
+  let continuation=null;
+- const turn=turns.at(-1),sign=turn?.kind==='high'?-1:turn?.kind==='low'?1:0;
+- const anchor=turn&&levels.filter(z=>Math.abs(turn.price-z.level)<=tolerance*2)
+-  .sort((a,b)=>Math.abs(turn.price-a.level)-Math.abs(turn.price-b.level))[0];
+- const next=sign?levels.filter(z=>sign*(z.level-spot)>tolerance)
+-  .sort((a,b)=>sign*(a.level-b.level))[0]:null;
+- if(anchor&&next&&seconds>=6&&efficiency>=.85&&sign*net>amplitude&&sign*step>=0){
++ // A small intermediate pullback does not erase the last defended major
++ // rejection. Search received swings for an intact historical anchor in
++ // the CURRENT observed direction, rather than only the latest micro-turn.
++ for(const turn of [...turns].reverse()){
++  const sign=turn.kind==='high'?-1:1;
++  const anchor=levels.filter(z=>Math.abs(turn.price-z.level)<=tolerance*2)
++   .sort((a,b)=>Math.abs(turn.price-a.level)-Math.abs(turn.price-b.level))[0];
++  if(!anchor)continue;
++  // The most recent MAJOR reaction owns this context. Never bypass an
++  // opposing or invalidated major turn by reviving an older convenient one.
++  if(!(sign*net>amplitude&&sign*step>=0))break;
++  if(rows.some(q=>q.ts>turn.at&&sign*(q.price-turn.price)<-amplitude))break;
++  const next=levels.filter(z=>sign*(z.level-spot)>tolerance)
++   .sort((a,b)=>sign*(a.level-b.level))[0];
++  if(!(next&&seconds>=6&&efficiency>=.85))break;
+   const distance=sign*(next.level-spot),projectedMove=sign*velocity*30;
+-  if(projectedMove>0&&distance>projectedMove+tolerance*2)
++  if(projectedMove>0&&distance>projectedMove+tolerance*2){
+    continuation={kind:'rejection-followthrough-clear-room',side:sign>0?'CALL':'PUT',
+     level:describe(anchor),nextLevel:describe(next),pivotPrice:turn.price,
+     confirmedAt:turn.confirmedAt,room:distance,projectedMove,efficiency};
++  }
++  break;
+  }
+  return {amplitude,turns:turns.slice(-4),structureChange,continuation};
+ }
