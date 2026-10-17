@@ -3,16 +3,19 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {analyzeNowOpportunity as before} from './fixtures/sentinel-13923-now-engine.mjs';
 import {analyzeNowOpportunity as after,advanceNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
+import {CompletedExpiryDirection} from '../sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs';
 import {DemoTradingRuntime} from '../sentinel-trading-lab/agent/src/core/runtime.mjs';
 const fixture=file=>JSON.parse(readFileSync(new URL('./fixtures/'+file,import.meta.url))).quoteHistory;
 const fine=fixture('sentinel-user-video-broker-6dp-20261016.json');
 const coarse=fixture('sentinel-user-video-20261016.json');
 const inputFor=(rows,i,overrides={})=>({quoteHistory:rows.slice(0,i+1),price:rows[i].price,quoteAt:rows[i].ts,
  now:rows[i].ts,durationMs:30000,engineId:'automatic',qualityPolicy:'adaptive-market-v17',...overrides});
-function replay(rows,analyze){
+function replay(rows,analyze,{selector=null}={}){
  let state=null;const entries=[];
  for(let i=0;i<rows.length;i++){
-  const input=inputFor(rows,i),choice=analyze(input);
+  const input=inputFor(rows,i);
+  if(selector){input.expiryDirectionSelector=selector;input.expiryDirectionContext='iq_option|EUR/GBP OTC|30000';}
+  const choice=analyze(input);
   const next=advanceNowOpportunity({previous:state,candidate:choice,now:input.now,quoteAt:input.quoteAt,
    engineId:'automatic',asset:'EUR/GBP OTC',durationMs:30000});
   if(next.phase==='fired'&&next.entryTriggeredAt!==state?.entryTriggeredAt){
@@ -78,5 +81,10 @@ test('actual runtime ingestion emits the same calls and holds one direction thro
   if(prior?.phase==='fired'&&q.ts<prior.exitAt){assert.equal(r.side,prior.side);assert.equal(r.exitAt,prior.exitAt);}
   prior=r;
  }
- assert.deepEqual(entries,replay(fine,after).map(({at,side})=>({at,side})));
+ const raw=replay(fine,after),selected=replay(fine,after,{selector:new CompletedExpiryDirection()});
+ assert.deepEqual(selected.map(e=>e.at),raw.map(e=>e.at));
+ assert.deepEqual(selected.filter((e,i)=>e.side!==raw[i].side).map(e=>({at:e.at,side:e.side})),
+  [{at:1792169450000,side:'PUT'}]);
+ assert.deepEqual(['wins','losses','unknown'].map(o=>selected.filter(e=>e.outcome===o).length),[11,3,1]);
+ assert.deepEqual(entries,selected.map(({at,side})=>({at,side})));
 });

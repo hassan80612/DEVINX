@@ -1,0 +1,21 @@
+diff --git a/sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs b/sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+index 4a7be41..8009b2c 100644
+--- a/sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
++++ b/sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs
+@@ -177,8 +177,15 @@ export function analyzeNowOpportunity({quoteHistory=[],price=null,quoteAt=null,
+   // Preserve existing qualified entries. Historical price reactions below
+   // can admit directly from current quotes without four newly closed bars.
+   const baseline=forecast?.ready&&original.ready?{...original,...forecast}:original;
+-  const decision=Number(durationMs)===30000&&expiryDirectionSelector?
++  const selectedDecision=Number(durationMs)===30000&&expiryDirectionSelector?
+    expiryDirectionSelector.observe({context:expiryDirectionContext,quoteHistory,quoteAt,price,now,baseline,projectionTargetAt}):baseline;
++  // A currently confirmed range-boundary turn is observed price structure,
++  // not another curve expert. Preserve it when an extrapolated cycle is
++  // pointing the other way; no new admission, timer or second confirmation.
++  const rangeTurn=original.ready&&original.reason==='closed-range-extreme-reversal-confirmed'&&
++   selectedDecision.ready&&selectedDecision.side!==original.side;
++  const decision=rangeTurn?{...selectedDecision,...original,
++   predictedPrice:null,expectedLogMove:null,reason:'observed-range-turn-over-cycle-fit'}:selectedDecision;
+   const structure=structureCache?structureCache.get({candles,now,context:expiryDirectionContext||''}):historicalPriceStructure({candles,now});
+   // Historical reactions must agree with the projection actually selected
+   // above. Comparing against the discarded narrow forecast can both veto

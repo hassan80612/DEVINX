@@ -34,7 +34,7 @@ test('context change, overdue labels, ties and stale quotes cannot train the sel
   observe(m,args);assert.equal(m.completed,0,kind);
  }
 });
-test('selection cannot create admission or replace the baseline before completed evidence',()=>{
+test('selection cannot create admission or replace an unscored structural baseline',()=>{
  const m=new CompletedExpiryDirection();assert.equal(observe(m),base);
  const waiting={ready:false,side:null,reason:'unconfirmed'};m.completed=20;m.loss={base:1,wide:0};
  assert.equal(observe(m,{baseline:waiting}),waiting);
