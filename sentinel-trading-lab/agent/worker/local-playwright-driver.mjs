@@ -8,7 +8,6 @@ import {VISIBLE_STRATEGIES} from '../src/core/visible-strategy-guide.mjs';
 import {presentableMarketCards} from '../src/core/vnext-market-cards.mjs';
 import net from 'node:net';
 import {QuadcodeFeed} from './quadcode-feed.mjs';
-import {brokerClockView} from './broker-clock-view.mjs';
 import {compactObservedQuoteHistory} from '../src/core/observed-quote-history.mjs';
 
 // Presentation only. These short labels add no broker requests or forecast work.
@@ -150,8 +149,6 @@ const PC_UI_KEYS=[
 ];
 // Use the entire single-source dictionary: the prior short allowlist left dynamic overlay labels untranslated.
 const PC_UI_EN=Object.freeze(Object.fromEntries([...new Set([...PC_UI_KEYS,
-  'Relógio atual','Sincronizado com a corretora','Relógio da corretora indisponível',
-  'TEMPO DA CORRETORA','ATÉ FECHAR COMPRA','MOMENTO CONFIRMADO',
   'ENTRADA AGORA · ↑ CALL','ENTRADA AGORA · ↓ PUT',
   'JANELA ABERTA','JANELA SEM ENTRADA','ENTRADA JÁ SINALIZADA',
   'ENTRADA AGORA','● COTAÇÃO AO VIVO','COTAÇÃO AO VIVO',
@@ -1272,15 +1269,6 @@ export class LocalPlaywrightDriver{
     const info={provider,open:true,sessionPresent,likelyAuthenticated,url:snap.url,title:snap.title,cookieCount:cookies.length,authCookieSeen,phase,background:!!s.background,updatedAt:nowIso()};this.last.set(provider,info);return info;
   }
   peek(provider){return this.last.get(provider)||{provider,open:false,sessionPresent:false,likelyAuthenticated:false,url:null,title:null,cookieCount:0,updatedAt:null}}
-  readBrokerTimingSnapshot(provider,st=this.state(provider)){
-    // Render-time clock lookup only. Never build the full market status,
-    // validate hundreds of candles or copy thousands of quote-history rows
-    // just to display the PC broker clock.
-    const protocolClock=this.feeds.get(provider)?.brokerClock?.();
-    return protocolClock?.verified?
-      {...(st.brokerTiming||{}),brokerClockVerified:true,brokerClock:protocolClock}:
-      (st.brokerTiming||null);
-  }
   liveStatus(provider){
     const st=this.state(provider);const assets=uniq([st.symbol,st.uiSymbol,...st.assets]);const last=st.candles.at(-1)||null;const latestCandleTs=epochMs(last?.to??last?.from);const candleAgeMs=latestCandleTs==null?null:Math.max(0,Date.now()-latestCandleTs);const candleFresh=candleFreshForState(st);const integrity=candleSeriesIntegrity(st.candles,st.quote);st.candleIntegrity=integrity;
     const candleAssetMatch=st.activeId!=null&&st.candleActiveId!=null&&Number(st.activeId)===Number(st.candleActiveId);
@@ -1295,11 +1283,7 @@ export class LocalPlaywrightDriver{
     const marketReason=st.screenCandidateSymbol?'Ativo clicado aguardando confirmação':analysisFeedValidated?`${st.symbol||'Ativo'} com dados de mercado validados`:(st.marketReason||(!integrity.ok?'Histórico rejeitado por integridade':'Sem candle recente'));
     const selectedAccount=(st.lastBalances||[]).find(v=>st.balanceId!=null&&n(v?.id)===n(st.balanceId))||null;
     const mismatch=!!selectedAccount&&((Number(selectedAccount.type)===1&&st.mode!=='real')||(Number(selectedAccount.type)===4&&st.mode!=='demo'));
-    // The broker clock comes from ONE source of truth for runtime and PC.
-    // Keep the visible-page expiry observation's original capturedAt/source:
-    // timeSync may improve the clock, but must never re-date stale expiry data.
-    const brokerTiming=this.readBrokerTimingSnapshot(provider,st);
-    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,quoteFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt,brokerTiming}
+    return{balance:mismatch?null:st.balance,accountId:mismatch?null:st.balanceId==null?null:String(st.balanceId),balanceSource:mismatch?null:st.balanceSource,assets:assets.slice(0,500),activeId:st.activeId,candleActiveId:st.candleActiveId,candleAssetMatch,quote:st.quote,symbol:st.symbol,uiSymbol:st.uiSymbol,validatedSymbol:st.symbol,screenCandidateSymbol:st.screenCandidateSymbol,assetValidated,validatedAt:st.validatedAt,candles:st.candles.slice(-400),predictionCandles:st.predictionCandles?.length?st.predictionCandles:st.candles.slice(-400),quoteHistory:(st.quoteHistory||[]).slice(-6800),mode:st.mode,quoteTs:st.lastQuoteAt||st.lastCandleAt||st.lastFrameAt||st.lastDomAt,lastFrameAt:st.lastFrameAt,lastDomAt:st.lastDomAt,lastQuoteAt:st.lastQuoteAt,lastTickQuoteAt:st.lastTickQuoteAt||null,lastPassiveFrameAt:st.lastPassiveFrameAt||null,lastCandleAt:st.lastCandleAt,latestCandleTs,candleAgeMs,candleFresh,candleIntegrity:integrity,rejectedMarketFrames:Number(st.rejectedMarketFrames||0),lastIntegrityError:st.lastIntegrityError||null,marketStatus,marketReason,autoSelected:!!st.autoSelected,lastRequestAt:st.lastRequestAt,protocol:st.protocol,directStatus:st.directStatus,lastDirectError:st.lastDirectError,lastCandleRequest:st.lastCandleRequest,lastCandleResponse:st.lastCandleResponse,suggestedSymbol:st.suggestedSymbol,feedValidated,analysisFeedValidated,quoteFeedValidated,expirationDurationMs:st.expirationDurationMs,expirationRaw:st.expirationRaw,expirationKind:st.expirationKind,expirationConfidence:st.expirationConfidence,expirationUpdatedAt:st.expirationUpdatedAt}
   }
   async updateOverlay(provider,data={}){
     const s=await this.session(provider);if(!s?.page||s.background)return false;
@@ -1309,75 +1293,17 @@ export class LocalPlaywrightDriver{
       // Stable presentation slots only: no broker analysis, caching or extra timer.
       payload.visualMarketCards=presentableMarketCards(payload.vnext?.cards);
       payload.uiTranslations=PC_UI_EN;
-      const st=this.state(provider);
-      // The authenticated Quadcode timeSync already feeds the analyst and PC.
-      // Never scan the broker DOM (body.innerText) to refresh a display clock:
-      // doing so forces expensive page layout and can freeze the traderoom.
-      // No extra polling/request is needed: project the existing received
-      // protocol timestamp forward using the local monotonic passage of time.
-      payload.brokerTiming=this.readBrokerTimingSnapshot(provider,st);
-      // Pin a signal's already verified broker expiration independently of
-      // the NEXT opportunity window. Window rollover is not option expiry.
-      const windowState=payload.vnext?.opportunityWindow||null;
-      const selectedAsset=String(payload.validatedAsset||payload.asset||'').toUpperCase();
-      if(s.brokerClockSignalAsset!==selectedAsset){
-        s.brokerClockSignalAsset=selectedAsset;
-        s.lastVerifiedBrokerSignal=null;
-      }
-      if(windowState?.phase==='fired'&&
-        Number(windowState.brokerExpiresAt)>0&&
-        Number(windowState.exitAt)===Number(windowState.brokerExpiresAt)&&
-        Number(windowState.entryTriggeredAt)>0){
-        const last=s.lastVerifiedBrokerSignal;
-        if(!last||Number(windowState.entryTriggeredAt)>=Number(last.entryTriggeredAt)){
-          s.lastVerifiedBrokerSignal={phase:'fired',
-            brokerExpiresAt:Number(windowState.brokerExpiresAt),
-            exitAt:Number(windowState.exitAt),
-            entryTriggeredAt:Number(windowState.entryTriggeredAt)};
-        }
-      }
       payload.visibleStrategies=VISIBLE_STRATEGIES;
-      payload.brokerClockView=brokerClockView({
-        timing:payload.brokerTiming,
-        windowState:s.lastVerifiedBrokerSignal||windowState
-      });
       payload.scenarioView=scenarioViewFromRuntime({operational:payload.operationalSignal,asset:payload.validatedAsset||payload.asset,horizonSeconds:payload.forecastHorizonSeconds,durationMs:payload.durationMs,forecast:payload.entryPlanner?.horizons?.[String(payload.operationalSignal?.entryDecisionHorizonSeconds||payload.forecastHorizonSeconds)],displayThreshold:payload.futureDisplayThreshold??70,minPoints:payload.minConfidence??74});
       await s.page.evaluate((d)=>{
         const render=(d)=>{
-        // The clock selector is a LOCAL presentation preference, not a
-        // trading setting. Server frames may be delayed/out of order and
-        // must never reset a user's selected broker time back to current.
-        const clockKey='sentinel-broker-clock-display-mode-v1';
-        let storedClock=null;
-        try{storedClock=window.localStorage.getItem(clockKey)}catch{}
-        const heldClock=window.__sentinelClockDisplayMode;
-        const selectedClock=
-          heldClock==='broker'||heldClock==='current'?heldClock:
-          storedClock==='broker'||storedClock==='current'?storedClock:
-          d.clockMode==='broker'?'broker':'current';
-        // Local selection stays stable through delayed frames. A single
-        // asynchronous settings update makes the Agent know whether broker
-        // cutoff validation is enabled, without changing its forecast mode,
-        // entry deadline, or visual clock until the user chooses again.
-        const agentClockMode=d.clockMode==='broker'?'broker':'current';
-        window.__sentinelClockDisplayMode=selectedClock;
-        if(selectedClock!==agentClockMode&&
-           window.__sentinelLastClockModeSync!==selectedClock){
-          window.__sentinelLastClockModeSync=selectedClock;
-          queueMicrotask(()=>{
-            try{Promise.resolve(window.__sentinelOverlayAction?.({
-              action:'setting',key:'clockMode',value:selectedClock
-            })).catch(()=>{})}catch{}
-          });
-        }
-        d.clockMode=selectedClock;
         window.__sentinelLastOverlayData=d;
         const hostId='sentinel-trading-overlay-host',id='sentinel-trading-overlay';
         let host=document.getElementById(hostId),el=host?.shadowRoot?.getElementById(id)||null;
         const legacy=document.getElementById(id);if(legacy&&!host)legacy.remove();
-        if(host&&host.dataset.uiVersion!=='13.9.12'){host.remove();host=null;el=null}
+        if(host&&host.dataset.uiVersion!=='13.9.31'){host.remove();host=null;el=null}
         if(!el){
-          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.12';
+          host=document.createElement('div');host.id=hostId;host.dataset.uiVersion='13.9.31';
           Object.assign(host.style,{all:'initial',position:'static',zIndex:'2147483647'});
           const shadow=host.attachShadow({mode:'open'});
           const reset=document.createElement('style');
@@ -1806,27 +1732,9 @@ export class LocalPlaywrightDriver{
             try{const res=await window.__sentinelOverlayAction?.(payload);if(msg)msg.textContent=res?.message||'Aplicado'}
             catch(e){if(msg)msg.textContent='Erro: '+String(e?.message||e)}
           };
-          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],select[data-sentinel-clock-mode],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))el.dataset.selectLock='1'},true);
-          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],select[data-sentinel-clock-mode],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
+          el.addEventListener('pointerdown',ev=>{if(ev.target?.closest?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))el.dataset.selectLock='1'},true);
+          el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
-            const clockSelect=ev.target?.closest?.('[data-sentinel-clock-mode]');
-            if(clockSelect){
-              const next=clockSelect.value==='broker'?'broker':'current';
-              // Clock choice belongs to the overlay, not the forecast or
-              // the Agent settings endpoint. Persist across broker-frame
-              // refreshes and browser reloads; no async server race.
-              window.__sentinelClockDisplayMode=next;
-              try{window.localStorage.setItem('sentinel-broker-clock-display-mode-v1',next)}catch{}
-              window.__sentinelLastOverlayData.clockMode=next;
-              clockSelect.value=next;
-              window.__sentinelLastClockModeSync=next;
-              // The Agent must know if the user enabled synchronized mode;
-              // don't let an old response overwrite the local UI preference.
-              void sendAction({action:'setting',key:'clockMode',value:next});
-              el.dataset.selectLock='0';
-              queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));
-              return;
-            }
             const tt=ev.target?.closest?.('[data-sentinel-total-threshold]');
             if(tt){
               const kind=String(tt.getAttribute('data-sentinel-total-threshold')||''),value=Math.max(50,Math.min(95,Math.round(Number(tt.value)||60)));
@@ -1930,8 +1838,8 @@ export class LocalPlaywrightDriver{
           ['CALL','PUT'].includes(pinnedEntry.side));
         const triggeredAt=Number(pinnedEntry?.entryTriggeredAt||0);
         const entryValidUntil=Number(pinnedEntry?.entryValidUntil||0);
-        const displayedEntryAt=d.clockMode==='broker'&&Number(pinnedEntry?.brokerEntryAt)>0?Number(pinnedEntry.brokerEntryAt):triggeredAt;
-        const displayedExitAt=d.clockMode==='broker'&&Number(pinnedEntry?.brokerWallExpiryAt)>0?Number(pinnedEntry.brokerWallExpiryAt):Number(pinnedEntry?.exitAt||0);
+        const displayedEntryAt=triggeredAt;
+        const displayedExitAt=Number(pinnedEntry?.exitAt||0);
         const entryMoment=entryPlanReady&&opportunityPhase==='fired'&&liveNow&&
           triggeredAt>0&&Date.now()>=triggeredAt&&Date.now()<=triggeredAt+1500&&
           (!(entryValidUntil>0)||Date.now()<entryValidUntil);
@@ -1962,10 +1870,6 @@ export class LocalPlaywrightDriver{
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap">
               <div style="display:grid;gap:3px"><strong style="color:${goldSoft};font-size:15px;letter-spacing:.035em">SENTINEL <span style="font-size:11px;color:${muted}">V${esc(d.agentVersion||'13.4.60')}</span></strong><small style="color:${muted};font-size:10px">${esc(visibleAsset)} · ${tr(liveNow?'● COTAÇÃO AO VIVO':'● AGUARDANDO FEED')} · ${tr(runtimeLabel)}</small></div>
               <div style="display:flex;gap:4px;align-items:center">
-                <select data-sentinel-clock-mode aria-label="${tr('TEMPO DA CORRETORA')}" title="${tr('TEMPO DA CORRETORA')}" style="color-scheme:${uiTheme};background:${fieldBg};border:1px solid ${panelBorder};border-radius:6px;color:${fieldInk};padding:5px 6px;max-width:180px;font-size:10px;font-weight:750">
-                  <option value="current" ${d.clockMode!=='broker'?'selected':''}>${tr('Relógio atual')}</option>
-                  <option value="broker" ${d.clockMode==='broker'?'selected':''}>${tr('Hora da corretora · sincronização verificada')}</option>
-                </select>
                 <button data-sentinel-theme="light" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Claro')}</button>
                 <button data-sentinel-theme="dark" style="background:transparent;border:1px solid ${panelBorder};border-radius:6px;color:${ink};padding:6px 9px;font-size:10px;cursor:pointer">${tr('Escuro')}</button>
                 <button data-sentinel-action="refresh" style="background:rgba(215,182,93,.12);border:1px solid ${panelBorder};border-radius:7px;color:${goldSoft};padding:6px 9px;font-size:10px;cursor:pointer">${tr('↻ Leitura')}</button>
@@ -1992,13 +1896,12 @@ export class LocalPlaywrightDriver{
             <section data-sentinel-role="horizon-outlook" data-sentinel-card="horizon" style="display:grid;grid-template-rows:15px 26px 68px 47px 27px auto;gap:6px;margin-top:8px;padding:10px 11px;border-radius:11px;background:${entryPanelBg};border:1px solid ${panelBorder};border-left:3px solid ${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:goldSoft};box-shadow:${heroShadow};min-width:0">
               <div data-sentinel-now-live-reading style="font-size:10px;font-weight:850;letter-spacing:.02em;line-height:15px;color:${goldSoft};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nowMode?tr('Preço atual')+': '+price(d.price)+' · '+tr('Última análise')+': '+esc(new Date(Number(d.vnext?.nowObservation?.evaluatedAt||0)).toLocaleTimeString('pt-BR',{hour12:false})):tr('ENTRADA FUTURA')+' · '+esc(d.engine||'automatic').toUpperCase()}</div>
               <div data-sentinel-scenario-action style="height:26px;line-height:26px;font-size:18px;font-weight:900;white-space:nowrap;color:${entryPlanReady&&scheduledSide==='CALL'?callTone:entryPlanReady&&scheduledSide==='PUT'?putTone:ink}"><span class="sentinel-analysis-spinner" data-sentinel-analysis-spinner data-active="${liveNow&&Date.now()-Number(d.vnext?.nowObservation?.evaluatedAt||0)<5000?'1':'0'}" aria-hidden="true" style="display:${nowMode&&!entryPlanActive?'inline-block':'none'}"></span><span data-sentinel-decision-label>${esc(tr(scheduledDecision))}</span></div>
-              <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-valid-until="${entryValidUntil}" data-broker-expiry="${Number(windowState?.brokerExpiresAt||0)}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
-                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-broker-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
+              <div data-sentinel-vnext-clock data-mode="${nowMode?'now':'forecast'}" data-deadline="${windowDeadline}" data-issued="${windowStart}" data-triggered-at="${triggeredAt}" data-entry-valid-until="${entryValidUntil}" data-entry-ready="${entryMoment?1:0}" data-live-quote="${liveNow?1:0}" data-side="${confirmedSide||''}" data-window-phase="${opportunityPhase||''}" style="display:grid;grid-template-columns:minmax(85px,.82fr) minmax(0,1.18fr);height:68px;max-height:68px;align-items:center;gap:7px;padding:6px 9px;border:1px solid ${panelBorder};border-radius:9px;background:${fieldBg};overflow:hidden">
+                <div><small style="display:block;font-size:9px;font-weight:800;white-space:nowrap;color:${goldSoft}" data-sentinel-cycle-status>${tr(nowMode?'ATÉ O VENCIMENTO':'ATÉ ENTRADA CALCULADA')}</small><strong data-sentinel-vnext-clock-value style="display:block;font-size:24px;font-weight:950;line-height:28px;font-variant-numeric:tabular-nums;color:${goldSoft};white-space:nowrap">—:—</strong><small data-sentinel-signal-clock-status style="display:block;font-size:9px;font-weight:750;color:${muted};white-space:nowrap">PC · esperando corretora</small></div>
                 <div style="display:grid;gap:3px;min-width:0"><small style="font-size:9px;white-space:nowrap;color:${muted}">${tr('MOMENTO DE ENTRADA')}</small><b style="font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap;color:${ink}">${opportunityPhase==='fired'&&triggeredAt?esc(new Date(displayedEntryAt).toLocaleTimeString('pt-BR',{hour12:false})):tr('AGUARDANDO')}</b><small style="font-size:9px;color:${muted};white-space:nowrap">${tr('VENCIMENTO')} ${opportunityPhase==='fired'&&scheduledExit?new Date(displayedExitAt).toLocaleTimeString('pt-BR',{hour12:false}):tr('após a entrada')}</small></div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;height:47px">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:6px;height:47px">
                 <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${tr(nowMode?'PREÇO DA ENTRADA':'PREÇO FUTURO DE ENTRADA')}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${ink};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedEntryPrice):'—'}</b></div>
-                <div style="padding:5px 7px;min-width:0;background:rgba(0,0,0,.12);border-radius:7px;overflow:hidden"><small style="display:block;font-size:9px;color:${muted};white-space:nowrap">${tr(nowMode?'PREÇO AO VENCER · AGUARDANDO':'PREÇO FUTURO AO VENCER')}</small><b style="display:block;margin-top:3px;font-size:14px;line-height:18px;color:${goldSoft};white-space:nowrap">${entryPlanActive?price(pinnedEntry.projectedExitPrice):'—'}</b></div>
               </div>
               <div style="display:flex;align-items:center;gap:11px;height:27px;white-space:nowrap;font-size:11px;font-weight:800;overflow:hidden">
                 <span style="color:${callTone}">${tr(nowMode?'PRAZO':'JANELA')} ${durationText} · ${tr(nowMode?(opportunityPhase==='fired'?'EM ANDAMENTO':'ANALISANDO'):'ENTRADA')} ${nowMode?'':tr(opportunityPhase==='fired'?'SINALIZADA':'EM ANÁLISE')}</span>
@@ -2228,7 +2131,7 @@ export class LocalPlaywrightDriver{
             if(next.nodeType!==Node.ELEMENT_NODE)continue;
             // Preserve the editor and its live DOM/options while focused;
             // update every other part of the overlay in the same frame.
-            if(current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],select[data-sentinel-clock-mode],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')&&
+            if(current.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold]')&&
               (current===focused||el.dataset.selectLock==='1'))continue;
             for(const attr of [...current.attributes])if(!next.hasAttribute(attr.name)&&!(attr.name==='open'&&current.matches?.('details[data-sentinel-preserve-open]')))current.removeAttribute(attr.name);
             for(const attr of [...next.attributes])if(current.getAttribute(attr.name)!==attr.value)current.setAttribute(attr.name,attr.value);
@@ -2301,52 +2204,8 @@ export class LocalPlaywrightDriver{
               shown=left>=3600?pad(Math.floor(left/3600))+':'+pad(Math.floor(left%3600/60))+':'+pad(left%60):pad(Math.floor(left/60))+':'+pad(left%60);
               value.style.fontSize='';
             }
-            // The SELECTED clock must change the MAIN readout, not merely
-            // the little footer. It remains read-only: never drive the
-            // opportunity window or a trade from the broker purchase cutoff.
-            const brokerMode=window.__sentinelLastOverlayData?.clockMode==='broker';
-            const view=window.__sentinelLastOverlayData?.brokerClockView||null;
-            const brokerStatus=pane.querySelector('[data-sentinel-broker-clock-status]');
-            if(brokerMode){
-              const age=nowClock-Number(view?.capturedAt||0);
-              const verified=view?.verified===true&&age>=0&&age<=4500;
-              const pad=n=>String(n).padStart(2,'0');
-              if(!verified){
-                const pinned=nowAnalysisMode&&active&&Number(pane.getAttribute('data-broker-expiry'))===target;
-                if(!pinned)shown='—:—';
-                if(cycleStatus)cycleStatus.textContent=pinned?tr('ATÉ O VENCIMENTO'):'HORA DA CORRETORA';
-                if(brokerStatus)brokerStatus.textContent=pinned?'PRAZO DO SINAL · CORRETORA':'CORRETORA · NÃO SINCRONIZADO';
-              }else{
-                const secs=(Number(view.timeSeconds)+Math.floor(age/1000)+86400)%86400;
-                const time=pad(Math.floor(secs/3600))+':'+
-                  pad(Math.floor((secs%3600)/60))+':'+pad(secs%60);
-                if(nowAnalysisMode&&active){
-                  if(cycleStatus)cycleStatus.textContent=tr('ATÉ O VENCIMENTO');
-                  if(brokerStatus)brokerStatus.textContent=Number.isFinite(Number(view.timeSeconds))?time+' · '+tr('SINCRONIZADO'):'PRAZO DO SINAL · CORRETORA';
-                }else if(view.kind==='expiry'||view.kind==='expired'){
-                  const deadline=Number(view.expiresAt);
-                  const left=Math.max(0,Math.ceil((deadline-nowClock)/1000));
-                  shown=pad(Math.floor(left/60))+':'+pad(left%60);
-                  if(cycleStatus)cycleStatus.textContent=left>0?
-                    'SINAL · ATÉ VENCIMENTO NA CORRETORA':'SINAL · VENCIMENTO ATINGIDO';
-                  if(brokerStatus)brokerStatus.textContent=
-                    left>0?'PRAZO DO SINAL · CORRETORA':'EXPIRADO · CORRETORA';
-                }else if(view.kind==='purchase'&&Number(view.purchaseEndsAt)>nowClock){
-                  const left=Math.max(0,Math.ceil((Number(view.purchaseEndsAt)-nowClock)/1000));
-                  shown=pad(Math.floor(left/60))+':'+pad(left%60);
-                  if(cycleStatus)cycleStatus.textContent='ATÉ FECHAR COMPRA · CORRETORA';
-                  if(brokerStatus)brokerStatus.textContent=time+' · SINCRONIZADO';
-                }else{
-                  shown=time;
-                  if(cycleStatus)cycleStatus.textContent='HORA DA CORRETORA';
-                  if(brokerStatus)brokerStatus.textContent=time+' · SINCRONIZADO';
-                }
-              }
-            }else if(brokerStatus){
-              brokerStatus.textContent=nowAnalysisMode?'SINAL · RELÓGIO LOCAL':'PREVISÃO · RELÓGIO LOCAL';
-            }
-            // Prediction target and verified entry still belong ONLY to
-            // the source Agent; broker clock never updates them.
+            const signalStatus=pane.querySelector('[data-sentinel-signal-clock-status]');
+            if(signalStatus)signalStatus.textContent=nowAnalysisMode?'PRAZO DO SINAL':'PRAZO DA PREVISÃO';
             if(value.textContent!==shown)value.textContent=shown;
           };
           el.__sentinelTargetClockTick=tickTargetClock;

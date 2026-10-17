@@ -38,7 +38,7 @@ test('existing analysis, scheduling and signal confirmation use the exact same s
  assert.ok([...schedule.matchAll(/quoteScopedCausalPath\(/g)].length>=2);
  assert.match(helper,/cached=memo\.get\(quoteHistory\)/);
  assert.match(helper,/cached\?\.has\(key\)/);
- assert.match(schedule,/brokerAllowsEntry\(\{buyWindow,entryAt:now\}\)/);
+ assert.doesNotMatch(schedule,/brokerAllowsEntry|observedBuyWindow/);
  assert.match(schedule,/coherentInterval\(\{entryPrice:entry,exitPrice:exit,noise:actualNoise/);
 });
 test('urgent broker signal bypasses routine overlay cooldown, without cancelling a rendering operation',async()=>{

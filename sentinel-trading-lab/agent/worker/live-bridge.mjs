@@ -35,9 +35,7 @@ export function analystSnapshot(runtimeStatus,live){
     Number(e.projectedEntryPrice)||0,Number(e.projectedExitPrice)||0,
     Number(e.issuedAt)||0,Number(e.holdingSeconds)||0,
     Number(e.entryAt)||0,Number(e.exitAt)||0,e.entryReadyNow===true?1:0,
-    e.phase||'open',Number(e.entryTriggeredAt)||0,
-    ...(Number(e.entryValidUntil)>0?[Number(e.entryValidUntil),
-      Number(e.brokerEntryAt)||0,Number(e.brokerWallExpiryAt)||0]:[])
+    e.phase||'open',Number(e.entryTriggeredAt)||0
   ]:null;
   const compactVnext=runtimeStatus?.settings?.engine?{
     ...(vnext.mode==='now'?{mode:'now'}:{}),engineId:vnext.engineId||null,expirySeconds:vnext.expirySeconds||null,
@@ -90,15 +88,8 @@ export function analystSnapshot(runtimeStatus,live){
     v:1,at:Date.now(),seq:0,agentVersion:String(runtimeStatus?.agentVersion||''),
     state:runtimeStatus?.state,killSwitch:runtimeStatus?.killSwitch,masterFrozen:runtimeStatus?.masterFrozen,
     lastEvalMs:Number(runtimeStatus?.lastEvalMs||0),
-    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',clockMode:runtimeStatus?.settings?.clockMode||'current',engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
-    liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null,
-      brokerTiming:runtimeStatus?.settings?.clockMode==='broker'&&live?.brokerTiming?{
-        capturedAt:live.brokerTiming.capturedAt,
-        purchaseWindow:{closesAt:live.brokerTiming.purchaseWindow?.closesAt??null},
-        instrumentKind:live.brokerTiming.instrumentKind,
-        brokerClock:live.brokerTiming.brokerClock,
-        source:live.brokerTiming.source
-      }:null},
+    settings:{forecastMode:runtimeStatus?.settings?.forecastMode||'continuous',engine:runtimeStatus?.settings?.engine||null,orderDurationMs:Number(runtimeStatus?.settings?.orderDurationMs||60000)},
+    liveBroker:{symbol:asset,validatedSymbol:live?.validatedSymbol||asset,assetValidated:live?.assetValidated===true,analysisFeedValidated:live?.analysisFeedValidated===true,lastQuoteAt:liveQuoteAt,quote:live?.quote??null},
     feed:{price:live?.quote??null,quoteTs:liveQuoteAt},
     lastResult:{asset:result.asset||asset,analysis:{
       operationalSignal:operational,
@@ -156,8 +147,7 @@ export function fitAnalystFrame(snapshot,maxBytes=2920){
       assetValidated:snapshot.liveBroker?.assetValidated,
       analysisFeedValidated:snapshot.liveBroker?.analysisFeedValidated,
       lastQuoteAt:snapshot.liveBroker?.lastQuoteAt,
-      quote:snapshot.liveBroker?.quote,
-      brokerTiming:snapshot.liveBroker?.brokerTiming
+      quote:snapshot.liveBroker?.quote
     },
     feed:snapshot.feed,
     lastResult:{asset:snapshot.lastResult?.asset,analysis:{

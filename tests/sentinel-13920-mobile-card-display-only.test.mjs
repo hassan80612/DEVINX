@@ -23,8 +23,7 @@ test('Phone NOW labels translate only at presentation; timers and state remain u
   'OPERAÇÃO EM ANDAMENTO · ↓ PUT':'OPERATION IN PROGRESS · ↓ PUT',
   'PREÇO NA ENTRADA':'ENTRY PRICE',
   'PREÇO AO VENCER · AGUARDANDO':'EXPIRY PRICE · WAITING',
-  'Duração da operação':'Operation duration',
-  'HORA DA CORRETORA':'BROKER TIME'
+  'Duração da operação':'Operation duration'
  };
  for(const [pt,en] of Object.entries(expected)){
   assert.equal(sentinelText('en',pt),en);

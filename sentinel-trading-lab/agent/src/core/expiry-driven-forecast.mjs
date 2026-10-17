@@ -16,7 +16,6 @@ export function expiryDrivenForecast({
   selectedSeconds=null,
   brokerVerified=false,
   brokerDurationMs=null,
-  brokerExpiresAt=null,
   brokerAvailableSeconds=null,
   brokerInstrument='unknown',
   now=Date.now()
@@ -27,21 +26,17 @@ export function expiryDrivenForecast({
   // Observations NEVER change the requested forecast horizon, target time,
   // or direction. This matters especially for 5s/10s/15s Blitz.
   const observedDuration=brokerVerified===true?positive(brokerDurationMs):null;
-  const observedDeadline=brokerVerified===true?positive(brokerExpiresAt):null;
   const available=availableSeconds(brokerAvailableSeconds);
   const selectedAvailable=selectedMs===null||available===null?null:
     available.some(s=>Math.abs(s*1000-selectedMs)<1);
   const durationMismatch=selectedMs!==null&&observedDuration!==null&&
     Math.abs(selectedMs-observedDuration)>1;
-  const deadlineMismatch=selectedMs!==null&&observedDeadline!==null&&
-    Math.abs(timestamp+selectedMs-observedDeadline)>1000;
   return Object.freeze({
     instrument:String(brokerInstrument||'unknown').toLowerCase(),
     source:selectedMs!==null?'user-selection':'not-selected',
     selectedDurationMs:selectedMs,
     // Observation fields are informational, not the source of truth.
     observedBrokerDurationMs:observedDuration,
-    observedBrokerExpiresAt:observedDeadline,
     forecastHorizonMs:selectedMs,
     forecastHorizonSeconds:selectedMs===null?null:selectedMs/1000,
     issuedAt:timestamp,
@@ -49,11 +44,10 @@ export function expiryDrivenForecast({
     expiresAt:selectedMs===null?null:timestamp+selectedMs,
     selectionAvailable:selectedAvailable,
     durationMismatch,
-    deadlineMismatch,
     expired:false,
     reason:selectedMs===null?'select-expiration':
       selectedAvailable===false?'broker-availability-observation-differs':
-      durationMismatch||deadlineMismatch?'broker-observation-differs-from-selected-expiration':
+      durationMismatch?'broker-observation-differs-from-selected-expiration':
       'selected-expiration-authoritative'
   });
 }

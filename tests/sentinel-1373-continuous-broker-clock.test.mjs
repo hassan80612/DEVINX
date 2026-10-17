@@ -4,7 +4,6 @@ import {readFileSync} from 'node:fs';
 import {causalForwardPath,forwardRegime} from '../sentinel-trading-lab/agent/src/core/causal-interval-forecast-1371.mjs';
 import {QuadcodeFeed} from '../sentinel-trading-lab/agent/worker/quadcode-feed.mjs';
 import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
-import {readBrokerTimingFromText} from '../sentinel-trading-lab/agent/worker/broker-timing-readonly.mjs';
 
 const T=1800000000000;
 function series(kind='bear'){
@@ -46,30 +45,4 @@ test('13.7.4 restores the pre-13.7.3 asset identification without adding new gat
   body:{active_id:202,size:60}},request_id:'page-bg'},'page-out');
  assert.equal(st.activeId,202,'restored pre-13.7.3 broker selection behavior');
  assert.equal(st.symbol,'EUR/USD OTC');
-});
-test('authenticated timeSync calibrates the broker clock; stale or forged time is not synchronized',()=>{
- const q=new QuadcodeFeed({onFrame:()=>{}});
- q.ws={readyState:1};q.authenticated=true;
- q._handleMessage(JSON.stringify({name:'timeSync',msg:Date.now()-18000}));
- const clock=q.brokerClock();
- assert.equal(clock.verified,true,JSON.stringify(clock));
- assert.ok(Math.abs(clock.offsetMs+18000)<1000);
- const first=q.serverTime;
- q._handleMessage(JSON.stringify({name:'timeSync',msg:Date.now()+2000000}));
- assert.equal(q.serverTime,first,'far-future broker time cannot replace calibrated clock');
- q.serverTimeReceivedAt=Date.now()-125000;
- assert.equal(q.brokerClock().verified,false);
-});
-test('visible broker time is explicit and does not impersonate a prediction deadline',()=>{
- const timing=readBrokerTimingFromText('CURRENT TIME: 12:05:06\nPURCHASE TIME: 00:25\nEXPIRATION: 12:06',
-  {nowMs:T,instrumentKind:'digital'});
- assert.equal(timing.brokerClock.verified,true);
- assert.equal(timing.brokerClock.clockSeconds,12*3600+5*60+6);
- assert.equal(timing.selectedExpiration.kind,'fixed-clock');
- const driver=readFileSync(new URL('../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs',import.meta.url),'utf8');
- assert.match(driver,/data-sentinel-broker-clock-status/);
- assert.doesNotMatch(driver,/shown=pad\(Math\.floor\(secondsLeft\/60\)\)/);
- assert.equal(driver.includes('readBrokerTimingSnapshot(provider,st)'),true);
- const refresh=driver.slice(driver.indexOf('async updateOverlay(provider,data={})'),driver.indexOf('payload.brokerTiming=this.readBrokerTimingSnapshot(provider,st);'));
- assert.equal(refresh.includes("locator('body').innerText"),false);
 });

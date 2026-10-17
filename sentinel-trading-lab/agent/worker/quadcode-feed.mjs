@@ -15,20 +15,10 @@ export class QuadcodeFeed {
     this.pending=new Map();
   }
   get ready(){return !!(this.ws&&this.ws.readyState===1)}
-  // Authenticated broker timeSync, never inferred from the PC wall clock.
-  // Use the original receive instant to compensate for elapsed time.
-  brokerClock(now=Date.now()){
-    const observed=Number(this.serverTime),received=Number(this.serverTimeReceivedAt);
-    if(!this.authenticated||!this.ready||!(observed>1e12)||
-      !(received>0)||now<received||now-received>120000)
-      return {verified:false,source:'broker-protocol-timesync',capturedAt:received||null};
-    return {verified:true,source:'broker-protocol-timesync',capturedAt:received,
-      brokerNowMs:observed+now-received,offsetMs:observed-received,
-      ageMs:now-received};
-  }
+  // Server timestamps are transport metadata for history requests only.
   serverTimeSeconds(now=Date.now()){
-    const clock=this.brokerClock(now);
-    return clock.verified?Math.floor(clock.brokerNowMs/1000):null;
+    const received=Number(this.serverTimeReceivedAt);
+    return this.authenticated&&this.ready&&this.serverTime>0&&received>0&&now>=received&&now-received<=120000?Math.floor((this.serverTime+now-received)/1000):null;
   }
   status(){
     const ageMs=this.lastMessageAt?Math.max(0,Date.now()-this.lastMessageAt):null;

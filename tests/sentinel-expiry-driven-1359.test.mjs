@@ -37,14 +37,14 @@ test('broker deadline never silently replaces the chosen 60s future target',()=>
  assert.equal(b.forecastHorizonSeconds,60);
  assert.equal(a.targetAt,t+60000);
  assert.equal(b.targetAt,t+64000);
- assert.equal(a.deadlineMismatch,true);
+ assert.equal(a.deadlineMismatch,undefined);
  assert.equal(a.source,'user-selection');
 });
 test('past broker deadline does not cancel a requested independent forecast',()=>{
  const x=expiryDrivenForecast({selectedSeconds:30,brokerVerified:true,brokerExpiresAt:t-10,now:t});
  assert.equal(x.forecastHorizonMs,30000);
  assert.equal(x.expired,false);
- assert.equal(x.reason,'broker-observation-differs-from-selected-expiration');
+ assert.equal(x.reason,'selected-expiration-authoritative');
 });
 test('broker availability varies; do not invent eligibility for 5s',()=>{
  const x=expiryDrivenForecast({selectedSeconds:5,brokerInstrument:'blitz',brokerAvailableSeconds:[30,60],now:t});

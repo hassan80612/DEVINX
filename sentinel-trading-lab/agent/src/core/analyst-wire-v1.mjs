@@ -5,9 +5,8 @@
 // authentication or requiring a change to their analysis/overlay.
 const fields = {
   '': 'v at seq agentVersion state killSwitch masterFrozen lastEvalMs settings liveBroker feed lastResult',
-  settings: 'forecastMode clockMode engine orderDurationMs',
-  liveBroker: 'symbol validatedSymbol assetValidated analysisFeedValidated lastQuoteAt quote brokerTiming',
-  brokerTiming: 'capturedAt purchaseWindow instrumentKind',
+  settings: 'forecastMode engine orderDurationMs',
+  liveBroker: 'symbol validatedSymbol assetValidated analysisFeedValidated lastQuoteAt quote',
   purchaseWindow: 'closesAt',
   feed: 'price quoteTs',
   lastResult: 'asset analysis',

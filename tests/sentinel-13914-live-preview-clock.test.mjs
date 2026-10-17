@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
 import {LocalPlaywrightDriver} from '../sentinel-trading-lab/agent/worker/local-playwright-driver.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from '../sentinel-trading-lab/agent/src/core/now-opportunity-engine.mjs';
-import {brokerClockView} from '../sentinel-trading-lab/agent/worker/broker-clock-view.mjs';
 import {analystSnapshot,fitAnalystFrame} from '../sentinel-trading-lab/agent/worker/live-bridge.mjs';
 import {SignedLiveBridge} from '../sentinel-trading-lab/agent/worker/signed-live-bridge.mjs';
 import {analystWireV1} from '../sentinel-trading-lab/src/lib/analyst-wire-v1.mjs';
@@ -57,32 +56,10 @@ test('confirmed side remains locked while opposite observations run and next sig
   candidate:{...opposite,observedAt:first.exitAt+50},now:first.exitAt+100,quoteAt:first.exitAt+50});
  assert.equal(next.side,'PUT');assert.equal(next.entryReadyNow,true);
 });
-test('protocol elapsed time is applied once and mobile uses the identical verified clock and provisional reading',()=>{
- const timing={capturedAt:T,source:'broker-visible-readonly',
-  purchaseWindow:{closesAt:T+27000},instrumentKind:'digital',
-  brokerClock:{verified:true,source:'broker-protocol-timesync',capturedAt:T,
-   brokerNowMs:T-18000+4000,ageMs:4000}};
- const clock=brokerClockView({timing,now:T+4000});
- assert.equal(clock.wallTimeMs,T-14000);
- const observation={side:null,provisionalSide:'PUT',ready:false,reason:'observing',observedAt:T+4000,evaluatedAt:T+4100};
- const frame=analystSnapshot({state:'running',lastEvalMs:T+4100,
-  settings:{engine:'automatic',clockMode:'broker',orderDurationMs:30000},
-  lastResult:{asset:'EUR/USD',analysis:{vnext:{mode:'now',engineId:'automatic',nowObservation:observation}}}},
-  {symbol:'EUR/USD',validatedSymbol:'EUR/USD',assetValidated:true,analysisFeedValidated:true,
-   quote:1.1,lastQuoteAt:T+4000,brokerTiming:timing});
- assert.deepEqual(brokerClockView({timing:frame.liveBroker.brokerTiming,now:T+4000}),clock);
- const mobile=liveCardModel(frame,T+4200);
- assert.equal(mobile.nowObservation.provisionalSide,'PUT');
- // Even the saturated fallback keeps the real observation and clock.
- frame.lastResult.analysis.vnext.cards=[{id:'x'.repeat(5000)}];
- const fitted=fitAnalystFrame(frame);
- assert.ok(fitted);assert.equal(fitted.lastResult.analysis.vnext.nowObservation.provisionalSide,'PUT');
- assert.deepEqual(fitted.liveBroker.brokerTiming.brokerClock,timing.brokerClock);
-});
-test('new NOW observation and broker clock authenticate after actual sender and relay key reordering',()=>{
+test('new NOW observation authenticates after actual sender and relay key reordering',()=>{
  const key='b'.repeat(64),bridge=new SignedLiveBridge('realtime:sentinel-'+'a'.repeat(48),key);
  let sent;bridge.socket={readyState:1,send:s=>sent=JSON.parse(s)};
- const frame={v:1,at:T,seq:1,settings:{clockMode:'broker'},lastResult:{analysis:{vnext:{
+ const frame={v:1,at:T,seq:1,settings:{},lastResult:{analysis:{vnext:{
   mode:'now',engineId:'automatic',nowObservation:{side:null,provisionalSide:'PUT',observedAt:T,ready:false}}}}};
  assert.equal(bridge.send('broadcast',{event:'analyst',payload:frame}),true);
  const reorder=v=>Array.isArray(v)?v.map(reorder):v&&typeof v==='object'?

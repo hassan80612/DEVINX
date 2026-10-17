@@ -93,14 +93,14 @@ test('NOW phone keeps provisional directions internal and preserves confirmed re
  assert.match(locked,/OPERAÇÃO EM ANDAMENTO · ↑ CALL/);
  assert.doesNotMatch(locked,/ANALISANDO POSSÍVEL PUT/);
 });
-test('NOW phone renders the real synchronized broker clock instead of silently disabling the selection',()=>{
+test('NOW phone ignores a retired clock setting and exposes only its signal clock',()=>{
  const s=state(),v=s.lastResult.analysis.vnext;
  s.settings.clockMode='broker';v.mode='now';v.futureEntryAnchor=null;
  v.opportunityWindow={phase:'scanning',windowStartedAt:null,windowEndsAt:0};
  s.liveBroker.brokerTiming={brokerClock:{verified:true,source:'visible-broker-clock',
   capturedAt:start+20000,clockSeconds:13*3600+10*60+15}};
  const html=render(s,start+20000);
- assert.match(html,/HORA DA CORRETORA/);assert.match(html,/13:10:15/);
- assert.match(html,/SINCRONIZADO/);assert.doesNotMatch(html,/Relógio da corretora indisponível/);
- assert.match(render(s,start+28000),/Relógio da corretora indisponível/);
+ assert.match(html,/ANALISANDO/);
+ assert.doesNotMatch(html,/HORA DA CORRETORA|13:10:15|SINCRONIZADO|clock-mode-selector/);
+ assert.doesNotMatch(render(s,start+28000),/Relógio da corretora indisponível/);
 });

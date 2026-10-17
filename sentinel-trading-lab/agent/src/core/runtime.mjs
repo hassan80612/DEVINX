@@ -1,6 +1,7 @@
 import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
 import {compactObservedQuoteHistory} from './observed-quote-history.mjs';
 import {CompletedExpiryDirection} from './completed-expiry-direction.mjs';
+import {HistoricalPriceStructureCache} from './historical-price-structure.mjs';
 import {reviewScenario,scenarioAdmission} from './scenario-review.mjs';
 import {canRenewExpiredScenario} from './scenario-renewal.mjs';
 import {scenarioInvalidation} from './scenario-invalidation.mjs';
@@ -27,7 +28,6 @@ import {threeClosedCandleEvidence,confirmedStructuralReversal,brokerDurationGuar
 import {progressHorizonAudit} from './forward-horizon-audit.mjs';
 import {evaluateForwardForecast} from './forward-forecast-receipt.mjs';
 import {analyzeNowOpportunity,advanceNowOpportunity} from './now-opportunity-engine.mjs';
-import {brokerEntryBoundary} from './broker-entry-boundary.mjs';
 import {normalizeUserStrategy,normalizeTechnicalStrategy} from './visible-strategy-guide.mjs';
 import {lightweightDashboard} from './vnext-market-cards.mjs';
 
@@ -80,6 +80,7 @@ function newPriceStructure(main,side,snap,strict=false){
 export class DemoTradingRuntime{
   constructor({seed=20261002,balance=10000,payout=.82,predictionModel='family-v6',entryPolicy='local-v2',scenarioPolicy='price-level-v1',subanalystPolicy='entry',enableVNext=false,forecastModel='original-67'}={}){
     this.expiryDirectionSelector=new CompletedExpiryDirection();
+    this.structureCache=new HistoricalPriceStructureCache();
     this.forecastModel=forecastModel;this.adaptiveTemporalContext=null;this.vnextWindowState=null;this.vnextWindowCheckedQuoteAt=0;this.vnextWindowOutcomes=[];
     this.subanalystPolicy=subanalystPolicy;this.reversalMonitor=new PersistentReversalMonitor();
     this.predictionModel=predictionModel;this.entryPolicy=entryPolicy;this.scenarioPolicy=scenarioPolicy;this.predictionInputState=new PredictionInputState();
@@ -89,7 +90,7 @@ export class DemoTradingRuntime{
     this.stateName='stopped';this.masterFrozen=false;this.killSwitch=false;this.lastEvalMs=0;this.nextEvalMs=0;this.immediateEvaluationSerial=0;this.lastHeartbeat=Date.now();
     this.lastResult={action:'WAIT',reasons:['bot parado']};this.pending=[];this.trades=[];this.analyses=[];this.incidents=[];this.signalValidation={pending:[],outcomes:[],lastQueued:{}};this.entryStability={side:'WAIT',since:0,count:0};this.entryRelease={side:'WAIT',at:0};this.operationalSetup=null;this.oppositeOperationalSetup=null;this.lastInvalidatedSetup=null;this.forecastStability={};this.forecastResearch=new ForecastResearch();this.entryResearch=new EntryResearch();this.pathResearch=new PathResearch();this.scenarioSetup=null;
     this.settings={
-      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,uiLanguage:'pt',clockMode:'current',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:enableVNext?30_000:60_000,forecastHorizonSeconds:enableVNext?30:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
+      mode:'demo',asset:'EUR/USD',engine:enableVNext?'automatic':null,uiLanguage:'pt',strategy:'smart_confluence',strategy2:'none',strategy3:'none',requireLiveBroker:true,demoAutopilot:false,pathGuardMode:'enforce',orderDurationMs:enableVNext?30_000:60_000,forecastHorizonSeconds:enableVNext?30:60,futureDisplayThreshold:70,orderProposalTtlMs:60_000,
       pausedReadings:{market_confluence:false,market_entry:false,market_reversal:false,strategy_1:false,strategy_2:false,strategy_3:false},
       schedule:{enabled:true,timezone:'America/Sao_Paulo',days:['sun','mon','tue','wed','thu','fri','sat'],dailyStart:'00:00',dailyEnd:'23:59',intervalMs:400,startAt:null,endAt:null},
       risk:{minConfidence:74,signalValidationMinSamples:60,signalValidationMinWinRate:60,entryValidationMinWinRate:1000/12,maxFeedLatencyMs:2_500,maxDecisionLatencyMs:250,maxExecutionLatencyMs:1_500,stakeMode:'fixed',fixedStake:10,stakePct:1,maxStake:50,maxTradesPerSession:10,maxTradesPerDay:20,maxTradesPerHour:5,maxConsecutiveLosses:3,maxDailyLoss:100,dailyProfitTarget:0,maxDrawdownPct:10,cooldownSeconds:60,lossCooldownSeconds:180}
@@ -125,7 +126,7 @@ export class DemoTradingRuntime{
     return this
   }
   _marketSnapshot(){
-    if(this.externalMarket){const quotes=this.externalMarket.quoteHistory||[],quoteSpan=quotes.length>1?Number(quotes.at(-1).ts)-Number(quotes[0].ts):0;const verified=(this.forecastModel==='now-structural-v1'||this.settings.engine==='automatic')&&this.externalMarket.quoteFeedValidated!=null?this.externalMarket.quoteFeedValidated===true:(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true));const historyReady=this.settings.engine?quotes.length>=15&&quoteSpan>=14000:this.externalMarket.candles?.length>=50;const ready=verified&&historyReady&&Number.isFinite(Number(this.externalMarket.quote))&&Number(this.externalMarket.quote)>0;return{candles:ready?[...(this.externalMarket.candles||[])]:[],predictionCandles:ready?[...(this.externalMarket.predictionCandles||this.externalMarket.candles||[])]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0),brokerTiming:this.externalMarket.brokerTiming||null,payout:Number.isFinite(Number(this.externalMarket.payout))?Number(this.externalMarket.payout):null}}
+    if(this.externalMarket){const quotes=this.externalMarket.quoteHistory||[],quoteSpan=quotes.length>1?Number(quotes.at(-1).ts)-Number(quotes[0].ts):0;const verified=(this.forecastModel==='now-structural-v1'||this.settings.engine==='automatic')&&this.externalMarket.quoteFeedValidated!=null?this.externalMarket.quoteFeedValidated===true:(this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true));const historyReady=this.settings.engine?quotes.length>=15&&quoteSpan>=14000:this.externalMarket.candles?.length>=50;const ready=verified&&historyReady&&Number.isFinite(Number(this.externalMarket.quote))&&Number(this.externalMarket.quote)>0;return{candles:ready?[...(this.externalMarket.candles||[])]:[],predictionCandles:ready?[...(this.externalMarket.predictionCandles||this.externalMarket.candles||[])]:[],quoteHistory:ready?[...(this.externalMarket.quoteHistory||[])]:[],quoteTs:this.externalMarket.quoteTs,price:Number(this.externalMarket.quote||this.externalMarket.quoteHistory?.at(-1)?.price||this.externalMarket.candles?.at(-1)?.close||0),source:this.externalMarket.source||'LIVE',balance:this.externalMarket.balance,provider:this.externalMarket.provider,mode:this.externalMarket.mode,waitingLive:!ready,feedValidated:ready,historicalCandlesVerified:this.externalMarket.analysisFeedValidated===true||(this.externalMarket.analysisFeedValidated==null&&this.externalMarket.feedValidated===true),brokerExpirationDurationMs:Number.isFinite(Number(this.externalMarket.expirationDurationMs))?Number(this.externalMarket.expirationDurationMs):null,brokerExpirationRaw:this.externalMarket.expirationRaw||null,brokerExpirationKind:this.externalMarket.expirationKind||null,brokerExpirationConfidence:Number(this.externalMarket.expirationConfidence||0),brokerExpirationUpdatedAt:Number(this.externalMarket.expirationUpdatedAt||0),payout:Number.isFinite(Number(this.externalMarket.payout))?Number(this.externalMarket.payout):null}}
     if(this.settings.requireLiveBroker)return{candles:[],quoteTs:0,price:0,source:'OFFLINE',balance:null,provider:null,mode:this.settings.mode,waitingLive:true,feedValidated:false};
     return this.feed.snapshot()
   }
@@ -797,6 +798,7 @@ export class DemoTradingRuntime{
   async unfreeze(actor='master'){if(actor!=='master')throw new Error('master_required');this.masterFrozen=false;this.audit.write({actorId:actor,actorRole:'master',action:'bot.unfreeze'});return this.status()}
   setMode(mode,actor='user'){if(!['demo','real'].includes(mode))throw new Error('invalid_mode');this.settings.mode=mode;this.audit.write({actorId:actor,actorRole:actor==='master'?'master':'user',action:'mode.change',metadata:{mode}});return this.status()}
   patchSettings(patch={},actor='user'){
+    patch={...patch};delete patch.clockMode;
     if(Object.prototype.hasOwnProperty.call(patch,'uiLanguage')&&
        !['pt','en'].includes(patch.uiLanguage))throw new Error('invalid_ui_language');
     if(patch.engine==='selective_forecast')patch={...patch,engine:'automatic',forecastMode:'selective'};
@@ -822,8 +824,6 @@ export class DemoTradingRuntime{
         patch[field]=id||(field==='strategy'?'smart_confluence':'none');
       }
     }
-    if(Object.prototype.hasOwnProperty.call(patch,'clockMode')&&
-      !['current','broker'].includes(patch.clockMode))throw new Error('invalid_clock_mode');
     if(Object.prototype.hasOwnProperty.call(patch,'forecastMode')&&
       !['continuous','selective'].includes(patch.forecastMode))throw new Error('invalid_forecast_mode');
     // Every selected expiry describes a DIFFERENT future interval. A changed
@@ -837,11 +837,6 @@ export class DemoTradingRuntime{
         Number(patch.orderDurationMs)!==Number(this.settings.orderDurationMs))||
       (Object.prototype.hasOwnProperty.call(patch,'engine')&&
         patch.engine!==this.settings.engine)||
-      // An old CURRENT-clock signal is not an eligible BROKER-clock signal.
-      // Clear it atomically on opt-in, never resurrect it as CALL/PUT at :00.
-      (Object.prototype.hasOwnProperty.call(patch,'clockMode')&&
-        patch.clockMode==='broker'&&this.settings.clockMode!=='broker'&&
-        Number(patch.orderDurationMs??this.settings.orderDurationMs)===30000)||
       (Object.prototype.hasOwnProperty.call(patch,'asset')&&
         patch.asset!==this.settings.asset);
     if(changedForecastContext){
@@ -956,23 +951,18 @@ export class DemoTradingRuntime{
   }
   _signalValidationGate({analysis,snap,settings,now,monotonicNow=()=>performance.now()}){
     if(settings.engine&&this.forecastModel==='now-structural-v1'){
-      const synchronized=settings.clockMode==='broker'&&Number(settings.orderDurationMs)===30000;
-      const calculationStarted=synchronized?monotonicNow():0;
-      const expiryDirectionContext=[snap.provider,settings.asset,settings.orderDurationMs,settings.clockMode].join('|');
+      const expiryDirectionContext=[snap.provider,settings.asset,settings.orderDurationMs].join('|');
       if(this.expiryDirectionSelector.context!==expiryDirectionContext)this.expiryDirectionSelector.reset(expiryDirectionContext);
-      const projectionBoundary=synchronized?brokerEntryBoundary({clockMode:settings.clockMode,
-        durationMs:settings.orderDurationMs,timing:snap.brokerTiming,now,quoteAt:snap.quoteTs,
-        asset:settings.asset,provider:snap.provider,lastBoundary:this.vnextBrokerBoundary}):null;
       // All price evidence is present or closed. Analysis never schedules
       // a future entry and continues on each quote during an active option.
       const observation=analyzeNowOpportunity({
         quoteHistory:snap.quoteHistory,price:snap.price,quoteAt:snap.quoteTs,
+        candles:snap.historicalCandlesVerified===false?[]:(snap.candles||[]),structureCache:this.structureCache,
         now,durationMs:settings.orderDurationMs,engineId:settings.engine,
         qualityPolicy:'adaptive-market-v17',
-        projectionTargetAt:projectionBoundary?.allowed?projectionBoundary.exitAt:null,
+
         expiryDirectionSelector:this.expiryDirectionSelector,expiryDirectionContext
       });
-      if(synchronized)now+=Math.ceil(Math.max(0,monotonicNow()-calculationStarted));
       const duration=brokerDurationGuard({snap,settings,now});
       // A previously valid reversal/continuation can turn within a second.
       // Never display a new entry from a quote that sat in an analysis queue.
@@ -982,31 +972,16 @@ export class DemoTradingRuntime{
         Number(settings.orderDurationMs)<=30000?1450:
         Number(settings.orderDurationMs)<=60000?1950:2500;
       const entryQuoteFresh=quoteAgeMs>=0&&quoteAgeMs<=maxEntryQuoteAgeMs;
-      const boundary=brokerEntryBoundary({clockMode:settings.clockMode,
-        durationMs:settings.orderDurationMs,timing:snap.brokerTiming,now,quoteAt:snap.quoteTs,
-        asset:settings.asset,provider:snap.provider,lastBoundary:this.vnextBrokerBoundary});
       const eligible=!duration.allowed?
         {...observation,side:null,ready:false,reason:duration.reason}:
         !entryQuoteFresh?
         {...observation,side:null,ready:false,reason:'late-quote-no-entry'}:
-        !boundary.allowed?
-        {...observation,side:null,ready:false,reason:boundary.reason}:
         observation;
       let next=advanceNowOpportunity({
         previous:this.vnextWindowState,candidate:eligible,now,quoteAt:snap.quoteTs,
         asset:settings.asset,engineId:settings.engine,durationMs:settings.orderDurationMs
       });
       const old=this.vnextWindowState;
-      const newBoundarySignal=boundary.enabled&&boundary.allowed&&next?.phase==='fired'&&
-        (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
-      if(newBoundarySignal){
-        // Keep the actual emission time. The end remains the broker's NEXT
-        // boundary rather than now+30s, so processing cannot slide the counter.
-        next={...next,exitAt:boundary.exitAt,windowEndsAt:boundary.exitAt,
-          brokerExpiresAt:boundary.exitAt,brokerEntryAt:boundary.brokerEntryAt,
-          brokerWallExpiryAt:boundary.brokerWallExpiryAt,entryValidUntil:boundary.entryValidUntil};
-        this.vnextBrokerBoundary={context:boundary.context,brokerBoundaryAt:boundary.brokerBoundaryAt};
-      }
       this.vnextWindowState=next;
       const freshSignal=next?.phase==='fired'&&
         (old?.context!==next.context||old?.entryTriggeredAt!==next.entryTriggeredAt);
@@ -1048,9 +1023,7 @@ export class DemoTradingRuntime{
         opportunityWindow:next?{
           phase:next.phase,reason:next.reason,windowStartedAt:next.windowStartedAt,
           windowEndsAt:next.windowEndsAt,entryAt:next.entryAt,
-          exitAt:next.exitAt,side:next.side,
-          ...(next.brokerExpiresAt?{entryTriggeredAt:next.entryTriggeredAt,
-            brokerExpiresAt:next.brokerExpiresAt,brokerWallExpiryAt:next.brokerWallExpiryAt}:{})
+          exitAt:next.exitAt,side:next.side
         }:null,nowObservation:{
           side:observation.side,provisionalSide:observation.side||observation.provisionalSide||null,
           ready:observation.ready,reason:eligible.reason,
@@ -1161,8 +1134,7 @@ export class DemoTradingRuntime{
       // colours or a second unrelated market-direction filter.
       const confirmation=shouldRecheck&&!invalidationReason?
         confirmWindowEntry({settings,snap,now,adaptiveHistory,
-          forecastModel:this.forecastModel,entryAt:currentWindow.entryAt,
-          brokerExpiresAt:currentWindow.brokerExpiresAt||null}):null;
+          forecastModel:this.forecastModel,entryAt:currentWindow.entryAt}):null;
       if(shouldRecheck)this.vnextWindowCheckedQuoteAt=Number(snap.quoteTs);
       const nextWindow=evolveOpportunity({
         previous:this.vnextWindowState,candidate:qualifiedEntry,settings,
@@ -1400,7 +1372,7 @@ export class DemoTradingRuntime{
       const pendingExternalDemo=this.pending.some(p=>p.external===true&&Number(p.settleAt||0)>now);
       const executionBroker=canUseExternalDemo?this.executionBroker:this.broker;
       const cycleSettings={...this.settings,demoAutopilot:false};
-      this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:cycleSettings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate({...ctx,now:cycleSettings.clockMode==='broker'&&Number(cycleSettings.orderDurationMs)===30000?now+Math.max(0,Date.now()-evaluationStartedAt):ctx.now}),now});
+      this._settleSignalValidation(now,snap);const result=await engineCycle({feed,broker:executionBroker,settings:cycleSettings,state:this._riskState(now),balanceOverride:snap.balance,signalGate:ctx=>this._signalValidationGate(ctx),now});
       let strategyPanel=null;
       if(result.analysis&&!result.analysis.operationalSignal){
         strategyPanel=this._strategyPanel(snap,now);
@@ -1448,6 +1420,7 @@ export class DemoTradingRuntime{
   }
   snapshotPersistent(){return{version:3,forecastResearch:this.forecastResearch.snapshot(),entryResearch:this.entryResearch.snapshot(),pathResearch:this.pathResearch.snapshot(),settings:this.settings,state:this.state,masterFrozen:this.masterFrozen,killSwitch:this.killSwitch,trades:this.trades.slice(0,2000),analyses:this.analyses.slice(0,180),signalValidation:{pending:this.signalValidation.pending.slice(-200),outcomes:this.signalValidation.outcomes.slice(-1000),lastQueued:this.signalValidation.lastQueued},incidents:this.incidents.slice(0,500),audit:this.audit.list().slice(-2000),broker:{balance:this.broker.balance,orders:this.broker.orders},savedAt:iso()}}
   restore(data={}){this.forecastResearch=new ForecastResearch(data.forecastResearch||{});this.entryResearch=new EntryResearch(data.entryResearch||{});this.pathResearch=new PathResearch(data.pathResearch||{});this.scenarioSetup=null;if(data.settings){this.settings={...this.settings,...data.settings,pausedReadings:{...this.settings.pausedReadings,...(data.settings.pausedReadings||{})},schedule:{...this.settings.schedule,...(data.settings.schedule||{})},risk:{...this.settings.risk,...(data.settings.risk||{})}};if([60000,5000,2000,1000].includes(Number(data.settings?.schedule?.intervalMs)))this.settings.schedule.intervalMs=400}if(this.forecastModel==='now-structural-v1'){
+  delete this.settings.clockMode;
   // Previous settings may persist a 1m+ expiry. Replace once at restore
   // rather than silently continuing to signal beyond the user's new limit.
   if(![5000,10000,15000,30000].includes(Number(this.settings.orderDurationMs)))

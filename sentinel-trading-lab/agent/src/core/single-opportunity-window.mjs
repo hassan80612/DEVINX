@@ -21,11 +21,7 @@ export function evolveOpportunity({
  if(!(H>=5&&H<=3600))return null;
  const validCandidate=()=>fresh&&isSide(candidate?.side)&&
    Number(candidate.issuedAt)<=now&&Number(candidate.entryAt)>now&&
-   // The opportunity window (H) is not the Digital option's fixed expiry.
-   (Number(candidate.exitAt)===Number(candidate.entryAt)+H*1000||
-     (Number(candidate.brokerExpiresAt)>now&&
-       Number(candidate.brokerExpiresAt)===Number(candidate.exitAt)&&
-       Number(candidate.exitAt)-Number(candidate.entryAt)>=5000))&&
+   Number(candidate.exitAt)===Number(candidate.entryAt)+H*1000&&
    Number(candidate.projectedEntryPrice)>0&&Number(candidate.projectedExitPrice)>0&&
    (candidate.projectedExitPrice>candidate.projectedEntryPrice?'CALL':
      candidate.projectedExitPrice<candidate.projectedEntryPrice?'PUT':null)===candidate.side;
@@ -53,8 +49,7 @@ export function evolveOpportunity({
   // pending moment. This is not a second signal or a flipped window.
   const reschedulable=fresh&&validCandidate()&&candidate.side===old.side&&
     Number(candidate.entryAt)<Number(old.windowEndsAt)&&
-    Number(quoteAt)>Number(old.candidateQuoteAt||0)&&
-    Number(candidate.brokerExpiresAt||0)===Number(old.brokerExpiresAt||0);
+    Number(quoteAt)>Number(old.candidateQuoteAt||0);
   const refreshMoment=reason=>({
     ...old,entryAt:Number(candidate.entryAt),
     projectedEntryPrice:Number(candidate.projectedEntryPrice),
@@ -82,11 +77,9 @@ export function evolveOpportunity({
     return refreshMoment('replanned-same-side-entry');
    return {...old,entryReadyNow:false,reason:'looking-for-entry'};
   }
-  const fixed=Number(old.brokerExpiresAt)>0?Number(old.brokerExpiresAt):null;
   return {...old,phase:'fired',entryReadyNow:true,entryTriggeredAt:now,
-    plannedEntryAt:old.entryAt,entryAt:now,exitAt:fixed??now+H*1000,
-    actualHoldingSeconds:(fixed??now+H*1000)-now>0?
-      ((fixed??now+H*1000)-now)/1000:0,
+    plannedEntryAt:old.entryAt,entryAt:now,exitAt:now+H*1000,
+    actualHoldingSeconds:H,
     reason:'confirmed',confirmedEntryPrice:Number(confirmation.projectedEntryPrice)};
  }
  // Advance the fixed H-second cycle once, never restart on each tick.

@@ -1,14 +1,22 @@
 {
-  "version": "13.9.30",
-  "build": "13.9.30-shared-install-completion-stable-package",
+  "version": "13.9.31",
+  "build": "13.9.31-historical-levels-100-local-signal-clock",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",
     "scenarioPolicy": "own-review-v1",
     "subanalystPolicy": "persistent-reversal-alert-v1",
     "engineArchitecture": "shared-market-base-one-decision-vnext",
-    "modelValidation": "13.9.29-reversal-diagnostics-original-video-preserved-not-live-accuracy",
+    "modelValidation": "13.9.31-observed-level-reactions-breakouts-replay-not-live-accuracy",
     "forecastModel": "now-structural-v1",
-    "clockPolicy": "verified-broker-alert-27-expiry-00-matched-projection-v4"
+    "historicalStructure": {
+      "closedCandles": 100,
+      "emaPeriods": [
+        20,
+        50,
+        100
+      ],
+      "timing": "received-history-no-collection-reset"
+    }
   }
 }

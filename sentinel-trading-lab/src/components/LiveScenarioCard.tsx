@@ -3,7 +3,6 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import {liveCardModel} from '../lib/live-card-model';
 import {useSentinelLocale} from './SentinelLocale';
 import {pcAuthoritativeWindow} from '../lib/pc-authoritative-window.mjs';
-import {brokerClockView} from '../../agent/worker/broker-clock-view.mjs';
 import {pcClockNow} from '../lib/pc-clock-sync.mjs';
 import {strategySelectionGuidance} from '../../agent/src/core/strategy-selection-guidance.mjs';
 import {VISIBLE_STRATEGIES,normalizeUserStrategy,TECHNICAL_STRATEGY_IDS} from '../../agent/src/core/visible-strategy-guide.mjs';
@@ -16,11 +15,11 @@ const clock=(ts:number|null)=>ts!=null&&Number.isFinite(ts)&&ts>0?new Date(ts).t
 const seconds=(n:number|null)=>n===null?'—':n+'s';
 // Dedicated local timer: it never waits for a WebSocket packet or forces
 // the full analyst card to recalculate on every countdown tick.
-function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,entryValidUntil,brokerEntryAt,brokerWallExpiryAt,plannedExit,side,phase,quoteAt,evaluatedAt,pcClockOffsetMs,holdingSeconds,clockMode,brokerTiming,nowMode,observation}:{
+function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,entryValidUntil,plannedExit,side,phase,quoteAt,evaluatedAt,pcClockOffsetMs,holdingSeconds,nowMode,observation}:{
  windowEndsAt:number,windowStartedAt:number,entryTriggeredAt:number,plannedExit:number,
  side:string|null,phase:string|null,quoteAt:number,pcClockOffsetMs:number|null,holdingSeconds:number,
- clockMode:string,brokerTiming:any,nowMode:boolean,evaluatedAt:number,observation:any
- entryValidUntil:number,brokerEntryAt:number,brokerWallExpiryAt:number
+ nowMode:boolean,evaluatedAt:number,observation:any
+ entryValidUntil:number
 }){
  const {t}=useSentinelLocale();
  const [now,setNow]=useState(()=>Date.now());
@@ -41,29 +40,18 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
  const running=view.active;
  const moment=view.enterNow;
  const seconds=view.remainingSeconds;
- const brokerNow=pcClockNow(now,pcClockOffsetMs);
- const brokerView=brokerClockView({timing:brokerTiming,now:brokerNow,
-  windowState:{phase,entryTriggeredAt,exitAt:windowEndsAt,brokerExpiresAt:brokerWallExpiryAt>0?windowEndsAt:0}});
- const brokerSelected=clockMode==='broker';
- const brokerVerified=brokerSelected&&brokerView.verified===true;
- const purchase=brokerVerified&&brokerView.kind==='purchase';
+ const sourceNow=pcClockNow(now,pcClockOffsetMs);
  const signalClock=nowMode&&running;
- const shownSeconds=brokerSelected&&!brokerVerified?null:
-  signalClock?seconds:purchase?Math.max(0,Math.ceil((Number('purchaseEndsAt' in brokerView?brokerView.purchaseEndsAt:0)-brokerNow)/1000)):seconds;
  const pad=(n:number)=>String(n).padStart(2,'0');
- const brokerSeconds='timeSeconds' in brokerView&&brokerView.timeSeconds!=null?Number(brokerView.timeSeconds):NaN;
- const brokerTime=brokerVerified&&Number.isFinite(brokerSeconds)?
-  pad(Math.floor(brokerSeconds/3600))+':'+pad(Math.floor(brokerSeconds%3600/60))+':'+pad(brokerSeconds%60):'—:—';
- const countdown=brokerVerified&&!signalClock&&!purchase?brokerTime:shownSeconds==null?'—:—':
-  pad(Math.floor(shownSeconds/60))+':'+pad(shownSeconds%60);
+ const countdown=running&&seconds!=null?pad(Math.floor(seconds/60))+':'+pad(seconds%60):'—:—';
  // Provisional price direction remains internal and cannot be mistaken for a signal.
  const scanningLabel='ANALISANDO';
  const direction=nowMode?(
   moment?t('ENTRADA AGORA · '+(side==='CALL'?'↑ CALL':'↓ PUT')):
   running&&phase==='fired'?t('OPERAÇÃO EM ANDAMENTO · '+(side==='CALL'?'↑ CALL':'↓ PUT')):
   t(scanningLabel)):t(view.label);
- const activityFresh=brokerNow>=evaluatedAt&&brokerNow-evaluatedAt<5000&&
-  brokerNow>=quoteAt&&brokerNow-quoteAt<5000;
+ const activityFresh=sourceNow>=evaluatedAt&&sourceNow-evaluatedAt<5000&&
+  sourceNow>=quoteAt&&sourceNow-quoteAt<5000;
  return <>
   <div className="vnextFutureDirection" data-await-entry={view.withinDeadline&&phase==='open'&&!moment?'true':undefined}>
    <strong data-testid="future-entry-decision">
@@ -71,10 +59,10 @@ function MobileFutureEntryClock({windowEndsAt,windowStartedAt,entryTriggeredAt,e
    {direction}</strong>
   </div>
   <div className={'vnextTargetCountdown '+(!running?'ended':'')} data-testid="forecast-countdown-clock" role="timer" aria-live="off">
-   <div><small>{brokerSelected&&!brokerVerified?t('Relógio da corretora indisponível'):t(signalClock?'ATÉ O VENCIMENTO':purchase?'ATÉ FECHAR COMPRA':brokerVerified?'HORA DA CORRETORA':nowMode?'ANALISANDO':moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA')}</small><strong>{countdown}</strong>{brokerVerified&&<small>{brokerTime} · {t('SINCRONIZADO')}</small>}</div>
+   <div><small>{t(signalClock?'ATÉ O VENCIMENTO':nowMode?'ANALISANDO':moment?'MOMENTO CONFIRMADO':'TEMPO RESTANTE DA JANELA')}</small><strong>{countdown}</strong></div>
    <div><small>{t("MOMENTO DE ENTRADA")}</small>
-    <b>{phase==='fired'&&entryTriggeredAt?clock(brokerSelected&&brokerEntryAt>0?brokerEntryAt:entryTriggeredAt):t('AGUARDANDO')}</b>
-    <span>{phase==='fired'&&plannedExit>0?t('Vencimento ')+clock(brokerSelected&&brokerWallExpiryAt>0?brokerWallExpiryAt:plannedExit):
+    <b>{phase==='fired'&&entryTriggeredAt?clock(entryTriggeredAt):t('AGUARDANDO')}</b>
+    <span>{phase==='fired'&&plannedExit>0?t('Vencimento ')+clock(plannedExit):
       t('Prazo após entrada ')+holdingSeconds+'s'}</span>
    </div>
   </div>
@@ -96,7 +84,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const[expirySeconds,setExpirySeconds]=useState(String(Math.round(Number(s?.settings?.orderDurationMs||60000)/1000)));
   const[threshold,setThreshold]=useState(String(s?.settings?.futureDisplayThreshold||70));
   const[chosenEngine,setChosenEngine]=useState(String(s?.settings?.engine||'automatic'));
-  const[clockChoice,setClockChoice]=useState(String(s?.settings?.clockMode||'current'));
   const[strategy1,setStrategy1]=useState(String(s?.settings?.strategy||'smart_confluence'));
   const[strategy2,setStrategy2]=useState(String(s?.settings?.strategy2||'none'));
   const[strategy3,setStrategy3]=useState(String(s?.settings?.strategy3||'none'));
@@ -122,7 +109,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     // Remote status refreshes must not overwrite a value the user is typing.
     if(!thresholdEditing.current)setThreshold(String(s?.settings?.futureDisplayThreshold||70));
   },[s?.settings?.forecastMode,s?.settings?.forecastHorizonSeconds,s?.settings?.orderDurationMs,s?.settings?.futureDisplayThreshold,s?.settings?.engine,s?.settings?.strategy,s?.settings?.strategy2,s?.settings?.strategy3]);
-  useEffect(()=>{setClockChoice(String(s?.settings?.clockMode||'current'))},[s?.settings?.clockMode]);
   const onAverageChange=(raw:string)=>{
     const draft=raw.replace(/\D/g,'').slice(0,2);
     setAverageInput(draft);
@@ -228,12 +214,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
     setExpirySeconds(value);
     await act('settings',{orderDurationMs:Number(value)*1000,forecastHorizonSeconds:Number(value)});
   };
-  const changeClock=async(value:string)=>{
-    const mode=value==='broker'?'broker':'current';
-    setClockChoice(mode);
-    // Display timing only. No forecast recalculation or window reset.
-    await act('settings',{clockMode:mode});
-  };
   const nowMode=m.vnextMode==='now';
   const engineSettings=vnext?<div className="vnextEngineToolbar" data-testid="single-engine-selector">
     <label>{t('Estratégia ativa')}{" "}<select aria-label={t('Estratégia responsável pelo cenário')} value={normalizeUserStrategy(chosenEngine)} disabled={busy} onChange={e=>void changeEngine(e.target.value)}>
@@ -243,9 +223,6 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
       {normalizeUserStrategy(chosenEngine)==='automatic'&&m.nowObservation?.contextStrategy&&
        <small data-testid="automatic-chart-context" style={{display:'block',fontSize:11,opacity:.85,marginTop:4}}>{t('Contexto observado pelo Automático')}: {t(VISIBLE_STRATEGIES.find(e=>e.id===m.nowObservation.contextStrategy)?.name||'Smart Confluence')}</small>}
     </label>
-    <label>{t('Relógio atual')}{' '}<select aria-label={t('TEMPO DA CORRETORA')} value={clockChoice} disabled={busy} data-testid="clock-mode-selector" onChange={e=>void changeClock(e.target.value)}>
-      <option value="current">{t('Relógio atual')}</option><option value="broker">{t('Sincronizado com a corretora')}</option>
-    </select></label>
     <label>{t(nowMode?"Duração da operação":"Entrada daqui a")}{" "}<select aria-label={t('Tempo até a entrada prevista')} value={expirySeconds} disabled={busy} onChange={e=>void changeExpiry(e.target.value)}>
         {expiryChoices.map(n=><option key={n} value={n}>{expiryLabel(n)}</option>)}
       </select>
@@ -272,7 +249,7 @@ export function LiveScenarioCard({s,busy,act,compact,onToggleCompact}:Props){
   const forecastReceipt=vnext?<div className={'vnextFutureReceipt '+(entryPlanDisplayable?futureEntry.side.toLowerCase():'neutral')} data-testid="future-price-projection" role="status" aria-live="off">
     <div className="vnextReceiptTitle"><b>{t(nowMode?'ANÁLISE EM TEMPO REAL':'ENTRADA FUTURA')} · {(futureEntry?.engineId||m.selectedEngine||chosenEngine).replaceAll('_',' ').toUpperCase()}</b><small>{t(entryDataFresh?(nowMode?'COTAÇÃO AO VIVO':'PROJEÇÃO FUTURA'):'DADOS A CONFERIR')}</small></div>
     {nowMode&&<small data-testid="now-live-reading">{t('Preço atual')}: {price(s?.feed?.price??s?.liveBroker?.quote)} · {t('Última análise')}: {clock(m.evaluationAt)}</small>}
-    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} entryValidUntil={Number(futureEntry?.entryValidUntil||0)} brokerEntryAt={Number(futureEntry?.brokerEntryAt||0)} brokerWallExpiryAt={Number(futureEntry?.brokerWallExpiryAt||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} evaluatedAt={s?.state==='running'?Number(m.evaluationAt||0):0} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} clockMode={clockChoice} brokerTiming={s?.liveBroker?.brokerTiming??null} nowMode={nowMode} observation={m.nowObservation}/>
+    <MobileFutureEntryClock windowEndsAt={Number(m.vnextOpportunityWindow?.windowEndsAt||0)} windowStartedAt={Number(m.vnextOpportunityWindow?.windowStartedAt||0)} entryTriggeredAt={Number(futureEntry?.entryTriggeredAt||0)} entryValidUntil={Number(futureEntry?.entryValidUntil||0)} plannedExit={plannedExit} side={futureEntry?.side||null} phase={opportunityPhase} quoteAt={Number(m.quoteAt||0)} evaluatedAt={s?.state==='running'?Number(m.evaluationAt||0):0} pcClockOffsetMs={s?.pcClockOffsetMs??null} holdingSeconds={Number(expirySeconds)} nowMode={nowMode} observation={m.nowObservation}/>
     <div className="vnextProjectionValues" style={{gridTemplateColumns:'minmax(0,1fr)'}}>
       <div><small>{t(nowMode?"PREÇO NA ENTRADA":"PREÇO ESTIMADO NA ENTRADA")}</small><strong>{entryPlanDisplayable?price(futureEntry.projectedEntryPrice):'—'}</strong></div>
     </div>
