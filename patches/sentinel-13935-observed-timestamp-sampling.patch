@@ -1,0 +1,18 @@
+diff --git a/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs b/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs
+--- a/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs
++++ b/sentinel-trading-lab/agent/src/core/thirty-second-expiry-direction.mjs
+@@ -40,7 +40,8 @@
+- const points=[];let j=rows.length-1;
+- for(let t=quoteAt;t>=Math.max(rows[0].ts,quoteAt-180000);t-=1000){
+-  while(j>=0&&rows[j].ts>t)j--;
+-  if(j>=0&&t-rows[j].ts<=500)points.push({t:(t-quoteAt)/1000,y:Math.log(rows[j].price/price)});
+- }
+- points.reverse();
++ // Keep one actual observation per second with its real timestamp.
++ // A grid anchored to the current quote and a 500ms tolerance can reject
++ // valid 1Hz history solely because that quote arrived at a new ms phase.
++ // Do not fill missing seconds: the gap and freshness guards remain below.
++ const seconds=new Map();
++ for(const q of rows)seconds.set(Math.floor(q.ts/1000),q);
++ const points=[...seconds.values()].map(q=>({t:(q.ts-quoteAt)/1000,y:Math.log(q.price/price)}));
+  if(points.length<60)return none('insufficient-observed-cycle-history');

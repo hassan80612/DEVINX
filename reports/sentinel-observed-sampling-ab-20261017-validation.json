@@ -1,0 +1,3702 @@
+{
+  "spec": {
+    "baseCommit": "406c8f6b7ffa6fa90cad6575c0903ba78205b697",
+    "mode": "validation",
+    "variants": [
+      "released",
+      "historical-grid-tolerance-under-1s",
+      "one-actual-observation-per-second",
+      "actual-second-buckets-plus-forecast-backed-candle-moment"
+    ],
+    "hypotheses": [
+      "Historical 500ms alignment can reject a valid 1Hz history solely due to the latest quote millisecond phase.",
+      "Bucket sampling keeps actual observed timestamps and never fills missing buckets.",
+      "Forecast-backed moments require an actual 30s projection agreeing with the existing direction, plus a fresh candle event."
+    ],
+    "scoring": "External complete bid streams use the last published bid at or before expiry; sparse video fixtures keep their approximate after-expiry policy.",
+    "caveats": [
+      "External prices are not the user broker or OTC session.",
+      "Old quote-only video fixtures cannot validate candle-moment gating.",
+      "First external windows were already inspected; second-validation windows are reserved before these new model results."
+    ]
+  },
+  "results": [
+    {
+      "kind": "external-market-replay-not-user-session",
+      "source": "https://github.com/Leo4815162342/dukascopy-node/blob/master/examples/with-tick-data/with-tick-data.output.json",
+      "gitBlob": "7df560b3561aa644e10ea04a39947bb992cdff2d",
+      "sha256": "df4c6d7b089c46b73545eb5e9a5207c1ee40ce7375aaa5ba318d1f7963670403",
+      "instrument": "EUR/USD",
+      "priceSide": "bid",
+      "date": "2020-03-30",
+      "rawTicks": 173015,
+      "distinctTimestamps": 173015,
+      "sourceLicense": "MIT; Copyright (c) 2022 Leonid Pyrlia",
+      "expiryQuotePolicy": "asof-complete-bid-stream",
+      "limitations": [
+        "External Dukascopy Forex data, not IQ Option/Exnova OTC and not the user session.",
+        "1m OHLC aggregated from the source ticks, not broker-supplied native candles.",
+        "No interpolation or invented ticks; evaluate on actual quoted prices and timestamps."
+      ],
+      "name": "second-validation-10-utc",
+      "from": "2020-03-30T10:00:00Z",
+      "to": "2020-03-30T10:30:00Z",
+      "metrics": [
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 21,
+          "newCandidateEntries": 0
+        }
+      ],
+      "candidateDiagnostics": [
+        null,
+        null,
+        null
+      ],
+      "sameEntries": true,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 0,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 0.6228329999999005,
+          "p95Ms": 1.2364320000000362
+        },
+        {
+          "medianMs": 0.6225819999999658,
+          "p95Ms": 1.419579999999769
+        },
+        {
+          "medianMs": 0.6309550000000854,
+          "p95Ms": 1.2996149999999034
+        },
+        {
+          "medianMs": 0.5936400000000503,
+          "p95Ms": 1.2660350000001017
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1585562400937,
+            "side": "CALL",
+            "price": 1.10698,
+            "dueAt": 1585562430937,
+            "result": "loss"
+          },
+          {
+            "at": 1585562431421,
+            "side": "PUT",
+            "price": 1.10696,
+            "dueAt": 1585562461421,
+            "result": "win"
+          },
+          {
+            "at": 1585562461587,
+            "side": "PUT",
+            "price": 1.1069,
+            "dueAt": 1585562491587,
+            "result": "win"
+          },
+          {
+            "at": 1585562501824,
+            "side": "CALL",
+            "price": 1.1068,
+            "dueAt": 1585562531824,
+            "result": "win"
+          },
+          {
+            "at": 1585562538930,
+            "side": "PUT",
+            "price": 1.10683,
+            "dueAt": 1585562568930,
+            "result": "loss"
+          },
+          {
+            "at": 1585562571921,
+            "side": "CALL",
+            "price": 1.1069,
+            "dueAt": 1585562601921,
+            "result": "loss"
+          },
+          {
+            "at": 1585562604931,
+            "side": "CALL",
+            "price": 1.10665,
+            "dueAt": 1585562634931,
+            "result": "loss"
+          },
+          {
+            "at": 1585562635721,
+            "side": "PUT",
+            "price": 1.10639,
+            "dueAt": 1585562665721,
+            "result": "loss"
+          },
+          {
+            "at": 1585562669799,
+            "side": "PUT",
+            "price": 1.10637,
+            "dueAt": 1585562699799,
+            "result": "tie"
+          },
+          {
+            "at": 1585562704905,
+            "side": "PUT",
+            "price": 1.10642,
+            "dueAt": 1585562734905,
+            "result": "win"
+          },
+          {
+            "at": 1585562741937,
+            "side": "CALL",
+            "price": 1.10631,
+            "dueAt": 1585562771937,
+            "result": "loss"
+          },
+          {
+            "at": 1585562783224,
+            "side": "CALL",
+            "price": 1.10632,
+            "dueAt": 1585562813224,
+            "result": "win"
+          },
+          {
+            "at": 1585562813901,
+            "side": "PUT",
+            "price": 1.10637,
+            "dueAt": 1585562843901,
+            "result": "win"
+          },
+          {
+            "at": 1585562863929,
+            "side": "CALL",
+            "price": 1.10637,
+            "dueAt": 1585562893929,
+            "result": "loss"
+          },
+          {
+            "at": 1585562898917,
+            "side": "PUT",
+            "price": 1.10611,
+            "dueAt": 1585562928917,
+            "result": "win"
+          },
+          {
+            "at": 1585562992997,
+            "side": "PUT",
+            "price": 1.10619,
+            "dueAt": 1585563022997,
+            "result": "loss"
+          },
+          {
+            "at": 1585563039249,
+            "side": "CALL",
+            "price": 1.1063,
+            "dueAt": 1585563069249,
+            "result": "win"
+          },
+          {
+            "at": 1585563076639,
+            "side": "PUT",
+            "price": 1.10643,
+            "dueAt": 1585563106639,
+            "result": "win"
+          },
+          {
+            "at": 1585563107980,
+            "side": "CALL",
+            "price": 1.10637,
+            "dueAt": 1585563137980,
+            "result": "win"
+          },
+          {
+            "at": 1585563139884,
+            "side": "PUT",
+            "price": 1.10646,
+            "dueAt": 1585563169884,
+            "result": "loss"
+          },
+          {
+            "at": 1585563170527,
+            "side": "CALL",
+            "price": 1.10651,
+            "dueAt": 1585563200527,
+            "result": "loss"
+          },
+          {
+            "at": 1585563217544,
+            "side": "CALL",
+            "price": 1.10627,
+            "dueAt": 1585563247544,
+            "result": "loss"
+          },
+          {
+            "at": 1585563250920,
+            "side": "PUT",
+            "price": 1.10614,
+            "dueAt": 1585563280920,
+            "result": "loss"
+          },
+          {
+            "at": 1585563284826,
+            "side": "PUT",
+            "price": 1.1062,
+            "dueAt": 1585563314826,
+            "result": "loss"
+          },
+          {
+            "at": 1585563316936,
+            "side": "PUT",
+            "price": 1.1063,
+            "dueAt": 1585563346936,
+            "result": "win"
+          },
+          {
+            "at": 1585563364823,
+            "side": "PUT",
+            "price": 1.10625,
+            "dueAt": 1585563394823,
+            "result": "win"
+          },
+          {
+            "at": 1585563398997,
+            "side": "CALL",
+            "price": 1.10609,
+            "dueAt": 1585563428997,
+            "result": "loss"
+          },
+          {
+            "at": 1585563434621,
+            "side": "CALL",
+            "price": 1.10605,
+            "dueAt": 1585563464621,
+            "result": "win"
+          },
+          {
+            "at": 1585563466982,
+            "side": "PUT",
+            "price": 1.10625,
+            "dueAt": 1585563496982,
+            "result": "win"
+          },
+          {
+            "at": 1585563501746,
+            "side": "PUT",
+            "price": 1.1062,
+            "dueAt": 1585563531746,
+            "result": "win"
+          },
+          {
+            "at": 1585563541697,
+            "side": "CALL",
+            "price": 1.10611,
+            "dueAt": 1585563571697,
+            "result": "loss"
+          },
+          {
+            "at": 1585563581861,
+            "side": "PUT",
+            "price": 1.10567,
+            "dueAt": 1585563611861,
+            "result": "loss"
+          },
+          {
+            "at": 1585563654451,
+            "side": "PUT",
+            "price": 1.10595,
+            "dueAt": 1585563684451,
+            "result": "win"
+          },
+          {
+            "at": 1585563696879,
+            "side": "PUT",
+            "price": 1.10588,
+            "dueAt": 1585563726879,
+            "result": "loss"
+          },
+          {
+            "at": 1585563739807,
+            "side": "PUT",
+            "price": 1.10591,
+            "dueAt": 1585563769807,
+            "result": "win"
+          },
+          {
+            "at": 1585563785919,
+            "side": "CALL",
+            "price": 1.1057,
+            "dueAt": 1585563815919,
+            "result": "win"
+          },
+          {
+            "at": 1585563841903,
+            "side": "PUT",
+            "price": 1.10591,
+            "dueAt": 1585563871903,
+            "result": "win"
+          },
+          {
+            "at": 1585563915966,
+            "side": "PUT",
+            "price": 1.1059,
+            "dueAt": 1585563945966,
+            "result": "win"
+          },
+          {
+            "at": 1585564000995,
+            "side": "PUT",
+            "price": 1.10587,
+            "dueAt": 1585564030995,
+            "result": "win"
+          },
+          {
+            "at": 1585564094905,
+            "side": "PUT",
+            "price": 1.10589,
+            "dueAt": 1585564124905,
+            "result": "loss"
+          },
+          {
+            "at": 1585564131976,
+            "side": "PUT",
+            "price": 1.10592,
+            "dueAt": 1585564161976,
+            "result": "loss"
+          },
+          {
+            "at": 1585564175602,
+            "side": "PUT",
+            "price": 1.10594,
+            "dueAt": 1585564205602,
+            "result": "tie"
+          }
+        ],
+        [
+          {
+            "at": 1585562400937,
+            "side": "CALL",
+            "price": 1.10698,
+            "dueAt": 1585562430937,
+            "result": "loss"
+          },
+          {
+            "at": 1585562431421,
+            "side": "PUT",
+            "price": 1.10696,
+            "dueAt": 1585562461421,
+            "result": "win"
+          },
+          {
+            "at": 1585562461587,
+            "side": "PUT",
+            "price": 1.1069,
+            "dueAt": 1585562491587,
+            "result": "win"
+          },
+          {
+            "at": 1585562501824,
+            "side": "CALL",
+            "price": 1.1068,
+            "dueAt": 1585562531824,
+            "result": "win"
+          },
+          {
+            "at": 1585562538930,
+            "side": "PUT",
+            "price": 1.10683,
+            "dueAt": 1585562568930,
+            "result": "loss"
+          },
+          {
+            "at": 1585562571921,
+            "side": "CALL",
+            "price": 1.1069,
+            "dueAt": 1585562601921,
+            "result": "loss"
+          },
+          {
+            "at": 1585562604931,
+            "side": "CALL",
+            "price": 1.10665,
+            "dueAt": 1585562634931,
+            "result": "loss"
+          },
+          {
+            "at": 1585562635721,
+            "side": "PUT",
+            "price": 1.10639,
+            "dueAt": 1585562665721,
+            "result": "loss"
+          },
+          {
+            "at": 1585562669799,
+            "side": "PUT",
+            "price": 1.10637,
+            "dueAt": 1585562699799,
+            "result": "tie"
+          },
+          {
+            "at": 1585562704905,
+            "side": "PUT",
+            "price": 1.10642,
+            "dueAt": 1585562734905,
+            "result": "win"
+          },
+          {
+            "at": 1585562741937,
+            "side": "CALL",
+            "price": 1.10631,
+            "dueAt": 1585562771937,
+            "result": "loss"
+          },
+          {
+            "at": 1585562783224,
+            "side": "CALL",
+            "price": 1.10632,
+            "dueAt": 1585562813224,
+            "result": "win"
+          },
+          {
+            "at": 1585562813901,
+            "side": "PUT",
+            "price": 1.10637,
+            "dueAt": 1585562843901,
+            "result": "win"
+          },
+          {
+            "at": 1585562863929,
+            "side": "CALL",
+            "price": 1.10637,
+            "dueAt": 1585562893929,
+            "result": "loss"
+          },
+          {
+            "at": 1585562898917,
+            "side": "PUT",
+            "price": 1.10611,
+            "dueAt": 1585562928917,
+            "result": "win"
+          },
+          {
+            "at": 1585562992997,
+            "side": "PUT",
+            "price": 1.10619,
+            "dueAt": 1585563022997,
+            "result": "loss"
+          },
+          {
+            "at": 1585563039249,
+            "side": "CALL",
+            "price": 1.1063,
+            "dueAt": 1585563069249,
+            "result": "win"
+          },
+          {
+            "at": 1585563076639,
+            "side": "PUT",
+            "price": 1.10643,
+            "dueAt": 1585563106639,
+            "result": "win"
+          },
+          {
+            "at": 1585563107980,
+            "side": "CALL",
+            "price": 1.10637,
+            "dueAt": 1585563137980,
+            "result": "win"
+          },
+          {
+            "at": 1585563139884,
+            "side": "PUT",
+            "price": 1.10646,
+            "dueAt": 1585563169884,
+            "result": "loss"
+          },
+          {
+            "at": 1585563170527,
+            "side": "CALL",
+            "price": 1.10651,
+            "dueAt": 1585563200527,
+            "result": "loss"
+          },
+          {
+            "at": 1585563217544,
+            "side": "CALL",
+            "price": 1.10627,
+            "dueAt": 1585563247544,
+            "result": "loss"
+          },
+          {
+            "at": 1585563250920,
+            "side": "PUT",
+            "price": 1.10614,
+            "dueAt": 1585563280920,
+            "result": "loss"
+          },
+          {
+            "at": 1585563284826,
+            "side": "PUT",
+            "price": 1.1062,
+            "dueAt": 1585563314826,
+            "result": "loss"
+          },
+          {
+            "at": 1585563316936,
+            "side": "PUT",
+            "price": 1.1063,
+            "dueAt": 1585563346936,
+            "result": "win"
+          },
+          {
+            "at": 1585563364823,
+            "side": "PUT",
+            "price": 1.10625,
+            "dueAt": 1585563394823,
+            "result": "win"
+          },
+          {
+            "at": 1585563398997,
+            "side": "CALL",
+            "price": 1.10609,
+            "dueAt": 1585563428997,
+            "result": "loss"
+          },
+          {
+            "at": 1585563434621,
+            "side": "CALL",
+            "price": 1.10605,
+            "dueAt": 1585563464621,
+            "result": "win"
+          },
+          {
+            "at": 1585563466982,
+            "side": "PUT",
+            "price": 1.10625,
+            "dueAt": 1585563496982,
+            "result": "win"
+          },
+          {
+            "at": 1585563501746,
+            "side": "PUT",
+            "price": 1.1062,
+            "dueAt": 1585563531746,
+            "result": "win"
+          },
+          {
+            "at": 1585563541697,
+            "side": "CALL",
+            "price": 1.10611,
+            "dueAt": 1585563571697,
+            "result": "loss"
+          },
+          {
+            "at": 1585563581861,
+            "side": "PUT",
+            "price": 1.10567,
+            "dueAt": 1585563611861,
+            "result": "loss"
+          },
+          {
+            "at": 1585563654451,
+            "side": "PUT",
+            "price": 1.10595,
+            "dueAt": 1585563684451,
+            "result": "win"
+          },
+          {
+            "at": 1585563696879,
+            "side": "PUT",
+            "price": 1.10588,
+            "dueAt": 1585563726879,
+            "result": "loss"
+          },
+          {
+            "at": 1585563739807,
+            "side": "PUT",
+            "price": 1.10591,
+            "dueAt": 1585563769807,
+            "result": "win"
+          },
+          {
+            "at": 1585563785919,
+            "side": "CALL",
+            "price": 1.1057,
+            "dueAt": 1585563815919,
+            "result": "win"
+          },
+          {
+            "at": 1585563841903,
+            "side": "PUT",
+            "price": 1.10591,
+            "dueAt": 1585563871903,
+            "result": "win"
+          },
+          {
+            "at": 1585563915966,
+            "side": "PUT",
+            "price": 1.1059,
+            "dueAt": 1585563945966,
+            "result": "win"
+          },
+          {
+            "at": 1585564000995,
+            "side": "PUT",
+            "price": 1.10587,
+            "dueAt": 1585564030995,
+            "result": "win"
+          },
+          {
+            "at": 1585564094905,
+            "side": "PUT",
+            "price": 1.10589,
+            "dueAt": 1585564124905,
+            "result": "loss"
+          },
+          {
+            "at": 1585564131976,
+            "side": "PUT",
+            "price": 1.10592,
+            "dueAt": 1585564161976,
+            "result": "loss"
+          },
+          {
+            "at": 1585564175602,
+            "side": "PUT",
+            "price": 1.10594,
+            "dueAt": 1585564205602,
+            "result": "tie"
+          }
+        ],
+        [
+          {
+            "at": 1585562400937,
+            "side": "CALL",
+            "price": 1.10698,
+            "dueAt": 1585562430937,
+            "result": "loss"
+          },
+          {
+            "at": 1585562431421,
+            "side": "PUT",
+            "price": 1.10696,
+            "dueAt": 1585562461421,
+            "result": "win"
+          },
+          {
+            "at": 1585562461587,
+            "side": "PUT",
+            "price": 1.1069,
+            "dueAt": 1585562491587,
+            "result": "win"
+          },
+          {
+            "at": 1585562501824,
+            "side": "CALL",
+            "price": 1.1068,
+            "dueAt": 1585562531824,
+            "result": "win"
+          },
+          {
+            "at": 1585562538930,
+            "side": "PUT",
+            "price": 1.10683,
+            "dueAt": 1585562568930,
+            "result": "loss"
+          },
+          {
+            "at": 1585562571921,
+            "side": "CALL",
+            "price": 1.1069,
+            "dueAt": 1585562601921,
+            "result": "loss"
+          },
+          {
+            "at": 1585562604931,
+            "side": "CALL",
+            "price": 1.10665,
+            "dueAt": 1585562634931,
+            "result": "loss"
+          },
+          {
+            "at": 1585562635721,
+            "side": "PUT",
+            "price": 1.10639,
+            "dueAt": 1585562665721,
+            "result": "loss"
+          },
+          {
+            "at": 1585562669799,
+            "side": "PUT",
+            "price": 1.10637,
+            "dueAt": 1585562699799,
+            "result": "tie"
+          },
+          {
+            "at": 1585562704905,
+            "side": "PUT",
+            "price": 1.10642,
+            "dueAt": 1585562734905,
+            "result": "win"
+          },
+          {
+            "at": 1585562741937,
+            "side": "CALL",
+            "price": 1.10631,
+            "dueAt": 1585562771937,
+            "result": "loss"
+          },
+          {
+            "at": 1585562783224,
+            "side": "CALL",
+            "price": 1.10632,
+            "dueAt": 1585562813224,
+            "result": "win"
+          },
+          {
+            "at": 1585562813901,
+            "side": "PUT",
+            "price": 1.10637,
+            "dueAt": 1585562843901,
+            "result": "win"
+          },
+          {
+            "at": 1585562863929,
+            "side": "CALL",
+            "price": 1.10637,
+            "dueAt": 1585562893929,
+            "result": "loss"
+          },
+          {
+            "at": 1585562898917,
+            "side": "PUT",
+            "price": 1.10611,
+            "dueAt": 1585562928917,
+            "result": "win"
+          },
+          {
+            "at": 1585562992997,
+            "side": "PUT",
+            "price": 1.10619,
+            "dueAt": 1585563022997,
+            "result": "loss"
+          },
+          {
+            "at": 1585563039249,
+            "side": "CALL",
+            "price": 1.1063,
+            "dueAt": 1585563069249,
+            "result": "win"
+          },
+          {
+            "at": 1585563076639,
+            "side": "PUT",
+            "price": 1.10643,
+            "dueAt": 1585563106639,
+            "result": "win"
+          },
+          {
+            "at": 1585563107980,
+            "side": "CALL",
+            "price": 1.10637,
+            "dueAt": 1585563137980,
+            "result": "win"
+          },
+          {
+            "at": 1585563139884,
+            "side": "PUT",
+            "price": 1.10646,
+            "dueAt": 1585563169884,
+            "result": "loss"
+          },
+          {
+            "at": 1585563170527,
+            "side": "CALL",
+            "price": 1.10651,
+            "dueAt": 1585563200527,
+            "result": "loss"
+          },
+          {
+            "at": 1585563217544,
+            "side": "CALL",
+            "price": 1.10627,
+            "dueAt": 1585563247544,
+            "result": "loss"
+          },
+          {
+            "at": 1585563250920,
+            "side": "PUT",
+            "price": 1.10614,
+            "dueAt": 1585563280920,
+            "result": "loss"
+          },
+          {
+            "at": 1585563284826,
+            "side": "PUT",
+            "price": 1.1062,
+            "dueAt": 1585563314826,
+            "result": "loss"
+          },
+          {
+            "at": 1585563316936,
+            "side": "PUT",
+            "price": 1.1063,
+            "dueAt": 1585563346936,
+            "result": "win"
+          },
+          {
+            "at": 1585563364823,
+            "side": "PUT",
+            "price": 1.10625,
+            "dueAt": 1585563394823,
+            "result": "win"
+          },
+          {
+            "at": 1585563398997,
+            "side": "CALL",
+            "price": 1.10609,
+            "dueAt": 1585563428997,
+            "result": "loss"
+          },
+          {
+            "at": 1585563434621,
+            "side": "CALL",
+            "price": 1.10605,
+            "dueAt": 1585563464621,
+            "result": "win"
+          },
+          {
+            "at": 1585563466982,
+            "side": "PUT",
+            "price": 1.10625,
+            "dueAt": 1585563496982,
+            "result": "win"
+          },
+          {
+            "at": 1585563501746,
+            "side": "PUT",
+            "price": 1.1062,
+            "dueAt": 1585563531746,
+            "result": "win"
+          },
+          {
+            "at": 1585563541697,
+            "side": "CALL",
+            "price": 1.10611,
+            "dueAt": 1585563571697,
+            "result": "loss"
+          },
+          {
+            "at": 1585563581861,
+            "side": "PUT",
+            "price": 1.10567,
+            "dueAt": 1585563611861,
+            "result": "loss"
+          },
+          {
+            "at": 1585563654451,
+            "side": "PUT",
+            "price": 1.10595,
+            "dueAt": 1585563684451,
+            "result": "win"
+          },
+          {
+            "at": 1585563696879,
+            "side": "PUT",
+            "price": 1.10588,
+            "dueAt": 1585563726879,
+            "result": "loss"
+          },
+          {
+            "at": 1585563739807,
+            "side": "PUT",
+            "price": 1.10591,
+            "dueAt": 1585563769807,
+            "result": "win"
+          },
+          {
+            "at": 1585563785919,
+            "side": "CALL",
+            "price": 1.1057,
+            "dueAt": 1585563815919,
+            "result": "win"
+          },
+          {
+            "at": 1585563841903,
+            "side": "PUT",
+            "price": 1.10591,
+            "dueAt": 1585563871903,
+            "result": "win"
+          },
+          {
+            "at": 1585563915966,
+            "side": "PUT",
+            "price": 1.1059,
+            "dueAt": 1585563945966,
+            "result": "win"
+          },
+          {
+            "at": 1585564000995,
+            "side": "PUT",
+            "price": 1.10587,
+            "dueAt": 1585564030995,
+            "result": "win"
+          },
+          {
+            "at": 1585564094905,
+            "side": "PUT",
+            "price": 1.10589,
+            "dueAt": 1585564124905,
+            "result": "loss"
+          },
+          {
+            "at": 1585564131976,
+            "side": "PUT",
+            "price": 1.10592,
+            "dueAt": 1585564161976,
+            "result": "loss"
+          },
+          {
+            "at": 1585564175602,
+            "side": "PUT",
+            "price": 1.10594,
+            "dueAt": 1585564205602,
+            "result": "tie"
+          }
+        ],
+        []
+      ],
+      "entryReasons": [
+        [
+          {
+            "at": 1585562400937,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562431421,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562461587,
+            "reason": "failed-breakout-structure-change"
+          },
+          {
+            "at": 1585562501824,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562538930,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562571921,
+            "reason": "failed-breakout-structure-change"
+          },
+          {
+            "at": 1585562604931,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585562635721,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585562669799,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585562704905,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562741937,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585562783224,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585562813901,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585562863929,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562898917,
+            "reason": "break-retest-continuation"
+          },
+          {
+            "at": 1585562992997,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563039249,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563076639,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563107980,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563139884,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563170527,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563217544,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585563250920,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563284826,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563316936,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585563364823,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563398997,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563434621,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563466982,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563501746,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563541697,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563581861,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585563654451,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563696879,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563739807,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563785919,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563841903,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563915966,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585564000995,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585564094905,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585564131976,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585564175602,
+            "reason": "multiscale-candle-rejection"
+          }
+        ],
+        [
+          {
+            "at": 1585562400937,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562431421,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562461587,
+            "reason": "failed-breakout-structure-change"
+          },
+          {
+            "at": 1585562501824,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562538930,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562571921,
+            "reason": "failed-breakout-structure-change"
+          },
+          {
+            "at": 1585562604931,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585562635721,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585562669799,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585562704905,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562741937,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585562783224,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585562813901,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585562863929,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562898917,
+            "reason": "break-retest-continuation"
+          },
+          {
+            "at": 1585562992997,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563039249,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563076639,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563107980,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563139884,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563170527,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563217544,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585563250920,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563284826,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563316936,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585563364823,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563398997,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563434621,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563466982,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563501746,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563541697,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563581861,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585563654451,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563696879,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563739807,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563785919,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563841903,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563915966,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585564000995,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585564094905,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585564131976,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585564175602,
+            "reason": "multiscale-candle-rejection"
+          }
+        ],
+        [
+          {
+            "at": 1585562400937,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562431421,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562461587,
+            "reason": "failed-breakout-structure-change"
+          },
+          {
+            "at": 1585562501824,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562538930,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562571921,
+            "reason": "failed-breakout-structure-change"
+          },
+          {
+            "at": 1585562604931,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585562635721,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585562669799,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585562704905,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562741937,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585562783224,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585562813901,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585562863929,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585562898917,
+            "reason": "break-retest-continuation"
+          },
+          {
+            "at": 1585562992997,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563039249,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563076639,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563107980,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563139884,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563170527,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563217544,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585563250920,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563284826,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563316936,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585563364823,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585563398997,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563434621,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563466982,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563501746,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563541697,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563581861,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585563654451,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563696879,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563739807,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563785919,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585563841903,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585563915966,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585564000995,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585564094905,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585564131976,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585564175602,
+            "reason": "multiscale-candle-rejection"
+          }
+        ],
+        []
+      ],
+      "selection": [
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 37.071,
+          "maxGapSeconds": 94.08
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 37.071,
+          "maxGapSeconds": 94.08
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 37.071,
+          "maxGapSeconds": 94.08
+        },
+        {
+          "completedCoverage": 0,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        }
+      ]
+    },
+    {
+      "kind": "external-market-replay-not-user-session",
+      "source": "https://github.com/Leo4815162342/dukascopy-node/blob/master/examples/with-tick-data/with-tick-data.output.json",
+      "gitBlob": "7df560b3561aa644e10ea04a39947bb992cdff2d",
+      "sha256": "df4c6d7b089c46b73545eb5e9a5207c1ee40ce7375aaa5ba318d1f7963670403",
+      "instrument": "EUR/USD",
+      "priceSide": "bid",
+      "date": "2020-03-30",
+      "rawTicks": 173015,
+      "distinctTimestamps": 173015,
+      "sourceLicense": "MIT; Copyright (c) 2022 Leonid Pyrlia",
+      "expiryQuotePolicy": "asof-complete-bid-stream",
+      "limitations": [
+        "External Dukascopy Forex data, not IQ Option/Exnova OTC and not the user session.",
+        "1m OHLC aggregated from the source ticks, not broker-supplied native candles.",
+        "No interpolation or invented ticks; evaluate on actual quoted prices and timestamps."
+      ],
+      "name": "second-validation-16-utc",
+      "from": "2020-03-30T16:00:00Z",
+      "to": "2020-03-30T16:30:00Z",
+      "metrics": [
+        {
+          "win": 24,
+          "loss": 24,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 24,
+          "loss": 24,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 24,
+          "loss": 24,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": false,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 24,
+          "newCandidateEntries": 0
+        }
+      ],
+      "candidateDiagnostics": [
+        null,
+        null,
+        null
+      ],
+      "sameEntries": true,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 0,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 0.4946749999999156,
+          "p95Ms": 0.8550930000001244
+        },
+        {
+          "medianMs": 0.4929920000004131,
+          "p95Ms": 0.8602019999998447
+        },
+        {
+          "medianMs": 0.4961670000002414,
+          "p95Ms": 0.8735900000001493
+        },
+        {
+          "medianMs": 0.45860199999970064,
+          "p95Ms": 0.8209930000002714
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [
+          {
+            "at": 1585584019146,
+            "side": "CALL",
+            "price": 1.10166,
+            "dueAt": 1585584049146,
+            "result": "loss"
+          },
+          {
+            "at": 1585584050683,
+            "side": "PUT",
+            "price": 1.10142,
+            "dueAt": 1585584080683,
+            "result": "win"
+          },
+          {
+            "at": 1585584082040,
+            "side": "CALL",
+            "price": 1.10123,
+            "dueAt": 1585584112040,
+            "result": "win"
+          },
+          {
+            "at": 1585584116729,
+            "side": "CALL",
+            "price": 1.10128,
+            "dueAt": 1585584146729,
+            "result": "win"
+          },
+          {
+            "at": 1585584151574,
+            "side": "CALL",
+            "price": 1.1018,
+            "dueAt": 1585584181574,
+            "result": "loss"
+          },
+          {
+            "at": 1585584201095,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584231095,
+            "result": "win"
+          },
+          {
+            "at": 1585584247503,
+            "side": "CALL",
+            "price": 1.10161,
+            "dueAt": 1585584277503,
+            "result": "tie"
+          },
+          {
+            "at": 1585584278277,
+            "side": "PUT",
+            "price": 1.10155,
+            "dueAt": 1585584308277,
+            "result": "loss"
+          },
+          {
+            "at": 1585584326920,
+            "side": "PUT",
+            "price": 1.1015,
+            "dueAt": 1585584356920,
+            "result": "loss"
+          },
+          {
+            "at": 1585584356984,
+            "side": "CALL",
+            "price": 1.10175,
+            "dueAt": 1585584386984,
+            "result": "loss"
+          },
+          {
+            "at": 1585584395958,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584425958,
+            "result": "loss"
+          },
+          {
+            "at": 1585584440920,
+            "side": "CALL",
+            "price": 1.1022,
+            "dueAt": 1585584470920,
+            "result": "win"
+          },
+          {
+            "at": 1585584471744,
+            "side": "PUT",
+            "price": 1.10214,
+            "dueAt": 1585584501744,
+            "result": "tie"
+          },
+          {
+            "at": 1585584501955,
+            "side": "CALL",
+            "price": 1.10216,
+            "dueAt": 1585584531955,
+            "result": "loss"
+          },
+          {
+            "at": 1585584534641,
+            "side": "PUT",
+            "price": 1.10208,
+            "dueAt": 1585584564641,
+            "result": "win"
+          },
+          {
+            "at": 1585584566152,
+            "side": "PUT",
+            "price": 1.10205,
+            "dueAt": 1585584596152,
+            "result": "win"
+          },
+          {
+            "at": 1585584603647,
+            "side": "PUT",
+            "price": 1.10191,
+            "dueAt": 1585584633647,
+            "result": "win"
+          },
+          {
+            "at": 1585584633831,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584663831,
+            "result": "loss"
+          },
+          {
+            "at": 1585584665864,
+            "side": "CALL",
+            "price": 1.102,
+            "dueAt": 1585584695864,
+            "result": "win"
+          },
+          {
+            "at": 1585584696754,
+            "side": "CALL",
+            "price": 1.10209,
+            "dueAt": 1585584726754,
+            "result": "loss"
+          },
+          {
+            "at": 1585584745594,
+            "side": "CALL",
+            "price": 1.10193,
+            "dueAt": 1585584775594,
+            "result": "win"
+          },
+          {
+            "at": 1585584776520,
+            "side": "CALL",
+            "price": 1.10202,
+            "dueAt": 1585584806520,
+            "result": "loss"
+          },
+          {
+            "at": 1585584816997,
+            "side": "PUT",
+            "price": 1.10157,
+            "dueAt": 1585584846997,
+            "result": "loss"
+          },
+          {
+            "at": 1585584847755,
+            "side": "PUT",
+            "price": 1.10161,
+            "dueAt": 1585584877755,
+            "result": "loss"
+          },
+          {
+            "at": 1585584890831,
+            "side": "PUT",
+            "price": 1.10182,
+            "dueAt": 1585584920831,
+            "result": "win"
+          },
+          {
+            "at": 1585584924618,
+            "side": "PUT",
+            "price": 1.10173,
+            "dueAt": 1585584954618,
+            "result": "loss"
+          },
+          {
+            "at": 1585584955779,
+            "side": "PUT",
+            "price": 1.10175,
+            "dueAt": 1585584985779,
+            "result": "win"
+          },
+          {
+            "at": 1585584991528,
+            "side": "CALL",
+            "price": 1.10168,
+            "dueAt": 1585585021528,
+            "result": "win"
+          },
+          {
+            "at": 1585585024701,
+            "side": "CALL",
+            "price": 1.10169,
+            "dueAt": 1585585054701,
+            "result": "loss"
+          },
+          {
+            "at": 1585585056931,
+            "side": "CALL",
+            "price": 1.10159,
+            "dueAt": 1585585086931,
+            "result": "loss"
+          },
+          {
+            "at": 1585585088509,
+            "side": "CALL",
+            "price": 1.1015,
+            "dueAt": 1585585118509,
+            "result": "loss"
+          },
+          {
+            "at": 1585585120246,
+            "side": "PUT",
+            "price": 1.10138,
+            "dueAt": 1585585150246,
+            "result": "loss"
+          },
+          {
+            "at": 1585585152962,
+            "side": "PUT",
+            "price": 1.10148,
+            "dueAt": 1585585182962,
+            "result": "loss"
+          },
+          {
+            "at": 1585585184696,
+            "side": "CALL",
+            "price": 1.10152,
+            "dueAt": 1585585214696,
+            "result": "win"
+          },
+          {
+            "at": 1585585216974,
+            "side": "CALL",
+            "price": 1.10166,
+            "dueAt": 1585585246974,
+            "result": "loss"
+          },
+          {
+            "at": 1585585249904,
+            "side": "PUT",
+            "price": 1.10158,
+            "dueAt": 1585585279904,
+            "result": "loss"
+          },
+          {
+            "at": 1585585280987,
+            "side": "CALL",
+            "price": 1.10165,
+            "dueAt": 1585585310987,
+            "result": "win"
+          },
+          {
+            "at": 1585585311477,
+            "side": "PUT",
+            "price": 1.10197,
+            "dueAt": 1585585341477,
+            "result": "win"
+          },
+          {
+            "at": 1585585350244,
+            "side": "CALL",
+            "price": 1.10191,
+            "dueAt": 1585585380244,
+            "result": "win"
+          },
+          {
+            "at": 1585585380706,
+            "side": "PUT",
+            "price": 1.10189,
+            "dueAt": 1585585410706,
+            "result": "win"
+          },
+          {
+            "at": 1585585431721,
+            "side": "CALL",
+            "price": 1.10164,
+            "dueAt": 1585585461721,
+            "result": "win"
+          },
+          {
+            "at": 1585585461904,
+            "side": "CALL",
+            "price": 1.10201,
+            "dueAt": 1585585491904,
+            "result": "win"
+          },
+          {
+            "at": 1585585492687,
+            "side": "CALL",
+            "price": 1.10214,
+            "dueAt": 1585585522687,
+            "result": "loss"
+          },
+          {
+            "at": 1585585523867,
+            "side": "CALL",
+            "price": 1.10216,
+            "dueAt": 1585585553867,
+            "result": "win"
+          },
+          {
+            "at": 1585585561320,
+            "side": "CALL",
+            "price": 1.10227,
+            "dueAt": 1585585591320,
+            "result": "win"
+          },
+          {
+            "at": 1585585610820,
+            "side": "PUT",
+            "price": 1.10229,
+            "dueAt": 1585585640820,
+            "result": "loss"
+          },
+          {
+            "at": 1585585659775,
+            "side": "CALL",
+            "price": 1.10239,
+            "dueAt": 1585585689775,
+            "result": "win"
+          },
+          {
+            "at": 1585585691709,
+            "side": "PUT",
+            "price": 1.10243,
+            "dueAt": 1585585721709,
+            "result": "win"
+          },
+          {
+            "at": 1585585724628,
+            "side": "CALL",
+            "price": 1.10232,
+            "dueAt": 1585585754628,
+            "result": "loss"
+          },
+          {
+            "at": 1585585760997,
+            "side": "CALL",
+            "price": 1.10231,
+            "dueAt": 1585585790997,
+            "result": "loss"
+          }
+        ],
+        [
+          {
+            "at": 1585584019146,
+            "side": "CALL",
+            "price": 1.10166,
+            "dueAt": 1585584049146,
+            "result": "loss"
+          },
+          {
+            "at": 1585584050683,
+            "side": "PUT",
+            "price": 1.10142,
+            "dueAt": 1585584080683,
+            "result": "win"
+          },
+          {
+            "at": 1585584082040,
+            "side": "CALL",
+            "price": 1.10123,
+            "dueAt": 1585584112040,
+            "result": "win"
+          },
+          {
+            "at": 1585584116729,
+            "side": "CALL",
+            "price": 1.10128,
+            "dueAt": 1585584146729,
+            "result": "win"
+          },
+          {
+            "at": 1585584151574,
+            "side": "CALL",
+            "price": 1.1018,
+            "dueAt": 1585584181574,
+            "result": "loss"
+          },
+          {
+            "at": 1585584201095,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584231095,
+            "result": "win"
+          },
+          {
+            "at": 1585584247503,
+            "side": "CALL",
+            "price": 1.10161,
+            "dueAt": 1585584277503,
+            "result": "tie"
+          },
+          {
+            "at": 1585584278277,
+            "side": "PUT",
+            "price": 1.10155,
+            "dueAt": 1585584308277,
+            "result": "loss"
+          },
+          {
+            "at": 1585584326920,
+            "side": "PUT",
+            "price": 1.1015,
+            "dueAt": 1585584356920,
+            "result": "loss"
+          },
+          {
+            "at": 1585584356984,
+            "side": "CALL",
+            "price": 1.10175,
+            "dueAt": 1585584386984,
+            "result": "loss"
+          },
+          {
+            "at": 1585584395958,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584425958,
+            "result": "loss"
+          },
+          {
+            "at": 1585584440920,
+            "side": "CALL",
+            "price": 1.1022,
+            "dueAt": 1585584470920,
+            "result": "win"
+          },
+          {
+            "at": 1585584471744,
+            "side": "PUT",
+            "price": 1.10214,
+            "dueAt": 1585584501744,
+            "result": "tie"
+          },
+          {
+            "at": 1585584501955,
+            "side": "CALL",
+            "price": 1.10216,
+            "dueAt": 1585584531955,
+            "result": "loss"
+          },
+          {
+            "at": 1585584534641,
+            "side": "PUT",
+            "price": 1.10208,
+            "dueAt": 1585584564641,
+            "result": "win"
+          },
+          {
+            "at": 1585584566152,
+            "side": "PUT",
+            "price": 1.10205,
+            "dueAt": 1585584596152,
+            "result": "win"
+          },
+          {
+            "at": 1585584603647,
+            "side": "PUT",
+            "price": 1.10191,
+            "dueAt": 1585584633647,
+            "result": "win"
+          },
+          {
+            "at": 1585584633831,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584663831,
+            "result": "loss"
+          },
+          {
+            "at": 1585584665864,
+            "side": "CALL",
+            "price": 1.102,
+            "dueAt": 1585584695864,
+            "result": "win"
+          },
+          {
+            "at": 1585584696754,
+            "side": "CALL",
+            "price": 1.10209,
+            "dueAt": 1585584726754,
+            "result": "loss"
+          },
+          {
+            "at": 1585584745594,
+            "side": "CALL",
+            "price": 1.10193,
+            "dueAt": 1585584775594,
+            "result": "win"
+          },
+          {
+            "at": 1585584776520,
+            "side": "CALL",
+            "price": 1.10202,
+            "dueAt": 1585584806520,
+            "result": "loss"
+          },
+          {
+            "at": 1585584816997,
+            "side": "PUT",
+            "price": 1.10157,
+            "dueAt": 1585584846997,
+            "result": "loss"
+          },
+          {
+            "at": 1585584847755,
+            "side": "PUT",
+            "price": 1.10161,
+            "dueAt": 1585584877755,
+            "result": "loss"
+          },
+          {
+            "at": 1585584890831,
+            "side": "PUT",
+            "price": 1.10182,
+            "dueAt": 1585584920831,
+            "result": "win"
+          },
+          {
+            "at": 1585584924618,
+            "side": "PUT",
+            "price": 1.10173,
+            "dueAt": 1585584954618,
+            "result": "loss"
+          },
+          {
+            "at": 1585584955779,
+            "side": "PUT",
+            "price": 1.10175,
+            "dueAt": 1585584985779,
+            "result": "win"
+          },
+          {
+            "at": 1585584991528,
+            "side": "CALL",
+            "price": 1.10168,
+            "dueAt": 1585585021528,
+            "result": "win"
+          },
+          {
+            "at": 1585585024701,
+            "side": "CALL",
+            "price": 1.10169,
+            "dueAt": 1585585054701,
+            "result": "loss"
+          },
+          {
+            "at": 1585585056931,
+            "side": "CALL",
+            "price": 1.10159,
+            "dueAt": 1585585086931,
+            "result": "loss"
+          },
+          {
+            "at": 1585585088509,
+            "side": "CALL",
+            "price": 1.1015,
+            "dueAt": 1585585118509,
+            "result": "loss"
+          },
+          {
+            "at": 1585585120246,
+            "side": "PUT",
+            "price": 1.10138,
+            "dueAt": 1585585150246,
+            "result": "loss"
+          },
+          {
+            "at": 1585585152962,
+            "side": "PUT",
+            "price": 1.10148,
+            "dueAt": 1585585182962,
+            "result": "loss"
+          },
+          {
+            "at": 1585585184696,
+            "side": "CALL",
+            "price": 1.10152,
+            "dueAt": 1585585214696,
+            "result": "win"
+          },
+          {
+            "at": 1585585216974,
+            "side": "CALL",
+            "price": 1.10166,
+            "dueAt": 1585585246974,
+            "result": "loss"
+          },
+          {
+            "at": 1585585249904,
+            "side": "PUT",
+            "price": 1.10158,
+            "dueAt": 1585585279904,
+            "result": "loss"
+          },
+          {
+            "at": 1585585280987,
+            "side": "CALL",
+            "price": 1.10165,
+            "dueAt": 1585585310987,
+            "result": "win"
+          },
+          {
+            "at": 1585585311477,
+            "side": "PUT",
+            "price": 1.10197,
+            "dueAt": 1585585341477,
+            "result": "win"
+          },
+          {
+            "at": 1585585350244,
+            "side": "CALL",
+            "price": 1.10191,
+            "dueAt": 1585585380244,
+            "result": "win"
+          },
+          {
+            "at": 1585585380706,
+            "side": "PUT",
+            "price": 1.10189,
+            "dueAt": 1585585410706,
+            "result": "win"
+          },
+          {
+            "at": 1585585431721,
+            "side": "CALL",
+            "price": 1.10164,
+            "dueAt": 1585585461721,
+            "result": "win"
+          },
+          {
+            "at": 1585585461904,
+            "side": "CALL",
+            "price": 1.10201,
+            "dueAt": 1585585491904,
+            "result": "win"
+          },
+          {
+            "at": 1585585492687,
+            "side": "CALL",
+            "price": 1.10214,
+            "dueAt": 1585585522687,
+            "result": "loss"
+          },
+          {
+            "at": 1585585523867,
+            "side": "CALL",
+            "price": 1.10216,
+            "dueAt": 1585585553867,
+            "result": "win"
+          },
+          {
+            "at": 1585585561320,
+            "side": "CALL",
+            "price": 1.10227,
+            "dueAt": 1585585591320,
+            "result": "win"
+          },
+          {
+            "at": 1585585610820,
+            "side": "PUT",
+            "price": 1.10229,
+            "dueAt": 1585585640820,
+            "result": "loss"
+          },
+          {
+            "at": 1585585659775,
+            "side": "CALL",
+            "price": 1.10239,
+            "dueAt": 1585585689775,
+            "result": "win"
+          },
+          {
+            "at": 1585585691709,
+            "side": "PUT",
+            "price": 1.10243,
+            "dueAt": 1585585721709,
+            "result": "win"
+          },
+          {
+            "at": 1585585724628,
+            "side": "CALL",
+            "price": 1.10232,
+            "dueAt": 1585585754628,
+            "result": "loss"
+          },
+          {
+            "at": 1585585760997,
+            "side": "CALL",
+            "price": 1.10231,
+            "dueAt": 1585585790997,
+            "result": "loss"
+          }
+        ],
+        [
+          {
+            "at": 1585584019146,
+            "side": "CALL",
+            "price": 1.10166,
+            "dueAt": 1585584049146,
+            "result": "loss"
+          },
+          {
+            "at": 1585584050683,
+            "side": "PUT",
+            "price": 1.10142,
+            "dueAt": 1585584080683,
+            "result": "win"
+          },
+          {
+            "at": 1585584082040,
+            "side": "CALL",
+            "price": 1.10123,
+            "dueAt": 1585584112040,
+            "result": "win"
+          },
+          {
+            "at": 1585584116729,
+            "side": "CALL",
+            "price": 1.10128,
+            "dueAt": 1585584146729,
+            "result": "win"
+          },
+          {
+            "at": 1585584151574,
+            "side": "CALL",
+            "price": 1.1018,
+            "dueAt": 1585584181574,
+            "result": "loss"
+          },
+          {
+            "at": 1585584201095,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584231095,
+            "result": "win"
+          },
+          {
+            "at": 1585584247503,
+            "side": "CALL",
+            "price": 1.10161,
+            "dueAt": 1585584277503,
+            "result": "tie"
+          },
+          {
+            "at": 1585584278277,
+            "side": "PUT",
+            "price": 1.10155,
+            "dueAt": 1585584308277,
+            "result": "loss"
+          },
+          {
+            "at": 1585584326920,
+            "side": "PUT",
+            "price": 1.1015,
+            "dueAt": 1585584356920,
+            "result": "loss"
+          },
+          {
+            "at": 1585584356984,
+            "side": "CALL",
+            "price": 1.10175,
+            "dueAt": 1585584386984,
+            "result": "loss"
+          },
+          {
+            "at": 1585584395958,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584425958,
+            "result": "loss"
+          },
+          {
+            "at": 1585584440920,
+            "side": "CALL",
+            "price": 1.1022,
+            "dueAt": 1585584470920,
+            "result": "win"
+          },
+          {
+            "at": 1585584471744,
+            "side": "PUT",
+            "price": 1.10214,
+            "dueAt": 1585584501744,
+            "result": "tie"
+          },
+          {
+            "at": 1585584501955,
+            "side": "CALL",
+            "price": 1.10216,
+            "dueAt": 1585584531955,
+            "result": "loss"
+          },
+          {
+            "at": 1585584534641,
+            "side": "PUT",
+            "price": 1.10208,
+            "dueAt": 1585584564641,
+            "result": "win"
+          },
+          {
+            "at": 1585584566152,
+            "side": "PUT",
+            "price": 1.10205,
+            "dueAt": 1585584596152,
+            "result": "win"
+          },
+          {
+            "at": 1585584603647,
+            "side": "PUT",
+            "price": 1.10191,
+            "dueAt": 1585584633647,
+            "result": "win"
+          },
+          {
+            "at": 1585584633831,
+            "side": "PUT",
+            "price": 1.10174,
+            "dueAt": 1585584663831,
+            "result": "loss"
+          },
+          {
+            "at": 1585584665864,
+            "side": "CALL",
+            "price": 1.102,
+            "dueAt": 1585584695864,
+            "result": "win"
+          },
+          {
+            "at": 1585584696754,
+            "side": "CALL",
+            "price": 1.10209,
+            "dueAt": 1585584726754,
+            "result": "loss"
+          },
+          {
+            "at": 1585584745594,
+            "side": "CALL",
+            "price": 1.10193,
+            "dueAt": 1585584775594,
+            "result": "win"
+          },
+          {
+            "at": 1585584776520,
+            "side": "CALL",
+            "price": 1.10202,
+            "dueAt": 1585584806520,
+            "result": "loss"
+          },
+          {
+            "at": 1585584816997,
+            "side": "PUT",
+            "price": 1.10157,
+            "dueAt": 1585584846997,
+            "result": "loss"
+          },
+          {
+            "at": 1585584847755,
+            "side": "PUT",
+            "price": 1.10161,
+            "dueAt": 1585584877755,
+            "result": "loss"
+          },
+          {
+            "at": 1585584890831,
+            "side": "PUT",
+            "price": 1.10182,
+            "dueAt": 1585584920831,
+            "result": "win"
+          },
+          {
+            "at": 1585584924618,
+            "side": "PUT",
+            "price": 1.10173,
+            "dueAt": 1585584954618,
+            "result": "loss"
+          },
+          {
+            "at": 1585584955779,
+            "side": "PUT",
+            "price": 1.10175,
+            "dueAt": 1585584985779,
+            "result": "win"
+          },
+          {
+            "at": 1585584991528,
+            "side": "CALL",
+            "price": 1.10168,
+            "dueAt": 1585585021528,
+            "result": "win"
+          },
+          {
+            "at": 1585585024701,
+            "side": "CALL",
+            "price": 1.10169,
+            "dueAt": 1585585054701,
+            "result": "loss"
+          },
+          {
+            "at": 1585585056931,
+            "side": "CALL",
+            "price": 1.10159,
+            "dueAt": 1585585086931,
+            "result": "loss"
+          },
+          {
+            "at": 1585585088509,
+            "side": "CALL",
+            "price": 1.1015,
+            "dueAt": 1585585118509,
+            "result": "loss"
+          },
+          {
+            "at": 1585585120246,
+            "side": "PUT",
+            "price": 1.10138,
+            "dueAt": 1585585150246,
+            "result": "loss"
+          },
+          {
+            "at": 1585585152962,
+            "side": "PUT",
+            "price": 1.10148,
+            "dueAt": 1585585182962,
+            "result": "loss"
+          },
+          {
+            "at": 1585585184696,
+            "side": "CALL",
+            "price": 1.10152,
+            "dueAt": 1585585214696,
+            "result": "win"
+          },
+          {
+            "at": 1585585216974,
+            "side": "CALL",
+            "price": 1.10166,
+            "dueAt": 1585585246974,
+            "result": "loss"
+          },
+          {
+            "at": 1585585249904,
+            "side": "PUT",
+            "price": 1.10158,
+            "dueAt": 1585585279904,
+            "result": "loss"
+          },
+          {
+            "at": 1585585280987,
+            "side": "CALL",
+            "price": 1.10165,
+            "dueAt": 1585585310987,
+            "result": "win"
+          },
+          {
+            "at": 1585585311477,
+            "side": "PUT",
+            "price": 1.10197,
+            "dueAt": 1585585341477,
+            "result": "win"
+          },
+          {
+            "at": 1585585350244,
+            "side": "CALL",
+            "price": 1.10191,
+            "dueAt": 1585585380244,
+            "result": "win"
+          },
+          {
+            "at": 1585585380706,
+            "side": "PUT",
+            "price": 1.10189,
+            "dueAt": 1585585410706,
+            "result": "win"
+          },
+          {
+            "at": 1585585431721,
+            "side": "CALL",
+            "price": 1.10164,
+            "dueAt": 1585585461721,
+            "result": "win"
+          },
+          {
+            "at": 1585585461904,
+            "side": "CALL",
+            "price": 1.10201,
+            "dueAt": 1585585491904,
+            "result": "win"
+          },
+          {
+            "at": 1585585492687,
+            "side": "CALL",
+            "price": 1.10214,
+            "dueAt": 1585585522687,
+            "result": "loss"
+          },
+          {
+            "at": 1585585523867,
+            "side": "CALL",
+            "price": 1.10216,
+            "dueAt": 1585585553867,
+            "result": "win"
+          },
+          {
+            "at": 1585585561320,
+            "side": "CALL",
+            "price": 1.10227,
+            "dueAt": 1585585591320,
+            "result": "win"
+          },
+          {
+            "at": 1585585610820,
+            "side": "PUT",
+            "price": 1.10229,
+            "dueAt": 1585585640820,
+            "result": "loss"
+          },
+          {
+            "at": 1585585659775,
+            "side": "CALL",
+            "price": 1.10239,
+            "dueAt": 1585585689775,
+            "result": "win"
+          },
+          {
+            "at": 1585585691709,
+            "side": "PUT",
+            "price": 1.10243,
+            "dueAt": 1585585721709,
+            "result": "win"
+          },
+          {
+            "at": 1585585724628,
+            "side": "CALL",
+            "price": 1.10232,
+            "dueAt": 1585585754628,
+            "result": "loss"
+          },
+          {
+            "at": 1585585760997,
+            "side": "CALL",
+            "price": 1.10231,
+            "dueAt": 1585585790997,
+            "result": "loss"
+          }
+        ],
+        []
+      ],
+      "entryReasons": [
+        [
+          {
+            "at": 1585584019146,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584050683,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585584082040,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584116729,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584151574,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585584201095,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584247503,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585584278277,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584326920,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584356984,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585584395958,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584440920,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584471744,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584501955,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584534641,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584566152,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584603647,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584633831,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584665864,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584696754,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584745594,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584776520,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584816997,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585584847755,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584890831,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584924618,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584955779,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584991528,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585024701,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585585056931,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585585088509,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585120246,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585152962,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585184696,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585216974,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585249904,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585585280987,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585585311477,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585350244,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585380706,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585431721,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585461904,
+            "reason": "break-retest-continuation"
+          },
+          {
+            "at": 1585585492687,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585523867,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585561320,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585610820,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585659775,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585691709,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585724628,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585760997,
+            "reason": "historical-level-rejection"
+          }
+        ],
+        [
+          {
+            "at": 1585584019146,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584050683,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585584082040,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584116729,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584151574,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585584201095,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584247503,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585584278277,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584326920,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584356984,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585584395958,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584440920,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584471744,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584501955,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584534641,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584566152,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584603647,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584633831,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584665864,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584696754,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584745594,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584776520,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584816997,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585584847755,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584890831,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584924618,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584955779,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584991528,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585024701,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585585056931,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585585088509,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585120246,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585152962,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585184696,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585216974,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585249904,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585585280987,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585585311477,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585350244,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585380706,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585431721,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585461904,
+            "reason": "break-retest-continuation"
+          },
+          {
+            "at": 1585585492687,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585523867,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585561320,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585610820,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585659775,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585691709,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585724628,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585760997,
+            "reason": "historical-level-rejection"
+          }
+        ],
+        [
+          {
+            "at": 1585584019146,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584050683,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585584082040,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584116729,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584151574,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585584201095,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584247503,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585584278277,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584326920,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584356984,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585584395958,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584440920,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584471744,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584501955,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584534641,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584566152,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584603647,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584633831,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585584665864,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584696754,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584745594,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584776520,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584816997,
+            "reason": "closed-structure-and-live-impulse"
+          },
+          {
+            "at": 1585584847755,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584890831,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585584924618,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584955779,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585584991528,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585024701,
+            "reason": "causal-expiry-analogue"
+          },
+          {
+            "at": 1585585056931,
+            "reason": "closed-range-extreme-reversal-confirmed"
+          },
+          {
+            "at": 1585585088509,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585120246,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585152962,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585184696,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585216974,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585249904,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585585280987,
+            "reason": "historical-level-breakout"
+          },
+          {
+            "at": 1585585311477,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585350244,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585380706,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585431721,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585461904,
+            "reason": "break-retest-continuation"
+          },
+          {
+            "at": 1585585492687,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585523867,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585561320,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585610820,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585659775,
+            "reason": "multiscale-candle-rejection"
+          },
+          {
+            "at": 1585585691709,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585724628,
+            "reason": "historical-level-rejection"
+          },
+          {
+            "at": 1585585760997,
+            "reason": "historical-level-rejection"
+          }
+        ],
+        []
+      ],
+      "selection": [
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 32.278,
+          "maxGapSeconds": 51.015
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 32.278,
+          "maxGapSeconds": 51.015
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 32.278,
+          "maxGapSeconds": 51.015
+        },
+        {
+          "completedCoverage": 0,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        }
+      ]
+    },
+    {
+      "kind": "external-market-replay-not-user-session",
+      "source": "https://github.com/Leo4815162342/dukascopy-node/blob/master/examples/with-tick-data/with-tick-data.output.json",
+      "gitBlob": "7df560b3561aa644e10ea04a39947bb992cdff2d",
+      "sha256": "df4c6d7b089c46b73545eb5e9a5207c1ee40ce7375aaa5ba318d1f7963670403",
+      "instrument": "EUR/USD",
+      "priceSide": "bid",
+      "date": "2020-03-30",
+      "rawTicks": 173015,
+      "distinctTimestamps": 173015,
+      "sourceLicense": "MIT; Copyright (c) 2022 Leonid Pyrlia",
+      "expiryQuotePolicy": "asof-complete-bid-stream",
+      "limitations": [
+        "External Dukascopy Forex data, not IQ Option/Exnova OTC and not the user session.",
+        "1m OHLC aggregated from the source ticks, not broker-supplied native candles.",
+        "No interpolation or invented ticks; evaluate on actual quoted prices and timestamps."
+      ],
+      "name": "second-validation-21-utc",
+      "from": "2020-03-30T21:00:00Z",
+      "to": "2020-03-30T21:30:00Z",
+      "metrics": [
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        }
+      ],
+      "comparisons": [
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        },
+        {
+          "sameEntries": true,
+          "corrected": 0,
+          "spoiled": 0,
+          "removedBaseWins": 0,
+          "newCandidateEntries": 0
+        }
+      ],
+      "candidateDiagnostics": [
+        null,
+        null,
+        null
+      ],
+      "sameEntries": true,
+      "correctedAtSameTime": 0,
+      "spoiledAtSameTime": 0,
+      "removedBaseWins": 0,
+      "newCandidateEntries": 0,
+      "overriddenObservations": 0,
+      "timings": [
+        {
+          "medianMs": 0.13294500000029075,
+          "p95Ms": 0.5044589999997697
+        },
+        {
+          "medianMs": 0.12503400000059628,
+          "p95Ms": 0.44225900000037655
+        },
+        {
+          "medianMs": 0.13578899999993155,
+          "p95Ms": 0.40214000000014494
+        },
+        {
+          "medianMs": 0.13832300000012765,
+          "p95Ms": 0.402871000000232
+        }
+      ],
+      "overrideExamples": [],
+      "entries": [
+        [],
+        [],
+        [],
+        []
+      ],
+      "entryReasons": [
+        [],
+        [],
+        [],
+        []
+      ],
+      "selection": [
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        },
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        },
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        },
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        }
+      ]
+    }
+  ],
+  "summary": [
+    {
+      "name": "second-validation-10-utc",
+      "metrics": [
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 21,
+          "loss": 19,
+          "tie": 2,
+          "missing": 0,
+          "completed": 40,
+          "winRate": 0.525,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        }
+      ],
+      "selection": [
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 37.071,
+          "maxGapSeconds": 94.08
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 37.071,
+          "maxGapSeconds": 94.08
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 37.071,
+          "maxGapSeconds": 94.08
+        },
+        {
+          "completedCoverage": 0,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        }
+      ]
+    },
+    {
+      "name": "second-validation-16-utc",
+      "metrics": [
+        {
+          "win": 24,
+          "loss": 24,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 24,
+          "loss": 24,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 24,
+          "loss": 24,
+          "tie": 2,
+          "missing": 0,
+          "completed": 48,
+          "winRate": 0.5,
+          "maxLossStreak": 5
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        }
+      ],
+      "selection": [
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 32.278,
+          "maxGapSeconds": 51.015
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 32.278,
+          "maxGapSeconds": 51.015
+        },
+        {
+          "completedCoverage": 1,
+          "medianGapSeconds": 32.278,
+          "maxGapSeconds": 51.015
+        },
+        {
+          "completedCoverage": 0,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        }
+      ]
+    },
+    {
+      "name": "second-validation-21-utc",
+      "metrics": [
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        },
+        {
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null,
+          "maxLossStreak": 0
+        }
+      ],
+      "selection": [
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        },
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        },
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        },
+        {
+          "completedCoverage": null,
+          "medianGapSeconds": null,
+          "maxGapSeconds": null
+        }
+      ]
+    }
+  ]
+}
