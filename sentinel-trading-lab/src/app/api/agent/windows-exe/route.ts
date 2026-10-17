@@ -5,18 +5,28 @@ import {join} from 'node:path';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
-// Verify the exact executable retained in the approved 13.9.34 release.
-// The SHA is Git's blob hash (content length + all original bytes).
-const expectedGitBlobSha='224ed93a1c3e3c71a1fc8327e0ca869cbd6679dc';
-const executablePath=join(process.cwd(),'public','downloads','Sentinel-Agent-Windows.exe');
+// The Go installer is built anew on every release deployment. Its digest
+// MUST come from that very build, not from a stale committed EXE.
+const downloadDirectory=join(process.cwd(),'public','downloads');
+const executablePath=join(downloadDirectory,'Sentinel-Agent-Windows.exe');
+const manifestPath=join(downloadDirectory,'sentinel-windows-exe-integrity.json');
+type InstallerManifest={format:string,version:string,build:string,size:number,sha256:string};
 
 async function getVerifiedExecutable(){
- const data=await readFile(executablePath);
- const digest=createHash('sha1').update('blob '+data.length+'\0').update(data).digest('hex');
- if(digest!==expectedGitBlobSha)throw new Error('sentinel_windows_exe_integrity_mismatch');
- return data;
+ const [data,rawManifest]=await Promise.all([readFile(executablePath),readFile(manifestPath,'utf8')]);
+ const info=JSON.parse(rawManifest) as InstallerManifest;
+ const digest=createHash('sha256').update(data).digest('hex');
+ if(info.format!=='sentinel-windows-exe-integrity-v1'||
+    info.version!=='13.9.34'||
+    info.build!=='13.9.34-verified-candle-context-and-covered-bootstrap'||
+    info.size!==data.length||
+    data.subarray(0,2).toString('ascii')!=='MZ'||
+    info.sha256!==digest){
+  throw new Error('sentinel_windows_exe_build_manifest_mismatch');
+ }
+ return {data,info};
 }
-function baseHeaders(length:number){
+function baseHeaders(length:number,sha256:string){
  return new Headers({
   'Content-Type':'application/octet-stream',
   'Content-Disposition':'attachment; filename="sentinel-agent-windows.exe"',
@@ -24,18 +34,18 @@ function baseHeaders(length:number){
   'Accept-Ranges':'bytes',
   'Cache-Control':'private, no-store, no-transform',
   'X-Content-Type-Options':'nosniff',
-  'ETag':'"'+expectedGitBlobSha+'"'
+  'ETag':'"'+sha256+'"'
  });
 }
 async function handle(req:Request,head=false):Promise<Response>{
  try{
-  const data=await getVerifiedExecutable();
+  const {data,info}=await getVerifiedExecutable();
   const total=data.length;
   if(new URL(req.url).searchParams.get('check')==='1'){
-   return Response.json({ok:true,release:'13.9.34',bytes:total,gitBlobSha:expectedGitBlobSha},
+   return Response.json({ok:true,release:info.version,build:info.build,bytes:total,sha256:info.sha256},
     {headers:{'Cache-Control':'no-store'}});
   }
-  const headers=baseHeaders(total);
+  const headers=baseHeaders(total,info.sha256);
   const range=req.headers.get('range');
   if(range){
    const m=/^bytes=(\d*)-(\d*)$/.exec(range.trim());
