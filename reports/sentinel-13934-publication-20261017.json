@@ -1,0 +1,64 @@
+{
+  "verifiedAt": "2026-10-17T19:22:30.018727+00:00",
+  "version": "13.9.34",
+  "deploymentId": "dpl_95sSddGbHXV4QmAewMHZdsEfZ7X3",
+  "commit": "fa0343e9df66511072d51efa7b39d5c40fca5443",
+  "tree": "ffd14721179ed93fb50a9bf974b9fc857fe4fa72",
+  "tests": {
+    "passed": 272,
+    "failed": 0
+  },
+  "downloads": {
+    "agent-update.json": {
+      "bytes": 201,
+      "sha256": "5c5514dbc72318b4893055e4b074fbd0a3fd5b409da12e4714317c1289e975d5"
+    },
+    "Sentinel-Agent-13.9.34.exe": {
+      "bytes": 2658304,
+      "sha256": "b876f9632a54fc68879a4ec1133967fbacfa0d28fd27a2cc0a8fe5a874ac8d58"
+    },
+    "Sentinel-Agent-13.9.34-Alternativo.zip": {
+      "bytes": 391738,
+      "sha256": "b9f1101752376eb619de566ff6df0db75e7ad2163cc30144abea6ab11d355993"
+    },
+    "Sentinel-Agent-Windows.exe": {
+      "bytes": 2658304,
+      "sha256": "b876f9632a54fc68879a4ec1133967fbacfa0d28fd27a2cc0a8fe5a874ac8d58"
+    },
+    "sentinel-agent-windows.exe": {
+      "bytes": 2658304,
+      "sha256": "b876f9632a54fc68879a4ec1133967fbacfa0d28fd27a2cc0a8fe5a874ac8d58"
+    }
+  },
+  "manifest": {
+    "format": "sentinel-agent-update-v1",
+    "version": "13.9.34",
+    "build": "13.9.34-verified-candle-context-and-covered-bootstrap",
+    "zipSha256": "35cc58b79493b58d802fa7d78b0bb7885debb1863765decc8d37fc3473a6460e"
+  },
+  "payloadBytes": 385741,
+  "exactSourceFiles": [
+    "src/core/completed-expiry-direction.mjs",
+    "src/core/runtime.mjs",
+    "worker/runtime-market.mjs",
+    "src/core/candle-level-map.mjs",
+    "src/core/observed-level-sequence.mjs",
+    "src/core/historical-price-structure.mjs",
+    "src/core/now-opportunity-engine.mjs",
+    "worker/local-playwright-driver.mjs"
+  ],
+  "zipCRC": "passed",
+  "genericAliases": "identical",
+  "embeddedPayload": "exact-match",
+  "range": "bytes 0-1023/2658304",
+  "windowsNativeLaunch": "not-tested-on-this-linux-host",
+  "accuracy": "Controlled protocol ingestion fixes dropped verified history below 50 candles. Recorded video replay 10W/4L to 11W/3L, 1 missing unchanged; not a live accuracy measurement.",
+  "siteHTTP": {
+    "status": 200,
+    "finalURL": "https://trading.devinx.com.br",
+    "authenticatedUI": "not-tested"
+  },
+  "productionAlias": "trading.devinx.com.br",
+  "productionState": "READY",
+  "runtimeErrorScan": "No error/fatal logs found for this deployment in the initial 10-minute query window; limited post-release observation."
+}
