@@ -1,6 +1,6 @@
 {
-  "version": "13.9.39",
-  "build": "13.9.39-local-signal-executor",
+  "version": "13.9.40",
+  "build": "13.9.40-manual-bankroll-quote-results",
   "runtime": {
     "predictionModel": "family-v6-verified-input",
     "entryPolicy": "structural-reversals-v1",

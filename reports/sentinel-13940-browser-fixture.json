@@ -1,0 +1,61 @@
+{
+  "actualBrokerTested": false,
+  "results": [
+    {
+      "provider": "iq_option",
+      "fixture": true,
+      "brokerAccountMetadataReads": 0,
+      "noAccountModeSelector": true,
+      "manualInputsFromPanel": {
+        "amount": 10,
+        "initialBalance": 1000,
+        "payoutPercent": 80,
+        "intervalMs": 60000,
+        "stopAfterMinutes": 0,
+        "stopLoss": 0
+      },
+      "clicks": [
+        {
+          "direction": "CALL",
+          "amount": "10"
+        },
+        {
+          "direction": "PUT",
+          "amount": "10"
+        }
+      ],
+      "interval": "alternate-skipped",
+      "quoteCalculation": "win-loss-passed",
+      "lateSettlementCorrection": "passed",
+      "pageErrors": []
+    },
+    {
+      "provider": "exnova",
+      "fixture": true,
+      "brokerAccountMetadataReads": 0,
+      "noAccountModeSelector": true,
+      "manualInputsFromPanel": {
+        "amount": 10,
+        "initialBalance": 1000,
+        "payoutPercent": 80,
+        "intervalMs": 60000,
+        "stopAfterMinutes": 0,
+        "stopLoss": 0
+      },
+      "clicks": [
+        {
+          "direction": "CALL",
+          "amount": "10"
+        },
+        {
+          "direction": "PUT",
+          "amount": "10"
+        }
+      ],
+      "interval": "alternate-skipped",
+      "quoteCalculation": "win-loss-passed",
+      "lateSettlementCorrection": "passed",
+      "pageErrors": []
+    }
+  ]
+}

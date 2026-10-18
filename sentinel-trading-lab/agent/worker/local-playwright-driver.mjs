@@ -1558,7 +1558,7 @@ export class LocalPlaywrightDriver{
         const futureDecision=plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup&&!timingClosed&&runtimeDeadline>decisionNow?{side:runtimeOperationalSide,targetAt:runtimeDeadline}:null;
         const futureDecisionPaused=!plannerReadable&&runtimeContextMatches&&runtimeView.hasSetup;
         const feedPauseSeconds=Math.max(0,Math.ceil((Number(d.liveAgeMs||0)+elapsedSincePayload)/1000));
-        const pilotLabel=d.autoExecutor?.enabled?'BOT ATIVO · '+String(d.autoExecutor.config?.accountMode||'').toUpperCase():operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'ANALISTA PAUSADO':'ANALISTA ATIVO · EXECUÇÃO AUTOMÁTICA DESLIGADA';
+        const pilotLabel=d.autoExecutor?.enabled?'BOT ATIVO · CALL/PUT DO ANALISTA':operational?.subanalyst?.mode==='reversal-alert'?'SUBANALISTA SOMENTE AVISA · SEM ENTRADA':runtime!=='running'?'ANALISTA PAUSADO':'ANALISTA ATIVO · EXECUÇÃO AUTOMÁTICA DESLIGADA';
         const displayCandidate=candidateOutlook;
         const formingSide=(plannerReadable||runtimeView.projectionOnly===true)&&String(operational?.asset||visibleAsset).toUpperCase()===visibleAsset&&['CALL','PUT'].includes(runtimeView.displaySide)?runtimeView.displaySide:null;
         const outlook=formingSide||((runtimeView.hasSetup||timingClosed)?runtimeOperationalSide:null)||'AGUARDAR';
@@ -1776,7 +1776,7 @@ export class LocalPlaywrightDriver{
           el.addEventListener('focusout',ev=>{if(ev.target?.matches?.('select[data-sentinel-setting],select[data-sentinel-plan-horizon],input[data-sentinel-op-threshold],input[data-sentinel-future-threshold],input[data-sentinel-total-threshold],input[data-sentinel-executor-setting],select[data-sentinel-executor-setting]'))setTimeout(()=>{el.dataset.selectLock='0'},160)},true);
           el.addEventListener('change',ev=>{
             const ex=ev.target?.closest?.('[data-sentinel-executor-setting]');
-            if(ex){const key=ex.getAttribute('data-sentinel-executor-setting');run({action:'executor-config',patch:{[key]:key==='accountMode'?ex.value:Number(ex.value)}});setTimeout(()=>{el.dataset.selectLock='0';ex.blur?.()},160);return;}
+            if(ex){const key=ex.getAttribute('data-sentinel-executor-setting');run({action:'executor-config',patch:{[key]:Number(ex.value)}});setTimeout(()=>{el.dataset.selectLock='0';ex.blur?.()},160);return;}
 
             const tt=ev.target?.closest?.('[data-sentinel-total-threshold]');
             if(tt){
@@ -1822,7 +1822,7 @@ export class LocalPlaywrightDriver{
           });
           el.addEventListener('click',ev=>{
             const botButton=ev.target?.closest?.('[data-sentinel-executor-action]');
-            if(botButton){ev.preventDefault();ev.stopPropagation();run({action:'executor-'+botButton.getAttribute('data-sentinel-executor-action'),confirmedMode:window.__sentinelLastOverlayData?.autoExecutor?.config?.accountMode});return;}
+            if(botButton){ev.preventDefault();ev.stopPropagation();run({action:'executor-'+botButton.getAttribute('data-sentinel-executor-action')});return;}
 
             const theme=ev.target?.closest?.('[data-sentinel-theme]');
             if(theme){ev.preventDefault();ev.stopPropagation();const next=theme.getAttribute('data-sentinel-theme')==='light'?'light':'dark';el.dataset.themePreference=next;el.dataset.theme=next;try{localStorage.setItem('sentinel-overlay-theme-v1',next)}catch{}queueMicrotask(()=>window.__sentinelRenderOverlay?.(window.__sentinelLastOverlayData));return}
