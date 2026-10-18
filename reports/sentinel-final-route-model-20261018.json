@@ -1,0 +1,105 @@
+{
+  "type": "exploratory-offline-final-route-calibration",
+  "source": "Final entry outcomes of 14 known EURUSD windows, 2020-03-30 only. No 2020-03-31 or new crypto outcomes used.",
+  "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+  "rule": "Estimate route directional reliability with Jeffreys Beta(0.5,0.5) mean. If at least 30 completed training outcomes and mean below 0.5, test the opposite direction for this route. Preserve admission, entry price, timestamp and expiry; no martingale or order sizing. This is a hypothesis; the observed class probability is not established calibrated out of sample.",
+  "minimumCompleted": 30,
+  "routes": [
+    {
+      "reason": "break-retest-continuation",
+      "wins": 20,
+      "losses": 15,
+      "n": 35,
+      "posteriorMean": 0.5694444444444444,
+      "invert": false
+    },
+    {
+      "reason": "failed-breakout-structure-change",
+      "wins": 20,
+      "losses": 17,
+      "n": 37,
+      "posteriorMean": 0.5394736842105263,
+      "invert": false
+    },
+    {
+      "reason": "historical-level-rejection",
+      "wins": 98,
+      "losses": 95,
+      "n": 193,
+      "posteriorMean": 0.5077319587628866,
+      "invert": false
+    },
+    {
+      "reason": "multiscale-candle-rejection",
+      "wins": 62,
+      "losses": 76,
+      "n": 138,
+      "posteriorMean": 0.44964028776978415,
+      "invert": true
+    },
+    {
+      "reason": "causal-expiry-analogue",
+      "wins": 31,
+      "losses": 42,
+      "n": 73,
+      "posteriorMean": 0.42567567567567566,
+      "invert": true
+    },
+    {
+      "reason": "closed-structure-and-live-impulse",
+      "wins": 20,
+      "losses": 19,
+      "n": 39,
+      "posteriorMean": 0.5125,
+      "invert": false
+    },
+    {
+      "reason": "historical-level-breakout",
+      "wins": 15,
+      "losses": 14,
+      "n": 29,
+      "posteriorMean": 0.5166666666666667,
+      "invert": false
+    },
+    {
+      "reason": "closed-range-extreme-reversal-confirmed",
+      "wins": 10,
+      "losses": 12,
+      "n": 22,
+      "posteriorMean": 0.45652173913043476,
+      "invert": false
+    },
+    {
+      "reason": "bootstrap-expiry-penalized-fit",
+      "wins": 0,
+      "losses": 1,
+      "n": 1,
+      "posteriorMean": 0.25,
+      "invert": false
+    },
+    {
+      "reason": "historical-trend-and-live-forecast",
+      "wins": 1,
+      "losses": 0,
+      "n": 1,
+      "posteriorMean": 0.75,
+      "invert": false
+    },
+    {
+      "reason": "observed-trend-and-30s-cycle-projection",
+      "wins": 1,
+      "losses": 3,
+      "n": 4,
+      "posteriorMean": 0.3,
+      "invert": false
+    },
+    {
+      "reason": "completed-expiry-outcomes-adaptive-cycle",
+      "wins": 0,
+      "losses": 2,
+      "n": 2,
+      "posteriorMean": 0.16666666666666666,
+      "invert": false
+    }
+  ]
+}

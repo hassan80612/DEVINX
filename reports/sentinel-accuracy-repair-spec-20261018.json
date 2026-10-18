@@ -1,0 +1,40 @@
+{
+  "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+  "candidate": "ordered-rejection-current-runtime",
+  "rule": "A rejection extreme must occur at/after the actual six-second approach-origin quote, not in an earlier half of the twelve-second context. Preserve current breakout, tolerances, expiry lifecycle and bot. This was a prior isolated hypothesis with unresolved integration tests and is not assumed successful.",
+  "development": "All 15 previously inspected EURUSD windows; compare complete runtime streams, not retrospectively filtered baseline entries.",
+  "unseenBeforeOutcomes": [
+    "2020-04-01T14:29:00Z/14:59:00Z",
+    "2020-04-01T18:29:00Z/18:59:00Z",
+    "2020-04-02T14:29:00Z/14:59:00Z",
+    "2020-04-02T18:29:00Z/18:59:00Z"
+  ],
+  "source": "Official Dukascopy EURUSD hourly BI5 tick archives; no interpolation; bid; actual last received tick at/before deadline.",
+  "retuning": "No parameter adjustment after inspecting these four validation windows.",
+  "acceptance": "Require aggregate validation win-rate improvement, positive aggregate illustrative fixed-stake net at 86% payout, no increase in worst validation-session loss streak and retain at least half baseline completed coverage. Also report every window, timing changes and failures. These criteria alone do not establish live OTC profitability or a statistically reliable advantage.",
+  "unavailableData": "Do not select replacement time windows based on results; report retrieval failures.",
+  "retrievalOutcome": "All eight official Forex archives returned HTTP 429; zero validation windows complete, no model outcomes evaluated.",
+  "alternativeRegisteredBeforeOutcomes": {
+    "source": "Official Binance public spot 1s klines",
+    "dates": [
+      "2025-10-15",
+      "2025-10-16",
+      "2025-10-17"
+    ],
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "windowUTC": "15:00:00/15:30:00",
+    "quote": "Actual one-second candle close; not bid ticks, broker OTC or live execution. Use only bars fully closed at evaluation time; never infer intra-second price.",
+    "reason": "Fixed fallback dataset because official Forex retrieval is unavailable, chosen before observing either candidate or baseline on it."
+  },
+  "secondFrozenHypothesis": {
+    "modelFile": "sentinel-final-route-model-20261018.json",
+    "rule": "Estimate route directional reliability with Jeffreys Beta(0.5,0.5) mean. If at least 30 completed training outcomes and mean below 0.5, test the opposite direction for this route. Preserve admission, entry price, timestamp and expiry; no martingale or order sizing. This is a hypothesis; the observed class probability is not established calibrated out of sample.",
+    "training": "Final entry outcomes of 14 known EURUSD windows, 2020-03-30 only. No 2020-03-31 or new crypto outcomes used.",
+    "preNewDataOutcomeInspection": true,
+    "acceptance": "Same acceptance checks and report all 9 windows. Do not choose new thresholds, routes or another variant after seeing validation results."
+  }
+}

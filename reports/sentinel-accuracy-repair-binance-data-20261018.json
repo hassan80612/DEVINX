@@ -1,0 +1,129 @@
+{
+  "spec": {
+    "source": "Official Binance public spot 1s klines",
+    "dates": [
+      "2025-10-15",
+      "2025-10-16",
+      "2025-10-17"
+    ],
+    "assets": [
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "windowUTC": "15:00:00/15:30:00",
+    "quote": "Actual one-second candle close; not bid ticks, broker OTC or live execution. Use only bars fully closed at evaluation time; never infer intra-second price.",
+    "reason": "Fixed fallback dataset because official Forex retrieval is unavailable, chosen before observing either candidate or baseline on it."
+  },
+  "windows": [
+    {
+      "name": "binance-btcusdt-2025-10-15-1500-utc",
+      "asset": "BTCUSDT",
+      "date": "2025-10-15",
+      "url": "https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1s/BTCUSDT-1s-2025-10-15.zip",
+      "archiveSha256": "40db5ad32077e57c0bc76851bff7f7f330bf74aa20c3d7ecab23907b84272f18",
+      "bytes": 2702029,
+      "fixtureSha256": "d1b448b1245ec557dcdb53e3ec696cd6357cc5f2b17f806726598a9a4ae00c2b",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-ethusdt-2025-10-15-1500-utc",
+      "asset": "ETHUSDT",
+      "date": "2025-10-15",
+      "url": "https://data.binance.vision/data/spot/daily/klines/ETHUSDT/1s/ETHUSDT-1s-2025-10-15.zip",
+      "archiveSha256": "da235cb9fcf191ededef2757644551f245c5ae4423361234e8ca3f1897608c75",
+      "bytes": 2661892,
+      "fixtureSha256": "9c11f99b900fe0c72c59478b57fe664946f4aeb06397fe3b40e40e332d767e02",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-solusdt-2025-10-15-1500-utc",
+      "asset": "SOLUSDT",
+      "date": "2025-10-15",
+      "url": "https://data.binance.vision/data/spot/daily/klines/SOLUSDT/1s/SOLUSDT-1s-2025-10-15.zip",
+      "archiveSha256": "0b18ae79b2b867b00533e601f29278bc38a8f84f7d9d2bb987cddbef763b12f5",
+      "bytes": 2401593,
+      "fixtureSha256": "a1df85958c4eac983a43ef9b1a1bbfd4ca3094fc3a1a6e37719a828adfbbeba0",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-btcusdt-2025-10-16-1500-utc",
+      "asset": "BTCUSDT",
+      "date": "2025-10-16",
+      "url": "https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1s/BTCUSDT-1s-2025-10-16.zip",
+      "archiveSha256": "8b126395c67ca3af95b566b8b1aa4b7cbc18ce667b3bf53e65e81b665cf6b1de",
+      "bytes": 2795715,
+      "fixtureSha256": "212b4a51c36dec7cd6271d470ede63ec4f337ab9c15fa6b1df39046af73e99a7",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-ethusdt-2025-10-16-1500-utc",
+      "asset": "ETHUSDT",
+      "date": "2025-10-16",
+      "url": "https://data.binance.vision/data/spot/daily/klines/ETHUSDT/1s/ETHUSDT-1s-2025-10-16.zip",
+      "archiveSha256": "1398bc60698a3f46131d5f832e81cf0320eb34146553a3c3874c7068875be5ac",
+      "bytes": 2685307,
+      "fixtureSha256": "51696477450385883558df9abb012e4fb4272ff518692a3ff19857ce32953643",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-solusdt-2025-10-16-1500-utc",
+      "asset": "SOLUSDT",
+      "date": "2025-10-16",
+      "url": "https://data.binance.vision/data/spot/daily/klines/SOLUSDT/1s/SOLUSDT-1s-2025-10-16.zip",
+      "archiveSha256": "c09fafb932835d2b4a4728275ad7dacf6790b41b3a29d070784a5e4a8298d6e2",
+      "bytes": 2413537,
+      "fixtureSha256": "a4e24508bed57d7ba9803e3c74d4227983d9e8347c23623127fce091377e9a1b",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-btcusdt-2025-10-17-1500-utc",
+      "asset": "BTCUSDT",
+      "date": "2025-10-17",
+      "url": "https://data.binance.vision/data/spot/daily/klines/BTCUSDT/1s/BTCUSDT-1s-2025-10-17.zip",
+      "archiveSha256": "4a0ef33fc39a04d5f377c6e04a2132ce48b9869ff3001c7467a83706fa0ec424",
+      "bytes": 2888034,
+      "fixtureSha256": "754571f6d3d31d825e57122c105afc6760716dcde89fbb6cd7c81895b8817c31",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-ethusdt-2025-10-17-1500-utc",
+      "asset": "ETHUSDT",
+      "date": "2025-10-17",
+      "url": "https://data.binance.vision/data/spot/daily/klines/ETHUSDT/1s/ETHUSDT-1s-2025-10-17.zip",
+      "archiveSha256": "ee710cd5f8cb9a180f3f9afe1caadea09e5856c389a60016a480df84153f68c0",
+      "bytes": 2711182,
+      "fixtureSha256": "9bca6c57846fff60556d223f2e88e53b182b19c61a4bf07a0d9e606c7acb5bd8",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    },
+    {
+      "name": "binance-solusdt-2025-10-17-1500-utc",
+      "asset": "SOLUSDT",
+      "date": "2025-10-17",
+      "url": "https://data.binance.vision/data/spot/daily/klines/SOLUSDT/1s/SOLUSDT-1s-2025-10-17.zip",
+      "archiveSha256": "c2ff9faf9a2743debfb76d26f9d3bdd79ebd6381bea72b5be95800e115d4895f",
+      "bytes": 2451986,
+      "fixtureSha256": "8cd096f77ff09edd2bfe17674571bf028ab5699c16bff36d4702d2c29e8f3511",
+      "sourceRows": 86400,
+      "quotes": 7861,
+      "targets": 1801
+    }
+  ],
+  "failures": []
+}

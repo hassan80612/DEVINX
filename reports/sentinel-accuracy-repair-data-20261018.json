@@ -1,0 +1,54 @@
+{
+  "spec": {
+    "baseCommit": "32ba17004713a085ac8f0e16adc28da739896634",
+    "candidate": "ordered-rejection-current-runtime",
+    "rule": "A rejection extreme must occur at/after the actual six-second approach-origin quote, not in an earlier half of the twelve-second context. Preserve current breakout, tolerances, expiry lifecycle and bot. This was a prior isolated hypothesis with unresolved integration tests and is not assumed successful.",
+    "development": "All 15 previously inspected EURUSD windows; compare complete runtime streams, not retrospectively filtered baseline entries.",
+    "unseenBeforeOutcomes": [
+      "2020-04-01T14:29:00Z/14:59:00Z",
+      "2020-04-01T18:29:00Z/18:59:00Z",
+      "2020-04-02T14:29:00Z/14:59:00Z",
+      "2020-04-02T18:29:00Z/18:59:00Z"
+    ],
+    "source": "Official Dukascopy EURUSD hourly BI5 tick archives; no interpolation; bid; actual last received tick at/before deadline.",
+    "retuning": "No parameter adjustment after inspecting these four validation windows.",
+    "acceptance": "Require aggregate validation win-rate improvement, positive aggregate illustrative fixed-stake net at 86% payout, no increase in worst validation-session loss streak and retain at least half baseline completed coverage. Also report every window, timing changes and failures. These criteria alone do not establish live OTC profitability or a statistically reliable advantage.",
+    "unavailableData": "Do not select replacement time windows based on results; report retrieval failures."
+  },
+  "archives": [],
+  "failures": [
+    {
+      "hour": "2020-04-01T14:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "hour": "2020-04-01T17:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "hour": "2020-04-01T13:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "hour": "2020-04-01T18:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "hour": "2020-04-02T14:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "hour": "2020-04-02T18:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "hour": "2020-04-02T13:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    },
+    {
+      "hour": "2020-04-02T17:00:00+00:00",
+      "error": "HTTP Error 429: Too Many Requests"
+    }
+  ],
+  "windows": []
+}
