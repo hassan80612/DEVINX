@@ -1,0 +1,292 @@
+{
+  "spec": {
+    "baseCommit": "21f43a9587e2a4f6cdb23933226b4b0f0520e466",
+    "candidate": "Preserve explicit historical veto when later candle reaction re-admits it, unless observed sequence confirms structural change. No timer or side inversion.",
+    "limitations": [
+      "All replay windows were already inspected; no untouched validation.",
+      "Historical Forex does not establish broker OTC accuracy.",
+      "Matching candle colour is association, not proof it caused the decision.",
+      "A veto changes subsequent entry timestamps; compare whole replays, not retrospective deletion.",
+      "No changes to production prediction rules."
+    ]
+  },
+  "summary": {
+    "external": [
+      {
+        "metrics": {
+          "win": 306,
+          "loss": 318,
+          "tie": 19,
+          "missing": 0,
+          "completed": 624,
+          "winRate": 0.49038461538461536
+        },
+        "bypassedHistoricalVeto": {
+          "entries": 0,
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null
+        },
+        "lastClosedCandle": {
+          "available": 630,
+          "sameDirection": 329,
+          "oppositeDirection": 301
+        },
+        "formingCandle": {
+          "available": 589,
+          "sameDirection": 366,
+          "oppositeDirection": 223
+        },
+        "withAtLeast50HistoricalCandles": 643,
+        "historyAlternatives": {
+          "0": {
+            "sameReadySide": 190,
+            "oppositeReadySide": 25,
+            "notReady": 428
+          },
+          "1": {
+            "sameReadySide": 190,
+            "oppositeReadySide": 25,
+            "notReady": 428
+          },
+          "3": {
+            "sameReadySide": 193,
+            "oppositeReadySide": 25,
+            "notReady": 425
+          },
+          "10": {
+            "sameReadySide": 241,
+            "oppositeReadySide": 23,
+            "notReady": 379
+          },
+          "20": {
+            "sameReadySide": 405,
+            "oppositeReadySide": 19,
+            "notReady": 219
+          },
+          "50": {
+            "sameReadySide": 514,
+            "oppositeReadySide": 7,
+            "notReady": 122
+          }
+        },
+        "directionChangedAfterSelectedForecast": 25
+      },
+      {
+        "metrics": {
+          "win": 306,
+          "loss": 318,
+          "tie": 19,
+          "missing": 0,
+          "completed": 624,
+          "winRate": 0.49038461538461536
+        },
+        "bypassedHistoricalVeto": {
+          "entries": 0,
+          "win": 0,
+          "loss": 0,
+          "tie": 0,
+          "missing": 0,
+          "completed": 0,
+          "winRate": null
+        },
+        "lastClosedCandle": {
+          "available": 630,
+          "sameDirection": 329,
+          "oppositeDirection": 301
+        },
+        "formingCandle": {
+          "available": 589,
+          "sameDirection": 366,
+          "oppositeDirection": 223
+        },
+        "withAtLeast50HistoricalCandles": 643,
+        "historyAlternatives": {
+          "0": {
+            "sameReadySide": 190,
+            "oppositeReadySide": 25,
+            "notReady": 428
+          },
+          "1": {
+            "sameReadySide": 190,
+            "oppositeReadySide": 25,
+            "notReady": 428
+          },
+          "3": {
+            "sameReadySide": 193,
+            "oppositeReadySide": 25,
+            "notReady": 425
+          },
+          "10": {
+            "sameReadySide": 241,
+            "oppositeReadySide": 23,
+            "notReady": 379
+          },
+          "20": {
+            "sameReadySide": 405,
+            "oppositeReadySide": 19,
+            "notReady": 219
+          },
+          "50": {
+            "sameReadySide": 514,
+            "oppositeReadySide": 7,
+            "notReady": 122
+          }
+        },
+        "directionChangedAfterSelectedForecast": 25
+      }
+    ],
+    "video": [
+      {
+        "name": "sentinel-user-video-broker-6dp-20261016.json",
+        "variants": [
+          {
+            "metrics": {
+              "win": 11,
+              "loss": 3,
+              "tie": 0,
+              "missing": 1,
+              "completed": 14,
+              "winRate": 0.7857142857142857
+            },
+            "bypassedHistoricalVeto": {
+              "entries": 0,
+              "win": 0,
+              "loss": 0,
+              "tie": 0,
+              "missing": 0,
+              "completed": 0,
+              "winRate": null
+            },
+            "lastClosedCandle": {
+              "available": 0,
+              "sameDirection": 0,
+              "oppositeDirection": 0
+            },
+            "formingCandle": {
+              "available": 14,
+              "sameDirection": 3,
+              "oppositeDirection": 11
+            },
+            "withAtLeast50HistoricalCandles": 0,
+            "historyAlternatives": {
+              "0": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "1": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "3": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "10": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "20": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "50": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              }
+            },
+            "directionChangedAfterSelectedForecast": 0
+          },
+          {
+            "metrics": {
+              "win": 11,
+              "loss": 3,
+              "tie": 0,
+              "missing": 1,
+              "completed": 14,
+              "winRate": 0.7857142857142857
+            },
+            "bypassedHistoricalVeto": {
+              "entries": 0,
+              "win": 0,
+              "loss": 0,
+              "tie": 0,
+              "missing": 0,
+              "completed": 0,
+              "winRate": null
+            },
+            "lastClosedCandle": {
+              "available": 0,
+              "sameDirection": 0,
+              "oppositeDirection": 0
+            },
+            "formingCandle": {
+              "available": 14,
+              "sameDirection": 3,
+              "oppositeDirection": 11
+            },
+            "withAtLeast50HistoricalCandles": 0,
+            "historyAlternatives": {
+              "0": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "1": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "3": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "10": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "20": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              },
+              "50": {
+                "sameReadySide": 15,
+                "oppositeReadySide": 0,
+                "notReady": 0
+              }
+            },
+            "directionChangedAfterSelectedForecast": 0
+          }
+        ]
+      }
+    ],
+    "improvedWindows": 0,
+    "regressedWindows": 0,
+    "worseLossStreakWindows": []
+  },
+  "rawCompressedSha256": "733b50c10b80224b902b90335a0e95247be6a6f6d9db3b04cd10426f55f0d210",
+  "regression": {
+    "passed": 300,
+    "failed": 0,
+    "newBalanceTests": 4,
+    "beforeFixNewBalanceTestsFailed": 4
+  },
+  "deployment": {
+    "published": false,
+    "productionVersion": "13.9.37",
+    "predictionRulesChanged": false
+  },
+  "balanceLimitation": "Nested event failure reproduced in constructed protocol frames. No authenticated user settlement frames available to confirm this is the sole cause of the reported freeze."
+}

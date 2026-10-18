@@ -426,7 +426,10 @@ function protocolScan(data,st,direction='in'){
     if(arr.length){st.lastBalances=arr.slice(0,50);applyKnownBalance(st)}
   }
   if(/balance-changed/i.test(outer)||/balance-changed/i.test(inner)){
-    const m=(data.msg&&typeof data.msg==='object')?data.msg:data;
+    // The observer already accepts named event envelopes. Read the event's
+    // body too, otherwise its live settlement is ignored until get-balances.
+    const envelope=(data.msg&&typeof data.msg==='object')?data.msg:data;
+    const m=envelope.body&&typeof envelope.body==='object'?envelope.body:envelope;
     const id=n(m.balance_id??m.balanceId??m.id),typ=Number(m.type??m.balance_type??m.balanceType);
     const val=n(m.amount??m.balance??m.current_balance??m.value);
     // Keep the account cache current too: ingest() reapplies it on the next
