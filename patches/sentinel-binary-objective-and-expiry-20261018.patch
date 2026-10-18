@@ -1,0 +1,67 @@
+--- a/sentinel-trading-lab/agent/src/core/causal-pattern-direction.mjs
++++ b/sentinel-trading-lab/agent/src/core/causal-pattern-direction.mjs
+@@ -68,7 +68,7 @@
+   if(x.side==='CALL')winsCall+=w;
+   if(x.side==='PUT')winsPut+=w;
+  }
+- const direction=signed(weighted),strength=Math.abs(winsCall-winsPut)/(sum||1);
++ const direction=signed(winsCall-winsPut),strength=Math.abs(winsCall-winsPut)/(sum||1);
+  return {ready:!!direction,side:direction,
+   reason:'causal-completed-pattern-outcomes',
+   analogues:training.length,selected:top.length,strength,
+--- a/sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs
++++ b/sentinel-trading-lab/agent/src/core/completed-expiry-direction.mjs
+@@ -1,3 +1,4 @@
++import {observedExpiryQuote} from './observed-expiry-quote-20261018.mjs';
+ import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
+ // Compare forecasts by observed expiry outcomes. Never release an admission,
+ // wait for training, or modify the side already held by the signal lifecycle.
+@@ -13,8 +14,9 @@
+    const pending=[];
+    for(const p of this.pending){
+     if(ts<p.dueAt){pending.push(p);continue;}
+-    if(ts>p.dueAt+1000||spot===p.price)continue;
+-    const side=spot>p.price?'CALL':'PUT';
++    const point=observedExpiryQuote({quoteHistory,currentQuote:{ts,price:spot,receivedAt:now},dueAt:p.dueAt,now});
++    if(!point||point.price===p.price)continue;
++    const side=point.price>p.price?'CALL':'PUT';
+     for(const name of ['base','wide'])this.loss[name]=.8*this.loss[name]+.2*(p[name]===side?0:1);
+     this.completed++;
+    }
+--- a/sentinel-trading-lab/agent/src/core/runtime.mjs
++++ b/sentinel-trading-lab/agent/src/core/runtime.mjs
+@@ -1,3 +1,4 @@
++import {observedExpiryQuote} from './observed-expiry-quote-20261018.mjs';
+ import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
+ import {compactObservedQuoteHistory} from './observed-quote-history.mjs';
+ import {CompletedExpiryDirection} from './completed-expiry-direction.mjs';
+@@ -1000,8 +1001,7 @@
+       // Score observed quote at expiry, never fabricate broker settlement.
+       for(const outcome of this.vnextWindowOutcomes){
+         if(outcome.verified||Number(outcome.exitAt)>now)continue;
+-        const point=(snap.quoteHistory||[]).find(q=>
+-          Number(q.ts)>=outcome.exitAt&&Number(q.ts)<=outcome.exitAt+1000);
++        const point=observedExpiryQuote({quoteHistory:snap.quoteHistory,currentQuote:{ts:Number(snap.quoteTs),price:Number(snap.price),receivedAt:now},dueAt:outcome.exitAt,now});
+         if(!point||!(Number(outcome.entryPrice)>0))continue;
+         outcome.verified=true;outcome.observedExitPrice=Number(point.price);
+         outcome.correct=outcome.observedExitPrice===outcome.entryPrice?null:
+--- /dev/null
++++ b/sentinel-trading-lab/agent/src/core/observed-expiry-quote-20261018.mjs
+@@ -0,0 +1,17 @@
++// Research only. Use the last received quoted price AT the deadline, never
++// a later market move. A stale/missing reference cannot grade either model.
++export function observedExpiryQuote({quoteHistory=[],currentQuote=null,dueAt,now,maxAgeMs=1000}={}){
++ const due=Number(dueAt),receivedNow=Number(now);
++ if(!(due>0&&receivedNow>=due))return null;
++ let best=null;
++ const consider=q=>{
++  const ts=Number(q.ts),received=Number(q.receivedAt??q.ts),price=Number(q.price);
++  if(!(ts>0&&ts<=due&&due-ts<=maxAgeMs&&received<=receivedNow&&Number.isFinite(price)&&price>0))return;
++  if(!best||ts>best.ts||(ts===best.ts&&received<best.receivedAt))best={ts,price,receivedAt:received};
++ };
++ for(const q of quoteHistory)consider(q);
++ // The explicit current feed quote is an observed source too. It may be
++ // at the exact deadline before a caller appends it to its retained array.
++ if(currentQuote)consider(currentQuote);
++ return best;
++}
