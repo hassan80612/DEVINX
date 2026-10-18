@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "source": "https://github.com/Leo4815162342/dukascopy-node/blob/master/examples/with-tick-data/with-tick-data.output.json",
+    "gitBlob": "7df560b3561aa644e10ea04a39947bb992cdff2d",
+    "sha256": "df4c6d7b089c46b73545eb5e9a5207c1ee40ce7375aaa5ba318d1f7963670403",
+    "instrument": "EUR/USD",
+    "priceSide": "bid",
+    "date": "2020-03-30",
+    "rawTicks": 173015,
+    "distinctTimestamps": 173015,
+    "sourceLicense": "MIT; Copyright (c) 2022 Leonid Pyrlia",
+    "expiryQuotePolicy": "asof-complete-bid-stream",
+    "limitations": [
+      "External Dukascopy Forex data, not IQ Option/Exnova OTC and not the user session.",
+      "1m OHLC aggregated from the source ticks, not broker-supplied native candles.",
+      "No interpolation or invented ticks; evaluate on actual quoted prices and timestamps."
+    ]
+  },
+  "windows": [
+    {
+      "name": "development-08-utc",
+      "from": "2020-03-30T08:00:00Z",
+      "to": "2020-03-30T08:30:00Z"
+    },
+    {
+      "name": "validation-14-utc",
+      "from": "2020-03-30T14:00:00Z",
+      "to": "2020-03-30T14:30:00Z"
+    },
+    {
+      "name": "reserved-19-utc",
+      "from": "2020-03-30T19:00:00Z",
+      "to": "2020-03-30T19:30:00Z"
+    },
+    {
+      "name": "second-validation-10-utc",
+      "from": "2020-03-30T10:00:00Z",
+      "to": "2020-03-30T10:30:00Z"
+    },
+    {
+      "name": "second-validation-16-utc",
+      "from": "2020-03-30T16:00:00Z",
+      "to": "2020-03-30T16:30:00Z"
+    },
+    {
+      "name": "second-validation-21-utc",
+      "from": "2020-03-30T21:00:00Z",
+      "to": "2020-03-30T21:30:00Z"
+    }
+  ]
+}
