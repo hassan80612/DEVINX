@@ -20,7 +20,11 @@ const metadata={source:'https://github.com/Leo4815162342/dukascopy-node/blob/mas
  limitations:['External Dukascopy Forex data, not IQ Option/Exnova OTC and not the user session.',
  '1m OHLC aggregated from the source ticks, not broker-supplied native candles.',
  'No interpolation or invented ticks; evaluate on actual quoted prices and timestamps.']};
-const windows=[{name:'development-08-utc',from:'2020-03-30T08:00:00Z',to:'2020-03-30T08:30:00Z'},
+const windows=[{name:'fourth-validation-11-utc',from:'2020-03-30T11:00:00Z',to:'2020-03-30T11:30:00Z'},{name:'fourth-validation-13-utc',from:'2020-03-30T13:00:00Z',to:'2020-03-30T13:30:00Z'},{name:'fourth-validation-17-utc',from:'2020-03-30T17:00:00Z',to:'2020-03-30T17:30:00Z'},{name:'fourth-validation-20-utc',from:'2020-03-30T20:00:00Z',to:'2020-03-30T20:30:00Z'},{name:'third-validation-09-utc',from:'2020-03-30T09:00:00Z',to:'2020-03-30T09:30:00Z'},
+ {name:'third-validation-12-utc',from:'2020-03-30T12:00:00Z',to:'2020-03-30T12:30:00Z'},
+ {name:'third-validation-15-utc',from:'2020-03-30T15:00:00Z',to:'2020-03-30T15:30:00Z'},
+ {name:'third-validation-18-utc',from:'2020-03-30T18:00:00Z',to:'2020-03-30T18:30:00Z'},
+ {name:'development-08-utc',from:'2020-03-30T08:00:00Z',to:'2020-03-30T08:30:00Z'},
  {name:'validation-14-utc',from:'2020-03-30T14:00:00Z',to:'2020-03-30T14:30:00Z'},
  {name:'reserved-19-utc',from:'2020-03-30T19:00:00Z',to:'2020-03-30T19:30:00Z'},
  {name:'second-validation-10-utc',from:'2020-03-30T10:00:00Z',to:'2020-03-30T10:30:00Z'},
