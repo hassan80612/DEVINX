@@ -24,3 +24,5 @@ Base: commit `fd7e026ce4b981a53e7da62722306e1eae364c60`, versão 13.9.42. Origin
 Versão 13.9.43, build `13.9.43-live-settings-broker-balance`.
 
 Prebuild completo: 389 testes passaram. Arquivo local extraído: 103 regressões passaram, 117 arquivos idênticos ao código-fonte. EXE SHA256: `13d62519aae68d684237cc36e2fe111cc5e194a143b55fbbd072624f229161d6`. Payload SHA256: `ffd590f50116f0607f13fa56bf327406c0cff9b3703426326f4d4eb87ac55adc`.
+
+Publicação verificada: commit `32ba17004713a085ac8f0e16adc28da739896634`, deployment `dpl_CP61ox6TuLVD2pPr3YW7m6Jtn8TE` READY. Origem imutável e domínio `https://trading.devinx.com.br` serviram os mesmos bytes do instalador local; 103 regressões passaram sobre o payload baixado de cada origem. Aliases de download são idênticos, ZIP/CRC corretos, Range HTTP 206 confirmado.
