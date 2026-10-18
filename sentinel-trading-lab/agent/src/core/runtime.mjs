@@ -1,3 +1,4 @@
+import {observedExpiryQuote} from './observed-expiry-quote-20261018.mjs';
 import {retainAdaptiveHistory} from './adaptive-temporal-history.mjs';
 import {compactObservedQuoteHistory} from './observed-quote-history.mjs';
 import {CompletedExpiryDirection} from './completed-expiry-direction.mjs';
@@ -1000,8 +1001,7 @@ export class DemoTradingRuntime{
       // Score observed quote at expiry, never fabricate broker settlement.
       for(const outcome of this.vnextWindowOutcomes){
         if(outcome.verified||Number(outcome.exitAt)>now)continue;
-        const point=(snap.quoteHistory||[]).find(q=>
-          Number(q.ts)>=outcome.exitAt&&Number(q.ts)<=outcome.exitAt+1000);
+        const point=observedExpiryQuote({quoteHistory:snap.quoteHistory,currentQuote:{ts:Number(snap.quoteTs),price:Number(snap.price),receivedAt:now},dueAt:outcome.exitAt,now});
         if(!point||!(Number(outcome.entryPrice)>0))continue;
         outcome.verified=true;outcome.observedExitPrice=Number(point.price);
         outcome.correct=outcome.observedExitPrice===outcome.entryPrice?null:

@@ -68,7 +68,7 @@ export function causalPatternDirection({quoteHistory=[],quoteAt=null,price=null,
   if(x.side==='CALL')winsCall+=w;
   if(x.side==='PUT')winsPut+=w;
  }
- const direction=signed(weighted),strength=Math.abs(winsCall-winsPut)/(sum||1);
+ const direction=signed(winsCall-winsPut),strength=Math.abs(winsCall-winsPut)/(sum||1);
  return {ready:!!direction,side:direction,
   reason:'causal-completed-pattern-outcomes',
   analogues:training.length,selected:top.length,strength,

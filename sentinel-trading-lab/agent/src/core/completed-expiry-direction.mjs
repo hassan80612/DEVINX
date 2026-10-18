@@ -1,3 +1,4 @@
+import {observedExpiryQuote} from './observed-expiry-quote-20261018.mjs';
 import {thirtySecondCycleForecast} from './thirty-second-expiry-direction.mjs';
 // Compare forecasts by observed expiry outcomes. Never release an admission,
 // wait for training, or modify the side already held by the signal lifecycle.
@@ -13,8 +14,9 @@ export class CompletedExpiryDirection{
    const pending=[];
    for(const p of this.pending){
     if(ts<p.dueAt){pending.push(p);continue;}
-    if(ts>p.dueAt+1000||spot===p.price)continue;
-    const side=spot>p.price?'CALL':'PUT';
+    const point=observedExpiryQuote({quoteHistory,currentQuote:{ts,price:spot,receivedAt:now},dueAt:p.dueAt,now});
+    if(!point||point.price===p.price)continue;
+    const side=point.price>p.price?'CALL':'PUT';
     for(const name of ['base','wide'])this.loss[name]=.8*this.loss[name]+.2*(p[name]===side?0:1);
     this.completed++;
    }
